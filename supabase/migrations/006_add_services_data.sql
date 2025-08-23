@@ -1,7 +1,7 @@
 -- Add sample services data using the correct column names
 -- First, ensure we have some provider profiles to reference
 
-INSERT INTO public.services (id, provider_id, title, description, category, status, base_price, currency, created_at, updated_at) 
+INSERT INTO public.services (id, provider_id, service_name, description, category, status, base_price, currency, created_at, updated_at) 
 VALUES 
     ('770e8400-e29b-41d4-a716-446655440000', 'd2ce1fe9-806f-4dbc-8efb-9cf160f19e4b', 'Digital Marketing Campaign', 'Comprehensive digital marketing services including social media management, SEO, and content creation for businesses in Oman.', 'Digital Marketing', 'active', 500.000, 'OMR', NOW(), NOW()),
     ('770e8400-e29b-41d4-a716-446655440001', 'd2ce1fe9-806f-4dbc-8efb-9cf160f19e4b', 'Website Development', 'Custom website development using modern technologies like React and Next.js. Perfect for businesses looking to establish their online presence.', 'IT Services', 'active', 800.000, 'OMR', NOW(), NOW()),

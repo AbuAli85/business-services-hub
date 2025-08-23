@@ -1,0 +1,565 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { supabase } from '@/lib/supabase'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { 
+  Building2, 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Globe, 
+  Edit, 
+  Save, 
+  X, 
+  Plus,
+  Star,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  Award,
+  Shield,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react'
+
+interface ProviderProfile {
+  id: string
+  full_name: string
+  email: string
+  phone: string
+  country: string
+  role: string
+  is_verified: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface Company {
+  id: string
+  name: string
+  cr_number: string
+  vat_number: string
+  logo_url: string
+  created_at: string
+}
+
+interface Service {
+  id: string
+  title: string
+  description: string
+  category: string
+  base_price: number
+  currency: string
+  status: string
+  cover_image_url: string
+  created_at: string
+}
+
+interface ProfileStats {
+  totalServices: number
+  totalBookings: number
+  totalEarnings: number
+  averageRating: number
+  completionRate: number
+  responseTime: string
+}
+
+export default function ProfilePage() {
+  const [profile, setProfile] = useState<ProviderProfile | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
+  const [services, setServices] = useState<Service[]>([])
+  const [stats, setStats] = useState<ProfileStats>({
+    totalServices: 0,
+    totalBookings: 0,
+    totalEarnings: 0,
+    averageRating: 0,
+    completionRate: 0,
+    responseTime: '0h'
+  })
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    full_name: '',
+    phone: '',
+    country: ''
+  })
+
+  useEffect(() => {
+    fetchProfileData()
+  }, [])
+
+  const fetchProfileData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Fetch profile data
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profileData) {
+        setProfile(profileData)
+        setEditForm({
+          full_name: profileData.full_name || '',
+          phone: profileData.phone || '',
+          country: profileData.country || ''
+        })
+      }
+
+      // Fetch company data
+      if (profileData?.company_id) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', profileData.company_id)
+          .single()
+
+        if (companyData) {
+          setCompany(companyData)
+        }
+      }
+
+      // Fetch services
+      const { data: servicesData } = await supabase
+        .from('services')
+        .select('*')
+        .eq('provider_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (servicesData) {
+        setServices(servicesData)
+      }
+
+      // Calculate stats
+      await calculateStats(user.id)
+
+      setLoading(false)
+    } catch (error) {
+      console.error('Error fetching profile data:', error)
+      setLoading(false)
+    }
+  }
+
+  const calculateStats = async (userId: string) => {
+    try {
+      // Services count
+      const { count: servicesCount } = await supabase
+        .from('services')
+        .select('*', { count: 'exact', head: true })
+        .eq('provider_id', userId)
+
+      // Bookings count
+      const { count: bookingsCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('provider_id', userId)
+
+      // Mock stats for now (replace with real calculations)
+      setStats({
+        totalServices: servicesCount || 0,
+        totalBookings: bookingsCount || 0,
+        totalEarnings: (bookingsCount || 0) * 150, // Mock earnings
+        averageRating: 4.8,
+        completionRate: 95,
+        responseTime: '2h'
+      })
+    } catch (error) {
+      console.error('Error calculating stats:', error)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    try {
+      if (!profile) return
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editForm.full_name,
+          phone: editForm.phone,
+          country: editForm.country,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', profile.id)
+
+      if (error) {
+        console.error('Error updating profile:', error)
+        return
+      }
+
+      // Update local state
+      setProfile(prev => prev ? {
+        ...prev,
+        full_name: editForm.full_name,
+        phone: editForm.phone,
+        country: editForm.country
+      } : null)
+
+      setEditing(false)
+    } catch (error) {
+      console.error('Error saving profile:', error)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditForm({
+      full_name: profile?.full_name || '',
+      phone: profile?.phone || '',
+      country: profile?.country || ''
+    })
+    setEditing(false)
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800'
+      case 'draft':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'archived':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Provider Profile</h1>
+          <p className="text-gray-600 mt-2">
+            Manage your profile, company information, and services
+          </p>
+        </div>
+        <Button onClick={() => setEditing(!editing)}>
+          <Edit className="h-4 w-4 mr-2" />
+          {editing ? 'Cancel' : 'Edit Profile'}
+        </Button>
+      </div>
+
+      {/* Profile Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Services</CardTitle>
+            <Building2 className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.totalServices}</div>
+            <p className="text-xs text-muted-foreground">Active service offerings</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <Calendar className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.totalBookings}</div>
+            <p className="text-xs text-muted-foreground">Completed projects</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <DollarSign className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {formatCurrency(stats.totalEarnings, 'OMR')}
+            </div>
+            <p className="text-xs text-muted-foreground">From completed work</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rating</CardTitle>
+            <Star className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.averageRating}</div>
+            <p className="text-xs text-muted-foreground">Average client rating</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.completionRate}%</div>
+            <p className="text-xs text-muted-foreground">Projects completed on time</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Response Time</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.responseTime}</div>
+            <p className="text-xs text-muted-foreground">Average response time</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Verification</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              {profile?.is_verified ? (
+                <CheckCircle className="h-6 w-6 text-green-500" />
+              ) : (
+                <AlertCircle className="h-6 w-6 text-yellow-500" />
+              )}
+              <span className="text-sm font-medium">
+                {profile?.is_verified ? 'Verified' : 'Pending Verification'}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {profile?.is_verified ? 'Account verified' : 'Verification in progress'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Profile Information */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Personal Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Personal Information
+            </CardTitle>
+            <CardDescription>
+              Your basic profile details and contact information
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {editing ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    value={editForm.full_name}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={editForm.country}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, country: e.target.value }))}
+                  />
+                </div>
+                <div className="flex space-x-2">
+                  <Button onClick={handleSaveProfile}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </Button>
+                  <Button variant="outline" onClick={handleCancelEdit}>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center space-x-3">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 font-semibold text-xl">
+                      {profile?.full_name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{profile?.full_name}</h3>
+                    <p className="text-sm text-gray-500 capitalize">{profile?.role}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm">{profile?.email}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm">{profile?.phone || 'Not provided'}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm">{profile?.country || 'Not specified'}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm">Member since {formatDate(profile?.created_at || '')}</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Company Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Company Information
+            </CardTitle>
+            <CardDescription>
+              Your business details and company information
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {company ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt="Company Logo" className="w-12 h-12 object-cover rounded" />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{company.name}</h3>
+                    <p className="text-sm text-gray-500">Registered Company</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">CR Number:</span>
+                    <span className="text-sm text-gray-600">{company.cr_number || 'Not provided'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">VAT Number:</span>
+                    <span className="text-sm text-gray-600">{company.vat_number || 'Not provided'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Established:</span>
+                    <span className="text-sm text-gray-600">{formatDate(company.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500 mb-4">No company information available</p>
+                <Button variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Company
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Services Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Your Services
+          </CardTitle>
+          <CardDescription>
+            Overview of all your service offerings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {services.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">No services yet</p>
+              <p className="text-sm mb-4">Start by creating your first service offering</p>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Service
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {services.map((service) => (
+                <div
+                  key={service.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                      {service.cover_image_url ? (
+                        <img src={service.cover_image_url} alt={service.title} className="w-8 h-8 object-cover rounded" />
+                      ) : (
+                        <Building2 className="h-6 w-6 text-gray-400" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">{service.title}</h4>
+                      <p className="text-sm text-gray-500 line-clamp-2">{service.description}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Badge variant="secondary">{service.category}</Badge>
+                        <Badge className={getStatusColor(service.status)}>
+                          {service.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-gray-900">
+                      {formatCurrency(service.base_price, service.currency)}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Created {formatDate(service.created_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

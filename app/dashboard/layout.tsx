@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
+import { NotificationBell } from '@/components/ui/notification-bell'
 import { 
   Home, 
   Briefcase, 
@@ -29,19 +30,32 @@ interface UserProfile {
   company_name?: string
 }
 
+interface Notification {
+  id: string
+  type: 'booking' | 'payment' | 'message' | 'system'
+  title: string
+  message: string
+  is_read: boolean
+  created_at: string
+  priority: 'low' | 'medium' | 'high'
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     checkUser()
+    fetchNotifications()
   }, [])
 
   const checkUser = async () => {
@@ -71,6 +85,56 @@ export default function DashboardLayout({
     }
   }
 
+  const fetchNotifications = async () => {
+    try {
+      // Mock notifications for now
+      const mockNotifications: Notification[] = [
+        {
+          id: '1',
+          type: 'booking',
+          title: 'New Booking Request',
+          message: 'Ahmed Al-Rashid requested your Digital Marketing service',
+          is_read: false,
+          created_at: new Date(Date.now() - 1800000).toISOString(),
+          priority: 'high'
+        },
+        {
+          id: '2',
+          type: 'payment',
+          title: 'Payment Received',
+          message: 'OMR 250 received for Digital Marketing Campaign',
+          is_read: false,
+          created_at: new Date(Date.now() - 3600000).toISOString(),
+          priority: 'medium'
+        },
+        {
+          id: '3',
+          type: 'message',
+          title: 'New Message',
+          message: 'Fatima Al-Zahra sent you a message',
+          is_read: true,
+          created_at: new Date(Date.now() - 7200000).toISOString(),
+          priority: 'low'
+        }
+      ]
+      setNotifications(mockNotifications)
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+    }
+  }
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+    )
+  }
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(n => ({ ...n, is_read: true }))
+    )
+  }
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/')
@@ -81,25 +145,34 @@ export default function DashboardLayout({
 
     const baseItems = [
       { name: 'Dashboard', href: '/dashboard', icon: Home },
-      { name: 'Services', href: '/dashboard/services', icon: Briefcase },
       { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
       { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
-      { name: 'Profile', href: '/dashboard/profile', icon: User },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ]
 
     if (user.role === 'admin') {
-      baseItems.splice(2, 0, 
+      baseItems.splice(1, 0, 
+        { name: 'Services', href: '/dashboard/services', icon: Briefcase },
         { name: 'Users', href: '/dashboard/admin/users', icon: Users },
         { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
-        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText }
+        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText },
+        { name: 'Profile', href: '/dashboard/profile', icon: User }
       )
     }
 
     if (user.role === 'provider') {
-      baseItems.splice(2, 0, 
-        { name: 'My Services', href: '/dashboard/services', icon: Building2 },
-        { name: 'Earnings', href: '/dashboard/provider/earnings', icon: BarChart3 }
+      baseItems.splice(1, 0, 
+        { name: 'My Services', href: `/dashboard/services`, icon: Building2 },
+        { name: 'Company', href: '/dashboard/company', icon: Building2 },
+        { name: 'Earnings', href: `/dashboard/earnings`, icon: BarChart3 },
+        { name: 'Profile', href: '/dashboard/profile', icon: User }
+      )
+    }
+
+    if (user.role === 'client') {
+      baseItems.splice(1, 0, 
+        { name: 'Services', href: '/dashboard/services', icon: Briefcase },
+        { name: 'Profile', href: '/dashboard/profile', icon: User }
       )
     }
 
@@ -122,105 +195,119 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:inset-0 lg:flex-shrink-0 ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b">
-          <h1 className="text-xl font-bold text-gray-900">Business Hub</h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b">
+            <h1 className="text-xl font-bold text-gray-900">Business Hub</h1>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
+              title="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
-        {/* User info */}
-        <div className="px-6 py-4 border-b">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <User className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-                             <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-               <p className="text-xs text-gray-500 capitalize">{user.role}</p>
-               {user.company_name && (
-                 <p className="text-xs text-gray-500">{user.company_name}</p>
-               )}
+          {/* User Profile */}
+          <div className="p-6 border-b">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold">
+                  {user.full_name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">{user.full_name}</p>
+                <p className="text-sm text-gray-500 capitalize">{user.role}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Navigation */}
-        <nav className="px-3 py-4 space-y-1">
-          {navigationItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <item.icon className="mr-3 h-5 w-5" />
-                {item.name}
-              </Link>
-            )
-          })}
-        </nav>
+          {/* Navigation */}
+          <nav className="flex-1 p-6">
+            <ul className="space-y-2">
+              {navigationItems.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
 
-        {/* Sign out */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={handleSignOut}
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            Sign Out
-          </Button>
+          {/* Sign Out */}
+          <div className="p-6 border-t">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center space-x-3 w-full px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white border-b px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Header */}
+        <header className="bg-white shadow-sm border-b px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
+                title="Open sidebar"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {navigationItems.find(item => item.href === pathname)?.name || 'Dashboard'}
+              </h2>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {/* Notification Bell */}
+              <NotificationBell
+                notifications={notifications}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllAsRead={handleMarkAllAsRead}
+              />
+              
+              {/* User Menu */}
+              <div className="flex items-center space-x-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                </div>
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-semibold text-sm">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        {/* Page Content */}
+        <main className="flex-1 p-6 overflow-auto">
           {children}
         </main>
       </div>
