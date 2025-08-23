@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2, Building2, User } from 'lucide-react'
 
@@ -51,6 +51,7 @@ export default function SignUpPage() {
     setLoading(true)
     
     try {
+      const supabase = getSupabaseClient()
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -72,6 +73,7 @@ export default function SignUpPage() {
         toast.success('Account created successfully! Please check your email to verify your account.')
         
         // Create profile in profiles table with proper error handling
+        const supabase = getSupabaseClient()
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({

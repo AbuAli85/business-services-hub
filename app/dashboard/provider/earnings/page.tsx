@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { 
   DollarSign, 
@@ -69,6 +69,7 @@ export default function EarningsPage() {
 
   const fetchEarningsData = async () => {
     try {
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 

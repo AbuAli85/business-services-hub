@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { 
   Building2, 
@@ -99,6 +99,7 @@ export default function ProfilePage() {
 
   const fetchProfileData = async () => {
     try {
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -120,19 +121,21 @@ export default function ProfilePage() {
 
       // Fetch company data
       if (profileData?.company_id) {
-        const { data: companyData } = await supabase
+        const supabaseClient = getSupabaseClient()
+        const { data: companyData } = await supabaseClient
           .from('companies')
           .select('*')
           .eq('id', profileData.company_id)
           .single()
-
+          
         if (companyData) {
           setCompany(companyData)
         }
       }
-
+        
       // Fetch services
-      const { data: servicesData } = await supabase
+      const supabaseServices = getSupabaseClient()
+      const { data: servicesData } = await supabaseServices
         .from('services')
         .select('*')
         .eq('provider_id', user.id)
@@ -154,6 +157,7 @@ export default function ProfilePage() {
 
   const calculateStats = async (userId: string) => {
     try {
+      const supabase = getSupabaseClient()
       // Services count
       const { count: servicesCount } = await supabase
         .from('services')
@@ -184,6 +188,7 @@ export default function ProfilePage() {
     try {
       if (!profile) return
 
+      const supabase = getSupabaseClient()
       const { error } = await supabase
         .from('profiles')
         .update({

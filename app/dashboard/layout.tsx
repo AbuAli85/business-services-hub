@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { 
   Home, 
@@ -60,6 +60,7 @@ export default function DashboardLayout({
 
   const checkUser = async () => {
     try {
+      const supabase = getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
@@ -136,6 +137,7 @@ export default function DashboardLayout({
   }
 
   const handleSignOut = async () => {
+    const supabase = getSupabaseClient()
     await supabase.auth.signOut()
     router.push('/')
   }

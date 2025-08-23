@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
 import { 
   Building2, 
@@ -135,7 +135,7 @@ export default function CompanyPage() {
   // Helper function to fetch current company data from database
   const fetchCurrentCompanyData = async (companyId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabaseClient()
         .from('companies')
         .select('*')
         .eq('id', companyId)
@@ -161,7 +161,7 @@ export default function CompanyPage() {
       
       const normalizedEmail = email.toLowerCase().trim()
       
-      const { data, error } = await supabase
+      const { data, error } = await getSupabaseClient()
         .from('companies')
         .select('id, email, owner_id, name')
         .eq('email', normalizedEmail)
@@ -184,13 +184,13 @@ export default function CompanyPage() {
     try {
       if (!email || !email.trim()) return false
       
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await getSupabaseClient().auth.getUser()
       if (!user) return false
       
       // Normalize email (lowercase and trim)
       const normalizedEmail = email.toLowerCase().trim()
       
-      let query = supabase
+      let query = getSupabaseClient()
         .from('companies')
         .select('id, email, owner_id')
         .eq('email', normalizedEmail)
@@ -336,7 +336,7 @@ export default function CompanyPage() {
       const filePath = `company-logos/${fileName}`
 
       // Upload to Supabase storage
-      const { data, error } = await supabase.storage
+      const { data, error } = await getSupabaseClient().storage
         .from('company-assets')
         .upload(filePath, logoFile, {
           cacheControl: '3600',
@@ -350,7 +350,7 @@ export default function CompanyPage() {
       }
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { publicUrl } } = getSupabaseClient().storage
         .from('company-assets')
         .getPublicUrl(filePath)
 
@@ -371,7 +371,7 @@ export default function CompanyPage() {
       const filePath = urlParts.slice(-2).join('/') // Get last two parts for company-logos/filename
       
       // Remove from storage
-      const { error } = await supabase.storage
+      const { error } = await getSupabaseClient().storage
         .from('company-assets')
         .remove([`company-logos/${filePath}`])
       
@@ -389,18 +389,18 @@ export default function CompanyPage() {
 
   const fetchCompanyData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await getSupabaseClient().auth.getUser()
       if (!user) return
 
       // Get user's company_id from profile
-      const { data: profile } = await supabase
+      const { data: profile } = await getSupabaseClient()
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
         .single()
 
       if (profile?.company_id) {
-        const { data: companyData } = await supabase
+        const { data: companyData } = await getSupabaseClient()
           .from('companies')
           .select('*')
           .eq('id', profile.company_id)
@@ -474,7 +474,7 @@ export default function CompanyPage() {
         }
       }
       
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await getSupabaseClient().auth.getUser()
       if (!user) return
 
       // Upload logo if file is selected
@@ -497,7 +497,7 @@ export default function CompanyPage() {
 
       console.log('Attempting to create company with minimal data:', companyData)
 
-      const { data: newCompany, error } = await supabase
+      const { data: newCompany, error } = await getSupabaseClient()
         .from('companies')
         .insert([companyData])
         .select()
@@ -518,7 +518,7 @@ export default function CompanyPage() {
       console.log('Company created successfully:', newCompany)
 
       // Update user profile with company_id
-      const { error: profileError } = await supabase
+      const { error: profileError } = await getSupabaseClient()
         .from('profiles')
         .update({ company_id: newCompany.id })
         .eq('id', user.id)
@@ -620,7 +620,7 @@ export default function CompanyPage() {
       console.log('Form email trimmed length:', form.email ? form.email.trim().length : 'undefined')
 
       // Verify user authentication
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      const { data: { user }, error: authError } = await getSupabaseClient().auth.getUser()
       if (authError || !user) {
         setError('Authentication error. Please log in again.')
         return
@@ -941,7 +941,7 @@ export default function CompanyPage() {
 
       // CHECK CURRENT DATABASE STATE
       console.log('*** CHECKING CURRENT DATABASE STATE ***')
-      const { data: currentDbData, error: fetchError } = await supabase
+      const { data: currentDbData, error: fetchError } = await getSupabaseClient()
         .from('companies')
         .select('*')
         .eq('id', company.id)
@@ -956,7 +956,7 @@ export default function CompanyPage() {
         console.log('Form email:', form.email)
         
         // Check if there are any other companies with the same email
-        const { data: emailConflicts, error: conflictError } = await supabase
+        const { data: emailConflicts, error: conflictError } = await getSupabaseClient()
           .from('companies')
           .select('id, name, email, owner_id')
           .eq('email', currentDbData.email)
@@ -972,13 +972,13 @@ export default function CompanyPage() {
       // CHECK DATABASE CONSTRAINTS
       console.log('*** CHECKING DATABASE CONSTRAINTS ***')
       try {
-        const { data: constraintData, error: constraintError } = await supabase
+        const { data: constraintData, error: constraintError } = await getSupabaseClient()
           .rpc('get_table_constraints', { table_name: 'companies' })
         
         if (constraintError) {
           console.log('Could not fetch constraints via RPC, trying direct query...')
           // Try a different approach to see constraints
-          const { data: tableInfo, error: tableError } = await supabase
+          const { data: tableInfo, error: tableError } = await getSupabaseClient()
             .from('information_schema.table_constraints')
             .select('*')
             .eq('table_name', 'companies')
@@ -1018,7 +1018,7 @@ export default function CompanyPage() {
         console.log('sanitizedUpdateData after email removal:', sanitizedUpdateData)
       }
 
-      const { error } = await supabase
+      const { error } = await getSupabaseClient()
         .from('companies')
         .update(sanitizedUpdateData)
         .eq('id', company.id)
@@ -1799,7 +1799,7 @@ export default function CompanyPage() {
                     
                     try {
                       console.log('Testing minimal update...')
-                      const { error } = await supabase
+                      const { error } = await getSupabaseClient()
                         .from('companies')
                         .update({ name: company.name }) // Just update the name to test
                         .eq('id', company.id)
@@ -1836,7 +1836,7 @@ export default function CompanyPage() {
                       
                       console.log('Update data (no email):', updateData)
                       
-                      const { error } = await supabase
+                      const { error } = await getSupabaseClient()
                         .from('companies')
                         .update(updateData)
                         .eq('id', company.id)
@@ -1872,7 +1872,7 @@ export default function CompanyPage() {
                       
                       console.log('Update data (just name):', updateData)
                       
-                      const { error } = await supabase
+                      const { error } = await getSupabaseClient()
                         .from('companies')
                         .update(updateData)
                         .eq('id', company.id)
@@ -1906,7 +1906,7 @@ export default function CompanyPage() {
                       
                       console.log('Update data (empty):', updateData)
                       
-                      const { error } = await supabase
+                      const { error } = await getSupabaseClient()
                         .from('companies')
                         .update(updateData)
                         .eq('id', company.id)
@@ -1937,7 +1937,7 @@ export default function CompanyPage() {
                     try {
                       console.log('Testing raw SQL update...')
                       
-                      const { error } = await supabase
+                      const { error } = await getSupabaseClient()
                         .rpc('update_company_name_only', { 
                           company_id: company.id, 
                           new_name: company.name + ' (Raw SQL Test)' 

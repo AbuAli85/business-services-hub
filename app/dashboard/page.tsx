@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { 
   TrendingUp, 
@@ -103,6 +103,7 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         console.log('No user found in dashboard')
@@ -146,6 +147,7 @@ export default function DashboardPage() {
 
       // Simple count query
       try {
+        const supabase = getSupabaseClient()
         const { count } = await supabase
           .from('bookings')
           .select('*', { count: 'exact', head: true })
@@ -175,6 +177,7 @@ export default function DashboardPage() {
 
   const fetchServicesCount = async (userId: string) => {
     try {
+      const supabase = getSupabaseClient()
       const { count } = await supabase
         .from('services')
         .select('*', { count: 'exact', head: true })
@@ -189,6 +192,7 @@ export default function DashboardPage() {
   const fetchCompanyInfo = async (userId: string) => {
     try {
       // Get user's company_id from profile
+      const supabase = getSupabaseClient()
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
@@ -217,6 +221,7 @@ export default function DashboardPage() {
   const fetchRecentBookings = async (userId: string) => {
     try {
       // Try to fetch recent bookings with error handling
+      const supabase = getSupabaseClient()
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select(`

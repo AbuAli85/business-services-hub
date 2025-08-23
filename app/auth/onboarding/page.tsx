@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Loader2, Building2, User, CheckCircle } from 'lucide-react'
 
@@ -37,6 +37,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       console.log('Current user in onboarding:', user)
       console.log('Role from query params:', role)
@@ -93,6 +94,7 @@ export default function OnboardingPage() {
     setLoading(true)
     
     try {
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {

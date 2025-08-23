@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { Search, Filter, Star, MapPin, Building2, Eye } from 'lucide-react'
 
@@ -63,7 +63,7 @@ export default function ServicesPage() {
     
     try {
       // Simple query first - just get services without relationships
-      let query = supabase
+      let query = getSupabaseClient()
         .from('services')
         .select('*')
 

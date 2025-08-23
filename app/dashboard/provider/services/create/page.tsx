@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { ArrowLeft, Save, Plus } from 'lucide-react'
 
 interface ServiceFormData {
@@ -63,6 +63,7 @@ export default function CreateServicePage() {
 
     try {
       // Get current user
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {

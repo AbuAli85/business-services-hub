@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { 
   Search, Filter, Plus, Edit, Trash2, Eye, Building2, TrendingUp, 
@@ -92,6 +92,7 @@ export default function ServicesPage() {
 
   const checkUserAndFetchData = async () => {
     try {
+      const supabase = getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
@@ -121,6 +122,7 @@ export default function ServicesPage() {
     setLoading(true)
     
     try {
+      const supabase = getSupabaseClient()
       let query = supabase
         .from('services')
         .select(`
@@ -167,6 +169,7 @@ export default function ServicesPage() {
     setLoading(true)
     
     try {
+      const supabase = getSupabaseClient()
       let query = supabase
         .from('services')
         .select(`
@@ -207,6 +210,7 @@ export default function ServicesPage() {
 
   const fetchServiceStats = async (providerId: string) => {
     try {
+      const supabase = getSupabaseClient()
       const { data: servicesData } = await supabase
         .from('services')
         .select('*')
@@ -294,6 +298,7 @@ export default function ServicesPage() {
 
     if (confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
       try {
+        const supabase = getSupabaseClient()
         const { error } = await supabase
           .from('services')
           .delete()

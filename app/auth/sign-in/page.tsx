@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
@@ -23,6 +23,7 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -92,6 +93,7 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     try {
+      const supabase = getSupabaseClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -115,6 +117,7 @@ export default function SignInPage() {
     }
 
     try {
+      const supabase = getSupabaseClient();
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email
