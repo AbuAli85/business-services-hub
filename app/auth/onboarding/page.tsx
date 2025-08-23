@@ -100,6 +100,36 @@ export default function OnboardingPage() {
         router.push('/auth/sign-in')
         return
       }
+
+      // Update profile with onboarding data
+      const profileUpdateData: any = {
+        bio: formData.bio,
+        updated_at: new Date().toISOString()
+      }
+
+      if (role === 'provider') {
+        profileUpdateData.company_name = formData.companyName
+        profileUpdateData.cr_number = formData.crNumber
+        profileUpdateData.vat_number = formData.vatNumber
+        profileUpdateData.portfolio_links = formData.portfolioLinks
+        profileUpdateData.services = formData.services
+      } else if (role === 'client') {
+        profileUpdateData.billing_preference = formData.billingPreference
+        profileUpdateData.preferred_categories = formData.preferredCategories
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(profileUpdateData)
+        .eq('id', user.id)
+
+      if (updateError) {
+        console.error('Profile update error:', updateError)
+        toast.error('Failed to complete profile setup')
+        return
+      }
+        return
+      }
       
              // First, ensure the profile exists
        const { data: existingProfile } = await supabase

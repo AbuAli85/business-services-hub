@@ -9,29 +9,36 @@ export function formatCurrency(amount: number, currency: string = 'OMR'): string
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount)
 }
 
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-US', {
+  const d = new Date(date)
+  return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
-  }).format(new Date(date))
+    day: 'numeric'
+  })
 }
 
 export function formatDateTime(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-US', {
+  const d = new Date(date)
+  return d.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(date))
+    minute: '2-digit'
+  })
 }
 
-export function generateId(): string {
-  return Math.random().toString(36).substr(2, 9)
+export function generateBookingNumber(): string {
+  const date = new Date()
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
+  const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0')
+  return `BK-${dateStr}-${randomNum}`
 }
 
 export function debounce<T extends (...args: any[]) => any>(

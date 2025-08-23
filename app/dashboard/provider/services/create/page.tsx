@@ -76,18 +76,16 @@ export default function CreateServicePage() {
         return
       }
 
-                    // Create service with explicit provider_id
-        // Try both field names to handle database schema differences
+                    // Create service with correct schema fields
         const serviceData = {
-          service_name: formData.title, // Try service_name first (what database expects)
-          title: formData.title,         // Also try title (what schema shows)
+          title: formData.title,
           description: formData.description,
           category: formData.category,
           base_price: parseFloat(formData.base_price),
           currency: formData.currency,
           status: formData.status,
-          provider_id: user.id
-          // Remove created_at and updated_at - let database handle these
+          provider_id: user.id,
+          approval_status: 'pending'
         }
 
        console.log('Attempting to create service with data:', serviceData)

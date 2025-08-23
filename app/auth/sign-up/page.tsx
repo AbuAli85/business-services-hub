@@ -71,7 +71,7 @@ export default function SignUpPage() {
       if (data.user) {
         toast.success('Account created successfully! Please check your email to verify your account.')
         
-        // Create profile in profiles table
+        // Create profile in profiles table with proper error handling
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -79,10 +79,16 @@ export default function SignUpPage() {
             role: formData.role,
             full_name: formData.fullName,
             phone: formData.phone,
+            email: formData.email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           })
 
         if (profileError) {
           console.error('Profile creation error:', profileError)
+          toast.error('Account created but profile setup failed. Please contact support.')
+        } else {
+          toast.success('Profile created successfully!')
         }
 
         // Redirect to onboarding

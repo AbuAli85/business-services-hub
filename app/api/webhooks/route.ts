@@ -103,7 +103,7 @@ async function handleBookingCreated(data: any) {
       total_cost 
     } = data
 
-    // Create new booking with minimal required fields
+    // Create new booking with all required fields
     const { data: booking, error } = await supabase
       .from('bookings')
       .insert({
@@ -114,7 +114,10 @@ async function handleBookingCreated(data: any) {
         end_time,
         total_cost,
         status: 'draft',
-        user_id: client_id
+        user_id: client_id,
+        title: `Booking for Service ${data.service_id}`,
+        currency: 'OMR',
+        booking_number: `BK-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`
       })
       .select()
       .single()
