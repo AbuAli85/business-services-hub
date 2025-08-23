@@ -160,11 +160,7 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Helper function to get role from JWT
-CREATE OR REPLACE FUNCTION auth.role() RETURNS TEXT
-LANGUAGE SQL STABLE AS $$
-  SELECT COALESCE((auth.jwt() ->> 'role')::TEXT, 'client')
-$$;
+-- Note: We'll use profile-based role checking instead of JWT roles for RLS policies
 
 -- RLS Policies
 
@@ -186,24 +182,28 @@ WITH CHECK (id = auth.uid());
 -- Companies policies
 CREATE POLICY "Read own company or public info"
 ON public.companies FOR SELECT
-USING (
-  owner_id = auth.uid() OR auth.role() = 'admin'
-);
+USING (owner_id = auth.uid());
 
 CREATE POLICY "Manage own company"
 ON public.companies FOR ALL
-USING (owner_id = auth.uid() OR auth.role() = 'admin');
+USING (owner_id = auth.uid());
 
 -- Services policies
 CREATE POLICY "Read services public" 
 ON public.services FOR SELECT 
-USING (status = 'active' OR auth.role() IN ('admin', 'provider'));
+USING (status = 'active');
 
 CREATE POLICY "Provider manages own services" 
 ON public.services
-FOR INSERT WITH CHECK (provider_id = auth.uid())
-, FOR UPDATE USING (provider_id = auth.uid() OR auth.role() = 'admin')
-, FOR DELETE USING (provider_id = auth.uid() OR auth.role() = 'admin');
+FOR INSERT WITH CHECK (provider_id = auth.uid());
+
+CREATE POLICY "Provider updates own services" 
+ON public.services
+FOR UPDATE USING (provider_id = auth.uid());
+
+CREATE POLICY "Provider deletes own services" 
+ON public.services
+FOR DELETE USING (provider_id = auth.uid());
 
 -- Service packages policies
 CREATE POLICY "Read service packages public"
@@ -216,37 +216,40 @@ USING (
   EXISTS (
     SELECT 1 FROM public.services s 
     WHERE s.id = service_id AND s.provider_id = auth.uid()
-  ) OR auth.role() = 'admin'
+  )
 );
 
 -- Bookings policies
 CREATE POLICY "Client or Provider can read booking"
 ON public.bookings FOR SELECT 
 USING (
-  client_id = auth.uid() OR provider_id = auth.uid() OR auth.role() = 'admin'
+  client_id = auth.uid() OR provider_id = auth.uid()
 );
 
 CREATE POLICY "Client creates booking" 
-ON public.bookings FOR INSERT
+ON public.bookings FOR INSERT 
 WITH CHECK (client_id = auth.uid());
 
 CREATE POLICY "Client or Provider update own booking"
 ON public.bookings FOR UPDATE 
 USING (
-  client_id = auth.uid() OR provider_id = auth.uid() OR auth.role() = 'admin'
+  client_id = auth.uid() OR provider_id = auth.uid()
 );
 
 -- Messages policies
-CREATE POLICY "Participants can read/send messages"
+CREATE POLICY "Participants can read messages"
 ON public.messages FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM public.bookings b
-    WHERE b.id = booking_id AND (b.client_id = auth.uid() OR b.provider_id = auth.uid() OR auth.role() = 'admin')
+    WHERE b.id = booking_id AND (b.client_id = auth.uid() OR b.provider_id = auth.uid())
   )
-), FOR INSERT WITH CHECK (
+);
+
+CREATE POLICY "Participants can send messages"
+ON public.messages FOR INSERT WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.bookings b
-    WHERE b.id = booking_id AND (b.client_id = auth.uid() OR b.provider_id = auth.uid() OR auth.role() = 'admin')
+    WHERE b.id = booking_id AND (b.client_id = auth.uid() OR b.provider_id = auth.uid())
   )
 );
 
@@ -269,7 +272,7 @@ WITH CHECK (
 CREATE POLICY "Read own invoices"
 ON public.invoices FOR SELECT
 USING (
-  client_id = auth.uid() OR provider_id = auth.uid() OR auth.role() = 'admin'
+  client_id = auth.uid() OR provider_id = auth.uid()
 );
 
 CREATE POLICY "Provider creates invoices for own bookings"
@@ -291,10 +294,11 @@ CREATE POLICY "Update own notifications"
 ON public.notifications FOR UPDATE
 USING (user_id = auth.uid());
 
--- Audit logs policies (admin only)
-CREATE POLICY "Admin can read audit logs"
+-- Audit logs policies - disabled for now as we don't have admin role checking
+-- Users can see their own audit entries
+CREATE POLICY "Users can read own audit logs"
 ON public.audit_logs FOR SELECT
-USING (auth.role() = 'admin');
+USING (user_id = auth.uid());
 
 -- Create audit trigger function
 CREATE OR REPLACE FUNCTION audit_trigger_function()

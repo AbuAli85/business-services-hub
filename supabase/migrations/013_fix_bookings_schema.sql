@@ -81,17 +81,17 @@ DROP POLICY IF EXISTS "Client or Provider update own booking" ON public.bookings
 CREATE POLICY "Client or Provider can read booking"
 ON public.bookings FOR SELECT 
 USING (
-  client_id = auth.uid() OR provider_id = auth.uid() OR auth.role() = 'admin'
+  client_id = auth.uid() OR provider_id = auth.uid()
 );
 
 CREATE POLICY "Client creates booking" 
-ON public.bookings FOR INSERT
+ON public.bookings FOR INSERT 
 WITH CHECK (client_id = auth.uid());
 
 CREATE POLICY "Client or Provider update own booking"
 ON public.bookings FOR UPDATE 
 USING (
-  client_id = auth.uid() OR provider_id = auth.uid() OR auth.role() = 'admin'
+  client_id = auth.uid() OR provider_id = auth.uid()
 );
 
 -- Grant necessary permissions

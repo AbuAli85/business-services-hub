@@ -122,7 +122,10 @@ BEGIN
     -- Bookings table indexes
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings') THEN
         IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'idx_bookings_user_id') THEN
-            CREATE INDEX idx_bookings_user_id ON public.bookings(user_id);
+            -- Only create index if user_id column exists
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bookings' AND column_name = 'user_id') THEN
+                CREATE INDEX idx_bookings_user_id ON public.bookings(user_id);
+            END IF;
         END IF;
         
         IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'idx_bookings_client_id') THEN
@@ -130,7 +133,10 @@ BEGIN
         END IF;
         
         IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'idx_bookings_resource_id') THEN
-            CREATE INDEX idx_bookings_resource_id ON public.bookings(resource_id);
+            -- Only create index if resource_id column exists
+            IF EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bookings' AND column_name = 'resource_id') THEN
+                CREATE INDEX idx_bookings_resource_id ON public.bookings(resource_id);
+            END IF;
         END IF;
         
         IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'idx_bookings_service_id') THEN
@@ -235,14 +241,17 @@ BEGIN
                 FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
         END IF;
         
-        IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Enable update for users based on user_id') THEN
-            CREATE POLICY "Enable update for users based on user_id" ON public.bookings
-                FOR UPDATE USING (auth.uid() = user_id);
-        END IF;
-        
-        IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Enable delete for users based on user_id') THEN
-            CREATE POLICY "Enable delete for users based on user_id" ON public.bookings
-                FOR DELETE USING (auth.uid() = user_id);
+        -- Only create user_id based policies if the column exists
+        IF EXISTS (SELECT FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bookings' AND column_name = 'user_id') THEN
+            IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Enable update for users based on user_id') THEN
+                CREATE POLICY "Enable update for users based on user_id" ON public.bookings
+                    FOR UPDATE USING (auth.uid() = user_id);
+            END IF;
+            
+            IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'bookings' AND policyname = 'Enable delete for users based on user_id') THEN
+                CREATE POLICY "Enable delete for users based on user_id" ON public.bookings
+                    FOR DELETE USING (auth.uid() = user_id);
+            END IF;
         END IF;
     END IF;
 END $$;

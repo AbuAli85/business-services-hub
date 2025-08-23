@@ -93,25 +93,49 @@ DROP POLICY IF EXISTS "Providers can delete their own company" ON public.compani
 -- Users can view their own company
 CREATE POLICY "Users can view their own company" ON public.companies
     FOR SELECT USING (
-        auth.uid() = created_by
+        auth.uid() = owner_id
     );
 
 -- Users can insert their own company
 CREATE POLICY "Users can insert their own company" ON public.companies
     FOR INSERT WITH CHECK (
-        auth.uid() = created_by
+        auth.uid() = owner_id
     );
 
 -- Users can update their own company
 CREATE POLICY "Users can update their own company" ON public.companies
     FOR UPDATE USING (
-        auth.uid() = created_by
+        auth.uid() = owner_id
     );
 
 -- Users can delete their own company
 CREATE POLICY "Users can delete their own company" ON public.companies
     FOR DELETE USING (
-        auth.uid() = created_by
+        auth.uid() = owner_id
+    );
+
+-- Providers can view their own company
+CREATE POLICY "Providers can view their own company" ON public.companies
+    FOR SELECT USING (
+        auth.uid() = owner_id
+    );
+
+-- Providers can insert their own company
+CREATE POLICY "Providers can insert their own company" ON public.companies
+    FOR INSERT WITH CHECK (
+        auth.uid() = owner_id
+    );
+
+-- Providers can update their own company
+CREATE POLICY "Providers can update their own company" ON public.companies
+    FOR UPDATE USING (
+        auth.uid() = owner_id
+    );
+
+-- Providers can delete their own company
+CREATE POLICY "Providers can delete their own company" ON public.companies
+    FOR DELETE USING (
+        auth.uid() = owner_id
     );
 
 -- 6. Enhanced RLS for profiles table

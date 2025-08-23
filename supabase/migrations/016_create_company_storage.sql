@@ -13,26 +13,30 @@ VALUES (
 
 -- Set up storage policies for company assets
 -- Allow authenticated users to upload their own company assets
+DROP POLICY IF EXISTS "Users can upload company assets" ON storage.objects;
 CREATE POLICY "Users can upload company assets" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'company-assets' 
-    AND auth.role() = 'authenticated'
+    AND auth.uid() IS NOT NULL
   );
 
 -- Allow users to view company assets (public)
+DROP POLICY IF EXISTS "Anyone can view company assets" ON storage.objects;
 CREATE POLICY "Anyone can view company assets" ON storage.objects
   FOR SELECT USING (bucket_id = 'company-assets');
 
 -- Allow users to update their own company assets
+DROP POLICY IF EXISTS "Users can update their company assets" ON storage.objects;
 CREATE POLICY "Users can update their company assets" ON storage.objects
   FOR UPDATE USING (
     bucket_id = 'company-assets' 
-    AND auth.role() = 'authenticated'
+    AND auth.uid() IS NOT NULL
   );
 
 -- Allow users to delete their own company assets
+DROP POLICY IF EXISTS "Users can delete their company assets" ON storage.objects;
 CREATE POLICY "Users can delete their company assets" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'company-assets' 
-    AND auth.role() = 'authenticated'
+    AND auth.uid() IS NOT NULL
   );
