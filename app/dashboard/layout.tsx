@@ -285,9 +285,8 @@ export default function DashboardLayout({
             <div className="flex items-center space-x-4">
               {/* Notification Bell */}
               <NotificationBell
-                notifications={notifications}
-                onMarkAsRead={handleMarkAsRead}
-                onMarkAllAsRead={handleMarkAllAsRead}
+                count={notifications.filter(n => !n.is_read).length}
+                onClick={() => setSidebarOpen(false)}
               />
               
               {/* User Menu */}

@@ -128,70 +128,68 @@ export default function OnboardingPage() {
         toast.error('Failed to complete profile setup')
         return
       }
-        return
-      }
+
+      // First, ensure the profile exists
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
       
-             // First, ensure the profile exists
-       const { data: existingProfile } = await supabase
-         .from('profiles')
-         .select('*')
-         .eq('id', user.id)
-         .single()
-       
-               if (!existingProfile) {
-          // Create profile if it doesn't exist - include required email field
-          const profileData: any = {
-            id: user.id,
-            role: role,
-            email: user.email, // Add required email field
-          }
-          
-          // Only add optional fields if they exist in user metadata
-          if (user.user_metadata?.full_name) {
-            profileData.full_name = user.user_metadata.full_name
-          }
-          
-          if (user.user_metadata?.phone) {
-            profileData.phone = user.user_metadata.phone
-          }
-          
-          // Note: country column doesn't exist in current database schema
-          // Skip country field for now
-          
-          console.log('Attempting to create profile with data:', profileData)
-          
-          const { error: createProfileError } = await supabase
-            .from('profiles')
-            .insert(profileData)
-          
-          if (createProfileError) {
-            console.error('Profile creation error:', createProfileError)
-            console.error('Error details:', createProfileError.details)
-            console.error('Error hint:', createProfileError.hint)
-            toast.error(`Profile creation failed: ${createProfileError.message}`)
-            return
-          }
-          
-          console.log('Profile created successfully')
-        } else {
-          console.log('Profile already exists:', existingProfile)
+      if (!existingProfile) {
+        // Create profile if it doesn't exist - include required email field
+        const profileData: any = {
+          id: user.id,
+          role: role,
+          email: user.email, // Add required email field
         }
-
-       // Note: bio and profile_image_url columns don't exist in current schema
-       // These will be added in a future migration
-       console.log('Skipping bio and profile image update - columns not yet available')
-
-               if (role === 'provider') {
-          // Skip company creation for now due to database schema mismatch
-          // TODO: Fix database schema and re-enable company creation
-          console.log('Skipping company creation - database schema mismatch')
-          console.log('Company name would be:', formData.companyName)
-          console.log('CR number would be:', formData.crNumber)
-          console.log('VAT number would be:', formData.vatNumber)
+        
+        // Only add optional fields if they exist in user metadata
+        if (user.user_metadata?.full_name) {
+          profileData.full_name = user.user_metadata.full_name
         }
+        
+        if (user.user_metadata?.phone) {
+          profileData.phone = user.user_metadata.phone
+        }
+        
+        // Note: country column doesn't exist in current database schema
+        // Skip country field for now
+        
+        console.log('Attempting to create profile with data:', profileData)
+        
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert(profileData)
+        
+        if (createProfileError) {
+          console.error('Profile creation error:', createProfileError)
+          console.error('Error details:', createProfileError.details)
+          console.error('Error hint:', createProfileError.hint)
+          toast.error(`Profile creation failed: ${createProfileError.message}`)
+          return
+        }
+        
+        console.log('Profile created successfully')
+      } else {
+        console.log('Profile already exists:', existingProfile)
+      }
 
-       // Profile update skipped - no updatable fields in current schema
-       console.log('Profile update skipped - no updatable fields available')
+      // Note: bio and profile_image_url columns don't exist in current schema
+      // These will be added in a future migration
+      console.log('Skipping bio and profile image update - columns not yet available')
+
+      if (role === 'provider') {
+        // Skip company creation for now due to database schema mismatch
+        // TODO: Fix database schema and re-enable company creation
+        console.log('Skipping company creation - database schema mismatch')
+        console.log('Company name would be:', formData.companyName)
+        console.log('CR number would be:', formData.crNumber)
+        console.log('VAT number would be:', formData.vatNumber)
+      }
+
+      // Profile update skipped - no updatable fields in current schema
+      console.log('Profile update skipped - no updatable fields available')
 
       toast.success('Onboarding completed successfully!')
       router.push('/dashboard')
