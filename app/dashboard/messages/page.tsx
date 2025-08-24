@@ -13,8 +13,10 @@ interface Message {
   sender_id: string
   receiver_id: string
   content: string
+  subject: string
   created_at: string
   read: boolean
+  booking_id: string  // Required field based on actual schema
 }
 
 export default function MessagesPage() {
@@ -35,6 +37,21 @@ export default function MessagesPage() {
       
       if (!user) {
         console.error('No authenticated user')
+        return
+      }
+
+      // Check if user has a profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile) {
+        console.error('User profile not found:', profileError)
+        // User doesn't have a profile - this is the root cause of the messaging issue
+        setUser(null)
+        setLoading(false)
         return
       }
 
@@ -72,13 +89,103 @@ export default function MessagesPage() {
 
     try {
       const supabase = await getSupabaseClient()
+      
+      // First, we need to find or create a valid booking for this user
+      // Let's try to find an existing booking first
+      const { data: existingBookings, error: bookingError } = await supabase
+        .from('bookings')
+        .select('id, service_id, client_id, provider_id')
+        .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+        .limit(1)
+
+      if (bookingError) {
+        console.error('Error finding existing bookings:', bookingError)
+        return
+      }
+
+      let bookingId = null
+
+      if (existingBookings && existingBookings.length > 0) {
+        // Use existing booking
+        bookingId = existingBookings[0].id
+        console.log('Using existing booking:', bookingId)
+      } else {
+        // No existing booking, we need to create one
+        // First check if user has any services
+        const { data: userServices, error: serviceError } = await supabase
+          .from('services')
+          .select('id')
+          .eq('provider_id', user.id)
+          .limit(1)
+
+        if (serviceError) {
+          console.error('Error finding user services:', serviceError)
+          return
+        }
+
+        if (userServices && userServices.length > 0) {
+          // Create a new booking using user's service
+          const { data: newBooking, error: createBookingError } = await supabase
+            .from('bookings')
+            .insert({
+              client_id: user.id,
+              provider_id: user.id,
+              service_id: userServices[0].id,
+              status: 'draft',
+              subtotal: 0.00,
+              currency: 'OMR'
+            })
+            .select('id')
+            .single()
+
+          if (createBookingError) {
+            console.error('Error creating booking:', createBookingError)
+            return
+          }
+
+          bookingId = newBooking.id
+          console.log('Created new booking:', bookingId)
+        } else {
+          // User has no services, check if there are any existing bookings they can join
+          const { data: availableBookings, error: availableError } = await supabase
+            .from('bookings')
+            .select('id, service_id, client_id, provider_id')
+            .limit(5)
+
+          if (availableError) {
+            console.error('Error finding available bookings:', availableError)
+            return
+          }
+
+          if (availableBookings && availableBookings.length > 0) {
+            // Use the first available booking (user can participate in it)
+            bookingId = availableBookings[0].id
+            console.log('Using available booking:', bookingId)
+          } else {
+            // No services and no available bookings
+            console.error('User has no services and no available bookings - cannot send message')
+            alert('You need to have a service or join an existing booking to send messages. Please create a service first.')
+            return
+          }
+        }
+      }
+
+      if (!bookingId) {
+        console.error('No booking ID available')
+        return
+      }
+
+      // Now send the message
       const { error } = await supabase
         .from('messages')
         .insert({
           sender_id: user.id,
           receiver_id: user.id, // Placeholder - implement actual receiver selection
           content: newMessage,
-          read: false
+          subject: 'New Message',
+          read: false,
+          booking_id: bookingId,
+          created_at: new Date().toISOString()
         })
 
       if (error) {
@@ -104,6 +211,37 @@ export default function MessagesPage() {
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600 text-lg">Loading messages...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <div className="w-24 h-24 bg-gradient-to-br from-red-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <MessageCircle className="h-12 w-12 text-red-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">Profile Not Found</h3>
+            <p className="text-gray-600 mb-6 text-lg">
+              Your user account doesn't have a profile in the system yet. This usually happens when:
+            </p>
+            <div className="text-left max-w-md mx-auto mb-6">
+              <ul className="text-gray-600 space-y-2">
+                <li>• You haven't completed your profile setup</li>
+                <li>• Your profile was created before you signed up</li>
+                <li>• There was an issue during account creation</li>
+              </ul>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Please contact support or try refreshing the page. If the issue persists, you may need to complete your profile setup first.
+            </p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Refresh Page
+            </Button>
           </div>
         </div>
       </div>
