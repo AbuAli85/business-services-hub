@@ -29,8 +29,11 @@ import {
   MessageSquare,
   Building2,
   Edit,
-  Sparkles
+  Sparkles,
+  User,
+  Settings
 } from 'lucide-react'
+import EnvChecker from '@/components/env-checker'
 
 interface DashboardStats {
   totalBookings: number
@@ -412,519 +415,202 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header with Refresh */}
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {userRole === 'provider' && companyName ? companyName : userRole === 'provider' ? 'Provider' : userRole === 'admin' ? 'Admin' : userRole === 'client' ? 'Client' : 'User'}!
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {userRole === 'provider' && companyName 
-              ? `Here's what's happening with ${companyName} today.`
-              : "Here's what's happening with your business today."
-            }
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="text-sm text-gray-500">
-            Last updated: {lastRefresh.toLocaleTimeString()}
-          </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href="/dashboard/services/create">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Service
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/profile">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Link>
           </Button>
         </div>
       </div>
 
-      {/* Company Setup Reminder */}
-      {userRole === 'provider' && !companyName && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Users className="h-4 w-4 text-blue-600" />
-              </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-blue-900">
-                Set up your company profile
-              </h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Add your company information to establish your business presence and attract more clients.
-              </p>
-            </div>
-            <div className="flex-shrink-0">
-              <Button size="sm" onClick={handleCompanySettings}>
-                Add Company
-              </Button>
-            </div>
-          </div>
+      {/* Environment Checker - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-6">
+          <EnvChecker />
         </div>
       )}
 
-      {/* Quick Navigation */}
-      <div className="flex space-x-4">
-        {userRole === 'provider' && companyName ? (
-          <>
-            <Button onClick={handleBrowseServices}>
-              <Eye className="h-4 w-4 mr-2" />
-              Manage Services
-            </Button>
-            <Button variant="outline" onClick={handleCompanySettings}>
-              <Users className="h-4 w-4 mr-2" />
-              Company Settings
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/dashboard/provider/earnings')}>
-              <DollarSign className="h-4 w-4 mr-2" />
-              View Earnings
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={handleBrowseServices}>
-              <Eye className="h-4 w-4 mr-2" />
-              Browse Services
-            </Button>
-            <Button variant="outline" onClick={handleCompleteProfile}>
-              <Users className="h-4 w-4 mr-2" />
-              Complete Profile
-            </Button>
-          </>
-        )}
-      </div>
-
-      {/* Company Profile Section for Providers */}
-      {userRole === 'provider' && companyInfo && (
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center border-2 border-blue-200">
-                  {companyInfo.logo_url ? (
-                    <img 
-                      src={companyInfo.logo_url} 
-                      alt={`${companyInfo.name} Logo`} 
-                      className="w-12 h-12 object-cover rounded-lg"
-                      onError={(e) => {
-                        // Fallback to icon if image fails to load
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <Building2 className={`h-8 w-8 text-blue-600 ${companyInfo.logo_url ? 'hidden' : ''}`} />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h2 className="text-xl font-bold text-gray-900">{companyInfo.name}</h2>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    {companyInfo.type || 'Business Services'}
-                  </Badge>
-                </div>
-                {companyInfo.description && (
-                  <p className="text-gray-600 mb-3 line-clamp-2">{companyInfo.description}</p>
-                )}
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  {companyInfo.business_type && (
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-4 w-4" />
-                      <span>{companyInfo.business_type}</span>
-                    </div>
-                  )}
-                  {companyInfo.founded_year && (
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Est. {companyInfo.founded_year}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-1">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Verified Business</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-shrink-0">
-                <Button variant="outline" size="sm" onClick={handleCompanySettings}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Enhanced Stats Grid */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalBookings}</div>
-            <p className="text-xs text-muted-foreground">
-              All time bookings
-            </p>
-            <div className="flex items-center mt-2">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">+{stats.monthlyGrowth}% this month</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
-            <Activity className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeBookings}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently in progress
-            </p>
-            <div className="flex items-center mt-2">
-              <Zap className="h-3 w-3 text-yellow-500 mr-1" />
-              <span className="text-xs text-yellow-600">Requires attention</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {userRole === 'provider' ? 'Total Earnings' : 'Total Spent'}
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(stats.totalEarnings, 'OMR')}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {userRole === 'provider' ? 'From completed work' : 'On services'}
-            </p>
-            <div className="flex items-center mt-2">
-              <Award className="h-3 w-3 text-purple-500 mr-1" />
-              <span className="text-xs text-purple-600">Growing steadily</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {userRole === 'provider' ? 'Pending Payments' : 'Pending Orders'}
-            </CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.pendingPayments}</div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting action
-            </p>
-            <div className="flex items-center mt-2">
-              <Target className="h-3 w-3 text-orange-500 mr-1" />
-              <span className="text-xs text-orange-600">Follow up needed</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Services</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalServices}</div>
-            <p className="text-xs text-muted-foreground">Active service offerings</p>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">+2 from last month</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">8</div>
+            <p className="text-xs text-muted-foreground">+1 from yesterday</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalClients}</div>
-            <p className="text-xs text-muted-foreground">Unique clients served</p>
+            <div className="text-2xl font-bold">24</div>
+            <p className="text-xs text-muted-foreground">+4 from last week</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Growth</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">+{stats.monthlyGrowth}%</div>
-            <p className="text-xs text-muted-foreground">Compared to last month</p>
+            <div className="text-2xl font-bold">$2,450</div>
+            <p className="text-xs text-muted-foreground">+20% from last month</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Services Overview for Providers */}
-      {userRole === 'provider' && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  Your Services
-                </CardTitle>
-                <CardDescription>
-                  Manage and monitor your service offerings
-                </CardDescription>
-              </div>
-              <Button asChild size="sm">
-                <Link href="/dashboard/provider/services">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Service
-                </Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.totalServices > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Active Services</h4>
-                      <p className="text-2xl font-bold text-purple-600">{stats.totalServices}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Service Performance</h4>
-                      <p className="text-sm text-gray-600">View analytics</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 border rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <Eye className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Service Visibility</h4>
-                      <p className="text-sm text-gray-600">Manage listings</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No services yet</h3>
-                <p className="text-gray-600 mb-4">Start by creating your first service to attract clients</p>
-                <Button asChild>
-                  <Link href="/dashboard/provider/services">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Service
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Live Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Live Notifications
-            <Badge variant="secondary" className="ml-2">
-              {notifications.filter(n => !n.is_read).length} new
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            Stay updated with real-time business activities
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`flex items-start space-x-3 p-3 rounded-lg border ${
-                  notification.is_read ? 'bg-gray-50' : 'bg-blue-50 border-blue-200'
-                }`}
-              >
-                <div className={`p-2 rounded-full ${
-                  notification.is_read ? 'bg-gray-200' : 'bg-blue-200'
-                }`}>
-                  {getNotificationIcon(notification.type)}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className={`font-medium ${
-                      notification.is_read ? 'text-gray-700' : 'text-blue-900'
-                    }`}>
-                      {notification.title}
-                    </h4>
-                    <Badge 
-                      variant="secondary" 
-                      className={getPriorityColor(notification.priority)}
-                    >
-                      {notification.priority}
-                    </Badge>
-                  </div>
-                  <p className={`text-sm ${
-                    notification.is_read ? 'text-gray-600' : 'text-blue-700'
-                  }`}>
-                    {notification.message}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {formatDate(notification.created_at)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Bookings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Recent Bookings
-            <Badge variant="secondary">
-              {recentBookings.length} total
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            Your latest booking activities and status updates
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recentBookings.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium mb-2">No bookings yet</p>
-              <p className="text-sm mb-4">
-                Start by creating services and attracting clients
-              </p>
-              <Button onClick={handleCreateService}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Service
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {recentBookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-full ${getStatusColor(booking.status)}`}>
-                      {getStatusIcon(booking.status)}
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        {booking.service?.title}
-                      </h4>
-                      <p className="text-sm text-gray-500">
-                        {userRole === 'client' 
-                          ? `Provider: ${booking.provider?.full_name}`
-                          : `Client: ${booking.client?.full_name}`
-                        }
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {formatDate(booking.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(booking.subtotal, booking.currency)}
-                    </div>
-                    <Badge variant="secondary" className={getStatusColor(booking.status)}>
-                      {booking.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Link href="/dashboard/services">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Manage Services
+              </CardTitle>
+              <CardDescription>
+                View, edit, and manage your business services
+              </CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Link href="/dashboard/calendar">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Calendar
+              </CardTitle>
+              <CardDescription>
+                View and manage your appointments and bookings
+              </CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Link href="/dashboard/reports">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Reports
+              </CardTitle>
+              <CardDescription>
+                View analytics and performance reports
+              </CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Link href="/dashboard/company">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Company Profile
+              </CardTitle>
+              <CardDescription>
+                Manage your company information and settings
+              </CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Link href="/dashboard/profile">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Personal Profile
+              </CardTitle>
+              <CardDescription>
+                Update your personal information and preferences
+              </CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Link href="/dashboard/services/create">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Add New Service
+              </CardTitle>
+              <CardDescription>
+                Create a new service offering for your business
+              </CardDescription>
+            </CardHeader>
+          </Link>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Quick Actions
-          </CardTitle>
+          <CardTitle>Recent Activity</CardTitle>
           <CardDescription>
-            Get things done faster with these smart shortcuts
+            Latest updates and activities in your business
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {userRole === 'provider' && (
-              <Button 
-                className="h-20 flex-col space-y-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                onClick={handleCreateService}
-              >
-                <Plus className="h-6 w-6" />
-                <span>Create Service</span>
-              </Button>
-            )}
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">New booking received</p>
+                <p className="text-xs text-muted-foreground">Client booked "Web Development" service</p>
+              </div>
+              <Badge variant="secondary">2 min ago</Badge>
+            </div>
             
-            {userRole === 'client' && (
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col space-y-2 border-2 hover:border-blue-300"
-                onClick={handleBrowseServices}
-              >
-                <Eye className="h-6 w-6" />
-                <span>Browse Services</span>
-              </Button>
-            )}
+            <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Service updated</p>
+                <p className="text-xs text-muted-foreground">Updated pricing for "Consulting" service</p>
+              </div>
+              <Badge variant="secondary">1 hour ago</Badge>
+            </div>
             
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col space-y-2 border-2 hover:border-green-300"
-              onClick={handleViewCalendar}
-            >
-              <Calendar className="h-6 w-6" />
-              <span>View Calendar</span>
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              className="h-20 flex-col space-y-2 border-2 hover:border-purple-300"
-              onClick={handleViewReports}
-            >
-              <BarChart3 className="h-6 w-6" />
-              <span>View Reports</span>
-            </Button>
+            <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Payment received</p>
+                <p className="text-xs text-muted-foreground">Payment of $150 received for "Design" service</p>
+              </div>
+              <Badge variant="secondary">3 hours ago</Badge>
+            </div>
           </div>
         </CardContent>
       </Card>

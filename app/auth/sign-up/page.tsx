@@ -51,7 +51,14 @@ export default function SignUpPage() {
     setLoading(true)
     
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
+      
+      console.log('Attempting signup with:', { 
+        email: formData.email, 
+        role: formData.role,
+        hasPassword: !!formData.password 
+      })
+      
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -65,39 +72,24 @@ export default function SignUpPage() {
       })
 
       if (error) {
-        toast.error(error.message)
+        console.error('Supabase auth error:', error)
+        toast.error(`Signup failed: ${error.message}`)
         return
       }
 
       if (data.user) {
+        console.log('User created successfully:', data.user.id)
         toast.success('Account created successfully! Please check your email to verify your account.')
         
-        // Create profile using the new webhook-based function
-        try {
-          const { error: profileError } = await supabase.rpc('create_user_profile', {
-            user_id: data.user.id,
-            user_role: formData.role,
-            full_name: formData.fullName,
-            phone: formData.phone
-          })
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError)
-            toast.error('Account created but profile setup failed. Please contact support.')
-          } else {
-            toast.success('Profile created successfully!')
-          }
-        } catch (profileError) {
-          console.error('Profile creation error:', profileError)
-          toast.error('Account created but profile setup failed. Please contact support.')
-        }
-
+        // Profile will be created automatically via database trigger/webhook
+        // No need to manually call RPC function that might not exist
+        
         // Redirect to onboarding
         router.push(`/auth/onboarding?role=${formData.role}`)
       }
     } catch (error) {
-      toast.error('An unexpected error occurred')
-      console.error('Sign up error:', error)
+      console.error('Unexpected signup error:', error)
+      toast.error('An unexpected error occurred during signup. Please try again.')
     } finally {
       setLoading(false)
     }

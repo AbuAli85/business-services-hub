@@ -1,69 +1,167 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { isEnvironmentConfigured, getEnvironmentStatus } from '@/lib/supabase'
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { getEnvironmentStatus, isEnvironmentConfigured } from '@/lib/supabase'
 
-export function EnvChecker() {
+export default function EnvChecker() {
   const [envStatus, setEnvStatus] = useState<any>(null)
-  const [isConfigured, setIsConfigured] = useState<boolean | null>(null)
+  const [isConfigured, setIsConfigured] = useState<boolean>(false)
 
   useEffect(() => {
-    try {
-      const status = getEnvironmentStatus()
-      setEnvStatus(status)
-      setIsConfigured(isEnvironmentConfigured())
-    } catch (error) {
-      console.error('Error checking environment:', error)
-      setIsConfigured(false)
+    const checkEnv = () => {
+      try {
+        const status = getEnvironmentStatus()
+        const configured = isEnvironmentConfigured()
+        setEnvStatus(status)
+        setIsConfigured(configured)
+      } catch (error) {
+        console.error('Environment check failed:', error)
+        setEnvStatus({ error: error.message })
+        setIsConfigured(false)
+      }
     }
+
+    checkEnv()
   }, [])
 
-  if (isConfigured === null) {
-    return <div className="p-4 text-gray-500">Checking environment...</div>
+  const refreshCheck = () => {
+    window.location.reload()
   }
 
-  if (isConfigured) {
+  if (!envStatus) {
     return (
-      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-        <div className="flex items-center">
-          <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
-          <span className="text-green-800 font-medium">Environment configured correctly</span>
-        </div>
-      </div>
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Environment Checker</CardTitle>
+          <CardDescription>Checking environment configuration...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse">Loading...</div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-      <div className="mb-3">
-        <div className="flex items-center mb-2">
-          <div className="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
-          <span className="text-red-800 font-medium">Environment not configured</span>
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Environment Checker
+          <Badge variant={isConfigured ? "default" : "destructive"}>
+            {isConfigured ? "Configured" : "Not Configured"}
+          </Badge>
+        </CardTitle>
+        <CardDescription>
+          Check if your environment variables are properly configured
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {envStatus.error ? (
+          <div className="text-red-600">
+            <strong>Error:</strong> {envStatus.error}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <strong>Environment:</strong>
+                <Badge variant="outline" className="ml-2">
+                  {envStatus.nodeEnv || 'unknown'}
+                </Badge>
+              </div>
+              <div>
+                <strong>Client Side:</strong>
+                <Badge variant={envStatus.isClient ? "default" : "secondary"} className="ml-2">
+                  {envStatus.isClient ? "Yes" : "No"}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <strong>Environment Variables:</strong>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span>SUPABASE_URL:</span>
+                  <Badge variant={envStatus.envCheck.supabaseUrl ? "default" : "destructive"}>
+                    {envStatus.envCheck.supabaseUrl ? "✅ Set" : "❌ Missing"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>SUPABASE_ANON_KEY:</span>
+                  <Badge variant={envStatus.envCheck.supabaseAnonKey ? "default" : "destructive"}>
+                    {envStatus.envCheck.supabaseAnonKey ? "✅ Set" : "❌ Missing"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {envStatus.envCheck.missingVars.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                <strong className="text-yellow-800">Missing Variables:</strong>
+                <ul className="list-disc list-inside text-yellow-700 mt-1">
+                  {envStatus.envCheck.missingVars.map((varName: string) => (
+                    <li key={varName}>{varName}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <strong>Client Status:</strong>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span>Supabase Client:</span>
+                  <Badge variant={envStatus.hasClient ? "default" : "secondary"}>
+                    {envStatus.hasClient ? "✅ Created" : "❌ Not Created"}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Admin Client:</span>
+                  <Badge variant={envStatus.hasAdminClient ? "default" : "secondary"}>
+                    {envStatus.hasAdminClient ? "✅ Created" : "❌ Not Created"}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {envStatus.envCheck.supabaseUrl && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <strong className="text-blue-800">Supabase URL:</strong>
+                <div className="text-blue-700 text-sm mt-1 break-all">
+                  {envStatus.envCheck.supabaseUrl}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex gap-2">
+          <Button onClick={refreshCheck} variant="outline">
+            Refresh Check
+          </Button>
+          <Button 
+            onClick={() => window.open('https://supabase.com/docs/guides/getting-started/environment-variables', '_blank')}
+            variant="outline"
+          >
+            View Docs
+          </Button>
         </div>
-        <p className="text-red-700 text-sm">
-          Supabase environment variables are missing. Please check your .env.local file.
-        </p>
-      </div>
-      
-      {envStatus && (
-        <div className="text-sm text-red-600">
-          <details className="cursor-pointer">
-            <summary className="font-medium">Environment Details</summary>
-            <pre className="mt-2 p-2 bg-red-100 rounded text-xs overflow-auto">
-              {JSON.stringify(envStatus, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
-      
-      <div className="mt-3 text-sm text-red-700">
-        <p className="font-medium">To fix this:</p>
-        <ol className="list-decimal list-inside mt-1 space-y-1">
-          <li>Copy <code className="bg-red-100 px-1 rounded">env.example</code> to <code className="bg-red-100 px-1 rounded">.env.local</code></li>
-          <li>Update the values in <code className="bg-red-100 px-1 rounded">.env.local</code></li>
-          <li>Restart your development server</li>
-        </ol>
-      </div>
-    </div>
+
+        {!isConfigured && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+            <strong className="text-red-800">Configuration Issues Detected:</strong>
+            <ul className="list-disc list-inside text-red-700 mt-1">
+              <li>Check that your .env.local file exists and contains the required variables</li>
+              <li>Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set</li>
+              <li>Restart your development server after making changes</li>
+              <li>For production, ensure environment variables are set in your hosting platform</li>
+            </ul>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

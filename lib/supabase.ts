@@ -15,6 +15,15 @@ function checkEnvironmentVariables() {
   if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
   if (!supabaseAnonKey) missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
   
+  // Log environment status for debugging
+  console.log('Environment check:', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey,
+    url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing',
+    key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'missing',
+    nodeEnv: process.env.NODE_ENV
+  })
+  
   return {
     isValid: missingVars.length === 0,
     missingVars,
@@ -24,7 +33,7 @@ function checkEnvironmentVariables() {
 }
 
 // Create Supabase client only when needed (not at build time)
-export function getSupabaseClient(): SupabaseClient {
+export async function getSupabaseClient(): Promise<SupabaseClient> {
   if (typeof window === 'undefined') {
     // Server-side: return null or throw error
     throw new Error('Supabase client cannot be used on server-side')
@@ -65,8 +74,25 @@ For production deployments, ensure environment variables are set in your hosting
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'business-services-hub'
+      }
     }
   })
+  
+  // Test the client connection
+  try {
+    const { data, error } = await supabaseClient.auth.getSession()
+    if (error) {
+      console.warn('Supabase client connection test failed:', error)
+    } else {
+      console.log('Supabase client connected successfully')
+    }
+  } catch (testError) {
+    console.warn('Supabase client connection test error:', testError)
+  }
   
   return supabaseClient
 }
