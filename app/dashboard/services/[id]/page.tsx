@@ -299,6 +299,25 @@ export default function DashboardServiceDetailPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // First, verify the service exists and is active
+      const { data: serviceCheck, error: serviceError } = await supabase
+        .from('services')
+        .select('id, title, base_price, currency, status')
+        .eq('id', service.id)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (serviceError) {
+        console.error('❌ Error checking service:', serviceError)
+        alert('Failed to verify service. Please try again.')
+        return
+      }
+
+      if (!serviceCheck) {
+        alert('Service not found or not available for booking.')
+        return
+      }
+
       // Create a new booking with all required fields
       const { data: booking, error } = await supabase
         .from('bookings')
@@ -319,7 +338,13 @@ export default function DashboardServiceDetailPage() {
 
       if (error) {
         console.error('❌ Error creating booking:', error)
-        alert('Failed to create booking. Please try again.')
+        
+        // Handle specific foreign key constraint error
+        if (error.code === '23503') {
+          alert('Service reference error. Please contact support.')
+        } else {
+          alert('Failed to create booking. Please try again.')
+        }
         return
       }
 
