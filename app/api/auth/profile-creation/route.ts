@@ -1,81 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client with service role for admin operations
-function getSupabaseAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables not configured')
-  }
-  
-  return createClient(supabaseUrl, supabaseKey)
-}
+import { getSupabaseClient } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { user_id, user_role, full_name, phone, email } = body
+    const { type, record, old_record } = body
 
-    // Validate required fields
-    if (!user_id) {
+    // Log the webhook for debugging
+    console.log('Profile creation webhook received:', { type, record, old_record })
+
+    // Only process user creation events
+    if (type !== 'INSERT' || !record || record.schema !== 'auth' || record.table !== 'users') {
       return NextResponse.json(
-        { error: 'Missing required field: user_id' },
-        { status: 400 }
+        { message: 'Ignored non-user-creation event' },
+        { status: 200 }
       )
     }
 
-    const supabase = getSupabaseAdminClient()
+    const supabase = await getSupabaseClient()
+    const userId = record.id
+    const userEmail = record.email
+    const userMetadata = record.raw_user_meta_data || {}
 
-    // Check if profile already exists
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user_id)
-      .single()
+    // Extract user information from metadata
+    const fullName = userMetadata.full_name || ''
+    const phone = userMetadata.phone || ''
+    const role = userMetadata.role || 'client'
 
-    if (existingProfile) {
-      return NextResponse.json({
-        success: false,
-        message: 'Profile already exists',
-        user_id
-      })
-    }
-
-    // Create new profile
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .insert({
-        id: user_id,
-        role: user_role || 'client',
-        full_name: full_name || '',
-        phone: phone || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
+    // Call the profile creation function
+    const { data, error } = await supabase.rpc('create_user_profile', {
+      user_id: userId,
+      user_email: userEmail,
+      user_role: role,
+      full_name: fullName,
+      phone: phone
+    })
 
     if (error) {
       console.error('Profile creation error:', error)
-      return NextResponse.json({
-        success: false,
-        message: 'Failed to create profile',
-        error: error.message,
-        user_id
-      }, { status: 500 })
+      
+      // Log the failed attempt in the webhook tracking table
+      await supabase
+        .from('profile_creation_webhooks')
+        .insert({
+          user_id: userId,
+          user_email: userEmail,
+          user_role: role,
+          full_name: fullName,
+          phone: phone,
+          status: 'failed',
+          error_message: error.message
+        })
+
+      return NextResponse.json(
+        { error: 'Failed to create profile', details: error.message },
+        { status: 500 }
+      )
     }
 
-    // Log the webhook request for tracking
+    // Log successful profile creation
+    console.log('Profile created successfully:', data)
+
+    // Log the successful attempt in the webhook tracking table
     await supabase
       .from('profile_creation_webhooks')
       .insert({
-        user_id,
-        user_email: email,
-        user_role,
-        full_name,
-        phone,
+        user_id: userId,
+        user_email: userEmail,
+        user_role: role,
+        full_name: fullName,
+        phone: phone,
         status: 'completed',
         processed_at: new Date().toISOString()
       })
@@ -83,60 +77,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Profile created successfully',
-      profile_id: profile.id,
-      user_id
+      profile_id: userId
     })
 
   } catch (error) {
-    console.error('Profile creation webhook error:', error)
-    return NextResponse.json({
-      success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('Webhook processing error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
-// GET endpoint for testing and monitoring
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const user_id = searchParams.get('user_id')
-
-    if (!user_id) {
-      return NextResponse.json({
-        error: 'Missing user_id parameter'
-      }, { status: 400 })
-    }
-
-    const supabase = getSupabaseAdminClient()
-
-    // Get profile
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user_id)
-      .single()
-
-    if (error) {
-      return NextResponse.json({
-        success: false,
-        message: 'Profile not found',
-        error: error.message
-      }, { status: 404 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      profile
-    })
-
-  } catch (error) {
-    console.error('Profile retrieval error:', error)
-    return NextResponse.json({
-      success: false,
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
-  }
+// GET method for testing the endpoint
+export async function GET() {
+  return NextResponse.json({
+    message: 'Profile creation webhook endpoint ready',
+    instructions: [
+      'Configure Supabase webhook to call this endpoint on auth.users INSERT events',
+      'Webhook URL: POST /api/auth/profile-creation',
+      'Event: INSERT on auth.users table'
+    ]
+  })
 }
