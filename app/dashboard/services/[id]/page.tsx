@@ -31,6 +31,8 @@ interface Service {
   bookings_count?: number
   rating?: number
   tags?: string[]
+  provider_name?: string // Added for better UX
+  provider_company?: string // Added for better UX
 }
 
 export default function DashboardServiceDetailPage() {
@@ -155,10 +157,16 @@ export default function DashboardServiceDetailPage() {
       
       if (isOwner) {
         console.log('✅ User owns this service, fetching full data for editing')
-        // Fetch full service data for owner (provider)
+        // Fetch full service data for owner (provider) with provider info
         const { data, error } = await supabase
           .from('services')
-          .select('*')
+          .select(`
+            *,
+            profiles!services_provider_id_fkey(
+              full_name,
+              companies!profiles_company_id_fkey(name)
+            )
+          `)
           .eq('id', id)
           .eq('provider_id', currentUserId)
           .maybeSingle()
@@ -173,27 +181,50 @@ export default function DashboardServiceDetailPage() {
           throw new Error('Service data not found')
         }
 
-        console.log('✅ Service fetched successfully for owner:', data)
-        setService(data)
+        // Transform the data to include provider information
+        let transformedData
+        try {
+          transformedData = {
+            ...data,
+            provider_name: data.profiles?.[0]?.full_name || 'Unknown Provider',
+            provider_company: data.profiles?.[0]?.companies?.[0]?.name || 'Independent Professional'
+          }
+        } catch (error) {
+          console.warn('⚠️ Foreign key relationship failed, using fallback method')
+          // Fallback: fetch provider info separately
+          const providerInfo = await fetchProviderInfo(data.provider_id)
+          transformedData = {
+            ...data,
+            provider_name: providerInfo.name,
+            provider_company: providerInfo.company
+          }
+        }
+
+        console.log('✅ Service fetched successfully for owner:', transformedData)
+        setService(transformedData)
         // Initialize edit form
         setEditForm({
-          title: data.title || '',
-          description: data.description || '',
-          category: data.category || '',
-          status: data.status || '',
-          base_price: data.base_price?.toString() || '',
-          currency: data.currency || 'OMR',
-          tags: data.tags?.join(', ') || ''
+          title: transformedData.title || '',
+          description: transformedData.description || '',
+          category: transformedData.category || '',
+          status: transformedData.status || '',
+          base_price: transformedData.base_price?.toString() || '',
+          currency: transformedData.currency || 'OMR',
+          tags: transformedData.tags?.join(', ') || ''
         })
       } else {
         console.log('👤 User is viewing as client, fetching service data for browsing')
-        // Fetch service data for client viewing (without editing capabilities)
+        // Fetch service data for client viewing with provider information
         const { data, error } = await supabase
           .from('services')
           .select(`
             id, title, description, category, status, base_price, currency, 
             cover_image_url, created_at, updated_at, provider_id, 
-            views_count, bookings_count, rating, tags
+            views_count, bookings_count, rating, tags,
+            profiles!services_provider_id_fkey(
+              full_name,
+              companies!profiles_company_id_fkey(name)
+            )
           `)
           .eq('id', id)
           .eq('status', 'active')
@@ -209,8 +240,27 @@ export default function DashboardServiceDetailPage() {
           throw new Error('Service data not found')
         }
 
-        console.log('✅ Service fetched successfully for client:', data)
-        setService(data)
+        // Transform the data to include provider information
+        let transformedData
+        try {
+          transformedData = {
+            ...data,
+            provider_name: data.profiles?.[0]?.full_name || 'Unknown Provider',
+            provider_company: data.profiles?.[0]?.companies?.[0]?.name || 'Independent Professional'
+          }
+        } catch (error) {
+          console.warn('⚠️ Foreign key relationship failed, using fallback method')
+          // Fallback: fetch provider info separately
+          const providerInfo = await fetchProviderInfo(data.provider_id)
+          transformedData = {
+            ...data,
+            provider_name: providerInfo.name,
+            provider_company: providerInfo.company
+          }
+        }
+
+        console.log('✅ Service fetched successfully for client:', transformedData)
+        setService(transformedData)
         // Don't initialize edit form for clients
       }
     } catch (err) {
@@ -272,6 +322,21 @@ export default function DashboardServiceDetailPage() {
     }
   }
 
+  const handleBookService = () => {
+    // TODO: Implement booking functionality
+    alert(`Booking service: ${service?.title}\nProvider: ${service?.provider_name}`)
+  }
+
+  const handleContactProvider = () => {
+    // TODO: Implement messaging functionality
+    alert(`Contacting provider: ${service?.provider_name}\nService: ${service?.title}`)
+  }
+
+  const handleViewProviderProfile = () => {
+    // TODO: Navigate to provider profile page
+    alert(`Viewing profile of: ${service?.provider_name}`)
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 border-green-200'
@@ -285,6 +350,46 @@ export default function DashboardServiceDetailPage() {
 
   const getCategoryColor = (category: string) => {
     return 'bg-blue-100 text-blue-800 border-blue-200'
+  }
+
+  const fetchProviderInfo = async (providerId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Fetch provider profile information
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, company_id')
+        .eq('id', providerId)
+        .maybeSingle()
+
+      if (profileError) {
+        console.warn('⚠️ Could not fetch provider profile:', profileError)
+        return { name: 'Unknown Provider', company: 'Independent Professional' }
+      }
+
+      let companyName = 'Independent Professional'
+      if (profile?.company_id) {
+        // Fetch company information
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', profile.company_id)
+          .maybeSingle()
+
+        if (!companyError && company) {
+          companyName = company.name
+        }
+      }
+
+      return {
+        name: profile?.full_name || 'Unknown Provider',
+        company: companyName
+      }
+    } catch (error) {
+      console.warn('⚠️ Error fetching provider info:', error)
+      return { name: 'Unknown Provider', company: 'Independent Professional' }
+    }
   }
 
   if (loading) {
@@ -396,11 +501,11 @@ export default function DashboardServiceDetailPage() {
               ) : (
                 // Client view - can book/contact
                 <>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleBookService}>
                     <Calendar className="h-4 w-4 mr-2" />
                     Book Service
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={handleContactProvider}>
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Contact Provider
                   </Button>
@@ -570,11 +675,11 @@ export default function DashboardServiceDetailPage() {
                           You can book this service or contact the provider directly.
                         </p>
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={handleBookService}>
                             <Calendar className="h-4 w-4 mr-2" />
                             Book Now
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={handleContactProvider}>
                             <MessageCircle className="h-4 w-4 mr-2" />
                             Ask Questions
                           </Button>
@@ -671,8 +776,15 @@ export default function DashboardServiceDetailPage() {
                 
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <User className="h-4 w-4" />
-                  <span>Provider ID: {service.provider_id.slice(0, 8)}...</span>
+                  <span>Provider: {service.provider_name || 'Unknown Provider'}</span>
                 </div>
+                
+                {service.provider_company && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Building2 className="h-4 w-4" />
+                    <span>Company: {service.provider_company}</span>
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <DollarSign className="h-4 w-4" />
@@ -693,8 +805,15 @@ export default function DashboardServiceDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <User className="h-4 w-4" />
-                    <span>Professional Business Provider</span>
+                    <span>{service.provider_name || 'Professional Business Provider'}</span>
                   </div>
+                  
+                  {service.provider_company && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Building2 className="h-4 w-4" />
+                      <span>{service.provider_company}</span>
+                    </div>
+                  )}
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Star className="h-4 w-4" />
@@ -702,7 +821,7 @@ export default function DashboardServiceDetailPage() {
                   </div>
                   
                   <div className="pt-2">
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full" onClick={handleViewProviderProfile}>
                       <MessageCircle className="h-4 w-4 mr-2" />
                       View Provider Profile
                     </Button>
@@ -736,11 +855,11 @@ export default function DashboardServiceDetailPage() {
                 ) : (
                   // Client actions
                   <>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={handleBookService}>
                       <Calendar className="h-4 w-4 mr-2" />
                       Book This Service
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={handleContactProvider}>
                       <MessageCircle className="h-4 w-4 mr-2" />
                       Message Provider
                     </Button>
