@@ -10,7 +10,6 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   TrendingUp, 
-  TrendingDown, 
   Users, 
   Calendar, 
   FileText, 
@@ -51,12 +50,11 @@ interface DashboardData {
   }
 }
 
-export default function DashboardPage() {
+export default function EnhancedDashboardPage() {
   const router = useRouter()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     checkAuth()
@@ -66,11 +64,8 @@ export default function DashboardPage() {
     const interval = setInterval(() => {
       loadDashboardData()
     }, 30000)
-    setRefreshInterval(interval)
 
-    return () => {
-      if (refreshInterval) clearInterval(refreshInterval)
-    }
+    return () => clearInterval(interval)
   }, [])
 
   async function checkAuth() {
@@ -230,7 +225,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <h1 className="text-3xl font-bold text-gray-900">Enhanced Dashboard</h1>
               <p className="text-gray-600">Welcome back, {user.profile?.full_name || user.email}</p>
             </div>
             <div className="flex space-x-3">
