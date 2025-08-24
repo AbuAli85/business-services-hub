@@ -144,93 +144,159 @@ export default function DashboardPage() {
       let allBookings: any[] = []
 
       if (userRole === 'provider') {
-        // Load services count for providers
+              // Load services count for providers
+      try {
         const { count: servicesCountResult } = await supabase
           .from('services')
           .select('*', { count: 'exact', head: true })
           .eq('provider_id', user.id)
         servicesCount = servicesCountResult || 0
+      } catch (error) {
+        console.log('Error loading services count:', error)
+        servicesCount = 0
+      }
 
-        // Load active bookings for providers
+      // Load active bookings for providers
+      try {
         const { count: bookingsCountResult } = await supabase
           .from('bookings')
           .select('*', { count: 'exact', head: true })
           .eq('provider_id', user.id)
           .eq('status', 'in_progress')
         bookingsCount = bookingsCountResult || 0
+      } catch (error) {
+        console.log('Error loading active bookings count:', error)
+        bookingsCount = 0
+      }
 
         // Load recent activity for providers
-        const { data: recentActivityResult } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            status,
-            created_at,
-            service_id
-          `)
-          .eq('provider_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5)
-        recentActivity = recentActivityResult || []
+        try {
+          const { data: recentActivityResult } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              status,
+              created_at,
+              service_id
+            `)
+            .eq('provider_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5)
+          recentActivity = recentActivityResult || []
+        } catch (error) {
+          console.log('Error loading recent activity:', error)
+          recentActivity = []
+        }
 
-        // Load upcoming bookings for providers
-        const { data: upcomingBookingsResult } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            due_at,
-            status,
-            service_id
-          `)
-          .eq('provider_id', user.id)
-          .gte('due_at', new Date().toISOString())
-          .order('due_at', { ascending: true })
-          .limit(5)
-        upcomingBookings = upcomingBookingsResult || []
+        // Load upcoming bookings for providers (using created_at as fallback if due_at doesn't exist)
+        try {
+          const { data: upcomingBookingsResult } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              due_at,
+              status,
+              service_id
+            `)
+            .eq('provider_id', user.id)
+            .gte('due_at', new Date().toISOString())
+            .order('due_at', { ascending: true })
+            .limit(5)
+          upcomingBookings = upcomingBookingsResult || []
+        } catch (error) {
+          console.log('due_at column not available, using created_at instead:', error)
+          // Fallback to using created_at for upcoming bookings
+          const { data: upcomingBookingsResult } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              created_at,
+              status,
+              service_id
+            `)
+            .eq('provider_id', user.id)
+            .gte('created_at', new Date().toISOString())
+            .order('created_at', { ascending: true })
+            .limit(5)
+          upcomingBookings = upcomingBookingsResult || []
+        }
 
         // Calculate performance metrics for providers
-        const { data: allBookingsResult } = await supabase
-          .from('bookings')
-          .select('status, created_at')
-          .eq('provider_id', user.id)
-          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        allBookings = allBookingsResult || []
+        try {
+          const { data: allBookingsResult } = await supabase
+            .from('bookings')
+            .select('status, created_at')
+            .eq('provider_id', user.id)
+            .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          allBookings = allBookingsResult || []
+        } catch (error) {
+          console.log('Error loading performance metrics data:', error)
+          allBookings = []
+        }
       } else {
         // For clients, load their bookings
-        const { count: clientBookingsCount } = await supabase
-          .from('bookings')
-          .select('*', { count: 'exact', head: true })
-          .eq('client_id', user.id)
-        bookingsCount = clientBookingsCount || 0
+        try {
+          const { count: clientBookingsCount } = await supabase
+            .from('bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('client_id', user.id)
+          bookingsCount = clientBookingsCount || 0
+        } catch (error) {
+          console.log('Error loading client bookings count:', error)
+          bookingsCount = 0
+        }
 
         // Load recent activity for clients
-        const { data: clientRecentActivity } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            status,
-            created_at,
-            service_id
-          `)
-          .eq('client_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5)
-        recentActivity = clientRecentActivity || []
+        try {
+          const { data: clientRecentActivity } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              status,
+              created_at,
+              service_id
+            `)
+            .eq('client_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5)
+          recentActivity = clientRecentActivity || []
+        } catch (error) {
+          console.log('Error loading client recent activity:', error)
+          recentActivity = []
+        }
 
-        // Load upcoming bookings for clients
-        const { data: clientUpcomingBookings } = await supabase
-          .from('bookings')
-          .select(`
-            id,
-            due_at,
-            status,
-            service_id
-          `)
-          .eq('client_id', user.id)
-          .gte('due_at', new Date().toISOString())
-          .order('due_at', { ascending: true })
-          .limit(5)
-        upcomingBookings = clientUpcomingBookings || []
+        // Load upcoming bookings for clients (using created_at as fallback if due_at doesn't exist)
+        try {
+          const { data: clientUpcomingBookings } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              due_at,
+              status,
+              service_id
+            `)
+            .eq('client_id', user.id)
+            .gte('due_at', new Date().toISOString())
+            .order('due_at', { ascending: true })
+            .limit(5)
+          upcomingBookings = clientUpcomingBookings || []
+        } catch (error) {
+          console.log('due_at column not available for clients, using created_at instead:', error)
+          // Fallback to using created_at for upcoming bookings
+          const { data: clientUpcomingBookings } = await supabase
+            .from('bookings')
+            .select(`
+              id,
+              created_at,
+              status,
+              service_id
+            `)
+            .eq('client_id', user.id)
+            .gte('created_at', new Date().toISOString())
+            .order('created_at', { ascending: true })
+            .limit(5)
+          upcomingBookings = clientUpcomingBookings || []
+        }
       }
 
 
@@ -255,8 +321,8 @@ export default function DashboardPage() {
           id: booking.id,
           serviceName: `Service #${booking.service_id}`,
           clientName: 'Client',
-          date: new Date(booking.due_at).toLocaleDateString(),
-          time: new Date(booking.due_at).toLocaleTimeString(),
+          date: new Date(booking.due_at || booking.created_at).toLocaleDateString(),
+          time: new Date(booking.due_at || booking.created_at).toLocaleTimeString(),
           status: booking.status
         })) || [],
         performanceMetrics: {
