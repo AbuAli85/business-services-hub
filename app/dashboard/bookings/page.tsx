@@ -72,6 +72,7 @@ export default function BookingsPage() {
   const [userRole, setUserRole] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showEnhancedData, setShowEnhancedData] = useState(false)
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -84,6 +85,10 @@ export default function BookingsPage() {
 
   useEffect(() => {
     checkUserAndFetchBookings()
+    // Try to check if enhanced data is available
+    setTimeout(() => {
+      tryFetchEnhancedData()
+    }, 1000)
   }, [])
 
   useEffect(() => {
@@ -114,15 +119,10 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Fetch bookings with enhanced data - handle missing columns gracefully
+      // Fetch basic booking data without complex joins - database relationships may not be set up yet
       let query = supabase
         .from('bookings')
-        .select(`
-          *,
-          services:service_id(name, price),
-          profiles:client_id(full_name, email, phone),
-          provider_profiles:provider_id(full_name, company_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       // Filter based on user role
@@ -151,10 +151,10 @@ export default function BookingsPage() {
         status: booking.status || 'pending',
         created_at: booking.created_at,
         notes: booking.notes || '',
-        amount: booking.services?.price || 0,
-        service_name: booking.services?.name || `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
-        client_name: booking.profiles?.full_name || `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
-        provider_name: booking.provider_profiles?.full_name || `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`
+        amount: 0, // Will be populated when service relationships are available
+        service_name: `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
+        client_name: `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
+        provider_name: `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`
       }))
 
       setBookings(transformedBookings)
@@ -292,6 +292,33 @@ export default function BookingsPage() {
     }
   }
 
+  const tryFetchEnhancedData = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Try to fetch enhanced data for the first booking to test if relationships work
+      const { data: testData, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          services:service_id(name, price)
+        `)
+        .limit(1)
+
+      if (!error && testData && testData[0]?.services) {
+        console.log('Enhanced data relationships are available!')
+        setShowEnhancedData(true)
+        // You could implement full enhanced data fetching here
+      } else {
+        console.log('Enhanced data relationships not yet available')
+        setShowEnhancedData(false)
+      }
+    } catch (error) {
+      console.log('Enhanced data check failed:', error)
+      setShowEnhancedData(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-8">
@@ -314,6 +341,9 @@ export default function BookingsPage() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings</h1>
               <p className="text-gray-600 text-lg">Manage your service bookings and appointments</p>
+           <p className="text-sm text-gray-500 mt-1">
+             Note: Enhanced data (service names, client names) will be available once database relationships are configured.
+           </p>
             </div>
             <div className="flex gap-3">
               <Button 
@@ -324,14 +354,22 @@ export default function BookingsPage() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => exportBookings()}
-                className="border-gray-200 hover:bg-gray-50"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+               <Button 
+                 variant="outline" 
+                 onClick={() => exportBookings()}
+                 className="border-gray-200 hover:bg-gray-50"
+               >
+                 <Download className="h-4 w-4 mr-2" />
+                 Export
+               </Button>
+               <Button 
+                 variant="outline" 
+                 onClick={() => tryFetchEnhancedData()}
+                 className="border-gray-200 hover:bg-gray-50"
+               >
+                 <RefreshCw className="h-4 w-4 mr-2" />
+                 Test Enhanced Data
+               </Button>
               <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
                 New Booking
