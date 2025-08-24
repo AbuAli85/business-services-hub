@@ -59,8 +59,13 @@ For production deployments, ensure environment variables are set in your hosting
     return supabaseClient
   }
   
+  // At this point, we know both variables are defined due to the check above
+  // TypeScript assertion is safe here
+  const url = envCheck.supabaseUrl!
+  const key = envCheck.supabaseAnonKey!
+  
   // Create new client only once
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseClient = createClient(url, key, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
@@ -90,8 +95,13 @@ Missing: ${envCheck.missingVars.join(', ')}`)
     return supabaseClient
   }
   
+  // At this point, we know both variables are defined due to the check above
+  // TypeScript assertion is safe here
+  const url = envCheck.supabaseUrl!
+  const key = envCheck.supabaseAnonKey!
+  
   // Create new client only once
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseClient = createClient(url, key, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
@@ -122,16 +132,26 @@ Please check your .env.local file and ensure all required variables are set.`)
     return supabaseAdminClient
   }
   
+  // At this point, we know both variables are defined due to the check above
+  // TypeScript assertion is safe here
+  const url = supabaseUrl!
+  const key = supabaseKey!
+  
   // Create new admin client only once
-  supabaseAdminClient = createClient(supabaseUrl, supabaseKey)
+  supabaseAdminClient = createClient(url, key)
   
   return supabaseAdminClient
 }
 
 // For backward compatibility, export the functions
 // These will be undefined during build time but available at runtime
-export const supabase = typeof window !== 'undefined' ? getSupabaseClient() : undefined
-export const supabaseAdmin = typeof window !== 'undefined' ? getSupabaseAdminClient() : undefined
+export const supabase = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
+  ? getSupabaseClient() 
+  : undefined
+
+export const supabaseAdmin = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? getSupabaseAdminClient() 
+  : undefined
 
 // Cleanup function for testing purposes
 export function clearSupabaseClients() {
