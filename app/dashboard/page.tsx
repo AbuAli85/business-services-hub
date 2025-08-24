@@ -61,11 +61,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     checkAuth()
-    loadDashboardData()
     
     // Set up real-time refresh every 30 seconds
     const interval = setInterval(() => {
-      loadDashboardData()
+      if (user?.id) {
+        loadDashboardData()
+      }
     }, 30000)
     setRefreshInterval(interval)
 
@@ -73,6 +74,13 @@ export default function DashboardPage() {
       if (refreshInterval) clearInterval(refreshInterval)
     }
   }, [])
+
+  // Load dashboard data after user is authenticated
+  useEffect(() => {
+    if (user?.id) {
+      loadDashboardData()
+    }
+  }, [user])
 
   async function checkAuth() {
     try {
@@ -96,6 +104,8 @@ export default function DashboardPage() {
     let timeoutId: NodeJS.Timeout | null = null
     
     try {
+      console.log('Starting dashboard data load for user:', user?.id)
+      
       if (!user?.id) {
         console.log('User ID not available yet, skipping data load')
         return
@@ -105,6 +115,21 @@ export default function DashboardPage() {
       timeoutId = setTimeout(() => {
         console.log('Dashboard data load timeout, setting loading to false')
         setLoading(false)
+        // Set empty dashboard data to prevent infinite loading
+        setDashboardData({
+          totalServices: 0,
+          activeBookings: 0,
+          totalClients: 0,
+          revenue: 0,
+          recentActivity: [],
+          upcomingBookings: [],
+          performanceMetrics: {
+            monthlyGrowth: 0,
+            completionRate: 0,
+            averageRating: 0,
+            responseTime: 0
+          }
+        })
       }, 10000) // 10 second timeout
 
       const supabase = await getSupabaseClient()
@@ -242,6 +267,7 @@ export default function DashboardPage() {
         }
       }
 
+      console.log('Dashboard data loaded successfully:', dashboardData)
       setDashboardData(dashboardData)
       setLoading(false)
       if (timeoutId) clearTimeout(timeoutId)
@@ -319,10 +345,27 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!dashboardData ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">No dashboard data available</p>
-            <Button onClick={loadDashboardData} variant="outline">
-              Retry Loading
-            </Button>
+            <div className="max-w-md mx-auto">
+              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
+              <p className="text-gray-600 mb-6">
+                {userRole === 'provider' 
+                  ? 'Start by creating your first service to see dashboard metrics.'
+                  : 'Your dashboard will populate once you start using the platform.'
+                }
+              </p>
+              <div className="space-x-3">
+                <Button onClick={loadDashboardData} variant="outline">
+                  Refresh Data
+                </Button>
+                {userRole === 'provider' && (
+                  <Button onClick={() => router.push('/dashboard/services/create')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Service
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         ) : (
           <>
