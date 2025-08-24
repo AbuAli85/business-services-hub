@@ -6,8 +6,6 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   TrendingUp, 
   Users, 
@@ -55,6 +53,7 @@ export default function EnhancedDashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<'activity' | 'upcoming'>('activity')
 
   useEffect(() => {
     checkAuth()
@@ -161,14 +160,14 @@ export default function EnhancedDashboardPage() {
         recentActivity: recentActivity?.map(activity => ({
           id: activity.id,
           type: 'booking',
-          description: `${activity.profiles?.full_name || 'Client'} booked '${activity.services?.title || 'Service'}'`,
+          description: `${(activity.profiles as any)?.full_name || 'Client'} booked '${(activity.services as any)?.title || 'Service'}'`,
           timestamp: activity.created_at,
           status: activity.status
         })) || [],
         upcomingBookings: upcomingBookings?.map(booking => ({
           id: booking.id,
-          serviceName: booking.services?.title || 'Service',
-          clientName: booking.profiles?.full_name || 'Client',
+          serviceName: (booking.services as any)?.title || 'Service',
+          clientName: (booking.profiles as any)?.full_name || 'Client',
           date: new Date(booking.due_at).toLocaleDateString(),
           time: new Date(booking.due_at).toLocaleTimeString(),
           status: booking.status
@@ -315,7 +314,12 @@ export default function EnhancedDashboardPage() {
                   <span>Completion Rate</span>
                   <span>{dashboardData?.performanceMetrics.completionRate.toFixed(1)}%</span>
                 </div>
-                <Progress value={dashboardData?.performanceMetrics.completionRate || 0} className="h-2" />
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${dashboardData?.performanceMetrics.completionRate || 0}%` }}
+                  ></div>
+                </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
@@ -325,14 +329,24 @@ export default function EnhancedDashboardPage() {
                     <Star className="h-3 w-3 ml-1 text-yellow-500 fill-current" />
                   </span>
                 </div>
-                <Progress value={(dashboardData?.performanceMetrics.averageRating || 0) * 20} className="h-2" />
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(dashboardData?.performanceMetrics.averageRating || 0) * 20}%` }}
+                  ></div>
+                </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Response Time</span>
                   <span>{dashboardData?.performanceMetrics.responseTime.toFixed(1)} hours</span>
                 </div>
-                <Progress value={100 - (dashboardData?.performanceMetrics.responseTime || 0) * 10} className="h-2" />
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${100 - (dashboardData?.performanceMetrics.responseTime || 0) * 10}%` }}
+                  ></div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -379,75 +393,98 @@ export default function EnhancedDashboardPage() {
           </Card>
         </div>
 
-        {/* Tabs for Recent Activity and Upcoming Bookings */}
-        <Tabs defaultValue="activity" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="activity">Recent Activity</TabsTrigger>
-            <TabsTrigger value="upcoming">Upcoming Bookings</TabsTrigger>
-          </TabsList>
+        {/* Simple Tab-like Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('activity')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'activity'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Activity className="h-4 w-4 inline mr-2" />
+                Recent Activity
+              </button>
+              <button
+                onClick={() => setActiveTab('upcoming')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'upcoming'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Clock className="h-4 w-4 inline mr-2" />
+                Upcoming Bookings
+              </button>
+            </nav>
+          </div>
+        </div>
 
-          <TabsContent value="activity" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Activity className="h-5 w-5 mr-2" />
-                  Recent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData?.recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <div>
-                          <p className="text-sm font-medium">{activity.description}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(activity.timestamp).toLocaleString()}
-                          </p>
-                        </div>
+        {/* Content based on active tab */}
+        {activeTab === 'activity' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dashboardData?.recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium">{activity.description}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </p>
                       </div>
-                      <Badge className={getStatusColor(activity.status)}>
-                        {activity.status}
-                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    <Badge className={getStatusColor(activity.status)}>
+                      {activity.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          <TabsContent value="upcoming" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2" />
-                  Upcoming Bookings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData?.upcomingBookings.map((booking) => (
-                    <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <div>
-                          <p className="text-sm font-medium">{booking.serviceName}</p>
-                          <p className="text-xs text-gray-500">
-                            {booking.clientName} • {booking.date} at {booking.time}
-                          </p>
-                        </div>
+        {activeTab === 'upcoming' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Upcoming Bookings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dashboardData?.upcomingBookings.map((booking) => (
+                  <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium">{booking.serviceName}</p>
+                        <p className="text-xs text-gray-500">
+                          {booking.clientName} • {booking.date} at {booking.time}
+                        </p>
                       </div>
-                      <Badge className={getStatusColor(booking.status)}>
-                        {booking.status}
-                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                    <Badge className={getStatusColor(booking.status)}>
+                      {booking.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

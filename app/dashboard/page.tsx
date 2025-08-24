@@ -166,14 +166,14 @@ export default function DashboardPage() {
         recentActivity: recentActivity?.map(activity => ({
           id: activity.id,
           type: 'booking',
-          description: `${activity.profiles?.full_name || 'Client'} booked '${activity.services?.title || 'Service'}'`,
+          description: `${(activity.profiles as any)?.full_name || 'Client'} booked '${(activity.services as any)?.title || 'Service'}'`,
           timestamp: activity.created_at,
           status: activity.status
         })) || [],
         upcomingBookings: upcomingBookings?.map(booking => ({
           id: booking.id,
-          serviceName: booking.services?.title || 'Service',
-          clientName: booking.profiles?.full_name || 'Client',
+          serviceName: (booking.services as any)?.title || 'Service',
+          clientName: (booking.profiles as any)?.full_name || 'Client',
           date: new Date(booking.due_at).toLocaleDateString(),
           time: new Date(booking.due_at).toLocaleTimeString(),
           status: booking.status
