@@ -37,7 +37,8 @@ import {
   Download,
   RefreshCw,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  MessageSquare
 } from 'lucide-react'
 
 interface Booking {
@@ -111,7 +112,7 @@ export default function BookingsPage() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  // const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
@@ -187,6 +188,12 @@ export default function BookingsPage() {
 
       if (error) {
         console.error('Error fetching bookings:', error)
+        
+        // Show user-friendly error message
+        if (error.message?.includes('foreign key relationship')) {
+          console.log('Database relationships not configured - using fallback data')
+        }
+        
         // Fallback to basic query if enhanced query fails
         let fallbackQuery = supabase
           .from('bookings')
@@ -494,17 +501,8 @@ export default function BookingsPage() {
     if (userRole === 'provider') {
       switch (booking.status) {
         case 'pending':
+          // Since 'confirmed' status transition is not allowed, we'll use 'in_progress' directly
           actions.push(
-            <Button
-              key="confirm"
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-              onClick={() => openConfirmModal(booking)}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Confirm
-            </Button>,
             <Button
               key="start"
               size="sm"
@@ -528,20 +526,6 @@ export default function BookingsPage() {
             </Button>
           )
           break
-        case 'confirmed':
-          actions.push(
-            <Button
-              key="start"
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
-              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <ClockIcon className="h-4 w-4 mr-2" />
-              Start Work
-            </Button>
-          )
-          break
         case 'in_progress':
           actions.push(
             <Button
@@ -553,6 +537,22 @@ export default function BookingsPage() {
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               Mark Complete
+            </Button>
+          )
+          break
+        case 'completed':
+          // Allow providers to reopen completed bookings if needed
+          actions.push(
+            <Button
+              key="reopen"
+              size="sm"
+              variant="outline"
+              className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300"
+              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
+              disabled={isUpdatingStatus === booking.id}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reopen
             </Button>
           )
           break
@@ -573,22 +573,26 @@ export default function BookingsPage() {
           </Button>
         )
       }
+      
+      // Allow clients to request changes for in-progress bookings
+      if (booking.status === 'in_progress') {
+        actions.push(
+          <Button
+            key="request-change"
+            size="sm"
+            variant="outline"
+            className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-300"
+            onClick={() => openMessageModal(booking)}
+            disabled={isUpdatingStatus === booking.id}
+          >
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Request Change
+          </Button>
+        )
+      }
     }
 
-    // Add message button for all statuses
-    actions.push(
-      <Button
-        key="message"
-        size="sm"
-        variant="outline"
-        className="border-gray-200 hover:bg-gray-50"
-        onClick={() => openMessageModal(booking)}
-      >
-        <Mail className="h-4 w-4 mr-2" />
-        Message
-      </Button>
-    )
-    
+    // Don't add message button here since it's handled separately in the modal
     return actions
   }
 
@@ -773,10 +777,11 @@ export default function BookingsPage() {
     setShowDetailsModal(true)
   }
 
-  const openConfirmModal = (booking: Booking) => {
-    setSelectedBooking(booking)
-    setShowConfirmModal(true)
-  }
+  // Removed confirm modal since 'confirmed' status is not allowed
+  // const openConfirmModal = (booking: Booking) => {
+  //   setSelectedBooking(booking)
+  //   setShowConfirmModal(true)
+  // }
 
   const openMessageModal = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -819,45 +824,7 @@ export default function BookingsPage() {
     }
   }
 
-  const confirmBooking = async () => {
-    if (!selectedBooking) return
-    
-    try {
-      const supabase = await getSupabaseClient()
-      
-      // Update booking status to confirmed
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'confirmed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedBooking.id)
-
-      if (error) {
-        console.error('Error confirming booking:', error)
-        alert('Failed to confirm booking. Please try again.')
-        return
-      }
-
-      // Update local state
-      setBookings(prev => prev.map(booking => 
-        booking.id === selectedBooking.id 
-          ? { ...booking, status: 'confirmed', last_updated: new Date().toISOString() }
-          : booking
-      ))
-
-      setShowConfirmModal(false)
-      alert('Booking confirmed successfully!')
-      
-      // Refresh data
-      await fetchBookings(user.id)
-      
-    } catch (error) {
-      console.error('Error confirming booking:', error)
-      alert('Failed to confirm booking. Please try again.')
-    }
-  }
+  // Removed confirmBooking function since 'confirmed' status is not allowed
 
   if (loading) {
     return (
@@ -882,7 +849,15 @@ export default function BookingsPage() {
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings</h1>
               <p className="text-gray-600 text-lg">Manage your service bookings and appointments</p>
            <p className="text-sm text-gray-500 mt-1">
-             Using basic booking data. Enhanced features will be available once database relationships are configured.
+             Using basic booking data. Service names and amounts will show as IDs until database relationships are configured. 
+             <Button 
+               variant="link" 
+               size="sm" 
+               className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal underline"
+               onClick={() => window.open('https://supabase.com/docs/guides/database/relationships', '_blank')}
+             >
+               Learn more about database relationships
+             </Button>
            </p>
             </div>
             <div className="flex gap-3">
@@ -1391,44 +1366,36 @@ export default function BookingsPage() {
                    </div>
                  </div>
                  
-                 <div className="mt-6 pt-6 border-t border-gray-200">
-                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
-                   <div className="flex gap-3 flex-wrap">
-                     {getStatusActions(selectedBooking)}
-                   </div>
-                 </div>
+                                   <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
+                    <div className="flex gap-3 flex-wrap">
+                      {/* Dynamic Status Actions */}
+                      {getStatusActions(selectedBooking).map((action, index) => (
+                        <div key={index}>{action}</div>
+                      ))}
+                      
+                      {/* Always show Message button */}
+                      <Button
+                        variant="outline"
+                        className="border-gray-200 hover:bg-gray-50"
+                        onClick={() => {
+                          if (selectedBooking) {
+                            openMessageModal(selectedBooking)
+                            setShowDetailsModal(false)
+                          }
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message
+                      </Button>
+                    </div>
+                  </div>
                </div>
              </div>
            </div>
          )}
 
-         {/* Confirm Modal */}
-         {showConfirmModal && selectedBooking && (
-           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-             <div className="bg-white rounded-lg max-w-md w-full">
-               <div className="p-6">
-                 <h2 className="text-xl font-bold text-gray-900 mb-4">Confirm Booking</h2>
-                 <p className="text-gray-600 mb-6">
-                   Are you sure you want to confirm this booking for {selectedBooking.service_name}?
-                 </p>
-                 <div className="flex gap-3 justify-end">
-                   <Button
-                     variant="outline"
-                     onClick={() => setShowConfirmModal(false)}
-                   >
-                     Cancel
-                   </Button>
-                   <Button
-                     className="bg-emerald-600 hover:bg-emerald-700"
-                     onClick={confirmBooking}
-                   >
-                     Confirm Booking
-                   </Button>
-                 </div>
-               </div>
-             </div>
-           </div>
-         )}
+                   {/* Confirm Modal - Removed since 'confirmed' status is not allowed */}
 
          {/* Message Modal */}
          {showMessageModal && selectedBooking && (
