@@ -46,7 +46,7 @@ interface Booking {
   service_id: string
   client_id: string
   provider_id: string
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   created_at: string
   scheduled_date?: string
   scheduled_time?: string
@@ -70,7 +70,6 @@ interface Booking {
 interface BookingStats {
   total: number
   pending: number
-  confirmed: number
   inProgress: number
   completed: number
   cancelled: number
@@ -119,7 +118,6 @@ export default function BookingsPage() {
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
-    confirmed: 0,
     inProgress: 0,
     completed: 0,
     cancelled: 0,
@@ -233,7 +231,7 @@ export default function BookingsPage() {
     const stats: BookingStats = {
       total: bookingsData.length,
       pending: bookingsData.filter(b => b.status === 'pending').length,
-      confirmed: bookingsData.filter(b => b.status === 'confirmed').length,
+
       inProgress: bookingsData.filter(b => b.status === 'in_progress').length,
       completed: bookingsData.filter(b => b.status === 'completed').length,
       cancelled: bookingsData.filter(b => b.status === 'cancelled').length,
@@ -352,7 +350,6 @@ export default function BookingsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200'
       case 'in_progress': return 'bg-amber-100 text-amber-800 border-amber-200'
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
@@ -363,7 +360,6 @@ export default function BookingsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed': return <CheckCircle className="h-4 w-4" />
-      case 'confirmed': return <CheckCircle className="h-4 w-4" />
       case 'in_progress': return <ClockIcon className="h-4 w-4" />
       case 'pending': return <Clock className="h-4 w-4" />
       case 'cancelled': return <XCircle className="h-4 w-4" />
@@ -442,33 +438,7 @@ export default function BookingsPage() {
     if (userRole === 'provider') {
       switch (booking.status) {
         case 'pending':
-          // Use a two-step workflow: pending → confirmed → in_progress
-          actions.push(
-            <Button
-              key="accept"
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-              onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Accept
-            </Button>,
-            <Button
-              key="decline"
-              size="sm"
-              variant="outline"
-              className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-              onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Decline
-            </Button>
-          )
-          break
-        case 'confirmed':
-          // Now allow moving from confirmed to in_progress
+          // Based on database constraints, only allow direct transition to in_progress
           actions.push(
             <Button
               key="start"
@@ -514,23 +484,8 @@ export default function BookingsPage() {
           break
       }
     } else if (userRole === 'client') {
-      if (booking.status === 'pending') {
-        actions.push(
-          <Button
-            key="cancel"
-            size="sm"
-            variant="outline"
-            className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-            disabled={isUpdatingStatus === booking.id}
-          >
-            <XCircle className="h-4 w-4 mr-2" />
-            Cancel
-          </Button>
-        )
-      }
-      
-      // Allow clients to request changes for in-progress bookings
+      // Clients cannot change status directly due to database constraints
+      // They can only view and message
       if (booking.status === 'in_progress') {
         actions.push(
           <Button
@@ -867,7 +822,7 @@ export default function BookingsPage() {
                     <p className="text-sm font-medium text-gray-600">Pending</p>
                     <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {stats.confirmed} confirmed • {stats.inProgress} in progress
+                      {stats.inProgress} in progress
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -937,7 +892,7 @@ export default function BookingsPage() {
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
+        
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
