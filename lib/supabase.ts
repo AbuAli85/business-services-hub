@@ -8,6 +8,21 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 let supabaseClient: SupabaseClient | null = null
 let supabaseAdminClient: SupabaseClient | null = null
 
+// Helper function to check environment variables
+function checkEnvironmentVariables() {
+  const missingVars = []
+  
+  if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
+  if (!supabaseAnonKey) missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  
+  return {
+    isValid: missingVars.length === 0,
+    missingVars,
+    supabaseUrl,
+    supabaseAnonKey
+  }
+}
+
 // Create Supabase client only when needed (not at build time)
 export function getSupabaseClient(): SupabaseClient {
   if (typeof window === 'undefined') {
@@ -15,20 +30,28 @@ export function getSupabaseClient(): SupabaseClient {
     throw new Error('Supabase client cannot be used on server-side')
   }
   
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Supabase environment variables not configured:')
-    console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing')
-    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing')
-    console.error('Environment:', process.env.NODE_ENV)
-    console.error('Please check your environment variables configuration.')
+  const envCheck = checkEnvironmentVariables()
+  
+  if (!envCheck.isValid) {
+    const errorMessage = `Supabase environment variables not configured:
     
-    if (process.env.NODE_ENV === 'production') {
-      console.error('For production deployments, ensure environment variables are set in your hosting platform (Vercel, Netlify, etc.)')
-    } else {
-      console.error('For local development, check your .env.local file and restart the development server.')
-    }
-    
-    throw new Error('Supabase environment variables not configured. Please check your environment variables configuration.')
+Missing variables: ${envCheck.missingVars.join(', ')}
+
+Available variables:
+- NEXT_PUBLIC_SUPABASE_URL: ${envCheck.supabaseUrl ? '✅ Set' : '❌ Missing'}
+- NEXT_PUBLIC_SUPABASE_ANON_KEY: ${envCheck.supabaseAnonKey ? '✅ Set' : '❌ Missing'}
+
+Environment: ${process.env.NODE_ENV}
+
+To fix this:
+1. Copy env.example to .env.local
+2. Update the values in .env.local
+3. Restart your development server
+
+For production deployments, ensure environment variables are set in your hosting platform.`
+
+    console.error(errorMessage)
+    throw new Error('Supabase environment variables not configured. Please check your .env.local file and restart the development server.')
   }
   
   // Return existing client if already created
@@ -54,8 +77,11 @@ export function getSupabaseClientSafe(): SupabaseClient | null {
     return null
   }
   
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase environment variables not configured. Client will return null.')
+  const envCheck = checkEnvironmentVariables()
+  
+  if (!envCheck.isValid) {
+    console.warn(`Supabase environment variables not configured. Client will return null.
+Missing: ${envCheck.missingVars.join(', ')}`)
     return null
   }
   
@@ -81,7 +107,14 @@ export function getSupabaseAdminClient(): SupabaseClient {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables not configured')
+    const missingVars = []
+    if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
+    if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY')
+    
+    throw new Error(`Supabase admin environment variables not configured:
+Missing: ${missingVars.join(', ')}
+
+Please check your .env.local file and ensure all required variables are set.`)
   }
   
   // Return existing admin client if already created
@@ -104,4 +137,27 @@ export const supabaseAdmin = typeof window !== 'undefined' ? getSupabaseAdminCli
 export function clearSupabaseClients() {
   supabaseClient = null
   supabaseAdminClient = null
+}
+
+// Function to check if environment is properly configured
+export function isEnvironmentConfigured(): boolean {
+  if (typeof window === 'undefined') return false
+  
+  try {
+    const envCheck = checkEnvironmentVariables()
+    return envCheck.isValid
+  } catch {
+    return false
+  }
+}
+
+// Function to get environment status for debugging
+export function getEnvironmentStatus() {
+  return {
+    isClient: typeof window !== 'undefined',
+    envCheck: checkEnvironmentVariables(),
+    nodeEnv: process.env.NODE_ENV,
+    hasClient: supabaseClient !== null,
+    hasAdminClient: supabaseAdminClient !== null
+  }
 }
