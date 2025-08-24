@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null)
+  const [userRole, setUserRole] = useState<string>('client')
 
   useEffect(() => {
     checkAuth()
@@ -84,6 +85,7 @@ export default function DashboardPage() {
       }
 
       setUser(user)
+      setUserRole(user.user_metadata?.role || 'client')
     } catch (error) {
       console.error('Auth check error:', error)
       router.push('/auth/sign-in')
@@ -107,52 +109,106 @@ export default function DashboardPage() {
 
       const supabase = await getSupabaseClient()
       
-      // Load services count
-      const { count: servicesCount } = await supabase
-        .from('services')
-        .select('*', { count: 'exact', head: true })
-        .eq('provider_id', user.id)
+      // Check if user is a provider or client
+      const userRole = user.user_metadata?.role || 'client'
+      
+      let servicesCount = 0
+      let bookingsCount = 0
+      let recentActivity: any[] = []
+      let upcomingBookings: any[] = []
+      let allBookings: any[] = []
 
-      // Load active bookings
-      const { count: bookingsCount } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('provider_id', user.id)
-        .eq('status', 'in_progress')
+      if (userRole === 'provider') {
+        // Load services count for providers
+        const { count: servicesCountResult } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', user.id)
+        servicesCount = servicesCountResult || 0
 
-      // Load recent activity - simplified query without complex joins
-      const { data: recentActivity } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          status,
-          created_at,
-          service_id
-        `)
-        .eq('provider_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5)
+        // Load active bookings for providers
+        const { count: bookingsCountResult } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', user.id)
+          .eq('status', 'in_progress')
+        bookingsCount = bookingsCountResult || 0
 
-      // Load upcoming bookings - simplified query
-      const { data: upcomingBookings } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          due_at,
-          status,
-          service_id
-        `)
-        .eq('provider_id', user.id)
-        .gte('due_at', new Date().toISOString())
-        .order('due_at', { ascending: true })
-        .limit(5)
+        // Load recent activity for providers
+        const { data: recentActivityResult } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            created_at,
+            service_id
+          `)
+          .eq('provider_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5)
+        recentActivity = recentActivityResult || []
 
-      // Calculate performance metrics
-      const { data: allBookings } = await supabase
-        .from('bookings')
-        .select('status, created_at')
-        .eq('provider_id', user.id)
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        // Load upcoming bookings for providers
+        const { data: upcomingBookingsResult } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            due_at,
+            status,
+            service_id
+          `)
+          .eq('provider_id', user.id)
+          .gte('due_at', new Date().toISOString())
+          .order('due_at', { ascending: true })
+          .limit(5)
+        upcomingBookings = upcomingBookingsResult || []
+
+        // Calculate performance metrics for providers
+        const { data: allBookingsResult } = await supabase
+          .from('bookings')
+          .select('status, created_at')
+          .eq('provider_id', user.id)
+          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        allBookings = allBookingsResult || []
+      } else {
+        // For clients, load their bookings
+        const { count: clientBookingsCount } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('client_id', user.id)
+        bookingsCount = clientBookingsCount || 0
+
+        // Load recent activity for clients
+        const { data: clientRecentActivity } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            created_at,
+            service_id
+          `)
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5)
+        recentActivity = clientRecentActivity || []
+
+        // Load upcoming bookings for clients
+        const { data: clientUpcomingBookings } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            due_at,
+            status,
+            service_id
+          `)
+          .eq('client_id', user.id)
+          .gte('due_at', new Date().toISOString())
+          .order('due_at', { ascending: true })
+          .limit(5)
+        upcomingBookings = clientUpcomingBookings || []
+      }
+
+
 
       const completedBookings = allBookings?.filter(b => b.status === 'completed').length || 0
       const totalBookings = allBookings?.length || 0
@@ -225,7 +281,13 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-600">User not found. Redirecting...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -239,10 +301,12 @@ export default function DashboardPage() {
               <p className="text-gray-600">Welcome back, {user.user_metadata?.full_name || user.email}</p>
             </div>
             <div className="flex space-x-3">
-              <Button onClick={() => router.push('/dashboard/services/create')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Service
-              </Button>
+              {userRole === 'provider' && (
+                <Button onClick={() => router.push('/dashboard/services/create')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Service
+                </Button>
+              )}
               <Button variant="outline" onClick={() => router.push('/dashboard/settings')}>
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
@@ -253,8 +317,17 @@ export default function DashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {!dashboardData ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 mb-4">No dashboard data available</p>
+            <Button onClick={loadDashboardData} variant="outline">
+              Retry Loading
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Services</CardTitle>
@@ -353,14 +426,35 @@ export default function DashboardPage() {
               <CardDescription>Access frequently used features</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-3">
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col justify-center"
-                onClick={() => router.push('/dashboard/services')}
-              >
-                <Package className="h-6 w-6 mb-2" />
-                Manage Services
-              </Button>
+              {userRole === 'provider' ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex-col justify-center"
+                    onClick={() => router.push('/dashboard/services')}
+                  >
+                    <Package className="h-6 w-6 mb-2" />
+                    Manage Services
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex-col justify-center"
+                    onClick={() => router.push('/dashboard/company')}
+                  >
+                    <Settings className="h-6 w-6 mb-2" />
+                    Company Profile
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex-col justify-center"
+                  onClick={() => router.push('/dashboard/services')}
+                >
+                  <Package className="h-6 w-6 mb-2" />
+                  Browse Services
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 className="h-20 flex-col justify-center"
@@ -376,14 +470,6 @@ export default function DashboardPage() {
               >
                 <FileText className="h-6 w-6 mb-2" />
                 Reports
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex-col justify-center"
-                onClick={() => router.push('/dashboard/company')}
-              >
-                <Settings className="h-6 w-6 mb-2" />
-                Company Profile
               </Button>
             </CardContent>
           </Card>
@@ -458,6 +544,8 @@ export default function DashboardPage() {
             </Card>
           </TabsContent>
         </Tabs>
+          </>
+        )}
       </div>
     </div>
   )
