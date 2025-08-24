@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   ArrowLeft, Edit, Save, X, Eye, Calendar, DollarSign, 
-  User, MapPin, Clock, Building2, Star, TrendingUp
+  User, MapPin, Clock, Building2, Star, TrendingUp, MessageCircle
 } from 'lucide-react'
 
 interface Service {
@@ -48,6 +48,7 @@ export default function DashboardServiceDetailPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [isServiceOwner, setIsServiceOwner] = useState(false)
   
   // Form state for editing
   const [editForm, setEditForm] = useState({
@@ -126,7 +127,7 @@ export default function DashboardServiceDetailPage() {
       // First, check if the service exists (without provider restriction)
       const { data: serviceExists, error: checkError } = await supabase
         .from('services')
-        .select('id, provider_id')
+        .select('id, provider_id, status')
         .eq('id', id)
         .maybeSingle()
 
@@ -142,45 +143,76 @@ export default function DashboardServiceDetailPage() {
 
       console.log('🔍 Service exists:', serviceExists)
       
-      // Check if user owns this service
-      if (serviceExists.provider_id !== currentUserId) {
-        console.error('❌ Service belongs to different provider:', {
-          serviceProviderId: serviceExists.provider_id,
-          currentUserId: currentUserId
+      // Check if service is active
+      if (serviceExists.status !== 'active') {
+        console.error('❌ Service is not active:', serviceExists.status)
+        throw new Error('This service is not currently available')
+      }
+      
+      // Check if user owns this service (for editing) or is viewing as client
+      const isOwner = serviceExists.provider_id === currentUserId
+      setIsServiceOwner(isOwner)
+      
+      if (isOwner) {
+        console.log('✅ User owns this service, fetching full data for editing')
+        // Fetch full service data for owner (provider)
+        const { data, error } = await supabase
+          .from('services')
+          .select('*')
+          .eq('id', id)
+          .eq('provider_id', currentUserId)
+          .maybeSingle()
+
+        if (error) {
+          console.error('❌ Database error:', error)
+          throw error
+        }
+
+        if (!data) {
+          console.error('❌ No service data returned')
+          throw new Error('Service data not found')
+        }
+
+        console.log('✅ Service fetched successfully for owner:', data)
+        setService(data)
+        // Initialize edit form
+        setEditForm({
+          title: data.title || '',
+          description: data.description || '',
+          category: data.category || '',
+          status: data.status || '',
+          base_price: data.base_price?.toString() || '',
+          currency: data.currency || 'OMR',
+          tags: data.tags?.join(', ') || ''
         })
-        throw new Error('You do not have permission to access this service')
+      } else {
+        console.log('👤 User is viewing as client, fetching service data for browsing')
+        // Fetch service data for client viewing (without editing capabilities)
+        const { data, error } = await supabase
+          .from('services')
+          .select(`
+            id, title, description, category, status, base_price, currency, 
+            cover_image_url, created_at, updated_at, provider_id, 
+            views_count, bookings_count, rating, tags
+          `)
+          .eq('id', id)
+          .eq('status', 'active')
+          .maybeSingle()
+
+        if (error) {
+          console.error('❌ Database error:', error)
+          throw error
+        }
+
+        if (!data) {
+          console.error('❌ No service data returned')
+          throw new Error('Service data not found')
+        }
+
+        console.log('✅ Service fetched successfully for client:', data)
+        setService(data)
+        // Don't initialize edit form for clients
       }
-
-      // Now fetch the full service data
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('id', id)
-        .eq('provider_id', currentUserId)
-        .maybeSingle()
-
-      if (error) {
-        console.error('❌ Database error:', error)
-        throw error
-      }
-
-      if (!data) {
-        console.error('❌ No service data returned')
-        throw new Error('Service data not found')
-      }
-
-      console.log('✅ Service fetched successfully:', data)
-      setService(data)
-      // Initialize edit form
-      setEditForm({
-        title: data.title || '',
-        description: data.description || '',
-        category: data.category || '',
-        status: data.status || '',
-        base_price: data.base_price?.toString() || '',
-        currency: data.currency || 'OMR',
-        tags: data.tags?.join(', ') || ''
-      })
     } catch (err) {
       console.error('❌ Error fetching service:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch service')
@@ -332,31 +364,47 @@ export default function DashboardServiceDetailPage() {
                 {editing ? 'Edit Service' : service.title}
               </h1>
               <p className="text-gray-600 text-lg">
-                {editing ? 'Update your service information' : 'Service details and management'}
+                {editing ? 'Update your service information' : 
+                  isServiceOwner ? 'Service details and management' : 'Service details and booking'}
               </p>
             </div>
 
             <div className="flex gap-2">
-              {editing ? (
-                <>
-                  <Button 
-                    onClick={handleSave} 
-                    disabled={saving}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Changes'}
+              {isServiceOwner ? (
+                // Provider view - can edit
+                editing ? (
+                  <>
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={saving}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button variant="outline" onClick={handleCancelEdit}>
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => setEditing(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Service
                   </Button>
-                  <Button variant="outline" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
+                )
+              ) : (
+                // Client view - can book/contact
+                <>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Book Service
+                  </Button>
+                  <Button variant="outline">
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Contact Provider
                   </Button>
                 </>
-              ) : (
-                <Button onClick={() => setEditing(true)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Service
-                </Button>
               )}
             </div>
           </div>
@@ -374,8 +422,8 @@ export default function DashboardServiceDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {editing ? (
-                  // Edit Form
+                {isServiceOwner && editing ? (
+                  // Edit Form (only for service owners)
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="title">Service Title</Label>
@@ -480,7 +528,7 @@ export default function DashboardServiceDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  // Display Mode
+                  // Display Mode (for both owners and clients)
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
                       <Badge className={getStatusColor(service.status)}>
@@ -510,6 +558,26 @@ export default function DashboardServiceDetailPage() {
                               {tag}
                             </Badge>
                           ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!isServiceOwner && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-semibold text-blue-900 mb-2">Ready to Book?</h4>
+                        <p className="text-blue-800 text-sm mb-3">
+                          This service is provided by a verified business professional. 
+                          You can book this service or contact the provider directly.
+                        </p>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Book Now
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Ask Questions
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -613,24 +681,75 @@ export default function DashboardServiceDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Provider Information (for clients) */}
+            {!isServiceOwner && (
+              <Card className="border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-green-600" />
+                    About the Provider
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <User className="h-4 w-4" />
+                    <span>Professional Business Provider</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Star className="h-4 w-4" />
+                    <span>Verified Service Provider</span>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <Button variant="outline" className="w-full">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      View Provider Profile
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Quick Actions */}
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Public Page
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  View Bookings
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  View Analytics
-                </Button>
+                {isServiceOwner ? (
+                  // Provider actions
+                  <>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Public Page
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      View Bookings
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      View Analytics
+                    </Button>
+                  </>
+                ) : (
+                  // Client actions
+                  <>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Book This Service
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Message Provider
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start">
+                      <Star className="h-4 w-4 mr-2" />
+                      Write Review
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
