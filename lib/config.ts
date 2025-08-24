@@ -31,3 +31,4 @@ export function validateConfig() {
 // Check if we're in production
 export const isProduction = config.app.environment === 'production'
 export const isDevelopment = config.app.environment === 'development'
+

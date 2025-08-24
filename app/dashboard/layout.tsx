@@ -172,7 +172,7 @@ export default function DashboardLayout({
       baseItems.splice(1, 0, 
         { name: 'My Services', href: `/dashboard/services`, icon: Building2 },
         { name: 'Company', href: '/dashboard/company', icon: Building2 },
-        { name: 'Earnings', href: `/dashboard/earnings`, icon: BarChart3 },
+        { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
         { name: 'Profile', href: '/dashboard/profile', icon: User }
       )
     }
