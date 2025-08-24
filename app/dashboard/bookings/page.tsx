@@ -109,6 +109,12 @@ export default function BookingsPage() {
     paymentStatus: 'all'
   })
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [messageText, setMessageText] = useState('')
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -133,7 +139,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     filterBookings()
-  }, [bookings, searchQuery, statusFilter])
+  }, [bookings, searchQuery, statusFilter, filterOptions, sortBy, sortOrder])
 
   const checkUserAndFetchBookings = async () => {
     try {
@@ -182,15 +188,15 @@ export default function BookingsPage() {
       if (error) {
         console.error('Error fetching bookings:', error)
         // Fallback to basic query if enhanced query fails
-        const fallbackQuery = supabase
+        let fallbackQuery = supabase
           .from('bookings')
           .select('*')
           .order('created_at', { ascending: false })
         
         if (userRole === 'provider') {
-          fallbackQuery.eq('provider_id', userId)
+          fallbackQuery = fallbackQuery.eq('provider_id', userId)
         } else if (userRole === 'client') {
-          fallbackQuery.eq('client_id', userId)
+          fallbackQuery = fallbackQuery.eq('client_id', userId)
         }
 
         const { data: fallbackData, error: fallbackError } = await fallbackQuery
@@ -490,21 +496,31 @@ export default function BookingsPage() {
         case 'pending':
           actions.push(
             <Button
-              key="accept"
+              key="confirm"
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-              onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+              onClick={() => openConfirmModal(booking)}
               disabled={isUpdatingStatus === booking.id}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Accept
+              Confirm
+            </Button>,
+            <Button
+              key="start"
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
+              disabled={isUpdatingStatus === booking.id}
+            >
+              <ClockIcon className="h-4 w-4 mr-2" />
+              Start Work
             </Button>,
             <Button
               key="decline"
               size="sm"
               variant="outline"
               className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-              onClick={() => updateBookingStatus(booking.id, 'cancelled', 'Declined by provider')}
+              onClick={() => updateBookingStatus(booking.id, 'cancelled')}
               disabled={isUpdatingStatus === booking.id}
             >
               <XCircle className="h-4 w-4 mr-2" />
@@ -549,7 +565,7 @@ export default function BookingsPage() {
             size="sm"
             variant="outline"
             className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-            onClick={() => updateBookingStatus(booking.id, 'cancelled', 'Cancelled by client')}
+            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
             disabled={isUpdatingStatus === booking.id}
           >
             <XCircle className="h-4 w-4 mr-2" />
@@ -558,6 +574,20 @@ export default function BookingsPage() {
         )
       }
     }
+
+    // Add message button for all statuses
+    actions.push(
+      <Button
+        key="message"
+        size="sm"
+        variant="outline"
+        className="border-gray-200 hover:bg-gray-50"
+        onClick={() => openMessageModal(booking)}
+      >
+        <Mail className="h-4 w-4 mr-2" />
+        Message
+      </Button>
+    )
     
     return actions
   }
@@ -612,18 +642,15 @@ export default function BookingsPage() {
       // Try to fetch enhanced data for the first booking to test if relationships work
       const { data: testData, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          services:service_id(name, price)
-        `)
+        .select('*')
         .limit(1)
 
-      if (!error && testData && testData[0]?.services) {
-        console.log('Enhanced data relationships are available!')
-        setShowEnhancedData(true)
-        // You could implement full enhanced data fetching here
+      if (!error && testData && testData.length > 0) {
+        console.log('Basic booking data is available!')
+        setShowEnhancedData(false)
+        // For now, we'll use basic data until relationships are set up
       } else {
-        console.log('Enhanced data relationships not yet available')
+        console.log('No booking data available')
         setShowEnhancedData(false)
       }
     } catch (error) {
@@ -639,18 +666,21 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Only update fields that exist in the database
       const updateData: any = { 
         status: newStatus,
         updated_at: new Date().toISOString()
       }
       
-      if (notes) {
-        updateData.notes = notes
-      }
+      // Don't try to update notes if the column doesn't exist
+      // if (notes) {
+      //   updateData.notes = notes
+      // }
       
-      if (newStatus === 'cancelled') {
-        updateData.cancellation_reason = notes || 'Cancelled by user'
-      }
+      // Don't try to update cancellation_reason if the column doesn't exist
+      // if (newStatus === 'cancelled') {
+      //   updateData.cancellation_reason = notes || 'Cancelled by user'
+      // }
 
       const { error } = await supabase
         .from('bookings')
@@ -659,13 +689,18 @@ export default function BookingsPage() {
 
       if (error) {
         console.error('Error updating booking status:', error)
+        
+        // Handle specific status transition errors
+        if (error.message?.includes('Invalid status transition')) {
+          alert('This status change is not allowed by the system. Please contact support if you need to change the status.')
+        }
         return
       }
 
       // Update local state
       setBookings(prev => prev.map(booking => 
         booking.id === bookingId 
-          ? { ...booking, status: newStatus as any, notes: notes || booking.notes, last_updated: new Date().toISOString() }
+          ? { ...booking, status: newStatus as any, last_updated: new Date().toISOString() }
           : booking
       ))
 
@@ -693,6 +728,11 @@ export default function BookingsPage() {
 
       if (error) {
         console.error('Error bulk updating bookings:', error)
+        
+        // Handle specific status transition errors
+        if (error.message?.includes('Invalid status transition')) {
+          alert('One or more status changes are not allowed by the system. Please contact support if you need to change the status.')
+        }
         return
       }
 
@@ -728,6 +768,97 @@ export default function BookingsPage() {
     setSelectedBookings([])
   }
 
+  const openDetailsModal = (booking: Booking) => {
+    setSelectedBooking(booking)
+    setShowDetailsModal(true)
+  }
+
+  const openConfirmModal = (booking: Booking) => {
+    setSelectedBooking(booking)
+    setShowConfirmModal(true)
+  }
+
+  const openMessageModal = (booking: Booking) => {
+    setSelectedBooking(booking)
+    setShowMessageModal(true)
+  }
+
+  const sendMessage = async () => {
+    if (!selectedBooking || !messageText.trim()) return
+    
+    setIsSendingMessage(true)
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Create a message record (you'll need to create a messages table)
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          booking_id: selectedBooking.id,
+          sender_id: user.id,
+          receiver_id: userRole === 'provider' ? selectedBooking.client_id : selectedBooking.provider_id,
+          message: messageText.trim(),
+          created_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error('Error sending message:', error)
+        alert('Failed to send message. Please try again.')
+        return
+      }
+
+      setMessageText('')
+      setShowMessageModal(false)
+      alert('Message sent successfully!')
+      
+    } catch (error) {
+      console.error('Error sending message:', error)
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setIsSendingMessage(false)
+    }
+  }
+
+  const confirmBooking = async () => {
+    if (!selectedBooking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Update booking status to confirmed
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'confirmed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedBooking.id)
+
+      if (error) {
+        console.error('Error confirming booking:', error)
+        alert('Failed to confirm booking. Please try again.')
+        return
+      }
+
+      // Update local state
+      setBookings(prev => prev.map(booking => 
+        booking.id === selectedBooking.id 
+          ? { ...booking, status: 'confirmed', last_updated: new Date().toISOString() }
+          : booking
+      ))
+
+      setShowConfirmModal(false)
+      alert('Booking confirmed successfully!')
+      
+      // Refresh data
+      await fetchBookings(user.id)
+      
+    } catch (error) {
+      console.error('Error confirming booking:', error)
+      alert('Failed to confirm booking. Please try again.')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-8">
@@ -751,7 +882,7 @@ export default function BookingsPage() {
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings</h1>
               <p className="text-gray-600 text-lg">Manage your service bookings and appointments</p>
            <p className="text-sm text-gray-500 mt-1">
-             Note: Enhanced data (service names, client names) will be available once database relationships are configured.
+             Using basic booking data. Enhanced features will be available once database relationships are configured.
            </p>
             </div>
             <div className="flex gap-3">
@@ -973,26 +1104,26 @@ export default function BookingsPage() {
                     </Button>
                   </div>
                   
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => bulkUpdateStatus(selectedBookings, 'confirmed')}
-                      className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Accept All
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => bulkUpdateStatus(selectedBookings, 'cancelled')}
-                      className="border-red-200 text-red-700 hover:bg-red-50"
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancel All
-                    </Button>
-                  </div>
+                                     <div className="flex gap-2">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => bulkUpdateStatus(selectedBookings, 'in_progress')}
+                       className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                     >
+                       <ClockIcon className="h-4 w-4 mr-2" />
+                       Start All
+                     </Button>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => bulkUpdateStatus(selectedBookings, 'cancelled')}
+                       className="border-red-200 text-red-700 hover:bg-red-50"
+                     >
+                       <XCircle className="h-4 w-4 mr-2" />
+                       Cancel All
+                     </Button>
+                   </div>
                 </div>
               )}
             </div>
@@ -1166,10 +1297,15 @@ export default function BookingsPage() {
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" className="border-gray-200 hover:bg-gray-50">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
+                                             <Button 
+                         size="sm" 
+                         variant="outline" 
+                         className="border-gray-200 hover:bg-gray-50"
+                         onClick={() => openDetailsModal(booking)}
+                       >
+                         <Eye className="h-4 w-4 mr-2" />
+                         View Details
+                       </Button>
                       
                       {/* Dynamic Status Actions */}
                       {getStatusActions(booking)}
@@ -1187,9 +1323,148 @@ export default function BookingsPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+                     </div>
+         )}
+
+         {/* Details Modal */}
+         {showDetailsModal && selectedBooking && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+               <div className="p-6">
+                 <div className="flex items-center justify-between mb-6">
+                   <h2 className="text-2xl font-bold text-gray-900">Booking Details</h2>
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setShowDetailsModal(false)}
+                     className="text-gray-400 hover:text-gray-600"
+                   >
+                     <XCircle className="h-6 w-6" />
+                   </Button>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div>
+                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+                     <div className="space-y-3">
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Booking ID:</span>
+                         <p className="text-sm text-gray-900 font-mono">{selectedBooking.id}</p>
+                       </div>
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Status:</span>
+                         <Badge className={`${getStatusColor(selectedBooking.status)} ml-2`}>
+                           {getStatusIcon(selectedBooking.status)}
+                           <span className="ml-1 capitalize">{selectedBooking.status.replace('_', ' ')}</span>
+                         </Badge>
+                       </div>
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Created:</span>
+                         <p className="text-sm text-gray-900">{formatDate(selectedBooking.created_at)}</p>
+                       </div>
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Last Updated:</span>
+                         <p className="text-sm text-gray-900">{formatDate(selectedBooking.last_updated || selectedBooking.created_at)}</p>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   <div>
+                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Details</h3>
+                     <div className="space-y-3">
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Service:</span>
+                         <p className="text-sm text-gray-900">{selectedBooking.service_name}</p>
+                       </div>
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Amount:</span>
+                         <p className="text-sm text-gray-900 font-semibold">{formatCurrency(selectedBooking.amount || 0)}</p>
+                       </div>
+                       <div>
+                         <span className="text-sm font-medium text-gray-500">Payment Status:</span>
+                         <Badge className={`${getPaymentStatusColor(selectedBooking.payment_status || 'pending')} ml-2`}>
+                           {getPaymentStatusIcon(selectedBooking.payment_status || 'pending')}
+                           <span className="ml-1 capitalize">{selectedBooking.payment_status || 'pending'}</span>
+                         </Badge>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 <div className="mt-6 pt-6 border-t border-gray-200">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
+                   <div className="flex gap-3 flex-wrap">
+                     {getStatusActions(selectedBooking)}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )}
+
+         {/* Confirm Modal */}
+         {showConfirmModal && selectedBooking && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+             <div className="bg-white rounded-lg max-w-md w-full">
+               <div className="p-6">
+                 <h2 className="text-xl font-bold text-gray-900 mb-4">Confirm Booking</h2>
+                 <p className="text-gray-600 mb-6">
+                   Are you sure you want to confirm this booking for {selectedBooking.service_name}?
+                 </p>
+                 <div className="flex gap-3 justify-end">
+                   <Button
+                     variant="outline"
+                     onClick={() => setShowConfirmModal(false)}
+                   >
+                     Cancel
+                   </Button>
+                   <Button
+                     className="bg-emerald-600 hover:bg-emerald-700"
+                     onClick={confirmBooking}
+                   >
+                     Confirm Booking
+                   </Button>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )}
+
+         {/* Message Modal */}
+         {showMessageModal && selectedBooking && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+             <div className="bg-white rounded-lg max-w-md w-full">
+               <div className="p-6">
+                 <h2 className="text-xl font-bold text-gray-900 mb-4">Send Message</h2>
+                 <p className="text-gray-600 mb-4">
+                   Send a message to {userRole === 'provider' ? 'the client' : 'the provider'} about this booking.
+                 </p>
+                 <textarea
+                   value={messageText}
+                   onChange={(e) => setMessageText(e.target.value)}
+                   placeholder="Type your message here..."
+                   className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 />
+                 <div className="flex gap-3 justify-end mt-4">
+                   <Button
+                     variant="outline"
+                     onClick={() => setShowMessageModal(false)}
+                   >
+                     Cancel
+                   </Button>
+                   <Button
+                     className="bg-blue-600 hover:bg-blue-700"
+                     onClick={sendMessage}
+                     disabled={isSendingMessage || !messageText.trim()}
+                   >
+                     {isSendingMessage ? 'Sending...' : 'Send Message'}
+                   </Button>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )}
+       </div>
+     </div>
+   )
+ }
