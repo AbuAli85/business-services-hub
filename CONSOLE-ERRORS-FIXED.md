@@ -402,6 +402,73 @@ const fetchService = async (id: string, userId?: string) => {
 - **Fallback Validation**: Multiple validation layers for robust error handling
 - **Timing Control**: Controlled delays to ensure proper state updates
 
+### 12. Dashboard Service Detail Database Error (`/dashboard/services/[id]`)
+**Problem:**
+- `GET https://reootcngcptfogfozlmz.supabase.co/rest/v1/services?select=*&id=eq.d59a77bb-100a-4bb3-9755-ccb4b07ba06b&provider_id=eq.4fedc90a-1c4e-4baa-a42b-2ca85d1daf0b 406 (Not Acceptable)`
+- `{code: 'PGRST116', details: 'The result contains 0 rows', hint: null, message: 'JSON object requested, multiple (or no) rows returned'}`
+- Service query was failing when no service found with the specified ID and provider combination
+
+**Root Cause:**
+- Using `.single()` method which throws an error when no rows are found
+- No validation that the service actually exists before attempting to fetch it
+- No check if the user has permission to access the service
+- 406 error indicates the query parameters were valid but no results returned
+
+**Solution:**
+- Implemented two-step validation: first check if service exists, then check ownership
+- Changed from `.single()` to `.maybeSingle()` to handle no-results gracefully
+- Added proper error handling for different failure scenarios
+- Enhanced user feedback with specific error messages
+
+**Fixes Applied:**
+```typescript
+// Before: Single query that could fail with PGRST116
+const { data, error } = await supabase
+  .from('services')
+  .select('*')
+  .eq('id', id)
+  .eq('provider_id', currentUserId)
+  .single() // This throws error when no rows found
+
+// After: Two-step validation with proper error handling
+// Step 1: Check if service exists
+const { data: serviceExists, error: checkError } = await supabase
+  .from('services')
+  .select('id, provider_id')
+  .eq('id', id)
+  .maybeSingle()
+
+if (!serviceExists) {
+  throw new Error('Service not found')
+}
+
+// Step 2: Check ownership
+if (serviceExists.provider_id !== currentUserId) {
+  throw new Error('You do not have permission to access this service')
+}
+
+// Step 3: Fetch full service data
+const { data, error } = await supabase
+  .from('services')
+  .select('*')
+  .eq('id', id)
+  .eq('provider_id', currentUserId)
+  .maybeSingle()
+
+if (!data) {
+  throw new Error('Service data not found')
+}
+```
+
+**Features Added:**
+- **Service Existence Validation**: Checks if service exists before attempting access
+- **Ownership Verification**: Ensures user can only access their own services
+- **Graceful Error Handling**: Uses `.maybeSingle()` instead of `.single()`
+- **Specific Error Messages**: Different messages for different failure scenarios
+- **Enhanced User Experience**: Better error display with actionable buttons
+- **Security**: Prevents unauthorized access to other users' services
+- **Debug Logging**: Comprehensive logging for troubleshooting database issues
+
 ## 🔧 Technical Improvements
 
 ### 1. User Authentication Flow
@@ -436,6 +503,7 @@ const fetchService = async (id: string, userId?: string) => {
 | **Dashboard Service Detail 404 Error** | **✅ Fixed** | **Created `/dashboard/services/[id]` page for individual service management** |
 | **Dashboard Service Detail UUID Error** | **✅ Fixed** | **Added service ID validation to prevent undefined UUID database queries** |
 | **Dashboard Service Detail Authentication Error** | **✅ Fixed** | **Fixed race condition between user authentication and service fetching** |
+| **Dashboard Service Detail Database Error** | **✅ Fixed** | **Fixed PGRST116 error and improved service access validation** |
 
 ## 🚀 Performance Improvements
 

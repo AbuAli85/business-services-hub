@@ -122,16 +122,51 @@ export default function DashboardServiceDetailPage() {
 
       console.log('✅ Validation passed, querying database...')
       const supabase = await getSupabaseClient()
+      
+      // First, check if the service exists (without provider restriction)
+      const { data: serviceExists, error: checkError } = await supabase
+        .from('services')
+        .select('id, provider_id')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('❌ Error checking service existence:', checkError)
+        throw checkError
+      }
+
+      if (!serviceExists) {
+        console.error('❌ Service not found with ID:', id)
+        throw new Error('Service not found')
+      }
+
+      console.log('🔍 Service exists:', serviceExists)
+      
+      // Check if user owns this service
+      if (serviceExists.provider_id !== currentUserId) {
+        console.error('❌ Service belongs to different provider:', {
+          serviceProviderId: serviceExists.provider_id,
+          currentUserId: currentUserId
+        })
+        throw new Error('You do not have permission to access this service')
+      }
+
+      // Now fetch the full service data
       const { data, error } = await supabase
         .from('services')
         .select('*')
         .eq('id', id)
-        .eq('provider_id', currentUserId) // Use validated user ID
-        .single()
+        .eq('provider_id', currentUserId)
+        .maybeSingle()
 
       if (error) {
         console.error('❌ Database error:', error)
         throw error
+      }
+
+      if (!data) {
+        console.error('❌ No service data returned')
+        throw new Error('Service data not found')
       }
 
       console.log('✅ Service fetched successfully:', data)
@@ -244,11 +279,32 @@ export default function DashboardServiceDetailPage() {
                 {error || 'The service you are looking for could not be found.'}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button onClick={() => router.back()}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Go Back
-              </Button>
+            <CardContent className="space-y-4">
+              {error === 'Service not found' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 text-sm">
+                    The service with ID <code className="bg-yellow-100 px-2 py-1 rounded">{serviceId}</code> does not exist in our system.
+                  </p>
+                </div>
+              )}
+              
+              {error === 'You do not have permission to access this service' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-800 text-sm">
+                    This service belongs to another provider. You can only view and edit services that you created.
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button onClick={() => router.back()}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Go Back
+                </Button>
+                <Button variant="outline" onClick={() => router.push('/dashboard/services')}>
+                  View My Services
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
