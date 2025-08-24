@@ -137,9 +137,15 @@ export default function DashboardLayout({
   }
 
   const handleSignOut = async () => {
-    const supabase = getSupabaseClient()
-    await supabase.auth.signOut()
-    router.push('/')
+    try {
+      const supabase = getSupabaseClient()
+      await supabase.auth.signOut()
+      router.push('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      // Force redirect even if signout fails
+      router.push('/')
+    }
   }
 
   const getNavigationItems = () => {

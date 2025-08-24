@@ -72,25 +72,24 @@ export default function SignUpPage() {
       if (data.user) {
         toast.success('Account created successfully! Please check your email to verify your account.')
         
-        // Create profile in profiles table with proper error handling
-        const supabase = getSupabaseClient()
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            role: formData.role,
+        // Create profile using the new webhook-based function
+        try {
+          const { error: profileError } = await supabase.rpc('create_user_profile', {
+            user_id: data.user.id,
+            user_role: formData.role,
             full_name: formData.fullName,
-            phone: formData.phone,
-            email: formData.email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            phone: formData.phone
           })
 
-        if (profileError) {
+          if (profileError) {
+            console.error('Profile creation error:', profileError)
+            toast.error('Account created but profile setup failed. Please contact support.')
+          } else {
+            toast.success('Profile created successfully!')
+          }
+        } catch (profileError) {
           console.error('Profile creation error:', profileError)
           toast.error('Account created but profile setup failed. Please contact support.')
-        } else {
-          toast.success('Profile created successfully!')
         }
 
         // Redirect to onboarding

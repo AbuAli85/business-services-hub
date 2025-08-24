@@ -4,8 +4,12 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+// Singleton pattern to prevent multiple client instances
+let supabaseClient: SupabaseClient | null = null
+let supabaseAdminClient: SupabaseClient | null = null
+
 // Create Supabase client only when needed (not at build time)
-export function getSupabaseClient() {
+export function getSupabaseClient(): SupabaseClient {
   if (typeof window === 'undefined') {
     // Server-side: return null or throw error
     throw new Error('Supabase client cannot be used on server-side')
@@ -27,17 +31,25 @@ export function getSupabaseClient() {
     throw new Error('Supabase environment variables not configured. Please check your environment variables configuration.')
   }
   
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  // Return existing client if already created
+  if (supabaseClient) {
+    return supabaseClient
+  }
+  
+  // Create new client only once
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true
     }
   })
+  
+  return supabaseClient
 }
 
 // Safe client getter that returns null if environment variables are missing
-export function getSupabaseClientSafe() {
+export function getSupabaseClientSafe(): SupabaseClient | null {
   if (typeof window === 'undefined') {
     return null
   }
@@ -47,37 +59,49 @@ export function getSupabaseClientSafe() {
     return null
   }
   
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  // Return existing client if already created
+  if (supabaseClient) {
+    return supabaseClient
+  }
+  
+  // Create new client only once
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true
     }
   })
+  
+  return supabaseClient
 }
 
 // Service role client for admin operations (server-side only)
-export function getSupabaseAdminClient() {
+export function getSupabaseAdminClient(): SupabaseClient {
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Supabase environment variables not configured')
   }
   
-  return createClient(supabaseUrl, supabaseKey)
-}
-
-// Create a client instance that can be used directly
-let supabaseClient: SupabaseClient | null = null
-
-export function getClient() {
-  if (!supabaseClient && typeof window !== 'undefined') {
-    supabaseClient = getSupabaseClient()
+  // Return existing admin client if already created
+  if (supabaseAdminClient) {
+    return supabaseAdminClient
   }
-  return supabaseClient
+  
+  // Create new admin client only once
+  supabaseAdminClient = createClient(supabaseUrl, supabaseKey)
+  
+  return supabaseAdminClient
 }
 
 // For backward compatibility, export the functions
 // These will be undefined during build time but available at runtime
 export const supabase = typeof window !== 'undefined' ? getSupabaseClient() : undefined
 export const supabaseAdmin = typeof window !== 'undefined' ? getSupabaseAdminClient() : undefined
+
+// Cleanup function for testing purposes
+export function clearSupabaseClients() {
+  supabaseClient = null
+  supabaseAdminClient = null
+}
