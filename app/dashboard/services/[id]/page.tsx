@@ -311,6 +311,7 @@ export default function DashboardServiceDetailPage() {
           subtotal: service.base_price || 0, // Add subtotal field
           currency: service.currency || 'OMR', // Add currency field
           start_time: new Date().toISOString(), // Add the missing start_time field
+          end_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Add the missing end_time field (1 hour later)
           created_at: new Date().toISOString()
         })
         .select()
@@ -323,14 +324,11 @@ export default function DashboardServiceDetailPage() {
       }
 
       console.log('✅ Booking created successfully:', booking)
-      alert(`✅ Service booked successfully!\n\nService: ${service.title}\nProvider: ${service.provider_name}\nStatus: Pending\n\nYou will be notified when the provider responds.`)
-      
-      // Optionally redirect to bookings page
-      // router.push('/dashboard/bookings')
+      alert(`✅ Service booked successfully!\n\nService: ${service.title}\nProvider: ${service.provider_name}\nStatus: Pending\n\nYour booking has been created and is awaiting provider confirmation.`)
       
     } catch (err) {
-      console.error('❌ Error in handleBookService:', err)
-      alert('An unexpected error occurred. Please try again.')
+      console.error('❌ Error creating booking:', err)
+      alert('Failed to create booking. Please try again.')
     } finally {
       setBookingLoading(false)
     }

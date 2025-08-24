@@ -973,12 +973,14 @@ const fetchProviderProfile = async (id: string) => {
 - Missing `subtotal` field (should contain service price)
 - Missing `currency` field (should contain service currency)
 - Missing `start_time` field (should contain booking start time)
+- Missing `end_time` field (should contain booking end time)
 
 **Solution:**
 - Updated booking creation to include all required database fields
 - Added service title to booking record for better identification
 - Included service price and currency for financial tracking
 - Added start time for proper scheduling information
+- Added end time for proper booking duration and scheduling
 - Enhanced error handling and user feedback
 
 **Fixes Applied:**
@@ -1006,6 +1008,7 @@ const { data: booking, error } = await supabase
     subtotal: service.base_price || 0, // Add subtotal field
     currency: service.currency || 'OMR', // Add currency field
     start_time: new Date().toISOString(), // Add the missing start_time field
+    end_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Add the missing end_time field (1 hour later)
     created_at: new Date().toISOString()
   })
 ```
@@ -1014,16 +1017,16 @@ const { data: booking, error } = await supabase
 - **Complete Booking Data**: All required database fields are now populated
 - **Service Information**: Booking title contains the actual service name
 - **Financial Tracking**: Subtotal and currency fields for proper billing
-- **Scheduling Information**: Start time field for proper booking timing
+- **Scheduling Information**: Start time and end time fields for proper booking timing
 - **Error Prevention**: No more database constraint violations
 - **User Experience**: Successful booking creation with confirmation
 
 **Database Schema Compliance:**
-- **Required Fields**: `title`, `subtotal`, `currency`, `start_time` now properly populated
+- **Required Fields**: `title`, `subtotal`, `currency`, `start_time`, `end_time` now properly populated
 - **Data Integrity**: All constraints satisfied during booking creation
 - **Financial Accuracy**: Service pricing properly recorded in bookings
 - **Service Identification**: Clear service title in booking records
-- **Scheduling Data**: Proper start time for booking management
+- **Scheduling Data**: Proper start and end times for booking management
 
 **User Experience Improvements:**
 - **Successful Bookings**: Users can now successfully book services
