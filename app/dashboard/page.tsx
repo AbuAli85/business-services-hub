@@ -103,46 +103,49 @@ export default function DashboardPage() {
 
   async function loadDashboardData() {
     try {
+      if (!user?.id) {
+        console.log('User ID not available yet, skipping data load')
+        return
+      }
+
       const supabase = await getSupabaseClient()
       
       // Load services count
       const { count: servicesCount } = await supabase
         .from('services')
         .select('*', { count: 'exact', head: true })
-        .eq('provider_id', user?.id)
+        .eq('provider_id', user.id)
 
       // Load active bookings
       const { count: bookingsCount } = await supabase
         .from('bookings')
         .select('*', { count: 'exact', head: true })
-        .eq('provider_id', user?.id)
+        .eq('provider_id', user.id)
         .eq('status', 'in_progress')
 
-      // Load recent activity
+      // Load recent activity - simplified query without complex joins
       const { data: recentActivity } = await supabase
         .from('bookings')
         .select(`
           id,
           status,
           created_at,
-          services!inner(title),
-          profiles!bookings_client_id_fkey(full_name)
+          service_id
         `)
-        .eq('provider_id', user?.id)
+        .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5)
 
-      // Load upcoming bookings
+      // Load upcoming bookings - simplified query
       const { data: upcomingBookings } = await supabase
         .from('bookings')
         .select(`
           id,
           due_at,
           status,
-          services!inner(title),
-          profiles!bookings_client_id_fkey(full_name)
+          service_id
         `)
-        .eq('provider_id', user?.id)
+        .eq('provider_id', user.id)
         .gte('due_at', new Date().toISOString())
         .order('due_at', { ascending: true })
         .limit(5)
@@ -151,7 +154,7 @@ export default function DashboardPage() {
       const { data: allBookings } = await supabase
         .from('bookings')
         .select('status, created_at')
-        .eq('provider_id', user?.id)
+        .eq('provider_id', user.id)
         .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
       const completedBookings = allBookings?.filter(b => b.status === 'completed').length || 0
@@ -166,14 +169,14 @@ export default function DashboardPage() {
         recentActivity: recentActivity?.map(activity => ({
           id: activity.id,
           type: 'booking',
-          description: `${(activity.profiles as any)?.full_name || 'Client'} booked '${(activity.services as any)?.title || 'Service'}'`,
+          description: `New booking received for service #${activity.service_id}`,
           timestamp: activity.created_at,
           status: activity.status
         })) || [],
         upcomingBookings: upcomingBookings?.map(booking => ({
           id: booking.id,
-          serviceName: (booking.services as any)?.title || 'Service',
-          clientName: (booking.profiles as any)?.full_name || 'Client',
+          serviceName: `Service #${booking.service_id}`,
+          clientName: 'Client',
           date: new Date(booking.due_at).toLocaleDateString(),
           time: new Date(booking.due_at).toLocaleTimeString(),
           status: booking.status

@@ -62,11 +62,11 @@ export default function ServicesPage() {
     setLoading(true)
     
     try {
-      // Simple query first - just get services without relationships
       const supabase = await getSupabaseClient()
       let query = supabase
         .from('services')
         .select('*')
+        .eq('status', 'active') // Only fetch active services
 
       if (selectedCategory && selectedCategory !== 'all') {
         query = query.eq('category', selectedCategory)
