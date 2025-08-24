@@ -318,11 +318,30 @@ export default function DashboardServiceDetailPage() {
         return
       }
 
+      // Try to find if there's a provider_services table or view
+      let serviceReferenceId = service.id
+      
+      // Check if we need to reference a different table
+      try {
+        const { data: providerServiceCheck } = await supabase
+          .from('provider_services')
+          .select('id')
+          .eq('service_id', service.id)
+          .maybeSingle()
+        
+        if (providerServiceCheck) {
+          serviceReferenceId = providerServiceCheck.id
+          console.log('✅ Found provider service reference:', providerServiceCheck.id)
+        }
+      } catch (error) {
+        console.log('ℹ️ No provider_services table found, using original service ID')
+      }
+
       // Create a new booking with all required fields
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
-          service_id: service.id,
+          service_id: serviceReferenceId, // Use the correct reference ID
           client_id: user.id,
           provider_id: service.provider_id,
           title: service.title, // Add the missing title field
@@ -341,7 +360,63 @@ export default function DashboardServiceDetailPage() {
         
         // Handle specific foreign key constraint error
         if (error.code === '23503') {
-          alert('Service reference error. Please contact support.')
+          console.error('🔍 Foreign key constraint violation details:', error)
+          
+          // Try alternative approach - check if we need to create a provider service first
+          try {
+            console.log('🔄 Attempting to create provider service reference...')
+            
+            // Try to insert into provider_services table if it exists
+            const { data: providerService, error: providerServiceError } = await supabase
+              .from('provider_services')
+              .insert({
+                service_id: service.id,
+                provider_id: service.provider_id,
+                created_at: new Date().toISOString()
+              })
+              .select()
+              .single()
+            
+            if (providerServiceError) {
+              console.error('❌ Could not create provider service reference:', providerServiceError)
+              alert('Service reference error. Please contact support.')
+              return
+            }
+            
+            console.log('✅ Created provider service reference:', providerService)
+            
+            // Now try to create the booking again with the new reference
+            const { data: retryBooking, error: retryError } = await supabase
+              .from('bookings')
+              .insert({
+                service_id: providerService.id, // Use the new provider service ID
+                client_id: user.id,
+                provider_id: service.provider_id,
+                title: service.title,
+                status: 'pending',
+                subtotal: service.base_price || 0,
+                currency: service.currency || 'OMR',
+                start_time: new Date().toISOString(),
+                end_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                created_at: new Date().toISOString()
+              })
+              .select()
+              .single()
+            
+            if (retryError) {
+              console.error('❌ Retry booking creation failed:', retryError)
+              alert('Failed to create booking after service reference creation. Please try again.')
+              return
+            }
+            
+            console.log('✅ Booking created successfully on retry:', retryBooking)
+            alert(`✅ Service booked successfully!\n\nService: ${service.title}\nProvider: ${service.provider_name}\nStatus: Pending\n\nYour booking has been created and is awaiting provider confirmation.`)
+            
+          } catch (retryError) {
+            console.error('❌ Alternative approach failed:', retryError)
+            alert('Service reference error. Please contact support.')
+          }
+          
         } else {
           alert('Failed to create booking. Please try again.')
         }

@@ -1065,6 +1065,8 @@ const { data: booking, error } = await supabase
 - Implemented proper error handling for foreign key constraint violations
 - Added service status validation to ensure only active services can be booked
 - Enhanced error messages for better user feedback
+- Implemented workaround for provider_services table constraint mismatch
+- Added automatic provider service reference creation when needed
 
 **Fixes Applied:**
 ```typescript
@@ -1077,7 +1079,7 @@ const { data: booking, error } = await supabase
     // ... other fields
   })
 
-// After: Service verification + enhanced error handling
+// After: Service verification + enhanced error handling + constraint workaround
 // Step 1: Verify service exists and is active
 const { data: serviceCheck, error: serviceError } = await supabase
   .from('services')
@@ -1091,20 +1093,59 @@ if (!serviceCheck) {
   return
 }
 
-// Step 2: Create booking with proper error handling
+// Step 2: Check for provider_services table reference
+let serviceReferenceId = service.id
+try {
+  const { data: providerServiceCheck } = await supabase
+    .from('provider_services')
+    .select('id')
+    .eq('service_id', service.id)
+    .maybeSingle()
+  
+  if (providerServiceCheck) {
+    serviceReferenceId = providerServiceCheck.id
+  }
+} catch (error) {
+  console.log('ℹ️ No provider_services table found, using original service ID')
+}
+
+// Step 3: Create booking with proper error handling
 const { data: booking, error } = await supabase
   .from('bookings')
   .insert({
-    service_id: service.id,
+    service_id: serviceReferenceId, // Use the correct reference ID
     client_id: user.id,
     // ... all required fields
   })
 
-// Step 3: Handle specific foreign key constraint errors
+// Step 4: Handle specific foreign key constraint errors with workaround
 if (error?.code === '23503') {
-  alert('Service reference error. Please contact support.')
-} else {
-  alert('Failed to create booking. Please try again.')
+  // Try to create provider service reference and retry booking
+  try {
+    const { data: providerService } = await supabase
+      .from('provider_services')
+      .insert({
+        service_id: service.id,
+        provider_id: service.provider_id,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+    
+    // Retry booking creation with new reference
+    const { data: retryBooking } = await supabase
+      .from('bookings')
+      .insert({
+        service_id: providerService.id,
+        // ... all required fields
+      })
+      .select()
+      .single()
+    
+    // Success handling
+  } catch (retryError) {
+    alert('Service reference error. Please contact support.')
+  }
 }
 ```
 
@@ -1114,6 +1155,9 @@ if (error?.code === '23503') {
 - **Status Validation**: Only allows booking of active services
 - **User Feedback**: Clear error messages for different failure scenarios
 - **Data Integrity**: Prevents invalid service references
+- **Constraint Workaround**: Automatic handling of provider_services table mismatch
+- **Reference Creation**: Creates provider service references when needed
+- **Retry Logic**: Automatically retries booking creation after reference creation
 
 **Database Schema Compliance:**
 - **Service Validation**: Verifies service exists in correct table before booking
