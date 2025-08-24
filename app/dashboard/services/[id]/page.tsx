@@ -299,14 +299,17 @@ export default function DashboardServiceDetailPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Create a new booking
+      // Create a new booking with all required fields
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
           service_id: service.id,
           client_id: user.id,
           provider_id: service.provider_id,
+          title: service.title, // Add the missing title field
           status: 'pending',
+          subtotal: service.base_price || 0, // Add subtotal field
+          currency: service.currency || 'OMR', // Add currency field
           created_at: new Date().toISOString()
         })
         .select()
