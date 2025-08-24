@@ -310,6 +310,7 @@ export default function DashboardServiceDetailPage() {
           status: 'pending',
           subtotal: service.base_price || 0, // Add subtotal field
           currency: service.currency || 'OMR', // Add currency field
+          start_time: new Date().toISOString(), // Add the missing start_time field
           created_at: new Date().toISOString()
         })
         .select()
