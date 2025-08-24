@@ -157,16 +157,10 @@ export default function DashboardServiceDetailPage() {
       
       if (isOwner) {
         console.log('✅ User owns this service, fetching full data for editing')
-        // Fetch full service data for owner (provider) with provider info
+        // Fetch full service data for owner (provider) without complex joins
         const { data, error } = await supabase
           .from('services')
-          .select(`
-            *,
-            profiles!services_provider_id_fkey(
-              full_name,
-              companies!profiles_company_id_fkey(name)
-            )
-          `)
+          .select('*')
           .eq('id', id)
           .eq('provider_id', currentUserId)
           .maybeSingle()
@@ -181,23 +175,12 @@ export default function DashboardServiceDetailPage() {
           throw new Error('Service data not found')
         }
 
-        // Transform the data to include provider information
-        let transformedData
-        try {
-          transformedData = {
-            ...data,
-            provider_name: data.profiles?.[0]?.full_name || 'Unknown Provider',
-            provider_company: data.profiles?.[0]?.companies?.[0]?.name || 'Independent Professional'
-          }
-        } catch (error) {
-          console.warn('⚠️ Foreign key relationship failed, using fallback method')
-          // Fallback: fetch provider info separately
-          const providerInfo = await fetchProviderInfo(data.provider_id)
-          transformedData = {
-            ...data,
-            provider_name: providerInfo.name,
-            provider_company: providerInfo.company
-          }
+        // Use fallback method to fetch provider information
+        const providerInfo = await fetchProviderInfo(data.provider_id)
+        const transformedData = {
+          ...data,
+          provider_name: providerInfo.name,
+          provider_company: providerInfo.company
         }
 
         console.log('✅ Service fetched successfully for owner:', transformedData)
@@ -214,17 +197,13 @@ export default function DashboardServiceDetailPage() {
         })
       } else {
         console.log('👤 User is viewing as client, fetching service data for browsing')
-        // Fetch service data for client viewing with provider information
+        // Fetch service data for client viewing without complex joins
         const { data, error } = await supabase
           .from('services')
           .select(`
             id, title, description, category, status, base_price, currency, 
             cover_image_url, created_at, updated_at, provider_id, 
-            views_count, bookings_count, rating, tags,
-            profiles!services_provider_id_fkey(
-              full_name,
-              companies!profiles_company_id_fkey(name)
-            )
+            views_count, bookings_count, rating, tags
           `)
           .eq('id', id)
           .eq('status', 'active')
@@ -240,23 +219,12 @@ export default function DashboardServiceDetailPage() {
           throw new Error('Service data not found')
         }
 
-        // Transform the data to include provider information
-        let transformedData
-        try {
-          transformedData = {
-            ...data,
-            provider_name: data.profiles?.[0]?.full_name || 'Unknown Provider',
-            provider_company: data.profiles?.[0]?.companies?.[0]?.name || 'Independent Professional'
-          }
-        } catch (error) {
-          console.warn('⚠️ Foreign key relationship failed, using fallback method')
-          // Fallback: fetch provider info separately
-          const providerInfo = await fetchProviderInfo(data.provider_id)
-          transformedData = {
-            ...data,
-            provider_name: providerInfo.name,
-            provider_company: providerInfo.company
-          }
+        // Use fallback method to fetch provider information
+        const providerInfo = await fetchProviderInfo(data.provider_id)
+        const transformedData = {
+          ...data,
+          provider_name: providerInfo.name,
+          provider_company: providerInfo.company
         }
 
         console.log('✅ Service fetched successfully for client:', transformedData)
@@ -354,6 +322,7 @@ export default function DashboardServiceDetailPage() {
 
   const fetchProviderInfo = async (providerId: string) => {
     try {
+      console.log('🔍 Fetching provider info for:', providerId)
       const supabase = await getSupabaseClient()
       
       // Fetch provider profile information
@@ -368,24 +337,39 @@ export default function DashboardServiceDetailPage() {
         return { name: 'Unknown Provider', company: 'Independent Professional' }
       }
 
-      let companyName = 'Independent Professional'
-      if (profile?.company_id) {
-        // Fetch company information
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('name')
-          .eq('id', profile.company_id)
-          .maybeSingle()
+      if (!profile) {
+        console.warn('⚠️ No profile found for provider:', providerId)
+        return { name: 'Unknown Provider', company: 'Independent Professional' }
+      }
 
-        if (!companyError && company) {
-          companyName = company.name
+      let companyName = 'Independent Professional'
+      if (profile.company_id) {
+        try {
+          // Fetch company information
+          const { data: company, error: companyError } = await supabase
+            .from('companies')
+            .select('name')
+            .eq('id', profile.company_id)
+            .maybeSingle()
+
+          if (!companyError && company && company.name) {
+            companyName = company.name
+            console.log('✅ Company found:', companyName)
+          } else {
+            console.warn('⚠️ Company not found or error:', companyError)
+          }
+        } catch (companyError) {
+          console.warn('⚠️ Error fetching company:', companyError)
         }
       }
 
-      return {
-        name: profile?.full_name || 'Unknown Provider',
+      const result = {
+        name: profile.full_name || 'Unknown Provider',
         company: companyName
       }
+
+      console.log('✅ Provider info fetched:', result)
+      return result
     } catch (error) {
       console.warn('⚠️ Error fetching provider info:', error)
       return { name: 'Unknown Provider', company: 'Independent Professional' }

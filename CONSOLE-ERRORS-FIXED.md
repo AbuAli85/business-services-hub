@@ -588,6 +588,100 @@ const fetchProviderInfo = async (providerId: string) => {
 - **Error Handling**: Comprehensive error management
 - **Performance**: Optimized database queries
 
+### 15. Foreign Key Relationship Fix (`/dashboard/services/[id]`)
+**Problem:**
+- `GET https://reootcngcptfogfozlmz.supabase.co/rest/v1/services?select=...&profiles!services_provider_id_fkey(full_name,companies!profiles_company_id_fkey(name))... 400 (Bad Request)`
+- `{code: 'PGRST200', details: "Searched for a foreign key relationship between 'profiles' and 'companies' in the schema cache", hint: null, message: "Could not find a relationship between 'profiles' and 'companies' in the schema cache"}`
+- Foreign key relationships between `profiles` and `companies` tables were not properly defined in the database schema
+- Complex nested joins were causing PGRST200 errors
+
+**Solution:**
+- Simplified queries to avoid problematic foreign key relationships
+- Implemented robust fallback method for provider information fetching
+- Enhanced error handling and logging for better debugging
+
+**Fixes Applied:**
+```typescript
+// Before: Complex foreign key relationships causing PGRST200 errors
+const { data, error } = await supabase
+  .from('services')
+  .select(`
+    *,
+    profiles!services_provider_id_fkey(
+      full_name,
+      companies!profiles_company_id_fkey(name)
+    )
+  `)
+
+// After: Simple service query + separate provider info fetching
+const { data, error } = await supabase
+  .from('services')
+  .select('*')
+  .eq('id', id)
+  .maybeSingle()
+
+// Separate provider info fetching with fallbacks
+const providerInfo = await fetchProviderInfo(data.provider_id)
+const transformedData = {
+  ...data,
+  provider_name: providerInfo.name,
+  provider_company: providerInfo.company
+}
+```
+
+**Enhanced Provider Info Fetching:**
+```typescript
+const fetchProviderInfo = async (providerId: string) => {
+  try {
+    // Fetch profile information
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, company_id')
+      .eq('id', providerId)
+      .maybeSingle()
+
+    if (profileError || !profile) {
+      return { name: 'Unknown Provider', company: 'Independent Professional' }
+    }
+
+    let companyName = 'Independent Professional'
+    if (profile.company_id) {
+      // Fetch company information separately
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('name')
+        .eq('id', profile.company_id)
+        .maybeSingle()
+
+      if (!companyError && company?.name) {
+        companyName = company.name
+      }
+    }
+
+    return {
+      name: profile.full_name || 'Unknown Provider',
+      company: companyName
+    }
+  } catch (error) {
+    console.warn('⚠️ Error fetching provider info:', error)
+    return { name: 'Unknown Provider', company: 'Independent Professional' }
+  }
+}
+```
+
+**Benefits of the Fix:**
+- **Reliability**: No more PGRST200 foreign key relationship errors
+- **Performance**: Simpler queries with better error handling
+- **Robustness**: Fallback mechanisms ensure data is always available
+- **Debugging**: Enhanced logging for troubleshooting
+- **Maintainability**: Cleaner, more maintainable code structure
+
+**Error Handling Improvements:**
+- **Graceful Degradation**: Meaningful fallback values when data is unavailable
+- **Comprehensive Logging**: Detailed error tracking for debugging
+- **User Experience**: Users always see provider information, even if incomplete
+- **System Stability**: No more crashes due to foreign key relationship failures
+
 ## 🔧 Technical Improvements
 
 ### 1. User Authentication Flow
@@ -625,6 +719,7 @@ const fetchProviderInfo = async (providerId: string) => {
 | **Dashboard Service Detail Database Error** | **✅ Fixed** | **Fixed PGRST116 error and improved service access validation** |
 | **Client Service Viewing Enhancement** | **✅ Implemented** | **Added dual-mode service detail page for clients and providers** |
 | **Provider Name Display Enhancement** | **✅ Implemented** | **Replaced Provider ID with actual Provider Name and Company** |
+| **Foreign Key Relationship Fix** | **✅ Fixed** | **Resolved PGRST200 error by using fallback provider info fetching** |
 
 ## 🚀 Performance Improvements
 
