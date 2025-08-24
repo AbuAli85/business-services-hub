@@ -80,14 +80,16 @@ export default function EnhancedDashboardPage() {
       setUser(user)
       
       // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
 
-      if (profile) {
-        setUser({ ...user, profile })
+        if (profile) {
+          setUser({ ...user, profile })
+        }
       }
     } catch (error) {
       console.error('Auth check error:', error)
