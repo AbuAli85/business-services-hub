@@ -91,6 +91,8 @@ export default function DashboardPage() {
   }
 
   async function loadDashboardData() {
+    let timeoutId: NodeJS.Timeout | null = null
+    
     try {
       if (!user?.id) {
         console.log('User ID not available yet, skipping data load')
@@ -98,7 +100,6 @@ export default function DashboardPage() {
       }
 
       // Add timeout to prevent infinite loading
-      let timeoutId: NodeJS.Timeout | null = null
       timeoutId = setTimeout(() => {
         console.log('Dashboard data load timeout, setting loading to false')
         setLoading(false)
