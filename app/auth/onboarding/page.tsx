@@ -37,26 +37,32 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      console.log('Current user in onboarding:', user)
-      console.log('Role from query params:', role)
-      
-      if (!user) {
-        toast.error('Please sign in to continue onboarding')
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        console.log('Current user in onboarding:', user)
+        console.log('Role from query params:', role)
+        
+        if (!user) {
+          toast.error('Please sign in to continue onboarding')
+          router.push('/auth/sign-in')
+          return
+        }
+        
+        if (!role || !['client', 'provider'].includes(role)) {
+          console.log('No valid role found, redirecting to sign-up')
+          console.log('Available roles:', ['client', 'provider'])
+          console.log('Current role:', role)
+          router.push('/auth/sign-up')
+          return
+        }
+        
+        console.log('Auth check passed, role is valid:', role)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        toast.error('Authentication check failed')
         router.push('/auth/sign-in')
-        return
       }
-      
-      if (!role || !['client', 'provider'].includes(role)) {
-        console.log('No valid role found, redirecting to sign-up')
-        console.log('Available roles:', ['client', 'provider'])
-        console.log('Current role:', role)
-        router.push('/auth/sign-up')
-        return
-      }
-      
-      console.log('Auth check passed, role is valid:', role)
     }
     
     checkAuth()
@@ -94,7 +100,7 @@ export default function OnboardingPage() {
     setLoading(true)
     
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {

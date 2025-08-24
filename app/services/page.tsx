@@ -63,7 +63,8 @@ export default function ServicesPage() {
     
     try {
       // Simple query first - just get services without relationships
-      let query = getSupabaseClient()
+      const supabase = await getSupabaseClient()
+      let query = supabase
         .from('services')
         .select('*')
 

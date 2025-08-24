@@ -17,7 +17,7 @@ export default function TestPage() {
       setEnvStatus(status)
     } catch (error) {
       console.error('Environment check failed:', error)
-      setEnvStatus({ error: error.message })
+      setEnvStatus({ error: error instanceof Error ? error.message : 'Unknown error' })
     }
   }, [])
 
@@ -35,7 +35,7 @@ export default function TestPage() {
         setTestResult(`✅ Connection successful! Session: ${data.session ? 'Active' : 'None'}`)
       }
     } catch (error) {
-      setTestResult(`❌ Error: ${error.message}`)
+      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -65,7 +65,7 @@ export default function TestPage() {
         setTestResult(`✅ Signup endpoint working! User ID: ${data.user?.id || 'None'}`)
       }
     } catch (error) {
-      setTestResult(`❌ Signup error: ${error.message}`)
+      setTestResult(`❌ Signup error: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }

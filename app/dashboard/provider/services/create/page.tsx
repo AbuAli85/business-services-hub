@@ -63,7 +63,7 @@ export default function CreateServicePage() {
 
     try {
       // Get current user
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {

@@ -19,7 +19,7 @@ export default function EnvChecker() {
         setIsConfigured(configured)
       } catch (error) {
         console.error('Environment check failed:', error)
-        setEnvStatus({ error: error.message })
+        setEnvStatus({ error: error instanceof Error ? error.message : 'Unknown error' })
         setIsConfigured(false)
       }
     }

@@ -60,7 +60,7 @@ export default function DashboardLayout({
 
   const checkUser = async () => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
@@ -138,7 +138,7 @@ export default function DashboardLayout({
 
   const handleSignOut = async () => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       await supabase.auth.signOut()
       router.push('/')
     } catch (error) {

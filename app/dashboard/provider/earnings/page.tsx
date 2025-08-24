@@ -69,7 +69,7 @@ export default function EarningsPage() {
 
   const fetchEarningsData = async () => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 

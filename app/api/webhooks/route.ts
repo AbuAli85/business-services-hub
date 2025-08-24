@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 async function handleTrackingUpdated(data: any) {
   try {
     const { booking_id, status, tracking_info } = data
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
     
     // Update booking status
     const { error } = await supabase
@@ -111,7 +111,7 @@ async function handleBookingCreated(data: any) {
       total_cost 
     } = data
 
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
 
     // Create new booking with all required fields
     const { data: booking, error } = await supabase
@@ -161,7 +161,7 @@ async function handleBookingCreated(data: any) {
 async function handleNewServiceCreated(data: any) {
   try {
     const { service_id, provider_id, service_name } = data
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
 
     // Update service status to pending approval
     const { error } = await supabase
@@ -200,7 +200,7 @@ async function handleNewServiceCreated(data: any) {
 async function handlePaymentSucceeded(data: any) {
   try {
     const { booking_id, amount, payment_method } = data
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
 
     // Update booking status to paid
     const { error } = await supabase
@@ -245,7 +245,7 @@ async function handleWeeklyReport() {
     // Get weekly booking data
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
 
     const { data: bookings, error } = await supabase
       .from('bookings')

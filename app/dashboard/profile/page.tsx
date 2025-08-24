@@ -99,7 +99,7 @@ export default function ProfilePage() {
 
   const fetchProfileData = async () => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
@@ -121,7 +121,7 @@ export default function ProfilePage() {
 
       // Fetch company data
       if (profileData?.company_id) {
-        const supabaseClient = getSupabaseClient()
+        const supabaseClient = await getSupabaseClient()
         const { data: companyData } = await supabaseClient
           .from('companies')
           .select('*')
@@ -134,7 +134,7 @@ export default function ProfilePage() {
       }
         
       // Fetch services
-      const supabaseServices = getSupabaseClient()
+      const supabaseServices = await getSupabaseClient()
       const { data: servicesData } = await supabaseServices
         .from('services')
         .select('*')
@@ -157,7 +157,7 @@ export default function ProfilePage() {
 
   const calculateStats = async (userId: string) => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       // Services count
       const { count: servicesCount } = await supabase
         .from('services')
@@ -188,7 +188,7 @@ export default function ProfilePage() {
     try {
       if (!profile) return
 
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { error } = await supabase
         .from('profiles')
         .update({

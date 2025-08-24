@@ -23,7 +23,7 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      const supabase = getSupabaseClient();
+      const supabase = await getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -93,7 +93,7 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const supabase = getSupabaseClient();
+      const supabase = await getSupabaseClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -117,7 +117,7 @@ export default function SignInPage() {
     }
 
     try {
-      const supabase = getSupabaseClient();
+      const supabase = await getSupabaseClient();
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email
