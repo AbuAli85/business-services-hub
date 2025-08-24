@@ -1,11 +1,18 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+
+// Environment variables should be available at build time
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Create Supabase client only when needed (not at build time)
 export function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (typeof window === 'undefined') {
+    // Server-side: return null or throw error
+    throw new Error('Supabase client cannot be used on server-side')
+  }
   
   if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase environment variables not configured')
     throw new Error('Supabase environment variables not configured')
   }
   
@@ -18,9 +25,8 @@ export function getSupabaseClient() {
   })
 }
 
-// Service role client for admin operations
+// Service role client for admin operations (server-side only)
 export function getSupabaseAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   
   if (!supabaseUrl || !supabaseKey) {
@@ -28,6 +34,16 @@ export function getSupabaseAdminClient() {
   }
   
   return createClient(supabaseUrl, supabaseKey)
+}
+
+// Create a client instance that can be used directly
+let supabaseClient: SupabaseClient | null = null
+
+export function getClient() {
+  if (!supabaseClient && typeof window !== 'undefined') {
+    supabaseClient = getSupabaseClient()
+  }
+  return supabaseClient
 }
 
 // For backward compatibility, export the functions
