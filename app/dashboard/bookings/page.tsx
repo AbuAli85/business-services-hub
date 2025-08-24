@@ -442,17 +442,17 @@ export default function BookingsPage() {
     if (userRole === 'provider') {
       switch (booking.status) {
         case 'pending':
-          // Use valid status transitions based on database constraints
+          // Use a two-step workflow: pending → confirmed → in_progress
           actions.push(
             <Button
-              key="start"
+              key="accept"
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
-              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
+              className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+              onClick={() => updateBookingStatus(booking.id, 'confirmed')}
               disabled={isUpdatingStatus === booking.id}
             >
-              <ClockIcon className="h-4 w-4 mr-2" />
-              Start Work
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Accept
             </Button>,
             <Button
               key="decline"
@@ -464,6 +464,21 @@ export default function BookingsPage() {
             >
               <XCircle className="h-4 w-4 mr-2" />
               Decline
+            </Button>
+          )
+          break
+        case 'confirmed':
+          // Now allow moving from confirmed to in_progress
+          actions.push(
+            <Button
+              key="start"
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
+              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
+              disabled={isUpdatingStatus === booking.id}
+            >
+              <ClockIcon className="h-4 w-4 mr-2" />
+              Start Work
             </Button>
           )
           break
