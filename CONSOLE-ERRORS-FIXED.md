@@ -149,6 +149,94 @@ let query = supabase
   .eq('status', 'active') // Only fetch active services
 ```
 
+### 4. Service Detail Page (`/services/[id]`)
+**Before:**
+```typescript
+// Complex foreign key relationships causing errors
+const { data, error } = await supabase
+  .from('services')
+  .select(`
+    *,
+    provider:profiles!services_provider_id_fkey(
+      full_name,
+      company:companies!profiles_company_id_fkey(
+        name,
+        logo_url
+      )
+    )
+  `)
+  .eq('id', serviceId)
+  .single()
+```
+
+**After:**
+```typescript
+// Simplified query without complex joins
+const { data, error } = await supabase
+  .from('services')
+  .select('*')
+  .eq('id', serviceId)
+  .single()
+```
+
+### 5. Dashboard Services Page (`/dashboard/services`)
+**Before:**
+```typescript
+// Complex joins between services, profiles, and companies
+let query = supabase
+  .from('services')
+  .select(`
+    *,
+    profiles!services_provider_id_fkey(
+      full_name,
+      company_id
+    ),
+    companies!profiles_company_id_fkey(
+      name
+    )
+  `)
+  .eq('provider_id', providerId)
+```
+
+**After:**
+```typescript
+// Simplified query with basic field selection
+let query = supabase
+  .from('services')
+  .select('*')
+  .eq('provider_id', providerId)
+```
+
+### 6. API Services Route (`/api/services/[id]`)
+**Before:**
+```typescript
+// Complex foreign key relationships in API
+const { data: service, error } = await supabase
+  .from('services')
+  .select(`
+    *,
+    provider:profiles!services_provider_id_fkey(
+      full_name,
+      company:companies!profiles_company_id_fkey(
+        name,
+        logo_url
+      )
+    )
+  `)
+  .eq('id', serviceId)
+  .single()
+```
+
+**After:**
+```typescript
+// Simplified API query
+const { data: service, error } = await supabase
+  .from('services')
+  .select('*')
+  .eq('id', serviceId)
+  .single()
+```
+
 ## 🔧 Technical Improvements
 
 ### 1. User Authentication Flow
@@ -175,6 +263,9 @@ let query = supabase
 | Complex Join Queries | ✅ Fixed | Simplified to basic field selection |
 | 400 Bad Request Errors | ✅ Fixed | All queries now use valid parameters |
 | Database Schema Issues | ✅ Fixed | Queries now match actual database structure |
+| Service Detail Page Errors | ✅ Fixed | Removed nested foreign key relationships |
+| Dashboard Services Errors | ✅ Fixed | Simplified provider and company queries |
+| API Route Errors | ✅ Fixed | Cleaned up complex join queries |
 
 ## 🚀 Performance Improvements
 

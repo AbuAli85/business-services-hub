@@ -19,16 +19,7 @@ export async function GET(
     
     const { data: service, error } = await supabase
       .from('services')
-      .select(`
-        *,
-        provider:profiles!services_provider_id_fkey(
-          full_name,
-          company:companies!profiles_company_id_fkey(
-            name,
-            logo_url
-          )
-        )
-      `)
+      .select('*')
       .eq('id', serviceId)
       .single()
 

@@ -125,16 +125,7 @@ export default function ServicesPage() {
       const supabase = await getSupabaseClient()
       let query = supabase
         .from('services')
-        .select(`
-          *,
-          profiles!services_provider_id_fkey(
-            full_name,
-            company_id
-          ),
-          companies!profiles_company_id_fkey(
-            name
-          )
-        `)
+        .select('*')
         .eq('provider_id', providerId)
 
       if (selectedCategory && selectedCategory !== 'all') {
@@ -172,16 +163,7 @@ export default function ServicesPage() {
       const supabase = await getSupabaseClient()
       let query = supabase
         .from('services')
-        .select(`
-          *,
-          profiles!services_provider_id_fkey(
-            full_name,
-            company_id
-          ),
-          companies!profiles_company_id_fkey(
-            name
-          )
-        `)
+        .select('*')
         .eq('status', 'active') // Only show active services to clients
 
       if (selectedCategory && selectedCategory !== 'all') {
@@ -594,13 +576,11 @@ export default function ServicesPage() {
                   </div>
 
                   {/* Provider Information for Clients */}
-                  {!isProvider && service.profiles?.full_name && (
+                  {!isProvider && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <User className="h-4 w-4" />
-                      <span>{service.profiles.full_name}</span>
-                      {service.companies?.name && (
-                        <span className="text-gray-500">• {service.companies.name}</span>
-                      )}
+                      <span>Service Provider</span>
+                      <span className="text-gray-500">• Business</span>
                     </div>
                   )}
                 </CardHeader>

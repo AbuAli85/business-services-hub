@@ -17,13 +17,7 @@ interface Service {
   currency: string
   cover_image_url: string
   created_at: string
-  provider: {
-    full_name: string
-    company: {
-      name: string
-      logo_url: string
-    }
-  }
+  provider_id: string
 }
 
 export default function ServiceDetailPage() {
@@ -40,16 +34,7 @@ export default function ServiceDetailPage() {
         
         const { data, error } = await supabase
           .from('services')
-          .select(`
-            *,
-            provider:profiles!services_provider_id_fkey(
-              full_name,
-              company:companies!profiles_company_id_fkey(
-                name,
-                logo_url
-              )
-            )
-          `)
+          .select('*')
           .eq('id', serviceId)
           .single()
 
@@ -109,18 +94,18 @@ export default function ServiceDetailPage() {
         {/* Service Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            {service.provider?.company?.logo_url && (
+            {service.provider_id && (
               <img 
-                src={service.provider.company.logo_url} 
-                alt={service.provider.company.name}
+                src={`/api/providers/${service.provider_id}/logo`} 
+                alt={`Provider Logo`}
                 className="w-16 h-16 rounded-lg object-cover"
               />
             )}
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{service.title}</h1>
               <p className="text-gray-600">
-                by {service.provider?.full_name || 'Unknown Provider'}
-                {service.provider?.company?.name && ` • ${service.provider.company.name}`}
+                by {service.provider_id ? 'Provider' : 'Unknown Provider'}
+                {service.provider_id && ` • ${service.provider_id}`}
               </p>
             </div>
           </div>
