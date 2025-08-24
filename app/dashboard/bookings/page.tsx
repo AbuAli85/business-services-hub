@@ -166,113 +166,55 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Enhanced query with better error handling and data fetching
-      let query = supabase
-        .from('bookings')
-        .select(`
-          *,
-          services:service_id(name, price, description, estimated_duration),
-          client_profiles:client_id(full_name, email, phone),
-          provider_profiles:provider_id(full_name, company_name)
-        `)
-        .order('created_at', { ascending: false })
+                    // For now, use basic query since foreign key relationships are not configured
+       // Enhanced query will be enabled once database relationships are set up
+       let query = supabase
+         .from('bookings')
+         .select('*')
+         .order('created_at', { ascending: false })
 
-      // Filter based on user role
-      if (userRole === 'provider') {
-        query = query.eq('provider_id', userId)
-      } else if (userRole === 'client') {
-        query = query.eq('client_id', userId)
-      }
+       // Filter based on user role
+       if (userRole === 'provider') {
+         query = query.eq('provider_id', userId)
+       } else if (userRole === 'client') {
+         query = query.eq('client_id', userId)
+       }
 
-      const { data: bookingsData, error } = await query
+       const { data: bookingsData, error } = await query
 
-      if (error) {
-        console.error('Error fetching bookings:', error)
-        
-        // Show user-friendly error message
-        if (error.message?.includes('foreign key relationship')) {
-          console.log('Database relationships not configured - using fallback data')
-        }
-        
-        // Fallback to basic query if enhanced query fails
-        let fallbackQuery = supabase
-          .from('bookings')
-          .select('*')
-          .order('created_at', { ascending: false })
-        
-        if (userRole === 'provider') {
-          fallbackQuery = fallbackQuery.eq('provider_id', userId)
-        } else if (userRole === 'client') {
-          fallbackQuery = fallbackQuery.eq('client_id', userId)
-        }
+       if (error) {
+         console.error('Error fetching bookings:', error)
+         setBookings([])
+         calculateStats([])
+         return
+       }
 
-        const { data: fallbackData, error: fallbackError } = await fallbackQuery
-        
-        if (fallbackError) {
-          console.error('Fallback query also failed:', fallbackError)
-          setBookings([])
-          calculateStats([])
-          return
-        }
-        
-        // Use fallback data
-        const transformedBookings = (fallbackData || []).map(booking => ({
-          id: booking.id,
-          service_id: booking.service_id,
-          client_id: booking.client_id,
-          provider_id: booking.provider_id,
-          status: booking.status || 'pending',
-          created_at: booking.created_at,
-          scheduled_date: booking.scheduled_date,
-          scheduled_time: booking.scheduled_time,
-          notes: booking.notes || '',
-          amount: booking.amount || 0,
-          payment_status: booking.payment_status || 'pending',
-          rating: booking.rating,
-          review: booking.review,
-          last_updated: booking.updated_at || booking.created_at,
-          service_name: `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
-          client_name: `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
-          provider_name: `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
-          service_description: '',
-          estimated_duration: '',
-          location: '',
-          client_email: '',
-          client_phone: '',
-          cancellation_reason: ''
-        }))
-        
-        setBookings(transformedBookings)
-        calculateStats(transformedBookings)
-        return
-      }
-
-      // Transform the enhanced data
-      const transformedBookings = (bookingsData || []).map(booking => ({
-        id: booking.id,
-        service_id: booking.service_id,
-        client_id: booking.client_id,
-        provider_id: booking.provider_id,
-        status: booking.status || 'pending',
-        created_at: booking.created_at,
-        scheduled_date: booking.scheduled_date,
-        scheduled_time: booking.scheduled_time,
-        notes: booking.notes || '',
-        amount: booking.services?.price || booking.amount || 0,
-        payment_status: booking.payment_status || 'pending',
-        rating: booking.rating,
-        review: booking.review,
-        last_updated: booking.updated_at || booking.created_at,
-        service_name: booking.services?.name || `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
-        client_name: booking.client_profiles?.full_name || `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
-        provider_name: booking.provider_profiles?.full_name || `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
-        service_description: booking.services?.description || '',
-        estimated_duration: booking.services?.estimated_duration || '',
-        location: booking.location || '',
-        client_email: booking.client_profiles?.email || '',
-        client_phone: booking.client_profiles?.phone || '',
-        cancellation_reason: booking.cancellation_reason || ''
-      }))
+       // Transform the basic data
+       const transformedBookings = (bookingsData || []).map(booking => ({
+         id: booking.id,
+         service_id: booking.service_id,
+         client_id: booking.client_id,
+         provider_id: booking.provider_id,
+         status: booking.status || 'pending',
+         created_at: booking.created_at,
+         scheduled_date: booking.scheduled_date,
+         scheduled_time: booking.scheduled_time,
+         notes: booking.notes || '',
+         amount: booking.amount || 0,
+         payment_status: booking.payment_status || 'pending',
+         rating: booking.rating,
+         review: booking.review,
+         last_updated: booking.updated_at || booking.created_at,
+         service_name: `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
+         client_name: `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
+         provider_name: `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
+         service_description: '',
+         estimated_duration: '',
+         location: '',
+         client_email: '',
+         client_phone: '',
+         cancellation_reason: ''
+       }))
 
       setBookings(transformedBookings)
       calculateStats(transformedBookings)
@@ -643,23 +585,30 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Try to fetch enhanced data for the first booking to test if relationships work
+      // Test if enhanced data relationships are available
       const { data: testData, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select(`
+          *,
+          services:service_id(name, price)
+        `)
         .limit(1)
 
-      if (!error && testData && testData.length > 0) {
-        console.log('Basic booking data is available!')
-        setShowEnhancedData(false)
-        // For now, we'll use basic data until relationships are set up
+      if (!error && testData && testData[0]?.services) {
+        console.log('✅ Enhanced data relationships are now available!')
+        setShowEnhancedData(true)
+        alert('Enhanced data is now available! Service names and amounts will be displayed correctly.')
+        // Refresh data to use enhanced queries
+        await fetchBookings(user.id)
       } else {
-        console.log('No booking data available')
+        console.log('ℹ️ Enhanced data relationships not yet configured')
         setShowEnhancedData(false)
+        alert('Enhanced data relationships are not yet configured in the database. Service names and amounts will show as IDs.')
       }
     } catch (error) {
       console.log('Enhanced data check failed:', error)
       setShowEnhancedData(false)
+      alert('Enhanced data check failed. Using basic data for now.')
     }
   }
 
