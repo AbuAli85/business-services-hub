@@ -51,6 +51,8 @@ export default function DashboardServiceDetailPage() {
   const [saving, setSaving] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [isServiceOwner, setIsServiceOwner] = useState(false)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [contactLoading, setContactLoading] = useState(false)
   
   // Form state for editing
   const [editForm, setEditForm] = useState({
@@ -290,19 +292,109 @@ export default function DashboardServiceDetailPage() {
     }
   }
 
-  const handleBookService = () => {
-    // TODO: Implement booking functionality
-    alert(`Booking service: ${service?.title}\nProvider: ${service?.provider_name}`)
+  const handleBookService = async () => {
+    if (!service) return
+    
+    setBookingLoading(true)
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Create a new booking
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .insert({
+          service_id: service.id,
+          client_id: user.id,
+          provider_id: service.provider_id,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('❌ Error creating booking:', error)
+        alert('Failed to create booking. Please try again.')
+        return
+      }
+
+      console.log('✅ Booking created successfully:', booking)
+      alert(`✅ Service booked successfully!\n\nService: ${service.title}\nProvider: ${service.provider_name}\nStatus: Pending\n\nYou will be notified when the provider responds.`)
+      
+      // Optionally redirect to bookings page
+      // router.push('/dashboard/bookings')
+      
+    } catch (err) {
+      console.error('❌ Error in handleBookService:', err)
+      alert('An unexpected error occurred. Please try again.')
+    } finally {
+      setBookingLoading(false)
+    }
   }
 
-  const handleContactProvider = () => {
-    // TODO: Implement messaging functionality
-    alert(`Contacting provider: ${service?.provider_name}\nService: ${service?.title}`)
+  const handleContactProvider = async () => {
+    if (!service) return
+    
+    setContactLoading(true)
+    try {
+      // For now, redirect to messages page with pre-filled recipient
+      // In a full implementation, this would open a messaging modal or redirect to messages
+      const message = `Hi ${service.provider_name}, I'm interested in your service "${service.title}". Could you please provide more details?`
+      
+      // Store the message in localStorage for the messages page to pick up
+      localStorage.setItem('pendingMessage', JSON.stringify({
+        recipientId: service.provider_id,
+        recipientName: service.provider_name,
+        subject: `Inquiry about ${service.title}`,
+        message: message
+      }))
+      
+      // Redirect to messages page
+      router.push('/dashboard/messages')
+      
+    } catch (err) {
+      console.error('❌ Error in handleContactProvider:', err)
+      alert('An unexpected error occurred. Please try again.')
+    } finally {
+      setContactLoading(false)
+    }
   }
 
-  const handleViewProviderProfile = () => {
-    // TODO: Navigate to provider profile page
-    alert(`Viewing profile of: ${service?.provider_name}`)
+  const handleViewProviderProfile = async () => {
+    if (!service) return
+    
+    try {
+      // For now, redirect to a provider profile page
+      // In a full implementation, this would navigate to the provider's public profile
+      router.push(`/dashboard/provider/${service.provider_id}`)
+      
+    } catch (err) {
+      console.error('❌ Error in handleViewProviderProfile:', err)
+      // Fallback: show provider info in a modal or alert
+      alert(`Provider Profile: ${service.provider_name}\n\nCompany: ${service.provider_company}\n\nThis feature is coming soon!`)
+    }
+  }
+
+  const handleWriteReview = () => {
+    if (!service) return
+    
+    // For now, show a review form modal or redirect to review page
+    // In a full implementation, this would open a review submission form
+    const reviewData = {
+      serviceId: service.id,
+      serviceTitle: service.title,
+      providerId: service.provider_id,
+      providerName: service.provider_name
+    }
+    
+    // Store review data for the review page
+    localStorage.setItem('pendingReview', JSON.stringify(reviewData))
+    
+    // Redirect to a review page or show modal
+    alert(`Review Service: ${service.title}\n\nProvider: ${service.provider_name}\n\nThis feature is coming soon! You'll be able to rate and review this service.`)
+    
+    // Optionally redirect to review page
+    // router.push(`/dashboard/reviews/new?service=${service.id}`)
   }
 
   const getStatusColor = (status: string) => {
@@ -485,13 +577,13 @@ export default function DashboardServiceDetailPage() {
               ) : (
                 // Client view - can book/contact
                 <>
-                  <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleBookService}>
+                  <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleBookService} disabled={bookingLoading}>
                     <Calendar className="h-4 w-4 mr-2" />
-                    Book Service
+                    {bookingLoading ? 'Booking...' : 'Book Service'}
                   </Button>
-                  <Button variant="outline" onClick={handleContactProvider}>
+                  <Button variant="outline" onClick={handleContactProvider} disabled={contactLoading}>
                     <MessageCircle className="h-4 w-4 mr-2" />
-                    Contact Provider
+                    {contactLoading ? 'Contacting...' : 'Contact Provider'}
                   </Button>
                 </>
               )}
@@ -659,13 +751,13 @@ export default function DashboardServiceDetailPage() {
                           You can book this service or contact the provider directly.
                         </p>
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={handleBookService}>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={handleBookService} disabled={bookingLoading}>
                             <Calendar className="h-4 w-4 mr-2" />
-                            Book Now
+                            {bookingLoading ? 'Booking...' : 'Book Now'}
                           </Button>
-                          <Button size="sm" variant="outline" onClick={handleContactProvider}>
+                          <Button size="sm" variant="outline" onClick={handleContactProvider} disabled={contactLoading}>
                             <MessageCircle className="h-4 w-4 mr-2" />
-                            Ask Questions
+                            {contactLoading ? 'Contacting...' : 'Ask Questions'}
                           </Button>
                         </div>
                       </div>
@@ -839,15 +931,15 @@ export default function DashboardServiceDetailPage() {
                 ) : (
                   // Client actions
                   <>
-                    <Button variant="outline" className="w-full justify-start" onClick={handleBookService}>
+                    <Button variant="outline" className="w-full justify-start" onClick={handleBookService} disabled={bookingLoading}>
                       <Calendar className="h-4 w-4 mr-2" />
-                      Book This Service
+                      {bookingLoading ? 'Booking...' : 'Book This Service'}
                     </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={handleContactProvider}>
+                    <Button variant="outline" className="w-full justify-start" onClick={handleContactProvider} disabled={contactLoading}>
                       <MessageCircle className="h-4 w-4 mr-2" />
-                      Message Provider
+                      {contactLoading ? 'Contacting...' : 'Message Provider'}
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={handleWriteReview}>
                       <Star className="h-4 w-4 mr-2" />
                       Write Review
                     </Button>
