@@ -100,6 +100,23 @@ export default function DashboardPage() {
     }
   }
 
+  // Check if due_at column exists in bookings table
+  const checkDueAtColumnExists = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      // Try a simple query with due_at to see if it exists
+      const { error } = await supabase
+        .from('bookings')
+        .select('due_at')
+        .limit(1)
+      
+      return !error
+    } catch (error) {
+      console.log('Error checking due_at column:', error)
+      return false
+    }
+  }
+
   async function loadDashboardData() {
     let timeoutId: NodeJS.Timeout | null = null
     
@@ -156,18 +173,18 @@ export default function DashboardPage() {
         servicesCount = 0
       }
 
-      // Load active bookings for providers
-      try {
-        const { count: bookingsCountResult } = await supabase
-          .from('bookings')
-          .select('*', { count: 'exact', head: true })
-          .eq('provider_id', user.id)
-          .eq('status', 'in_progress')
-        bookingsCount = bookingsCountResult || 0
-      } catch (error) {
-        console.log('Error loading active bookings count:', error)
-        bookingsCount = 0
-      }
+              // Load active bookings for providers
+        try {
+          const { count: bookingsCountResult } = await supabase
+            .from('bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('provider_id', user.id)
+            .eq('status', 'in_progress')
+          bookingsCount = bookingsCountResult || 0
+        } catch (error) {
+          console.log('Error loading active bookings count (table might not exist):', error)
+          bookingsCount = 0
+        }
 
         // Load recent activity for providers
         try {
@@ -188,24 +205,8 @@ export default function DashboardPage() {
           recentActivity = []
         }
 
-        // Load upcoming bookings for providers (using created_at as fallback if due_at doesn't exist)
+        // Load upcoming bookings for providers - try created_at first since due_at might not exist
         try {
-          const { data: upcomingBookingsResult } = await supabase
-            .from('bookings')
-            .select(`
-              id,
-              due_at,
-              status,
-              service_id
-            `)
-            .eq('provider_id', user.id)
-            .gte('due_at', new Date().toISOString())
-            .order('due_at', { ascending: true })
-            .limit(5)
-          upcomingBookings = upcomingBookingsResult || []
-        } catch (error) {
-          console.log('due_at column not available, using created_at instead:', error)
-          // Fallback to using created_at for upcoming bookings
           const { data: upcomingBookingsResult } = await supabase
             .from('bookings')
             .select(`
@@ -219,6 +220,9 @@ export default function DashboardPage() {
             .order('created_at', { ascending: true })
             .limit(5)
           upcomingBookings = upcomingBookingsResult || []
+        } catch (error) {
+          console.log('Error loading upcoming bookings with created_at:', error)
+          upcomingBookings = []
         }
 
         // Calculate performance metrics for providers
@@ -265,24 +269,8 @@ export default function DashboardPage() {
           recentActivity = []
         }
 
-        // Load upcoming bookings for clients (using created_at as fallback if due_at doesn't exist)
+        // Load upcoming bookings for clients - try created_at first since due_at might not exist
         try {
-          const { data: clientUpcomingBookings } = await supabase
-            .from('bookings')
-            .select(`
-              id,
-              due_at,
-              status,
-              service_id
-            `)
-            .eq('client_id', user.id)
-            .gte('due_at', new Date().toISOString())
-            .order('due_at', { ascending: true })
-            .limit(5)
-          upcomingBookings = clientUpcomingBookings || []
-        } catch (error) {
-          console.log('due_at column not available for clients, using created_at instead:', error)
-          // Fallback to using created_at for upcoming bookings
           const { data: clientUpcomingBookings } = await supabase
             .from('bookings')
             .select(`
@@ -296,6 +284,9 @@ export default function DashboardPage() {
             .order('created_at', { ascending: true })
             .limit(5)
           upcomingBookings = clientUpcomingBookings || []
+        } catch (error) {
+          console.log('Error loading client upcoming bookings with created_at:', error)
+          upcomingBookings = []
         }
       }
 
@@ -321,8 +312,8 @@ export default function DashboardPage() {
           id: booking.id,
           serviceName: `Service #${booking.service_id}`,
           clientName: 'Client',
-          date: new Date(booking.due_at || booking.created_at).toLocaleDateString(),
-          time: new Date(booking.due_at || booking.created_at).toLocaleTimeString(),
+          date: new Date(booking.created_at).toLocaleDateString(),
+          time: new Date(booking.created_at).toLocaleTimeString(),
           status: booking.status
         })) || [],
         performanceMetrics: {
@@ -416,8 +407,8 @@ export default function DashboardPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
               <p className="text-gray-600 mb-6">
                 {userRole === 'provider' 
-                  ? 'Start by creating your first service to see dashboard metrics.'
-                  : 'Your dashboard will populate once you start using the platform.'
+                  ? 'Start by creating your first service to see dashboard metrics. The system will automatically detect when data becomes available.'
+                  : 'Your dashboard will populate once you start using the platform. This is normal for new accounts.'
                 }
               </p>
               <div className="space-x-3">
@@ -431,6 +422,9 @@ export default function DashboardPage() {
                   </Button>
                 )}
               </div>
+              <p className="text-xs text-gray-400 mt-4">
+                If you continue to see this message, the database tables may still be initializing.
+              </p>
             </div>
           </div>
         ) : (
