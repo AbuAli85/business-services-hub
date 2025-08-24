@@ -84,17 +84,6 @@ export default function DashboardPage() {
       }
 
       setUser(user)
-      
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profile) {
-        setUser({ ...user, profile })
-      }
     } catch (error) {
       console.error('Auth check error:', error)
       router.push('/auth/sign-in')
@@ -107,6 +96,13 @@ export default function DashboardPage() {
         console.log('User ID not available yet, skipping data load')
         return
       }
+
+      // Add timeout to prevent infinite loading
+      let timeoutId: NodeJS.Timeout | null = null
+      timeoutId = setTimeout(() => {
+        console.log('Dashboard data load timeout, setting loading to false')
+        setLoading(false)
+      }, 10000) // 10 second timeout
 
       const supabase = await getSupabaseClient()
       
@@ -191,9 +187,11 @@ export default function DashboardPage() {
 
       setDashboardData(dashboardData)
       setLoading(false)
+      if (timeoutId) clearTimeout(timeoutId)
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       setLoading(false)
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }
 
@@ -217,7 +215,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard data...</p>
+        </div>
       </div>
     )
   }
@@ -234,7 +235,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600">Welcome back, {user.profile?.full_name || user.email}</p>
+              <p className="text-gray-600">Welcome back, {user.user_metadata?.full_name || user.email}</p>
             </div>
             <div className="flex space-x-3">
               <Button onClick={() => router.push('/dashboard/services/create')}>

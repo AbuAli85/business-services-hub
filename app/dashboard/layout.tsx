@@ -50,7 +50,6 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [showRoleSelector, setShowRoleSelector] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -76,31 +75,13 @@ export default function DashboardLayout({
       let userRole = userMetadata?.role
       console.log('Initial role from metadata:', userRole)
       
-      // If no role in metadata, try to get it from the profiles table
-      if (!userRole) {
-        try {
-          console.log('Checking profiles table for role...')
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single()
-          
-          console.log('Profile data result:', { profileData, profileError })
-          
-          if (!profileError && profileData?.role) {
-            userRole = profileData.role
-            console.log('Role found in profiles table:', userRole)
-          }
-        } catch (profileError) {
-          console.log('Could not fetch role from profiles table:', profileError)
-        }
-      }
+             // In production mode, roles must be set during registration
+       // No fallback to profiles table or role selection allowed
       
-      // Don't default to 'client' - let the role selector handle it
-      if (!userRole) {
-        console.log('No role found, will show role selector')
-      }
+             // In production mode, users must have a role set during registration
+       if (!userRole) {
+         console.log('No role found - user must contact support')
+       }
       
       const finalUser = {
         id: session.user.id,
@@ -169,41 +150,7 @@ export default function DashboardLayout({
     )
   }
 
-  const handleRoleSelection = async (selectedRole: 'admin' | 'provider' | 'client' | 'staff') => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      // Update user metadata
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { role: selectedRole }
-      })
-      
-      if (updateError) {
-        console.error('Error updating user metadata:', updateError)
-        return
-      }
-      
-      // Update local state
-      setUser(prev => prev ? { ...prev, role: selectedRole } : null)
-      setShowRoleSelector(false)
-      
-      // Also update the profiles table if possible
-      try {
-        await supabase
-          .from('profiles')
-          .upsert({
-            id: user?.id,
-            role: selectedRole,
-            updated_at: new Date().toISOString()
-          })
-      } catch (profileError) {
-        console.log('Could not update profiles table:', profileError)
-      }
-      
-    } catch (error) {
-      console.error('Error setting user role:', error)
-    }
-  }
+
 
   const handleSignOut = async () => {
     try {
@@ -268,48 +215,18 @@ export default function DashboardLayout({
     return null
   }
 
-  // Show role selector if user doesn't have a role set
+  // In production mode, users must have a role set during registration
   if (!user.role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-          <h2 className="text-2xl font-bold text-center mb-6">Welcome, {user.full_name}!</h2>
+          <h2 className="text-2xl font-bold text-center mb-6">Access Restricted</h2>
           <p className="text-gray-600 text-center mb-6">
-            Please select your role to continue using the platform.
+            Your account does not have a valid role assigned. Please contact support to resolve this issue.
           </p>
-          <div className="space-y-3">
-            <Button
-              onClick={() => handleRoleSelection('provider')}
-              className="w-full h-12 text-left justify-start"
-              variant="outline"
-            >
-              <Building2 className="h-5 w-5 mr-3" />
-              <div>
-                <div className="font-medium">Service Provider</div>
-                <div className="text-sm text-gray-500">Offer services to clients</div>
-              </div>
-            </Button>
-            <Button
-              onClick={() => handleRoleSelection('client')}
-              className="w-full h-12 text-left justify-start"
-              variant="outline"
-            >
-              <User className="h-5 w-5 mr-3" />
-              <div>
-                <div className="font-medium">Client</div>
-                <div className="text-sm text-gray-500">Find and book services</div>
-              </div>
-            </Button>
-            <Button
-              onClick={() => handleRoleSelection('admin')}
-              className="w-full h-12 text-left justify-start"
-              variant="outline"
-            >
-              <Users className="h-5 w-5 mr-3" />
-              <div>
-                <div className="font-medium">Administrator</div>
-                <div className="text-sm text-gray-500">Manage platform and users</div>
-              </div>
+          <div className="text-center">
+            <Button onClick={handleSignOut} variant="outline">
+              Sign Out
             </Button>
           </div>
         </div>
@@ -415,17 +332,7 @@ export default function DashboardLayout({
                 onClick={() => setSidebarOpen(false)}
               />
               
-              {/* Role Debug Button (temporary) */}
-              {user.role && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowRoleSelector(true)}
-                  className="text-xs"
-                >
-                  Change Role ({user.role})
-                </Button>
-              )}
+              
               
               {/* User Menu */}
               <div className="flex items-center space-x-3">
@@ -449,61 +356,7 @@ export default function DashboardLayout({
         </main>
       </div>
       
-      {/* Role Selection Modal */}
-      {showRoleSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold text-center mb-6">Select Your Role</h2>
-            <p className="text-gray-600 text-center mb-6">
-              Choose how you want to use the platform.
-            </p>
-            <div className="space-y-3">
-              <Button
-                onClick={() => handleRoleSelection('provider')}
-                className="w-full h-12 text-left justify-start"
-                variant="outline"
-              >
-                <Building2 className="h-5 w-5 mr-3" />
-                <div>
-                  <div className="font-medium">Service Provider</div>
-                  <div className="text-sm text-gray-500">Offer services to clients</div>
-                </div>
-              </Button>
-              <Button
-                onClick={() => handleRoleSelection('client')}
-                className="w-full h-12 text-left justify-start"
-                variant="outline"
-              >
-                <User className="h-5 w-5 mr-3" />
-                <div>
-                  <div className="font-medium">Client</div>
-                  <div className="text-sm text-gray-500">Find and book services</div>
-                </div>
-              </Button>
-              <Button
-                onClick={() => handleRoleSelection('admin')}
-                className="w-full h-12 text-left justify-start"
-                variant="outline"
-              >
-                <Users className="h-5 w-5 mr-3" />
-                <div>
-                  <div className="font-medium">Administrator</div>
-                  <div className="text-sm text-gray-500">Manage platform and users</div>
-                </div>
-              </Button>
-            </div>
-            <div className="mt-6 text-center">
-              <Button
-                variant="ghost"
-                onClick={() => setShowRoleSelector(false)}
-                className="text-gray-500"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 }
