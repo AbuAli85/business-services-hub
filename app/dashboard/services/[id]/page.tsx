@@ -38,6 +38,10 @@ export default function DashboardServiceDetailPage() {
   const router = useRouter()
   const serviceId = params.id as string
   
+  // Debug logging
+  console.log('DashboardServiceDetailPage - serviceId:', serviceId)
+  console.log('DashboardServiceDetailPage - params:', params)
+  
   const [service, setService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +61,12 @@ export default function DashboardServiceDetailPage() {
   })
 
   useEffect(() => {
-    checkUserAndFetchService()
+    if (serviceId && serviceId !== 'undefined') {
+      checkUserAndFetchService()
+    } else {
+      setError('Invalid service ID')
+      setLoading(false)
+    }
   }, [serviceId])
 
   const checkUserAndFetchService = async () => {
@@ -72,6 +81,14 @@ export default function DashboardServiceDetailPage() {
       }
 
       setUser(user)
+      
+      // Validate serviceId before fetching
+      if (!serviceId || serviceId === 'undefined') {
+        setError('Invalid service ID')
+        setLoading(false)
+        return
+      }
+      
       await fetchService(serviceId)
     } catch (error) {
       console.error('Error checking user:', error)
@@ -83,12 +100,17 @@ export default function DashboardServiceDetailPage() {
 
   const fetchService = async (id: string) => {
     try {
+      // Additional validation
+      if (!id || id === 'undefined' || !user?.id) {
+        throw new Error('Invalid service ID or user not authenticated')
+      }
+
       const supabase = await getSupabaseClient()
       const { data, error } = await supabase
         .from('services')
         .select('*')
         .eq('id', id)
-        .eq('provider_id', user?.id) // Only fetch user's own services
+        .eq('provider_id', user.id) // Only fetch user's own services
         .single()
 
       if (error) {
