@@ -347,6 +347,61 @@ const fetchService = async (id: string) => {
 - **Debug Logging**: Tracks service ID and parameter availability
 - **Graceful Degradation**: Shows appropriate error messages for invalid IDs
 
+### 11. Dashboard Service Detail Authentication Error (`/dashboard/services/[id]`)
+**Problem:**
+- `Error fetching service: Error: Invalid service ID or user not authenticated`
+- Race condition between setting user state and calling fetchService function
+- User state not properly synchronized when making database queries
+
+**Solution:**
+- Fixed timing issue by passing user ID directly to fetchService function
+- Added setTimeout to ensure state updates before service fetching
+- Enhanced debugging to track authentication flow
+
+**Fixes Applied:**
+```typescript
+// Before: Race condition between user state and service fetching
+const checkUserAndFetchService = async () => {
+  // ... user authentication ...
+  setUser(user)
+  await fetchService(serviceId) // user state might not be set yet
+}
+
+const fetchService = async (id: string) => {
+  if (!user?.id) { // user?.id could be undefined
+    throw new Error('Invalid service ID or user not authenticated')
+  }
+  // ... database query ...
+}
+
+// After: Direct user ID passing and state synchronization
+const checkUserAndFetchService = async () => {
+  // ... user authentication ...
+  setUser(user)
+  
+  // Wait for state to update, then fetch service with user ID
+  setTimeout(() => {
+    fetchService(serviceId, user.id) // Pass user ID directly
+  }, 100)
+}
+
+const fetchService = async (id: string, userId?: string) => {
+  const currentUserId = userId || user?.id // Use passed ID or fallback
+  
+  if (!id || id === 'undefined' || !currentUserId) {
+    throw new Error('Invalid service ID or user not authenticated')
+  }
+  // ... database query with validated user ID ...
+}
+```
+
+**Features Added:**
+- **State Synchronization**: Ensures user state is set before service fetching
+- **Direct Parameter Passing**: Passes user ID directly to avoid race conditions
+- **Enhanced Debugging**: Comprehensive logging for authentication flow tracking
+- **Fallback Validation**: Multiple validation layers for robust error handling
+- **Timing Control**: Controlled delays to ensure proper state updates
+
 ## 🔧 Technical Improvements
 
 ### 1. User Authentication Flow
@@ -380,6 +435,7 @@ const fetchService = async (id: string) => {
 | **406 Profiles Query Error** | **✅ Fixed** | **Added user ID validation before profiles query** |
 | **Dashboard Service Detail 404 Error** | **✅ Fixed** | **Created `/dashboard/services/[id]` page for individual service management** |
 | **Dashboard Service Detail UUID Error** | **✅ Fixed** | **Added service ID validation to prevent undefined UUID database queries** |
+| **Dashboard Service Detail Authentication Error** | **✅ Fixed** | **Fixed race condition between user authentication and service fetching** |
 
 ## 🚀 Performance Improvements
 

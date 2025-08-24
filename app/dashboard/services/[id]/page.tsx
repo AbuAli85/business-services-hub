@@ -71,52 +71,70 @@ export default function DashboardServiceDetailPage() {
 
   const checkUserAndFetchService = async () => {
     try {
+      console.log('🔍 Checking user authentication...')
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        console.error('No authenticated user')
+        console.error('❌ No authenticated user')
         router.push('/auth/sign-in')
         return
       }
 
+      console.log('✅ User authenticated:', user.id)
+      // Set user state first
       setUser(user)
       
       // Validate serviceId before fetching
       if (!serviceId || serviceId === 'undefined') {
+        console.error('❌ Invalid service ID:', serviceId)
         setError('Invalid service ID')
         setLoading(false)
         return
       }
       
-      await fetchService(serviceId)
+      console.log('🚀 Fetching service with ID:', serviceId, 'for user:', user.id)
+      // Wait a bit for state to update, then fetch service
+      setTimeout(() => {
+        fetchService(serviceId, user.id)
+      }, 100)
+      
     } catch (error) {
-      console.error('Error checking user:', error)
+      console.error('❌ Error checking user:', error)
       setError('Authentication error')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchService = async (id: string) => {
+  const fetchService = async (id: string, userId?: string) => {
     try {
+      console.log('📡 Fetching service...', { id, userId, userStateId: user?.id })
+      
+      // Use passed userId or fallback to state
+      const currentUserId = userId || user?.id
+      
       // Additional validation
-      if (!id || id === 'undefined' || !user?.id) {
+      if (!id || id === 'undefined' || !currentUserId) {
+        console.error('❌ Validation failed:', { id, currentUserId })
         throw new Error('Invalid service ID or user not authenticated')
       }
 
+      console.log('✅ Validation passed, querying database...')
       const supabase = await getSupabaseClient()
       const { data, error } = await supabase
         .from('services')
         .select('*')
         .eq('id', id)
-        .eq('provider_id', user.id) // Only fetch user's own services
+        .eq('provider_id', currentUserId) // Use validated user ID
         .single()
 
       if (error) {
+        console.error('❌ Database error:', error)
         throw error
       }
 
+      console.log('✅ Service fetched successfully:', data)
       setService(data)
       // Initialize edit form
       setEditForm({
@@ -129,7 +147,7 @@ export default function DashboardServiceDetailPage() {
         tags: data.tags?.join(', ') || ''
       })
     } catch (err) {
-      console.error('Error fetching service:', err)
+      console.error('❌ Error fetching service:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch service')
     }
   }
@@ -160,7 +178,7 @@ export default function DashboardServiceDetailPage() {
       }
 
       // Refresh service data
-      await fetchService(service.id)
+      await fetchService(service.id, user.id)
       setEditing(false)
       alert('Service updated successfully!')
     } catch (err) {
