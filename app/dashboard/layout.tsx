@@ -74,15 +74,19 @@ export default function DashboardLayout({
       console.log('User metadata:', userMetadata)
       
       let userRole = userMetadata?.role
+      console.log('Initial role from metadata:', userRole)
       
       // If no role in metadata, try to get it from the profiles table
       if (!userRole) {
         try {
+          console.log('Checking profiles table for role...')
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', session.user.id)
             .single()
+          
+          console.log('Profile data result:', { profileData, profileError })
           
           if (!profileError && profileData?.role) {
             userRole = profileData.role
@@ -93,18 +97,20 @@ export default function DashboardLayout({
         }
       }
       
-      // Default to 'client' if no role is found
+      // Don't default to 'client' - let the role selector handle it
       if (!userRole) {
-        userRole = 'client'
-        console.log('No role found, defaulting to client')
+        console.log('No role found, will show role selector')
       }
       
-      setUser({
+      const finalUser = {
         id: session.user.id,
         role: userRole,
         full_name: userMetadata?.full_name || 'User',
         company_name: undefined
-      })
+      }
+      
+      console.log('Final user state:', finalUser)
+      setUser(finalUser)
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/auth/sign-in')
@@ -294,6 +300,17 @@ export default function DashboardLayout({
                 <div className="text-sm text-gray-500">Find and book services</div>
               </div>
             </Button>
+            <Button
+              onClick={() => handleRoleSelection('admin')}
+              className="w-full h-12 text-left justify-start"
+              variant="outline"
+            >
+              <Users className="h-5 w-5 mr-3" />
+              <div>
+                <div className="font-medium">Administrator</div>
+                <div className="text-sm text-gray-500">Manage platform and users</div>
+              </div>
+            </Button>
           </div>
         </div>
       </div>
@@ -398,11 +415,23 @@ export default function DashboardLayout({
                 onClick={() => setSidebarOpen(false)}
               />
               
+              {/* Role Debug Button (temporary) */}
+              {user.role && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRoleSelector(true)}
+                  className="text-xs"
+                >
+                  Change Role ({user.role})
+                </Button>
+              )}
+              
               {/* User Menu */}
               <div className="flex items-center space-x-3">
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user.role || 'No Role'}</p>
                 </div>
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                   <span className="text-blue-600 font-semibold text-sm">
@@ -419,6 +448,62 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+      
+      {/* Role Selection Modal */}
+      {showRoleSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold text-center mb-6">Select Your Role</h2>
+            <p className="text-gray-600 text-center mb-6">
+              Choose how you want to use the platform.
+            </p>
+            <div className="space-y-3">
+              <Button
+                onClick={() => handleRoleSelection('provider')}
+                className="w-full h-12 text-left justify-start"
+                variant="outline"
+              >
+                <Building2 className="h-5 w-5 mr-3" />
+                <div>
+                  <div className="font-medium">Service Provider</div>
+                  <div className="text-sm text-gray-500">Offer services to clients</div>
+                </div>
+              </Button>
+              <Button
+                onClick={() => handleRoleSelection('client')}
+                className="w-full h-12 text-left justify-start"
+                variant="outline"
+              >
+                <User className="h-5 w-5 mr-3" />
+                <div>
+                  <div className="font-medium">Client</div>
+                  <div className="text-sm text-gray-500">Find and book services</div>
+                </div>
+              </Button>
+              <Button
+                onClick={() => handleRoleSelection('admin')}
+                className="w-full h-12 text-left justify-start"
+                variant="outline"
+              >
+                <Users className="h-5 w-5 mr-3" />
+                <div>
+                  <div className="font-medium">Administrator</div>
+                  <div className="text-sm text-gray-500">Manage platform and users</div>
+                </div>
+              </Button>
+            </div>
+            <div className="mt-6 text-center">
+              <Button
+                variant="ghost"
+                onClick={() => setShowRoleSelector(false)}
+                className="text-gray-500"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
