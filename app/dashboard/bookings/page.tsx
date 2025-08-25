@@ -450,6 +450,8 @@ export default function BookingsPage() {
               </span>
             </div>
           )
+          // Add a hidden debug message to help troubleshoot
+          console.log('🔒 Pending booking actions blocked for booking:', booking.id)
           break
         case 'in_progress':
           actions.push(
@@ -575,6 +577,23 @@ export default function BookingsPage() {
   const updateBookingStatus = async (bookingId: string, newStatus: string, notes?: string) => {
     if (isUpdatingStatus === bookingId) return
     
+    // Find the current booking to validate the transition
+    const currentBooking = bookings.find(b => b.id === bookingId)
+    if (!currentBooking) {
+      console.error('Booking not found:', bookingId)
+      return
+    }
+    
+    // Log all status update attempts for debugging
+    console.log('🔄 Status update attempt:', currentBooking.status, '→', newStatus, 'for booking:', bookingId)
+    
+    // Prevent invalid status transitions based on database constraints
+    if (currentBooking.status === 'pending') {
+      console.warn('🚫 Invalid transition blocked: pending →', newStatus)
+      console.warn('Pending bookings cannot be modified due to database constraints')
+      return
+    }
+    
     setIsUpdatingStatus(bookingId)
     try {
       const supabase = await getSupabaseClient()
@@ -620,6 +639,15 @@ export default function BookingsPage() {
 
   const bulkUpdateStatus = async (bookingIds: string[], newStatus: string) => {
     try {
+      // Validate that none of the selected bookings are pending
+      const selectedBookings = bookings.filter(b => bookingIds.includes(b.id))
+      const hasPendingBookings = selectedBookings.some(b => b.status === 'pending')
+      
+      if (hasPendingBookings) {
+        console.warn('🚫 Bulk update blocked: Some selected bookings are pending and cannot be modified')
+        return
+      }
+      
       const supabase = await getSupabaseClient()
       
       const { error } = await supabase
