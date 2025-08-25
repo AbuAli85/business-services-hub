@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -67,6 +69,27 @@ interface Booking {
   rating?: number
   review?: string
   last_updated?: string
+  // Approval workflow fields
+  approval_status?: 'pending' | 'requested' | 'approved' | 'rejected' | 'under_review'
+  approval_requested_at?: string
+  approval_requested_by?: string
+  approval_reviewed_at?: string
+  approval_reviewed_by?: string
+  approval_comments?: string
+  approval_rejection_reason?: string
+  // Operational fields
+  operational_status?: 'new' | 'in_review' | 'approved' | 'rejected' | 'on_hold' | 'escalated'
+  operational_notes?: string
+  priority?: 'low' | 'normal' | 'high' | 'urgent'
+  assigned_to?: string
+  estimated_start_date?: string
+  estimated_completion_date?: string
+  actual_start_date?: string
+  actual_completion_date?: string
+  progress_percentage?: number
+  milestone_notes?: string
+  quality_score?: number
+  compliance_status?: 'pending' | 'reviewed' | 'compliant' | 'non_compliant' | 'requires_action'
 }
 
 interface BookingStats {
@@ -119,6 +142,17 @@ export default function BookingsPage() {
   const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [showOperationalModal, setShowOperationalModal] = useState(false)
+  const [selectedBookingForApproval, setSelectedBookingForApproval] = useState<Booking | null>(null)
+  const [approvalForm, setApprovalForm] = useState({
+    action: 'request_approval',
+    comments: '',
+    priority: 'normal',
+    estimatedStartDate: '',
+    estimatedCompletionDate: '',
+    operationalNotes: ''
+  })
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -221,41 +255,62 @@ export default function BookingsPage() {
         } : 'No data'
       })
 
-      // Transform the data with better fallbacks
-      const transformedBookings = (bookingsData || []).map(booking => ({
-        id: booking.id,
-        service_id: booking.service_id,
-        client_id: booking.client_id,
-        provider_id: booking.provider_id,
-        status: booking.status || 'pending',
-        created_at: booking.created_at,
-        scheduled_date: booking.scheduled_date,
-        scheduled_time: booking.scheduled_time,
-        notes: booking.notes || '',
-        amount: booking.amount || 0,
-        payment_status: booking.payment_status || 'pending',
-        rating: booking.rating,
-        review: booking.review,
-        last_updated: booking.updated_at || booking.created_at,
-        // Use enhanced data when available, fallback to IDs
-        service_name: showEnhancedData && booking.service_title 
-          ? booking.service_title 
-          : `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
-        client_name: showEnhancedData && booking.client_name 
-          ? booking.client_name 
-          : `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
-        provider_name: showEnhancedData && booking.provider_name 
-          ? booking.provider_name 
-          : `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
-        client_company_name: showEnhancedData ? (booking.client_company_name || '') : '',
-        provider_company_name: showEnhancedData ? (booking.provider_company_name || '') : '',
-        service_description: showEnhancedData ? (booking.service_description || '') : '',
-        estimated_duration: showEnhancedData ? (booking.estimated_duration || '') : '',
-        location: showEnhancedData ? (booking.location || '') : '',
-        client_email: showEnhancedData ? (booking.client_email || booking.client_phone || '') : '',
-        client_phone: showEnhancedData ? (booking.client_phone || '') : '',
-        cancellation_reason: showEnhancedData ? (booking.cancellation_reason || '') : ''
-      }))
+             // Transform the data with better fallbacks
+       const transformedBookings = (bookingsData || []).map(booking => ({
+         id: booking.id,
+         service_id: booking.service_id,
+         client_id: booking.client_id,
+         provider_id: booking.provider_id,
+         status: booking.status || 'pending',
+         created_at: booking.created_at,
+         scheduled_date: booking.scheduled_date,
+         scheduled_time: booking.scheduled_time,
+         notes: booking.notes || '',
+         amount: booking.amount || 0,
+         payment_status: booking.payment_status || 'pending',
+         rating: booking.rating,
+         review: booking.review,
+         last_updated: booking.updated_at || booking.created_at,
+         // Use enhanced data when available, fallback to IDs
+         service_name: showEnhancedData && booking.service_title 
+           ? booking.service_title 
+           : `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
+         client_name: showEnhancedData && booking.client_name 
+           ? booking.client_name 
+           : `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
+         provider_name: showEnhancedData && booking.provider_name 
+           ? booking.provider_name 
+           : `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
+         client_company_name: showEnhancedData ? (booking.client_company_name || '') : '',
+         provider_company_name: showEnhancedData ? (booking.provider_company_name || '') : '',
+         service_description: showEnhancedData ? (booking.service_description || '') : '',
+         estimated_duration: showEnhancedData ? (booking.estimated_duration || '') : '',
+         location: showEnhancedData ? (booking.location || '') : '',
+         client_email: showEnhancedData ? (booking.client_email || booking.client_phone || '') : '',
+         client_phone: showEnhancedData ? (booking.client_phone || '') : '',
+         cancellation_reason: showEnhancedData ? (booking.cancellation_reason || '') : '',
+         // Approval workflow fields
+         approval_status: booking.approval_status || 'pending',
+         approval_requested_at: booking.approval_requested_at,
+         approval_requested_by: booking.approval_requested_by,
+         approval_reviewed_at: booking.approval_reviewed_at,
+         approval_reviewed_by: booking.approval_reviewed_by,
+         approval_comments: booking.approval_comments,
+         approval_rejection_reason: booking.approval_rejection_reason,
+         // Operational fields
+         operational_status: booking.operational_status || 'new',
+         operational_notes: booking.operational_notes,
+         priority: booking.priority || 'normal',
+         assigned_to: booking.assigned_to,
+         estimated_start_date: booking.estimated_start_date,
+         estimated_completion_date: booking.estimated_completion_date,
+         actual_start_date: booking.actual_start_date,
+         actual_completion_date: booking.actual_completion_date,
+         progress_percentage: booking.progress_percentage || 0,
+         milestone_notes: booking.milestone_notes,
+         quality_score: booking.quality_score,
+         compliance_status: booking.compliance_status || 'pending'
+       }))
 
       console.log('📊 Fetched bookings:', {
         total: transformedBookings.length,
@@ -534,17 +589,17 @@ export default function BookingsPage() {
               </div>
               
               <div className="flex gap-2 flex-wrap">
-                <Button
-                  key="request-approval"
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                  onClick={() => requestApproval(booking.id)}
-                  disabled={isUpdatingStatus === booking.id}
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Request Approval
-                </Button>
+                                 <Button 
+                   key="request-approval"
+                   size="sm"
+                   variant="outline"
+                   className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                   onClick={() => openApprovalModal(booking)}
+                   disabled={isUpdatingStatus === booking.id}
+                 >
+                   <CheckCircle2 className="h-4 w-4 mr-2" />
+                   Request Approval
+                 </Button>
                 
                 <Button
                   key="send-reminder"
@@ -1092,26 +1147,182 @@ export default function BookingsPage() {
   }
 
   // Provider workflow functions for pending bookings
-  const requestApproval = async (bookingId: string) => {
+  const openApprovalModal = (booking: Booking) => {
+    setSelectedBookingForApproval(booking)
+    setApprovalForm({
+      action: 'request_approval',
+      comments: '',
+      priority: 'normal',
+      estimatedStartDate: '',
+      estimatedCompletionDate: '',
+      operationalNotes: ''
+    })
+    setShowApprovalModal(true)
+  }
+
+  const requestApproval = async () => {
+    if (!selectedBookingForApproval) return
+    
     try {
-      setIsUpdatingStatus(bookingId)
+      setIsUpdatingStatus(selectedBookingForApproval.id)
       
-      await safeUpdateBooking(bookingId, {
-        notes: `[${new Date().toLocaleString()}] Approval requested by provider`,
-        updated_at: new Date().toISOString()
-      })
+      const supabase = await getSupabaseClient()
+      const now = new Date().toISOString()
+      
+      // Update booking with approval workflow data
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .update({
+          approval_status: 'requested',
+          approval_requested_at: now,
+          approval_requested_by: user.id,
+          approval_comments: approvalForm.comments,
+          operational_status: 'in_review',
+          operational_notes: approvalForm.operationalNotes,
+          priority: approvalForm.priority,
+          estimated_start_date: approvalForm.estimatedStartDate || null,
+          estimated_completion_date: approvalForm.estimatedCompletionDate || null,
+          updated_at: now
+        })
+        .eq('id', selectedBookingForApproval.id)
+
+      if (bookingError) {
+        throw bookingError
+      }
+
+      // Create approval history record
+      const { error: historyError } = await supabase
+        .from('booking_approval_history')
+        .insert({
+          booking_id: selectedBookingForApproval.id,
+          action: 'approval_requested',
+          action_by: user.id,
+          previous_status: selectedBookingForApproval.approval_status || 'pending',
+          new_status: 'requested',
+          comments: approvalForm.comments,
+          metadata: {
+            priority: approvalForm.priority,
+            estimated_start_date: approvalForm.estimatedStartDate,
+            estimated_completion_date: approvalForm.estimatedCompletionDate,
+            operational_notes: approvalForm.operationalNotes
+          }
+        })
+
+      if (historyError) {
+        console.warn('Failed to create approval history:', historyError)
+      }
+
+      // Create operational tracking record
+      const { error: operationError } = await supabase
+        .from('booking_operations')
+        .insert({
+          booking_id: selectedBookingForApproval.id,
+          operation_type: 'approval_request',
+          operation_by: user.id,
+          description: `Approval requested with priority: ${approvalForm.priority}`,
+          status: 'pending',
+          priority: approvalForm.priority,
+          due_date: approvalForm.estimatedStartDate ? new Date(approvalForm.estimatedStartDate) : null,
+          metadata: {
+            comments: approvalForm.comments,
+            operational_notes: approvalForm.operationalNotes
+          }
+        })
+
+      if (operationError) {
+        console.warn('Failed to create operational record:', operationError)
+      }
 
       // Show success message
-      setSuccessMessage('Approval request sent successfully!')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      setSuccessMessage('Approval request submitted successfully! The request is now under review.')
+      setTimeout(() => setSuccessMessage(''), 5000)
       
-      // Refresh the data
+      // Close modal and refresh data
+      setShowApprovalModal(false)
+      setSelectedBookingForApproval(null)
       await fetchBookings(user.id, userRole)
       
     } catch (error) {
       console.error('Error requesting approval:', error)
-      setErrorMessage('Failed to request approval. Please try again.')
-      setTimeout(() => setErrorMessage(''), 3000)
+      setErrorMessage('Failed to submit approval request. Please try again.')
+      setTimeout(() => setErrorMessage(''), 5000)
+    } finally {
+      setIsUpdatingStatus('')
+    }
+  }
+
+  const reviewApproval = async (bookingId: string, action: 'approve' | 'reject', comments: string) => {
+    try {
+      setIsUpdatingStatus(bookingId)
+      
+      const supabase = await getSupabaseClient()
+      const now = new Date().toISOString()
+      
+      const newApprovalStatus = action === 'approve' ? 'approved' : 'rejected'
+      const newOperationalStatus = action === 'approve' ? 'approved' : 'rejected'
+      
+      // Update booking
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .update({
+          approval_status: newApprovalStatus,
+          approval_reviewed_at: now,
+          approval_reviewed_by: user.id,
+          approval_comments: comments,
+          operational_status: newOperationalStatus,
+          updated_at: now
+        })
+        .eq('id', bookingId)
+
+      if (bookingError) {
+        throw bookingError
+      }
+
+      // Create approval history record
+      const { error: historyError } = await supabase
+        .from('booking_approval_history')
+        .insert({
+          booking_id: bookingId,
+          action: `approval_${action}d`,
+          action_by: user.id,
+          previous_status: 'requested',
+          new_status: newApprovalStatus,
+          comments: comments
+        })
+
+      if (historyError) {
+        console.warn('Failed to create approval history:', historyError)
+      }
+
+      // Create operational tracking record
+      const { error: operationError } = await supabase
+        .from('booking_operations')
+        .insert({
+          booking_id: bookingId,
+          operation_type: `approval_${action}`,
+          operation_by: user.id,
+          description: `Approval ${action}d: ${comments}`,
+          status: 'completed',
+          priority: 'normal',
+          completed_at: now,
+          completion_notes: comments
+        })
+
+      if (operationError) {
+        console.warn('Failed to create operational record:', operationError)
+      }
+
+      // Show success message
+      setSuccessMessage(`Approval ${action}d successfully!`)
+      setTimeout(() => setSuccessMessage(''), 3000)
+      
+      // Refresh data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error(`Error ${action}ing approval:`, error)
+      setErrorMessage(`Failed to ${action} approval. Please try again.`)
+      setTimeout(() => setErrorMessage(''), 5000)
     } finally {
       setIsUpdatingStatus('')
     }
@@ -1950,41 +2161,180 @@ export default function BookingsPage() {
 
                    {/* Confirm Modal - Removed since 'confirmed' status is not allowed */}
 
-         {/* Message Modal */}
-         {showMessageModal && selectedBooking && (
-           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-             <div className="bg-white rounded-lg max-w-md w-full">
-               <div className="p-6">
-                 <h2 className="text-xl font-bold text-gray-900 mb-4">Send Message</h2>
-                 <p className="text-gray-600 mb-4">
-                   Send a message to {userRole === 'provider' ? 'the client' : 'the provider'} about this booking.
-                 </p>
-                 <textarea
-                   value={messageText}
-                   onChange={(e) => setMessageText(e.target.value)}
-                   placeholder="Type your message here..."
-                   className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 />
-                 <div className="flex gap-3 justify-end mt-4">
-                   <Button
-                     variant="outline"
-                     onClick={() => setShowMessageModal(false)}
-                   >
-                     Cancel
-                   </Button>
-                   <Button
-                     className="bg-blue-600 hover:bg-blue-700"
-                     onClick={sendMessage}
-                     disabled={isSendingMessage || !messageText.trim()}
-                   >
-                     {isSendingMessage ? 'Sending...' : 'Send Message'}
-                   </Button>
-                 </div>
-               </div>
-             </div>
-           </div>
-         )}
-       </div>
-     </div>
-   )
- }
+                   {/* Message Modal */}
+          {showMessageModal && selectedBooking && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full">
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">Send Message</h2>
+                  <p className="text-gray-600 mb-4">
+                    Send a message to {userRole === 'provider' ? 'the client' : 'the provider'} about this booking.
+                  </p>
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder="Type your message here..."
+                    className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div className="flex gap-3 justify-end mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowMessageModal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={sendMessage}
+                      disabled={isSendingMessage || !messageText.trim()}
+                    >
+                      {isSendingMessage ? 'Sending...' : 'Send Message'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Approval Modal */}
+          {showApprovalModal && selectedBookingForApproval && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-2xl w-full">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Request Approval</h2>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowApprovalModal(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <XCircle className="h-6 w-6" />
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* Booking Info */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="font-medium text-gray-900 mb-2">Booking Details</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Service:</span>
+                          <p className="font-medium">{selectedBookingForApproval.service_name}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Client:</span>
+                          <p className="font-medium">{selectedBookingForApproval.client_name}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Amount:</span>
+                          <p className="font-medium">{formatCurrency(selectedBookingForApproval.amount || 0)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Status:</span>
+                          <Badge className={getStatusColor(selectedBookingForApproval.status)}>
+                            {selectedBookingForApproval.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Approval Form */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="priority">Priority Level</Label>
+                        <Select 
+                          value={approvalForm.priority} 
+                          onValueChange={(value) => setApprovalForm(prev => ({ ...prev, priority: value as any }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="urgent">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="estimatedStartDate">Estimated Start Date</Label>
+                          <Input
+                            id="estimatedStartDate"
+                            type="date"
+                            value={approvalForm.estimatedStartDate}
+                            onChange={(e) => setApprovalForm(prev => ({ ...prev, estimatedStartDate: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="estimatedCompletionDate">Estimated Completion Date</Label>
+                          <Input
+                            id="estimatedCompletionDate"
+                            type="date"
+                            value={approvalForm.estimatedCompletionDate}
+                            onChange={(e) => setApprovalForm(prev => ({ ...prev, estimatedCompletionDate: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="comments">Approval Comments</Label>
+                                                 <Textarea
+                           id="comments"
+                           placeholder="Explain why this approval is needed..."
+                           value={approvalForm.comments}
+                           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, comments: e.target.value }))}
+                           rows={3}
+                         />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="operationalNotes">Operational Notes</Label>
+                        <Textarea
+                          id="operationalNotes"
+                          placeholder="Any operational considerations or special requirements..."
+                          value={approvalForm.operationalNotes}
+                          onChange={(e) => setApprovalForm(prev => ({ ...prev, operationalNotes: e.target.value }))}
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowApprovalModal(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={requestApproval}
+                        disabled={isUpdatingStatus === selectedBookingForApproval.id}
+                      >
+                        {isUpdatingStatus === selectedBookingForApproval.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Submit Approval Request
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
