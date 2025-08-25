@@ -145,13 +145,17 @@ export default function BookingsPage() {
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [showOperationalModal, setShowOperationalModal] = useState(false)
   const [selectedBookingForApproval, setSelectedBookingForApproval] = useState<Booking | null>(null)
+  const [approvalMode, setApprovalMode] = useState<'simple' | 'detailed'>('simple')
   const [approvalForm, setApprovalForm] = useState({
     action: 'request_approval',
     comments: '',
     priority: 'normal',
     estimatedStartDate: '',
     estimatedCompletionDate: '',
-    operationalNotes: ''
+    operationalNotes: '',
+    businessJustification: '',
+    expectedOutcome: '',
+    resourceRequirements: ''
   })
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
@@ -1149,13 +1153,17 @@ export default function BookingsPage() {
   // Provider workflow functions for pending bookings
   const openApprovalModal = (booking: Booking) => {
     setSelectedBookingForApproval(booking)
+    setApprovalMode('simple') // Default to simple mode
     setApprovalForm({
       action: 'request_approval',
       comments: '',
       priority: 'normal',
       estimatedStartDate: '',
       estimatedCompletionDate: '',
-      operationalNotes: ''
+      operationalNotes: '',
+      businessJustification: '',
+      expectedOutcome: '',
+      resourceRequirements: ''
     })
     setShowApprovalModal(true)
   }
@@ -1169,22 +1177,22 @@ export default function BookingsPage() {
       const supabase = await getSupabaseClient()
       const now = new Date().toISOString()
       
-      // Update booking with approval workflow data
-      const { error: bookingError } = await supabase
-        .from('bookings')
-        .update({
-          approval_status: 'requested',
-          approval_requested_at: now,
-          approval_requested_by: user.id,
-          approval_comments: approvalForm.comments,
-          operational_status: 'in_review',
-          operational_notes: approvalForm.operationalNotes,
-          priority: approvalForm.priority,
-          estimated_start_date: approvalForm.estimatedStartDate || null,
-          estimated_completion_date: approvalForm.estimatedCompletionDate || null,
-          updated_at: now
-        })
-        .eq('id', selectedBookingForApproval.id)
+             // Update booking with approval workflow data
+       const { error: bookingError } = await supabase
+         .from('bookings')
+         .update({
+           approval_status: 'requested',
+           approval_requested_at: now,
+           approval_requested_by: user.id,
+           approval_comments: `${approvalForm.businessJustification}\n\nExpected Outcome: ${approvalForm.expectedOutcome}\nResource Requirements: ${approvalForm.resourceRequirements}\nAdditional Comments: ${approvalForm.comments}`,
+           operational_status: 'in_review',
+           operational_notes: approvalForm.operationalNotes,
+           priority: approvalForm.priority,
+           estimated_start_date: approvalForm.estimatedStartDate || null,
+           estimated_completion_date: approvalForm.estimatedCompletionDate || null,
+           updated_at: now
+         })
+         .eq('id', selectedBookingForApproval.id)
 
       if (bookingError) {
         throw bookingError
@@ -1233,9 +1241,13 @@ export default function BookingsPage() {
         console.warn('Failed to create operational record:', operationError)
       }
 
-      // Show success message
-      setSuccessMessage('Approval request submitted successfully! The request is now under review.')
-      setTimeout(() => setSuccessMessage(''), 5000)
+             // Show success message with workflow details
+       const priorityText = approvalForm.priority === 'urgent' ? '🚨 URGENT' : 
+                           approvalForm.priority === 'high' ? '⚡ HIGH' : 
+                           approvalForm.priority === 'normal' ? '📋 NORMAL' : '🐌 LOW'
+       
+       setSuccessMessage(`✅ Approval request submitted successfully! Priority: ${priorityText} - Your request is now under review by management.`)
+       setTimeout(() => setSuccessMessage(''), 8000)
       
       // Close modal and refresh data
       setShowApprovalModal(false)
@@ -2213,122 +2225,283 @@ export default function BookingsPage() {
                     </Button>
                   </div>
                   
-                  <div className="space-y-6">
-                    {/* Booking Info */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="font-medium text-gray-900 mb-2">Booking Details</h3>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Service:</span>
-                          <p className="font-medium">{selectedBookingForApproval.service_name}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Client:</span>
-                          <p className="font-medium">{selectedBookingForApproval.client_name}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Amount:</span>
-                          <p className="font-medium">{formatCurrency(selectedBookingForApproval.amount || 0)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Status:</span>
-                          <Badge className={getStatusColor(selectedBookingForApproval.status)}>
-                            {selectedBookingForApproval.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
+                                     <div className="space-y-6">
+                     {/* Workflow Explanation */}
+                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                       <h3 className="font-medium text-blue-900 mb-2">🔄 Approval Workflow</h3>
+                       <p className="text-sm text-blue-700 mb-3">
+                         This form collects essential information needed by managers to make informed approval decisions. 
+                         The more detailed and clear your request, the faster it can be approved.
+                       </p>
+                       
+                       {/* Approval Mode Toggle */}
+                       <div className="flex items-center gap-3">
+                         <span className="text-sm font-medium text-blue-900">Approval Type:</span>
+                         <div className="flex bg-blue-100 rounded-lg p-1">
+                           <button
+                             type="button"
+                             onClick={() => setApprovalMode('simple')}
+                             className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                               approvalMode === 'simple' 
+                                 ? 'bg-white text-blue-700 shadow-sm' 
+                                 : 'text-blue-600 hover:text-blue-700'
+                             }`}
+                           >
+                             🚀 Quick Approval
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => setApprovalMode('detailed')}
+                             className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                               approvalMode === 'detailed' 
+                                 ? 'bg-white text-blue-700 shadow-sm' 
+                                 : 'text-blue-600 hover:text-blue-700'
+                             }`}
+                           >
+                             📋 Detailed Request
+                           </button>
+                         </div>
+                       </div>
+                     </div>
+                     
+                     {/* Booking Info */}
+                     <div className="bg-gray-50 p-4 rounded-lg">
+                       <h3 className="font-medium text-gray-900 mb-2">📋 Booking Details</h3>
+                       <div className="grid grid-cols-2 gap-4 text-sm">
+                         <div>
+                           <span className="text-gray-500">Service:</span>
+                           <p className="font-medium">{selectedBookingForApproval.service_name}</p>
+                         </div>
+                         <div>
+                           <span className="text-gray-500">Client:</span>
+                           <p className="font-medium">{selectedBookingForApproval.client_name}</p>
+                         </div>
+                         <div>
+                           <span className="text-gray-500">Amount:</span>
+                           <p className="font-medium">{formatCurrency(selectedBookingForApproval.amount || 0)}</p>
+                         </div>
+                         <div>
+                           <span className="text-gray-500">Status:</span>
+                           <Badge className={getStatusColor(selectedBookingForApproval.status)}>
+                             {selectedBookingForApproval.status.replace('_', ' ')}
+                           </Badge>
+                         </div>
+                       </div>
+                     </div>
 
-                    {/* Approval Form */}
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="priority">Priority Level</Label>
-                        <Select 
-                          value={approvalForm.priority} 
-                          onValueChange={(value) => setApprovalForm(prev => ({ ...prev, priority: value as any }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="normal">Normal</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="urgent">Urgent</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                                         {/* Enhanced Approval Form with Explanations */}
+                     {approvalMode === 'simple' ? (
+                       /* Simple Quick Approval Form */
+                       <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                         <h4 className="font-medium text-green-900 mb-4 text-lg">🚀 Quick Approval Request</h4>
+                         <p className="text-sm text-green-700 mb-4">
+                           For simple approvals, just provide the essential information below.
+                         </p>
+                         
+                         <div className="space-y-4">
+                           <div>
+                             <Label htmlFor="priority-simple" className="text-green-900">Priority Level *</Label>
+                             <Select 
+                               value={approvalForm.priority} 
+                               onValueChange={(value) => setApprovalForm(prev => ({ ...prev, priority: value as any }))}
+                             >
+                               <SelectTrigger className="border-green-200">
+                                 <SelectValue placeholder="Select priority" />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="low">🟢 Low</SelectItem>
+                                 <SelectItem value="normal">🟡 Normal</SelectItem>
+                                 <SelectItem value="high">🟠 High</SelectItem>
+                                 <SelectItem value="urgent">🔴 Urgent</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                           
+                           <div>
+                             <Label htmlFor="comments-simple" className="text-green-900">Brief Justification *</Label>
+                             <Textarea
+                               id="comments-simple"
+                               placeholder="Briefly explain why this approval is needed..."
+                               value={approvalForm.businessJustification}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, businessJustification: e.target.value }))}
+                               rows={2}
+                               className="border-green-200"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                     ) : (
+                       /* Detailed Approval Form */
+                       <div className="space-y-6">
+                         {/* Priority Section */}
+                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                         <h4 className="font-medium text-blue-900 mb-2">📊 Priority & Timeline</h4>
+                         <p className="text-sm text-blue-700 mb-3">Set the urgency level and expected timeline for this approval request.</p>
+                         
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                           <div>
+                             <Label htmlFor="priority" className="text-blue-900">Priority Level *</Label>
+                             <Select 
+                               value={approvalForm.priority} 
+                               onValueChange={(value) => setApprovalForm(prev => ({ ...prev, priority: value as any }))}
+                             >
+                               <SelectTrigger className="border-blue-200">
+                                 <SelectValue placeholder="Select priority" />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="low">🟢 Low - Standard processing</SelectItem>
+                                 <SelectItem value="normal">🟡 Normal - Within 48 hours</SelectItem>
+                                 <SelectItem value="high">🟠 High - Within 24 hours</SelectItem>
+                                 <SelectItem value="urgent">🔴 Urgent - Immediate attention</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                           
+                           <div>
+                             <Label htmlFor="estimatedStartDate" className="text-blue-900">Start Date</Label>
+                             <Input
+                               id="estimatedStartDate"
+                               type="date"
+                               value={approvalForm.estimatedStartDate}
+                               onChange={(e) => setApprovalForm(prev => ({ ...prev, estimatedStartDate: e.target.value }))}
+                               className="border-blue-200"
+                             />
+                           </div>
+                           
+                           <div>
+                             <Label htmlFor="estimatedCompletionDate" className="text-blue-900">Completion Date</Label>
+                             <Input
+                               id="estimatedCompletionDate"
+                               type="date"
+                               value={approvalForm.estimatedCompletionDate}
+                               onChange={(e) => setApprovalForm(prev => ({ ...prev, estimatedCompletionDate: e.target.value }))}
+                               className="border-blue-200"
+                             />
+                           </div>
+                         </div>
+                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="estimatedStartDate">Estimated Start Date</Label>
-                          <Input
-                            id="estimatedStartDate"
-                            type="date"
-                            value={approvalForm.estimatedStartDate}
-                            onChange={(e) => setApprovalForm(prev => ({ ...prev, estimatedStartDate: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="estimatedCompletionDate">Estimated Completion Date</Label>
-                          <Input
-                            id="estimatedCompletionDate"
-                            type="date"
-                            value={approvalForm.estimatedCompletionDate}
-                            onChange={(e) => setApprovalForm(prev => ({ ...prev, estimatedCompletionDate: e.target.value }))}
-                          />
-                        </div>
-                      </div>
+                       {/* Business Justification Section */}
+                       <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                         <h4 className="font-medium text-green-900 mb-2">💼 Business Justification *</h4>
+                         <p className="text-sm text-green-700 mb-3">Explain the business need and expected outcomes for this approval.</p>
+                         
+                         <div className="space-y-3">
+                           <div>
+                             <Label htmlFor="businessJustification" className="text-green-900">Why is this approval needed?</Label>
+                             <Textarea
+                               id="businessJustification"
+                               placeholder="Describe the business need, problem being solved, or opportunity being pursued..."
+                               value={approvalForm.businessJustification}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, businessJustification: e.target.value }))}
+                               rows={2}
+                               className="border-green-200"
+                             />
+                           </div>
+                           
+                           <div>
+                             <Label htmlFor="expectedOutcome" className="text-green-900">Expected Outcome</Label>
+                             <Textarea
+                               id="expectedOutcome"
+                               placeholder="What will be achieved? What are the success metrics?"
+                               value={approvalForm.expectedOutcome}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, expectedOutcome: e.target.value }))}
+                               rows={2}
+                               className="border-green-200"
+                             />
+                           </div>
+                         </div>
+                       </div>
 
-                      <div>
-                        <Label htmlFor="comments">Approval Comments</Label>
-                                                 <Textarea
-                           id="comments"
-                           placeholder="Explain why this approval is needed..."
-                           value={approvalForm.comments}
-                           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, comments: e.target.value }))}
-                           rows={3}
-                         />
-                      </div>
+                       {/* Operational Details Section */}
+                       <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                         <h4 className="font-medium text-amber-900 mb-2">⚙️ Operational Details</h4>
+                         <p className="text-sm text-amber-700 mb-3">Provide operational context and resource requirements.</p>
+                         
+                         <div className="space-y-3">
+                           <div>
+                             <Label htmlFor="resourceRequirements" className="text-amber-900">Resource Requirements</Label>
+                             <Textarea
+                               id="resourceRequirements"
+                               placeholder="What resources are needed? (people, tools, budget, etc.)"
+                               value={approvalForm.resourceRequirements}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, resourceRequirements: e.target.value }))}
+                               rows={2}
+                               className="border-amber-200"
+                             />
+                           </div>
+                           
+                           <div>
+                             <Label htmlFor="operationalNotes" className="text-amber-900">Operational Notes</Label>
+                             <Textarea
+                               id="operationalNotes"
+                               placeholder="Any special considerations, risks, or operational requirements..."
+                               value={approvalForm.operationalNotes}
+                               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, operationalNotes: e.target.value }))}
+                               rows={2}
+                               className="border-amber-200"
+                             />
+                           </div>
+                         </div>
+                       </div>
 
-                      <div>
-                        <Label htmlFor="operationalNotes">Operational Notes</Label>
-                        <Textarea
-                          id="operationalNotes"
-                          placeholder="Any operational considerations or special requirements..."
-                          value={approvalForm.operationalNotes}
-                          onChange={(e) => setApprovalForm(prev => ({ ...prev, operationalNotes: e.target.value }))}
-                          rows={3}
-                        />
-                      </div>
-                    </div>
+                       {/* Additional Comments Section */}
+                       <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                         <h4 className="font-medium text-purple-900 mb-2">💬 Additional Comments</h4>
+                         <p className="text-sm text-purple-700 mb-3">Any other information that would help with the approval decision.</p>
+                         
+                         <div>
+                           <Label htmlFor="comments" className="text-purple-900">Comments</Label>
+                           <Textarea
+                             id="comments"
+                             placeholder="Any additional context, concerns, or information for the approver..."
+                             value={approvalForm.comments}
+                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setApprovalForm(prev => ({ ...prev, comments: e.target.value }))}
+                             rows={3}
+                             className="border-purple-200"
+                           />
+                         </div>
+                       </div>
+                     </div>
+                   )}
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowApprovalModal(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700"
-                        onClick={requestApproval}
-                        disabled={isUpdatingStatus === selectedBookingForApproval.id}
-                      >
-                        {isUpdatingStatus === selectedBookingForApproval.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Submitting...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            Submit Approval Request
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                   {/* Action Buttons */}
+                     <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+                       <Button
+                         variant="outline"
+                         onClick={() => setShowApprovalModal(false)}
+                       >
+                         Cancel
+                       </Button>
+                       
+                       {/* Form Validation Info */}
+                       <div className="flex-1 text-sm text-gray-600">
+                         <span className="text-red-500">*</span> Required fields
+                       </div>
+                       
+                       <Button
+                         className="bg-blue-600 hover:bg-blue-700"
+                         onClick={requestApproval}
+                         disabled={
+                           isUpdatingStatus === selectedBookingForApproval.id ||
+                           !approvalForm.businessJustification.trim() ||
+                           !approvalForm.priority ||
+                           (approvalMode === 'detailed' && !approvalForm.expectedOutcome.trim())
+                         }
+                       >
+                         {isUpdatingStatus === selectedBookingForApproval.id ? (
+                           <>
+                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                             Submitting...
+                           </>
+                         ) : (
+                           <>
+                             <CheckCircle2 className="h-4 w-4 mr-2" />
+                             Submit Approval Request
+                           </>
+                         )}
+                       </Button>
+                     </div>
                   </div>
                 </div>
               </div>
