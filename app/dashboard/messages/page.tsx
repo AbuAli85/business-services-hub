@@ -200,9 +200,13 @@ export default function MessagesPage() {
     }
   }
 
-  const filteredMessages = messages.filter(message =>
-    message.content.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredMessages = messages.filter((message) => {
+    const content = (message?.content || '').toString()
+    const subject = (message?.subject || '').toString()
+    const haystack = `${subject} ${content}`.toLowerCase()
+    const needle = (searchQuery || '').toString().toLowerCase()
+    return haystack.includes(needle)
+  })
 
   if (loading) {
     return (
