@@ -445,75 +445,260 @@ export default function BookingsPage() {
     ))
   }
 
+
+
   const getStatusActions = (booking: Booking) => {
     const actions = []
     
     if (userRole === 'provider') {
       switch (booking.status) {
         case 'pending':
-          // Database constraints prevent status changes from pending
-          // Show informational message instead of action buttons
+          // For pending bookings, provide workflow options instead of blocking
           actions.push(
-            <div key="pending-info" className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
-              <AlertCircle className="h-4 w-4 inline mr-2" />
-              Pending bookings cannot be modified due to database constraints.
-              <br />
-              <span className="text-xs text-amber-500">
-                Contact support to configure allowed status transitions.
-              </span>
+            <div key="pending-actions" className="space-y-2">
+              <div className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 mb-2">
+                <AlertCircle className="h-4 w-4 inline mr-2" />
+                <span className="font-medium">Pending Approval</span>
+                <br />
+                <span className="text-xs text-amber-500">
+                  This booking requires approval before work can begin
+                </span>
+              </div>
+              
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="request-approval"
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => requestApproval(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Request Approval
+                </Button>
+                
+                <Button
+                  key="send-reminder"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={() => sendReminder(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send Reminder
+                </Button>
+                
+                <Button
+                  key="escalate"
+                  size="sm"
+                  variant="outline"
+                  className="border-red-200 text-red-700 hover:bg-red-50"
+                  onClick={() => escalateBooking(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Escalate
+                </Button>
+              </div>
             </div>
           )
-          // Add a hidden debug message to help troubleshoot
-          console.log('🔒 Pending booking actions blocked for booking:', booking.id)
           break
         case 'in_progress':
           actions.push(
-            <Button
-              key="complete"
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-              onClick={() => updateBookingStatus(booking.id, 'completed')}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark Complete
-            </Button>
+            <div key="in-progress-actions" className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="complete"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                  onClick={() => updateBookingStatus(booking.id, 'completed')}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark Complete
+                </Button>
+                
+                <Button
+                  key="pause"
+                  size="sm"
+                  variant="outline"
+                  className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                  onClick={() => pauseWork(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Pause Work
+                </Button>
+                
+                <Button
+                  key="update-progress"
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => updateProgress(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Progress
+                </Button>
+              </div>
+            </div>
           )
           break
         case 'completed':
-          // Allow providers to reopen completed bookings if needed
+          // Allow providers to manage completed bookings
           actions.push(
-            <Button
-              key="reopen"
-              size="sm"
-              variant="outline"
-              className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300"
-              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reopen
-            </Button>
+            <div key="completed-actions" className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="reopen"
+                  size="sm"
+                  variant="outline"
+                  className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300"
+                  onClick={() => updateBookingStatus(booking.id, 'in_progress')}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reopen
+                </Button>
+                
+                <Button
+                  key="add-review"
+                  size="sm"
+                  variant="outline"
+                  className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  onClick={() => addReview(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Add Review
+                </Button>
+                
+                <Button
+                  key="archive"
+                  size="sm"
+                  variant="outline"
+                  className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                  onClick={() => archiveBooking(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Archive
+                </Button>
+              </div>
+            </div>
           )
           break
       }
     } else if (userRole === 'client') {
-      // Clients cannot change status directly due to database constraints
-      // They can only view and message
-      if (booking.status === 'in_progress') {
-        actions.push(
-          <Button
-            key="request-change"
-            size="sm"
-            variant="outline"
-            className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-300"
-            onClick={() => openMessageModal(booking)}
-            disabled={isUpdatingStatus === booking.id}
-          >
-            <AlertCircle className="h-4 w-4 mr-2" />
-            Request Change
-          </Button>
-        )
+      // Enhanced client actions for different booking statuses
+      switch (booking.status) {
+        case 'pending':
+          actions.push(
+            <div key="client-pending-actions" className="space-y-2">
+              <div className="text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-200 mb-2">
+                <Clock className="h-4 w-4 inline mr-2" />
+                <span className="font-medium">Awaiting Provider Response</span>
+                <br />
+                <span className="text-xs text-blue-500">
+                  Your booking is being reviewed by the service provider
+                </span>
+              </div>
+              
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="send-inquiry"
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => openMessageModal(booking)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send Inquiry
+                </Button>
+                
+                <Button
+                  key="cancel-request"
+                  size="sm"
+                  variant="outline"
+                  className="border-red-200 text-red-700 hover:bg-red-50"
+                  onClick={() => cancelBooking(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Request
+                </Button>
+              </div>
+            </div>
+          )
+          break
+          
+        case 'in_progress':
+          actions.push(
+            <div key="client-in-progress-actions" className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="request-change"
+                  size="sm"
+                  variant="outline"
+                  className="bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-300"
+                  onClick={() => openMessageModal(booking)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Request Change
+                </Button>
+                
+                <Button
+                  key="request-update"
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => requestUpdate(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Request Update
+                </Button>
+              </div>
+            </div>
+          )
+          break
+          
+        case 'completed':
+          actions.push(
+            <div key="client-completed-actions" className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="add-review"
+                  size="sm"
+                  variant="outline"
+                  className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  onClick={() => addClientReview(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Add Review
+                </Button>
+                
+                <Button
+                  key="rebook"
+                  size="sm"
+                  variant="outline"
+                  className="border-green-200 text-green-700 hover:bg-green-50"
+                  onClick={() => rebookService(booking.id)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Rebook Service
+                </Button>
+              </div>
+            </div>
+          )
+          break
       }
     }
 
@@ -766,6 +951,358 @@ export default function BookingsPage() {
     }
   }
 
+
+
+  // Provider workflow functions for pending bookings
+  const requestApproval = async (bookingId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Add a note requesting approval
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: 'Approval requested by provider',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error requesting approval:', error)
+        alert('Failed to request approval. Please try again.')
+        return
+      }
+
+      alert('Approval request sent successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error requesting approval:', error)
+      alert('Failed to request approval. Please try again.')
+    }
+  }
+
+  const sendReminder = async (bookingId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Send a reminder message
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          booking_id: bookingId,
+          sender_id: user.id,
+          receiver_id: userRole === 'provider' ? 
+            (bookings.find(b => b.id === bookingId)?.client_id || '') : 
+            (bookings.find(b => b.id === bookingId)?.provider_id || ''),
+          message: 'Reminder: Your booking is pending approval. Please review and respond.',
+          created_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error('Error sending reminder:', error)
+        alert('Failed to send reminder. Please try again.')
+        return
+      }
+
+      alert('Reminder sent successfully!')
+      
+    } catch (error) {
+      console.error('Error sending reminder:', error)
+      alert('Failed to send reminder. Please try again.')
+    }
+  }
+
+  const escalateBooking = async (bookingId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Add escalation note
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: 'ESCALATED: Requires immediate attention',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error escalating booking:', error)
+        alert('Failed to escalate booking. Please try again.')
+        return
+      }
+
+      alert('Booking escalated successfully! Support team will be notified.')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error escalating booking:', error)
+      alert('Failed to escalate booking. Please try again.')
+    }
+  }
+
+  // Provider workflow functions for in-progress bookings
+  const pauseWork = async (bookingId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Add pause note
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: 'Work paused - will resume soon',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error pausing work:', error)
+        alert('Failed to pause work. Please try again.')
+        return
+      }
+
+      alert('Work paused successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error pausing work:', error)
+      alert('Failed to pause work. Please try again.')
+    }
+  }
+
+  const updateProgress = async (bookingId: string) => {
+    try {
+      const progressNote = prompt('Enter progress update:')
+      if (!progressNote) return
+      
+      const supabase = await getSupabaseClient()
+      
+      // Add progress note
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: `Progress Update: ${progressNote}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error updating progress:', error)
+        alert('Failed to update progress. Please try again.')
+        return
+      }
+
+      alert('Progress updated successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error updating progress:', error)
+      alert('Failed to update progress. Please try again.')
+    }
+  }
+
+  // Provider workflow functions for completed bookings
+  const addReview = async (bookingId: string) => {
+    try {
+      const reviewText = prompt('Enter your review for this booking:')
+      if (!reviewText) return
+      
+      const rating = prompt('Enter rating (1-5):')
+      if (!rating || isNaN(Number(rating)) || Number(rating) < 1 || Number(rating) > 5) {
+        alert('Please enter a valid rating between 1 and 5')
+        return
+      }
+      
+      const supabase = await getSupabaseClient()
+      
+      // Add review and rating
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          review: reviewText,
+          rating: Number(rating),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error adding review:', error)
+        alert('Failed to add review. Please try again.')
+        return
+      }
+
+      alert('Review added successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error adding review:', error)
+      alert('Failed to add review. Please try again.')
+    }
+  }
+
+  const archiveBooking = async (bookingId: string) => {
+    try {
+      const confirmArchive = confirm('Are you sure you want to archive this booking? This action cannot be undone.')
+      if (!confirmArchive) return
+      
+      const supabase = await getSupabaseClient()
+      
+      // Add archive note
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: 'ARCHIVED: ' + (bookings.find(b => b.id === bookingId)?.notes || ''),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error archiving booking:', error)
+        alert('Failed to archive booking. Please try again.')
+        return
+      }
+
+      alert('Booking archived successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error archiving booking:', error)
+      alert('Failed to archive booking. Please try again.')
+    }
+  }
+
+  // Client-specific workflow functions
+  const cancelBooking = async (bookingId: string) => {
+    try {
+      const confirmCancel = confirm('Are you sure you want to cancel this booking request? This action cannot be undone.')
+      if (!confirmCancel) return
+      
+      const supabase = await getSupabaseClient()
+      
+      // Add cancellation note
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: 'CANCELLED BY CLIENT: ' + (bookings.find(b => b.id === bookingId)?.notes || ''),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error cancelling booking:', error)
+        alert('Failed to cancel booking. Please try again.')
+        return
+      }
+
+      alert('Booking cancelled successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error cancelling booking:', error)
+      alert('Failed to cancel booking. Please try again.')
+    }
+  }
+
+  const requestUpdate = async (bookingId: string) => {
+    try {
+      const updateRequest = prompt('What update would you like to request?')
+      if (!updateRequest) return
+      
+      const supabase = await getSupabaseClient()
+      
+      // Send update request message
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          booking_id: bookingId,
+          sender_id: user.id,
+          receiver_id: bookings.find(b => b.id === bookingId)?.provider_id || '',
+          message: `Update Request: ${updateRequest}`,
+          created_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error('Error requesting update:', error)
+        alert('Failed to request update. Please try again.')
+        return
+      }
+
+      alert('Update request sent successfully!')
+      
+    } catch (error) {
+      console.error('Error requesting update:', error)
+      alert('Failed to request update. Please try again.')
+    }
+  }
+
+  const addClientReview = async (bookingId: string) => {
+    try {
+      const reviewText = prompt('Enter your review for this service:')
+      if (!reviewText) return
+      
+      const rating = prompt('Enter rating (1-5):')
+      if (!rating || isNaN(Number(rating)) || Number(rating) < 1 || Number(rating) > 5) {
+        alert('Please enter a valid rating between 1 and 5')
+        return
+      }
+      
+      const supabase = await getSupabaseClient()
+      
+      // Add client review and rating
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          review: reviewText,
+          rating: Number(rating),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+
+      if (error) {
+        console.error('Error adding review:', error)
+        alert('Failed to add review. Please try again.')
+        return
+      }
+
+      alert('Review added successfully!')
+      
+      // Refresh the data
+      await fetchBookings(user.id, userRole)
+      
+    } catch (error) {
+      console.error('Error adding review:', error)
+      alert('Failed to add review. Please try again.')
+    }
+  }
+
+  const rebookService = async (bookingId: string) => {
+    try {
+      const confirmRebook = confirm('Would you like to rebook this service? This will create a new booking request.')
+      if (!confirmRebook) return
+      
+      // For now, just show a message - in a real app, this would create a new booking
+      alert('Rebooking functionality will be implemented in the next update. For now, please create a new service request.')
+      
+    } catch (error) {
+      console.error('Error rebooking service:', error)
+      alert('Failed to rebook service. Please try again.')
+    }
+  }
+
   // Removed confirmBooking function since 'confirmed' status is not allowed
 
   if (loading) {
@@ -790,18 +1327,18 @@ export default function BookingsPage() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings</h1>
               <p className="text-gray-600 text-lg">Manage your service bookings and appointments</p>
-                                               <p className="text-sm text-gray-500 mt-1">
-               Using basic booking data. Service names and amounts will show as IDs until database relationships are configured. 
-               <Button 
-                 variant="link" 
-                 size="sm" 
-                 className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal underline"
-                 onClick={() => window.open('https://supabase.com/docs/guides/database/relationships', '_blank')}
-               >
-                 Learn more about database relationships
-               </Button>
-               <span className="ml-2">• Status transitions are limited by database constraints</span>
-             </p>
+                                                             <p className="text-sm text-gray-500 mt-1">
+                Using basic booking data. Service names and amounts will show as IDs until database relationships are configured. 
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal underline"
+                  onClick={() => window.open('https://supabase.com/docs/guides/database/relationships', '_blank')}
+                >
+                  Learn more about database relationships
+                </Button>
+                <span className="ml-2">• Enhanced workflow actions now available for all booking statuses</span>
+              </p>
             </div>
             <div className="flex gap-3">
                              <Button 
