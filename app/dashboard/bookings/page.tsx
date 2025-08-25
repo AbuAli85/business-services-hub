@@ -165,9 +165,9 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Use basic query to avoid foreign key relationship errors
+      // Try enhanced view first, fallback to basic table
       let query = supabase
-        .from('bookings')
+        .from(showEnhancedData ? 'enhanced_bookings' : 'bookings')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -188,7 +188,7 @@ export default function BookingsPage() {
         return
       }
 
-      // Transform the basic data with better fallbacks
+      // Transform the data with better fallbacks
       const transformedBookings = (bookingsData || []).map(booking => ({
         id: booking.id,
         service_id: booking.service_id,
@@ -204,25 +204,34 @@ export default function BookingsPage() {
         rating: booking.rating,
         review: booking.review,
         last_updated: booking.updated_at || booking.created_at,
-        service_name: `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
-        client_name: `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
-        provider_name: `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
-        service_description: '',
-        estimated_duration: '',
-        location: '',
-        client_email: '',
-        client_phone: '',
-        cancellation_reason: ''
+        // Use enhanced data when available, fallback to IDs
+        service_name: showEnhancedData && booking.service_title 
+          ? booking.service_title 
+          : `Service #${booking.service_id?.slice(0, 8) || 'N/A'}`,
+        client_name: showEnhancedData && booking.client_name 
+          ? booking.client_name 
+          : `Client #${booking.client_id?.slice(0, 8) || 'N/A'}`,
+        provider_name: showEnhancedData && booking.provider_name 
+          ? booking.provider_name 
+          : `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
+        service_description: showEnhancedData ? (booking.service_description || '') : '',
+        estimated_duration: showEnhancedData ? (booking.estimated_duration || '') : '',
+        location: showEnhancedData ? (booking.location || '') : '',
+        client_email: showEnhancedData ? (booking.client_phone || '') : '', // Using phone as fallback for email
+        client_phone: showEnhancedData ? (booking.client_phone || '') : '',
+        cancellation_reason: showEnhancedData ? (booking.cancellation_reason || '') : ''
       }))
 
       console.log('📊 Fetched bookings:', {
         total: transformedBookings.length,
         role: role || userRole,
         userId: userId,
+        enhanced: showEnhancedData,
         sample: transformedBookings[0] ? {
           id: transformedBookings[0].id,
           status: transformedBookings[0].status,
-          service_id: transformedBookings[0].service_id
+          service_name: transformedBookings[0].service_name,
+          client_name: transformedBookings[0].client_name
         } : 'No bookings'
       })
 
@@ -244,7 +253,6 @@ export default function BookingsPage() {
     const stats: BookingStats = {
       total: bookingsData.length,
       pending: bookingsData.filter(b => b.status === 'pending').length,
-
       inProgress: bookingsData.filter(b => b.status === 'in_progress').length,
       completed: bookingsData.filter(b => b.status === 'completed').length,
       cancelled: bookingsData.filter(b => b.status === 'cancelled').length,
@@ -386,11 +394,36 @@ export default function BookingsPage() {
       if (isNaN(date.getTime())) {
         return 'Date not available'
       }
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      
+      const now = new Date()
+      const isFuture = date > now
+      const isToday = date.toDateString() === now.toDateString()
+      const isYesterday = date.toDateString() === new Date(now.getTime() - 24 * 60 * 60 * 1000).toDateString()
+      
+      if (isToday) {
+        return 'Today'
+      } else if (isYesterday) {
+        return 'Yesterday'
+      } else if (isFuture) {
+        const daysUntil = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        if (daysUntil === 1) {
+          return 'Tomorrow'
+        } else if (daysUntil <= 7) {
+          return `In ${daysUntil} days`
+        } else {
+          return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          })
+        }
+      } else {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })
+      }
     } catch (error) {
       return 'Date not available'
     }
@@ -752,23 +785,36 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Test if enhanced data relationships are available
-      const { data: testData, error } = await supabase
-        .from('bookings')
+      // Try to fetch from enhanced view first
+      const { data: enhancedData, error: enhancedError } = await supabase
+        .from('enhanced_bookings')
         .select('*')
         .limit(1)
 
-      if (!error && testData && testData.length > 0) {
-        console.log('ℹ️ Basic booking data is available - enhanced relationships not yet configured')
-        setShowEnhancedData(false)
-        // Don't show alerts for this - just log to console
+      if (!enhancedError && enhancedData && enhancedData.length > 0) {
+        console.log('✅ Enhanced bookings view is available - using real names and data')
+        setShowEnhancedData(true)
+        return true
       } else {
-        console.log('ℹ️ No booking data available yet')
-        setShowEnhancedData(false)
+        // Fallback to basic view
+        const { data: testData, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .limit(1)
+
+        if (!error && testData && testData.length > 0) {
+          console.log('ℹ️ Basic booking data is available - enhanced relationships not yet configured')
+          setShowEnhancedData(false)
+        } else {
+          console.log('ℹ️ No booking data available yet')
+          setShowEnhancedData(false)
+        }
+        return false
       }
     } catch (error) {
       console.log('Enhanced data check failed:', error)
       setShowEnhancedData(false)
+      return false
     }
   }
 
@@ -1278,16 +1324,11 @@ export default function BookingsPage() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings</h1>
               <p className="text-gray-600 text-lg">Manage your service bookings and appointments</p>
-                                                             <p className="text-sm text-gray-500 mt-1">
-                Using basic booking data. Service names and amounts will show as IDs until database relationships are configured. 
-                <Button 
-                  variant="link" 
-                  size="sm" 
-                  className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal underline"
-                  onClick={() => window.open('https://supabase.com/docs/guides/database/relationships', '_blank')}
-                >
-                  Learn more about database relationships
-                </Button>
+              <p className="text-sm text-gray-500 mt-1">
+                {showEnhancedData 
+                  ? '✅ Enhanced data available - showing real names and service details'
+                  : 'Using basic booking data. Service names and amounts will show as IDs until enhanced view is configured.'
+                }
                 <span className="ml-2">• Enhanced workflow actions now available for all booking statuses</span>
               </p>
             </div>
@@ -1325,7 +1366,7 @@ export default function BookingsPage() {
           </div>
 
           {/* Enhanced Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <Card className="border-0 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -1350,11 +1391,28 @@ export default function BookingsPage() {
                     <p className="text-sm font-medium text-gray-600">Pending</p>
                     <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {stats.inProgress} in progress
+                      {stats.pending > 0 ? `${stats.pending} awaiting approval` : 'No pending bookings'}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                     <Clock className="h-6 w-6 text-yellow-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm bg-white/80 backdrop-blur-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">In Progress</p>
+                    <p className="text-2xl font-bold text-amber-600">{stats.inProgress}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {stats.inProgress > 0 ? `${stats.inProgress} active work` : 'No active work'}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <ClockIcon className="h-6 w-6 text-amber-600" />
                   </div>
                 </div>
               </CardContent>
