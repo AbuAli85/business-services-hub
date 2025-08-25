@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 import { 
   Search, Filter, Plus, Edit, Trash2, Eye, Building2, TrendingUp, 
-  Calendar, DollarSign, Star, Zap, Clock, Activity
+  Calendar, DollarSign, Star, Zap, Clock, Activity, FileCheck, AlertCircle,
+  Target, Play, Download, ExternalLink, Share2, Award, Lightbulb, BookOpen,
+  Headphones, HelpCircle, CreditCard, Receipt, CheckCircle, FileText
 } from 'lucide-react'
 
 interface Service {
@@ -40,13 +44,52 @@ interface ServiceStats {
   totalBookings: number
 }
 
+interface Contract {
+  id: string
+  title: string
+  clientName: string
+  amount: number
+  status: string
+  dueDate: string
+  actionRequired: string
+}
+
+interface SupportTicket {
+  id: string
+  title: string
+  priority: string
+  status: string
+  category: string
+  createdAt: string
+  lastUpdated: string
+}
+
+interface Resource {
+  id: string
+  title: string
+  type: string
+  description: string
+  url: string
+  category: string
+}
+
+interface Referral {
+  id: string
+  clientName: string
+  status: string
+  commission: number
+  date: string
+}
+
 export default function ProviderServicesPage() {
+  const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedView, setSelectedView] = useState('grid')
+  const [activeTab, setActiveTab] = useState('services')
   const [stats, setStats] = useState<ServiceStats>({
     totalServices: 0,
     activeServices: 0,
@@ -75,6 +118,93 @@ export default function ProviderServicesPage() {
   ]
 
   const statuses = ['active', 'inactive', 'draft', 'pending', 'featured']
+  
+  // Mock data for additional sections
+  const [contracts] = useState<Contract[]>([
+    {
+      id: '1',
+      title: 'Website Development Contract',
+      clientName: 'ABC Company',
+      amount: 2500,
+      status: 'pending_signature',
+      dueDate: '2024-01-15',
+      actionRequired: 'Client signature required'
+    },
+    {
+      id: '2',
+      title: 'Marketing Campaign',
+      clientName: 'XYZ Corp',
+      amount: 1800,
+      status: 'active',
+      dueDate: '2024-01-30',
+      actionRequired: 'Invoice due'
+    }
+  ])
+  
+  const [supportTickets] = useState<SupportTicket[]>([
+    {
+      id: '1',
+      title: 'Payment processing issue',
+      priority: 'high',
+      status: 'open',
+      category: 'Billing',
+      createdAt: '2024-01-10',
+      lastUpdated: '2024-01-12'
+    },
+    {
+      id: '2',
+      title: 'Service delivery question',
+      priority: 'medium',
+      status: 'in_progress',
+      category: 'Service',
+      createdAt: '2024-01-08',
+      lastUpdated: '2024-01-11'
+    }
+  ])
+  
+  const [resources] = useState<Resource[]>([
+    {
+      id: '1',
+      title: 'Provider Onboarding Guide',
+      type: 'PDF',
+      description: 'Complete guide to getting started as a provider',
+      url: '#',
+      category: 'Onboarding'
+    },
+    {
+      id: '2',
+      title: 'Service Creation Best Practices',
+      type: 'Video',
+      description: 'Learn how to create compelling service descriptions',
+      url: '#',
+      category: 'Service Management'
+    },
+    {
+      id: '3',
+      title: 'Client Communication Playbook',
+      type: 'Document',
+      description: 'Effective communication strategies with clients',
+      url: '#',
+      category: 'Client Relations'
+    }
+  ])
+  
+  const [referrals] = useState<Referral[]>([
+    {
+      id: '1',
+      clientName: 'John Smith',
+      status: 'completed',
+      commission: 150,
+      date: '2024-01-05'
+    },
+    {
+      id: '2',
+      clientName: 'Sarah Johnson',
+      status: 'pending',
+      commission: 200,
+      date: '2024-01-08'
+    }
+  ])
 
   useEffect(() => {
     fetchMyServices()
@@ -195,16 +325,27 @@ export default function ProviderServicesPage() {
     }
   }
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800'
+      case 'medium': return 'bg-yellow-100 text-yellow-800'
+      case 'low': return 'bg-green-100 text-green-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+
+
   const handleCreateService = () => {
-    window.location.href = '/dashboard/provider/services/create'
+    router.push('/dashboard/provider/create-service')
   }
 
   const handleEditService = (serviceId: string) => {
-    window.location.href = `/dashboard/provider/services/${serviceId}/edit`
+    router.push(`/dashboard/provider/provider-services/${serviceId}/edit`)
   }
 
   const handleViewService = (serviceId: string) => {
-    window.location.href = `/dashboard/provider/services/${serviceId}`
+    router.push(`/dashboard/provider/provider-services/${serviceId}`)
   }
 
   const handleDeleteService = async (serviceId: string) => {
@@ -425,6 +566,19 @@ export default function ProviderServicesPage() {
           </CardContent>
         </Card>
 
+        {/* Tabs for different sections */}
+        <Tabs defaultValue="services" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="contracts">Contracts & Billing</TabsTrigger>
+            <TabsTrigger value="support">Support & Queries</TabsTrigger>
+            <TabsTrigger value="resources">Resources</TabsTrigger>
+            <TabsTrigger value="referrals">Referrals</TabsTrigger>
+          </TabsList>
+
+          {/* Services Tab */}
+          <TabsContent value="services" className="space-y-6">
+
         {/* Services Display */}
         {services.length === 0 ? (
           <Card className="border-0 shadow-lg">
@@ -554,6 +708,316 @@ export default function ProviderServicesPage() {
             ))}
           </div>
         )}
+          </TabsContent>
+
+          {/* Contracts & Billing Tab */}
+          <TabsContent value="contracts" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Contracts & Billing</h2>
+              <Button onClick={() => alert('Contract creation feature coming soon!')}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Contract
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileCheck className="h-5 w-5 mr-2" />
+                    Active Contracts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {contracts.filter(c => c.status === 'active').map((contract) => (
+                      <div key={contract.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <h4 className="font-medium text-green-900">{contract.title}</h4>
+                        <p className="text-sm text-green-700">{contract.clientName}</p>
+                        <p className="text-lg font-bold text-green-900">{formatCurrency(contract.amount)}</p>
+                        <p className="text-xs text-green-600">Due: {contract.dueDate}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Clock className="h-5 w-5 mr-2" />
+                    Pending Actions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {contracts.filter(c => c.status === 'pending_signature').map((contract) => (
+                      <div key={contract.id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <h4 className="font-medium text-yellow-900">{contract.title}</h4>
+                        <p className="text-sm text-yellow-700">{contract.clientName}</p>
+                        <p className="text-lg font-bold text-yellow-900">{formatCurrency(contract.amount)}</p>
+                        <p className="text-xs text-yellow-600">{contract.actionRequired}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <DollarSign className="h-5 w-5 mr-2" />
+                    Billing Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-900">{formatCurrency(4300)}</p>
+                      <p className="text-sm text-blue-700">Total Outstanding</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-900">{formatCurrency(1800)}</p>
+                      <p className="text-sm text-green-700">This Month</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Support & Queries Tab */}
+          <TabsContent value="support" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Support & Queries</h2>
+              <Button onClick={() => alert('Support ticket creation feature coming soon!')}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Ticket
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                    Open Tickets
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {supportTickets.filter(t => t.status === 'open').map((ticket) => (
+                      <div key={ticket.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-red-900">{ticket.title}</h4>
+                          <Badge className={getPriorityColor(ticket.priority)}>
+                            {ticket.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-red-700">{ticket.category}</p>
+                        <p className="text-xs text-red-600">Created: {ticket.createdAt}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Clock className="h-5 w-5 mr-2" />
+                    In Progress
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {supportTickets.filter(t => t.status === 'in_progress').map((ticket) => (
+                      <div key={ticket.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-blue-900">{ticket.title}</h4>
+                          <Badge className={getPriorityColor(ticket.priority)}>
+                            {ticket.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-blue-700">{ticket.category}</p>
+                        <p className="text-xs text-blue-600">Updated: {ticket.lastUpdated}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Resources Tab */}
+          <TabsContent value="resources" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Resources & Documentation</h2>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download All
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {resources.map((resource) => (
+                <Card key={resource.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{resource.title}</CardTitle>
+                      {resource.type === 'PDF' && <FileText className="h-5 w-5 text-red-500" />}
+                      {resource.type === 'Video' && <Play className="h-5 w-5 text-blue-500" />}
+                      {resource.type === 'Document' && <BookOpen className="h-5 w-5 text-green-500" />}
+                    </div>
+                    <CardDescription>{resource.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <Badge variant="secondary">{resource.category}</Badge>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" className="flex-1">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Lightbulb className="h-5 w-5 mr-2" />
+                  Learning Paths
+                </CardTitle>
+                <CardDescription>Structured learning to improve your skills</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">Beginner Provider</h4>
+                    <p className="text-sm text-blue-700 mb-3">Learn the basics of service delivery</p>
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                      Start Learning
+                    </Button>
+                  </div>
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-900 mb-2">Advanced Provider</h4>
+                    <p className="text-sm text-green-700 mb-3">Master advanced service techniques</p>
+                    <Button size="sm" variant="outline" className="border-green-300 text-green-700">
+                      Continue
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Referrals Tab */}
+          <TabsContent value="referrals" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Referral Program</h2>
+              <Button onClick={() => alert('Referral invitation feature coming soon!')}>
+                <Share2 className="h-4 w-4 mr-2" />
+                Invite Friends
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Award className="h-5 w-5 mr-2" />
+                    Referral Stats
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-900">12</p>
+                      <p className="text-sm text-blue-700">Total Referrals</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-900">{formatCurrency(1800)}</p>
+                      <p className="text-sm text-green-700">Total Commission</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <CheckCircle className="h-5 w-5 mr-2" />
+                    Completed Referrals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {referrals.filter(r => r.status === 'completed').map((referral) => (
+                      <div key={referral.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <h4 className="font-medium text-green-900">{referral.clientName}</h4>
+                        <p className="text-lg font-bold text-green-900">{formatCurrency(referral.commission)}</p>
+                        <p className="text-xs text-green-600">Completed: {referral.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Clock className="h-5 w-5 mr-2" />
+                    Pending Referrals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {referrals.filter(r => r.status === 'pending').map((referral) => (
+                      <div key={referral.id} className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <h4 className="font-medium text-yellow-900">{referral.clientName}</h4>
+                        <p className="text-lg font-bold text-yellow-900">{formatCurrency(referral.commission)}</p>
+                        <p className="text-xs text-yellow-600">Pending: {referral.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Share2 className="h-5 w-5 mr-2" />
+                  Share Your Referral Link
+                </CardTitle>
+                <CardDescription>Invite friends and earn commissions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex space-x-2">
+                  <Input 
+                    value="https://businesshub.com/ref/provider123" 
+                    readOnly 
+                    className="flex-1"
+                  />
+                  <Button variant="outline">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Earn 10% commission on your referrals' first booking
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

@@ -114,7 +114,7 @@ export default function CreateServicePage() {
        }
 
       alert('Service created successfully!')
-      router.push('/dashboard/provider/services')
+      router.push('/dashboard/provider/provider-services')
     } catch (error) {
       console.error('Error creating service:', error)
       alert('An unexpected error occurred')
@@ -128,10 +128,10 @@ export default function CreateServicePage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link 
-            href="/dashboard/provider/services"
-            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
-          >
+                     <Link 
+             href="/dashboard/provider/my-services"
+             className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to My Services
           </Link>
@@ -239,7 +239,7 @@ export default function CreateServicePage() {
 
               {/* Actions */}
               <div className="flex items-center justify-between pt-6 border-t">
-                <Link href="/dashboard/provider/services">
+                <Link href="/dashboard/provider/provider-services">
                   <Button type="button" variant="outline">
                     Cancel
                   </Button>
