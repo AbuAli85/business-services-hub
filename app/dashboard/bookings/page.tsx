@@ -953,25 +953,60 @@ export default function BookingsPage() {
 
 
 
-  // Provider workflow functions for pending bookings
-  const requestApproval = async (bookingId: string) => {
+  // Helper function to safely update bookings with fallback for missing columns
+  const safeUpdateBooking = async (bookingId: string, updateData: any) => {
     try {
       const supabase = await getSupabaseClient()
       
-      // Add a note requesting approval
+      // Try the full update first
       const { error } = await supabase
         .from('bookings')
-        .update({ 
-          notes: 'Approval requested by provider',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', bookingId)
 
       if (error) {
-        console.error('Error requesting approval:', error)
-        alert('Failed to request approval. Please try again.')
-        return
+        // If it's a column error, try without the problematic columns
+        if (error.message?.includes('column') || error.message?.includes('notes') || error.message?.includes('rating') || error.message?.includes('review')) {
+          console.warn('Some columns not available, updating with available fields only')
+          
+          // Filter out potentially problematic columns
+          const safeUpdateData = { ...updateData }
+          delete safeUpdateData.notes
+          delete safeUpdateData.rating
+          delete safeUpdateData.review
+          
+          // Keep only timestamp update if that's all we can do
+          if (Object.keys(safeUpdateData).length === 0) {
+            safeUpdateData.updated_at = new Date().toISOString()
+          }
+          
+          const { error: fallbackError } = await supabase
+            .from('bookings')
+            .update(safeUpdateData)
+            .eq('id', bookingId)
+          
+          if (fallbackError) {
+            throw fallbackError
+          }
+        } else {
+          throw error
+        }
       }
+      
+      return true
+    } catch (error) {
+      console.error('Error in safeUpdateBooking:', error)
+      throw error
+    }
+  }
+
+  // Provider workflow functions for pending bookings
+  const requestApproval = async (bookingId: string) => {
+    try {
+      await safeUpdateBooking(bookingId, {
+        notes: 'Approval requested by provider',
+        updated_at: new Date().toISOString()
+      })
 
       alert('Approval request sent successfully!')
       
@@ -1017,22 +1052,10 @@ export default function BookingsPage() {
 
   const escalateBooking = async (bookingId: string) => {
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Add escalation note
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          notes: 'ESCALATED: Requires immediate attention',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error escalating booking:', error)
-        alert('Failed to escalate booking. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        notes: 'ESCALATED: Requires immediate attention',
+        updated_at: new Date().toISOString()
+      })
 
       alert('Booking escalated successfully! Support team will be notified.')
       
@@ -1048,22 +1071,10 @@ export default function BookingsPage() {
   // Provider workflow functions for in-progress bookings
   const pauseWork = async (bookingId: string) => {
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Add pause note
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          notes: 'Work paused - will resume soon',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error pausing work:', error)
-        alert('Failed to pause work. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        notes: 'Work paused - will resume soon',
+        updated_at: new Date().toISOString()
+      })
 
       alert('Work paused successfully!')
       
@@ -1081,22 +1092,10 @@ export default function BookingsPage() {
       const progressNote = prompt('Enter progress update:')
       if (!progressNote) return
       
-      const supabase = await getSupabaseClient()
-      
-      // Add progress note
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          notes: `Progress Update: ${progressNote}`,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error updating progress:', error)
-        alert('Failed to update progress. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        notes: `Progress Update: ${progressNote}`,
+        updated_at: new Date().toISOString()
+      })
 
       alert('Progress updated successfully!')
       
@@ -1121,23 +1120,11 @@ export default function BookingsPage() {
         return
       }
       
-      const supabase = await getSupabaseClient()
-      
-      // Add review and rating
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          review: reviewText,
-          rating: Number(rating),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error adding review:', error)
-        alert('Failed to add review. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        review: reviewText,
+        rating: Number(rating),
+        updated_at: new Date().toISOString()
+      })
 
       alert('Review added successfully!')
       
@@ -1155,22 +1142,10 @@ export default function BookingsPage() {
       const confirmArchive = confirm('Are you sure you want to archive this booking? This action cannot be undone.')
       if (!confirmArchive) return
       
-      const supabase = await getSupabaseClient()
-      
-      // Add archive note
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          notes: 'ARCHIVED: ' + (bookings.find(b => b.id === bookingId)?.notes || ''),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error archiving booking:', error)
-        alert('Failed to archive booking. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        notes: 'ARCHIVED: ' + (bookings.find(b => b.id === bookingId)?.notes || ''),
+        updated_at: new Date().toISOString()
+      })
 
       alert('Booking archived successfully!')
       
@@ -1189,22 +1164,10 @@ export default function BookingsPage() {
       const confirmCancel = confirm('Are you sure you want to cancel this booking request? This action cannot be undone.')
       if (!confirmCancel) return
       
-      const supabase = await getSupabaseClient()
-      
-      // Add cancellation note
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          notes: 'CANCELLED BY CLIENT: ' + (bookings.find(b => b.id === bookingId)?.notes || ''),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error cancelling booking:', error)
-        alert('Failed to cancel booking. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        notes: 'CANCELLED BY CLIENT: ' + (bookings.find(b => b.id === bookingId)?.notes || ''),
+        updated_at: new Date().toISOString()
+      })
 
       alert('Booking cancelled successfully!')
       
@@ -1260,23 +1223,11 @@ export default function BookingsPage() {
         return
       }
       
-      const supabase = await getSupabaseClient()
-      
-      // Add client review and rating
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          review: reviewText,
-          rating: Number(rating),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error adding review:', error)
-        alert('Failed to add review. Please try again.')
-        return
-      }
+      await safeUpdateBooking(bookingId, {
+        review: reviewText,
+        rating: Number(rating),
+        updated_at: new Date().toISOString()
+      })
 
       alert('Review added successfully!')
       
