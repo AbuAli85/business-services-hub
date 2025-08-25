@@ -438,18 +438,17 @@ export default function BookingsPage() {
     if (userRole === 'provider') {
       switch (booking.status) {
         case 'pending':
-          // Based on database constraints, only allow direct transition to in_progress
+          // Database constraints prevent status changes from pending
+          // Show informational message instead of action buttons
           actions.push(
-            <Button
-              key="start"
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 shadow-sm"
-              onClick={() => updateBookingStatus(booking.id, 'in_progress')}
-              disabled={isUpdatingStatus === booking.id}
-            >
-              <ClockIcon className="h-4 w-4 mr-2" />
-              Start Work
-            </Button>
+            <div key="pending-info" className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
+              <AlertCircle className="h-4 w-4 inline mr-2" />
+              Pending bookings cannot be modified due to database constraints.
+              <br />
+              <span className="text-xs text-amber-500">
+                Contact support to configure allowed status transitions.
+              </span>
+            </div>
           )
           break
         case 'in_progress':
@@ -750,18 +749,18 @@ export default function BookingsPage() {
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">Bookings</h1>
               <p className="text-gray-600 text-lg">Manage your service bookings and appointments</p>
-                       <p className="text-sm text-gray-500 mt-1">
-              Using basic booking data. Service names and amounts will show as IDs until database relationships are configured. 
-              <Button 
-                variant="link" 
-                size="sm" 
-                className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal underline"
-                onClick={() => window.open('https://supabase.com/docs/guides/database/relationships', '_blank')}
-              >
-                Learn more about database relationships
-              </Button>
-              <span className="ml-2">• All core functionality is working</span>
-            </p>
+                                               <p className="text-sm text-gray-500 mt-1">
+               Using basic booking data. Service names and amounts will show as IDs until database relationships are configured. 
+               <Button 
+                 variant="link" 
+                 size="sm" 
+                 className="text-blue-600 hover:text-blue-700 p-0 h-auto font-normal underline"
+                 onClick={() => window.open('https://supabase.com/docs/guides/database/relationships', '_blank')}
+               >
+                 Learn more about database relationships
+               </Button>
+               <span className="ml-2">• Status transitions are limited by database constraints</span>
+             </p>
             </div>
             <div className="flex gap-3">
               <Button 
@@ -975,26 +974,26 @@ export default function BookingsPage() {
                     </Button>
                   </div>
                   
-                                     <div className="flex gap-2">
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => bulkUpdateStatus(selectedBookings, 'in_progress')}
-                       className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                     >
-                       <ClockIcon className="h-4 w-4 mr-2" />
-                       Start All
-                     </Button>
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => bulkUpdateStatus(selectedBookings, 'cancelled')}
-                       className="border-red-200 text-red-700 hover:bg-red-50"
-                     >
-                       <XCircle className="h-4 w-4 mr-2" />
-                       Cancel All
-                     </Button>
-                   </div>
+                                                         <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => bulkUpdateStatus(selectedBookings, 'completed')}
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Complete All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => bulkUpdateStatus(selectedBookings, 'cancelled')}
+                        className="border-red-200 text-red-700 hover:bg-red-50"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel All
+                      </Button>
+                    </div>
                 </div>
               )}
             </div>
