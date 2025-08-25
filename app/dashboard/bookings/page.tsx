@@ -131,10 +131,23 @@ export default function BookingsPage() {
   useEffect(() => {
     checkUserAndFetchBookings()
     // Try to check if enhanced data is available
-    setTimeout(() => {
-      tryFetchEnhancedData()
+    setTimeout(async () => {
+      const enhancedAvailable = await tryFetchEnhancedData()
+      // If enhanced data just became available, refetch bookings
+      if (enhancedAvailable && user) {
+        console.log('🔄 Enhanced data available - refetching bookings with real names')
+        await fetchBookings(user.id, userRole)
+      }
     }, 1000)
   }, [])
+
+  // Refetch bookings when enhanced data becomes available
+  useEffect(() => {
+    if (showEnhancedData && user && bookings.length > 0) {
+      console.log('🔄 Enhanced data detected - refetching bookings with real names')
+      fetchBookings(user.id, userRole)
+    }
+  }, [showEnhancedData])
 
   useEffect(() => {
     filterBookings()
@@ -165,9 +178,12 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      const tableName = showEnhancedData ? 'enhanced_bookings' : 'bookings'
+      console.log(`📊 Fetching from: ${tableName} (enhanced: ${showEnhancedData})`)
+      
       // Try enhanced view first, fallback to basic table
       let query = supabase
-        .from(showEnhancedData ? 'enhanced_bookings' : 'bookings')
+        .from(tableName)
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -187,6 +203,19 @@ export default function BookingsPage() {
         calculateStats([])
         return
       }
+
+      console.log(`📊 Raw data from ${tableName}:`, {
+        count: bookingsData?.length || 0,
+        sample: bookingsData?.[0] ? {
+          id: bookingsData[0].id,
+          service_title: bookingsData[0].service_title,
+          client_name: bookingsData[0].client_name,
+          provider_name: bookingsData[0].provider_name,
+          service_id: bookingsData[0].service_id,
+          client_id: bookingsData[0].client_id,
+          provider_id: bookingsData[0].provider_id
+        } : 'No data'
+      })
 
       // Transform the data with better fallbacks
       const transformedBookings = (bookingsData || []).map(booking => ({
@@ -785,6 +814,8 @@ export default function BookingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      console.log('🔍 Checking enhanced_bookings view availability...')
+      
       // Try to fetch from enhanced view first
       const { data: enhancedData, error: enhancedError } = await supabase
         .from('enhanced_bookings')
@@ -793,9 +824,17 @@ export default function BookingsPage() {
 
       if (!enhancedError && enhancedData && enhancedData.length > 0) {
         console.log('✅ Enhanced bookings view is available - using real names and data')
+        console.log('📊 Sample enhanced data:', {
+          id: enhancedData[0].id,
+          client_name: enhancedData[0].client_name,
+          provider_name: enhancedData[0].provider_name,
+          service_title: enhancedData[0].service_title
+        })
         setShowEnhancedData(true)
         return true
       } else {
+        console.log('❌ Enhanced view error or no data:', enhancedError?.message || 'No data')
+        
         // Fallback to basic view
         const { data: testData, error } = await supabase
           .from('bookings')
