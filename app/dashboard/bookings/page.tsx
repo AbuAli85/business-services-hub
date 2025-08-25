@@ -150,9 +150,10 @@ export default function BookingsPage() {
         return
       }
 
+      const userRole = user.user_metadata?.role || 'client'
       setUser(user)
-      setUserRole(user.user_metadata?.role || 'client')
-      await fetchBookings(user.id)
+      setUserRole(userRole)
+      await fetchBookings(user.id, userRole)
     } catch (error) {
       console.error('Error checking user:', error)
     } finally {
@@ -160,7 +161,7 @@ export default function BookingsPage() {
     }
   }
 
-  const fetchBookings = async (userId: string) => {
+  const fetchBookings = async (userId: string, role?: string) => {
     try {
       const supabase = await getSupabaseClient()
       
@@ -170,10 +171,11 @@ export default function BookingsPage() {
         .select('*')
         .order('created_at', { ascending: false })
 
-      // Filter based on user role
-      if (userRole === 'provider') {
+      // Filter based on user role (use passed role or current userRole)
+      const currentRole = role || userRole
+      if (currentRole === 'provider') {
         query = query.eq('provider_id', userId)
-      } else if (userRole === 'client') {
+      } else if (currentRole === 'client') {
         query = query.eq('client_id', userId)
       }
 
@@ -212,6 +214,17 @@ export default function BookingsPage() {
         client_phone: '',
         cancellation_reason: ''
       }))
+
+      console.log('📊 Fetched bookings:', {
+        total: transformedBookings.length,
+        role: role || userRole,
+        userId: userId,
+        sample: transformedBookings[0] ? {
+          id: transformedBookings[0].id,
+          status: transformedBookings[0].status,
+          service_id: transformedBookings[0].service_id
+        } : 'No bookings'
+      })
 
       setBookings(transformedBookings)
       calculateStats(transformedBookings)
@@ -628,7 +641,7 @@ export default function BookingsPage() {
       ))
 
       // Refresh data to get updated stats
-      await fetchBookings(user.id)
+      await fetchBookings(user.id, userRole)
       
     } catch (error) {
       console.error('Error updating booking status:', error)
@@ -678,7 +691,7 @@ export default function BookingsPage() {
 
       // Clear selection and refresh
       setSelectedBookings([])
-      await fetchBookings(user.id)
+      await fetchBookings(user.id, userRole)
       
     } catch (error) {
       console.error('Error bulk updating bookings:', error)
@@ -791,11 +804,11 @@ export default function BookingsPage() {
              </p>
             </div>
             <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => fetchBookings(user.id)}
-                className="border-gray-200 hover:bg-gray-50"
-              >
+                             <Button 
+                 variant="outline" 
+                 onClick={() => fetchBookings(user.id, userRole)}
+                 className="border-gray-200 hover:bg-gray-50"
+               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
