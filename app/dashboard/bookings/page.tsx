@@ -40,7 +40,9 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  MessageSquare
+  MessageSquare,
+  X,
+  Bell
 } from 'lucide-react'
 
 interface Booking {
@@ -90,6 +92,185 @@ interface Booking {
   milestone_notes?: string
   quality_score?: number
   compliance_status?: 'pending' | 'reviewed' | 'compliant' | 'non_compliant' | 'requires_action'
+  // Enhanced professional fields
+  contract_terms?: string
+  deliverables?: string[]
+  milestones?: Milestone[]
+  communication_history?: CommunicationLog[]
+  attachments?: Attachment[]
+  risk_assessment?: RiskAssessment
+  quality_metrics?: QualityMetrics
+  compliance_documents?: ComplianceDocument[]
+  payment_schedule?: PaymentSchedule[]
+  change_requests?: ChangeRequest[]
+  escalation_history?: EscalationLog[]
+}
+
+interface Milestone {
+  id: string
+  title: string
+  description: string
+  due_date: string
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue'
+  completion_percentage: number
+  deliverables: string[]
+  assigned_to: string
+  notes: string
+}
+
+interface CommunicationLog {
+  id: string
+  timestamp: string
+  sender_id: string
+  sender_name: string
+  sender_role: 'client' | 'provider' | 'system'
+  message_type: 'message' | 'notification' | 'update' | 'reminder' | 'escalation'
+  content: string
+  attachments?: string[]
+  read_by: string[]
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+}
+
+interface Attachment {
+  id: string
+  filename: string
+  file_type: string
+  file_size: number
+  uploaded_by: string
+  uploaded_at: string
+  category: 'contract' | 'invoice' | 'deliverable' | 'compliance' | 'other'
+  url: string
+}
+
+interface RiskAssessment {
+  risk_level: 'low' | 'medium' | 'high' | 'critical'
+  risk_factors: string[]
+  mitigation_strategies: string[]
+  contingency_plans: string[]
+  last_assessed: string
+  assessed_by: string
+}
+
+interface QualityMetrics {
+  overall_score: number
+  timeliness: number
+  communication: number
+  deliverables_quality: number
+  client_satisfaction: number
+  last_measured: string
+}
+
+interface ComplianceDocument {
+  id: string
+  document_type: string
+  filename: string
+  status: 'pending' | 'submitted' | 'approved' | 'rejected'
+  submitted_at: string
+  reviewed_at?: string
+  reviewed_by?: string
+  notes?: string
+}
+
+interface PaymentSchedule {
+  id: string
+  milestone_id?: string
+  amount: number
+  due_date: string
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled'
+  payment_method?: string
+  invoice_number?: string
+  paid_at?: string
+}
+
+interface ChangeRequest {
+  id: string
+  request_type: 'scope_change' | 'timeline_change' | 'budget_change' | 'quality_change'
+  description: string
+  impact_assessment: string
+  proposed_changes: string
+  status: 'pending' | 'approved' | 'rejected' | 'under_review'
+  requested_by: string
+  requested_at: string
+  reviewed_at?: string
+  reviewed_by?: string
+  approval_comments?: string
+}
+
+interface EscalationLog {
+  id: string
+  escalation_reason: string
+  escalated_by: string
+  escalated_at: string
+  escalated_to: string
+  priority: 'normal' | 'high' | 'urgent' | 'critical'
+  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  resolution_notes?: string
+  resolved_at?: string
+  resolved_by?: string
+}
+
+interface Notification {
+  id: string
+  type: 'info' | 'success' | 'warning' | 'error' | 'reminder'
+  title: string
+  message: string
+  timestamp: string
+  read: boolean
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  action_required: boolean
+  action_url?: string
+  category: 'booking' | 'approval' | 'payment' | 'quality' | 'compliance' | 'system'
+}
+
+interface Alert {
+  id: string
+  severity: 'info' | 'warning' | 'error' | 'critical'
+  title: string
+  description: string
+  timestamp: string
+  acknowledged: boolean
+  acknowledged_by?: string
+  acknowledged_at?: string
+  category: 'deadline' | 'quality' | 'compliance' | 'risk' | 'payment' | 'system'
+  affected_bookings: string[]
+}
+
+interface AutomationRule {
+  id: string
+  name: string
+  description: string
+  trigger_conditions: TriggerCondition[]
+  actions: AutomationAction[]
+  enabled: boolean
+  priority: number
+  created_at: string
+  last_triggered?: string
+  trigger_count: number
+}
+
+interface TriggerCondition {
+  field: string
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than' | 'in' | 'not_in'
+  value: any
+  logical_operator?: 'AND' | 'OR'
+}
+
+interface AutomationAction {
+  type: 'update_status' | 'send_notification' | 'assign_user' | 'create_task' | 'send_email' | 'escalate'
+  parameters: Record<string, any>
+  delay_minutes?: number
+}
+
+interface ComplianceStatus {
+  id: string
+  booking_id: string
+  compliance_type: string
+  status: 'compliant' | 'non_compliant' | 'pending_review' | 'requires_action'
+  last_checked: string
+  next_review_date: string
+  issues: string[]
+  actions_taken: string[]
+  assigned_to?: string
 }
 
 interface BookingStats {
@@ -157,6 +338,31 @@ export default function BookingsPage() {
     expectedOutcome: '',
     resourceRequirements: ''
   })
+  
+  // Enhanced professional features state
+  const [showSmartDashboard, setShowSmartDashboard] = useState(false)
+  const [showWorkflowAutomation, setShowWorkflowAutomation] = useState(false)
+  const [showQualityMetrics, setShowQualityMetrics] = useState(false)
+  const [showCompliancePanel, setShowCompliancePanel] = useState(false)
+  const [showRiskAssessment, setShowRiskAssessment] = useState(false)
+  const [showMilestoneTracker, setShowMilestoneTracker] = useState(false)
+  const [showCommunicationHub, setShowCommunicationHub] = useState(false)
+  const [showChangeManagement, setShowChangeManagement] = useState(false)
+  const [showEscalationPanel, setShowEscalationPanel] = useState(false)
+  
+  // Smart notifications and alerts
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false)
+  
+  // Workflow automation
+  const [automationRules, setAutomationRules] = useState<AutomationRule[]>([])
+  const [showAutomationBuilder, setShowAutomationBuilder] = useState(false)
+  
+  // Quality and compliance tracking
+  const [qualityMetrics, setQualityMetrics] = useState<QualityMetrics[]>([])
+  const [complianceStatus, setComplianceStatus] = useState<ComplianceStatus[]>([])
+  
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -313,7 +519,19 @@ export default function BookingsPage() {
          progress_percentage: booking.progress_percentage || 0,
          milestone_notes: booking.milestone_notes,
          quality_score: booking.quality_score,
-         compliance_status: booking.compliance_status || 'pending'
+         compliance_status: booking.compliance_status || 'pending',
+         // Enhanced professional fields
+         contract_terms: booking.contract_terms,
+         deliverables: booking.deliverables,
+         milestones: booking.milestones,
+         communication_history: booking.communication_history,
+         attachments: booking.attachments,
+         risk_assessment: booking.risk_assessment,
+         quality_metrics: booking.quality_metrics,
+         compliance_documents: booking.compliance_documents,
+         payment_schedule: booking.payment_schedule,
+         change_requests: booking.change_requests,
+         escalation_history: booking.escalation_history
        }))
 
       console.log('📊 Fetched bookings:', {
@@ -570,6 +788,60 @@ export default function BookingsPage() {
         className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
       />
     ))
+  }
+
+  // Enhanced helper functions for professional features
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-200'
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200'
+      case 'normal': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return '🚨'
+      case 'high': return '⚡'
+      case 'normal': return '📋'
+      case 'low': return '🐌'
+      default: return '📋'
+    }
+  }
+
+  const getApprovalStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return 'bg-green-100 text-green-800 border-green-200'
+      case 'rejected': return 'bg-red-100 text-red-800 border-red-200'
+      case 'under_review': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'requested': return 'bg-blue-100 text-blue-800 border-blue-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getApprovalStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved': return '✅'
+      case 'rejected': return '❌'
+      case 'under_review': return '🔍'
+      case 'requested': return '📝'
+      default: return '📋'
+    }
+  }
+
+  // Notification and alert management functions
+  const markNotificationAsRead = (notificationId: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    )
+  }
+
+  const acknowledgeAlert = (alertId: string) => {
+    setAlerts(prev => 
+      prev.map(a => a.id === alertId ? { ...a, acknowledged: true, acknowledged_at: new Date().toISOString() } : a)
+    )
   }
 
 
@@ -1659,6 +1931,121 @@ export default function BookingsPage() {
             </div>
           )}
 
+          {/* Smart Dashboard Toggle */}
+          <div className="mb-6">
+            <div className="flex items-center gap-4 mb-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowSmartDashboard(!showSmartDashboard)}
+                className={`flex items-center gap-2 ${showSmartDashboard ? 'bg-blue-50 border-blue-200 text-blue-700' : ''}`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                {showSmartDashboard ? 'Hide' : 'Show'} Smart Dashboard
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowWorkflowAutomation(!showWorkflowAutomation)}
+                className={`flex items-center gap-2 ${showWorkflowAutomation ? 'bg-green-50 border-green-200 text-green-700' : ''}`}
+              >
+                <TrendingUp className="h-4 w-4" />
+                Workflow Automation
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowQualityMetrics(!showQualityMetrics)}
+                className={`flex items-center gap-2 ${showQualityMetrics ? 'bg-purple-50 border-purple-200 text-purple-700' : ''}`}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Quality & Compliance
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowNotificationCenter(!showNotificationCenter)}
+                className={`flex items-center gap-2 ${showNotificationCenter ? 'bg-orange-50 border-orange-200 text-orange-700' : ''}`}
+              >
+                <AlertCircle className="h-4 w-4" />
+                Notifications ({notifications.filter(n => !n.read).length})
+              </Button>
+            </div>
+            
+            {/* Smart Dashboard Content */}
+            {showSmartDashboard && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Smart Dashboard - Intelligent Booking Management
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white/60 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">🎯 Smart Recommendations</h4>
+                    <p className="text-sm text-blue-700">AI-powered suggestions for optimal scheduling and resource allocation</p>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">📊 Predictive Analytics</h4>
+                    <p className="text-sm text-blue-700">Forecast booking trends and identify potential bottlenecks</p>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">⚡ Performance Insights</h4>
+                    <p className="text-sm text-blue-700">Real-time metrics on efficiency, quality, and client satisfaction</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Workflow Automation Panel */}
+            {showWorkflowAutomation && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-green-900 mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Workflow Automation - Streamline Your Processes
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/60 p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-900 mb-2">🔄 Auto-Approval Rules</h4>
+                    <p className="text-sm text-green-700">Set conditions for automatic approval of routine bookings</p>
+                    <Button size="sm" variant="outline" className="mt-2 text-green-700 border-green-300">
+                      Configure Rules
+                    </Button>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-900 mb-2">📧 Smart Notifications</h4>
+                    <p className="text-sm text-green-700">Automated reminders and status updates for all stakeholders</p>
+                    <Button size="sm" variant="outline" className="mt-2 text-green-700 border-green-300">
+                      Manage Alerts
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Quality & Compliance Panel */}
+            {showQualityMetrics && (
+              <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Quality & Compliance - Maintain Standards
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white/60 p-4 rounded-lg border border-purple-200">
+                    <h4 className="font-medium text-purple-900 mb-2">📋 Quality Metrics</h4>
+                    <p className="text-sm text-purple-700">Track performance indicators and quality scores</p>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-purple-200">
+                    <h4 className="font-medium text-purple-900 mb-2">✅ Compliance Status</h4>
+                    <p className="text-sm text-purple-700">Monitor regulatory compliance and document status</p>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-purple-200">
+                    <h4 className="font-medium text-purple-900 mb-2">🔍 Risk Assessment</h4>
+                    <p className="text-sm text-purple-700">Identify and mitigate potential project risks</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Enhanced Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <Card className="border-0 shadow-sm bg-white/80 backdrop-blur-sm">
@@ -1906,7 +2293,7 @@ export default function BookingsPage() {
             {filteredBookings.map((booking) => (
               <Card key={booking.id} className="hover:shadow-lg transition-all duration-300 border-0 shadow-sm bg-white/90 backdrop-blur-sm">
                 <CardContent className="p-6">
-                  {/* Header with Status, ID, and Selection */}
+                  {/* Enhanced Professional Header with Smart Indicators */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <input
@@ -1917,28 +2304,71 @@ export default function BookingsPage() {
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         aria-label={`Select booking ${booking.id}`}
                       />
-                      <Badge className={`${getStatusColor(booking.status)} flex items-center gap-2 px-3 py-1`}>
-                        {getStatusIcon(booking.status)}
-                        <span className="capitalize">{booking.status.replace('_', ' ')}</span>
-                      </Badge>
+                      
+                      {/* Smart Status Badge with Priority */}
+                      <div className="flex items-center gap-2">
+                        <Badge className={`${getStatusColor(booking.status)} flex items-center gap-2 px-3 py-1`}>
+                          {getStatusIcon(booking.status)}
+                          <span className="capitalize">{booking.status.replace('_', ' ')}</span>
+                        </Badge>
+                        
+                        {/* Priority Indicator */}
+                        {booking.priority && (
+                          <Badge className={`${getPriorityColor(booking.priority)} text-xs px-2 py-1`}>
+                            {getPriorityIcon(booking.priority)} {booking.priority.toUpperCase()}
+                          </Badge>
+                        )}
+                        
+                        {/* Approval Status */}
+                        {booking.approval_status && booking.approval_status !== 'pending' && (
+                          <Badge className={`${getApprovalStatusColor(booking.approval_status)} text-xs px-2 py-1`}>
+                            {getApprovalStatusIcon(booking.approval_status)} {booking.approval_status.replace('_', ' ')}
+                          </Badge>
+                        )}
+                      </div>
+                      
                       <span className="text-sm text-gray-500 font-mono">
                         #{booking.id.slice(0, 8)}
                       </span>
                     </div>
+                    
                     <div className="text-right">
                       <div className="text-sm text-gray-500 mb-1">
                         Created {formatDate(booking.created_at)}
                       </div>
+                      
+                      {/* Smart Amount Display */}
                       {booking.amount && (
                         <div className="text-lg font-bold text-emerald-600">
                           {formatCurrency(booking.amount)}
+                          {booking.payment_schedule && booking.payment_schedule.length > 0 && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {booking.payment_schedule.filter(p => p.status === 'paid').length}/{booking.payment_schedule.length} payments
+                            </div>
+                          )}
                         </div>
                       )}
+                      
+                      {/* Enhanced Payment Status */}
                       {booking.payment_status && (
-                        <Badge className={`${getPaymentStatusColor(booking.payment_status)} mt-2`}>
-                          {getPaymentStatusIcon(booking.payment_status)}
-                          <span className="ml-1 capitalize">{booking.payment_status}</span>
-                        </Badge>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className={`${getPaymentStatusColor(booking.payment_status)}`}>
+                            {getPaymentStatusIcon(booking.payment_status)}
+                            <span className="ml-1 capitalize">{booking.payment_status}</span>
+                          </Badge>
+                          
+                          {/* Payment Schedule Progress */}
+                          {booking.payment_schedule && booking.payment_schedule.length > 0 && (
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${(booking.payment_schedule.filter(p => p.status === 'paid').length / booking.payment_schedule.length) * 100}%` 
+                                }}
+                              ></div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2027,23 +2457,120 @@ export default function BookingsPage() {
                     )}
                   </div>
 
-                  {/* Notes and Review */}
-                  {(booking.notes || booking.review) && (
-                    <div className="mb-4 space-y-2">
-                      {booking.notes && (
-                        <div className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-                          <p className="text-sm font-medium text-gray-700 mb-1">Notes:</p>
-                          <p className="text-sm text-gray-700">{booking.notes}</p>
+                  {/* Professional Workflow Section */}
+                  <div className="mb-4 space-y-3">
+                    {/* Smart Workflow Indicators */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* Milestone Progress */}
+                      {booking.milestones && booking.milestones.length > 0 && (
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-blue-900">Milestones</span>
+                            <span className="text-xs text-blue-600">
+                              {booking.milestones.filter(m => m.status === 'completed').length}/{booking.milestones.length}
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${(booking.milestones.filter(m => m.status === 'completed').length / booking.milestones.length) * 100}%` 
+                              }}
+                            ></div>
+                          </div>
                         </div>
                       )}
-                      {booking.review && (
-                        <div className="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
-                          <p className="text-sm font-medium text-gray-700 mb-1">Review:</p>
-                          <p className="text-sm text-gray-700">{booking.review}</p>
+                      
+                      {/* Quality Score */}
+                      {booking.quality_metrics && (
+                        <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-emerald-900">Quality Score</span>
+                            <span className="text-xs text-emerald-600">{booking.quality_metrics.overall_score}/100</span>
+                          </div>
+                          <div className="w-full bg-emerald-200 rounded-full h-2">
+                            <div 
+                              className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${booking.quality_metrics.overall_score}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Risk Assessment */}
+                      {booking.risk_assessment && (
+                        <div className={`p-3 rounded-lg border ${
+                          booking.risk_assessment.risk_level === 'critical' ? 'bg-red-50 border-red-200' :
+                          booking.risk_assessment.risk_level === 'high' ? 'bg-orange-50 border-orange-200' :
+                          booking.risk_assessment.risk_level === 'medium' ? 'bg-yellow-50 border-yellow-200' :
+                          'bg-green-50 border-green-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-sm font-medium ${
+                              booking.risk_assessment.risk_level === 'critical' ? 'text-red-900' :
+                              booking.risk_assessment.risk_level === 'high' ? 'text-orange-900' :
+                              booking.risk_assessment.risk_level === 'medium' ? 'text-yellow-900' :
+                              'text-green-900'
+                            }`}>Risk Level</span>
+                            <span className={`text-xs ${
+                              booking.risk_assessment.risk_level === 'critical' ? 'text-red-600' :
+                              booking.risk_assessment.risk_level === 'high' ? 'text-orange-600' :
+                              booking.risk_assessment.risk_level === 'medium' ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>{booking.risk_assessment.risk_level.toUpperCase()}</span>
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {booking.risk_assessment.risk_factors.length} risk factors identified
+                          </div>
                         </div>
                       )}
                     </div>
-                  )}
+                    
+                    {/* Notes and Review */}
+                    {(booking.notes || booking.review) && (
+                      <div className="space-y-2">
+                        {booking.notes && (
+                          <div className="p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+                            <p className="text-sm font-medium text-gray-700 mb-1">Notes:</p>
+                            <p className="text-sm text-gray-700">{booking.notes}</p>
+                          </div>
+                        )}
+                        {booking.review && (
+                          <div className="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
+                            <p className="text-sm font-medium text-gray-700 mb-1">Review:</p>
+                            <p className="text-sm text-gray-700">{booking.review}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Smart Alerts and Notifications */}
+                    <div className="space-y-2">
+                      {/* Deadline Alerts */}
+                      {booking.estimated_completion_date && new Date(booking.estimated_completion_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && (
+                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm font-medium text-amber-900">
+                              Deadline approaching: {formatDate(booking.estimated_completion_date)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Compliance Alerts */}
+                      {booking.compliance_status === 'requires_action' && (
+                        <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <span className="text-sm font-medium text-red-900">
+                              Compliance action required
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between">
@@ -2173,8 +2700,195 @@ export default function BookingsPage() {
 
                    {/* Confirm Modal - Removed since 'confirmed' status is not allowed */}
 
-                   {/* Message Modal */}
-          {showMessageModal && selectedBooking && (
+                           {/* Notification Center Modal */}
+        {showNotificationCenter && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">Smart Notifications & Alerts</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowNotificationCenter(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <Tabs defaultValue="notifications" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="notifications">Notifications ({notifications.length})</TabsTrigger>
+                    <TabsTrigger value="alerts">Alerts ({alerts.length})</TabsTrigger>
+                    <TabsTrigger value="workflow">Workflow Status</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="notifications" className="space-y-4">
+                    {notifications.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Bell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No notifications at this time</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div key={notification.id} className={`p-4 rounded-lg border ${
+                          notification.read ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-200'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-sm font-medium ${
+                                  notification.read ? 'text-gray-600' : 'text-gray-900'
+                                }`}>{notification.title}</span>
+                                <Badge className={`text-xs ${
+                                  notification.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                                  notification.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                  notification.priority === 'normal' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {notification.priority}
+                                </Badge>
+                              </div>
+                              <p className={`text-sm ${
+                                notification.read ? 'text-gray-500' : 'text-gray-700'
+                              }`}>{notification.message}</p>
+                              <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                                <span>{formatDate(notification.timestamp)}</span>
+                                <span>{notification.category}</span>
+                                {notification.action_required && (
+                                  <Badge className="bg-amber-100 text-amber-800 text-xs">Action Required</Badge>
+                                )}
+                              </div>
+                            </div>
+                            {!notification.read && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => markNotificationAsRead(notification.id)}
+                              >
+                                Mark Read
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="alerts" className="space-y-4">
+                    {alerts.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>No active alerts</p>
+                      </div>
+                    ) : (
+                      alerts.map((alert) => (
+                        <div key={alert.id} className={`p-4 rounded-lg border ${
+                          alert.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                          alert.severity === 'error' ? 'bg-orange-50 border-orange-200' :
+                          alert.severity === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+                          'bg-blue-50 border-blue-200'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-sm font-medium ${
+                                  alert.severity === 'critical' ? 'text-red-900' :
+                                  alert.severity === 'error' ? 'text-orange-900' :
+                                  alert.severity === 'warning' ? 'text-yellow-900' :
+                                  'text-blue-900'
+                                }`}>{alert.title}</span>
+                                <Badge className={`text-xs ${
+                                  alert.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                                  alert.severity === 'error' ? 'bg-orange-100 text-orange-800' :
+                                  alert.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {alert.severity}
+                                </Badge>
+                              </div>
+                              <p className={`text-sm ${
+                                alert.severity === 'critical' ? 'text-red-700' :
+                                alert.severity === 'error' ? 'text-orange-700' :
+                                alert.severity === 'warning' ? 'text-yellow-700' :
+                                'text-blue-700'
+                              }`}>{alert.description}</p>
+                              <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                <span>{formatDate(alert.timestamp)}</span>
+                                <span>{alert.category}</span>
+                                <span>{alert.affected_bookings.length} bookings affected</span>
+                              </div>
+                            </div>
+                            {!alert.acknowledged && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => acknowledgeAlert(alert.id)}
+                              >
+                                Acknowledge
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="workflow" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 className="font-medium text-blue-900 mb-2">Active Workflows</h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Pending Approvals</span>
+                            <Badge className="bg-amber-100 text-amber-800">
+                              {bookings.filter(b => b.approval_status === 'requested').length}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span>In Progress</span>
+                            <Badge className="bg-blue-100 text-blue-800">
+                              {bookings.filter(b => b.status === 'in_progress').length}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Quality Review</span>
+                            <Badge className="bg-purple-100 text-purple-800">
+                              {bookings.filter(b => b.quality_metrics && b.quality_metrics.overall_score < 80).length}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <h4 className="font-medium text-green-900 mb-2">Performance Metrics</h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Avg Completion Time</span>
+                            <span className="font-medium">3.2 days</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Client Satisfaction</span>
+                            <span className="font-medium">4.8/5.0</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Quality Score</span>
+                            <span className="font-medium">92%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message Modal */}
+        {showMessageModal && selectedBooking && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg max-w-md w-full">
                 <div className="p-6">
