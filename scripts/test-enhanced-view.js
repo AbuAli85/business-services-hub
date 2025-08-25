@@ -32,87 +32,53 @@ async function testEnhancedView() {
   
   if (!supabaseUrl || !supabaseKey) {
     console.error('❌ Missing Supabase environment variables')
+    console.log('Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set')
     return
   }
   
   const supabase = createClient(supabaseUrl, supabaseKey)
   
   try {
-    // Test basic connection
-    console.log('🔌 Testing connection...')
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError) {
-      console.log('⚠️  Not authenticated, but continuing...')
-    } else {
-      console.log('✅ Authenticated as:', user?.email || 'Unknown')
-    }
-    
-    // Test enhanced view
-    console.log('🔍 Testing enhanced_bookings view...')
+    // Test if enhanced view exists
     const { data: enhancedData, error: enhancedError } = await supabase
       .from('enhanced_bookings')
-      .select('id, client_name, provider_name, service_title, status')
-      .limit(3)
+      .select('*')
+      .limit(1)
     
     if (enhancedError) {
       console.error('❌ Enhanced view error:', enhancedError.message)
-      
-      if (enhancedError.message.includes('relation "enhanced_bookings" does not exist')) {
-        console.log('📋 Enhanced view does not exist!')
-        console.log('Please run the migration: supabase/migrations/043_create_enhanced_bookings_view.sql')
-      }
       return
     }
     
-    console.log('✅ Enhanced view exists and is accessible!')
-    console.log('📊 Sample data:')
-    
     if (enhancedData && enhancedData.length > 0) {
-      enhancedData.forEach((booking, index) => {
-        console.log(`  ${index + 1}. ID: ${booking.id.slice(0, 8)}...`)
-        console.log(`     Client: ${booking.client_name || 'N/A'}`)
-        console.log(`     Provider: ${booking.provider_name || 'N/A'}`)
-        console.log(`     Service: ${booking.service_title || 'N/A'}`)
-        console.log(`     Status: ${booking.status}`)
-        console.log('')
-      })
+      const sample = enhancedData[0]
+      console.log('✅ Enhanced bookings view is working!')
+      console.log('📊 Sample data structure:')
+      console.log(`   - ID: ${sample.id}`)
+      console.log(`   - Client: ${sample.client_name || 'N/A'} (${sample.client_email || 'No email'})`)
+      console.log(`   - Provider: ${sample.provider_name || 'N/A'} (${sample.provider_email || 'No email'})`)
+      console.log(`   - Service: ${sample.service_title || 'N/A'}`)
+      console.log(`   - Client Company: ${sample.client_company_name || 'N/A'}`)
+      console.log(`   - Provider Company: ${sample.client_company_name || 'N/A'}`)
+      console.log(`   - Status: ${sample.status}`)
+      console.log(`   - Created: ${sample.created_at}`)
+      
+      // Check if we have the new fields
+      const hasNewFields = sample.client_email && sample.provider_email && sample.client_company_name
+      if (hasNewFields) {
+        console.log('🎉 All new fields are available!')
+      } else {
+        console.log('⚠️  Some new fields are missing - may need to run migration 044')
+      }
     } else {
-      console.log('  No data found in enhanced view')
-    }
-    
-    // Compare with basic table
-    console.log('🔍 Comparing with basic bookings table...')
-    const { data: basicData, error: basicError } = await supabase
-      .from('bookings')
-      .select('id, client_id, provider_id, service_id, status')
-      .limit(3)
-    
-    if (basicError) {
-      console.error('❌ Basic table error:', basicError.message)
-    } else if (basicData && basicData.length > 0) {
-      console.log('📊 Basic table data:')
-      basicData.forEach((booking, index) => {
-        console.log(`  ${index + 1}. ID: ${booking.id.slice(0, 8)}...`)
-        console.log(`     Client ID: ${booking.client_id?.slice(0, 8)}...`)
-        console.log(`     Provider ID: ${booking.provider_id?.slice(0, 8)}...`)
-        console.log(`     Service ID: ${booking.service_id?.slice(0, 8)}...`)
-        console.log(`     Status: ${booking.status}`)
-        console.log('')
-      })
+      console.log('ℹ️  Enhanced view exists but no data found')
     }
     
   } catch (error) {
     console.error('❌ Test failed:', error.message)
   }
+  
+  console.log('🎉 Test completed')
 }
 
 testEnhancedView()
-  .then(() => {
-    console.log('🎉 Test completed')
-    process.exit(0)
-  })
-  .catch((error) => {
-    console.error('💥 Test failed:', error)
-    process.exit(1)
-  })

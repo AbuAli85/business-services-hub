@@ -1,9 +1,12 @@
--- Migration: Create Enhanced Bookings View
+-- Migration: Fix Enhanced Bookings View
 -- Date: December 2024
--- Description: Create a view that joins bookings with profiles and services to show actual names
+-- Description: Drop and recreate the enhanced bookings view to fix column naming issues
+
+-- Drop the existing view if it exists
+DROP VIEW IF EXISTS public.enhanced_bookings;
 
 -- Create enhanced bookings view with joined data
-CREATE OR REPLACE VIEW public.enhanced_bookings AS
+CREATE VIEW public.enhanced_bookings AS
 SELECT 
     b.id,
     b.client_id,
@@ -48,28 +51,6 @@ LEFT JOIN public.services s ON b.service_id = s.id
 LEFT JOIN public.companies cc ON c.company_id = cc.id
 LEFT JOIN public.companies pc ON p.company_id = pc.id;
 
--- Grant access to the view
+-- Grant permissions
 GRANT SELECT ON public.enhanced_bookings TO authenticated;
 GRANT SELECT ON public.enhanced_bookings TO anon;
-
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_enhanced_bookings_client_id ON public.enhanced_bookings(client_id);
-CREATE INDEX IF NOT EXISTS idx_enhanced_bookings_provider_id ON public.enhanced_bookings(provider_id);
-CREATE INDEX IF NOT EXISTS idx_enhanced_bookings_service_id ON public.enhanced_bookings(service_id);
-CREATE INDEX IF NOT EXISTS idx_enhanced_bookings_status ON public.enhanced_bookings(status);
-CREATE INDEX IF NOT EXISTS idx_enhanced_bookings_created_at ON public.enhanced_bookings(created_at);
-
--- Verify the view was created
-SELECT 'Enhanced bookings view created successfully' as status;
-
--- Show sample data from the view
-SELECT 'Sample data from enhanced view:' as info;
-SELECT 
-    id, 
-    client_name, 
-    provider_name, 
-    service_title, 
-    status, 
-    created_at
-FROM public.enhanced_bookings 
-LIMIT 3;

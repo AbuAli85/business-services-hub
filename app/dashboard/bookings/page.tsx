@@ -55,6 +55,8 @@ interface Booking {
   service_name?: string
   client_name?: string
   provider_name?: string
+  client_company_name?: string
+  provider_company_name?: string
   client_email?: string
   client_phone?: string
   service_description?: string
@@ -115,6 +117,8 @@ export default function BookingsPage() {
   const [showMessageModal, setShowMessageModal] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -243,10 +247,12 @@ export default function BookingsPage() {
         provider_name: showEnhancedData && booking.provider_name 
           ? booking.provider_name 
           : `Provider #${booking.provider_id?.slice(0, 8) || 'N/A'}`,
+        client_company_name: showEnhancedData ? (booking.client_company_name || '') : '',
+        provider_company_name: showEnhancedData ? (booking.provider_company_name || '') : '',
         service_description: showEnhancedData ? (booking.service_description || '') : '',
         estimated_duration: showEnhancedData ? (booking.estimated_duration || '') : '',
         location: showEnhancedData ? (booking.location || '') : '',
-        client_email: showEnhancedData ? (booking.client_phone || '') : '', // Using phone as fallback for email
+        client_email: showEnhancedData ? (booking.client_email || booking.client_phone || '') : '',
         client_phone: showEnhancedData ? (booking.client_phone || '') : '',
         cancellation_reason: showEnhancedData ? (booking.cancellation_reason || '') : ''
       }))
@@ -1088,19 +1094,26 @@ export default function BookingsPage() {
   // Provider workflow functions for pending bookings
   const requestApproval = async (bookingId: string) => {
     try {
+      setIsUpdatingStatus(bookingId)
+      
       await safeUpdateBooking(bookingId, {
-        notes: 'Approval requested by provider',
+        notes: `[${new Date().toLocaleString()}] Approval requested by provider`,
         updated_at: new Date().toISOString()
       })
 
-      alert('Approval request sent successfully!')
+      // Show success message
+      setSuccessMessage('Approval request sent successfully!')
+      setTimeout(() => setSuccessMessage(''), 3000)
       
       // Refresh the data
       await fetchBookings(user.id, userRole)
       
     } catch (error) {
       console.error('Error requesting approval:', error)
-      alert('Failed to request approval. Please try again.')
+      setErrorMessage('Failed to request approval. Please try again.')
+      setTimeout(() => setErrorMessage(''), 3000)
+    } finally {
+      setIsUpdatingStatus('')
     }
   }
 
@@ -1404,6 +1417,25 @@ export default function BookingsPage() {
             </div>
           </div>
 
+          {/* Success and Error Messages */}
+          {successMessage && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                <p className="text-green-800 font-medium">{successMessage}</p>
+              </div>
+            </div>
+          )}
+          
+          {errorMessage && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center">
+                <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                <p className="text-red-800 font-medium">{errorMessage}</p>
+              </div>
+            </div>
+          )}
+
           {/* Enhanced Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             <Card className="border-0 shadow-sm bg-white/80 backdrop-blur-sm">
@@ -1705,7 +1737,7 @@ export default function BookingsPage() {
                       <User className="h-4 w-4 text-gray-400" />
                       <div>
                         <p className="font-medium text-gray-900">{booking.client_name}</p>
-                        <p className="text-gray-500">Client</p>
+                        <p className="text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
                         {booking.client_email && (
                           <p className="text-xs text-gray-400">{booking.client_email}</p>
                         )}
@@ -1716,7 +1748,7 @@ export default function BookingsPage() {
                       <Building2 className="h-4 w-4 text-gray-400" />
                       <div>
                         <p className="font-medium text-gray-900">{booking.provider_name}</p>
-                        <p className="text-gray-500">Provider</p>
+                        <p className="text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
                       </div>
                     </div>
 

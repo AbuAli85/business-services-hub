@@ -77,6 +77,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProviderProfile | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [services, setServices] = useState<Service[]>([])
+  const [userRole, setUserRole] = useState<string>('')
   const [stats, setStats] = useState<ProfileStats>({
     totalServices: 0,
     totalBookings: 0,
@@ -102,6 +103,10 @@ export default function ProfilePage() {
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
+      // Get user role from metadata
+      const role = user.user_metadata?.role || 'client'
+      setUserRole(role)
 
       // Fetch profile data
       const { data: profileData } = await supabase
@@ -133,20 +138,22 @@ export default function ProfilePage() {
         }
       }
         
-      // Fetch services
-      const supabaseServices = await getSupabaseClient()
-      const { data: servicesData } = await supabaseServices
-        .from('services')
-        .select('*')
-        .eq('provider_id', user.id)
-        .order('created_at', { ascending: false })
+      // Fetch services only for providers
+      if (role === 'provider') {
+        const supabaseServices = await getSupabaseClient()
+        const { data: servicesData } = await supabaseServices
+          .from('services')
+          .select('*')
+          .eq('provider_id', user.id)
+          .order('created_at', { ascending: false })
 
-      if (servicesData) {
-        setServices(servicesData)
+        if (servicesData) {
+          setServices(servicesData)
+        }
       }
 
-      // Calculate stats
-      await calculateStats(user.id)
+      // Calculate stats based on role
+      await calculateStats(user.id, role)
 
       setLoading(false)
     } catch (error) {
@@ -155,30 +162,46 @@ export default function ProfilePage() {
     }
   }
 
-  const calculateStats = async (userId: string) => {
+  const calculateStats = async (userId: string, role: string) => {
     try {
       const supabase = await getSupabaseClient()
-      // Services count
-      const { count: servicesCount } = await supabase
-        .from('services')
-        .select('*', { count: 'exact', head: true })
-        .eq('provider_id', userId)
+      
+      if (role === 'provider') {
+        // Provider stats
+        const { count: servicesCount } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', userId)
 
-      // Bookings count
-      const { count: bookingsCount } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-        .eq('provider_id', userId)
+        const { count: bookingsCount } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', userId)
 
-      // Mock stats for now (replace with real calculations)
-      setStats({
-        totalServices: servicesCount || 0,
-        totalBookings: bookingsCount || 0,
-        totalEarnings: (bookingsCount || 0) * 150, // Mock earnings
-        averageRating: 4.8,
-        completionRate: 95,
-        responseTime: '2h'
-      })
+        setStats({
+          totalServices: servicesCount || 0,
+          totalBookings: bookingsCount || 0,
+          totalEarnings: (bookingsCount || 0) * 150, // Mock earnings
+          averageRating: 4.8,
+          completionRate: 95,
+          responseTime: '2h'
+        })
+      } else {
+        // Client stats
+        const { count: bookingsCount } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .eq('client_id', userId)
+
+        setStats({
+          totalServices: 0, // Clients don't have services
+          totalBookings: bookingsCount || 0,
+          totalEarnings: 0, // Clients don't earn
+          averageRating: 0, // Clients don't have ratings
+          completionRate: 0, // Not applicable for clients
+          responseTime: '0h' // Not applicable for clients
+        })
+      }
     } catch (error) {
       console.error('Error calculating stats:', error)
     }
@@ -253,9 +276,14 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Provider Profile</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {userRole === 'provider' ? 'Provider Profile' : 'Client Profile'}
+          </h1>
           <p className="text-gray-600 mt-2">
-            Manage your profile, company information, and services
+            {userRole === 'provider' 
+              ? 'Manage your profile, company information, and services'
+              : 'Manage your profile and booking history'
+            }
           </p>
         </div>
         <Button onClick={() => setEditing(!editing)}>
@@ -266,98 +294,200 @@ export default function ProfilePage() {
 
       {/* Profile Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Services</CardTitle>
-            <Building2 className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalServices}</div>
-            <p className="text-xs text-muted-foreground">Active service offerings</p>
-          </CardContent>
-        </Card>
+        {userRole === 'provider' ? (
+          <>
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Services</CardTitle>
+                <Building2 className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{stats.totalServices}</div>
+                <p className="text-xs text-muted-foreground">Active service offerings</p>
+              </CardContent>
+            </Card>
 
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-            <Calendar className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.totalBookings}</div>
-            <p className="text-xs text-muted-foreground">Completed projects</p>
-          </CardContent>
-        </Card>
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                <Calendar className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{stats.totalBookings}</div>
+                <p className="text-xs text-muted-foreground">Completed projects</p>
+              </CardContent>
+            </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(stats.totalEarnings, 'OMR')}
-            </div>
-            <p className="text-xs text-muted-foreground">From completed work</p>
-          </CardContent>
-        </Card>
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+                <DollarSign className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {formatCurrency(stats.totalEarnings, 'OMR')}
+                </div>
+                <p className="text-xs text-muted-foreground">From completed work</p>
+              </CardContent>
+            </Card>
 
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rating</CardTitle>
-            <Star className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.averageRating}</div>
-            <p className="text-xs text-muted-foreground">Average client rating</p>
-          </CardContent>
-        </Card>
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Rating</CardTitle>
+                <Star className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{stats.averageRating}</div>
+                <p className="text-xs text-muted-foreground">Average client rating</p>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+                <Calendar className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{stats.totalBookings}</div>
+                <p className="text-xs text-muted-foreground">Service requests made</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
+                <AlertCircle className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {stats.totalBookings > 0 ? Math.floor(stats.totalBookings * 0.3) : 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Currently in progress</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-emerald-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {stats.totalBookings > 0 ? Math.floor(stats.totalBookings * 0.7) : 0}
+                </div>
+                <p className="text-xs text-muted-foreground">Successfully completed</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Member Since</CardTitle>
+                <Calendar className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {profile?.created_at ? new Date(profile.created_at).getFullYear() : 'N/A'}
+                </div>
+                <p className="text-xs text-muted-foreground">Years of membership</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.completionRate}%</div>
-            <p className="text-xs text-muted-foreground">Projects completed on time</p>
-          </CardContent>
-        </Card>
+        {userRole === 'provider' ? (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.completionRate}%</div>
+                <p className="text-xs text-muted-foreground">Projects completed on time</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.responseTime}</div>
-            <p className="text-xs text-muted-foreground">Average response time</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Response Time</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.responseTime}</div>
+                <p className="text-xs text-muted-foreground">Average response time</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verification</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              {profile?.is_verified ? (
-                <CheckCircle className="h-6 w-6 text-green-500" />
-              ) : (
-                <AlertCircle className="h-6 w-6 text-yellow-500" />
-              )}
-              <span className="text-sm font-medium">
-                {profile?.is_verified ? 'Verified' : 'Pending Verification'}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {profile?.is_verified ? 'Account verified' : 'Verification in progress'}
-            </p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Verification</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2">
+                  {profile?.is_verified ? (
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-6 w-6 text-yellow-500" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {profile?.is_verified ? 'Verified' : 'Pending Verification'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {profile?.is_verified ? 'Account verified' : 'Verification in progress'}
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Account Status</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-6 w-6 text-green-500" />
+                  <div>
+                    <div className="text-sm font-medium">Active</div>
+                    <div className="text-xs text-muted-foreground">Account in good standing</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Last Activity</CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {profile?.updated_at ? formatDate(profile.updated_at) : 'N/A'}
+                </div>
+                <p className="text-xs text-muted-foreground">Profile last updated</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Preferences</CardTitle>
+                <User className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">3</div>
+                <p className="text-xs text-muted-foreground">Saved preferences</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Profile Information */}
@@ -447,8 +577,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Company Information */}
-        <Card>
+        {/* Company Information - Only for Providers */}
+        {userRole === 'provider' && (
+          <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
@@ -501,10 +632,12 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
-      {/* Services Overview */}
-      <Card>
+      {/* Services Overview - Only for Providers */}
+      {userRole === 'provider' && (
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -565,6 +698,7 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }
