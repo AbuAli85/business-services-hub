@@ -21,7 +21,8 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
-  Trash2
+  Trash2,
+  Eye
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -39,6 +40,7 @@ interface ServiceFormData {
   currency: string
   status: string
   tags: string
+  requirements: string
   // Digital marketing specific fields
   delivery_timeframe: string
   revision_policy: string
@@ -62,6 +64,7 @@ export default function CreateServicePage() {
     currency: 'OMR',
     status: 'draft',
     tags: '',
+    requirements: '',
     // Digital marketing specific fields
     delivery_timeframe: '7-14 days',
     revision_policy: '2 revisions included',
@@ -130,6 +133,22 @@ export default function CreateServicePage() {
     'Custom policy'
   ]
 
+  // Enhanced validation
+  const validateForm = () => {
+    const errors: string[] = []
+    
+    if (!formData.title.trim()) errors.push('Service title is required')
+    if (!formData.description.trim()) errors.push('Service description is required')
+    if (!formData.category) errors.push('Category selection is required')
+    if (!formData.base_price || parseFloat(formData.base_price) <= 0) errors.push('Valid base price is required')
+    
+    // Validate service packages
+    const validPackages = formData.service_packages.filter(pkg => pkg.price && pkg.price !== '' && parseFloat(pkg.price) > 0)
+    if (validPackages.length === 0) errors.push('At least one service package with a valid price is required')
+    
+    return errors
+  }
+
   const handleInputChange = (field: keyof ServiceFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -162,6 +181,28 @@ export default function CreateServicePage() {
         idx === packageIndex ? { ...pkg, features: [...pkg.features, ''] } : pkg
       )
     }))
+  }
+
+  const addPackage = () => {
+    setFormData(prev => ({
+      ...prev,
+      service_packages: [...prev.service_packages, {
+        name: `Package ${prev.service_packages.length + 1}`,
+        price: '',
+        delivery_days: 14,
+        revisions: 2,
+        features: ['Custom feature']
+      }]
+    }))
+  }
+
+  const removePackage = (packageIndex: number) => {
+    if (formData.service_packages.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        service_packages: prev.service_packages.filter((_, idx) => idx !== packageIndex)
+      }))
+    }
   }
 
   const removeFeature = (packageIndex: number, featureIndex: number) => {
@@ -219,9 +260,10 @@ export default function CreateServicePage() {
       const user = await validateUser()
       if (!user) return
       
-      // Validate required fields
-      if (!formData.title || !formData.description || !formData.category || !formData.base_price) {
-        alert('Please fill in all required fields')
+      // Enhanced form validation
+      const validationErrors = validateForm()
+      if (validationErrors.length > 0) {
+        alert(`Please fix the following errors:\n\n${validationErrors.join('\n')}`)
         return
       }
 
@@ -236,45 +278,68 @@ export default function CreateServicePage() {
         provider_id: user.id,
         approval_status: 'pending',
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
+        requirements: formData.requirements || null,
         delivery_timeframe: formData.delivery_timeframe,
-        revision_policy: formData.revision_policy,
-        service_packages: formData.service_packages.map(pkg => ({
-          name: pkg.name,
-          price: parseFloat(pkg.price),
-          delivery_days: pkg.delivery_days,
-          revisions: pkg.revisions,
-          features: pkg.features
-        }))
+        revision_policy: formData.revision_policy
       }
 
       console.log('Attempting to create service with data:', serviceData)
 
       const supabase = await getSupabaseClient()
-      const { data, error } = await supabase
+      
+      // First, create the service
+      const { data: serviceResult, error: serviceError } = await supabase
         .from('services')
         .insert(serviceData)
         .select()
+        .single()
 
-      if (error) {
-        console.error('Error creating service:', error)
-        console.error('Error details:', error.details)
-        console.error('Error hint:', error.hint)
-        console.error('Error code:', error.code)
+      if (serviceError) {
+        console.error('Error creating service:', serviceError)
+        console.error('Error details:', serviceError.details)
+        console.error('Error hint:', serviceError.hint)
+        console.error('Error code:', serviceError.code)
         
-        let errorMessage = `Failed to create service: ${error.message}`
+        let errorMessage = `Failed to create service: ${serviceError.message}`
         
-        if (error.message.includes('row-level security policy')) {
+        if (serviceError.message.includes('row-level security policy')) {
           errorMessage = 'Access denied: Row Level Security policy violation. This usually means the database security policies need to be updated.'
-        } else if (error.message.includes('permission denied')) {
+        } else if (serviceError.message.includes('permission denied')) {
           errorMessage = 'Permission denied: You may not have the right permissions to create services.'
-        } else if (error.message.includes('column') && error.message.includes('does not exist')) {
+        } else if (serviceError.message.includes('column') && serviceError.message.includes('does not exist')) {
           errorMessage = 'Database schema error: Some required columns are missing. Please contact support.'
-        } else if (error.message.includes('foreign key constraint')) {
+        } else if (serviceError.message.includes('foreign key constraint')) {
           errorMessage = 'Database constraint error: The user account may not be properly set up.'
         }
         
         alert(errorMessage)
         return
+      }
+
+      // Then, create service packages if they exist
+      if (formData.service_packages && formData.service_packages.length > 0) {
+        const packagesData = formData.service_packages
+          .filter(pkg => pkg.price && pkg.price !== '') // Only create packages with prices
+          .map(pkg => ({
+            service_id: serviceResult.id,
+            name: pkg.name,
+            price: parseFloat(pkg.price),
+            delivery_days: pkg.delivery_days,
+            revisions: pkg.revisions,
+            features: pkg.features
+          }))
+
+        if (packagesData.length > 0) {
+          const { error: packagesError } = await supabase
+            .from('service_packages')
+            .insert(packagesData)
+
+          if (packagesError) {
+            console.error('Error creating service packages:', packagesError)
+            // Don't fail the entire operation if packages fail, just log the error
+            console.warn('Service created but packages failed to save')
+          }
+        }
       }
 
       alert('Service created successfully!')
@@ -369,6 +434,23 @@ export default function CreateServicePage() {
                         />
                         <p className="text-xs text-slate-500 mt-2">
                           Be specific and highlight what makes your service unique
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="requirements" className="text-sm font-medium text-slate-700 mb-2 block">
+                          Client Requirements
+                        </Label>
+                        <Textarea
+                          id="requirements"
+                          value={formData.requirements}
+                          onChange={(e) => handleInputChange('requirements', e.target.value)}
+                          placeholder="What information or materials do clients need to provide? (e.g., brand guidelines, target audience, project timeline, budget range...)"
+                          rows={3}
+                          className="border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 resize-none"
+                        />
+                        <p className="text-xs text-slate-500 mt-2">
+                          Help clients understand what they need to prepare for a successful project
                         </p>
                       </div>
                     </div>
@@ -543,10 +625,22 @@ export default function CreateServicePage() {
 
                   {/* Service Packages Section */}
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-1 h-6 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full"></div>
-                      <h3 className="text-lg font-semibold text-slate-900">Service Packages</h3>
-                      <p className="text-sm text-slate-500">Create different pricing tiers for your service</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1 h-6 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full"></div>
+                        <h3 className="text-lg font-semibold text-slate-900">Service Packages</h3>
+                        <p className="text-sm text-slate-500">Create different pricing tiers for your service</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addPackage}
+                        className="h-9 px-3 border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Package
+                      </Button>
                     </div>
                     
                     <div className="space-y-4">
@@ -554,10 +648,28 @@ export default function CreateServicePage() {
                         <Card key={index} className="border-2 border-slate-200 hover:border-slate-300 transition-all duration-200">
                           <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg text-slate-900">{pkg.name} Package</CardTitle>
-                              <Badge variant={index === 0 ? "default" : index === 1 ? "secondary" : "outline"}>
-                                {index === 0 ? "Basic" : index === 1 ? "Popular" : "Premium"}
-                              </Badge>
+                              <div className="flex items-center gap-3">
+                                <Input
+                                  value={pkg.name}
+                                  onChange={(e) => handlePackageChange(index, 'name', e.target.value)}
+                                  className="h-8 text-lg font-semibold text-slate-900 border-0 p-0 bg-transparent focus:ring-0 focus:border-0"
+                                  placeholder="Package Name"
+                                />
+                                <Badge variant={index === 0 ? "default" : index === 1 ? "secondary" : "outline"}>
+                                  {index === 0 ? "Basic" : index === 1 ? "Popular" : "Premium"}
+                                </Badge>
+                              </div>
+                              {formData.service_packages.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removePackage(index)}
+                                  className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </CardHeader>
                           <CardContent className="space-y-4">
@@ -646,15 +758,33 @@ export default function CreateServicePage() {
 
                   {/* Enhanced Actions */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-slate-200">
-                    <Link href="/dashboard/provider/provider-services">
+                    <div className="flex items-center gap-3">
+                      <Link href="/dashboard/provider/provider-services">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="h-12 px-6 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+                        >
+                          Cancel
+                        </Button>
+                      </Link>
+                      
                       <Button 
                         type="button" 
-                        variant="outline" 
-                        className="h-12 px-6 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200"
+                        variant="outline"
+                        onClick={() => {
+                          const errors = validateForm()
+                          if (errors.length > 0) {
+                            alert(`Please fix the following errors:\n\n${errors.join('\n')}`)
+                          } else {
+                            alert('Form validation passed! Ready to create service.')
+                          }
+                        }}
+                        className="h-12 px-6 border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200"
                       >
-                        Cancel
+                        Validate Form
                       </Button>
-                    </Link>
+                    </div>
                     
                     <Button 
                       type="submit" 
@@ -740,6 +870,50 @@ export default function CreateServicePage() {
                   <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                   Base price is required
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Service Preview Card */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-indigo-50">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Eye className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-lg text-slate-900">Service Preview</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formData.title && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-slate-800">{formData.title}</h4>
+                    {formData.category && (
+                      <Badge variant="outline" className="text-xs">
+                        {formData.category}
+                      </Badge>
+                    )}
+                    {formData.base_price && (
+                      <p className="text-sm text-slate-600">
+                        Starting from {formData.currency} {formData.base_price}
+                      </p>
+                    )}
+                    {formData.delivery_timeframe && (
+                      <p className="text-xs text-slate-500">
+                        ⏱️ {formData.delivery_timeframe}
+                      </p>
+                    )}
+                    {formData.revision_policy && (
+                      <p className="text-xs text-slate-500">
+                        🔄 {formData.revision_policy}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {!formData.title && (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    Start filling out the form to see a preview of your service
+                  </p>
+                )}
               </CardContent>
             </Card>
 
