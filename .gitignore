@@ -19,6 +19,7 @@ dist/
 
 # Supabase
 .supabase/
+supabase/functions/
 
 # Logs
 *.log

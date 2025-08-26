@@ -1,0 +1,9 @@
+# Exclude Supabase Edge Functions from Vercel build
+supabase/functions/
+supabase/migrations/
+supabase/config.toml
+
+# Exclude other unnecessary files
+*.md
+scripts/
+docs/
