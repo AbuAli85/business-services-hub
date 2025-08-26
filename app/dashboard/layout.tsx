@@ -20,7 +20,8 @@ import {
   Users,
   BarChart3,
   FileText,
-  Bell
+  Bell,
+  Target
 } from 'lucide-react'
 
 interface UserProfile {
@@ -187,6 +188,7 @@ export default function DashboardLayout({
     if (user.role === 'provider') {
       baseItems.splice(1, 0, 
         { name: 'My Services', href: `/dashboard/services`, icon: Building2 },
+        { name: 'Digital Marketing', href: '/dashboard/provider/digital-marketing', icon: Target },
         { name: 'Company', href: '/dashboard/company', icon: Building2 },
         { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
         { name: 'Profile', href: '/dashboard/profile', icon: User }

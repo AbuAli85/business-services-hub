@@ -20,8 +20,10 @@ import {
   FileText, 
   Zap,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 // UUID validation utility
 const isValidUUID = (uuid: string): boolean => {
@@ -37,6 +39,16 @@ interface ServiceFormData {
   currency: string
   status: string
   tags: string
+  // Digital marketing specific fields
+  delivery_timeframe: string
+  revision_policy: string
+  service_packages: {
+    name: string
+    price: string
+    delivery_days: number
+    revisions: number
+    features: string[]
+  }[]
 }
 
 export default function CreateServicePage() {
@@ -45,11 +57,37 @@ export default function CreateServicePage() {
   const [formData, setFormData] = useState<ServiceFormData>({
     title: '',
     description: '',
-    category: '',
+    category: 'Digital Marketing',
     base_price: '',
     currency: 'OMR',
     status: 'draft',
-    tags: ''
+    tags: '',
+    // Digital marketing specific fields
+    delivery_timeframe: '7-14 days',
+    revision_policy: '2 revisions included',
+    service_packages: [
+      {
+        name: 'Basic',
+        price: '',
+        delivery_days: 7,
+        revisions: 1,
+        features: ['Initial consultation', 'Basic strategy', 'Standard reporting']
+      },
+      {
+        name: 'Professional',
+        price: '',
+        delivery_days: 14,
+        revisions: 2,
+        features: ['Comprehensive strategy', 'Advanced analytics', 'Priority support', 'Monthly reports']
+      },
+      {
+        name: 'Enterprise',
+        price: '',
+        delivery_days: 21,
+        revisions: 3,
+        features: ['Full-service management', 'Custom reporting', 'Dedicated account manager', 'Weekly updates', 'Performance optimization']
+      }
+    ]
   })
 
   const categories = [
@@ -73,11 +111,65 @@ export default function CreateServicePage() {
 
   const currencies = ['OMR', 'USD', 'EUR', 'GBP']
   const statuses = ['draft', 'active', 'inactive']
+  
+  // Digital marketing specific options
+  const deliveryTimeframes = [
+    '3-5 days',
+    '7-14 days', 
+    '14-21 days',
+    '21-30 days',
+    '30+ days',
+    'Custom timeframe'
+  ]
+  
+  const revisionPolicies = [
+    '1 revision included',
+    '2 revisions included',
+    '3 revisions included',
+    'Unlimited revisions',
+    'Custom policy'
+  ]
 
   const handleInputChange = (field: keyof ServiceFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+  }
+
+  const handlePackageChange = (packageIndex: number, field: keyof ServiceFormData['service_packages'][0], value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      service_packages: prev.service_packages.map((pkg, idx) => 
+        idx === packageIndex ? { ...pkg, [field]: value } : pkg
+      )
+    }))
+  }
+
+  const handleFeatureChange = (packageIndex: number, featureIndex: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      service_packages: prev.service_packages.map((pkg, idx) => 
+        idx === packageIndex ? { ...pkg, features: pkg.features.map((f, fid) => fid === featureIndex ? value : f) } : pkg
+      )
+    }))
+  }
+
+  const addFeature = (packageIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      service_packages: prev.service_packages.map((pkg, idx) => 
+        idx === packageIndex ? { ...pkg, features: [...pkg.features, ''] } : pkg
+      )
+    }))
+  }
+
+  const removeFeature = (packageIndex: number, featureIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      service_packages: prev.service_packages.map((pkg, idx) => 
+        idx === packageIndex ? { ...pkg, features: pkg.features.filter((_, fid) => fid !== featureIndex) } : pkg
+      )
     }))
   }
 
@@ -143,7 +235,16 @@ export default function CreateServicePage() {
         status: formData.status,
         provider_id: user.id,
         approval_status: 'pending',
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : []
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
+        delivery_timeframe: formData.delivery_timeframe,
+        revision_policy: formData.revision_policy,
+        service_packages: formData.service_packages.map(pkg => ({
+          name: pkg.name,
+          price: parseFloat(pkg.price),
+          delivery_days: pkg.delivery_days,
+          revisions: pkg.revisions,
+          features: pkg.features
+        }))
       }
 
       console.log('Attempting to create service with data:', serviceData)
@@ -391,6 +492,155 @@ export default function CreateServicePage() {
                       <p className="text-xs text-slate-500 mt-2">
                         Separate tags with commas to help clients find your service
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Digital Marketing Specific Section */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-1 h-6 bg-gradient-to-b from-teal-500 to-cyan-500 rounded-full"></div>
+                      <h3 className="text-lg font-semibold text-slate-900">Service Details</h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label htmlFor="delivery_timeframe" className="text-sm font-medium text-slate-700 mb-2 block">
+                          Delivery Timeframe
+                        </Label>
+                        <Select value={formData.delivery_timeframe} onValueChange={(value) => handleInputChange('delivery_timeframe', value)}>
+                          <SelectTrigger className="h-12 border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {deliveryTimeframes.map(timeframe => (
+                              <SelectItem key={timeframe} value={timeframe}>
+                                {timeframe}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="revision_policy" className="text-sm font-medium text-slate-700 mb-2 block">
+                          Revision Policy
+                        </Label>
+                        <Select value={formData.revision_policy} onValueChange={(value) => handleInputChange('revision_policy', value)}>
+                          <SelectTrigger className="h-12 border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {revisionPolicies.map(policy => (
+                              <SelectItem key={policy} value={policy}>
+                                {policy}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Service Packages Section */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-1 h-6 bg-gradient-to-b from-violet-500 to-purple-500 rounded-full"></div>
+                      <h3 className="text-lg font-semibold text-slate-900">Service Packages</h3>
+                      <p className="text-sm text-slate-500">Create different pricing tiers for your service</p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {formData.service_packages.map((pkg, index) => (
+                        <Card key={index} className="border-2 border-slate-200 hover:border-slate-300 transition-all duration-200">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-lg text-slate-900">{pkg.name} Package</CardTitle>
+                              <Badge variant={index === 0 ? "default" : index === 1 ? "secondary" : "outline"}>
+                                {index === 0 ? "Basic" : index === 1 ? "Popular" : "Premium"}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <Label className="text-sm font-medium text-slate-700 mb-2 block">
+                                  Price ({formData.currency})
+                                </Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={pkg.price}
+                                  onChange={(e) => handlePackageChange(index, 'price', e.target.value)}
+                                  placeholder="0.00"
+                                  className="h-10 border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium text-slate-700 mb-2 block">
+                                  Delivery Days
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={pkg.delivery_days}
+                                  onChange={(e) => handlePackageChange(index, 'delivery_days', parseInt(e.target.value))}
+                                  className="h-10 border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm font-medium text-slate-700 mb-2 block">
+                                  Revisions
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={pkg.revisions}
+                                  onChange={(e) => handlePackageChange(index, 'revisions', parseInt(e.target.value))}
+                                  className="h-10 border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <Label className="text-sm font-medium text-slate-700 mb-2 block">
+                                Features
+                              </Label>
+                              <div className="space-y-2">
+                                {pkg.features.map((feature, featureIndex) => (
+                                  <div key={featureIndex} className="flex items-center gap-2">
+                                    <Input
+                                      value={feature}
+                                      onChange={(e) => handleFeatureChange(index, featureIndex, e.target.value)}
+                                      placeholder="Enter feature description"
+                                      className="h-9 border-2 border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removeFeature(index, featureIndex)}
+                                      className="h-9 w-9 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addFeature(index)}
+                                  className="h-9 px-3 border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add Feature
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
                   </div>
 

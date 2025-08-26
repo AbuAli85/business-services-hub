@@ -15,7 +15,7 @@ import {
   Search, Filter, Plus, Edit, Trash2, Eye, Building2, TrendingUp, 
   Calendar, DollarSign, Star, Zap, Clock, Activity, FileCheck, AlertCircle,
   Target, Play, Download, ExternalLink, Share2, Award, Lightbulb, BookOpen,
-  Headphones, HelpCircle, CreditCard, Receipt, CheckCircle, FileText
+  Headphones, HelpCircle, CreditCard, Receipt, CheckCircle, FileText, RefreshCw
 } from 'lucide-react'
 
 interface Service {
@@ -33,6 +33,14 @@ interface Service {
   bookings_count?: number
   rating?: number
   tags?: string[]
+  delivery_timeframe?: string
+  revision_policy?: string
+  service_packages?: {
+    name: string;
+    price: number;
+    delivery_days: number;
+    revisions: number;
+  }[];
 }
 
 interface ServiceStats {
@@ -638,6 +646,19 @@ export default function ProviderServicesPage() {
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-semibold">
                       {formatCurrency(service.base_price, service.currency)}
                     </Badge>
+                    {/* Digital Marketing specific badges */}
+                    {service.delivery_timeframe && (
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {service.delivery_timeframe}
+                      </Badge>
+                    )}
+                    {service.revision_policy && (
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        {service.revision_policy}
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
                 
@@ -658,6 +679,35 @@ export default function ProviderServicesPage() {
                         <div className="text-gray-500 text-xs">Rating</div>
                       </div>
                     </div>
+
+                    {/* Service Packages - Digital Marketing Specific */}
+                    {service.service_packages && service.service_packages.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium text-gray-700">Service Packages:</div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {service.service_packages.slice(0, 2).map((pkg, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center gap-2">
+                                <Badge variant={index === 0 ? "default" : "secondary"} className="text-xs">
+                                  {pkg.name}
+                                </Badge>
+                                <span className="text-xs text-gray-600">
+                                  {pkg.delivery_days} days • {pkg.revisions} revisions
+                                </span>
+                              </div>
+                              <span className="font-semibold text-blue-900 text-sm">
+                                {formatCurrency(pkg.price, service.currency)}
+                              </span>
+                            </div>
+                          ))}
+                          {service.service_packages.length > 2 && (
+                            <div className="text-xs text-gray-500 text-center">
+                              +{service.service_packages.length - 2} more packages
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Creation Date */}
                     <div className="text-sm text-gray-500 flex items-center gap-2">

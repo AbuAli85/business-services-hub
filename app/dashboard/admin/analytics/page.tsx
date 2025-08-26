@@ -40,6 +40,20 @@ interface AnalyticsData {
     timestamp: string
     impact: 'positive' | 'negative' | 'neutral'
   }>
+  // Digital Marketing specific analytics
+  digitalMarketingMetrics: {
+    totalServices: number;
+    averageDeliveryTime: string;
+    averageRevisions: number;
+    packageDistribution: {
+      basic: number;
+      professional: number;
+      enterprise: number;
+    };
+    topServices: string[];
+    averagePackagePrice: number;
+    completionRate: number;
+  };
 }
 
 export default function AdminAnalyticsPage() {
@@ -69,6 +83,26 @@ export default function AdminAnalyticsPage() {
           { name: 'Accounting', count: 12, percentage: 13.5 },
           { name: 'IT Services', count: 8, percentage: 9.0 }
         ],
+        // Digital Marketing specific analytics
+        digitalMarketingMetrics: {
+          totalServices: 23,
+          averageDeliveryTime: '14.2 days',
+          averageRevisions: 2.1,
+          packageDistribution: {
+            basic: 8,
+            professional: 12,
+            enterprise: 3
+          },
+          topServices: [
+            'SEO Optimization',
+            'Social Media Management',
+            'Content Marketing',
+            'PPC Campaigns',
+            'Website Redesign'
+          ],
+          averagePackagePrice: 1250,
+          completionRate: 94.2
+        },
         recentActivity: [
           {
             type: 'user_signup',
@@ -289,6 +323,99 @@ export default function AdminAnalyticsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Digital Marketing Analytics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-blue-600" />
+            Digital Marketing Analytics
+          </CardTitle>
+          <CardDescription>
+            Performance metrics for digital marketing services
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-900">{analytics.digitalMarketingMetrics.totalServices}</div>
+              <div className="text-sm text-blue-700">Total Services</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-900">{analytics.digitalMarketingMetrics.averageDeliveryTime}</div>
+              <div className="text-sm text-green-700">Avg. Delivery</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-900">{analytics.digitalMarketingMetrics.averageRevisions}</div>
+              <div className="text-sm text-purple-700">Avg. Revisions</div>
+            </div>
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-900">{analytics.digitalMarketingMetrics.completionRate}%</div>
+              <div className="text-sm text-orange-700">Completion Rate</div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Package Distribution */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3">Package Distribution</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Basic</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${(analytics.digitalMarketingMetrics.packageDistribution.basic / analytics.digitalMarketingMetrics.totalServices) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{analytics.digitalMarketingMetrics.packageDistribution.basic}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Professional</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full" 
+                        style={{ width: `${(analytics.digitalMarketingMetrics.packageDistribution.professional / analytics.digitalMarketingMetrics.totalServices) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{analytics.digitalMarketingMetrics.packageDistribution.professional}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Enterprise</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-purple-600 h-2 rounded-full" 
+                        style={{ width: `${(analytics.digitalMarketingMetrics.packageDistribution.enterprise / analytics.digitalMarketingMetrics.totalServices) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{analytics.digitalMarketingMetrics.packageDistribution.enterprise}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Top Services */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3">Top Digital Marketing Services</h4>
+              <div className="space-y-2">
+                {analytics.digitalMarketingMetrics.topServices.map((service, index) => (
+                  <div key={service} className="flex items-center gap-2 text-sm">
+                    <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-semibold text-xs">{index + 1}</span>
+                    </div>
+                    <span className="text-gray-700">{service}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
