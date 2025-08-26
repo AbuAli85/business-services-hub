@@ -50,6 +50,13 @@ export default function DashboardServiceDetailPage() {
   console.log('DashboardServiceDetailPage - serviceId:', serviceId)
   console.log('DashboardServiceDetailPage - params:', params)
   
+  // IMMEDIATE redirect for "create" - prevent any further processing
+  if (serviceId === 'create') {
+    console.log('🔄 IMMEDIATE redirect to service creation page')
+    router.push('/dashboard/provider/create-service')
+    return null // Return null to prevent any rendering
+  }
+  
   const [service, setService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -82,10 +89,10 @@ export default function DashboardServiceDetailPage() {
       return
     }
     
-    // Special case: redirect "create" to service creation page
+    // Double-check: prevent "create" from reaching this point
     if (serviceId === 'create') {
-      console.log('🔄 Redirecting "create" to service creation page')
-      setLoading(false) // Stop loading immediately
+      console.log('🔄 useEffect: redirecting "create" to service creation page')
+      setLoading(false)
       router.push('/dashboard/provider/create-service')
       return
     }
@@ -139,11 +146,19 @@ export default function DashboardServiceDetailPage() {
     try {
       console.log('🔍 Checking user authentication...')
       
-      // Double-check serviceId validation before proceeding
+      // Triple-check serviceId validation before proceeding
       if (!serviceId || serviceId === 'undefined' || serviceId === 'create' || !isValidUUID(serviceId)) {
         console.error('❌ Invalid service ID in checkUserAndFetchService:', serviceId)
         setError('Invalid service ID format')
         setLoading(false)
+        return
+      }
+      
+      // Additional safety check for "create"
+      if (serviceId === 'create') {
+        console.log('🔄 checkUserAndFetchService: redirecting "create" to service creation page')
+        setLoading(false)
+        router.push('/dashboard/provider/create-service')
         return
       }
       
@@ -175,6 +190,13 @@ export default function DashboardServiceDetailPage() {
       if (!id || id === 'create' || id === 'undefined' || !isValidUUID(id)) {
         console.error('❌ fetchService called with invalid ID:', id)
         throw new Error(`Invalid service ID format: ${id}`)
+      }
+      
+      // Additional safety check for "create"
+      if (id === 'create') {
+        console.log('🔄 fetchService: redirecting "create" to service creation page')
+        router.push('/dashboard/provider/create-service')
+        return
       }
       
       // Enhanced UUID validation

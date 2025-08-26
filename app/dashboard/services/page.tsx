@@ -261,7 +261,8 @@ export default function ServicesPage() {
 
   const handleCreateService = () => {
     if (userRole === 'provider') {
-      window.location.href = '/dashboard/services/create'
+      // Navigate directly to the create service page instead of going through service detail
+      window.location.href = '/dashboard/provider/create-service'
     }
   }
 

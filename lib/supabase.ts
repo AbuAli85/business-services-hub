@@ -78,7 +78,8 @@ For production deployments, ensure environment variables are set in your hosting
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce'
     },
     global: {
       headers: {
@@ -87,19 +88,76 @@ For production deployments, ensure environment variables are set in your hosting
     }
   })
   
-  // Test the client connection
+  // Set up auth state change listener
+  supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+    
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('✅ Token refreshed successfully')
+    } else if (event === 'SIGNED_OUT') {
+      console.log('👋 User signed out')
+    }
+  })
+  
+  // Test the client connection and session
   try {
-    const { data, error } = await supabaseClient.auth.getSession()
+    const { data: { session }, error } = await supabaseClient.auth.getSession()
     if (error) {
-      console.warn('Supabase client connection test failed:', error)
+      console.warn('⚠️ Supabase client connection test failed:', error)
+    } else if (session) {
+      console.log('✅ Supabase client connected successfully with active session')
+      console.log('👤 User ID:', session.user.id)
+      console.log('🔄 Session expires:', new Date(session.expires_at! * 1000).toLocaleString())
     } else {
-      console.log('Supabase client connected successfully')
+      console.log('✅ Supabase client connected successfully (no active session)')
     }
   } catch (testError) {
-    console.warn('Supabase client connection test error:', testError)
+    console.warn('⚠️ Supabase client connection test error:', testError)
   }
   
   return supabaseClient
+}
+
+// Enhanced function to get authenticated client with session refresh
+export async function getAuthenticatedClient(): Promise<SupabaseClient> {
+  const client = await getSupabaseClient()
+  
+  // Check if we have a valid session
+  const { data: { session }, error } = await client.auth.getSession()
+  
+  if (error) {
+    console.error('❌ Error getting session:', error)
+    throw new Error('Authentication error: ' + error.message)
+  }
+  
+  if (!session) {
+    console.error('❌ No active session found')
+    throw new Error('No active session. Please sign in again.')
+  }
+  
+  // Check if session is expired or about to expire (within 5 minutes)
+  const now = Math.floor(Date.now() / 1000)
+  const expiresAt = session.expires_at || 0
+  const timeUntilExpiry = expiresAt - now
+  
+  if (timeUntilExpiry <= 300) { // 5 minutes
+    console.log('🔄 Session expires soon, refreshing...')
+    try {
+      const { data: { session: refreshedSession }, error: refreshError } = await client.auth.refreshSession()
+      if (refreshError) {
+        console.error('❌ Failed to refresh session:', refreshError)
+        throw new Error('Session refresh failed: ' + refreshError.message)
+      }
+      if (refreshedSession) {
+        console.log('✅ Session refreshed successfully')
+      }
+    } catch (refreshError) {
+      console.error('❌ Session refresh error:', refreshError)
+      throw new Error('Session refresh failed. Please sign in again.')
+    }
+  }
+  
+  return client
 }
 
 // Safe client getter that returns null if environment variables are missing
@@ -131,7 +189,8 @@ Missing: ${envCheck.missingVars.join(', ')}`)
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce'
     }
   })
   
