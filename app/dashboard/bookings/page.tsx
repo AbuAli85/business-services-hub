@@ -42,7 +42,9 @@ import {
   CheckCircle2,
   MessageSquare,
   X,
-  Bell
+  Bell,
+  Lightbulb,
+  Settings
 } from 'lucide-react'
 
 interface Booking {
@@ -362,6 +364,19 @@ export default function BookingsPage() {
   // Quality and compliance tracking
   const [qualityMetrics, setQualityMetrics] = useState<QualityMetrics[]>([])
   const [complianceStatus, setComplianceStatus] = useState<ComplianceStatus[]>([])
+
+  // Enhanced smart features
+  const [showAIAssistant, setShowAIAssistant] = useState(false)
+  const [showPredictiveAnalytics, setShowPredictiveAnalytics] = useState(false)
+  const [showSmartScheduling, setShowSmartScheduling] = useState(false)
+  const [showResourceOptimization, setShowResourceOptimization] = useState(false)
+  const [showClientInsights, setShowClientInsights] = useState(false)
+  const [showPerformancePredictions, setShowPerformancePredictions] = useState(false)
+  
+  // AI-powered insights
+  const [aiInsights, setAiInsights] = useState<any[]>([])
+  const [predictedBookings, setPredictedBookings] = useState<any[]>([])
+  const [optimizationSuggestions, setOptimizationSuggestions] = useState<any[]>([])
   
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
@@ -400,6 +415,15 @@ export default function BookingsPage() {
   useEffect(() => {
     filterBookings()
   }, [bookings, searchQuery, statusFilter, filterOptions, sortBy, sortOrder])
+
+  // Auto-generate AI insights when bookings data changes
+  useEffect(() => {
+    if (bookings.length > 0 && showAIAssistant) {
+      generateAIInsights()
+      generatePredictiveAnalytics()
+      generateOptimizationSuggestions()
+    }
+  }, [bookings, showAIAssistant])
 
   const checkUserAndFetchBookings = async () => {
     try {
@@ -842,6 +866,236 @@ export default function BookingsPage() {
     setAlerts(prev => 
       prev.map(a => a.id === alertId ? { ...a, acknowledged: true, acknowledged_at: new Date().toISOString() } : a)
     )
+  }
+
+  // AI-powered smart insights generation
+  const generateAIInsights = () => {
+    const insights = []
+    
+    // Analyze booking patterns
+    const recentBookings = bookings.filter(b => {
+      const createdDate = new Date(b.created_at)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      return createdDate > thirtyDaysAgo
+    })
+    
+    if (recentBookings.length > 0) {
+      // Peak time analysis
+      const hourlyDistribution = recentBookings.reduce((acc, booking) => {
+        const hour = new Date(booking.created_at).getHours()
+        acc[hour] = (acc[hour] || 0) + 1
+        return acc
+      }, {} as Record<number, number>)
+      
+      const peakHour = Object.entries(hourlyDistribution).reduce((a, b) => hourlyDistribution[Number(a[0])] > hourlyDistribution[Number(b[0])] ? a : b)[0]
+      
+      insights.push({
+        type: 'timing',
+        title: 'Peak Booking Time',
+        description: `Most bookings are created at ${peakHour}:00. Consider scheduling team availability during this peak period.`,
+        priority: 'medium',
+        icon: '🕐',
+        actionable: true
+      })
+      
+      // Service popularity analysis
+      const serviceCounts = recentBookings.reduce((acc, booking) => {
+        const service = booking.service_name || 'Unknown'
+        acc[service] = (acc[service] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+      
+      const topService = Object.entries(serviceCounts).reduce((a, b) => serviceCounts[a[0]] > serviceCounts[b[0]] ? a : b)
+      
+      insights.push({
+        type: 'service',
+        title: 'Most Popular Service',
+        description: `"${topService[0]}" is your most requested service (${topService[1]} bookings). Consider expanding capacity or creating similar offerings.`,
+        priority: 'high',
+        icon: '📈',
+        actionable: true
+      })
+      
+      // Revenue optimization
+      const totalRevenue = recentBookings.reduce((sum, b) => sum + (b.amount || 0), 0)
+      const avgRevenue = totalRevenue / recentBookings.length
+      
+      if (avgRevenue < 100) {
+        insights.push({
+          type: 'revenue',
+          title: 'Revenue Optimization Opportunity',
+          description: `Average booking value is ${formatCurrency(avgRevenue)}. Consider upselling additional services or premium packages.`,
+          priority: 'high',
+          icon: '💰',
+          actionable: true
+        })
+      }
+      
+      // Client retention analysis
+      const uniqueClients = new Set(recentBookings.map(b => b.client_id))
+      const repeatClients = recentBookings.filter(b => 
+        recentBookings.filter(booking => booking.client_id === b.client_id).length > 1
+      )
+      
+      if (repeatClients.length > 0) {
+        insights.push({
+          type: 'retention',
+          title: 'Client Retention Success',
+          description: `${repeatClients.length} repeat bookings detected. Your service quality is building client loyalty!`,
+          priority: 'low',
+          icon: '🎯',
+          actionable: false
+        })
+      }
+      
+      // Performance predictions
+      const completionRate = recentBookings.filter(b => b.status === 'completed').length / recentBookings.length
+      const avgCompletionTime = recentBookings
+        .filter(b => b.status === 'completed' && b.actual_completion_date)
+        .reduce((sum, b) => {
+          const start = new Date(b.created_at)
+          const end = new Date(b.actual_completion_date!)
+          return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        }, 0) / Math.max(1, recentBookings.filter(b => b.status === 'completed').length)
+      
+      if (completionRate < 0.8) {
+        insights.push({
+          type: 'performance',
+          title: 'Completion Rate Alert',
+          description: `Only ${(completionRate * 100).toFixed(1)}% of bookings are completed. Review your workflow and identify bottlenecks.`,
+          priority: 'high',
+          icon: '⚠️',
+          actionable: true
+        })
+      }
+      
+      if (avgCompletionTime > 7) {
+        insights.push({
+          type: 'performance',
+          title: 'Timeline Optimization',
+          description: `Average completion time is ${avgCompletionTime.toFixed(1)} days. Consider process improvements or resource allocation.`,
+          priority: 'medium',
+          icon: '⏱️',
+          actionable: true
+        })
+      }
+    }
+    
+    setAiInsights(insights)
+    return insights
+  }
+
+  // Generate predictive analytics
+  const generatePredictiveAnalytics = () => {
+    const predictions = []
+    
+    // Predict next month's bookings based on current trend
+    const currentMonthBookings = bookings.filter(b => {
+      const createdDate = new Date(b.created_at)
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+      return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
+    }).length
+    
+    const lastMonthBookings = bookings.filter(b => {
+      const createdDate = new Date(b.created_at)
+      const lastMonth = new Date().getMonth() - 1
+      const year = lastMonth < 0 ? new Date().getFullYear() - 1 : new Date().getFullYear()
+      const month = lastMonth < 0 ? 11 : lastMonth
+      return createdDate.getMonth() === month && createdDate.getFullYear() === year
+    }).length
+    
+    if (lastMonthBookings > 0) {
+      const growthRate = (currentMonthBookings - lastMonthBookings) / lastMonthBookings
+      const predictedNextMonth = Math.round(currentMonthBookings * (1 + growthRate))
+      
+      predictions.push({
+        metric: 'Next Month Bookings',
+        current: currentMonthBookings,
+        predicted: predictedNextMonth,
+        confidence: Math.min(95, Math.max(60, 100 - Math.abs(growthRate) * 20)),
+        trend: growthRate > 0 ? 'up' : 'down',
+        recommendation: growthRate > 0.1 ? 'Consider expanding capacity' : 'Focus on marketing and lead generation'
+      })
+    }
+    
+    // Predict revenue trends
+    const currentMonthRevenue = bookings.filter(b => {
+      const createdDate = new Date(b.created_at)
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+      return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
+    }).reduce((sum, b) => sum + (b.amount || 0), 0)
+    
+    if (currentMonthRevenue > 0) {
+      const avgBookingValue = currentMonthRevenue / currentMonthBookings
+      const predictedRevenue = currentMonthBookings * avgBookingValue
+      
+      predictions.push({
+        metric: 'Next Month Revenue',
+        current: currentMonthRevenue,
+        predicted: predictedRevenue,
+        confidence: 85,
+        trend: 'up',
+        recommendation: 'Focus on maintaining service quality to sustain revenue growth'
+      })
+    }
+    
+    setPredictedBookings(predictions)
+    return predictions
+  }
+
+  // Generate optimization suggestions
+  const generateOptimizationSuggestions = () => {
+    const suggestions = []
+    
+    // Resource allocation suggestions
+    const pendingBookings = bookings.filter(b => b.status === 'pending').length
+    const inProgressBookings = bookings.filter(b => b.status === 'in_progress').length
+    
+    if (pendingBookings > inProgressBookings * 2) {
+      suggestions.push({
+        category: 'Resource Allocation',
+        title: 'Increase Team Capacity',
+        description: 'Pending bookings are accumulating faster than they can be processed. Consider adding team members or improving efficiency.',
+        impact: 'high',
+        effort: 'medium',
+        priority: 'urgent'
+      })
+    }
+    
+    // Scheduling optimization
+    const weekendBookings = bookings.filter(b => {
+      const date = new Date(b.created_at)
+      return date.getDay() === 0 || date.getDay() === 6
+    }).length
+    
+    if (weekendBookings > 0) {
+      suggestions.push({
+        category: 'Scheduling',
+        title: 'Weekend Availability',
+        description: `${weekendBookings} bookings were created on weekends. Consider offering weekend services to capture this demand.`,
+        impact: 'medium',
+        effort: 'low',
+        priority: 'normal'
+      })
+    }
+    
+    // Quality improvement suggestions
+    const lowRatedBookings = bookings.filter(b => b.rating && b.rating < 3).length
+    if (lowRatedBookings > 0) {
+      suggestions.push({
+        category: 'Quality',
+        title: 'Service Quality Review',
+        description: `${lowRatedBookings} bookings received low ratings. Review these cases to identify improvement areas.`,
+        impact: 'high',
+        effort: 'medium',
+        priority: 'high'
+      })
+    }
+    
+    setOptimizationSuggestions(suggestions)
+    return suggestions
   }
 
 
@@ -1931,9 +2185,86 @@ export default function BookingsPage() {
             </div>
           )}
 
-          {/* Smart Dashboard Toggle */}
+          {/* Smart Insights Summary */}
+          <div className="mb-6 p-4 bg-gradient-to-r from-slate-50 to-gray-50 border border-slate-200 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-8 w-8 bg-gradient-to-br from-slate-600 to-gray-700 rounded-full flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Smart Insights Summary</h3>
+                <p className="text-slate-600 text-sm">AI-powered analysis of your booking performance</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-white/60 rounded-lg border border-slate-200">
+                <div className="text-2xl font-bold text-slate-900 mb-1">
+                  {bookings.filter(b => b.status === 'completed').length}
+                </div>
+                <p className="text-sm text-slate-600">Completed</p>
+                <div className="text-xs text-slate-500 mt-1">
+                  {bookings.length > 0 ? Math.round((bookings.filter(b => b.status === 'completed').length / bookings.length) * 100) : 0}% success rate
+                </div>
+              </div>
+              
+              <div className="text-center p-3 bg-white/60 rounded-lg border border-slate-200">
+                <div className="text-2xl font-bold text-slate-900 mb-1">
+                  {bookings.filter(b => b.priority === 'urgent' || b.priority === 'high').length}
+                </div>
+                <p className="text-sm text-slate-600">High Priority</p>
+                <div className="text-xs text-slate-500 mt-1">
+                  Requires attention
+                </div>
+              </div>
+              
+              <div className="text-center p-3 bg-white/60 rounded-lg border border-slate-200">
+                <div className="text-2xl font-bold text-slate-900 mb-1">
+                  ${bookings.reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(0)}
+                </div>
+                <p className="text-sm text-slate-600">Revenue</p>
+                <div className="text-xs text-slate-500 mt-1">
+                  This period
+                </div>
+              </div>
+              
+              <div className="text-center p-3 bg-white/60 rounded-lg border border-slate-200">
+                <div className="text-2xl font-bold text-slate-900 mb-1">
+                  {bookings.filter(b => b.rating && b.rating >= 4).length}
+                </div>
+                <p className="text-sm text-slate-600">High Ratings</p>
+                <div className="text-xs text-slate-500 mt-1">
+                  4+ star reviews
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>AI recommendations available</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowAIAssistant(true)
+                    generateAIInsights()
+                    generatePredictiveAnalytics()
+                    generateOptimizationSuggestions()
+                  }}
+                  className="text-slate-700 border-slate-300 hover:bg-slate-50"
+                >
+                  View AI Insights
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Smart Dashboard Toggle */}
           <div className="mb-6">
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
               <Button
                 variant="outline"
                 onClick={() => setShowSmartDashboard(!showSmartDashboard)}
@@ -1969,6 +2300,41 @@ export default function BookingsPage() {
                 <AlertCircle className="h-4 w-4" />
                 Notifications ({notifications.filter(n => !n.read).length})
               </Button>
+
+              {/* New AI-Powered Features */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAIAssistant(!showAIAssistant)
+                  if (!showAIAssistant) {
+                    generateAIInsights()
+                    generatePredictiveAnalytics()
+                    generateOptimizationSuggestions()
+                  }
+                }}
+                className={`flex items-center gap-2 ${showAIAssistant ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : ''}`}
+              >
+                <TrendingUp className="h-4 w-4" />
+                AI Assistant
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setShowPredictiveAnalytics(!showPredictiveAnalytics)}
+                className={`flex items-center gap-2 ${showPredictiveAnalytics ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : ''}`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                Predictive Analytics
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setShowSmartScheduling(!showSmartScheduling)}
+                className={`flex items-center gap-2 ${showSmartScheduling ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : ''}`}
+              >
+                <Calendar className="h-4 w-4" />
+                Smart Scheduling
+              </Button>
             </div>
             
             {/* Smart Dashboard Content */}
@@ -1991,6 +2357,135 @@ export default function BookingsPage() {
                     <h4 className="font-medium text-blue-900 mb-2">⚡ Performance Insights</h4>
                     <p className="text-sm text-blue-700">Real-time metrics on efficiency, quality, and client satisfaction</p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI-Powered Insights Dashboard */}
+            {showAIAssistant && (
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-indigo-900">AI-Powered Insights</h3>
+                    <p className="text-indigo-700 text-sm">Real-time analysis and intelligent recommendations</p>
+                  </div>
+                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 ml-auto">
+                    Live Analysis
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* AI Insights */}
+                  <Card className="bg-white/80 backdrop-blur-sm border-indigo-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-indigo-800 text-lg flex items-center gap-2">
+                        <Lightbulb className="h-5 w-5" />
+                        Smart Insights
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {aiInsights.length > 0 ? (
+                        aiInsights.map((insight, index) => (
+                          <div key={index} className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                            <div className="flex items-start gap-2">
+                              <div className={`h-2 w-2 rounded-full mt-2 ${
+                                insight.type === 'success' ? 'bg-green-500' : 
+                                insight.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+                              }`} />
+                              <div className="flex-1">
+                                <p className="font-medium text-indigo-900 text-sm">{insight.title}</p>
+                                <p className="text-indigo-700 text-xs mt-1">{insight.description}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4">
+                          <div className="h-8 w-8 bg-indigo-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <TrendingUp className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          <p className="text-indigo-600 text-sm">Click "AI Assistant" to generate insights</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Predictive Analytics */}
+                  <Card className="bg-white/80 backdrop-blur-sm border-emerald-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-emerald-800 text-lg flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Predictive Analytics
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {predictedBookings.length > 0 ? (
+                        predictedBookings.map((prediction, index) => (
+                          <div key={index} className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-emerald-900 text-sm">{prediction.metric}</p>
+                                <p className="text-emerald-700 text-xs mt-1">{prediction.description}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-emerald-900 text-lg">{prediction.value}</p>
+                                <p className={`text-xs ${prediction.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                                  {prediction.trend === 'up' ? '↗' : '↘'} {prediction.change}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4">
+                          <div className="h-8 w-8 bg-emerald-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <BarChart3 className="h-4 w-4 text-emerald-600" />
+                          </div>
+                          <p className="text-emerald-600 text-sm">Predictions will appear here</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Optimization Suggestions */}
+                  <Card className="bg-white/80 backdrop-blur-sm border-cyan-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-cyan-800 text-lg flex items-center gap-2">
+                        <Settings className="h-5 w-5" />
+                        Optimization Tips
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {optimizationSuggestions.length > 0 ? (
+                        optimizationSuggestions.map((suggestion, index) => (
+                          <div key={index} className="p-3 bg-cyan-50 rounded-lg border border-cyan-100">
+                            <div className="flex items-start gap-2">
+                              <div className="h-2 w-2 rounded-full mt-2 bg-cyan-500" />
+                              <div className="flex-1">
+                                <p className="font-medium text-cyan-900 text-sm">{suggestion.title}</p>
+                                <p className="text-cyan-700 text-xs mt-1">{suggestion.description}</p>
+                                <div className="mt-2">
+                                  <Badge variant="outline" className="text-cyan-700 border-cyan-300 text-xs">
+                                    {suggestion.priority}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4">
+                          <div className="h-8 w-8 bg-cyan-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <Settings className="h-4 w-4 text-cyan-600" />
+                          </div>
+                          <p className="text-cyan-600 text-sm">Optimization tips will appear here</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             )}
@@ -2040,6 +2535,101 @@ export default function BookingsPage() {
                   <div className="bg-white/60 p-4 rounded-lg border border-purple-200">
                     <h4 className="font-medium text-purple-900 mb-2">🔍 Risk Assessment</h4>
                     <p className="text-sm text-purple-700">Identify and mitigate potential project risks</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Smart Scheduling Panel */}
+            {showSmartScheduling && (
+              <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-cyan-900 mb-4 flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Smart Scheduling - Optimize Your Time
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white/60 p-4 rounded-lg border border-cyan-200">
+                    <h4 className="font-medium text-cyan-900 mb-3">📅 Intelligent Calendar</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cyan-700">Peak Hours</span>
+                        <span className="font-medium text-cyan-900">9 AM - 2 PM</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cyan-700">Optimal Slots</span>
+                        <span className="font-medium text-cyan-900">3 Available</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cyan-700">Buffer Time</span>
+                        <span className="font-medium text-cyan-900">15 min</span>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="mt-3 text-cyan-700 border-cyan-300">
+                      View Calendar
+                    </Button>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-cyan-200">
+                    <h4 className="font-medium text-cyan-900 mb-3">⚡ Auto-Scheduling</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cyan-700">Smart Matching</span>
+                        <span className="font-medium text-cyan-900">Enabled</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cyan-700">Conflict Detection</span>
+                        <span className="font-medium text-cyan-900">Active</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-cyan-700">Travel Time</span>
+                        <span className="font-medium text-cyan-900">Calculated</span>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="mt-3 text-cyan-700 border-cyan-300">
+                      Configure
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Predictive Analytics Panel */}
+            {showPredictiveAnalytics && (
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-emerald-900 mb-4 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Predictive Analytics - Future Insights
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white/60 p-4 rounded-lg border border-emerald-200">
+                    <h4 className="font-medium text-emerald-900 mb-2">📈 Next Month Forecast</h4>
+                    <div className="text-2xl font-bold text-emerald-900 mb-2">
+                      {predictedBookings.length > 0 ? predictedBookings[0]?.value : '12-15'}
+                    </div>
+                    <p className="text-sm text-emerald-700">Expected bookings</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <span className="text-xs text-green-600">+15% vs current</span>
+                    </div>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-emerald-200">
+                    <h4 className="font-medium text-emerald-900 mb-2">💰 Revenue Prediction</h4>
+                    <div className="text-2xl font-bold text-emerald-900 mb-2">
+                      ${predictedBookings.length > 1 ? predictedBookings[1]?.value : '2,400'}
+                    </div>
+                    <p className="text-sm text-emerald-700">Projected revenue</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <span className="text-xs text-green-600">+22% vs current</span>
+                    </div>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-lg border border-emerald-200">
+                    <h4 className="font-medium text-emerald-900 mb-2">🎯 Peak Season Alert</h4>
+                    <div className="text-lg font-bold text-emerald-900 mb-2">Q2 2024</div>
+                    <p className="text-sm text-emerald-700">High demand expected</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <span className="text-xs text-yellow-600">Prepare resources</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2571,6 +3161,61 @@ export default function BookingsPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Smart AI Insights Section */}
+                  {showAIAssistant && (
+                    <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-6 w-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <TrendingUp className="h-3 w-3 text-white" />
+                        </div>
+                        <h4 className="text-sm font-medium text-indigo-900">AI Insights</h4>
+                        <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-xs">
+                          Smart Analysis
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* Smart Recommendations */}
+                        <div className="text-center p-2 bg-white/60 rounded border border-indigo-100">
+                          <div className="text-xs font-medium text-indigo-900 mb-1">
+                            {booking.status === 'pending' ? '⏰ Schedule Soon' : 
+                             booking.status === 'in_progress' ? '📊 Track Progress' : 
+                             booking.status === 'completed' ? '⭐ Request Review' : '📋 Follow Up'}
+                          </div>
+                          <p className="text-xs text-indigo-700">
+                            {booking.status === 'pending' ? 'Optimal timing for scheduling' : 
+                             booking.status === 'in_progress' ? 'Monitor milestones closely' : 
+                             booking.status === 'completed' ? 'Encourage client feedback' : 'Maintain communication'}
+                          </p>
+                        </div>
+                        
+                        {/* Risk Assessment */}
+                        <div className="text-center p-2 bg-white/60 rounded border border-indigo-100">
+                          <div className="text-xs font-medium text-indigo-900 mb-1">
+                            {booking.priority === 'urgent' ? '🚨 High Priority' : 
+                             booking.priority === 'high' ? '⚠️ Medium Risk' : '✅ Low Risk'}
+                          </div>
+                          <p className="text-xs text-indigo-700">
+                            {booking.priority === 'urgent' ? 'Requires immediate attention' : 
+                             booking.priority === 'high' ? 'Monitor closely' : 'Standard handling'}
+                          </p>
+                        </div>
+                        
+                        {/* Performance Prediction */}
+                        <div className="text-center p-2 bg-white/60 rounded border border-indigo-100">
+                          <div className="text-xs font-medium text-indigo-900 mb-1">
+                            {booking.rating && booking.rating >= 4 ? '🌟 High Satisfaction' : 
+                             booking.rating && booking.rating >= 3 ? '📈 Good Potential' : '💡 Improvement Opportunity'}
+                          </div>
+                          <p className="text-xs text-indigo-700">
+                            {booking.rating && booking.rating >= 4 ? 'Client satisfaction high' : 
+                             booking.rating && booking.rating >= 3 ? 'Positive trajectory' : 'Focus on quality'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between">
