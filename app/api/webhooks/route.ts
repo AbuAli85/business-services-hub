@@ -30,12 +30,55 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { event, data, webhook_id } = body
 
+    // Enhanced logging to debug the "create" issue
+    console.log('🔍 Webhook received:', {
+      event,
+      webhook_id,
+      data,
+      raw_body: body,
+      timestamp: new Date().toISOString()
+    })
+
     // Validate webhook request
     if (!event || !webhook_id) {
       return NextResponse.json(
         { error: 'Missing required fields: event and webhook_id' },
         { status: 400 }
       )
+    }
+
+    // Additional validation for new-service-created event
+    if (event === 'new-service-created' && data) {
+      console.log('🔍 New service created data validation:', {
+        service_id: data.service_id,
+        provider_id: data.provider_id,
+        service_name: data.service_name,
+        service_id_type: typeof data.service_id,
+        provider_id_type: typeof data.provider_id,
+        service_id_length: data.service_id?.length,
+        provider_id_length: data.provider_id?.length
+      })
+      
+      if (data.service_id === 'create' || data.provider_id === 'create') {
+        console.error('❌ Invalid webhook data detected:', {
+          service_id: data.service_id,
+          provider_id: data.provider_id,
+          message: 'Received "create" instead of UUID'
+        })
+        return NextResponse.json(
+          { 
+            error: 'Invalid webhook data: service_id and provider_id must be valid UUIDs',
+            details: {
+              received: {
+                service_id: data.service_id,
+                provider_id: data.provider_id
+              },
+              expected: 'Valid UUID format'
+            }
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // Log webhook for debugging
