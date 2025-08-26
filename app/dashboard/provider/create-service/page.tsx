@@ -12,6 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getSupabaseClient } from '@/lib/supabase'
 import { ArrowLeft, Save, Plus } from 'lucide-react'
 
+// UUID validation utility
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 interface ServiceFormData {
   title: string
   description: string
@@ -57,61 +63,99 @@ export default function CreateServicePage() {
     }))
   }
 
+  // Enhanced authentication validation
+  const validateUser = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        console.error('❌ Authentication error:', error)
+        alert('Authentication error. Please sign in again.')
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      if (!user) {
+        console.error('❌ No authenticated user')
+        alert('You must be logged in to create a service')
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      if (!user.id || !isValidUUID(user.id)) {
+        console.error('❌ Invalid user ID:', user.id)
+        alert('Invalid user account. Please sign in again.')
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      console.log('✅ User authenticated with valid ID:', user.id)
+      return user
+    } catch (error) {
+      console.error('❌ Error validating user:', error)
+      alert('Authentication error. Please sign in again.')
+      router.push('/auth/sign-in')
+      return null
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      // Get current user
-      const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      // Get and validate current user
+      const user = await validateUser()
+      if (!user) return
       
-      if (!user) {
-        alert('You must be logged in to create a service')
-        return
-      }
-
       // Validate required fields
       if (!formData.title || !formData.description || !formData.category || !formData.base_price) {
         alert('Please fill in all required fields')
         return
       }
 
-                    // Create service with correct schema fields
-        const serviceData = {
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          base_price: parseFloat(formData.base_price),
-          currency: formData.currency,
-          status: formData.status,
-          provider_id: user.id,
-          approval_status: 'pending'
+      // Create service with correct schema fields
+      const serviceData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        base_price: parseFloat(formData.base_price),
+        currency: formData.currency,
+        status: formData.status,
+        provider_id: user.id, // Now guaranteed to be a valid UUID
+        approval_status: 'pending' // Now safe to include with the migration
+      }
+
+      console.log('Attempting to create service with data:', serviceData)
+
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase
+        .from('services')
+        .insert(serviceData)
+        .select()
+
+      if (error) {
+        console.error('Error creating service:', error)
+        console.error('Error details:', error.details)
+        console.error('Error hint:', error.hint)
+        console.error('Error code:', error.code)
+        
+        let errorMessage = `Failed to create service: ${error.message}`
+        
+        if (error.message.includes('row-level security policy')) {
+          errorMessage = 'Access denied: Row Level Security policy violation. This usually means the database security policies need to be updated.'
+        } else if (error.message.includes('permission denied')) {
+          errorMessage = 'Permission denied: You may not have the right permissions to create services.'
+        } else if (error.message.includes('column') && error.message.includes('does not exist')) {
+          errorMessage = 'Database schema error: Some required columns are missing. Please contact support.'
+        } else if (error.message.includes('foreign key constraint')) {
+          errorMessage = 'Database constraint error: The user account may not be properly set up.'
         }
-
-       console.log('Attempting to create service with data:', serviceData)
-
-       const { data, error } = await supabase
-         .from('services')
-         .insert(serviceData)
-         .select()
-
-             if (error) {
-         console.error('Error creating service:', error)
-         console.error('Error details:', error.details)
-         console.error('Error hint:', error.hint)
-         
-         let errorMessage = `Failed to create service: ${error.message}`
-         
-         if (error.message.includes('row-level security policy')) {
-           errorMessage = 'Access denied: Row Level Security policy violation. This usually means the database security policies need to be updated.'
-         } else if (error.message.includes('permission denied')) {
-           errorMessage = 'Permission denied: You may not have the right permissions to create services.'
-         }
-         
-         alert(errorMessage)
-         return
-       }
+        
+        alert(errorMessage)
+        return
+      }
 
       alert('Service created successfully!')
       router.push('/dashboard/provider/provider-services')

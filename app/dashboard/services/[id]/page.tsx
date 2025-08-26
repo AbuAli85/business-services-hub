@@ -15,6 +15,12 @@ import {
   User, MapPin, Clock, Building2, Star, TrendingUp, MessageCircle
 } from 'lucide-react'
 
+// UUID validation utility
+const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  return uuidRegex.test(uuid)
+}
+
 interface Service {
   id: string
   title: string
@@ -66,34 +72,82 @@ export default function DashboardServiceDetailPage() {
   })
 
   useEffect(() => {
-    if (serviceId && serviceId !== 'undefined') {
-      checkUserAndFetchService()
-    } else {
-      setError('Invalid service ID')
+    console.log('🔍 useEffect triggered with serviceId:', serviceId)
+    
+    // Early validation - check if serviceId is valid before proceeding
+    if (!serviceId || serviceId === 'undefined') {
+      console.error('❌ Invalid service ID detected:', serviceId)
+      setError('Invalid service ID. Please navigate to a valid service page.')
       setLoading(false)
+      return
     }
-  }, [serviceId])
+    
+    // Special case: redirect "create" to service creation page
+    if (serviceId === 'create') {
+      console.log('🔄 Redirecting "create" to service creation page')
+      router.push('/dashboard/provider/create-service')
+      return
+    }
+    
+    // UUID format validation
+    if (!isValidUUID(serviceId)) {
+      console.error('❌ Invalid UUID format:', serviceId)
+      setError(`Invalid service ID format: ${serviceId}. Please check the URL and try again.`)
+      setLoading(false)
+      return
+    }
+    
+    console.log('✅ Service ID validation passed, proceeding with service fetch')
+    checkUserAndFetchService()
+  }, [serviceId, router])
 
-  const checkUserAndFetchService = async () => {
+  // Enhanced authentication validation
+  const validateUser = async () => {
     try {
-      console.log('🔍 Checking user authentication...')
       const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        console.error('❌ Authentication error:', error)
+        router.push('/auth/sign-in')
+        return null
+      }
       
       if (!user) {
         console.error('❌ No authenticated user')
         router.push('/auth/sign-in')
-        return
+        return null
       }
+      
+      if (!user.id || !isValidUUID(user.id)) {
+        console.error('❌ Invalid user ID:', user.id)
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      console.log('✅ User authenticated with valid ID:', user.id)
+      return user
+    } catch (error) {
+      console.error('❌ Error validating user:', error)
+      router.push('/auth/sign-in')
+      return null
+    }
+  }
 
-      console.log('✅ User authenticated:', user.id)
+  const checkUserAndFetchService = async () => {
+    try {
+      console.log('🔍 Checking user authentication...')
+      
+      const user = await validateUser()
+      if (!user) return
+      
       // Set user state first
       setUser(user)
       
       // Validate serviceId before fetching
-      if (!serviceId || serviceId === 'undefined') {
+      if (!serviceId || serviceId === 'undefined' || !isValidUUID(serviceId)) {
         console.error('❌ Invalid service ID:', serviceId)
-        setError('Invalid service ID')
+        setError('Invalid service ID format')
         setLoading(false)
         return
       }
@@ -116,13 +170,18 @@ export default function DashboardServiceDetailPage() {
     try {
       console.log('📡 Fetching service...', { id, userId, userStateId: user?.id })
       
+      // Enhanced UUID validation
+      if (!isValidUUID(id)) {
+        throw new Error(`Invalid service ID format: ${id}`)
+      }
+      
       // Use passed userId or fallback to state
       const currentUserId = userId || user?.id
       
       // Additional validation
-      if (!id || id === 'undefined' || !currentUserId) {
+      if (!currentUserId || !isValidUUID(currentUserId)) {
         console.error('❌ Validation failed:', { id, currentUserId })
-        throw new Error('Invalid service ID or user not authenticated')
+        throw new Error(`Invalid user ID format: ${currentUserId}`)
       }
 
       console.log('✅ Validation passed, querying database...')
@@ -137,7 +196,13 @@ export default function DashboardServiceDetailPage() {
 
       if (checkError) {
         console.error('❌ Error checking service existence:', checkError)
-        throw checkError
+        // Log more details about the error
+        if (checkError.code) {
+          console.error('❌ Error code:', checkError.code)
+          console.error('❌ Error details:', checkError.details)
+          console.error('❌ Error hint:', checkError.hint)
+        }
+        throw new Error(`Database error: ${checkError.message}`)
       }
 
       if (!serviceExists) {
@@ -169,7 +234,7 @@ export default function DashboardServiceDetailPage() {
 
         if (error) {
           console.error('❌ Database error:', error)
-          throw error
+          throw new Error(`Database error: ${error.message}`)
         }
 
         if (!data) {
@@ -213,7 +278,7 @@ export default function DashboardServiceDetailPage() {
 
         if (error) {
           console.error('❌ Database error:', error)
-          throw error
+          throw new Error(`Database error: ${error.message}`)
         }
 
         if (!data) {
@@ -235,7 +300,19 @@ export default function DashboardServiceDetailPage() {
       }
     } catch (err) {
       console.error('❌ Error fetching service:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch service')
+      // Better error handling with more context
+      let errorMessage = 'Failed to fetch service'
+      if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (typeof err === 'object' && err !== null) {
+        // Handle Supabase error objects
+        if ('message' in err) {
+          errorMessage = err.message as string
+        } else if ('code' in err) {
+          errorMessage = `Database error: ${err.code}`
+        }
+      }
+      setError(errorMessage)
     }
   }
 
@@ -541,6 +618,18 @@ export default function DashboardServiceDetailPage() {
                 </div>
               )}
               
+              {error && error.includes('Invalid service ID') && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800 text-sm">
+                    <strong>Invalid Service ID:</strong> {serviceId}
+                  </p>
+                  <p className="text-blue-700 text-sm mt-2">
+                    Service IDs must be valid UUIDs. If you're trying to create a new service, 
+                    please use the "Create Service" button instead.
+                  </p>
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <Button onClick={() => router.back()}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -549,6 +638,11 @@ export default function DashboardServiceDetailPage() {
                 <Button variant="outline" onClick={() => router.push('/dashboard/services')}>
                   View My Services
                 </Button>
+                {error && error.includes('Invalid service ID') && (
+                  <Button variant="outline" onClick={() => router.push('/dashboard/provider/create-service')}>
+                    Create New Service
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
