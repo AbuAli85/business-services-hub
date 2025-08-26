@@ -13,6 +13,18 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey)
 }
 
+// Basic UUID validator to guard against Postgres 22P02 errors
+function isValidUuid(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const trimmed = value.trim()
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+  return uuidRegex.test(trimmed)
+}
+
+function badRequest(message: string, details?: Record<string, any>) {
+  return NextResponse.json({ error: message, ...(details ? { details } : {}) }, { status: 400 })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -111,6 +123,11 @@ async function handleBookingCreated(data: any) {
       total_cost 
     } = data
 
+    // Validate required UUIDs early
+    if (!isValidUuid(client_id)) return badRequest('Invalid client_id (UUID expected)')
+    if (!isValidUuid(service_id)) return badRequest('Invalid service_id (UUID expected)')
+    if (data.provider_id && !isValidUuid(data.provider_id)) return badRequest('Invalid provider_id (UUID expected)')
+
     const supabase = await getSupabaseClient()
 
     // Create new booking with all required fields
@@ -161,6 +178,8 @@ async function handleBookingCreated(data: any) {
 async function handleNewServiceCreated(data: any) {
   try {
     const { service_id, provider_id, service_name } = data
+    if (!isValidUuid(service_id)) return badRequest('Invalid service_id (UUID expected)', { received: service_id })
+    if (provider_id && !isValidUuid(provider_id)) return badRequest('Invalid provider_id (UUID expected)', { received: provider_id })
     const supabase = await getSupabaseClient()
 
     // Update service status to pending approval
@@ -200,6 +219,7 @@ async function handleNewServiceCreated(data: any) {
 async function handlePaymentSucceeded(data: any) {
   try {
     const { booking_id, amount, payment_method } = data
+    if (!isValidUuid(booking_id)) return badRequest('Invalid booking_id (UUID expected)')
     const supabase = await getSupabaseClient()
 
     // Update booking status to paid

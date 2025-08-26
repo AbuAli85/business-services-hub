@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 
+function isValidUuid(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const trimmed = value.trim()
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+  return uuidRegex.test(trimmed)
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -11,6 +18,13 @@ export async function GET(
     if (!serviceId) {
       return NextResponse.json(
         { error: 'Service ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidUuid(serviceId)) {
+      return NextResponse.json(
+        { error: 'Invalid service ID. UUID expected', details: { received: serviceId } },
         { status: 400 }
       )
     }
