@@ -13,6 +13,14 @@ import {
 import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
 
+interface ServicePackage {
+  name: string
+  price: number
+  delivery_days: number
+  revisions: number
+  features: string[]
+}
+
 interface DigitalMarketingService {
   id: string
   title: string
@@ -26,13 +34,7 @@ interface DigitalMarketingService {
   bookings_count: number
   rating: number
   created_at: string
-  service_packages: {
-    name: string
-    price: number
-    delivery_days: number
-    revisions: number
-    features: string[]
-  }[]
+  service_packages: ServicePackage[]
 }
 
 interface DigitalMarketingStats {
@@ -105,7 +107,7 @@ export default function DigitalMarketingDashboard() {
         
         servicesData.forEach(service => {
           if (service.service_packages) {
-            service.service_packages.forEach(pkg => {
+            service.service_packages.forEach((pkg: ServicePackage) => {
               totalDeliveryDays += pkg.delivery_days
               totalRevisions += pkg.revisions
               packageCount++
