@@ -133,3 +133,5 @@ port = 54327
 vector_port = 54328
 
 [functions]
+enabled = true
+port = 54325
