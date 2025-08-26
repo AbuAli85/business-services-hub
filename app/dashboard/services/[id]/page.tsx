@@ -85,6 +85,7 @@ export default function DashboardServiceDetailPage() {
     // Special case: redirect "create" to service creation page
     if (serviceId === 'create') {
       console.log('🔄 Redirecting "create" to service creation page')
+      setLoading(false) // Stop loading immediately
       router.push('/dashboard/provider/create-service')
       return
     }
@@ -138,19 +139,19 @@ export default function DashboardServiceDetailPage() {
     try {
       console.log('🔍 Checking user authentication...')
       
+      // Double-check serviceId validation before proceeding
+      if (!serviceId || serviceId === 'undefined' || serviceId === 'create' || !isValidUUID(serviceId)) {
+        console.error('❌ Invalid service ID in checkUserAndFetchService:', serviceId)
+        setError('Invalid service ID format')
+        setLoading(false)
+        return
+      }
+      
       const user = await validateUser()
       if (!user) return
       
       // Set user state first
       setUser(user)
-      
-      // Validate serviceId before fetching
-      if (!serviceId || serviceId === 'undefined' || !isValidUUID(serviceId)) {
-        console.error('❌ Invalid service ID:', serviceId)
-        setError('Invalid service ID format')
-        setLoading(false)
-        return
-      }
       
       console.log('🚀 Fetching service with ID:', serviceId, 'for user:', user.id)
       // Wait a bit for state to update, then fetch service
@@ -169,6 +170,12 @@ export default function DashboardServiceDetailPage() {
   const fetchService = async (id: string, userId?: string) => {
     try {
       console.log('📡 Fetching service...', { id, userId, userStateId: user?.id })
+      
+      // Final safety check - prevent any database queries with invalid IDs
+      if (!id || id === 'create' || id === 'undefined' || !isValidUUID(id)) {
+        console.error('❌ fetchService called with invalid ID:', id)
+        throw new Error(`Invalid service ID format: ${id}`)
+      }
       
       // Enhanced UUID validation
       if (!isValidUUID(id)) {
@@ -578,6 +585,11 @@ export default function DashboardServiceDetailPage() {
   }
 
   if (loading) {
+    // Don't show loading if we're redirecting to create service
+    if (serviceId === 'create') {
+      return null
+    }
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
         <div className="max-w-7xl mx-auto">
