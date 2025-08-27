@@ -191,3 +191,107 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+// Update booking status (approve, decline, reschedule, complete, cancel)
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await getSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const schema = z.object({
+      booking_id: z.string().uuid(),
+      action: z.enum(['approve', 'decline', 'reschedule', 'complete', 'cancel']),
+      scheduled_date: z.string().datetime().optional(),
+      reason: z.string().max(500).optional()
+    })
+    const parsed = schema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request data', details: parsed.error.errors }, { status: 400 })
+    }
+
+    const { booking_id, action, scheduled_date, reason } = parsed.data
+
+    // Fetch booking to validate permissions
+    const { data: booking, error: fetchError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', booking_id)
+      .single()
+
+    if (fetchError || !booking) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+    }
+
+    const isClient = booking.client_id === user.id
+    const isProvider = booking.provider_id === user.id
+
+    if (!isClient && !isProvider) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    let updates: Record<string, any> = {}
+    let notification: { user_id: string; title: string; message: string; type: string; priority?: string } | null = null
+
+    switch (action) {
+      case 'approve':
+        if (!isProvider) return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
+        updates = { status: 'approved', approval_status: 'approved' }
+        notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking' }
+        break
+      case 'decline':
+        if (!isProvider) return NextResponse.json({ error: 'Only provider can decline' }, { status: 403 })
+        updates = { status: 'declined', approval_status: 'declined', decline_reason: reason || null }
+        notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking' }
+        break
+      case 'reschedule':
+        if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
+        if (!isProvider && !isClient) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        updates = { scheduled_date, status: 'rescheduled' }
+        notification = { user_id: isProvider ? booking.client_id : booking.provider_id, title: 'Reschedule Proposed', message: `New time proposed: ${new Date(scheduled_date).toLocaleString()}`, type: 'booking' }
+        break
+      case 'complete':
+        if (!isProvider) return NextResponse.json({ error: 'Only provider can complete' }, { status: 403 })
+        updates = { status: 'completed', operational_status: 'done' }
+        notification = { user_id: booking.client_id, title: 'Service Completed', message: 'Your booking was marked completed', type: 'booking' }
+        break
+      case 'cancel':
+        if (!isClient) return NextResponse.json({ error: 'Only client can cancel' }, { status: 403 })
+        updates = { status: 'cancelled', operational_status: 'cancelled', cancel_reason: reason || null }
+        notification = { user_id: booking.provider_id, title: 'Booking Cancelled', message: reason ? `Cancelled: ${reason}` : 'Client cancelled booking', type: 'booking' }
+        break
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('bookings')
+      .update(updates)
+      .eq('id', booking_id)
+      .select('*')
+      .single()
+
+    if (updateError) {
+      console.error('Booking update error:', updateError)
+      return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
+    }
+
+    if (notification) {
+      await supabase.from('notifications').insert({
+        user_id: notification.user_id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        priority: 'medium',
+        metadata: { booking_id }
+      })
+    }
+
+    return NextResponse.json({ success: true, booking: updated })
+  } catch (error) {
+    console.error('Booking update error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
