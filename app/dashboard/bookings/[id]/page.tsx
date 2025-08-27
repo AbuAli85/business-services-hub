@@ -36,13 +36,12 @@ export default function BookingTicketPage() {
         if (!user) { router.push('/auth/sign-in'); return }
         setUserId(user.id)
 
+        // First get the basic booking data
         const { data: b, error: bookingError } = await supabase
           .from('bookings')
           .select(`
             *,
-            services(title),
-            client_profile:profiles!client_id(full_name, email),
-            provider_profile:profiles!provider_id(full_name, email)
+            services(title)
           `) 
           .eq('id', bookingId)
           .single()
@@ -53,7 +52,36 @@ export default function BookingTicketPage() {
           return
         }
         
-        setBooking(b)
+        // Then get the client and provider profiles separately
+        let clientProfile = null
+        let providerProfile = null
+        
+        if (b.client_id) {
+          const { data: clientData } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', b.client_id)
+            .single()
+          clientProfile = clientData
+        }
+        
+        if (b.provider_id) {
+          const { data: providerData } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', b.provider_id)
+            .single()
+          providerProfile = providerData
+        }
+        
+        // Combine the data
+        const bookingWithProfiles = {
+          ...b,
+          client_profile: clientProfile,
+          provider_profile: providerProfile
+        }
+        
+        setBooking(bookingWithProfiles)
 
         // Fetch messages from our API instead of external API
         try {

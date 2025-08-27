@@ -46,8 +46,8 @@ export default function InvoicesPage() {
         .select(`
           id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url,
           bookings(services(title)),
-          clients:profiles!invoices_client_id_fkey(full_name),
-          providers:profiles!invoices_provider_id_fkey(full_name)
+          client_profile:profiles!client_id(full_name),
+          provider_profile:profiles!provider_id(full_name)
         `)
         .order('created_at', { ascending: false })
 

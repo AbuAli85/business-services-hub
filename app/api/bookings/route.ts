@@ -86,9 +86,7 @@ export async function POST(request: NextRequest) {
       })
       .select(`
         *,
-        services(title, description),
-        client_profile:profiles!client_id(full_name, email),
-        provider_profile:profiles!provider_id(full_name, email)
+        services(title, description)
       `)
       .single()
 
@@ -97,16 +95,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
     }
 
+    // Get client profile data
+    const { data: clientProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', user.id)
+      .single()
+
     // Create notification for provider
     await supabase.from('notifications').insert({
       user_id: service.provider_id,
       type: 'booking',
       title: 'New Booking Request',
-      message: `New booking request for ${service.title} from ${booking.client_profile.full_name}`,
+      message: `New booking request for ${service.title} from ${clientProfile?.full_name || 'Client'}`,
       metadata: { 
         booking_id: booking.id,
         service_title: service.title,
-        client_name: booking.client_profile.full_name
+        client_name: clientProfile?.full_name || 'Client'
       },
       priority: 'high'
     })
@@ -144,13 +149,12 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const role = searchParams.get('role') || 'all'
 
+    // First get the basic bookings data
     let query = supabase
       .from('bookings')
       .select(`
         *,
-        services(title, description, category),
-        client_profile:profiles!client_id(full_name, email, phone),
-        provider_profile:profiles!provider_id(full_name, email, phone)
+        services(title, description, category)
       `)
       .order('created_at', { ascending: false })
 
@@ -184,7 +188,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 })
     }
 
-    return NextResponse.json({ bookings: bookings || [] })
+    // Now enrich the bookings with profile data
+    const enrichedBookings = await Promise.all(
+      (bookings || []).map(async (booking) => {
+        let clientProfile = null
+        let providerProfile = null
+        
+        if (booking.client_id) {
+          const { data: clientData } = await supabase
+            .from('profiles')
+            .select('full_name, email, phone')
+            .eq('id', booking.client_id)
+            .single()
+          clientProfile = clientData
+        }
+        
+        if (booking.provider_id) {
+          const { data: providerData } = await supabase
+            .from('profiles')
+            .select('full_name, email, phone')
+            .eq('id', booking.provider_id)
+            .single()
+          providerProfile = providerData
+        }
+        
+        return {
+          ...booking,
+          client_profile: clientProfile,
+          provider_profile: providerProfile
+        }
+      })
+    )
+
+    return NextResponse.json({ bookings: enrichedBookings })
 
   } catch (error) {
     console.error('Error fetching bookings:', error)

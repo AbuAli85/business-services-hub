@@ -91,7 +91,7 @@ export default function EarningsPage() {
       // Fetch payments as earnings for this provider
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('id, amount, currency, status, booking_id, created_at, bookings(service_id, services(title)), clients:profiles!payments_client_id_fkey(full_name)')
+        .select('id, amount, currency, status, booking_id, created_at, bookings(service_id, services(title)), client_profile:profiles!client_id(full_name)')
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -106,7 +106,7 @@ export default function EarningsPage() {
           booking_id: p.booking_id,
           created_at: p.created_at,
           service_title: p.bookings?.services?.title || 'Service',
-          client_name: p.clients?.full_name || 'Client'
+          client_name: p.client_profile?.full_name || 'Client'
         }))
       }
 
@@ -116,7 +116,7 @@ export default function EarningsPage() {
       // Fetch invoices for this provider
       const { data: invoicesData } = await supabase
         .from('invoices')
-        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url, bookings(services(title)), clients:profiles!invoices_client_id_fkey(full_name)')
+        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url, bookings(services(title)), client_profile:profiles!client_id(full_name)')
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
       setInvoices((invoicesData || []) as any)

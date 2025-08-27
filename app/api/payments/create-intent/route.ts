@@ -43,9 +43,7 @@ export async function POST(request: NextRequest) {
       .from('bookings')
       .select(`
         *,
-        services(title, description),
-        clients:profiles!client_id(full_name, email),
-        providers:profiles!provider_id(full_name, email)
+        services(title, description)
       `)
       .eq('id', booking_id)
       .eq('client_id', user.id)
@@ -54,6 +52,19 @@ export async function POST(request: NextRequest) {
     if (bookingError || !booking) {
       return NextResponse.json({ error: 'Invalid booking' }, { status: 404 })
     }
+
+    // Get client and provider profiles separately
+    const { data: clientProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', user.id)
+      .single()
+
+    const { data: providerProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', booking.provider_id)
+      .single()
 
     // Check if booking is already paid
     if (booking.payment_status === 'paid') {
@@ -74,8 +85,8 @@ export async function POST(request: NextRequest) {
         client_id: user.id,
         provider_id: booking.provider_id,
         service_title: booking.services.title,
-        client_email: booking.clients.email,
-        provider_email: booking.providers.email
+        client_email: clientProfile?.email || user.email,
+        provider_email: providerProfile?.email || 'Unknown'
       },
       description: description || `Payment for ${booking.services.title}`,
       automatic_payment_methods: {
