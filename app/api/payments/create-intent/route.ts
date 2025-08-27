@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         services(title, description),
-        clients:profiles!bookings_client_id_fkey(full_name, email),
-        providers:profiles!bookings_provider_id_fkey(full_name, email)
+        clients:profiles!client_id(full_name, email),
+        providers:profiles!provider_id(full_name, email)
       `)
       .eq('id', booking_id)
       .eq('client_id', user.id)

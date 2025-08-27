@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         services(title, description),
-        clients:profiles!bookings_client_id_fkey(full_name, email),
-        providers:profiles!bookings_provider_id_fkey(full_name, email)
+        client_profile:profiles!client_id(full_name, email),
+        provider_profile:profiles!provider_id(full_name, email)
       `)
       .single()
 
@@ -102,11 +102,11 @@ export async function POST(request: NextRequest) {
       user_id: service.provider_id,
       type: 'booking',
       title: 'New Booking Request',
-      message: `New booking request for ${service.title} from ${booking.clients.full_name}`,
+      message: `New booking request for ${service.title} from ${booking.client_profile.full_name}`,
       metadata: { 
         booking_id: booking.id,
         service_title: service.title,
-        client_name: booking.clients.full_name
+        client_name: booking.client_profile.full_name
       },
       priority: 'high'
     })
@@ -149,8 +149,8 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         services(title, description, category),
-        clients:profiles!bookings_client_id_fkey(full_name, email, phone),
-        providers:profiles!bookings_provider_id_fkey(full_name, email, phone)
+        client_profile:profiles!client_id(full_name, email, phone),
+        provider_profile:profiles!provider_id(full_name, email, phone)
       `)
       .order('created_at', { ascending: false })
 

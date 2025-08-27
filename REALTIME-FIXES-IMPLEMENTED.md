@@ -66,8 +66,8 @@ private async initialize() {
 .select(`
   *,
   services(title),
-  client_profile:profiles!bookings_client_id_fkey(full_name, email),
-  provider_profile:profiles!bookings_provider_id_fkey(full_name, email)
+  client_profile:profiles!client_id(full_name, email),
+  provider_profile:profiles!provider_id(full_name, email)
 `)
 ```
 
