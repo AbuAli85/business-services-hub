@@ -57,7 +57,7 @@ interface Booking {
   service_id: string
   client_id: string
   provider_id: string
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'approved' | 'declined' | 'rescheduled'
   created_at: string
   scheduled_date?: string
   scheduled_time?: string
