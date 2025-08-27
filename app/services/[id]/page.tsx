@@ -18,6 +18,13 @@ interface Service {
   cover_image_url: string
   created_at: string
   provider_id: string
+  service_packages?: {
+    id: string
+    name: string
+    price: number
+    delivery_days: number
+    revisions: number
+  }[]
 }
 
 export default function ServiceDetailPage() {
@@ -26,6 +33,12 @@ export default function ServiceDetailPage() {
   const [service, setService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showBooking, setShowBooking] = useState(false)
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('')
+  const [scheduledDate, setScheduledDate] = useState<string>('')
+  const [notes, setNotes] = useState<string>('')
+  const [location, setLocation] = useState<string>('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     async function fetchService() {
@@ -34,7 +47,7 @@ export default function ServiceDetailPage() {
         
         const { data, error } = await supabase
           .from('services')
-          .select('*')
+          .select('*, service_packages(*)')
           .eq('id', serviceId)
           .single()
 
@@ -175,13 +188,118 @@ export default function ServiceDetailPage() {
 
         {/* Action Buttons */}
         <div className="flex gap-4">
-          <Button size="lg" className="flex-1">
+          <Button size="lg" className="flex-1" onClick={() => setShowBooking(true)}>
             Book This Service
           </Button>
           <Button size="lg" variant="outline">
             Contact Provider
           </Button>
         </div>
+
+        {showBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Book {service.title}</h2>
+                <button onClick={() => setShowBooking(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              </div>
+
+              <div className="space-y-4">
+                {service.service_packages && service.service_packages.length > 0 && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Package</label>
+                    <select
+                      value={selectedPackageId}
+                      onChange={(e) => setSelectedPackageId(e.target.value)}
+                      className="w-full rounded border px-3 py-2"
+                    >
+                      <option value="">Base package ({service.base_price} {service.currency})</option>
+                      {service.service_packages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.id}>
+                          {pkg.name} — {pkg.price} {service.currency} • {pkg.delivery_days} days • {pkg.revisions} rev.
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Preferred date & time</label>
+                  <input
+                    type="datetime-local"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    className="w-full rounded border px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Location (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Muscat, Oman or Zoom"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full rounded border px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Notes (optional)</label>
+                  <textarea
+                    placeholder="Share any details or requirements"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="h-28 w-full rounded border px-3 py-2"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setShowBooking(false)}>Cancel</Button>
+                  <Button onClick={async () => {
+                    if (!scheduledDate) {
+                      alert('Please select date & time')
+                      return
+                    }
+                    try {
+                      setSubmitting(true)
+                      const res = await fetch('/api/bookings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          service_id: service.id,
+                          scheduled_date: new Date(scheduledDate).toISOString(),
+                          notes: notes || undefined,
+                          service_package_id: selectedPackageId || undefined,
+                          location: location || undefined
+                        })
+                      })
+                      const json = await res.json()
+                      if (!res.ok) {
+                        console.error('Booking error', json)
+                        alert(json.error || 'Failed to create booking')
+                        return
+                      }
+                      setShowBooking(false)
+                      setSelectedPackageId('')
+                      setScheduledDate('')
+                      setNotes('')
+                      setLocation('')
+                      alert('Booking request submitted for approval')
+                    } catch (e) {
+                      console.error(e)
+                      alert('Unexpected error creating booking')
+                    } finally {
+                      setSubmitting(false)
+                    }
+                  }} disabled={submitting}>
+                    {submitting ? 'Submitting...' : 'Submit Booking'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
