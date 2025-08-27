@@ -535,24 +535,49 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Booking update error:', updateError)
-      return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 })
+      console.error('❌ Booking update error:', updateError)
+      return NextResponse.json({ error: 'Failed to update booking', details: updateError.message }, { status: 500 })
     }
+
+    console.log('✅ Booking updated successfully')
 
     if (notification) {
-      await supabase.from('notifications').insert({
-        user_id: notification.user_id,
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        priority: 'medium',
-        metadata: { booking_id }
-      })
+      console.log('🔔 Creating notification:', notification)
+      try {
+        const { error: notificationError } = await supabase.from('notifications').insert({
+          user_id: notification.user_id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          priority: 'medium',
+          metadata: { booking_id }
+        })
+        
+        if (notificationError) {
+          console.error('⚠️ Notification creation failed (non-critical):', notificationError)
+          // Don't fail the entire request if notification fails
+        } else {
+          console.log('✅ Notification created successfully')
+        }
+      } catch (notificationInsertError) {
+        console.error('⚠️ Notification insert error (non-critical):', notificationInsertError)
+        // Don't fail the entire request if notification fails
+      }
     }
 
+    console.log('✅ PATCH method completed successfully')
     return NextResponse.json({ success: true, booking: updated })
   } catch (error) {
-    console.error('Booking update error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('❌ Unexpected error in PATCH method:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace available'
+    
+    console.error('❌ Error details:', { message: errorMessage, stack: errorStack })
+    
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: errorMessage,
+      type: 'patch_method_error'
+    }, { status: 500 })
   }
 }
