@@ -207,8 +207,20 @@ export default function BookingDetailPage() {
 
   const fetchMessages = useCallback(async () => {
     try {
-      const response = await fetch(`/api/messages?booking_id=${bookingId}`, {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = {
         credentials: 'include'
+      }
+      
+      // Add authorization header if we have a session
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
+      const response = await fetch(`/api/messages?booking_id=${bookingId}`, {
+        headers
       })
       if (response.ok) {
         const data = await response.json()
@@ -261,12 +273,24 @@ export default function BookingDetailPage() {
     if (!newMessage.trim() || !booking) return
 
     try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
       const receiverId = userRole === 'client' ? booking.provider_id : booking.client_id
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        credentials: 'include'
+      }
+      
+      // Add authorization header if we have a session
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
       
       const response = await fetch('/api/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers,
         body: JSON.stringify({
           receiver_id: receiverId,
           content: newMessage,
@@ -315,10 +339,22 @@ export default function BookingDetailPage() {
     if (!booking) return
 
     try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        credentials: 'include'
+      }
+      
+      // Add authorization header if we have a session
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers,
         body: JSON.stringify({
           booking_id: bookingId,
           action
