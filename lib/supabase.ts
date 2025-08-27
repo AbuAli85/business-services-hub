@@ -34,11 +34,6 @@ function checkEnvironmentVariables() {
 
 // Create Supabase client only when needed (not at build time)
 export async function getSupabaseClient(): Promise<SupabaseClient> {
-  if (typeof window === 'undefined') {
-    // Server-side: return null or throw error
-    throw new Error('Supabase client cannot be used on server-side')
-  }
-  
   const envCheck = checkEnvironmentVariables()
   
   if (!envCheck.isValid) {
@@ -88,31 +83,37 @@ For production deployments, ensure environment variables are set in your hosting
     }
   })
   
-  // Set up auth state change listener
-  supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+  // Only set up auth state change listener on client-side
+  if (typeof window !== 'undefined') {
+    // Set up auth state change listener
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+      
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('✅ Token refreshed successfully')
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out')
+      }
+    })
     
-    if (event === 'TOKEN_REFRESHED') {
-      console.log('✅ Token refreshed successfully')
-    } else if (event === 'SIGNED_OUT') {
-      console.log('👋 User signed out')
+    // Test the client connection and session (client-side only)
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession()
+      if (error) {
+        console.warn('⚠️ Supabase client connection test failed:', error)
+      } else if (session) {
+        console.log('✅ Supabase client connected successfully with active session')
+        console.log('👤 User ID:', session.user.id)
+        console.log('🔄 Session expires:', new Date(session.expires_at! * 1000).toLocaleString())
+      } else {
+        console.log('✅ Supabase client connected successfully (no active session)')
+      }
+    } catch (testError) {
+      console.warn('⚠️ Supabase client connection test error:', testError)
     }
-  })
-  
-  // Test the client connection and session
-  try {
-    const { data: { session }, error } = await supabaseClient.auth.getSession()
-    if (error) {
-      console.warn('⚠️ Supabase client connection test failed:', error)
-    } else if (session) {
-      console.log('✅ Supabase client connected successfully with active session')
-      console.log('👤 User ID:', session.user.id)
-      console.log('🔄 Session expires:', new Date(session.expires_at! * 1000).toLocaleString())
-    } else {
-      console.log('✅ Supabase client connected successfully (no active session)')
-    }
-  } catch (testError) {
-    console.warn('⚠️ Supabase client connection test error:', testError)
+  } else {
+    // Server-side: just log successful connection
+    console.log('✅ Supabase client created for server-side usage')
   }
   
   return supabaseClient
@@ -162,10 +163,6 @@ export async function getAuthenticatedClient(): Promise<SupabaseClient> {
 
 // Safe client getter that returns null if environment variables are missing
 export function getSupabaseClientSafe(): SupabaseClient | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-  
   const envCheck = checkEnvironmentVariables()
   
   if (!envCheck.isValid) {
@@ -246,8 +243,6 @@ export function clearSupabaseClients() {
 
 // Function to check if environment is properly configured
 export function isEnvironmentConfigured(): boolean {
-  if (typeof window === 'undefined') return false
-  
   try {
     const envCheck = checkEnvironmentVariables()
     return envCheck.isValid
