@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 import { z } from 'zod'
 
+// Force fresh deployment - Updated: 2024-12-27 15:30 UTC
 // Validation schema for message creation
 const CreateMessageSchema = z.object({
   receiver_id: z.string().uuid(),
