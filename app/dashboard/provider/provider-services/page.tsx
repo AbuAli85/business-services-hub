@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
 import { formatCurrency } from '@/lib/utils'
+import { realtimeManager } from '@/lib/realtime'
 import { 
   Search, Filter, Plus, Edit, Trash2, Eye, Building2, TrendingUp, 
   Calendar, DollarSign, Star, Zap, Clock, Activity, FileCheck, AlertCircle,
@@ -219,6 +220,57 @@ export default function ProviderServicesPage() {
     fetchServiceStats()
   }, [searchQuery, selectedCategory, selectedStatus])
 
+  // Real-time updates
+  useEffect(() => {
+    let currentUserId: string | null = null
+
+    ;(async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) return
+        currentUserId = user.id
+
+        // Subscribe to real-time updates
+        realtimeManager.subscribeToBookings(user.id, (update) => {
+          if (update.eventType === 'INSERT') {
+            // New booking - refresh stats
+            fetchServiceStats()
+          } else if (update.eventType === 'UPDATE') {
+            // Booking status change - refresh stats and services
+            fetchServiceStats()
+            fetchMyServices()
+          }
+        })
+
+        realtimeManager.subscribeToServices(user.id, (update) => {
+          if (update.eventType === 'UPDATE') {
+            // Service updated - refresh services
+            fetchMyServices()
+          }
+        })
+
+        realtimeManager.subscribeToPayments(user.id, (update) => {
+          if (update.eventType === 'UPDATE' && update.new.status === 'completed') {
+            // Payment completed - refresh stats
+            fetchServiceStats()
+          }
+        })
+      } catch (error) {
+        console.error('Realtime subscription init error:', error)
+      }
+    })()
+
+    return () => {
+      if (currentUserId) {
+        realtimeManager.unsubscribe(`bookings:${currentUserId}`)
+        realtimeManager.unsubscribe(`services:${currentUserId}`)
+        realtimeManager.unsubscribe(`payments:${currentUserId}`)
+      }
+    }
+  }, [])
+
   const fetchMyServices = async () => {
     setLoading(true)
     
@@ -233,7 +285,12 @@ export default function ProviderServicesPage() {
 
       let query = supabase
         .from('services')
-        .select('*')
+        .select(`
+          *,
+          service_packages (*),
+          bookings (count),
+          reviews (rating)
+        `)
         .eq('provider_id', user.id)
 
       if (selectedCategory && selectedCategory !== 'all') {
@@ -255,8 +312,15 @@ export default function ProviderServicesPage() {
         return
       }
 
-      console.log('My services data:', servicesData)
-      setServices(servicesData || [])
+      // Transform data for UI with real statistics
+      const transformedServices = servicesData?.map(service => ({
+        ...service,
+        bookings_count: service.bookings?.[0]?.count || 0,
+        rating: service.reviews?.[0]?.rating || 0
+      })) || []
+
+      console.log('My services data:', transformedServices)
+      setServices(transformedServices)
     } catch (error) {
       console.error('Error fetching services:', error)
     } finally {
@@ -271,26 +335,52 @@ export default function ProviderServicesPage() {
       
       if (!user) return
 
-      const { data: servicesData } = await supabase
+      // Fetch real-time statistics with proper joins
+      const { data: servicesData, error: servicesError } = await supabase
         .from('services')
-        .select('*')
+        .select(`
+          *,
+          bookings (count),
+          reviews (rating)
+        `)
         .eq('provider_id', user.id)
+
+      if (servicesError) {
+        console.error('Error fetching service stats:', servicesError)
+        return
+      }
 
       if (servicesData) {
         const totalServices = servicesData.length
         const activeServices = servicesData.filter(s => s.status === 'active').length
-        const totalRevenue = servicesData.reduce((sum, s) => sum + (s.base_price || 0), 0)
+        
+        // Calculate real revenue from completed bookings
+        const { data: completedBookings } = await supabase
+          .from('bookings')
+          .select('amount, status')
+          .eq('provider_id', user.id)
+          .eq('status', 'completed')
+          .eq('payment_status', 'paid')
+
+        const totalRevenue = completedBookings?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+        
         const totalViews = servicesData.reduce((sum, s) => sum + (s.views_count || 0), 0)
-        const totalBookings = servicesData.reduce((sum, s) => sum + (s.bookings_count || 0), 0)
-        const averageRating = servicesData.length > 0 
-          ? servicesData.reduce((sum, s) => sum + (s.rating || 0), 0) / servicesData.length 
+        const totalBookings = servicesData.reduce((sum, s) => sum + (s.bookings?.[0]?.count || 0), 0)
+        
+        // Calculate average rating from reviews
+        const ratings = servicesData
+          .map(s => s.reviews?.[0]?.rating)
+          .filter(r => r && r > 0)
+        
+        const averageRating = ratings.length > 0 
+          ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length 
           : 0
 
         setStats({
           totalServices,
           activeServices,
           totalRevenue,
-          averageRating,
+          averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
           totalViews,
           totalBookings
         })

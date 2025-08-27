@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
+import { realtimeManager } from '@/lib/realtime'
+import toast from 'react-hot-toast'
 import { 
   Calendar, 
   Clock, 
@@ -44,7 +48,8 @@ import {
   X,
   Bell,
   Lightbulb,
-  Settings
+  Settings,
+  CreditCard
 } from 'lucide-react'
 
 interface Booking {
@@ -52,7 +57,7 @@ interface Booking {
   service_id: string
   client_id: string
   provider_id: string
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'approved' | 'declined' | 'rescheduled'
   created_at: string
   scheduled_date?: string
   scheduled_time?: string
@@ -106,6 +111,7 @@ interface Booking {
   payment_schedule?: PaymentSchedule[]
   change_requests?: ChangeRequest[]
   escalation_history?: EscalationLog[]
+  currency?: string
 }
 
 interface Milestone {
@@ -372,6 +378,11 @@ export default function BookingsPage() {
   const [showResourceOptimization, setShowResourceOptimization] = useState(false)
   const [showClientInsights, setShowClientInsights] = useState(false)
   const [showPerformancePredictions, setShowPerformancePredictions] = useState(false)
+
+  // Provider reschedule modal
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false)
+  const [rescheduleBookingId, setRescheduleBookingId] = useState<string>('')
+  const [rescheduleDate, setRescheduleDate] = useState<string>('')
   
   // AI-powered insights
   const [aiInsights, setAiInsights] = useState<any[]>([])
@@ -391,8 +402,61 @@ export default function BookingsPage() {
     totalReviews: 0
   })
 
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string>('')
+  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  
+  function PaymentForm({ onClose }: { onClose: () => void }) {
+    const stripe = useStripe()
+    const elements = useElements()
+    const [submittingPayment, setSubmittingPayment] = useState(false)
+    
+    const handleConfirm = async () => {
+      if (!stripe || !elements) return
+      setSubmittingPayment(true)
+      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' })
+      if (error) {
+        console.error('Stripe confirm error', error)
+        alert(error.message || 'Payment failed')
+      } else {
+        setShowPaymentSuccess(true)
+        onClose()
+      }
+      setSubmittingPayment(false)
+    }
+    
+    return (
+      <div className="space-y-4">
+        <PaymentElement />
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={handleConfirm} disabled={submittingPayment || !stripe}>
+            {submittingPayment ? 'Processing...' : 'Pay'}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   useEffect(() => {
     checkUserAndFetchBookings()
+    ;(async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        realtimeManager.subscribeToBookings(user.id, async (update: any) => {
+          await fetchBookings(user.id, userRole)
+          toast.success('Bookings updated')
+        })
+        realtimeManager.subscribeToNotifications(user.id, (n) => {
+          toast(n.title || 'Notification')
+        })
+      } catch {}
+    })()
     // Try to check if enhanced data is available
     setTimeout(async () => {
       const enhancedAvailable = await tryFetchEnhancedData()
@@ -555,7 +619,8 @@ export default function BookingsPage() {
          compliance_documents: booking.compliance_documents,
          payment_schedule: booking.payment_schedule,
          change_requests: booking.change_requests,
-         escalation_history: booking.escalation_history
+         escalation_history: booking.escalation_history,
+         currency: booking.currency
        }))
 
       console.log('📊 Fetched bookings:', {
@@ -1119,40 +1184,39 @@ export default function BookingsPage() {
               </div>
               
               <div className="flex gap-2 flex-wrap">
-                                 <Button 
-                   key="request-approval"
-                   size="sm"
-                   variant="outline"
-                   className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                   onClick={() => openApprovalModal(booking)}
-                   disabled={isUpdatingStatus === booking.id}
-                 >
-                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                   Request Approval
-                 </Button>
-                
                 <Button
-                  key="send-reminder"
+                  key="approve"
                   size="sm"
-                  variant="outline"
-                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                  onClick={() => sendReminder(booking.id)}
+                  className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                  onClick={() => updateBookingStatus(booking.id, 'approved')}
                   disabled={isUpdatingStatus === booking.id}
                 >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send Reminder
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve
                 </Button>
-                
+
                 <Button
-                  key="escalate"
+                  key="decline"
                   size="sm"
                   variant="outline"
                   className="border-red-200 text-red-700 hover:bg-red-50"
-                  onClick={() => escalateBooking(booking.id)}
+                  onClick={() => updateBookingStatus(booking.id, 'declined')}
                   disabled={isUpdatingStatus === booking.id}
                 >
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Escalate
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Decline
+                </Button>
+
+                <Button
+                  key="reschedule"
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => { setShowRescheduleModal(true); setRescheduleBookingId(booking.id); }}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Propose New Time
                 </Button>
               </div>
             </div>
@@ -1274,6 +1338,18 @@ export default function BookingsPage() {
                 </Button>
                 
                 <Button
+                  key="propose-reschedule"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={() => { setShowRescheduleModal(true); setRescheduleBookingId(booking.id); }}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Propose Reschedule
+                </Button>
+
+                <Button
                   key="cancel-request"
                   size="sm"
                   variant="outline"
@@ -1305,6 +1381,18 @@ export default function BookingsPage() {
                   Request Change
                 </Button>
                 
+                <Button
+                  key="client-reschedule"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={() => { setShowRescheduleModal(true); setRescheduleBookingId(booking.id); }}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Propose Reschedule
+                </Button>
+
                 <Button
                   key="request-update"
                   size="sm"
@@ -1347,6 +1435,35 @@ export default function BookingsPage() {
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Rebook Service
+                </Button>
+              </div>
+            </div>
+          )
+          break
+        case 'approved':
+          actions.push(
+            <div key="client-approved-actions" className="space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  key="pay-now"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                  onClick={() => startPayment(booking)}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay Now
+                </Button>
+                <Button
+                  key="client-approved-reschedule"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  onClick={() => { setShowRescheduleModal(true); setRescheduleBookingId(booking.id); }}
+                  disabled={isUpdatingStatus === booking.id}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Propose Reschedule
                 </Button>
               </div>
             </div>
@@ -1470,28 +1587,46 @@ export default function BookingsPage() {
     
     setIsUpdatingStatus(bookingId)
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Only update fields that exist in the database
-      const updateData: any = { 
-        status: newStatus,
-        updated_at: new Date().toISOString()
+      // Prefer unified API for business rules and notifications
+      const actionMap: Record<string, { action: 'approve' | 'decline' | 'reschedule' | 'complete' | 'cancel' } | null> = {
+        approved: { action: 'approve' },
+        declined: { action: 'decline' },
+        rescheduled: { action: 'reschedule' },
+        completed: { action: 'complete' },
+        cancelled: { action: 'cancel' }
       }
 
-      const { error } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', bookingId)
-
-      if (error) {
-        console.error('Error updating booking status:', error)
-        
-        // Handle specific status transition errors gracefully
-        if (error.message?.includes('Invalid status transition')) {
-          console.warn('Status transition not allowed:', error.message)
-          // Don't show alert - just log the warning
+      const mapped = actionMap[newStatus]
+      if (mapped) {
+        const res = await fetch('/api/bookings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            action: mapped.action,
+            reason: notes
+          })
+        })
+        const json = await res.json()
+        if (!res.ok) {
+          console.error('Booking PATCH failed', json)
+          toast.error(json.error || 'Failed to update booking')
+          return
         }
-        return
+        toast.success('Booking updated')
+      } else {
+        // Fallback direct update for non-mapped internal states
+        const supabase = await getSupabaseClient()
+        const { error } = await supabase
+          .from('bookings')
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq('id', bookingId)
+        if (error) {
+          console.error('Error updating booking status:', error)
+          toast.error('Failed to update booking')
+          return
+        }
+        toast.success('Booking updated')
       }
 
       // Update local state
@@ -1578,6 +1713,10 @@ export default function BookingsPage() {
   const openDetailsModal = (booking: Booking) => {
     setSelectedBooking(booking)
     setShowDetailsModal(true)
+  }
+
+  const openTicket = (bookingId: string) => {
+    window.location.href = `/dashboard/bookings/${bookingId}`
   }
 
   // Removed confirm modal since 'confirmed' status is not allowed
@@ -2102,6 +2241,36 @@ export default function BookingsPage() {
   }
 
   // Removed confirmBooking function since 'confirmed' status is not allowed
+
+  const startPayment = async (booking: Booking) => {
+    try {
+      setIsUpdatingStatus(booking.id)
+      const amount = booking.amount || 0
+      const res = await fetch('/api/payments/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          amount,
+          currency: booking.currency || 'OMR',
+          description: `Payment for ${booking.service_name || 'service'}`
+        })
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        console.error('Payment intent error:', json)
+        alert(json.error || 'Failed to initiate payment')
+        return
+      }
+      setPaymentClientSecret(json.clientSecret)
+      setShowPaymentModal(true)
+    } catch (e) {
+      console.error('startPayment error', e)
+      alert('Unexpected payment error')
+    } finally {
+      setIsUpdatingStatus(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -2635,6 +2804,19 @@ export default function BookingsPage() {
               </div>
             )}
           </div>
+
+          {showPaymentSuccess && (
+            <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-medium">Payment submitted successfully.</span>
+                </div>
+                <button onClick={() => setShowPaymentSuccess(false)} className="text-emerald-700 hover:underline text-sm">Dismiss</button>
+              </div>
+              <p className="text-sm mt-1">Your booking will update automatically when Stripe confirms the payment. You can view receipts in the Earnings/Invoices section.</p>
+            </div>
+          )}
 
           {/* Enhanced Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -3221,18 +3403,26 @@ export default function BookingsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2 flex-wrap">
                                              <Button 
-                         size="sm" 
-                         variant="outline" 
-                         className="border-gray-200 hover:bg-gray-50"
-                         onClick={() => openDetailsModal(booking)}
-                       >
-                         <Eye className="h-4 w-4 mr-2" />
-                         View Details
-                       </Button>
-                      
-                      {/* Dynamic Status Actions */}
-                      {getStatusActions(booking)}
-                    </div>
+                        size="sm" 
+                        variant="outline" 
+                        className="border-gray-200 hover:bg-gray-50"
+                        onClick={() => openDetailsModal(booking)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      <Button 
+                        size="sm"
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                        onClick={() => openTicket(booking.id)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Open Ticket
+                      </Button>
+                     
+                     {/* Dynamic Status Actions */}
+                     {getStatusActions(booking)}
+                   </div>
                     
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">
@@ -3870,3 +4060,5 @@ export default function BookingsPage() {
       </div>
     )
   }
+
+ 
