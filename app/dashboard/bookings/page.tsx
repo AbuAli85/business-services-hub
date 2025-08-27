@@ -1715,6 +1715,10 @@ export default function BookingsPage() {
     setShowDetailsModal(true)
   }
 
+  const openTicket = (bookingId: string) => {
+    window.location.href = `/dashboard/bookings/${bookingId}`
+  }
+
   // Removed confirm modal since 'confirmed' status is not allowed
   // const openConfirmModal = (booking: Booking) => {
   //   setSelectedBooking(booking)
@@ -3399,18 +3403,26 @@ export default function BookingsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex gap-2 flex-wrap">
                                              <Button 
-                         size="sm" 
-                         variant="outline" 
-                         className="border-gray-200 hover:bg-gray-50"
-                         onClick={() => openDetailsModal(booking)}
-                       >
-                         <Eye className="h-4 w-4 mr-2" />
-                         View Details
-                       </Button>
-                      
-                      {/* Dynamic Status Actions */}
-                      {getStatusActions(booking)}
-                    </div>
+                        size="sm" 
+                        variant="outline" 
+                        className="border-gray-200 hover:bg-gray-50"
+                        onClick={() => openDetailsModal(booking)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      <Button 
+                        size="sm"
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                        onClick={() => openTicket(booking.id)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Open Ticket
+                      </Button>
+                     
+                     {/* Dynamic Status Actions */}
+                     {getStatusActions(booking)}
+                   </div>
                     
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">
