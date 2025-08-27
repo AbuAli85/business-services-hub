@@ -88,21 +88,30 @@ export async function POST(request: NextRequest) {
       .in('id', [message.sender_id, message.receiver_id])
 
     if (profilesError) {
-      console.error('Error fetching profiles:', profilesError)
-      return NextResponse.json({ error: 'Failed to fetch user profiles' }, { status: 500 })
+      console.error('❌ Profiles fetch error:', profilesError)
+      // Instead of returning 500, we'll use fallback data
+      console.log('⚠️ Using fallback profile data due to profiles fetch error')
     }
 
-    // Create profile map
+    // Create profile map, with fallback data
     const profileMap = new Map()
-    profiles?.forEach(profile => {
-      profileMap.set(profile.id, profile)
-    })
+    if (profiles) {
+      profiles.forEach(profile => {
+        profileMap.set(profile.id, profile)
+      })
+    }
 
-    // Combine message with profile data
+    // Combine message with profile data, using fallbacks when profiles don't exist
     const messageWithProfiles = {
       ...message,
-      sender: profileMap.get(message.sender_id) || { full_name: 'Unknown User', email: 'unknown@example.com' },
-      receiver: profileMap.get(message.receiver_id) || { full_name: 'Unknown User', email: 'unknown@example.com' }
+      sender: profileMap.get(message.sender_id) || { 
+        full_name: `User ${message.sender_id.slice(0, 8)}`, 
+        email: 'unknown@example.com' 
+      },
+      receiver: profileMap.get(message.receiver_id) || { 
+        full_name: `User ${message.receiver_id.slice(0, 8)}`, 
+        email: 'unknown@example.com' 
+      }
     }
 
     // Create notification for receiver
@@ -207,23 +216,35 @@ export async function GET(request: NextRequest) {
 
     if (profilesError) {
       console.error('❌ Profiles fetch error:', profilesError)
-      return NextResponse.json({ error: 'Failed to fetch user profiles', details: profilesError.message }, { status: 500 })
+      // Instead of returning 500, we'll use fallback data
+      console.log('⚠️ Using fallback profile data due to profiles fetch error')
     }
 
-    console.log('✅ Profiles fetched successfully, count:', profiles?.length || 0)
-
-    // Create a map for quick profile lookup
+    // Create a map for quick profile lookup, with fallback data
     const profileMap = new Map()
-    profiles?.forEach(profile => {
-      profileMap.set(profile.id, profile)
-    })
+    if (profiles) {
+      profiles.forEach(profile => {
+        profileMap.set(profile.id, profile)
+      })
+    }
 
-    // Combine messages with profile data
-    const messagesWithProfiles = messages.map(message => ({
-      ...message,
-      sender: profileMap.get(message.sender_id) || { full_name: 'Unknown User', email: 'unknown@example.com' },
-      receiver: profileMap.get(message.receiver_id) || { full_name: 'Unknown User', email: 'unknown@example.com' }
-    }))
+    // Combine messages with profile data, using fallbacks when profiles don't exist
+    const messagesWithProfiles = messages.map(message => {
+      const senderProfile = profileMap.get(message.sender_id)
+      const receiverProfile = profileMap.get(message.receiver_id)
+      
+      return {
+        ...message,
+        sender: senderProfile || { 
+          full_name: `User ${message.sender_id.slice(0, 8)}`, 
+          email: 'unknown@example.com' 
+        },
+        receiver: receiverProfile || { 
+          full_name: `User ${message.receiver_id.slice(0, 8)}`, 
+          email: 'unknown@example.com' 
+        }
+      }
+    })
 
     console.log('✅ Returning messages with profiles, count:', messagesWithProfiles.length)
     return NextResponse.json({ messages: messagesWithProfiles })
