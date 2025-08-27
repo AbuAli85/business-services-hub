@@ -285,62 +285,37 @@ export default function CreateServicePage() {
 
       console.log('Attempting to create service with data:', serviceData)
 
-      const supabase = await getSupabaseClient()
+      // Use Edge Function utility instead of direct fetch
+      const { createService } = await import('@/lib/edge-functions')
       
-      // First, create the service
-      const { data: serviceResult, error: serviceError } = await supabase
-        .from('services')
-        .insert(serviceData)
-        .select()
-        .single()
-
-      if (serviceError) {
-        console.error('Error creating service:', serviceError)
-        console.error('Error details:', serviceError.details)
-        console.error('Error hint:', serviceError.hint)
-        console.error('Error code:', serviceError.code)
-        
-        let errorMessage = `Failed to create service: ${serviceError.message}`
-        
-        if (serviceError.message.includes('row-level security policy')) {
-          errorMessage = 'Access denied: Row Level Security policy violation. This usually means the database security policies need to be updated.'
-        } else if (serviceError.message.includes('permission denied')) {
-          errorMessage = 'Permission denied: You may not have the right permissions to create services.'
-        } else if (serviceError.message.includes('column') && serviceError.message.includes('does not exist')) {
-          errorMessage = 'Database schema error: Some required columns are missing. Please contact support.'
-        } else if (serviceError.message.includes('foreign key constraint')) {
-          errorMessage = 'Database constraint error: The user account may not be properly set up.'
-        }
-        
-        alert(errorMessage)
-        return
-      }
-
-      // Then, create service packages if they exist
-      if (formData.service_packages && formData.service_packages.length > 0) {
-        const packagesData = formData.service_packages
-          .filter(pkg => pkg.price && pkg.price !== '') // Only create packages with prices
+      const result = await createService({
+        ...serviceData,
+        service_packages: formData.service_packages
+          .filter(pkg => pkg.price && pkg.price !== '')
           .map(pkg => ({
-            service_id: serviceResult.id,
             name: pkg.name,
             price: parseFloat(pkg.price),
             delivery_days: pkg.delivery_days,
             revisions: pkg.revisions,
             features: pkg.features
           }))
+      })
 
-        if (packagesData.length > 0) {
-          const { error: packagesError } = await supabase
-            .from('service_packages')
-            .insert(packagesData)
-
-          if (packagesError) {
-            console.error('Error creating service packages:', packagesError)
-            // Don't fail the entire operation if packages fail, just log the error
-            console.warn('Service created but packages failed to save')
-          }
+      if (!result.success) {
+        console.error('Edge Function error:', result)
+        
+        let errorMessage = 'Failed to create service'
+        if (result.error) {
+          errorMessage = result.error
+        } else if (result.details && Array.isArray(result.details)) {
+          errorMessage = `Validation errors:\n${result.details.join('\n')}`
         }
+        
+        alert(errorMessage)
+        return
       }
+
+      console.log('Service created via Edge Function:', result.data)
 
       alert('Service created successfully!')
       router.push('/dashboard/provider/provider-services')

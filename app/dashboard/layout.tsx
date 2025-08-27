@@ -189,6 +189,8 @@ export default function DashboardLayout({
       baseItems.splice(1, 0, 
         { name: 'My Services', href: `/dashboard/services`, icon: Building2 },
         { name: 'Digital Marketing', href: '/dashboard/provider/digital-marketing', icon: Target },
+        { name: 'Edge Functions Monitor', href: '/dashboard/monitor', icon: Activity },
+        { name: 'Integration Monitor', href: '/dashboard/integration', icon: Webhook },
         { name: 'Company', href: '/dashboard/company', icon: Building2 },
         { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
         { name: 'Profile', href: '/dashboard/profile', icon: User }
