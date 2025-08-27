@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     // Calculate amount based on service package if specified
     let amount = service.base_price
     if (service_package_id) {
-      const selectedPackage = service.service_packages?.find(p => p.id === service_package_id)
+      const selectedPackage = service.service_packages?.find((p: { id: string; price: number }) => p.id === service_package_id)
       if (selectedPackage) {
         amount = selectedPackage.price
       }
