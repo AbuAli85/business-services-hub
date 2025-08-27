@@ -73,11 +73,7 @@ export async function POST(request: NextRequest) {
         read: false,
         created_at: new Date().toISOString()
       })
-      .select(`
-        *,
-        sender:profiles!sender_id(full_name, email),
-        receiver:profiles!receiver_id(full_name, email)
-      `)
+      .select('*')
       .single()
 
     if (messageError) {
@@ -85,23 +81,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create message' }, { status: 500 })
     }
 
+    // Fetch sender and receiver profiles manually
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', [message.sender_id, message.receiver_id])
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError)
+      return NextResponse.json({ error: 'Failed to fetch user profiles' }, { status: 500 })
+    }
+
+    // Create profile map
+    const profileMap = new Map()
+    profiles?.forEach(profile => {
+      profileMap.set(profile.id, profile)
+    })
+
+    // Combine message with profile data
+    const messageWithProfiles = {
+      ...message,
+      sender: profileMap.get(message.sender_id) || { full_name: 'Unknown User', email: 'unknown@example.com' },
+      receiver: profileMap.get(message.receiver_id) || { full_name: 'Unknown User', email: 'unknown@example.com' }
+    }
+
     // Create notification for receiver
     await supabase.from('notifications').insert({
       user_id: receiver_id,
       type: 'message',
       title: 'New Message',
-      message: `New message from ${message.sender.full_name}: ${subject}`,
+      message: `New message from ${messageWithProfiles.sender.full_name}: ${subject}`,
       metadata: { 
         message_id: message.id, 
         booking_id,
-        sender_name: message.sender.full_name
+        sender_name: messageWithProfiles.sender.full_name
       },
       priority: 'medium'
     })
 
     return NextResponse.json({ 
       success: true,
-      message,
+      message: messageWithProfiles,
       status: 'Message sent successfully'
     })
 
@@ -124,13 +144,10 @@ export async function GET(request: NextRequest) {
     const booking_id = searchParams.get('booking_id')
     const conversation_with = searchParams.get('conversation_with')
 
+    // First get the basic messages
     let query = supabase
       .from('messages')
-      .select(`
-        *,
-        sender:profiles!sender_id(full_name, email),
-        receiver:profiles!receiver_id(full_name, email)
-      `)
+      .select('*')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: true })
 
@@ -151,7 +168,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
     }
 
-    return NextResponse.json({ messages: messages || [] })
+    if (!messages || messages.length === 0) {
+      return NextResponse.json({ messages: [] })
+    }
+
+    // Get unique user IDs from messages
+    const userIds = new Set<string>()
+    messages.forEach(message => {
+      userIds.add(message.sender_id)
+      userIds.add(message.receiver_id)
+    })
+
+    // Fetch profiles for all users in one query
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', Array.from(userIds))
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError)
+      return NextResponse.json({ error: 'Failed to fetch user profiles' }, { status: 500 })
+    }
+
+    // Create a map for quick profile lookup
+    const profileMap = new Map()
+    profiles?.forEach(profile => {
+      profileMap.set(profile.id, profile)
+    })
+
+    // Combine messages with profile data
+    const messagesWithProfiles = messages.map(message => ({
+      ...message,
+      sender: profileMap.get(message.sender_id) || { full_name: 'Unknown User', email: 'unknown@example.com' },
+      receiver: profileMap.get(message.receiver_id) || { full_name: 'Unknown User', email: 'unknown@example.com' }
+    }))
+
+    return NextResponse.json({ messages: messagesWithProfiles })
 
   } catch (error) {
     console.error('Error fetching messages:', error)

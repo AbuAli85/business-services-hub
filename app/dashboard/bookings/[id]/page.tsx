@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -141,11 +141,13 @@ export default function BookingDetailPage() {
     getUser()
   }, [router])
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [])
 
-  const fetchBookingDetails = async () => {
+  const fetchBookingDetails = useCallback(async () => {
     try {
       const supabase = await getSupabaseClient()
       
@@ -201,9 +203,9 @@ export default function BookingDetailPage() {
       toast.error('Failed to load booking details')
       setLoading(false)
     }
-  }
+  }, [bookingId])
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const response = await fetch(`/api/messages?booking_id=${bookingId}`)
       if (response.ok) {
@@ -213,9 +215,9 @@ export default function BookingDetailPage() {
     } catch (error) {
       console.error('Failed to fetch messages:', error)
     }
-  }
+  }, [bookingId])
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     // Mock files for now - replace with actual API call
     setFiles([
       {
@@ -237,9 +239,9 @@ export default function BookingDetailPage() {
         created_at: new Date().toISOString()
       }
     ])
-  }
+  }, [])
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     // Mock reviews for now - replace with actual API call
     setReviews([
       {
@@ -251,9 +253,9 @@ export default function BookingDetailPage() {
         reviewer: { full_name: 'Client Name' }
       }
     ])
-  }
+  }, [])
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !booking) return
 
     try {
@@ -281,9 +283,9 @@ export default function BookingDetailPage() {
       console.error('Error sending message:', error)
       toast.error('Failed to send message')
     }
-  }
+  }, [newMessage, booking, userRole, bookingId])
 
-  const submitReview = async () => {
+  const submitReview = useCallback(async () => {
     if (!newReview.comment.trim()) return
 
     try {
@@ -297,16 +299,16 @@ export default function BookingDetailPage() {
         reviewer: { full_name: userRole === 'client' ? 'Client' : 'Provider' }
       }
 
-      setReviews([...reviews, review])
+      setReviews(prev => [...prev, review])
       setNewReview({ rating: 5, comment: '' })
       toast.success('Review submitted successfully')
     } catch (error) {
       console.error('Error submitting review:', error)
       toast.error('Failed to submit review')
     }
-  }
+  }, [newReview.comment, newReview.rating, userId, userRole])
 
-  const updateBookingStatus = async (action: string) => {
+  const updateBookingStatus = useCallback(async (action: string) => {
     if (!booking) return
 
     try {
@@ -329,9 +331,9 @@ export default function BookingDetailPage() {
       console.error('Error updating booking:', error)
       toast.error(`Failed to ${action} booking`)
     }
-  }
+  }, [booking, bookingId])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
@@ -340,9 +342,9 @@ export default function BookingDetailPage() {
       case 'cancelled': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
-  }
+  }, [])
 
-  const getOperationalStatusColor = (status: string) => {
+  const getOperationalStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'new': return 'bg-blue-100 text-blue-800'
       case 'in_progress': return 'bg-yellow-100 text-yellow-800'
@@ -350,24 +352,59 @@ export default function BookingDetailPage() {
       case 'cancelled': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
-  }
+  }, [])
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = useCallback((bytes: number) => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
+  }, [])
 
-  const renderStars = (rating: number) => {
+  const renderStars = useCallback((rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
         className={`h-4 w-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
       />
     ))
-  }
+  }, [])
+
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value)
+  }, [])
+
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value)
+  }, [])
+
+  const handleReviewChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewReview(prev => ({ ...prev, comment: e.target.value }))
+  }, [])
+
+  const handleRatingChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))
+  }, [])
+
+  // Memoized status colors to prevent unnecessary re-computations
+  const statusColor = useMemo(() => 
+    getStatusColor(booking?.status || ''), [booking?.status, getStatusColor]
+  )
+
+  const operationalStatusColor = useMemo(() => 
+    getOperationalStatusColor(booking?.operational_status || ''), [booking?.operational_status, getOperationalStatusColor]
+  )
+
+  // Memoized payment status color
+  const paymentStatusColor = useMemo(() => {
+    if (!booking) return ''
+    switch (booking.payment_status) {
+      case 'paid': return 'bg-green-100 text-green-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      default: return 'bg-red-100 text-red-800'
+    }
+  }, [booking?.payment_status])
 
   if (loading) {
     return (
@@ -398,10 +435,10 @@ export default function BookingDetailPage() {
           <p className="text-gray-600 mt-2">Booking ID: {booking.id}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Badge className={getStatusColor(booking.status)}>
+          <Badge className={statusColor}>
             {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
           </Badge>
-          <Badge className={getOperationalStatusColor(booking.operational_status)}>
+          <Badge className={operationalStatusColor}>
             {booking.operational_status.replace('_', ' ').charAt(0).toUpperCase() + 
              booking.operational_status.replace('_', ' ').slice(1)}
           </Badge>
@@ -424,7 +461,7 @@ export default function BookingDetailPage() {
       )}
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
@@ -498,11 +535,7 @@ export default function BookingDetailPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Payment Status</label>
-                    <Badge className={
-                      booking.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
-                      booking.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }>
+                    <Badge className={paymentStatusColor}>
                       {booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)}
                     </Badge>
                   </div>
@@ -604,7 +637,7 @@ export default function BookingDetailPage() {
               <div className="flex gap-2">
                 <Textarea
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleMessageChange}
                   placeholder="Type your message..."
                   className="flex-1"
                   rows={3}
@@ -643,7 +676,7 @@ export default function BookingDetailPage() {
                   <Button 
                     variant="outline" 
                     className="mt-4"
-                    onClick={() => setActiveTab('chat')}
+                    onClick={() => handleTabChange('chat')}
                   >
                     Go to Chat
                   </Button>
@@ -735,7 +768,7 @@ export default function BookingDetailPage() {
                         min="1"
                         max="5"
                         value={newReview.rating}
-                        onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
+                        onChange={handleRatingChange}
                         className="w-full mt-2"
                         aria-label="Rating from 1 to 5"
                         title={`Rating: ${newReview.rating} out of 5`}
@@ -748,7 +781,7 @@ export default function BookingDetailPage() {
                       <label className="text-sm font-medium text-gray-700">Comment</label>
                       <Textarea
                         value={newReview.comment}
-                        onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                        onChange={handleReviewChange}
                         placeholder="Share your experience..."
                         rows={3}
                       />
