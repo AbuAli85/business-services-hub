@@ -191,6 +191,7 @@ export default function DashboardLayout({
         { name: 'Digital Marketing', href: '/dashboard/provider/digital-marketing', icon: Target },
         { name: 'Company', href: '/dashboard/company', icon: Building2 },
         { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
+        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText },
         { name: 'Profile', href: '/dashboard/profile', icon: User }
       )
     }
@@ -198,6 +199,7 @@ export default function DashboardLayout({
     if (user.role === 'client') {
       baseItems.splice(1, 0, 
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
+        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText },
         { name: 'Profile', href: '/dashboard/profile', icon: User }
       )
     }
