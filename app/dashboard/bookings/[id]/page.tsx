@@ -207,7 +207,9 @@ export default function BookingDetailPage() {
 
   const fetchMessages = useCallback(async () => {
     try {
-      const response = await fetch(`/api/messages?booking_id=${bookingId}`)
+      const response = await fetch(`/api/messages?booking_id=${bookingId}`, {
+        credentials: 'include'
+      })
       if (response.ok) {
         const data = await response.json()
         setMessages(data.messages || [])
@@ -264,6 +266,7 @@ export default function BookingDetailPage() {
       const response = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           receiver_id: receiverId,
           content: newMessage,
@@ -315,6 +318,7 @@ export default function BookingDetailPage() {
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           booking_id: bookingId,
           action
