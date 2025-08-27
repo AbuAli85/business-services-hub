@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { getSupabaseClient } from '@/lib/supabase'
+import { realtimeManager } from '@/lib/realtime'
+import toast from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils'
 import { Calendar, MessageSquare, HelpCircle, FileText, Star, ArrowLeft } from 'lucide-react'
 
@@ -21,6 +23,9 @@ export default function BookingTicketPage() {
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [qaQuestion, setQaQuestion] = useState('')
+  const [userId, setUserId] = useState<string>('')
+  const [rating, setRating] = useState<number>(5)
+  const [reviewText, setReviewText] = useState('')
 
   useEffect(() => {
     if (!bookingId) return
@@ -28,6 +33,7 @@ export default function BookingTicketPage() {
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/auth/sign-in'); return }
+      setUserId(user.id)
 
       const { data: b } = await supabase
         .from('bookings')
@@ -40,16 +46,23 @@ export default function BookingTicketPage() {
       const json = await res.json()
       setMessages(json.messages || [])
       setLoading(false)
+
+      // Realtime: new messages for this booking
+      realtimeManager.subscribeToMessages(bookingId, (msg: any) => {
+        setMessages(prev => [...prev, msg])
+        toast.success('New message')
+      })
     })()
   }, [bookingId])
 
   const sendChat = async () => {
     if (!newMessage.trim() || !booking) return
+    const receiver = userId === booking.client_id ? booking.provider_id : booking.client_id
     const res = await fetch('/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        receiver_id: booking.client_id === booking.provider_id ? booking.client_id : (booking.client_id || booking.provider_id),
+        receiver_id: receiver,
         content: newMessage.trim(),
         subject: `Chat about booking ${bookingId}`,
         booking_id: bookingId,
@@ -59,6 +72,7 @@ export default function BookingTicketPage() {
     if (res.ok) {
       setMessages(prev => [...prev, json.message])
       setNewMessage('')
+      toast.success('Message sent')
     }
   }
 
@@ -78,6 +92,29 @@ export default function BookingTicketPage() {
     if (res.ok) {
       setMessages(prev => [...prev, json.message])
       setQaQuestion('')
+      toast.success('Question sent')
+    }
+  }
+
+  const submitReview = async () => {
+    if (!reviewText.trim() || !booking) return
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('reviews')
+        .insert({
+          booking_id: bookingId,
+          service_id: booking.service_id,
+          reviewer_id: userId,
+          rating,
+          comment: reviewText.trim(),
+        })
+      if (error) throw error
+      toast.success('Review submitted')
+      setReviewText('')
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to submit review')
     }
   }
 
@@ -200,9 +237,14 @@ export default function BookingTicketPage() {
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="text-gray-600 text-sm">Leave a review after completion</div>
-              <Textarea placeholder="Write your review..." />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Rating:</span>
+                <Input type="number" min={1} max={5} value={rating} onChange={(e) => setRating(Number(e.target.value))} className="w-20" />
+                <Star className="h-4 w-4 text-amber-500" />
+              </div>
+              <Textarea placeholder="Write your review..." value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
               <div className="flex justify-end">
-                <Button><Star className="h-4 w-4 mr-2" />Submit Review</Button>
+                <Button onClick={submitReview}><Star className="h-4 w-4 mr-2" />Submit Review</Button>
               </div>
             </CardContent>
           </Card>

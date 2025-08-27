@@ -129,8 +129,7 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         sender:profiles!messages_sender_id_fkey(full_name, email),
-        receiver:profiles!messages_receiver_id_fkey(full_name, email),
-        bookings(services(title))
+        receiver:profiles!messages_receiver_id_fkey(full_name, email)
       `)
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: true })
