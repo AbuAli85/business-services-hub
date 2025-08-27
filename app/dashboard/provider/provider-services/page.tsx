@@ -222,41 +222,51 @@ export default function ProviderServicesPage() {
 
   // Real-time updates
   useEffect(() => {
-    const supabase = getSupabaseClient()
-    const { data: { user } } = supabase.auth.getUser()
-    
-    if (user) {
-      // Subscribe to real-time updates
-      const bookingSubscription = realtimeManager.subscribeToBookings(user.id, (update) => {
-        if (update.eventType === 'INSERT') {
-          // New booking - refresh stats
-          fetchServiceStats()
-        } else if (update.eventType === 'UPDATE') {
-          // Booking status change - refresh stats and services
-          fetchServiceStats()
-          fetchMyServices()
-        }
-      })
+    let currentUserId: string | null = null
 
-      const serviceSubscription = realtimeManager.subscribeToServices(user.id, (update) => {
-        if (update.eventType === 'UPDATE') {
-          // Service updated - refresh services
-          fetchMyServices()
-        }
-      })
+    ;(async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
 
-      const paymentSubscription = realtimeManager.subscribeToPayments(user.id, (update) => {
-        if (update.eventType === 'UPDATE' && update.new.status === 'completed') {
-          // Payment completed - refresh stats
-          fetchServiceStats()
-        }
-      })
+        if (!user) return
+        currentUserId = user.id
 
-      // Cleanup subscriptions
-      return () => {
-        realtimeManager.unsubscribe(`bookings:${user.id}`)
-        realtimeManager.unsubscribe(`services:${user.id}`)
-        realtimeManager.unsubscribe(`payments:${user.id}`)
+        // Subscribe to real-time updates
+        realtimeManager.subscribeToBookings(user.id, (update) => {
+          if (update.eventType === 'INSERT') {
+            // New booking - refresh stats
+            fetchServiceStats()
+          } else if (update.eventType === 'UPDATE') {
+            // Booking status change - refresh stats and services
+            fetchServiceStats()
+            fetchMyServices()
+          }
+        })
+
+        realtimeManager.subscribeToServices(user.id, (update) => {
+          if (update.eventType === 'UPDATE') {
+            // Service updated - refresh services
+            fetchMyServices()
+          }
+        })
+
+        realtimeManager.subscribeToPayments(user.id, (update) => {
+          if (update.eventType === 'UPDATE' && update.new.status === 'completed') {
+            // Payment completed - refresh stats
+            fetchServiceStats()
+          }
+        })
+      } catch (error) {
+        console.error('Realtime subscription init error:', error)
+      }
+    })()
+
+    return () => {
+      if (currentUserId) {
+        realtimeManager.unsubscribe(`bookings:${currentUserId}`)
+        realtimeManager.unsubscribe(`services:${currentUserId}`)
+        realtimeManager.unsubscribe(`payments:${currentUserId}`)
       }
     }
   }, [])
