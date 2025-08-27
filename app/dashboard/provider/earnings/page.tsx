@@ -47,8 +47,23 @@ interface EarningStats {
   totalServices: number
 }
 
+interface Invoice {
+  id: string
+  booking_id: string
+  client_id: string
+  provider_id: string
+  amount: number
+  currency: string
+  status: 'draft' | 'issued' | 'paid' | 'void'
+  created_at: string
+  invoice_pdf_url?: string | null
+  bookings?: { services?: { title?: string } | null } | null
+  clients?: { full_name?: string } | null
+}
+
 export default function EarningsPage() {
   const [earnings, setEarnings] = useState<Earning[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [stats, setStats] = useState<EarningStats>({
     totalEarnings: 0,
     monthlyEarnings: 0,
@@ -73,71 +88,54 @@ export default function EarningsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Fetch earnings data (mock for now)
-      const mockEarnings: Earning[] = [
-        {
-          id: '1',
-          amount: 250,
-          currency: 'OMR',
-          status: 'completed',
-          source: 'service',
-          booking_id: 'b1',
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          service_title: 'Digital Marketing Campaign',
-          client_name: 'Ahmed Al-Rashid'
-        },
-        {
-          id: '2',
-          amount: 180,
-          currency: 'OMR',
-          status: 'completed',
-          source: 'service',
-          booking_id: 'b2',
-          created_at: new Date(Date.now() - 172800000).toISOString(),
-          service_title: 'Website Development',
-          client_name: 'Fatima Al-Zahra'
-        },
-        {
-          id: '3',
-          amount: 320,
-          currency: 'OMR',
-          status: 'pending',
-          source: 'package',
-          booking_id: 'b3',
-          created_at: new Date(Date.now() - 259200000).toISOString(),
-          service_title: 'SEO Optimization Package',
-          client_name: 'Omar Al-Mansouri'
-        },
-        {
-          id: '4',
-          amount: 150,
-          currency: 'OMR',
-          status: 'completed',
-          source: 'consultation',
-          booking_id: 'b4',
-          created_at: new Date(Date.now() - 345600000).toISOString(),
-          service_title: 'Business Strategy Consultation',
-          client_name: 'Layla Al-Hashimi'
-        }
-      ]
+      // Fetch payments as earnings for this provider
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('id, amount, currency, status, booking_id, created_at, bookings(service_id, services(title)), clients:profiles!payments_client_id_fkey(full_name)')
+        .eq('provider_id', user.id)
+        .order('created_at', { ascending: false })
 
-      setEarnings(mockEarnings)
+      let liveEarnings: Earning[] = []
+      if (!paymentsError && paymentsData) {
+        liveEarnings = paymentsData.map((p: any) => ({
+          id: p.id,
+          amount: p.amount || 0,
+          currency: (p.currency || 'OMR').toUpperCase(),
+          status: (p.status === 'succeeded' || p.status === 'paid') ? 'completed' : (p.status === 'processing' ? 'pending' : 'failed'),
+          source: 'service',
+          booking_id: p.booking_id,
+          created_at: p.created_at,
+          service_title: p.bookings?.services?.title || 'Service',
+          client_name: p.clients?.full_name || 'Client'
+        }))
+      }
+
+      // If no live earnings, keep previous UI meaningful with empty state
+      setEarnings(liveEarnings)
+
+      // Fetch invoices for this provider
+      const { data: invoicesData } = await supabase
+        .from('invoices')
+        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url, bookings(services(title)), clients:profiles!invoices_client_id_fkey(full_name)')
+        .eq('provider_id', user.id)
+        .order('created_at', { ascending: false })
+      setInvoices((invoicesData || []) as any)
 
       // Calculate stats
-      const totalEarnings = mockEarnings
+      const totalEarnings = liveEarnings
         .filter(e => e.status === 'completed')
         .reduce((sum, e) => sum + e.amount, 0)
 
-      const monthlyEarnings = mockEarnings
+      const monthlyEarnings = liveEarnings
         .filter(e => e.status === 'completed' && 
           new Date(e.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
         .reduce((sum, e) => sum + e.amount, 0)
 
-      const pendingPayments = mockEarnings
+      const pendingPayments = liveEarnings
         .filter(e => e.status === 'pending')
         .reduce((sum, e) => sum + e.amount, 0)
 
-      const completedPayments = mockEarnings
+      const completedPayments = liveEarnings
         .filter(e => e.status === 'completed')
         .length
 
@@ -148,8 +146,8 @@ export default function EarningsPage() {
         completedPayments,
         averagePerService: totalEarnings / completedPayments || 0,
         growthRate: 12.5, // Mock growth rate
-        topEarningMonth: 'December 2024',
-        totalServices: mockEarnings.length
+        topEarningMonth: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+        totalServices: liveEarnings.length
       })
 
       setLoading(false)
@@ -461,6 +459,62 @@ export default function EarningsPage() {
                     <p className="text-xs text-gray-400">
                       {formatDate(earning.created_at)}
                     </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Invoices */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Banknote className="h-5 w-5" />
+            Invoices
+          </CardTitle>
+          <CardDescription>Download receipts for your completed payments</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invoices.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Banknote className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">No invoices yet</p>
+              <p className="text-sm">Invoices will appear here after successful payments.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="space-y-1">
+                    <div className="font-medium text-gray-900">{inv.bookings?.services?.title || 'Service'}</div>
+                    <div className="text-sm text-gray-500">
+                      {formatDate(inv.created_at)} • {inv.clients?.full_name || 'Client'} • #{inv.id.slice(0,8)}
+                    </div>
+                    <div className="text-xs">
+                      <Badge className={
+                        inv.status === 'paid' ? 'bg-green-100 text-green-800' :
+                        inv.status === 'issued' ? 'bg-blue-100 text-blue-800' :
+                        inv.status === 'void' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                      }>
+                        {inv.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-lg font-semibold text-gray-900">{formatCurrency(inv.amount || 0, inv.currency || 'OMR')}</div>
+                    </div>
+                    {inv.invoice_pdf_url ? (
+                      <a href={inv.invoice_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50">
+                        <Download className="h-4 w-4 mr-2" /> Download
+                      </a>
+                    ) : (
+                      <Button variant="outline" disabled>
+                        <Download className="h-4 w-4 mr-2" /> Pending PDF
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
