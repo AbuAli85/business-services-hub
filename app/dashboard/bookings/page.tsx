@@ -448,14 +448,19 @@ export default function BookingsPage() {
         const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        realtimeManager.subscribeToBookings(user.id, async (update: any) => {
+        
+        // Subscribe to realtime updates
+        await realtimeManager.subscribeToBookings(user.id, async (update: any) => {
           await fetchBookings(user.id, userRole)
           toast.success('Bookings updated')
         })
-        realtimeManager.subscribeToNotifications(user.id, (n) => {
+        
+        await realtimeManager.subscribeToNotifications(user.id, (n) => {
           toast(n.title || 'Notification')
         })
-      } catch {}
+      } catch (error) {
+        console.error('Failed to setup realtime subscriptions:', error)
+      }
     })()
     // Try to check if enhanced data is available
     setTimeout(async () => {

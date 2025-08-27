@@ -25,155 +25,204 @@ export interface MessageUpdate {
 }
 
 export class RealtimeManager {
-  private supabase: any
+  private supabase: any = null
   private subscriptions: Map<string, any> = new Map()
   private listeners: Map<string, Set<Function>> = new Map()
+  private initialized: boolean = false
 
   constructor() {
-    this.supabase = getSupabaseClient()
+    // Initialize will be called when first needed
+  }
+
+  // Initialize the Supabase client
+  private async initialize() {
+    if (this.initialized) return
+    
+    try {
+      this.supabase = await getSupabaseClient()
+      this.initialized = true
+    } catch (error) {
+      console.error('Failed to initialize Supabase client for realtime:', error)
+      throw error
+    }
   }
 
   // Subscribe to notifications for a specific user
-  subscribeToNotifications(userId: string, callback: (notification: Notification) => void) {
+  async subscribeToNotifications(userId: string, callback: (notification: Notification) => void) {
+    await this.initialize()
+    
     const channelKey = `notifications:${userId}`
     
     if (this.subscriptions.has(channelKey)) {
       this.subscriptions.get(channelKey).unsubscribe()
     }
 
-    const subscription = this.supabase
-      .channel(channelKey)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`
-        },
-        (payload: any) => {
-          callback(payload.new as Notification)
-        }
-      )
-      .subscribe()
+    try {
+      const subscription = this.supabase
+        .channel(channelKey)
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+          },
+          (payload: any) => {
+            callback(payload.new as Notification)
+          }
+        )
+        .subscribe()
 
-    this.subscriptions.set(channelKey, subscription)
-    return subscription
+      this.subscriptions.set(channelKey, subscription)
+      return subscription
+    } catch (error) {
+      console.error('Failed to subscribe to notifications:', error)
+      throw error
+    }
   }
 
   // Subscribe to booking updates for a specific user
-  subscribeToBookings(userId: string, callback: (update: BookingUpdate) => void) {
+  async subscribeToBookings(userId: string, callback: (update: BookingUpdate) => void) {
+    await this.initialize()
+    
     const channelKey = `bookings:${userId}`
     
     if (this.subscriptions.has(channelKey)) {
       this.subscriptions.get(channelKey).unsubscribe()
     }
 
-    const subscription = this.supabase
-      .channel(channelKey)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'bookings',
-          filter: `client_id=eq.${userId} OR provider_id=eq.${userId}`
-        },
-        (payload: any) => {
-          callback({
-            eventType: payload.eventType,
-            new: payload.new,
-            old: payload.old
-          })
-        }
-      )
-      .subscribe()
+    try {
+      const subscription = this.supabase
+        .channel(channelKey)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'bookings',
+            filter: `client_id=eq.${userId} OR provider_id=eq.${userId}`
+          },
+          (payload: any) => {
+            callback({
+              eventType: payload.eventType,
+              new: payload.new,
+              old: payload.old
+            })
+          }
+        )
+        .subscribe()
 
-    this.subscriptions.set(channelKey, subscription)
-    return subscription
+      this.subscriptions.set(channelKey, subscription)
+      return subscription
+    } catch (error) {
+      console.error('Failed to subscribe to bookings:', error)
+      throw error
+    }
   }
 
   // Subscribe to message updates for a specific user
-  subscribeToMessages(userId: string, callback: (update: MessageUpdate) => void) {
+  async subscribeToMessages(userId: string, callback: (update: MessageUpdate) => void) {
+    await this.initialize()
+    
     const channelKey = `messages:${userId}`
     
     if (this.subscriptions.has(channelKey)) {
       this.subscriptions.get(channelKey).unsubscribe()
     }
 
-    const subscription = this.supabase
-      .channel(channelKey)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'messages',
-          filter: `sender_id=eq.${userId} OR receiver_id=eq.${userId}`
-        },
-        (payload: any) => {
-          callback({
-            eventType: payload.eventType,
-            new: payload.new,
-            old: payload.old
-          })
-        }
-      )
-      .subscribe()
+    try {
+      const subscription = this.supabase
+        .channel(channelKey)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `sender_id=eq.${userId} OR receiver_id=eq.${userId}`
+          },
+          (payload: any) => {
+            callback({
+              eventType: payload.eventType,
+              new: payload.new,
+              old: payload.old
+            })
+          }
+        )
+        .subscribe()
 
-    this.subscriptions.set(channelKey, subscription)
-    return subscription
+      this.subscriptions.set(channelKey, subscription)
+      return subscription
+    } catch (error) {
+      console.error('Failed to subscribe to messages:', error)
+      throw error
+    }
   }
 
   // Subscribe to service updates for a specific provider
-  subscribeToServices(providerId: string, callback: (update: any) => void) {
+  async subscribeToServices(providerId: string, callback: (update: any) => void) {
+    await this.initialize()
+    
     const channelKey = `services:${providerId}`
     
     if (this.subscriptions.has(channelKey)) {
       this.subscriptions.get(channelKey).unsubscribe()
     }
 
-    const subscription = this.supabase
-      .channel(channelKey)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'services',
-          filter: `provider_id=eq.${providerId}`
-        },
-        (payload: any) => {
-          callback(payload)
-        }
-      )
-      .subscribe()
+    try {
+      const subscription = this.supabase
+        .channel(channelKey)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'services',
+            filter: `provider_id=eq.${providerId}`
+          },
+          (payload: any) => {
+            callback(payload)
+          }
+        )
+        .subscribe()
 
-    this.subscriptions.set(channelKey, subscription)
-    return subscription
+      this.subscriptions.set(channelKey, subscription)
+      return subscription
+    } catch (error) {
+      console.error('Failed to subscribe to services:', error)
+      throw error
+    }
   }
 
   // Subscribe to payment updates
-  subscribeToPayments(userId: string, callback: (update: any) => void) {
+  async subscribeToPayments(userId: string, callback: (update: any) => void) {
+    await this.initialize()
+    
     const channelKey = `payments:${userId}`
     
     if (this.subscriptions.has(channelKey)) {
       this.subscriptions.get(channelKey).unsubscribe()
     }
 
-    const subscription = this.supabase
-      .channel(channelKey)
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'payments',
-          filter: `booking_id IN (SELECT id FROM bookings WHERE client_id=eq.${userId} OR provider_id=eq.${userId})`
-        },
-        (payload: any) => {
-          callback(payload)
-        }
-      )
-      .subscribe()
+    try {
+      const subscription = this.supabase
+        .channel(channelKey)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'payments',
+            filter: `booking_id IN (SELECT id FROM bookings WHERE client_id=eq.${userId} OR provider_id=eq.${userId})`
+          },
+          (payload: any) => {
+            callback(payload)
+          }
+        )
+        .subscribe()
 
-    this.subscriptions.set(channelKey, subscription)
-    return subscription
+      this.subscriptions.set(channelKey, subscription)
+      return subscription
+    } catch (error) {
+      console.error('Failed to subscribe to payments:', error)
+      throw error
+    }
   }
 
   // Add event listener for a specific event type

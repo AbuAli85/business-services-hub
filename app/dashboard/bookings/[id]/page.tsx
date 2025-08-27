@@ -30,28 +30,59 @@ export default function BookingTicketPage() {
   useEffect(() => {
     if (!bookingId) return
     ;(async () => {
-      const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth/sign-in'); return }
-      setUserId(user.id)
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { router.push('/auth/sign-in'); return }
+        setUserId(user.id)
 
-      const { data: b } = await supabase
-        .from('bookings')
-        .select(`*, services(title), clients:profiles!bookings_client_id_fkey(full_name), providers:profiles!bookings_provider_id_fkey(full_name)`) 
-        .eq('id', bookingId)
-        .single()
-      setBooking(b)
+        const { data: b, error: bookingError } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            services(title),
+            client_profile:profiles!bookings_client_id_fkey(full_name, email),
+            provider_profile:profiles!bookings_provider_id_fkey(full_name, email)
+          `) 
+          .eq('id', bookingId)
+          .single()
+        
+        if (bookingError) {
+          console.error('Error fetching booking:', bookingError)
+          toast.error('Failed to load booking details')
+          return
+        }
+        
+        setBooking(b)
 
-      const res = await fetch(`/api/messages?booking_id=${bookingId}`)
-      const json = await res.json()
-      setMessages(json.messages || [])
-      setLoading(false)
+        // Fetch messages from our API instead of external API
+        try {
+          const res = await fetch(`/api/messages?booking_id=${bookingId}`)
+          if (res.ok) {
+            const json = await res.json()
+            setMessages(json.messages || [])
+          } else {
+            console.error('Failed to fetch messages:', res.status)
+          }
+        } catch (error) {
+          console.error('Error fetching messages:', error)
+        }
+        
+        setLoading(false)
 
-      // Realtime: new messages for this booking
-      realtimeManager.subscribeToMessages(bookingId, (msg: any) => {
-        setMessages(prev => [...prev, msg])
-        toast.success('New message')
-      })
+        // Realtime: new messages for this booking
+        try {
+          await realtimeManager.subscribeToMessages(user.id, (msg: any) => {
+            setMessages(prev => [...prev, msg])
+            toast.success('New message')
+          })
+        } catch (error) {
+          console.error('Failed to subscribe to messages:', error)
+        }
+      } catch (error) {
+        console.error('Error in useEffect:', error)
+        setLoading(false)
+      }
     })()
   }, [bookingId])
 
@@ -152,11 +183,11 @@ export default function BookingTicketPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <div className="text-gray-500">Client</div>
-              <div className="font-medium">{booking.clients?.full_name || 'Client'}</div>
+              <div className="font-medium">{booking.client_profile?.full_name || 'Client'}</div>
             </div>
             <div>
               <div className="text-gray-500">Provider</div>
-              <div className="font-medium">{booking.providers?.full_name || 'Provider'}</div>
+              <div className="font-medium">{booking.provider_profile?.full_name || 'Provider'}</div>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-500" />

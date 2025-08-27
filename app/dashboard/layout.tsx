@@ -21,7 +21,9 @@ import {
   BarChart3,
   FileText,
   Bell,
-  Target
+  Target,
+  Activity,
+  Webhook
 } from 'lucide-react'
 
 interface UserProfile {

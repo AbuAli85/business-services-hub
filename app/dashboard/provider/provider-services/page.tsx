@@ -233,7 +233,7 @@ export default function ProviderServicesPage() {
         currentUserId = user.id
 
         // Subscribe to real-time updates
-        realtimeManager.subscribeToBookings(user.id, (update) => {
+        await realtimeManager.subscribeToBookings(user.id, (update) => {
           if (update.eventType === 'INSERT') {
             // New booking - refresh stats
             fetchServiceStats()
@@ -244,14 +244,14 @@ export default function ProviderServicesPage() {
           }
         })
 
-        realtimeManager.subscribeToServices(user.id, (update) => {
+        await realtimeManager.subscribeToServices(user.id, (update) => {
           if (update.eventType === 'UPDATE') {
             // Service updated - refresh services
             fetchMyServices()
           }
         })
 
-        realtimeManager.subscribeToPayments(user.id, (update) => {
+        await realtimeManager.subscribeToPayments(user.id, (update) => {
           if (update.eventType === 'UPDATE' && update.new.status === 'completed') {
             // Payment completed - refresh stats
             fetchServiceStats()
