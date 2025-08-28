@@ -1631,6 +1631,7 @@ export default function BookingsPage() {
     setIsUpdatingStatus(bookingId)
     try {
       // Prefer unified API for business rules and notifications
+      // Always use the API endpoint for status updates to respect database constraints
       const actionMap: Record<string, { action: 'approve' | 'decline' | 'reschedule' | 'complete' | 'cancel' } | null> = {
         approved: { action: 'approve' },
         declined: { action: 'decline' },
@@ -1658,15 +1659,20 @@ export default function BookingsPage() {
         }
         toast.success('Booking updated')
       } else {
-        // Fallback direct update for non-mapped internal states
-        const supabase = await getSupabaseClient()
-        const { error } = await supabase
-          .from('bookings')
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
-          .eq('id', bookingId)
-        if (error) {
-          console.error('Error updating booking status:', error)
-          toast.error('Failed to update booking')
+        // For non-mapped statuses, still use the API endpoint
+        const res = await fetch(getApiUrl('BOOKINGS'), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            status: newStatus,
+            reason: notes
+          })
+        })
+        const json = await res.json()
+        if (!res.ok) {
+          console.error('Booking PATCH failed', json)
+          toast.error(json.error || 'Failed to update booking')
           return
         }
         toast.success('Booking updated')
@@ -1716,24 +1722,25 @@ export default function BookingsPage() {
         }
       }
       
-      const supabase = await getSupabaseClient()
-      
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
+      // Use API endpoint for bulk updates to respect database constraints
+      const updatePromises = bookingIds.map(bookingId => 
+        fetch(getApiUrl('BOOKINGS'), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            status: newStatus,
+            reason: 'Bulk status update'
+          })
         })
-        .in('id', bookingIds)
-
-      if (error) {
-        console.error('Error bulk updating bookings:', error)
-        
-        // Handle specific status transition errors gracefully
-        if (error.message?.includes('Invalid status transition')) {
-          console.warn('Bulk status transition not allowed:', error.message)
-          // Don't show alert - just log the warning
-        }
+      )
+      
+      const responses = await Promise.all(updatePromises)
+      const errors = responses.filter(res => !res.ok)
+      
+      if (errors.length > 0) {
+        console.error('Some bulk updates failed:', errors)
+        toast.error(`Failed to update ${errors.length} out of ${bookingIds.length} bookings`)
         return
       }
 
