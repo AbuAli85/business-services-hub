@@ -136,22 +136,28 @@ export async function GET(request: NextRequest) {
     }
     
     // Transform data for better frontend consumption
-    const trackingData = bookings?.map(booking => ({
-      booking_id: booking.id,
-      service_title: booking.services?.title,
-      service_category: booking.services?.category,
-      status: booking.status,
-      operational_status: booking.operational_status,
-      scheduled_date: booking.scheduled_date,
-      amount: booking.amount,
-      payment_status: booking.payment_status,
-      client: booking.client,
-      provider: booking.provider,
-      created_at: booking.created_at,
-      updated_at: booking.updated_at,
-      tracking_updates: booking.tracking_updates || [],
-      progress: calculateProgress(booking.tracking_updates || [])
-    })) || []
+    const trackingData = bookings?.map(booking => {
+      const serviceObj: any = Array.isArray(booking.services)
+        ? booking.services[0]
+        : booking.services
+
+      return ({
+        booking_id: booking.id,
+        service_title: serviceObj?.title,
+        service_category: serviceObj?.category,
+        status: booking.status,
+        operational_status: booking.operational_status,
+        scheduled_date: booking.scheduled_date,
+        amount: booking.amount,
+        payment_status: booking.payment_status,
+        client: booking.client,
+        provider: booking.provider,
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        tracking_updates: booking.tracking_updates || [],
+        progress: calculateProgress(booking.tracking_updates || [])
+      })
+    }) || []
     
     return NextResponse.json({ 
       tracking_data: trackingData,
