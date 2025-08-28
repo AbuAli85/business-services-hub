@@ -102,11 +102,14 @@ export default function BookingDetailPage() {
   const bookingId = params.id as string
 
   useEffect(() => {
-    if (userId) {
+    if (userId && bookingId) {
+      console.log('🚀 Both userId and bookingId available, fetching data...')
       fetchBookingDetails()
       fetchMessages()
       fetchFiles()
       fetchReviews()
+    } else {
+      console.log('⏳ Waiting for data...', { userId: !!userId, bookingId: !!bookingId })
     }
   }, [userId, bookingId])
 
@@ -350,10 +353,23 @@ export default function BookingDetailPage() {
     console.log('🔍 updateBookingStatus called with action:', action)
     console.log('🔍 Current booking state:', booking)
     console.log('🔍 Current bookingId:', bookingId)
+    console.log('🔍 Loading state:', loading)
+    
+    if (loading) {
+      console.log('⏳ Page is still loading, please wait...')
+      toast.error('Please wait for the page to load completely.')
+      return
+    }
     
     if (!booking) {
       console.error('❌ No booking data available')
-      toast.error('No booking data available')
+      toast.error('No booking data available. Please wait for the page to load completely.')
+      return
+    }
+    
+    if (!booking.id) {
+      console.error('❌ Booking data is missing ID')
+      toast.error('Booking data is incomplete. Please refresh the page.')
       return
     }
 
@@ -396,7 +412,7 @@ export default function BookingDetailPage() {
       console.error('❌ Error updating booking:', error)
       toast.error(`Failed to ${action} booking`)
     }
-  }, [booking, bookingId])
+  }, [booking, bookingId, loading])
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
