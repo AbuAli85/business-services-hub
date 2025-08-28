@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { getSupabaseClient } from '@/lib/supabase'
+import { createNonBlockingHandler } from '@/lib/performance'
 import { formatDate } from '@/lib/utils'
 import { 
   Building2, 
@@ -1804,7 +1805,7 @@ export default function CompanyPage() {
                 {/* Debug button for testing */}
                 <Button 
                   variant="outline" 
-                  onClick={async () => {
+                  onClick={createNonBlockingHandler(async () => {
                     if (!company) return
                     
                     try {
@@ -1826,7 +1827,7 @@ export default function CompanyPage() {
                       console.error('Test update exception:', err)
                       alert(`Test update exception: ${err}`)
                     }
-                  }}
+                  }, { deferHeavyWork: true })}
                   className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
                 >
                   Test Update
@@ -1835,7 +1836,7 @@ export default function CompanyPage() {
                 {/* Test update without email */}
                 <Button 
                   variant="outline" 
-                  onClick={async () => {
+                  onClick={createNonBlockingHandler(async () => {
                     if (!company) return
                     
                     try {
@@ -1864,7 +1865,7 @@ export default function CompanyPage() {
                       console.error('Test update without email exception:', err)
                       alert(`Test update without email exception: ${err}`)
                     }
-                  }}
+                  }, { deferHeavyWork: true })}
                   className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
                 >
                   Test No Email
@@ -1873,7 +1874,7 @@ export default function CompanyPage() {
                 {/* Test update with just name */}
                 <Button 
                   variant="outline" 
-                  onClick={async () => {
+                  onClick={createNonBlockingHandler(async () => {
                     if (!company) return
                     
                     try {
@@ -1901,7 +1902,7 @@ export default function CompanyPage() {
                       console.error('Test update with just name exception:', err)
                       alert(`Test update with just name exception: ${err}`)
                     }
-                  }}
+                  }, { deferHeavyWork: true })}
                   className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
                 >
                   Test Just Name
@@ -1910,7 +1911,7 @@ export default function CompanyPage() {
                 {/* Test update with no data */}
                 <Button 
                   variant="outline" 
-                  onClick={async () => {
+                  onClick={createNonBlockingHandler(async () => {
                     if (!company) return
                     
                     try {
@@ -1936,7 +1937,7 @@ export default function CompanyPage() {
                       console.error('Test update with no data exception:', err)
                       alert(`Test update with no data exception: ${err}`)
                     }
-                  }}
+                  }, { deferHeavyWork: true })}
                   className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
                 >
                   Test No Data
@@ -1945,7 +1946,7 @@ export default function CompanyPage() {
                 {/* Test raw SQL update */}
                 <Button 
                   variant="outline" 
-                  onClick={async () => {
+                  onClick={createNonBlockingHandler(async () => {
                     if (!company) return
                     
                     try {
@@ -1968,7 +1969,7 @@ export default function CompanyPage() {
                       console.error('Test raw SQL update exception:', err)
                       alert(`Test raw SQL update exception: ${err}`)
                     }
-                  }}
+                  }, { deferHeavyWork: true })}
                   className="border-white/20 text-white/80 hover:bg-white/80 ml-2 text-xs"
                 >
                   Test Raw SQL

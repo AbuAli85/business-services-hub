@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { getApiUrl } from '@/lib/api-utils'
+import { createNonBlockingHandler } from '@/lib/performance'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -258,7 +259,7 @@ export default function ServiceDetailPage() {
 
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => setShowBooking(false)}>Cancel</Button>
-                  <Button onClick={async () => {
+                  <Button onClick={createNonBlockingHandler(async () => {
                     if (!scheduledDate) {
                       alert('Please select date & time')
                       return
@@ -294,7 +295,12 @@ export default function ServiceDetailPage() {
                     } finally {
                       setSubmitting(false)
                     }
-                  }} disabled={submitting}>
+                  }, {
+                    deferHeavyWork: true,
+                    onStart: () => setSubmitting(true),
+                    onComplete: () => setSubmitting(false),
+                    onError: () => setSubmitting(false)
+                  })} disabled={submitting}>
                     {submitting ? 'Submitting...' : 'Submit Booking'}
                   </Button>
                 </div>

@@ -7,22 +7,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 // Singleton pattern to prevent multiple client instances
 let supabaseClient: SupabaseClient | null = null
 let supabaseAdminClient: SupabaseClient | null = null
+let isInitializing = false
+let initializationPromise: Promise<SupabaseClient> | null = null
 
-// Helper function to check environment variables
+// Helper function to check environment variables (moved outside async function)
 function checkEnvironmentVariables() {
   const missingVars = []
   
   if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
   if (!supabaseAnonKey) missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
-  
-  // Log environment status for debugging
-  console.log('Environment check:', {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseAnonKey,
-    url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing',
-    key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'missing',
-    nodeEnv: process.env.NODE_ENV
-  })
   
   return {
     isValid: missingVars.length === 0,
@@ -34,6 +27,31 @@ function checkEnvironmentVariables() {
 
 // Create Supabase client only when needed (not at build time)
 export async function getSupabaseClient(): Promise<SupabaseClient> {
+  // Return existing client immediately if already created
+  if (supabaseClient) {
+    return supabaseClient
+  }
+
+  // If already initializing, wait for the existing promise
+  if (isInitializing && initializationPromise) {
+    return initializationPromise
+  }
+
+  // Start initialization
+  isInitializing = true
+  initializationPromise = initializeSupabaseClient()
+  
+  try {
+    const client = await initializationPromise
+    return client
+  } finally {
+    isInitializing = false
+    initializationPromise = null
+  }
+}
+
+// Separate initialization function to avoid blocking
+async function initializeSupabaseClient(): Promise<SupabaseClient> {
   const envCheck = checkEnvironmentVariables()
   
   if (!envCheck.isValid) {
@@ -58,17 +76,11 @@ For production deployments, ensure environment variables are set in your hosting
     throw new Error('Supabase environment variables not configured. Please check your .env.local file and restart the development server.')
   }
   
-  // Return existing client if already created
-  if (supabaseClient) {
-    return supabaseClient
-  }
-  
   // At this point, we know both variables are defined due to the check above
-  // TypeScript assertion is safe here
   const url = envCheck.supabaseUrl!
   const key = envCheck.supabaseAnonKey!
   
-  // Create new client only once
+  // Create new client
   supabaseClient = createClient(url, key, {
     auth: {
       autoRefreshToken: true,
@@ -83,33 +95,34 @@ For production deployments, ensure environment variables are set in your hosting
     }
   })
   
-  // Only set up auth state change listener on client-side
+  // Set up background tasks without blocking the main thread
   if (typeof window !== 'undefined') {
-    // Set up auth state change listener
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
-      
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('✅ Token refreshed successfully')
-      } else if (event === 'SIGNED_OUT') {
-        console.log('👋 User signed out')
+    // Use requestIdleCallback or setTimeout to defer non-critical operations
+    const deferSetup = () => {
+      try {
+        // Set up auth state change listener
+        supabaseClient!.auth.onAuthStateChange(async (event, session) => {
+          console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+          
+          if (event === 'TOKEN_REFRESHED') {
+            console.log('✅ Token refreshed successfully')
+          } else if (event === 'SIGNED_OUT') {
+            console.log('👋 User signed out')
+          }
+        })
+        
+        // Test the client connection in background
+        testClientConnection(supabaseClient!)
+      } catch (error) {
+        console.warn('⚠️ Background setup failed:', error)
       }
-    })
-    
-    // Test the client connection and session (client-side only)
-    try {
-      const { data: { session }, error } = await supabaseClient.auth.getSession()
-      if (error) {
-        console.warn('⚠️ Supabase client connection test failed:', error)
-      } else if (session) {
-        console.log('✅ Supabase client connected successfully with active session')
-        console.log('👤 User ID:', session.user.id)
-        console.log('🔄 Session expires:', new Date(session.expires_at! * 1000).toLocaleString())
-      } else {
-        console.log('✅ Supabase client connected successfully (no active session)')
-      }
-    } catch (testError) {
-      console.warn('⚠️ Supabase client connection test error:', testError)
+    }
+
+    // Use requestIdleCallback if available, otherwise setTimeout
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(deferSetup, { timeout: 1000 })
+    } else {
+      setTimeout(deferSetup, 0)
     }
   } else {
     // Server-side: just log successful connection
@@ -117,6 +130,24 @@ For production deployments, ensure environment variables are set in your hosting
   }
   
   return supabaseClient
+}
+
+// Separate function for testing client connection
+async function testClientConnection(client: SupabaseClient) {
+  try {
+    const { data: { session }, error } = await client.auth.getSession()
+    if (error) {
+      console.warn('⚠️ Supabase client connection test failed:', error)
+    } else if (session) {
+      console.log('✅ Supabase client connected successfully with active session')
+      console.log('👤 User ID:', session.user.id)
+      console.log('🔄 Session expires:', new Date(session.expires_at! * 1000).toLocaleString())
+    } else {
+      console.log('✅ Supabase client connected successfully (no active session)')
+    }
+  } catch (testError) {
+    console.warn('⚠️ Supabase client connection test error:', testError)
+  }
 }
 
 // Enhanced function to get authenticated client with session refresh
