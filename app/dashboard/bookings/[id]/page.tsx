@@ -149,6 +149,14 @@ export default function BookingDetailPage() {
 
   const fetchBookingDetails = useCallback(async () => {
     try {
+      console.log('🔍 Fetching booking details for ID:', bookingId)
+      
+      if (!bookingId) {
+        console.error('❌ No booking ID provided')
+        toast.error('No booking ID provided')
+        return
+      }
+      
       const supabase = await getSupabaseClient()
       
       // First get the basic booking data
@@ -162,10 +170,12 @@ export default function BookingDetailPage() {
         .single()
       
       if (bookingError) {
-        console.error('Error fetching booking:', bookingError)
+        console.error('❌ Error fetching booking:', bookingError)
         toast.error('Failed to load booking details')
         return
       }
+      
+      console.log('✅ Booking found:', b)
       
       // Then get the client and provider profiles separately
       let clientProfile = null
@@ -196,10 +206,11 @@ export default function BookingDetailPage() {
         provider_profile: providerProfile
       }
       
+      console.log('✅ Final booking with profiles:', bookingWithProfiles)
       setBooking(bookingWithProfiles)
       setLoading(false)
     } catch (error) {
-      console.error('Error:', error)
+      console.error('❌ Error in fetchBookingDetails:', error)
       toast.error('Failed to load booking details')
       setLoading(false)
     }
@@ -336,7 +347,15 @@ export default function BookingDetailPage() {
   }, [newReview.comment, newReview.rating, userId, userRole])
 
   const updateBookingStatus = useCallback(async (action: string) => {
-    if (!booking) return
+    console.log('🔍 updateBookingStatus called with action:', action)
+    console.log('🔍 Current booking state:', booking)
+    console.log('🔍 Current bookingId:', bookingId)
+    
+    if (!booking) {
+      console.error('❌ No booking data available')
+      toast.error('No booking data available')
+      return
+    }
 
     try {
       const supabase = await getSupabaseClient()
@@ -352,13 +371,17 @@ export default function BookingDetailPage() {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
       
+      const requestBody = {
+        booking_id: booking.id,
+        action
+      }
+      
+      console.log('🔍 Sending request body:', requestBody)
+      
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({
-          booking_id: booking.id,
-          action
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (response.ok) {
@@ -366,14 +389,14 @@ export default function BookingDetailPage() {
         toast.success(`Booking ${action}d successfully`)
       } else {
         const errorData = await response.json()
-        console.error('Booking update failed:', errorData)
+        console.error('❌ Booking update failed:', errorData)
         toast.error(`Failed to ${action} booking: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error updating booking:', error)
+      console.error('❌ Error updating booking:', error)
       toast.error(`Failed to ${action} booking`)
     }
-  }, [booking])
+  }, [booking, bookingId])
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
