@@ -1585,11 +1585,43 @@ export default function BookingsPage() {
     // Log all status update attempts for debugging
     console.log('🔄 Status update attempt:', currentBooking.status, '→', newStatus, 'for booking:', bookingId)
     
-    // Prevent invalid status transitions based on database constraints
-    if (currentBooking.status === 'pending') {
-      console.warn('🚫 Invalid transition blocked: pending →', newStatus)
-      console.warn('Pending bookings cannot be modified due to database constraints')
+    // Define valid status transitions based on business logic
+    const validTransitions: Record<string, string[]> = {
+      pending: ['approved', 'declined', 'rescheduled', 'cancelled'],
+      approved: ['in_progress', 'completed', 'cancelled'],
+      in_progress: ['completed', 'cancelled', 'on_hold'],
+      on_hold: ['in_progress', 'cancelled'],
+      completed: ['cancelled'], // Can only cancel completed bookings
+      declined: ['cancelled'], // Can only cancel declined bookings
+      cancelled: [] // No transitions from cancelled
+    }
+    
+    const currentStatus = currentBooking.status
+    const allowedTransitions = validTransitions[currentStatus] || []
+    
+    if (!allowedTransitions.includes(newStatus)) {
+      console.warn('🚫 Invalid transition blocked:', currentStatus, '→', newStatus)
+      console.warn(`Status '${currentStatus}' cannot transition to '${newStatus}'. Allowed transitions:`, allowedTransitions)
+      toast.error(`Cannot change status from ${currentStatus} to ${newStatus}`)
       return
+    }
+    
+    // Special business rule: Only providers can approve/decline pending bookings
+    if (currentStatus === 'pending' && ['approved', 'declined'].includes(newStatus)) {
+      if (userRole !== 'provider') {
+        console.warn('🚫 Only providers can approve/decline pending bookings')
+        toast.error('Only providers can approve or decline pending bookings')
+        return
+      }
+    }
+    
+    // Special business rule: Only providers can mark bookings as in_progress or completed
+    if (['in_progress', 'completed'].includes(newStatus)) {
+      if (userRole !== 'provider') {
+        console.warn('🚫 Only providers can mark bookings as in progress or completed')
+        toast.error('Only providers can mark bookings as in progress or completed')
+        return
+      }
     }
     
     setIsUpdatingStatus(bookingId)
@@ -1655,13 +1687,29 @@ export default function BookingsPage() {
 
   const bulkUpdateStatus = async (bookingIds: string[], newStatus: string) => {
     try {
-      // Validate that none of the selected bookings are pending
+      // Validate status transitions for all selected bookings
       const selectedBookings = bookings.filter(b => bookingIds.includes(b.id))
-      const hasPendingBookings = selectedBookings.some(b => b.status === 'pending')
       
-      if (hasPendingBookings) {
-        console.warn('🚫 Bulk update blocked: Some selected bookings are pending and cannot be modified')
-        return
+      // Check if any booking has an invalid transition
+      for (const booking of selectedBookings) {
+        const validTransitions: Record<string, string[]> = {
+          pending: ['approved', 'declined', 'rescheduled', 'cancelled'],
+          approved: ['in_progress', 'completed', 'cancelled'],
+          in_progress: ['completed', 'cancelled', 'on_hold'],
+          on_hold: ['in_progress', 'cancelled'],
+          completed: ['cancelled'],
+          declined: ['cancelled'],
+          cancelled: []
+        }
+        
+        const currentStatus = booking.status
+        const allowedTransitions = validTransitions[currentStatus] || []
+        
+        if (!allowedTransitions.includes(newStatus)) {
+          console.warn('🚫 Bulk update blocked: Invalid transition for booking', booking.id, currentStatus, '→', newStatus)
+          toast.error(`Cannot change status from ${currentStatus} to ${newStatus} for some bookings`)
+          return
+        }
       }
       
       const supabase = await getSupabaseClient()
