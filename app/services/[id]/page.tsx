@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
+import { getApiUrl } from '@/lib/api-utils'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -264,7 +265,7 @@ export default function ServiceDetailPage() {
                     }
                     try {
                       setSubmitting(true)
-                      const res = await fetch('/api/bookings', {
+                      const res = await fetch(getApiUrl('BOOKINGS'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

@@ -6,8 +6,19 @@ export const config = {
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlb290Y25nY3B0Zm9nZm96bG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzQ0NDM4MiwiZXhwIjoyMDY5MDIwMzgyfQ.BTLA-2wwXJgjW6MKoaw2ERbCr_fXF9w4zgLb70_5DAE'
   },
   app: {
-    url: process.env.NEXT_PUBLIC_APP_URL || 'https://marketing.thedigitalmorph.com',
+    url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     environment: process.env.NODE_ENV || 'development'
+  }
+}
+
+// API configuration that always uses relative paths
+export const apiConfig = {
+  // Always use relative paths for API calls
+  baseUrl: '',
+  // Helper function to ensure API URLs are always relative
+  getApiUrl: (endpoint: string) => {
+    // Ensure endpoint starts with / for relative paths
+    return endpoint.startsWith('/') ? endpoint : `/${endpoint}`
   }
 }
 

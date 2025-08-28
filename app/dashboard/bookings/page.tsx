@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
+import { getApiUrl } from '@/lib/api-utils'
 
 import toast from 'react-hot-toast'
 import { 
@@ -1604,7 +1605,7 @@ export default function BookingsPage() {
 
       const mapped = actionMap[newStatus]
       if (mapped) {
-        const res = await fetch('/api/bookings', {
+        const res = await fetch(getApiUrl('BOOKINGS'), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2252,7 +2253,7 @@ export default function BookingsPage() {
     try {
       setIsUpdatingStatus(booking.id)
       const amount = booking.amount || 0
-              const res = await fetch('/api/payments/create-intent', {
+              const res = await fetch(getApiUrl('PAYMENTS'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

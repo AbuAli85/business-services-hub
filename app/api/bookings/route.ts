@@ -4,10 +4,10 @@ import { z } from 'zod'
 
 // CORS headers for cross-domain access
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://marketing.thedigitalmorph.com',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-  'Access-Control-Max-Age': '86400',
+  'Access-Control-Allow-Origin': '*', // Allow all origins in production, or use process.env.NEXT_PUBLIC_ALLOWED_ORIGINS
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400'
 }
 
 // Handle preflight OPTIONS request
@@ -528,6 +528,8 @@ export async function PATCH(request: NextRequest) {
 
     // Fetch booking to validate permissions
     console.log('🔍 API: Fetching booking with ID:', booking_id)
+    console.log('🔍 API: User ID:', user.id)
+    console.log('🔍 API: Request body:', body)
     
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
@@ -536,9 +538,23 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     console.log('🔍 API: Supabase response:', { data: booking, error: fetchError })
+    console.log('🔍 API: Booking data:', booking)
+    console.log('🔍 API: Fetch error:', fetchError)
 
     if (fetchError || !booking) {
       console.error('❌ API: Failed to fetch booking:', fetchError)
+      console.error('❌ API: Booking ID requested:', booking_id)
+      console.error('❌ API: User ID:', user.id)
+      
+      // Try to check if the booking exists at all
+      const { data: allBookings, error: listError } = await supabase
+        .from('bookings')
+        .select('id, client_id, provider_id')
+        .limit(5)
+      
+      console.log('🔍 API: Sample bookings in database:', allBookings)
+      console.log('🔍 API: List error:', listError)
+      
       const response = NextResponse.json({ error: 'Booking not found' }, { status: 404 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response

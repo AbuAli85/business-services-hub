@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
+import { getApiUrl } from '@/lib/api-utils'
 
 import { toast } from 'react-hot-toast'
 import { 
@@ -303,7 +304,7 @@ export default function BookingDetailPage() {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
       
-      const response = await fetch('/api/messages', {
+              const response = await fetch(getApiUrl('MESSAGES'), {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -395,7 +396,7 @@ export default function BookingDetailPage() {
       
       console.log('🔍 Sending request body:', requestBody)
       
-      const response = await fetch('/api/bookings', {
+              const response = await fetch(getApiUrl('BOOKINGS'), {
         method: 'PATCH',
         headers,
         body: JSON.stringify(requestBody)
