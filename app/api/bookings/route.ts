@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 import { z } from 'zod'
 
+// CORS headers for cross-domain access
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://marketing.thedigitalmorph.com',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+  'Access-Control-Max-Age': '86400',
+}
+
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  })
+}
+
 // Validation schema for booking creation
 const CreateBookingSchema = z.object({
   service_id: z.string().uuid(),
@@ -86,12 +102,16 @@ export async function POST(request: NextRequest) {
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
         : 'Authentication failed'
-      return NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
     
     if (!user) {
       console.log('❌ No user found from any authentication method')
-      return NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      const response = NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     console.log('✅ User authenticated:', user.id)
@@ -101,10 +121,12 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validationResult = CreateBookingSchema.safeParse(body)
     if (!validationResult.success) {
-      return NextResponse.json({ 
+      const response = NextResponse.json({ 
         error: 'Invalid request data', 
         details: validationResult.error.errors 
       }, { status: 400 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     const { service_id, scheduled_date, notes, service_package_id, estimated_duration, location } = validationResult.data
@@ -123,12 +145,16 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (serviceError || !service) {
-      return NextResponse.json({ error: 'Service not found or inactive' }, { status: 404 })
+      const response = NextResponse.json({ error: 'Service not found or inactive' }, { status: 404 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     // Check if user is trying to book their own service
     if (service.provider_id === user.id) {
-      return NextResponse.json({ error: 'Cannot book your own service' }, { status: 400 })
+      const response = NextResponse.json({ error: 'Cannot book your own service' }, { status: 400 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     // Calculate amount based on service package if specified
@@ -167,7 +193,9 @@ export async function POST(request: NextRequest) {
 
     if (bookingError) {
       console.error('Booking creation error:', bookingError)
-      return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
+      const response = NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     // Get client profile data
@@ -198,15 +226,19 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', service_id)
 
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true,
       booking,
       message: 'Booking created successfully and sent for approval'
     })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
 
   } catch (error) {
     console.error('Booking creation error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
   }
 }
 
@@ -284,12 +316,16 @@ export async function GET(request: NextRequest) {
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
         : 'Authentication failed'
-      return NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
     
     if (!user) {
       console.log('❌ No user found from any authentication method')
-      return NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      const response = NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     console.log('✅ User authenticated:', user.id)
@@ -321,7 +357,9 @@ export async function GET(request: NextRequest) {
         .single()
       
       if (profile?.role !== 'admin') {
-        return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+        const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
+        Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+        return response
       }
     }
 
@@ -334,7 +372,9 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching bookings:', error)
-      return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 })
+      const response = NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     // Now enrich the bookings with profile data
@@ -369,11 +409,15 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    return NextResponse.json({ bookings: enrichedBookings })
+    const response = NextResponse.json({ bookings: enrichedBookings })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
 
   } catch (error) {
     console.error('Error fetching bookings:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
   }
 }
 
@@ -452,12 +496,16 @@ export async function PATCH(request: NextRequest) {
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
         : 'Authentication failed'
-      return NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
     
     if (!user) {
       console.log('❌ No user found from any authentication method')
-      return NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      const response = NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     console.log('✅ User authenticated:', user.id)
@@ -471,7 +519,9 @@ export async function PATCH(request: NextRequest) {
     })
     const parsed = schema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid request data', details: parsed.error.errors }, { status: 400 })
+      const response = NextResponse.json({ error: 'Invalid request data', details: parsed.error.errors }, { status: 400 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     const { booking_id, action, scheduled_date, reason } = parsed.data
@@ -489,7 +539,9 @@ export async function PATCH(request: NextRequest) {
 
     if (fetchError || !booking) {
       console.error('❌ API: Failed to fetch booking:', fetchError)
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+      const response = NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     console.log('✅ API: Booking found:', booking)
@@ -498,7 +550,9 @@ export async function PATCH(request: NextRequest) {
     const isProvider = booking.provider_id === user.id
 
     if (!isClient && !isProvider) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      const response = NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     let updates: Record<string, any> = {}
@@ -542,7 +596,9 @@ export async function PATCH(request: NextRequest) {
 
     if (updateError) {
       console.error('❌ Booking update error:', updateError)
-      return NextResponse.json({ error: 'Failed to update booking', details: updateError.message }, { status: 500 })
+      const response = NextResponse.json({ error: 'Failed to update booking', details: updateError.message }, { status: 500 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
     console.log('✅ Booking updated successfully')
@@ -571,7 +627,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     console.log('✅ PATCH method completed successfully')
-    return NextResponse.json({ success: true, booking: updated })
+    const response = NextResponse.json({ success: true, booking: updated })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
   } catch (error) {
     console.error('❌ Unexpected error in PATCH method:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
@@ -579,10 +637,12 @@ export async function PATCH(request: NextRequest) {
     
     console.error('❌ Error details:', { message: errorMessage, stack: errorStack })
     
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       error: 'Internal server error', 
       details: errorMessage,
       type: 'patch_method_error'
     }, { status: 500 })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
   }
 }
