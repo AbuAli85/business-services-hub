@@ -1,672 +1,617 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useEffect } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
-import { getApiUrl } from '@/lib/api-utils'
-
-import { toast } from 'react-hot-toast'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { 
   Calendar, 
   Clock, 
-  MapPin, 
   User, 
-  Building2, 
-  MessageCircle, 
+  Package, 
+  DollarSign, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  MessageSquare, 
   FileText, 
-  Star, 
-  Send, 
-  Upload, 
-  Download, 
   CheckCircle, 
   XCircle, 
-  AlertTriangle,
-  Edit3,
-  Trash2,
-  Eye,
-  Plus
+  AlertCircle,
+  ArrowLeft,
+  Edit,
+  Send,
+  Download,
+  Share2,
+  PhoneCall,
+  Video,
+  MapPin as LocationIcon
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { formatDate, formatCurrency } from '@/lib/utils'
+
+interface BookingDetails {
+  id: string
+  service_title: string
+  service_description: string
+  service_category: string
+  client_name: string
+  client_email: string
+  client_phone: string
+  client_company: string
+  provider_name: string
+  provider_email: string
+  provider_phone: string
+  provider_company: string
+  status: string
+  priority: string
+  amount: number
+  currency: string
+  scheduled_date: string
+  scheduled_time: string
+  location: string
+  notes: string
+  created_at: string
+  updated_at: string
+  package_name: string
+  package_description: string
+  package_price: number
+  delivery_days: number
+  revisions: number
+}
+
+interface StatusHistory {
+  id: string
+  status: string
+  changed_by: string
+  changed_at: string
+  reason: string
+  notes: string
+}
 
 interface Message {
   id: string
   content: string
-  subject: string
-  sender_id: string
-  receiver_id: string
+  sender_name: string
+  sender_role: string
   created_at: string
-  read: boolean
-  sender: { full_name: string; email: string }
-  receiver: { full_name: string; email: string }
+  is_read: boolean
 }
 
-interface File {
-  id: string
-  name: string
-  url: string
-  size: number
-  type: string
-  uploaded_by: string
-  created_at: string
-}
-
-interface Review {
-  id: string
-  rating: number
-  comment: string
-  reviewer_id: string
-  created_at: string
-  reviewer: { full_name: string }
-}
-
-interface Booking {
-  id: string
-  service_id: string
-  client_id: string
-  provider_id: string
-  scheduled_date: string
-  status: string
-  approval_status: string
-  operational_status: string
-  amount: number
-  currency: string
-  payment_status: string
-  notes?: string
-  estimated_duration?: string
-  location?: string
-  created_at: string
-  services: { title: string; description: string }
-  client_profile?: { full_name: string; email: string }
-  provider_profile?: { full_name: string; email: string }
-}
-
-export default function BookingDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [booking, setBooking] = useState<Booking | null>(null)
+export default function BookingDetailsPage({ params }: { params: { id: string } }) {
+  const [booking, setBooking] = useState<BookingDetails | null>(null)
+  const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([])
   const [messages, setMessages] = useState<Message[]>([])
-  const [files, setFiles] = useState<File[]>([])
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
   const [newMessage, setNewMessage] = useState('')
-  const [newReview, setNewReview] = useState({ rating: 5, comment: '' })
-  const [uploadingFile, setUploadingFile] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin'>('client')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const bookingId = params.id as string
+  const [loading, setLoading] = useState(true)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string>('')
+  const router = useRouter()
 
   useEffect(() => {
-    if (userId && bookingId) {
-      console.log('🚀 Both userId and bookingId available, fetching data...')
-      fetchBookingDetails()
-      fetchMessages()
-      fetchFiles()
-      fetchReviews()
-    } else {
-      console.log('⏳ Waiting for data...', { userId: !!userId, bookingId: !!bookingId })
-    }
-  }, [userId, bookingId])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Get user authentication
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const supabase = await getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        if (!user) {
-          router.push('/auth/sign-in')
-          return
-        }
-        
-        setUserId(user.id)
-        
-        // Determine user role from metadata or profile
-        const role = user.user_metadata?.role || 'client'
-        setUserRole(role as 'client' | 'provider' | 'admin')
-        
-      } catch (error) {
-        console.error('Error getting user:', error)
-        router.push('/auth/sign-in')
-      }
-    }
-    
-    getUser()
-  }, [router])
-
-  const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
+    checkUserAndFetchData()
   }, [])
 
-  const fetchBookingDetails = useCallback(async () => {
+  const checkUserAndFetchData = async () => {
     try {
-      console.log('🔍 Fetching booking details for ID:', bookingId)
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
       
-      if (!bookingId) {
-        console.error('❌ No booking ID provided')
-        toast.error('No booking ID provided')
+      if (!user) {
+        router.push('/auth/sign-in')
         return
       }
+
+      setUser(user)
       
-      const supabase = await getSupabaseClient()
-      
-      // First get the basic booking data
-      const { data: b, error: bookingError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          services(title, description)
-        `) 
-        .eq('id', bookingId)
+      // Get user role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
         .single()
       
-      if (bookingError) {
-        console.error('❌ Error fetching booking:', bookingError)
-        toast.error('Failed to load booking details')
-        return
-      }
+      setUserRole(profile?.role || '')
       
-      console.log('✅ Booking found:', b)
-      
-      // Then get the client and provider profiles separately
-      let clientProfile = null
-      let providerProfile = null
-      
-      if (b.client_id) {
-        const { data: clientData } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', b.client_id)
-          .single()
-        clientProfile = clientData
-      }
-      
-      if (b.provider_id) {
-        const { data: providerData } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', b.provider_id)
-          .single()
-        providerProfile = providerData
-      }
-      
-      // Combine the data
-      const bookingWithProfiles = {
-        ...b,
-        client_profile: clientProfile,
-        provider_profile: providerProfile
-      }
-      
-      console.log('✅ Final booking with profiles:', bookingWithProfiles)
-      setBooking(bookingWithProfiles)
-      setLoading(false)
+      await Promise.all([
+        fetchBookingDetails(params.id),
+        fetchStatusHistory(params.id),
+        fetchMessages(params.id)
+      ])
     } catch (error) {
-      console.error('❌ Error in fetchBookingDetails:', error)
-      toast.error('Failed to load booking details')
+      console.error('Error checking user:', error)
+      toast.error('Failed to load user data')
+    } finally {
       setLoading(false)
     }
-  }, [bookingId])
+  }
 
-  const fetchMessages = useCallback(async () => {
+  const fetchBookingDetails = async (bookingId: string) => {
     try {
       const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
       
-      const headers: HeadersInit = {
-        credentials: 'include'
+      // Try enhanced view first
+      let { data: enhancedBooking, error: enhancedError } = await supabase
+        .from('enhanced_bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .single()
+
+      if (enhancedError || !enhancedBooking) {
+        // Fallback to regular bookings table
+        const { data: regularBooking, error: regularError } = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            service:services (title, description, category, base_price),
+            client:profiles!bookings_client_id_fkey (full_name, email, phone, company_name),
+            provider:profiles!bookings_provider_id_fkey (full_name, email, phone, company_name),
+            package:service_packages (name, description, price, delivery_days, revisions)
+          `)
+          .eq('id', bookingId)
+          .single()
+
+        if (regularError) {
+          throw regularError
+        }
+
+        // Transform regular booking to match enhanced format
+        enhancedBooking = {
+          id: regularBooking.id,
+          service_title: regularBooking.service?.title || 'Service',
+          service_description: regularBooking.service?.description || '',
+          service_category: regularBooking.service?.category || '',
+          client_name: regularBooking.client?.full_name || 'Client',
+          client_email: regularBooking.client?.email || '',
+          client_phone: regularBooking.client?.phone || '',
+          client_company: regularBooking.client?.company_name || '',
+          provider_name: regularBooking.provider?.full_name || 'Provider',
+          provider_email: regularBooking.provider?.email || '',
+          provider_phone: regularBooking.provider?.phone || '',
+          provider_company: regularBooking.provider?.company_name || '',
+          status: regularBooking.status,
+          priority: regularBooking.priority || 'medium',
+          amount: regularBooking.amount || regularBooking.service?.base_price || 0,
+          currency: regularBooking.currency || 'USD',
+          scheduled_date: regularBooking.scheduled_date,
+          scheduled_time: regularBooking.scheduled_time,
+          location: regularBooking.location,
+          notes: regularBooking.notes,
+          created_at: regularBooking.created_at,
+          updated_at: regularBooking.updated_at,
+          package_name: regularBooking.package?.name || 'Base Package',
+          package_description: regularBooking.package?.description || '',
+          package_price: regularBooking.package?.price || regularBooking.service?.base_price || 0,
+          delivery_days: regularBooking.package?.delivery_days || 0,
+          revisions: regularBooking.package?.revisions || 0
+        }
       }
-      
-      // Add authorization header if we have a session
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-      
-      const response = await fetch(`/api/messages?booking_id=${bookingId}`, {
-        headers
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setMessages(data.messages || [])
-      }
+
+      setBooking(enhancedBooking)
     } catch (error) {
-      console.error('Failed to fetch messages:', error)
+      console.error('Error fetching booking details:', error)
+      toast.error('Failed to load booking details')
     }
-  }, [bookingId])
+  }
 
-  const fetchFiles = useCallback(async () => {
-    // Mock files for now - replace with actual API call
-    setFiles([
-      {
-        id: '1',
-        name: 'Service Agreement.pdf',
-        url: '#',
-        size: 245760,
-        type: 'application/pdf',
-        uploaded_by: 'Provider',
-        created_at: new Date().toISOString()
-      },
-      {
-        id: '2',
-        name: 'Requirements.docx',
-        url: '#',
-        size: 15360,
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        uploaded_by: 'Client',
-        created_at: new Date().toISOString()
+  const fetchStatusHistory = async (bookingId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // For now, create mock status history since we don't have a dedicated table
+      // In a real implementation, you'd have a status_history table
+      const mockHistory: StatusHistory[] = [
+        {
+          id: '1',
+          status: 'pending',
+          changed_by: 'System',
+          changed_at: booking?.created_at || new Date().toISOString(),
+          reason: 'Booking created',
+          notes: 'Initial booking request submitted'
+        }
+      ]
+      
+      setStatusHistory(mockHistory)
+    } catch (error) {
+      console.error('Error fetching status history:', error)
+    }
+  }
+
+  const fetchMessages = async (bookingId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Fetch messages related to this booking
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:profiles!messages_sender_id_fkey (full_name, role)
+        `)
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching messages:', error)
+        return
       }
-    ])
-  }, [])
 
-  const fetchReviews = useCallback(async () => {
-    // Mock reviews for now - replace with actual API call
-    setReviews([
-      {
-        id: '1',
-        rating: 5,
-        comment: 'Excellent service! Very professional and delivered on time.',
-        reviewer_id: 'client-1',
-        created_at: new Date().toISOString(),
-        reviewer: { full_name: 'Client Name' }
+      const transformedMessages: Message[] = (messages || []).map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        sender_name: msg.sender?.full_name || 'Unknown',
+        sender_role: msg.sender?.role || 'user',
+        created_at: msg.created_at,
+        is_read: msg.read || false
+      }))
+
+      setMessages(transformedMessages)
+    } catch (error) {
+      console.error('Error fetching messages:', error)
+    }
+  }
+
+  const updateBookingStatus = async (newStatus: string, reason?: string) => {
+    if (!booking) return
+
+    setUpdatingStatus(true)
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+
+      if (error) {
+        throw error
       }
-    ])
-  }, [])
 
-  const sendMessage = useCallback(async () => {
+      // Update local state
+      setBooking(prev => prev ? { ...prev, status: newStatus } : null)
+      
+      // Add to status history
+      const newHistoryItem: StatusHistory = {
+        id: Date.now().toString(),
+        status: newStatus,
+        changed_by: user?.full_name || 'User',
+        changed_at: new Date().toISOString(),
+        reason: reason || 'Status updated',
+        notes: `Changed from ${booking.status} to ${newStatus}`
+      }
+      
+      setStatusHistory(prev => [...prev, newHistoryItem])
+      
+      toast.success(`Booking status updated to ${newStatus}`)
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+      toast.error('Failed to update booking status')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
+  const sendMessage = async () => {
     if (!newMessage.trim() || !booking) return
 
     try {
       const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
       
-      const receiverId = userRole === 'client' ? booking.provider_id : booking.client_id
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        credentials: 'include'
-      }
-      
-      // Add authorization header if we have a session
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-      
-              const response = await fetch(getApiUrl('MESSAGES'), {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          receiver_id: receiverId,
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          booking_id: booking.id,
+          sender_id: user.id,
           content: newMessage,
-          subject: `Re: ${booking.services.title}`,
-          booking_id: bookingId
+          created_at: new Date().toISOString()
         })
-      })
 
-      if (response.ok) {
-        setNewMessage('')
-        await fetchMessages()
-        toast.success('Message sent successfully')
-      } else {
-        toast.error('Failed to send message')
+      if (error) {
+        throw error
       }
+
+      // Add message to local state
+      const newMsg: Message = {
+        id: Date.now().toString(),
+        content: newMessage,
+        sender_name: user?.full_name || 'You',
+        sender_role: userRole,
+        created_at: new Date().toISOString(),
+        is_read: false
+      }
+      
+      setMessages(prev => [...prev, newMsg])
+      setNewMessage('')
+      
+      toast.success('Message sent successfully')
     } catch (error) {
       console.error('Error sending message:', error)
       toast.error('Failed to send message')
     }
-  }, [newMessage, booking, userRole, bookingId])
+  }
 
-  const submitReview = useCallback(async () => {
-    if (!newReview.comment.trim()) return
-
-    try {
-      // Mock review submission - replace with actual API call
-      const review = {
-        id: Date.now().toString(),
-        rating: newReview.rating,
-        comment: newReview.comment,
-        reviewer_id: userId!,
-        created_at: new Date().toISOString(),
-        reviewer: { full_name: userRole === 'client' ? 'Client' : 'Provider' }
-      }
-
-      setReviews(prev => [...prev, review])
-      setNewReview({ rating: 5, comment: '' })
-      toast.success('Review submitted successfully')
-    } catch (error) {
-      console.error('Error submitting review:', error)
-      toast.error('Failed to submit review')
-    }
-  }, [newReview.comment, newReview.rating, userId, userRole])
-
-  const updateBookingStatus = useCallback(async (action: string) => {
-    console.log('🔍 updateBookingStatus called with action:', action)
-    console.log('🔍 Current booking state:', booking)
-    console.log('🔍 Current bookingId:', bookingId)
-    console.log('🔍 Loading state:', loading)
-    
-    if (loading) {
-      console.log('⏳ Page is still loading, please wait...')
-      toast.error('Please wait for the page to load completely.')
-      return
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { color: string, label: string }> = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
+      approved: { color: 'bg-blue-100 text-blue-800', label: 'Approved' },
+      declined: { color: 'bg-red-100 text-red-800', label: 'Declined' },
+      in_progress: { color: 'bg-purple-100 text-purple-800', label: 'In Progress' },
+      completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
+      cancelled: { color: 'bg-gray-100 text-gray-800', label: 'Cancelled' },
+      on_hold: { color: 'bg-orange-100 text-orange-800', label: 'On Hold' }
     }
     
-    if (!booking) {
-      console.error('❌ No booking data available')
-      toast.error('No booking data available. Please wait for the page to load completely.')
-      return
+    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status }
+    return <Badge className={config.color}>{config.label}</Badge>
+  }
+
+  const getPriorityBadge = (priority: string) => {
+    const priorityConfig: Record<string, { color: string, label: string }> = {
+      low: { color: 'bg-green-100 text-green-800', label: 'Low' },
+      medium: { color: 'bg-yellow-100 text-yellow-800', label: 'Medium' },
+      high: { color: 'bg-red-100 text-red-800', label: 'High' },
+      urgent: { color: 'bg-red-200 text-red-900', label: 'Urgent' }
     }
     
-    if (!booking.id) {
-      console.error('❌ Booking data is missing ID')
-      toast.error('Booking data is incomplete. Please refresh the page.')
-      return
-    }
-
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        credentials: 'include'
-      }
-      
-      // Add authorization header if we have a session
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-      
-      const requestBody = {
-        booking_id: booking.id,
-        action
-      }
-      
-      console.log('🔍 Sending request body:', requestBody)
-      
-              const response = await fetch(getApiUrl('BOOKINGS'), {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(requestBody)
-      })
-
-      if (response.ok) {
-        await fetchBookingDetails()
-        toast.success(`Booking ${action}d successfully`)
-      } else {
-        const errorData = await response.json()
-        console.error('❌ Booking update failed:', errorData)
-        toast.error(`Failed to ${action} booking: ${errorData.error || 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('❌ Error updating booking:', error)
-      toast.error(`Failed to ${action} booking`)
-    }
-  }, [booking, bookingId, loading])
-
-  const getStatusColor = useCallback((status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      case 'declined': return 'bg-red-100 text-red-800'
-      case 'completed': return 'bg-blue-100 text-blue-800'
-      case 'cancelled': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }, [])
-
-  const getOperationalStatusColor = useCallback((status: string) => {
-    switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800'
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800'
-      case 'done': return 'bg-green-100 text-green-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }, [])
-
-  const formatFileSize = useCallback((bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }, [])
-
-  const renderStars = useCallback((rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-      />
-    ))
-  }, [])
-
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value)
-  }, [])
-
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNewMessage(e.target.value)
-  }, [])
-
-  const handleReviewChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setNewReview(prev => ({ ...prev, comment: e.target.value }))
-  }, [])
-
-  const handleRatingChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))
-  }, [])
-
-  // Memoized status colors to prevent unnecessary re-computations
-  const statusColor = useMemo(() => 
-    getStatusColor(booking?.status || ''), [booking?.status, getStatusColor]
-  )
-
-  const operationalStatusColor = useMemo(() => 
-    getOperationalStatusColor(booking?.operational_status || ''), [booking?.operational_status, getOperationalStatusColor]
-  )
-
-  // Memoized payment status color
-  const paymentStatusColor = useMemo(() => {
-    if (!booking) return ''
-    switch (booking.payment_status) {
-      case 'paid': return 'bg-green-100 text-green-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-red-100 text-red-800'
-    }
-  }, [booking?.payment_status])
+    const config = priorityConfig[priority] || { color: 'bg-gray-100 text-gray-800', label: priority }
+    return <Badge className={config.color}>{config.label}</Badge>
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="container mx-auto p-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading booking details...</p>
+        </div>
       </div>
     )
   }
 
   if (!booking) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h2>
-        <p className="text-gray-600 mb-6">The booking you're looking for doesn't exist or you don't have access to it.</p>
-        <Button onClick={() => router.push('/dashboard/bookings')}>
-          Back to Bookings
-        </Button>
+      <div className="container mx-auto p-6">
+        <div className="text-center py-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Booking not found</h3>
+          <p className="text-gray-600">The booking you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => router.back()} className="mt-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{booking.services.title}</h1>
-          <p className="text-gray-600 mt-2">Booking ID: {booking.id}</p>
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Booking Details</h1>
+            <p className="text-gray-600 mt-1">#{booking.id.slice(0, 8)}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge className={statusColor}>
-            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-          </Badge>
-          <Badge className={operationalStatusColor}>
-            {booking.operational_status.replace('_', ' ').charAt(0).toUpperCase() + 
-             booking.operational_status.replace('_', ' ').slice(1)}
-          </Badge>
+        
+        <div className="flex items-center space-x-3">
+          {getStatusBadge(booking.status)}
+          {booking.priority && getPriorityBadge(booking.priority)}
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline">
+            <Share2 className="h-4 w-4 mr-2" />
+            Share
+          </Button>
         </div>
       </div>
 
-      {/* Status Alert */}
-      {booking.status === 'pending' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            <div>
-              <h3 className="text-sm font-medium text-yellow-800">Pending Approval</h3>
-              <p className="text-sm text-yellow-700">
-                This booking is waiting for provider approval. You'll be notified once it's reviewed.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+      {/* Main Content */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="qa">Q&A</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="review">Review</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="tracking">Tracking</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Booking Details */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Service Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Booking Details
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="h-5 w-5" />
+                  <span>Service Information</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Scheduled Date</label>
-                    <p className="text-sm text-gray-900">
-                      {new Date(booking.scheduled_date).toLocaleDateString()}
-                    </p>
+                <div>
+                  <h4 className="font-medium text-gray-900">{booking.service_title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{booking.service_description}</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Category:</span>
+                    <span className="font-medium">{booking.service_category}</span>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Time</label>
-                    <p className="text-sm text-gray-900">
-                      {new Date(booking.scheduled_date).toLocaleTimeString()}
-                    </p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Package:</span>
+                    <span className="font-medium">{booking.package_name}</span>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Duration</label>
-                    <p className="text-sm text-gray-900">
-                      {booking.estimated_duration || 'Not specified'}
-                    </p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Rate:</span>
+                    <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Location</label>
-                    <p className="text-sm text-gray-900">
-                      {booking.location || 'Not specified'}
-                    </p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Delivery:</span>
+                    <span className="font-medium">{booking.delivery_days} days</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Revisions:</span>
+                    <span className="font-medium">{booking.revisions}</span>
                   </div>
                 </div>
-                {booking.notes && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Notes</label>
-                    <p className="text-sm text-gray-900">{booking.notes}</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
-            {/* Financial Information */}
+            {/* Client Information */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Financial Details
+                <CardTitle className="flex items-center space-x-2">
+                  <User className="h-5 w-5" />
+                  <span>Client Information</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Amount</label>
-                    <p className="text-2xl font-bold text-green-600">
-                      {booking.currency} {booking.amount.toFixed(2)}
-                    </p>
+                <div>
+                  <h4 className="font-medium text-gray-900">{booking.client_name}</h4>
+                  {booking.client_company && (
+                    <p className="text-sm text-gray-600">{booking.client_company}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    <span>{booking.client_email}</span>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Payment Status</label>
-                    <Badge className={paymentStatusColor}>
-                      {booking.payment_status.charAt(0).toUpperCase() + booking.payment_status.slice(1)}
-                    </Badge>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <span>{booking.client_phone}</span>
                   </div>
                 </div>
-                <div className="pt-4 border-t">
-                  <Button className="w-full" disabled={booking.payment_status === 'paid'}>
-                    {booking.payment_status === 'paid' ? 'Payment Complete' : 'Make Payment'}
+
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <PhoneCall className="h-4 w-4 mr-2" />
+                    Call
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Video className="h-4 w-4 mr-2" />
+                    Video
                   </Button>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Booking Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5" />
+                  <span>Booking Details</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Status:</span>
+                    {getStatusBadge(booking.status)}
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Priority:</span>
+                    {booking.priority && getPriorityBadge(booking.priority)}
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Created:</span>
+                    <span className="font-medium">{formatDate(booking.created_at)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Scheduled:</span>
+                    <span className="font-medium">{formatDate(booking.scheduled_date)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Time:</span>
+                    <span className="font-medium">{booking.scheduled_time || 'TBD'}</span>
+                  </div>
+                </div>
+
+                {booking.location && (
+                  <div className="flex items-center space-x-2 text-sm">
+                    <LocationIcon className="h-4 w-4 text-gray-500" />
+                    <span>{booking.location}</span>
+                  </div>
+                )}
+
+                {booking.notes && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 mb-2">Notes</h5>
+                    <p className="text-sm text-gray-600">{booking.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Action Buttons */}
+          {/* Quick Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Actions</CardTitle>
-              <CardDescription>Manage this booking</CardDescription>
+              <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-3">
-                {userRole === 'provider' && booking.status === 'pending' && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {booking.status === 'pending' && (
                   <>
-                    <Button onClick={() => updateBookingStatus('approve')} className="bg-green-600 hover:bg-green-700">
+                    <Button 
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => updateBookingStatus('approved')}
+                      disabled={updatingStatus}
+                    >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Approve
                     </Button>
-                    <Button onClick={() => updateBookingStatus('decline')} variant="destructive">
+                    <Button 
+                      variant="destructive"
+                      onClick={() => updateBookingStatus('declined')}
+                      disabled={updatingStatus}
+                    >
                       <XCircle className="h-4 w-4 mr-2" />
                       Decline
                     </Button>
                   </>
                 )}
-                {userRole === 'provider' && booking.status === 'approved' && (
-                  <Button onClick={() => updateBookingStatus('complete')} className="bg-blue-600 hover:bg-blue-700">
+                
+                {booking.status === 'approved' && (
+                  <Button 
+                    onClick={() => updateBookingStatus('in_progress')}
+                    disabled={updatingStatus}
+                  >
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Start Work
+                  </Button>
+                )}
+                
+                {booking.status === 'in_progress' && (
+                  <Button 
+                    onClick={() => updateBookingStatus('completed')}
+                    disabled={updatingStatus}
+                  >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Mark Complete
                   </Button>
                 )}
-                {userRole === 'client' && ['pending', 'approved'].includes(booking.status) && (
-                  <Button onClick={() => updateBookingStatus('cancel')} variant="outline">
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Booking
-                  </Button>
-                )}
+                
                 <Button variant="outline">
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Edit Details
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Booking
                 </Button>
               </div>
             </CardContent>
@@ -677,231 +622,197 @@ export default function BookingDetailPage() {
         <TabsContent value="chat" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Chat with {userRole === 'client' ? 'Provider' : 'Client'}
+              <CardTitle className="flex items-center space-x-2">
+                <MessageSquare className="h-5 w-5" />
+                <span>Messages</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Messages Display */}
-              <div className="h-96 overflow-y-auto border rounded-lg p-4 mb-4 bg-gray-50">
+              {/* Messages List */}
+              <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
                 {messages.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No messages yet. Start the conversation!</p>
-                  </div>
+                  <p className="text-center text-gray-500 py-8">No messages yet</p>
                 ) : (
-                  <div className="space-y-4">
-                    {messages.map((message) => (
+                  messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.sender_role === userRole ? 'justify-end' : 'justify-start'}`}
+                    >
                       <div
-                        key={message.id}
-                        className={`flex ${message.sender_id === userId ? 'justify-end' : 'justify-start'}`}
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          message.sender_role === userRole
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-900'
+                        }`}
                       >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            message.sender_id === userId
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-900 border'
-                          }`}
-                        >
-                          <div className="text-xs opacity-75 mb-1">
-                            {message.sender.full_name} • {new Date(message.created_at).toLocaleTimeString()}
-                          </div>
-                          <p>{message.content}</p>
+                        <div className="text-sm font-medium mb-1">
+                          {message.sender_name}
+                        </div>
+                        <div className="text-sm">{message.content}</div>
+                        <div className="text-xs opacity-75 mt-1">
+                          {formatDate(message.created_at)}
                         </div>
                       </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
+                    </div>
+                  ))
                 )}
               </div>
 
-              {/* Message Input */}
-              <div className="flex gap-2">
+              {/* Send Message */}
+              <div className="flex space-x-2">
                 <Textarea
-                  value={newMessage}
-                  onChange={handleMessageChange}
                   placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
                   className="flex-1"
                   rows={3}
                 />
                 <Button onClick={sendMessage} disabled={!newMessage.trim()}>
-                  <Send className="h-4 w-4" />
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
                 </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Q&A Tab */}
-        <TabsContent value="qa" className="space-y-6">
+        {/* History Tab */}
+        <TabsContent value="history" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center space-x-2">
                 <FileText className="h-5 w-5" />
-                Questions & Answers
+                <span>Status History</span>
               </CardTitle>
-              <CardDescription>Ask questions and get answers about this service</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-900 mb-2">How to ask a question:</h4>
-                  <p className="text-sm text-blue-700">
-                    Use the chat feature to ask questions about this service. The provider will respond 
-                    with detailed answers and clarifications.
-                  </p>
-                </div>
-                
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>Questions and answers appear in the chat tab</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => handleTabChange('chat')}
-                  >
-                    Go to Chat
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Files Tab */}
-        <TabsContent value="files" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Files & Documents
-              </CardTitle>
-              <CardDescription>Share and manage files related to this booking</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Upload Section */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-6">
-                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-sm text-gray-600 mb-2">
-                  Drop files here or click to upload
-                </p>
-                <Button variant="outline" disabled={uploadingFile}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Files
-                </Button>
-              </div>
-
-              {/* Files List */}
-              <div className="space-y-3">
-                {files.map((file) => (
-                  <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-gray-900">{file.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {formatFileSize(file.size)} • {file.uploaded_by} • {new Date(file.created_at).toLocaleDateString()}
+                {statusHistory.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No status changes yet</p>
+                ) : (
+                  statusHistory.map((item, index) => (
+                    <div key={item.id} className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                        {index < statusHistory.length - 1 && (
+                          <div className="w-0.5 h-8 bg-gray-300 mx-auto mt-1"></div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          {getStatusBadge(item.status)}
+                          <span className="text-sm text-gray-600">by {item.changed_by}</span>
+                        </div>
+                        <p className="text-sm text-gray-900">{item.reason}</p>
+                        {item.notes && (
+                          <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatDate(item.changed_at)}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Review Tab */}
-        <TabsContent value="review" className="space-y-6">
+        {/* Tracking Tab */}
+        <TabsContent value="tracking" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5" />
-                Reviews & Feedback
+              <CardTitle className="flex items-center space-x-2">
+                <MapPin className="h-5 w-5" />
+                <span>Project Tracking</span>
               </CardTitle>
-              <CardDescription>Share your experience and read reviews</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Submit Review */}
-              {booking.status === 'completed' && (
-                <div className="border rounded-lg p-4 mb-6">
-                  <h4 className="font-medium text-gray-900 mb-3">Write a Review</h4>
+              <div className="space-y-6">
+                {/* Progress Timeline */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-4">Project Progress</h4>
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Rating</label>
-                      <div className="flex items-center gap-1 mt-1">
-                        {renderStars(newReview.rating)}
+                    <div className="flex items-center space-x-4">
+                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                        <CheckCircle className="h-5 w-5 text-white" />
                       </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="5"
-                        value={newReview.rating}
-                        onChange={handleRatingChange}
-                        className="w-full mt-2"
-                        aria-label="Rating from 1 to 5"
-                        title={`Rating: ${newReview.rating} out of 5`}
-                      />
-                      <div className="text-xs text-gray-500 mt-1 text-center">
-                        {newReview.rating} out of 5 stars
+                      <div className="flex-1">
+                        <p className="font-medium">Booking Created</p>
+                        <p className="text-sm text-gray-600">{formatDate(booking.created_at)}</p>
                       </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Comment</label>
-                      <Textarea
-                        value={newReview.comment}
-                        onChange={handleReviewChange}
-                        placeholder="Share your experience..."
-                        rows={3}
-                      />
-                    </div>
-                    <Button onClick={submitReview} disabled={!newReview.comment.trim()}>
-                      <Star className="h-4 w-4 mr-2" />
-                      Submit Review
-                    </Button>
+                    
+                    {booking.status !== 'pending' && (
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">Booking Approved</p>
+                          <p className="text-sm text-gray-600">Status changed to approved</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {['in_progress', 'completed'].includes(booking.status) && (
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">Work Started</p>
+                          <p className="text-sm text-gray-600">Project is in progress</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {booking.status === 'completed' && (
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">Project Completed</p>
+                          <p className="text-sm text-gray-600">All deliverables finished</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {['pending', 'approved'].includes(booking.status) && (
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-gray-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-500">Work Not Started</p>
+                          <p className="text-sm text-gray-500">Waiting for approval or start</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* Reviews Display */}
-              <div className="space-y-4">
-                {reviews.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Star className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No reviews yet. Be the first to share your experience!</p>
-                  </div>
-                ) : (
-                  reviews.map((review) => (
-                    <div key={review.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            {renderStars(review.rating)}
-                          </div>
-                          <span className="text-sm text-gray-500">by {review.reviewer.full_name}</span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {new Date(review.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-gray-900">{review.comment}</p>
+                {/* Milestones */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-4">Key Milestones</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <h5 className="font-medium text-gray-900">Project Start</h5>
+                      <p className="text-sm text-gray-600">{formatDate(booking.scheduled_date)}</p>
                     </div>
-                  ))
-                )}
+                    <div className="p-4 border rounded-lg">
+                      <h5 className="font-medium text-gray-900">Expected Delivery</h5>
+                                             <p className="text-sm text-gray-600">
+                         {booking.delivery_days ? 
+                           formatDate(new Date(new Date(booking.scheduled_date).getTime() + (booking.delivery_days * 24 * 60 * 60 * 1000))) :
+                           'TBD'
+                         }
+                       </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

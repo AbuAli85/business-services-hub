@@ -51,5 +51,8 @@ export const API_ENDPOINTS = {
  * Type-safe API endpoint getter
  */
 export function getApiUrl(endpoint: keyof typeof API_ENDPOINTS): string {
-  return API_ENDPOINTS[endpoint]
+  const baseUrl = API_ENDPOINTS[endpoint]
+  // Add cache-busting version parameter to prevent stale API calls
+  const version = Date.now()
+  return `${baseUrl}?v=${version}`
 }

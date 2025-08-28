@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
 import { getApiUrl } from '@/lib/api-utils'
+import { useRouter } from 'next/navigation'
 
 import toast from 'react-hot-toast'
 import { 
@@ -51,7 +52,9 @@ import {
   Bell,
   Lightbulb,
   Settings,
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 
 interface Booking {
@@ -410,7 +413,8 @@ export default function BookingsPage() {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  
+  const router = useRouter()
+
   function PaymentForm({ onClose }: { onClose: () => void }) {
     const stripe = useStripe()
     const elements = useElements()
