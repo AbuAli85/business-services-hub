@@ -356,7 +356,7 @@ export default function BookingDetailPage() {
         method: 'PATCH',
         headers,
         body: JSON.stringify({
-          booking_id: bookingId,
+          booking_id: booking.id,
           action
         })
       })
@@ -365,13 +365,15 @@ export default function BookingDetailPage() {
         await fetchBookingDetails()
         toast.success(`Booking ${action}d successfully`)
       } else {
-        toast.error(`Failed to ${action} booking`)
+        const errorData = await response.json()
+        console.error('Booking update failed:', errorData)
+        toast.error(`Failed to ${action} booking: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error updating booking:', error)
       toast.error(`Failed to ${action} booking`)
     }
-  }, [booking, bookingId])
+  }, [booking])
 
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
