@@ -477,15 +477,22 @@ export async function PATCH(request: NextRequest) {
     const { booking_id, action, scheduled_date, reason } = parsed.data
 
     // Fetch booking to validate permissions
+    console.log('🔍 API: Fetching booking with ID:', booking_id)
+    
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
       .select('*')
       .eq('id', booking_id)
       .single()
 
+    console.log('🔍 API: Supabase response:', { data: booking, error: fetchError })
+
     if (fetchError || !booking) {
+      console.error('❌ API: Failed to fetch booking:', fetchError)
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
     }
+
+    console.log('✅ API: Booking found:', booking)
 
     const isClient = booking.client_id === user.id
     const isProvider = booking.provider_id === user.id
