@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
+
 import toast from 'react-hot-toast'
 import { 
   Calendar, 
@@ -2251,7 +2252,7 @@ export default function BookingsPage() {
     try {
       setIsUpdatingStatus(booking.id)
       const amount = booking.amount || 0
-      const res = await fetch('/api/payments/create-intent', {
+              const res = await fetch('/api/payments/create-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
