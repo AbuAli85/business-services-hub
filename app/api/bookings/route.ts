@@ -183,12 +183,11 @@ export async function POST(request: NextRequest) {
       type: 'booking',
       title: 'New Booking Request',
       message: `New booking request for ${service.title} from ${clientProfile?.full_name || 'Client'}`,
-      metadata: { 
+      data: { 
         booking_id: booking.id,
         service_title: service.title,
         client_name: clientProfile?.full_name || 'Client'
-      },
-      priority: 'high'
+      }
     })
 
     // Update service booking count
@@ -549,8 +548,7 @@ export async function PATCH(request: NextRequest) {
           type: notification.type,
           title: notification.title,
           message: notification.message,
-          priority: 'medium',
-          metadata: { booking_id }
+          data: { booking_id }
         })
         
         if (notificationError) {
