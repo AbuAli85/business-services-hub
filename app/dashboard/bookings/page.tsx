@@ -134,12 +134,7 @@ export default function BookingsPage() {
       
       let query = supabase
         .from('bookings')
-        .select(`
-          *,
-          services:service_id(service_name, description),
-          clients:client_id(full_name, company_name, email, phone),
-          providers:provider_id(full_name, company_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       // Role-based filtering
@@ -154,17 +149,7 @@ export default function BookingsPage() {
       if (error) throw error
 
       // Transform the data to match our interface
-      const transformedBookings = data?.map(booking => ({
-        ...booking,
-        service_name: booking.services?.service_name,
-        service_description: booking.services?.description,
-        client_name: booking.clients?.full_name,
-        client_company_name: booking.clients?.company_name,
-        client_email: booking.clients?.email,
-        client_phone: booking.clients?.phone,
-        provider_name: booking.providers?.full_name,
-        provider_company_name: booking.providers?.company_name,
-      })) || []
+      const transformedBookings = data || []
 
       setBookings(transformedBookings)
       setFilteredBookings(transformedBookings)
@@ -227,9 +212,9 @@ export default function BookingsPage() {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(booking =>
-        booking.service_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.provider_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (booking.service_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (booking.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (booking.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         booking.id.toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
@@ -701,7 +686,7 @@ export default function BookingsPage() {
                       <Package className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{booking.service_name}</p>
+                      <p className="font-medium text-gray-900 truncate">{booking.service_name || 'Service Name Not Available'}</p>
                       <p className="text-sm text-gray-500">Service</p>
                       {booking.service_description && (
                         <p className="text-xs text-gray-400 truncate mt-1">{booking.service_description}</p>
@@ -714,7 +699,7 @@ export default function BookingsPage() {
                       <User className="h-5 w-5 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{booking.client_name}</p>
+                      <p className="font-medium text-gray-900 truncate">{booking.client_name || 'Client Name Not Available'}</p>
                       <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
                       {booking.client_email && (
                         <p className="text-xs text-gray-400 truncate mt-1">{booking.client_email}</p>
@@ -729,7 +714,7 @@ export default function BookingsPage() {
                         <Building2 className="h-5 w-5 text-purple-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{booking.provider_name}</p>
+                        <p className="font-medium text-gray-900 truncate">{booking.provider_name || 'Provider Name Not Available'}</p>
                         <p className="text-sm text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
                       </div>
                     </div>
