@@ -157,6 +157,10 @@ export default function BookingsPage() {
       const supabase = await getSupabaseClient()
       
       // First, fetch the basic booking data
+      console.log('🔍 Frontend: Querying table: bookings')
+      console.log('🔍 Frontend: User ID:', userId)
+      console.log('🔍 Frontend: User Role:', role)
+      
       let query = supabase
         .from('bookings')
         .select('*')
@@ -165,11 +169,22 @@ export default function BookingsPage() {
       // Role-based filtering
       if (role === 'client') {
         query = query.eq('client_id', userId)
+        console.log('🔍 Frontend: Filtering by client_id:', userId)
       } else if (role === 'provider') {
         query = query.eq('provider_id', userId)
+        console.log('🔍 Frontend: Filtering by provider_id:', userId)
       }
 
       const { data: bookingsData, error: bookingsError } = await query
+      
+      console.log('🔍 Frontend: Raw bookings data from Supabase:')
+      console.log('  - Data:', bookingsData)
+      console.log('  - Error:', bookingsError)
+      console.log('  - Count:', bookingsData?.length || 0)
+      if (bookingsData && bookingsData.length > 0) {
+        console.log('  - Sample booking structure:', Object.keys(bookingsData[0]))
+        console.log('  - Sample booking data:', bookingsData[0])
+      }
 
       if (bookingsError) {
         console.error('Supabase query error:', bookingsError)
