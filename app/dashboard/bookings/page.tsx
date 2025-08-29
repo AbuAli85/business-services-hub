@@ -146,7 +146,33 @@ export default function BookingsPage() {
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase query error:', error)
+        // If there's a foreign key error, try a simpler query
+        if (error.code === 'PGRST200') {
+          console.log('Attempting fallback query without foreign key relationships...')
+          const fallbackQuery = supabase
+            .from('bookings')
+            .select('*')
+            .order('created_at', { ascending: false })
+          
+          if (role === 'client') {
+            fallbackQuery.eq('client_id', userId)
+          } else if (role === 'provider') {
+            fallbackQuery.eq('provider_id', userId)
+          }
+          
+          const { data: fallbackData, error: fallbackError } = await fallbackQuery
+          if (fallbackError) throw fallbackError
+          
+          const transformedBookings = fallbackData || []
+          setBookings(transformedBookings)
+          setFilteredBookings(transformedBookings)
+          calculateStats(transformedBookings)
+          return
+        }
+        throw error
+      }
 
       // Transform the data to match our interface
       const transformedBookings = data || []
@@ -686,7 +712,9 @@ export default function BookingsPage() {
                       <Package className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{booking.service_name || 'Service Name Not Available'}</p>
+                      <p className="font-medium text-gray-900 truncate">
+                        {booking.service_name || `Service ID: ${booking.service_id?.slice(0, 8) || 'Unknown'}`}
+                      </p>
                       <p className="text-sm text-gray-500">Service</p>
                       {booking.service_description && (
                         <p className="text-xs text-gray-400 truncate mt-1">{booking.service_description}</p>
@@ -699,7 +727,9 @@ export default function BookingsPage() {
                       <User className="h-5 w-5 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{booking.client_name || 'Client Name Not Available'}</p>
+                      <p className="font-medium text-gray-900 truncate">
+                        {booking.client_name || `Client ID: ${booking.client_id?.slice(0, 8) || 'Unknown'}`}
+                      </p>
                       <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
                       {booking.client_email && (
                         <p className="text-xs text-gray-400 truncate mt-1">{booking.client_email}</p>
@@ -714,7 +744,9 @@ export default function BookingsPage() {
                         <Building2 className="h-5 w-5 text-purple-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{booking.provider_name || 'Provider Name Not Available'}</p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {booking.provider_name || `Provider ID: ${booking.provider_id?.slice(0, 8) || 'Unknown'}`}
+                        </p>
                         <p className="text-sm text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
                       </div>
                     </div>
