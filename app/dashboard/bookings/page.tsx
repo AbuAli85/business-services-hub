@@ -132,6 +132,7 @@ export default function BookingsPage() {
       setLoading(true)
       const supabase = await getSupabaseClient()
       
+      // First, fetch the basic booking data
       let query = supabase
         .from('bookings')
         .select('*')
@@ -144,38 +145,90 @@ export default function BookingsPage() {
         query = query.eq('provider_id', userId)
       }
 
-      const { data, error } = await query
+      const { data: bookingsData, error: bookingsError } = await query
 
-      if (error) {
-        console.error('Supabase query error:', error)
-        // If there's a foreign key error, try a simpler query
-        if (error.code === 'PGRST200') {
-          console.log('Attempting fallback query without foreign key relationships...')
-          const fallbackQuery = supabase
-            .from('bookings')
-            .select('*')
-            .order('created_at', { ascending: false })
-          
-          if (role === 'client') {
-            fallbackQuery.eq('client_id', userId)
-          } else if (role === 'provider') {
-            fallbackQuery.eq('provider_id', userId)
-          }
-          
-          const { data: fallbackData, error: fallbackError } = await fallbackQuery
-          if (fallbackError) throw fallbackError
-          
-          const transformedBookings = fallbackData || []
-          setBookings(transformedBookings)
-          setFilteredBookings(transformedBookings)
-          calculateStats(transformedBookings)
-          return
-        }
-        throw error
+      if (bookingsError) {
+        console.error('Supabase query error:', bookingsError)
+        throw bookingsError
       }
 
-      // Transform the data to match our interface
-      const transformedBookings = data || []
+      if (!bookingsData || bookingsData.length === 0) {
+        setBookings([])
+        setFilteredBookings([])
+        calculateStats([])
+        return
+      }
+
+      // Extract unique IDs for related data
+      const serviceIds = Array.from(new Set(bookingsData.map(b => b.service_id).filter(Boolean)))
+      const clientIds = Array.from(new Set(bookingsData.map(b => b.client_id).filter(Boolean)))
+      const providerIds = Array.from(new Set(bookingsData.map(b => b.provider_id).filter(Boolean)))
+
+      // Fetch related data in parallel
+      const [servicesData, clientsData, providersData] = await Promise.all([
+        // Fetch services data
+        serviceIds.length > 0 ? supabase
+          .from('services')
+          .select('id, service_name, description')
+          .in('id', serviceIds)
+          .then(({ data, error }) => {
+            if (error) {
+              console.warn('Error fetching services:', error)
+              return []
+            }
+            return data || []
+          }) : Promise.resolve([]),
+        
+        // Fetch clients data
+        clientIds.length > 0 ? supabase
+          .from('profiles')
+          .select('id, full_name, company_name, email, phone')
+          .in('id', clientIds)
+          .then(({ data, error }) => {
+            if (error) {
+              console.warn('Error fetching clients:', error)
+              return []
+            }
+            return data || []
+          }) : Promise.resolve([]),
+        
+        // Fetch providers data
+        providerIds.length > 0 ? supabase
+          .from('profiles')
+          .select('id, full_name, company_name')
+          .in('id', providerIds)
+          .then(({ data, error }) => {
+            if (error) {
+              console.warn('Error fetching providers:', error)
+              return []
+            }
+            return data || []
+          }) : Promise.resolve([])
+      ])
+
+      // Create lookup maps for efficient data access
+      const servicesMap = new Map(servicesData.map(s => [s.id, s]))
+      const clientsMap = new Map(clientsData.map(c => [c.id, c]))
+      const providersMap = new Map(providersData.map(p => [p.id, p]))
+
+      // Transform the data with related information
+      const transformedBookings = bookingsData.map(booking => {
+        const service = servicesMap.get(booking.service_id)
+        const client = clientsMap.get(booking.client_id)
+        const provider = providersMap.get(booking.provider_id)
+
+        return {
+          ...booking,
+          service_name: service?.service_name || null,
+          service_description: service?.description || null,
+          client_name: client?.full_name || null,
+          client_company_name: client?.company_name || null,
+          client_email: client?.email || null,
+          client_phone: client?.phone || null,
+          provider_name: provider?.full_name || null,
+          provider_company_name: provider?.company_name || null,
+        }
+      })
 
       setBookings(transformedBookings)
       setFilteredBookings(transformedBookings)
@@ -183,10 +236,17 @@ export default function BookingsPage() {
     } catch (error) {
       console.error('Error fetching bookings:', error)
       toast.error('Failed to fetch bookings')
+      
+      // Set empty state on error
+      setBookings([])
+      setFilteredBookings([])
+      calculateStats([])
     } finally {
       setLoading(false)
     }
   }
+
+
 
   const calculateStats = (bookingsData: Booking[]) => {
     const now = new Date()
