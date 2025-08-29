@@ -295,7 +295,12 @@ class EdgeFunctionManager {
 
   // Get performance statistics
   getPerformanceStats() {
-    const events = this.monitoringEvents || []
+    // Ensure we're accessing the instance property
+    if (!this.monitoringEvents) {
+      this.monitoringEvents = []
+    }
+    
+    const events = this.monitoringEvents
     const totalCalls = events.length
     const successfulCalls = events.filter(e => e.success).length
     const failedCalls = totalCalls - successfulCalls
@@ -315,7 +320,7 @@ class EdgeFunctionManager {
 // Export singleton instance
 export const edgeFunctions = new EdgeFunctionManager()
 
-// Export individual functions for convenience
+// Export individual functions for convenience - bind them to the instance
 export const {
   createService,
   getServices,
@@ -335,9 +340,11 @@ export const {
   getDashboardAnalytics,
   getRevenueAnalytics,
   getPerformanceMetrics,
-  healthCheck,
-  getPerformanceStats,
-  getMonitoringEvents,
-  clearMonitoringEvents,
-  setMonitoringEnabled
+  healthCheck
 } = edgeFunctions
+
+// Export methods that need to maintain 'this' context
+export const getPerformanceStats = edgeFunctions.getPerformanceStats.bind(edgeFunctions)
+export const getMonitoringEvents = edgeFunctions.getMonitoringEvents.bind(edgeFunctions)
+export const clearMonitoringEvents = edgeFunctions.clearMonitoringEvents.bind(edgeFunctions)
+export const setMonitoringEnabled = edgeFunctions.setMonitoringEnabled.bind(edgeFunctions)
