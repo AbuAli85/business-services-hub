@@ -161,9 +161,9 @@ export default function ClientDashboard() {
         .select('rating')
         .eq('client_id', userId)
 
-      const totalReviews = reviews?.length || 0
-      const averageRating = totalReviews > 0 
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews 
+            const totalReviews = reviews?.length || 0
+      const averageRating = totalReviews > 0 && reviews
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
         : 0
 
       // Get favorite providers count
@@ -208,7 +208,7 @@ export default function ClientDashboard() {
         .limit(5)
 
       if (bookings) {
-        setRecentBookings(bookings.map(b => ({
+        setRecentBookings(bookings.map((b: any) => ({
           ...b,
           provider_name: b.provider?.full_name || 'Unknown Provider',
           provider_company: b.provider?.company_name
@@ -241,7 +241,7 @@ export default function ClientDashboard() {
         .limit(5)
 
       if (favorites) {
-        setFavoriteServices(favorites.map(f => ({
+        setFavoriteServices(favorites.map((f: any) => ({
           id: f.service.id,
           title: f.service.title,
           category: f.service.category,
@@ -279,7 +279,7 @@ export default function ClientDashboard() {
         .limit(3)
 
       if (bookings) {
-        setUpcomingBookings(bookings.map(b => ({
+        setUpcomingBookings(bookings.map((b: any) => ({
           ...b,
           provider_name: b.provider?.full_name || 'Unknown Provider'
         })))
