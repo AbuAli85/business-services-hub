@@ -41,6 +41,7 @@ interface Service {
   currency: string
   cover_image_url?: string
   provider: {
+    id: string
     full_name: string
     company_name?: string
     email: string
@@ -62,7 +63,7 @@ interface ServicePackage {
 interface BookingForm {
   service_id: string
   package_id: string
-  scheduled_date: Date | null
+  scheduled_date: Date | undefined
   scheduled_time: string
   location: string
   notes: string
@@ -83,7 +84,7 @@ export default function CreateBookingPage() {
   const [formData, setFormData] = useState<BookingForm>({
     service_id: '',
     package_id: '',
-    scheduled_date: null,
+    scheduled_date: undefined,
     scheduled_time: '',
     location: '',
     notes: '',
@@ -125,6 +126,7 @@ export default function CreateBookingPage() {
         .select(`
           *,
           provider:profiles!services_provider_id_fkey (
+            id,
             full_name,
             company_name,
             email,
