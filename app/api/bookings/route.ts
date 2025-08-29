@@ -531,6 +531,16 @@ export async function PATCH(request: NextRequest) {
     console.log('🔍 API: User ID:', user.id)
     console.log('🔍 API: Request body:', body)
     
+    // First, let's check what bookings exist for this user
+    const { data: userBookings, error: userBookingsError } = await supabase
+      .from('bookings')
+      .select('id, client_id, provider_id, status')
+      .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+    
+    console.log('🔍 API: User bookings found:', userBookings)
+    console.log('🔍 API: User bookings error:', userBookingsError)
+    
+    // Now try to fetch the specific booking
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
       .select('*')
@@ -554,6 +564,23 @@ export async function PATCH(request: NextRequest) {
       
       console.log('🔍 API: Sample bookings in database:', allBookings)
       console.log('🔍 API: List error:', listError)
+      
+      // Check if the booking ID exists but belongs to a different user
+      const { data: anyBooking, error: anyBookingError } = await supabase
+        .from('bookings')
+        .select('id, client_id, provider_id')
+        .eq('id', booking_id)
+        .maybeSingle()
+      
+      if (anyBooking) {
+        console.log('🔍 API: Booking exists but belongs to different user:', anyBooking)
+        const response = NextResponse.json({ 
+          error: 'Booking not found or access denied',
+          details: 'The booking exists but you do not have permission to access it'
+        }, { status: 404 })
+        Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+        return response
+      }
       
       const response = NextResponse.json({ error: 'Booking not found' }, { status: 404 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))

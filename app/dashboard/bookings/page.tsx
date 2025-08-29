@@ -384,6 +384,12 @@ export default function BookingsPage() {
       console.log('🔍 Sending PATCH request to /api/bookings:')
       console.log('🔍 Request body:', requestBody)
       console.log('🔍 Authorization header present:', !!session.access_token)
+      console.log('🔍 Original booking ID:', bookingId)
+      console.log('🔍 User ID:', user.id)
+      console.log('🔍 User Role:', userRole)
+      
+      // Also log the current bookings to see what's available
+      console.log('🔍 Current bookings in state:', bookings.map(b => ({ id: b.id, status: b.status, service_name: b.service_name })))
 
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
