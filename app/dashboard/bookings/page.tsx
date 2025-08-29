@@ -26,7 +26,15 @@ import {
   Building2,
   RefreshCw,
   MoreHorizontal,
-  Copy
+  Copy,
+  Edit,
+  Trash2,
+  Download,
+  Share2,
+  Archive,
+  CheckCircle,
+  XCircle,
+  Clock4
 } from 'lucide-react'
 
 interface Booking {
@@ -90,6 +98,8 @@ export default function BookingsPage() {
   const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null)
   const [stats, setStats] = useState<BookingStats>({
     total: 0,
     pending: 0,
@@ -107,6 +117,20 @@ export default function BookingsPage() {
   useEffect(() => {
     checkUser()
   }, [])
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openActionMenu && !(event.target as Element).closest('.action-menu-container')) {
+        closeActionMenu()
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openActionMenu])
 
   const checkUser = async () => {
     try {
@@ -543,6 +567,46 @@ export default function BookingsPage() {
     )
   }
 
+  const toggleActionMenu = (bookingId: string) => {
+    setOpenActionMenu(openActionMenu === bookingId ? null : bookingId)
+  }
+
+  const closeActionMenu = () => {
+    setOpenActionMenu(null)
+  }
+
+  const handleActionClick = (action: string, booking: Booking) => {
+    closeActionMenu()
+    switch (action) {
+      case 'view':
+        openDetailsModal(booking)
+        break
+      case 'edit':
+        // TODO: Implement edit functionality
+        toast.success('Edit functionality coming soon')
+        break
+      case 'message':
+        openMessageModal(booking)
+        break
+      case 'archive':
+        // TODO: Implement archive functionality
+        toast.success('Archive functionality coming soon')
+        break
+      case 'download':
+        // TODO: Implement download functionality
+        toast.success('Download functionality coming soon')
+        break
+      case 'share':
+        // TODO: Implement share functionality
+        toast.success('Share functionality coming soon')
+        break
+      case 'delete':
+        // TODO: Implement delete functionality
+        toast.success('Delete functionality coming soon')
+        break
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -634,290 +698,594 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Filters and Search */}
-      <Card className="mb-6 bg-white border-gray-200">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search bookings..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-40">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="declined">Declined</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-              <SelectTrigger className="w-full md:w-40">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created_at">Date Created</SelectItem>
-                <SelectItem value="scheduled_date">Scheduled Date</SelectItem>
-                <SelectItem value="amount">Amount</SelectItem>
-                <SelectItem value="status">Status</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button
-              variant="outline"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="w-full md:w-auto"
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'} Sort
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+             {/* Filters and Search */}
+       <Card className="mb-6 bg-white border-gray-200">
+         <CardContent className="p-4">
+           <div className="flex flex-col md:flex-row gap-4 items-center">
+             <div className="flex-1">
+               <div className="relative">
+                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                 <Input
+                   placeholder="Search bookings..."
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   className="pl-10"
+                 />
+               </div>
+             </div>
+             
+             <Select value={statusFilter} onValueChange={setStatusFilter}>
+               <SelectTrigger className="w-full md:w-40">
+                 <SelectValue placeholder="Filter by status" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Statuses</SelectItem>
+                 <SelectItem value="pending">Pending</SelectItem>
+                 <SelectItem value="approved">Approved</SelectItem>
+                 <SelectItem value="in_progress">In Progress</SelectItem>
+                 <SelectItem value="completed">Completed</SelectItem>
+                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                 <SelectItem value="declined">Declined</SelectItem>
+               </SelectContent>
+             </Select>
+             
+             <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+               <SelectTrigger className="w-full md:w-40">
+                 <SelectValue placeholder="Sort by" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="created_at">Date Created</SelectItem>
+                 <SelectItem value="scheduled_date">Scheduled Date</SelectItem>
+                 <SelectItem value="amount">Amount</SelectItem>
+                 <SelectItem value="status">Status</SelectItem>
+               </SelectContent>
+             </Select>
+             
+             <Button
+               variant="outline"
+               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+               className="w-full md:w-auto"
+             >
+               {sortOrder === 'asc' ? '↑' : '↓'} Sort
+             </Button>
 
-      {/* Bookings List */}
-      {filteredBookings.length === 0 ? (
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-8 text-center">
-            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="h-8 w-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-            <p className="text-gray-500 mb-4">
-              {searchQuery || statusFilter !== 'all' 
-                ? 'Try adjusting your search or filters'
-                : userRole === 'client' 
-                  ? 'Create your first booking to get started'
-                  : 'No service requests at the moment'
-              }
-            </p>
-            {userRole === 'client' && !searchQuery && statusFilter === 'all' && (
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => router.push('/dashboard/bookings/create')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create First Booking
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredBookings.map((booking) => (
-            <Card key={booking.id} className="hover:shadow-lg transition-all duration-300 border border-gray-200 shadow-sm bg-white hover:border-gray-300">
-              <CardContent className="p-6">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      id={`booking-${booking.id}`}
-                      checked={selectedBookings.includes(booking.id)}
-                      onChange={() => toggleBookingSelection(booking.id)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      aria-label={`Select booking ${booking.id}`}
-                    />
-                    
-                    {/* Status Badge */}
-                    <div className="flex items-center gap-2">
-                      <Badge className={`${getStatusColor(booking.status)} flex items-center gap-2 px-3 py-1.5 font-medium`}>
-                        {getStatusIcon(booking.status)}
-                        <span className="capitalize">{booking.status.replace('_', ' ')}</span>
-                      </Badge>
-                      
-                      {/* Priority Indicator */}
-                      {booking.priority && (
-                        <Badge className={`${getPriorityColor(booking.priority)} text-xs px-2.5 py-1 font-medium`}>
-                          {getPriorityIcon(booking.priority)} {booking.priority.toUpperCase()}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <span className="text-sm text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
-                      #{booking.id.slice(0, 8)}
-                    </span>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500 mb-2 bg-gray-50 px-3 py-1 rounded-lg inline-block">
-                      Created {formatDate(booking.created_at)}
-                    </div>
-                    
-                    {booking.amount && (
-                      <div className="text-lg font-bold text-emerald-600 mb-2">
-                        {formatCurrency(booking.amount)}
-                      </div>
-                    )}
-                  </div>
-                </div>
+             {/* View Mode Toggle */}
+             <div className="flex items-center gap-2">
+               <span className="text-sm text-gray-600">View:</span>
+               <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+                 <Button
+                   variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                   size="sm"
+                   onClick={() => setViewMode('cards')}
+                   className="rounded-none border-0"
+                 >
+                   <div className="grid grid-cols-2 gap-1 w-4 h-4">
+                     <div className={`w-1.5 h-1.5 rounded-sm ${viewMode === 'cards' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                     <div className={`w-1.5 h-1.5 rounded-sm ${viewMode === 'cards' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                     <div className={`w-1.5 h-1.5 rounded-sm ${viewMode === 'cards' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                     <div className={`w-1.5 h-1.5 rounded-sm ${viewMode === 'cards' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                   </div>
+                 </Button>
+                 <Button
+                   variant={viewMode === 'table' ? 'default' : 'ghost'}
+                   size="sm"
+                   onClick={() => setViewMode('table')}
+                   className="rounded-none border-0"
+                 >
+                   <div className="grid grid-cols-3 gap-1 w-4 h-4">
+                     <div className={`w-1 h-1.5 rounded-sm ${viewMode === 'table' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                     <div className={`w-1 h-1.5 rounded-sm ${viewMode === 'table' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                     <div className={`w-1 h-1.5 rounded-sm ${viewMode === 'table' ? 'bg-white' : 'bg-gray-400'}`}></div>
+                   </div>
+                 </Button>
+               </div>
+             </div>
+           </div>
+         </CardContent>
+       </Card>
 
-                {/* Information Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Package className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">
-                        {booking.service_name || `Service ID: ${booking.service_id?.slice(0, 8) || 'Unknown'}`}
-                      </p>
-                      <p className="text-sm text-gray-500">Service</p>
-                      {booking.service_description && (
-                        <p className="text-xs text-gray-400 truncate mt-1">{booking.service_description}</p>
-                      )}
-                      {!booking.service_name && (
-                        <p className="text-xs text-orange-600 mt-1">Service name not available</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <User className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">
-                        {booking.client_name || `Client ID: ${booking.client_id?.slice(0, 8) || 'Unknown'}`}
-                      </p>
-                      <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
-                      {!booking.client_name && (
-                        <p className="text-xs text-orange-600 mt-1">Client name not available</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Provider info - Only show for clients */}
-                  {userRole === 'client' && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <Building2 className="h-5 w-5 text-purple-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {booking.provider_name || `Provider ID: ${booking.provider_id?.slice(0, 8) || 'Unknown'}`}
-                        </p>
-                        <p className="text-sm text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
-                        {!booking.provider_name && (
-                          <p className="text-xs text-orange-600 mt-1">Provider name not available</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900">
-                        {booking.scheduled_date ? formatDate(booking.scheduled_date) : formatDate(booking.created_at)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {booking.scheduled_date ? 'Scheduled for' : 'Booked on'}
-                      </p>
-                      {booking.scheduled_time && (
-                        <p className="text-xs text-gray-400 mt-1">{booking.scheduled_time}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Details */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-                  {booking.estimated_duration && (
-                    <div className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded-lg border border-blue-100">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      <div>
-                        <p className="font-medium text-blue-900">{booking.estimated_duration}</p>
-                        <p className="text-blue-600 text-xs">Duration</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {booking.location && (
-                    <div className="flex items-center gap-2 text-sm p-2 bg-orange-50 rounded-lg border border-orange-100">
-                      <MapPin className="h-4 w-4 text-orange-500" />
-                      <div>
-                        <p className="font-medium text-orange-900">{booking.location}</p>
-                        <p className="text-orange-600 text-xs">Location</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {booking.rating && (
-                    <div className="flex items-center gap-2 text-sm p-2 bg-yellow-50 rounded-lg border border-yellow-100">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <div>
-                        <div className="flex items-center gap-1">
-                          {getRatingStars(booking.rating)}
-                          <span className="font-medium text-yellow-900 ml-1">({booking.rating}/5)</span>
-                        </div>
-                        <p className="text-yellow-600 text-xs">Rating</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Notes */}
-                {booking.notes && (
-                  <div className="mb-6 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-                    <p className="text-sm font-medium text-gray-700 mb-1">Notes:</p>
-                    <p className="text-sm text-gray-700">{booking.notes}</p>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <div className="flex gap-2 flex-wrap">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="border-gray-200 hover:bg-gray-50 text-gray-700"
-                      onClick={() => openDetailsModal(booking)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                    
-                    <Button 
-                      size="sm"
-                      variant="outline"
-                      className="border-blue-200 hover:bg-blue-50 text-blue-700"
-                      onClick={() => openMessageModal(booking)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Send Message
-                    </Button>
+             {/* Bookings List */}
+       {filteredBookings.length === 0 ? (
+         <Card className="bg-white border-gray-200">
+           <CardContent className="p-8 text-center">
+             <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+               <Calendar className="h-8 w-8 text-gray-400" />
+             </div>
+             <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
+             <p className="text-gray-500 mb-4">
+               {searchQuery || statusFilter !== 'all' 
+                 ? 'Try adjusting your search or filters'
+                 : userRole === 'client' 
+                   ? 'Create your first booking to get started'
+                   : 'No service requests at the moment'
+               }
+             </p>
+             {userRole === 'client' && !searchQuery && statusFilter === 'all' && (
+               <Button 
+                 className="bg-blue-600 hover:bg-blue-700"
+                 onClick={() => router.push('/dashboard/bookings/create')}
+               >
+                 <Plus className="h-4 w-4 mr-2" />
+                 Create First Booking
+               </Button>
+             )}
+           </CardContent>
+         </Card>
+       ) : viewMode === 'table' ? (
+         /* Table View */
+         <Card className="bg-white border-gray-200">
+           <CardContent className="p-0">
+             <div className="overflow-x-auto">
+               <table className="w-full">
+                 <thead className="bg-gray-50 border-b border-gray-200">
+                   <tr>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                       <input
+                         type="checkbox"
+                         checked={selectedBookings.length === filteredBookings.length}
+                         onChange={(e) => {
+                           if (e.target.checked) {
+                             setSelectedBookings(filteredBookings.map(b => b.id))
+                           } else {
+                             setSelectedBookings([])
+                           }
+                         }}
+                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                         aria-label="Select all bookings"
+                       />
+                     </th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody className="bg-white divide-y divide-gray-200">
+                   {filteredBookings.map((booking) => (
+                     <tr key={booking.id} className="hover:bg-gray-50">
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <input
+                           type="checkbox"
+                           checked={selectedBookings.includes(booking.id)}
+                           onChange={() => toggleBookingSelection(booking.id)}
+                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                           aria-label={`Select booking ${booking.id}`}
+                         />
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="flex items-center">
+                           <div className="text-sm font-medium text-gray-900">
+                             #{booking.id.slice(0, 8)}
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="flex items-center">
+                           <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                             <Package className="h-4 w-4 text-blue-600" />
+                           </div>
+                           <div>
+                             <div className="text-sm font-medium text-gray-900">
+                               {booking.service_name || `Service ID: ${booking.service_id?.slice(0, 8) || 'Unknown'}`}
+                             </div>
+                             {booking.service_description && (
+                               <div className="text-sm text-gray-500 truncate max-w-xs">
+                                 {booking.service_description}
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="flex items-center">
+                           <div className="h-8 w-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                             <User className="h-4 w-4 text-green-600" />
+                           </div>
+                           <div>
+                             <div className="text-sm font-medium text-gray-900">
+                               {booking.client_name || `Client ID: ${booking.client_id?.slice(0, 8) || 'Unknown'}`}
+                             </div>
+                             {booking.client_company_name && (
+                               <div className="text-sm text-gray-500">{booking.client_company_name}</div>
+                             )}
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="flex items-center gap-2">
+                           <Badge className={`${getStatusColor(booking.status)} flex items-center gap-1 px-2 py-1 text-xs font-medium`}>
+                             {getStatusIcon(booking.status)}
+                             <span className="capitalize">{booking.status.replace('_', ' ')}</span>
+                           </Badge>
+                           {booking.priority && (
+                             <Badge className={`${getPriorityColor(booking.priority)} text-xs px-2 py-1 font-medium`}>
+                               {getPriorityIcon(booking.priority)} {booking.priority.toUpperCase()}
+                             </Badge>
+                           )}
+                         </div>
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         {booking.amount ? (
+                           <div className="text-sm font-semibold text-emerald-600">
+                             {formatCurrency(booking.amount)}
+                           </div>
+                         ) : (
+                           <span className="text-sm text-gray-400">-</span>
+                         )}
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="text-sm text-gray-900">{formatDate(booking.created_at)}</div>
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                         <div className="relative action-menu-container">
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => toggleActionMenu(booking.id)}
+                             className="h-8 w-8 p-0"
+                           >
+                             <MoreHorizontal className="h-4 w-4" />
+                           </Button>
+                           
+                           {/* Action Menu Dropdown */}
+                           {openActionMenu === booking.id && (
+                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                               <div className="py-1" role="menu">
+                                 <button
+                                   onClick={() => handleActionClick('view', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                   role="menuitem"
+                                 >
+                                   <Eye className="h-4 w-4 mr-3" />
+                                   View Details
+                                 </button>
+                                 <button
+                                   onClick={() => handleActionClick('message', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                   role="menuitem"
+                                 >
+                                   <MessageSquare className="h-4 w-4 mr-3" />
+                                   Send Message
+                                 </button>
+                                 <button
+                                   onClick={() => handleActionClick('edit', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                   role="menuitem"
+                                 >
+                                   <Edit className="h-4 w-4 mr-3" />
+                                   Edit Booking
+                                 </button>
+                                 <button
+                                   onClick={() => handleActionClick('download', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                   role="menuitem"
+                                 >
+                                   <Download className="h-4 w-4 mr-3" />
+                                   Download Details
+                                 </button>
+                                 <button
+                                   onClick={() => handleActionClick('share', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                   role="menuitem"
+                                 >
+                                   <Share2 className="h-4 w-4 mr-3" />
+                                   Share
+                                 </button>
+                                 <div className="border-t border-gray-100 my-1"></div>
+                                 <button
+                                   onClick={() => handleActionClick('archive', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                   role="menuitem"
+                                 >
+                                   <Archive className="h-4 w-4 mr-3" />
+                                   Archive
+                                 </button>
+                                 <button
+                                   onClick={() => handleActionClick('delete', booking)}
+                                   className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                   role="menuitem"
+                                 >
+                                   <Trash2 className="h-4 w-4 mr-3" />
+                                   Delete
+                                 </button>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           </CardContent>
+         </Card>
+       ) : (
+         /* Card View */
+         <div className="space-y-4">
+           {filteredBookings.map((booking) => (
+             <Card key={booking.id} className="hover:shadow-lg transition-all duration-300 border border-gray-200 shadow-sm bg-white hover:border-gray-300">
+               <CardContent className="p-6">
+                 {/* Header */}
+                 <div className="flex items-start justify-between mb-6">
+                   <div className="flex items-center gap-4">
+                     <input
+                       type="checkbox"
+                       id={`booking-${booking.id}`}
+                       checked={selectedBookings.includes(booking.id)}
+                       onChange={() => toggleBookingSelection(booking.id)}
+                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                       aria-label={`Select booking ${booking.id}`}
+                     />
+                     
+                     {/* Status Badge */}
+                     <div className="flex items-center gap-2">
+                       <Badge className={`${getStatusColor(booking.status)} flex items-center gap-2 px-3 py-1.5 font-medium`}>
+                         {getStatusIcon(booking.status)}
+                         <span className="capitalize">{booking.status.replace('_', ' ')}</span>
+                       </Badge>
+                       
+                       {/* Priority Indicator */}
+                       {booking.priority && (
+                         <Badge className={`${getPriorityColor(booking.priority)} text-xs px-2.5 py-1 font-medium`}>
+                           {getPriorityIcon(booking.priority)} {booking.priority.toUpperCase()}
+                         </Badge>
+                       )}
+                     </div>
+                     
+                     <span className="text-sm text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                       #{booking.id.slice(0, 8)}
+                     </span>
+                   </div>
                    
-                    {/* Dynamic Status Actions */}
-                    {getStatusActions(booking)}
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">
-                      Last updated: {formatDate(booking.last_updated || booking.created_at)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                   <div className="flex items-center gap-3">
+                     <div className="text-right">
+                       <div className="text-sm text-gray-500 mb-2 bg-gray-50 px-3 py-1 rounded-lg inline-block">
+                         Created {formatDate(booking.created_at)}
+                       </div>
+                       
+                       {booking.amount && (
+                         <div className="text-lg font-bold text-emerald-600 mb-2">
+                           {formatCurrency(booking.amount)}
+                         </div>
+                       )}
+                     </div>
+                     
+                     {/* Three Dots Menu */}
+                     <div className="relative action-menu-container">
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         onClick={() => toggleActionMenu(booking.id)}
+                         className="h-8 w-8 p-0"
+                       >
+                         <MoreHorizontal className="h-4 w-4" />
+                       </Button>
+                       
+                       {/* Action Menu Dropdown */}
+                       {openActionMenu === booking.id && (
+                         <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                           <div className="py-1" role="menu">
+                             <button
+                               onClick={() => handleActionClick('view', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                               role="menuitem"
+                             >
+                               <Eye className="h-4 w-4 mr-3" />
+                               View Details
+                             </button>
+                             <button
+                               onClick={() => handleActionClick('message', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                               role="menuitem"
+                             >
+                               <MessageSquare className="h-4 w-4 mr-3" />
+                               Send Message
+                             </button>
+                             <button
+                               onClick={() => handleActionClick('edit', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                               role="menuitem"
+                             >
+                               <Edit className="h-4 w-4 mr-3" />
+                               Edit Booking
+                             </button>
+                             <button
+                               onClick={() => handleActionClick('download', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                               role="menuitem"
+                             >
+                               <Download className="h-4 w-4 mr-3" />
+                               Download Details
+                             </button>
+                             <button
+                               onClick={() => handleActionClick('share', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                               role="menuitem"
+                             >
+                               <Share2 className="h-4 w-4 mr-3" />
+                               Share
+                             </button>
+                             <div className="border-t border-gray-100 my-1"></div>
+                             <button
+                               onClick={() => handleActionClick('archive', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                               role="menuitem"
+                             >
+                               <Archive className="h-4 w-4 mr-3" />
+                               Archive
+                             </button>
+                             <button
+                               onClick={() => handleActionClick('delete', booking)}
+                               className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                               role="menuitem"
+                             >
+                               <Trash2 className="h-4 w-4 mr-3" />
+                               Delete
+                             </button>
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Information Grid */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                     <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                       <Package className="h-5 w-5 text-blue-600" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <p className="font-medium text-gray-900 truncate">
+                         {booking.service_name || `Service ID: ${booking.service_id?.slice(0, 8) || 'Unknown'}`}
+                       </p>
+                       <p className="text-sm text-gray-500">Service</p>
+                       {booking.service_description && (
+                         <p className="text-xs text-gray-400 truncate mt-1">{booking.service_description}</p>
+                       )}
+                       {!booking.service_name && (
+                         <p className="text-xs text-orange-600 mt-1">Service name not available</p>
+                       )}
+                     </div>
+                   </div>
+                   
+                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                     <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                       <User className="h-5 w-5 text-green-600" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <p className="font-medium text-gray-900 truncate">
+                         {booking.client_name || `Client ID: ${booking.client_id?.slice(0, 8) || 'Unknown'}`}
+                       </p>
+                       <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
+                       {!booking.client_name && (
+                         <p className="text-xs text-orange-600 mt-1">Client name not available</p>
+                       )}
+                     </div>
+                   </div>
+
+                   {/* Provider info - Only show for clients */}
+                   {userRole === 'client' && (
+                     <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                       <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                         <Building2 className="h-5 w-5 text-purple-600" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <p className="font-medium text-gray-900 truncate">
+                           {booking.provider_name || `Provider ID: ${booking.provider_id?.slice(0, 8) || 'Unknown'}`}
+                         </p>
+                         <p className="text-sm text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
+                         {!booking.provider_name && (
+                           <p className="text-xs text-orange-600 mt-1">Provider name not available</p>
+                         )}
+                       </div>
+                     </div>
+                   )}
+
+                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                     <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                       <Calendar className="h-5 w-5 text-orange-600" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <p className="font-medium text-gray-900">
+                         {booking.scheduled_date ? formatDate(booking.scheduled_date) : formatDate(booking.created_at)}
+                       </p>
+                       <p className="text-sm text-gray-500">
+                         {booking.scheduled_date ? 'Scheduled for' : 'Booked on'}
+                       </p>
+                       {booking.scheduled_time && (
+                         <p className="text-xs text-gray-400 mt-1">{booking.scheduled_time}</p>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Additional Details */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+                   {booking.estimated_duration && (
+                     <div className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded-lg border border-blue-100">
+                       <Clock className="h-4 w-4 text-blue-500" />
+                       <div>
+                         <p className="font-medium text-blue-900">{booking.estimated_duration}</p>
+                         <p className="text-blue-600 text-xs">Duration</p>
+                       </div>
+                     </div>
+                   )}
+                   
+                   {booking.location && (
+                     <div className="flex items-center gap-2 text-sm p-2 bg-orange-50 rounded-lg border border-orange-100">
+                       <MapPin className="h-4 w-4 text-orange-500" />
+                       <div>
+                         <p className="font-medium text-orange-900">{booking.location}</p>
+                         <p className="text-orange-600 text-xs">Location</p>
+                       </div>
+                     </div>
+                   )}
+
+                   {booking.rating && (
+                     <div className="flex items-center gap-2 text-sm p-2 bg-yellow-50 rounded-lg border border-yellow-100">
+                       <Star className="h-4 w-4 text-yellow-500" />
+                       <div>
+                         <div className="flex items-center gap-1">
+                           {getRatingStars(booking.rating)}
+                           <span className="font-medium text-yellow-900 ml-1">({booking.rating}/5)</span>
+                         </div>
+                         <p className="text-yellow-600 text-xs">Rating</p>
+                       </div>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Notes */}
+                 {booking.notes && (
+                   <div className="mb-6 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
+                     <p className="text-sm font-medium text-gray-700 mb-1">Notes:</p>
+                     <p className="text-sm text-gray-700">{booking.notes}</p>
+                   </div>
+                 )}
+
+                 {/* Action Buttons */}
+                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                   <div className="flex gap-2 flex-wrap">
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="border-gray-200 hover:bg-gray-50 text-gray-700"
+                       onClick={() => openDetailsModal(booking)}
+                     >
+                       <Eye className="h-4 w-4 mr-2" />
+                       View Details
+                     </Button>
+                     
+                     <Button 
+                       size="sm"
+                       variant="outline"
+                       className="border-blue-200 hover:bg-blue-50 text-blue-700"
+                       onClick={() => openMessageModal(booking)}
+                     >
+                       <MessageSquare className="h-4 w-4 mr-2" />
+                       Send Message
+                     </Button>
+                    
+                     {/* Dynamic Status Actions */}
+                     {getStatusActions(booking)}
+                   </div>
+                   
+                   <div className="flex items-center gap-2">
+                     <span className="text-xs text-gray-400">
+                       Last updated: {formatDate(booking.last_updated || booking.created_at)}
+                     </span>
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
+           ))}
+         </div>
+       )}
 
       {/* Details Modal */}
       {showDetailsModal && selectedBooking && (
