@@ -498,6 +498,24 @@ export default function BookingsPage() {
     }
   }
 
+  const getNotesPriority = (notes: string) => {
+    if (!notes) return 'none'
+    const lowerNotes = notes.toLowerCase()
+    if (lowerNotes.includes('escalated') || lowerNotes.includes('urgent')) return 'high'
+    if (lowerNotes.includes('important') || lowerNotes.includes('attention')) return 'medium'
+    return 'low'
+  }
+
+  const getNotesIcon = (notes: string) => {
+    const priority = getNotesPriority(notes)
+    switch (priority) {
+      case 'high': return '🚨'
+      case 'medium': return '⚠️'
+      case 'low': return 'ℹ️'
+      default: return '📝'
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -728,6 +746,22 @@ export default function BookingsPage() {
                  <SelectItem value="declined">Declined</SelectItem>
                </SelectContent>
              </Select>
+
+             <Select value={searchQuery.includes('escalated') ? 'priority' : 'all'} onValueChange={(value) => {
+               if (value === 'priority') {
+                 setSearchQuery('escalated')
+               } else {
+                 setSearchQuery('')
+               }
+             }}>
+               <SelectTrigger className="w-full md:w-40">
+                 <SelectValue placeholder="Filter by priority" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Notes</SelectItem>
+                 <SelectItem value="priority">Priority Notes</SelectItem>
+               </SelectContent>
+             </Select>
              
              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
                <SelectTrigger className="w-full md:w-40">
@@ -839,6 +873,7 @@ export default function BookingsPage() {
                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                    </tr>
@@ -911,6 +946,41 @@ export default function BookingsPage() {
                          {booking.amount ? (
                            <div className="text-sm font-semibold text-emerald-600">
                              {formatCurrency(booking.amount)}
+                           </div>
+                         ) : (
+                           <span className="text-sm text-gray-400">-</span>
+                         )}
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap">
+                         {booking.notes ? (
+                           <div className="max-w-xs">
+                             <div className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${
+                               getNotesPriority(booking.notes) === 'high'
+                                 ? 'bg-red-100 text-red-800'
+                                 : getNotesPriority(booking.notes) === 'medium'
+                                 ? 'bg-orange-100 text-orange-800'
+                                 : 'bg-blue-100 text-blue-800'
+                             }`}>
+                               {getNotesPriority(booking.notes) === 'high' ? (
+                                 <>
+                                   <span className="h-2 w-2 bg-red-500 rounded-full"></span>
+                                   Priority
+                                 </>
+                               ) : getNotesPriority(booking.notes) === 'medium' ? (
+                                 <>
+                                   <span className="h-2 w-2 bg-orange-500 rounded-full"></span>
+                                   Important
+                                 </>
+                               ) : (
+                                 <>
+                                   <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
+                                   Info
+                                 </>
+                               )}
+                             </div>
+                             <div className="text-xs text-gray-600 mt-1 truncate">
+                               {getNotesIcon(booking.notes)} {booking.notes}
+                             </div>
                            </div>
                          ) : (
                            <span className="text-sm text-gray-400">-</span>
@@ -1242,9 +1312,65 @@ export default function BookingsPage() {
 
                  {/* Notes */}
                  {booking.notes && (
-                   <div className="mb-6 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-                     <p className="text-sm font-medium text-gray-700 mb-1">Notes:</p>
-                     <p className="text-sm text-gray-700">{booking.notes}</p>
+                   <div className={`mb-6 p-4 rounded-lg border-l-4 ${
+                     getNotesPriority(booking.notes) === 'high'
+                       ? 'bg-red-50 border-red-500'
+                       : getNotesPriority(booking.notes) === 'medium'
+                       ? 'bg-orange-50 border-orange-500'
+                       : 'bg-blue-50 border-blue-500'
+                   }`}>
+                     <div className="flex items-center gap-2 mb-2">
+                       <div className="flex items-center gap-2">
+                         <div className={`h-6 w-6 rounded-full flex items-center justify-center ${
+                           getNotesPriority(booking.notes) === 'high'
+                             ? 'bg-red-100'
+                             : getNotesPriority(booking.notes) === 'medium'
+                             ? 'bg-orange-100'
+                             : 'bg-blue-100'
+                         }`}>
+                           <span className={`text-lg ${
+                             getNotesPriority(booking.notes) === 'high'
+                               ? 'text-red-600'
+                               : getNotesPriority(booking.notes) === 'medium'
+                               ? 'text-orange-600'
+                               : 'text-blue-600'
+                           }`}>
+                             {getNotesIcon(booking.notes)}
+                           </span>
+                         </div>
+                         <p className={`text-sm font-semibold ${
+                           getNotesPriority(booking.notes) === 'high'
+                             ? 'text-red-800'
+                             : getNotesPriority(booking.notes) === 'medium'
+                             ? 'text-orange-800'
+                             : 'text-blue-800'
+                         }`}>
+                           {getNotesPriority(booking.notes) === 'high' ? 'Priority Notes:' : 
+                            getNotesPriority(booking.notes) === 'medium' ? 'Important Notes:' : 'Notes:'}
+                         </p>
+                       </div>
+                     </div>
+                     <p className={`text-sm ${
+                       getNotesPriority(booking.notes) === 'high'
+                         ? 'text-red-700'
+                         : getNotesPriority(booking.notes) === 'medium'
+                         ? 'text-orange-700'
+                         : 'text-blue-700'
+                     }`}>
+                       {booking.notes}
+                     </p>
+                     {getNotesPriority(booking.notes) === 'high' && (
+                       <div className="mt-2 flex items-center gap-2">
+                         <Clock4 className="h-4 w-4 text-red-500" />
+                         <span className="text-xs text-red-600 font-medium">Requires immediate attention</span>
+                       </div>
+                     )}
+                     {getNotesPriority(booking.notes) === 'medium' && (
+                       <div className="mt-2 flex items-center gap-2">
+                         <Clock className="h-4 w-4 text-orange-500" />
+                         <span className="text-xs text-orange-600 font-medium">Needs attention soon</span>
+                       </div>
+                     )}
                    </div>
                  )}
 
