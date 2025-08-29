@@ -156,38 +156,14 @@ export default function ProviderDashboard() {
       const monthlyEarnings = monthlyBookings.reduce((sum, b) => sum + (b.amount || 0), 0)
 
       // Fetch reviews for rating calculation
-      let reviews: any[] = []
-      try {
-        // Try to fetch from reviews table first
-        const { data: reviewsData } = await supabase
-          .from('reviews')
-          .select('rating')
-          .eq('provider_id', userId)
-        
-        if (reviewsData) {
-          reviews = reviewsData
-        }
-      } catch (error) {
-        console.log('Reviews table not found, trying alternative approach')
-        // Fallback: try to get ratings from bookings table
-        try {
-          const { data: bookingsWithRatings } = await supabase
-            .from('bookings')
-            .select('rating')
-            .eq('provider_id', userId)
-            .not('rating', 'is', null)
-          
-          if (bookingsWithRatings) {
-            reviews = bookingsWithRatings
-          }
-        } catch (fallbackError) {
-          console.log('No ratings found in bookings table either')
-        }
-      }
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('provider_id', userId)
 
-            const totalReviews = reviews?.length || 0
+      const totalReviews = reviews?.length || 0
       const averageRating = totalReviews > 0 && reviews
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+        ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / totalReviews
         : 0
 
       // Calculate response and completion rates
@@ -314,23 +290,15 @@ export default function ProviderDashboard() {
 
             const totalRevenue = completedBookings?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
 
-            // Try to get average rating from reviews, but use fallback if it fails
-            let averageRating = 0
-            try {
-              const { data: reviews } = await supabase
-                .from('reviews')
-                .select('rating')
-                .eq('service_id', service.id)
+            // Get average rating from reviews
+            const { data: reviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('service_id', service.id)
 
-              if (reviews && reviews.length > 0) {
-                averageRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-              }
-            } catch (error) {
-              console.log('Reviews table not accessible, using default rating')
-              // Use a default rating based on completion rate
-              const completionRate = (totalBookings || 0) > 0 ? ((completedBookings?.length || 0) / (totalBookings || 0)) * 100 : 0
-              averageRating = Math.min(5, Math.max(1, (completionRate / 20) + 3)) // Scale 0-100% to 1-5 rating
-            }
+            const averageRating = reviews && reviews.length > 0
+              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+              : 0
 
             return {
               ...service,
