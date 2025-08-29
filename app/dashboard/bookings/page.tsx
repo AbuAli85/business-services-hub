@@ -409,7 +409,19 @@ export default function BookingsPage() {
 
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentClientSecret, setPaymentClientSecret] = useState<string>('')
-  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
+  const stripePromise = (() => {
+    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    if (!key) {
+      console.warn('Stripe publishable key not found. Payment functionality will be disabled.')
+      return null
+    }
+    try {
+      return loadStripe(key)
+    } catch (error) {
+      console.error('Failed to load Stripe:', error)
+      return null
+    }
+  })()
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -4119,6 +4131,58 @@ export default function BookingsPage() {
                      </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment Modal */}
+          {showPaymentModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold">Complete Payment</h2>
+                  <button 
+                    onClick={() => setShowPaymentModal(false)} 
+                    className="text-gray-500 hover:text-gray-700 p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                {stripePromise ? (
+                  <Elements stripe={stripePromise} options={{ clientSecret: paymentClientSecret }}>
+                    <PaymentForm 
+                      onClose={() => setShowPaymentModal(false)}
+                    />
+                  </Elements>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-red-500 mb-4">
+                      <XCircle className="w-16 h-16 mx-auto" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">Payment System Unavailable</h3>
+                    <p className="text-gray-500 mb-4">Stripe payment system is not configured. Please contact support.</p>
+                    <Button onClick={() => setShowPaymentModal(false)}>
+                      Close
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Payment Success Modal */}
+          {showPaymentSuccess && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl text-center">
+                <div className="text-green-500 mb-4">
+                  <CheckCircle className="w-16 h-16 mx-auto" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Successful!</h3>
+                <p className="text-gray-600 mb-6">Your payment has been processed successfully.</p>
+                <Button onClick={() => setShowPaymentSuccess(false)}>
+                  Continue
+                </Button>
               </div>
             </div>
           )}

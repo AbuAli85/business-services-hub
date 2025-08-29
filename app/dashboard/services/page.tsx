@@ -109,6 +109,7 @@ export default function ServicesPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // First, fetch basic service data
       const { data: services, error } = await supabase
         .from('services')
         .select('*')
@@ -117,7 +118,56 @@ export default function ServicesPage() {
 
       if (error) throw error
 
-      setServices(services || [])
+      // Fetch statistics for each service
+      const enrichedServices = await Promise.all(
+        (services || []).map(async (service) => {
+          try {
+            // Get booking statistics
+            const { data: bookings } = await supabase
+              .from('bookings')
+              .select('status, amount')
+              .eq('service_id', service.id)
+
+            // Get review statistics
+            const { data: reviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('service_id', service.id)
+
+            // Calculate statistics
+            const totalBookings = bookings?.length || 0
+            const totalRevenue = bookings
+              ?.filter(b => ['completed', 'in_progress'].includes(b.status))
+              .reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+            const averageRating = reviews && reviews.length > 0
+              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+              : 0
+            const totalReviews = reviews?.length || 0
+
+            return {
+              ...service,
+              total_bookings: totalBookings,
+              total_revenue: totalRevenue,
+              average_rating: averageRating,
+              total_reviews: totalReviews
+            }
+          } catch (error) {
+            console.error(`Error enriching service ${service.id}:`, error)
+            return {
+              ...service,
+              total_bookings: 0,
+              total_revenue: 0,
+              average_rating: 0,
+              total_reviews: 0
+            }
+          }
+        })
+      )
+
+      setServices(enrichedServices)
+      
+      // Calculate overall statistics
+      await fetchServiceStats(userId)
     } catch (error) {
       console.error('Error fetching services:', error)
       toast.error('Failed to load services')
@@ -126,21 +176,20 @@ export default function ServicesPage() {
 
   const fetchServiceStats = async (userId: string) => {
     try {
-      const supabase = await getSupabaseClient()
-      
-      const { data: services } = await supabase
-        .from('services')
-        .select('status, approval_status, total_bookings, total_revenue, average_rating')
-        .eq('provider_id', userId)
-
-      if (services) {
+      // Use the current services state which already has calculated statistics
+      if (services.length > 0) {
         const totalServices = services.length
         const activeServices = services.filter(s => s.status === 'active' && s.approval_status === 'approved').length
         const pendingApproval = services.filter(s => s.approval_status === 'pending').length
+        
+        // Calculate totals from the enriched services
         const totalBookings = services.reduce((sum, s) => sum + (s.total_bookings || 0), 0)
         const totalRevenue = services.reduce((sum, s) => sum + (s.total_revenue || 0), 0)
-        const averageRating = services.length > 0 
-          ? services.reduce((sum, s) => sum + (s.average_rating || 0), 0) / services.length 
+        
+        // Calculate average rating from services with ratings
+        const servicesWithRatings = services.filter(s => (s.average_rating || 0) > 0)
+        const averageRating = servicesWithRatings.length > 0 
+          ? servicesWithRatings.reduce((sum, s) => sum + (s.average_rating || 0), 0) / servicesWithRatings.length 
           : 0
 
         setStats({
@@ -151,6 +200,28 @@ export default function ServicesPage() {
           totalRevenue,
           averageRating
         })
+      } else {
+        // If no services yet, fetch basic service count
+        const supabase = await getSupabaseClient()
+        const { data: basicServices } = await supabase
+          .from('services')
+          .select('status, approval_status')
+          .eq('provider_id', userId)
+
+        if (basicServices) {
+          const totalServices = basicServices.length
+          const activeServices = basicServices.filter(s => s.status === 'active' && s.approval_status === 'approved').length
+          const pendingApproval = basicServices.filter(s => s.approval_status === 'pending').length
+
+          setStats({
+            totalServices,
+            activeServices,
+            pendingApproval,
+            totalBookings: 0,
+            totalRevenue: 0,
+            averageRating: 0
+          })
+        }
       }
     } catch (error) {
       console.error('Error fetching service stats:', error)

@@ -153,19 +153,36 @@ export default function ServiceDetailPage() {
       try {
         const supabase = await getSupabaseClient()
         
-        // Get current user
-        const { data: { user: authUser } } = await supabase.auth.getUser()
+        // Get current user with better error handling
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+        
+        if (authError) {
+          console.error('Auth error:', authError)
+          setError('Authentication error. Please try signing in again.')
+          setLoading(false)
+          return
+        }
+
         if (!authUser) {
-          router.push('/auth/sign-in')
+          // Don't redirect immediately, just set loading to false
+          setLoading(false)
+          setError('Please sign in to view this service')
           return
         }
 
         // Get user profile and role
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id, full_name, email, role')
           .eq('id', authUser.id)
           .single()
+
+        if (profileError) {
+          console.error('Profile error:', profileError)
+          setError('Failed to load user profile')
+          setLoading(false)
+          return
+        }
 
         if (profile) {
           setUser({
@@ -186,11 +203,16 @@ export default function ServiceDetailPage() {
           .eq('id', serviceId)
           .single()
 
-        if (serviceError) throw serviceError
+        if (serviceError) {
+          console.error('Service error:', serviceError)
+          setError('Service not found or access denied')
+          setLoading(false)
+          return
+        }
 
         // Fetch provider details
         if (serviceData.provider_id) {
-          const { data: providerData } = await supabase
+          const { data: providerData, error: providerError } = await supabase
             .from('profiles')
             .select(`
               id,
@@ -201,7 +223,7 @@ export default function ServiceDetailPage() {
             .eq('id', serviceData.provider_id)
             .single()
 
-          if (providerData) {
+          if (providerData && !providerError) {
             serviceData.provider = {
               ...providerData,
               rating: 4.8, // Mock data - replace with real reviews
@@ -230,7 +252,91 @@ export default function ServiceDetailPage() {
     if (serviceId) {
       fetchData()
     }
-  }, [serviceId, router])
+  }, [serviceId])
+
+  // Add session listener to handle auth state changes
+  useEffect(() => {
+    let mounted = true
+
+    const setupSessionListener = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!mounted) return
+
+            if (event === 'SIGNED_IN' && session?.user) {
+              // User signed in, refresh data
+              setError(null)
+              setLoading(true)
+              
+              try {
+                // Get user profile
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('id, full_name, email, role')
+                  .eq('id', session.user.id)
+                  .single()
+
+                if (profile) {
+                  setUser({
+                    id: profile.id,
+                    role: profile.role || 'client',
+                    full_name: profile.full_name,
+                    email: profile.email
+                  })
+                }
+
+                // Re-fetch service data
+                if (serviceId) {
+                  const { data: serviceData } = await supabase
+                    .from('services')
+                    .select(`
+                      *,
+                      service_packages(*)
+                    `)
+                    .eq('id', serviceId)
+                    .single()
+
+                  if (serviceData) {
+                    setService(serviceData)
+                    
+                    // If user is the provider, fetch service stats
+                    if (profile?.role === 'provider' && profile.id === serviceData.provider_id) {
+                      await fetchServiceStats(serviceId)
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Error refreshing data after sign in:', error)
+              } finally {
+                setLoading(false)
+              }
+            } else if (event === 'SIGNED_OUT') {
+              // User signed out, clear data
+              setUser(null)
+              setService(null)
+              setError('Please sign in to view this service')
+              setLoading(false)
+            }
+          }
+        )
+
+        return () => {
+          subscription.unsubscribe()
+        }
+      } catch (error) {
+        console.error('Error setting up session listener:', error)
+      }
+    }
+
+    setupSessionListener()
+
+    return () => {
+      mounted = false
+    }
+  }, [serviceId])
 
   const fetchServiceStats = async (serviceId: string) => {
     try {
@@ -361,16 +467,32 @@ export default function ServiceDetailPage() {
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardHeader>
-              <CardTitle className="text-red-600">Service Not Found</CardTitle>
+              <CardTitle className="text-red-600">
+                {!user ? 'Authentication Required' : 'Service Not Found'}
+              </CardTitle>
               <CardDescription>
-                {error || 'The service you are looking for could not be found.'}
+                {!user 
+                  ? 'Please sign in to view this service'
+                  : error || 'The service you are looking for could not be found.'
+                }
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button onClick={() => router.back()}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go Back
-              </Button>
+            <CardContent className="space-y-4">
+              {!user ? (
+                <div className="flex gap-3">
+                  <Button onClick={() => router.push('/auth/sign-in')}>
+                    Sign In
+                  </Button>
+                  <Button variant="outline" onClick={() => router.push('/auth/sign-up')}>
+                    Sign Up
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => router.back()}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Go Back
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
