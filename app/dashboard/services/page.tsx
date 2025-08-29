@@ -1,18 +1,38 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { getSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getSupabaseClient } from '@/lib/supabase'
-import { formatCurrency } from '@/lib/utils'
 import { 
-  Search, Filter, Plus, Edit, Trash2, Eye, Building2, TrendingUp, 
-  Calendar, DollarSign, Star, Zap, Clock, Activity, User
+  Plus, 
+  Edit, 
+  Eye, 
+  Trash2, 
+  Package, 
+  Star, 
+  Clock, 
+  DollarSign, 
+  TrendingUp, 
+  Users, 
+  Calendar,
+  Search,
+  Filter,
+  MoreHorizontal,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  BarChart3,
+  Settings,
+  Copy,
+  ExternalLink
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { formatDate, formatCurrency } from '@/lib/utils'
 
 interface Service {
   id: string
@@ -22,642 +42,600 @@ interface Service {
   base_price: number
   currency: string
   status: string
+  approval_status: string
   cover_image_url?: string
+  total_bookings: number
+  total_revenue: number
+  average_rating: number
+  total_reviews: number
   created_at: string
-  updated_at?: string
-  views_count?: number
-  bookings_count?: number
-  rating?: number
-  tags?: string[]
-  provider_id: string
-  profiles?: {
-    full_name: string
-    company_id: string
-  }
-  companies?: {
-    name: string
-  }
+  updated_at: string
 }
 
 interface ServiceStats {
   totalServices: number
   activeServices: number
+  pendingApproval: number
+  totalBookings: number
   totalRevenue: number
   averageRating: number
-  totalViews: number
-  totalBookings: number
 }
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedStatus, setSelectedStatus] = useState('all')
-  const [selectedView, setSelectedView] = useState('grid')
-  const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [stats, setStats] = useState<ServiceStats>({
-    totalServices: 0,
-    activeServices: 0,
-    totalRevenue: 0,
-    averageRating: 0,
-    totalViews: 0,
-    totalBookings: 0
-  })
+  const [user, setUser] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [showFilters, setShowFilters] = useState(false)
+  const router = useRouter()
 
-  const categories = [
-    'Digital Marketing',
-    'Legal Services',
-    'Accounting',
-    'IT Services',
-    'Design & Branding',
-    'Consulting',
-    'Translation',
-    'HR Services',
-    'Web Development',
-    'Content Creation',
-    'Financial Services',
-    'Healthcare Services',
-    'Education & Training',
-    'Real Estate',
-    'Manufacturing'
-  ]
-
-  const statuses = ['active', 'inactive', 'draft', 'pending', 'featured']
+  const [stats, setStats] = useState<ServiceStats | null>(null)
 
   useEffect(() => {
-    checkUserAndFetchData()
-  }, [searchQuery, selectedCategory, selectedStatus])
+    checkUserAndFetchServices()
+  }, [])
 
-  const checkUserAndFetchData = async () => {
+  const checkUserAndFetchServices = async () => {
     try {
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        console.error('No authenticated user')
+        router.push('/auth/sign-in')
         return
       }
 
-      // Get user role from metadata
-      const role = user.user_metadata?.role || 'client'
-      setUserRole(role)
-      setUserId(user.id)
-
-      if (role === 'provider') {
-        await fetchMyServices(user.id)
-        await fetchServiceStats(user.id)
-      } else if (role === 'client' || role === 'admin') {
-        await fetchAllServices()
-      }
+      setUser(user)
+      await Promise.all([
+        fetchServices(user.id),
+        fetchServiceStats(user.id)
+      ])
     } catch (error) {
-      console.error('Error checking user:', error)
+      console.error('Error loading services:', error)
+      toast.error('Failed to load services')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchMyServices = async (providerId: string) => {
-    setLoading(true)
-    
+  const fetchServices = async (userId: string) => {
     try {
       const supabase = await getSupabaseClient()
-      let query = supabase
+      
+      const { data: services, error } = await supabase
         .from('services')
         .select('*')
-        .eq('provider_id', providerId)
+        .eq('provider_id', userId)
+        .order(sortBy, { ascending: sortOrder === 'asc' })
 
-      if (selectedCategory && selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory)
-      }
+      if (error) throw error
 
-      if (selectedStatus && selectedStatus !== 'all') {
-        query = query.eq('status', selectedStatus)
-      }
-
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-      }
-
-      const { data: servicesData, error } = await query.order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching services:', error)
-        return
-      }
-
-      console.log('My services data:', servicesData)
-      setServices(servicesData || [])
+      setServices(services || [])
     } catch (error) {
       console.error('Error fetching services:', error)
-    } finally {
-      setLoading(false)
+      toast.error('Failed to load services')
     }
   }
 
-  const fetchAllServices = async () => {
-    setLoading(true)
-    
+  const fetchServiceStats = async (userId: string) => {
     try {
       const supabase = await getSupabaseClient()
-      let query = supabase
+      
+      const { data: services } = await supabase
         .from('services')
-        .select('*')
-        .eq('status', 'active') // Only show active services to clients
+        .select('status, approval_status, total_bookings, total_revenue, average_rating')
+        .eq('provider_id', userId)
 
-      if (selectedCategory && selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory)
-      }
-
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-      }
-
-      const { data: servicesData, error } = await query.order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching services:', error)
-        return
-      }
-
-      console.log('All services data:', servicesData)
-      setServices(servicesData || [])
-    } catch (error) {
-      console.error('Error fetching services:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchServiceStats = async (providerId: string) => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: servicesData } = await supabase
-        .from('services')
-        .select('*')
-        .eq('provider_id', providerId)
-
-      if (servicesData) {
-        const totalServices = servicesData.length
-        const activeServices = servicesData.filter(s => s.status === 'active').length
-        const totalRevenue = servicesData.reduce((sum, s) => sum + (s.base_price || 0), 0)
-        const totalViews = servicesData.reduce((sum, s) => sum + (s.views_count || 0), 0)
-        const totalBookings = servicesData.reduce((sum, s) => sum + (s.bookings_count || 0), 0)
-        const averageRating = servicesData.length > 0 
-          ? servicesData.reduce((sum, s) => sum + (s.rating || 0), 0) / servicesData.length 
+      if (services) {
+        const totalServices = services.length
+        const activeServices = services.filter(s => s.status === 'active' && s.approval_status === 'approved').length
+        const pendingApproval = services.filter(s => s.approval_status === 'pending').length
+        const totalBookings = services.reduce((sum, s) => sum + (s.total_bookings || 0), 0)
+        const totalRevenue = services.reduce((sum, s) => sum + (s.total_revenue || 0), 0)
+        const averageRating = services.length > 0 
+          ? services.reduce((sum, s) => sum + (s.average_rating || 0), 0) / services.length 
           : 0
 
         setStats({
           totalServices,
           activeServices,
+          pendingApproval,
+          totalBookings,
           totalRevenue,
-          averageRating,
-          totalViews,
-          totalBookings
+          averageRating
         })
       }
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Error fetching service stats:', error)
     }
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (userRole === 'provider' && userId) {
-      fetchMyServices(userId)
-    } else {
-      fetchAllServices()
-    }
-  }
-
-  const clearFilters = () => {
-    setSearchQuery('')
-    setSelectedCategory('all')
-    setSelectedStatus('all')
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800 border-green-200'
-      case 'inactive': return 'bg-red-100 text-red-800 border-red-200'
-      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200'
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'featured': return 'bg-purple-100 text-purple-800 border-purple-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': return <Zap className="h-3 w-3" />
-      case 'inactive': return <Activity className="h-3 w-3" />
-      case 'draft': return <Edit className="h-3 w-3" />
-      case 'pending': return <Clock className="h-3 w-3" />
-      case 'featured': return <Star className="h-3 w-3" />
-      default: return <Activity className="h-3 w-3" />
-    }
-  }
-
-  const handleCreateService = () => {
-    if (userRole === 'provider') {
-      // Navigate directly to the create service page instead of going through service detail
-      window.location.href = '/dashboard/provider/create-service'
-    }
-  }
-
-  const handleEditService = (serviceId: string) => {
-    if (userRole === 'provider') {
-      window.location.href = `/dashboard/services/${serviceId}/edit`
-    }
-  }
-
-  const handleViewService = (serviceId: string) => {
-    window.location.href = `/dashboard/services/${serviceId}`
   }
 
   const handleDeleteService = async (serviceId: string) => {
-    if (userRole !== 'provider') return
-
-    if (confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
-      try {
-        const supabase = await getSupabaseClient()
-        const { error } = await supabase
-          .from('services')
-          .delete()
-          .eq('id', serviceId)
-          .eq('provider_id', userId) // Ensure user can only delete their own services
-
-        if (error) {
-          console.error('Error deleting service:', error)
-          alert('Failed to delete service')
-        } else {
-          setServices(services.filter(s => s.id !== serviceId))
-          if (userId) {
-            fetchServiceStats(userId)
-          }
-          alert('Service deleted successfully')
-        }
-      } catch (error) {
-        console.error('Error deleting service:', error)
-        alert('Failed to delete service')
-      }
+    if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+      return
     }
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', serviceId)
+
+      if (error) throw error
+
+      setServices(prev => prev.filter(s => s.id !== serviceId))
+      toast.success('Service deleted successfully')
+      
+      // Refresh stats
+      if (user) {
+        fetchServiceStats(user.id)
+      }
+    } catch (error) {
+      console.error('Error deleting service:', error)
+      toast.error('Failed to delete service')
+    }
+  }
+
+  const handleDuplicateService = async (service: Service) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { data: newService, error } = await supabase
+        .from('services')
+        .insert({
+          title: `${service.title} (Copy)`,
+          description: service.description,
+          category: service.category,
+          base_price: service.base_price,
+          currency: service.currency,
+          provider_id: user.id,
+          status: 'draft',
+          approval_status: 'pending'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setServices(prev => [newService, ...prev])
+      toast.success('Service duplicated successfully')
+      
+      // Refresh stats
+      fetchServiceStats(user.id)
+    } catch (error) {
+      console.error('Error duplicating service:', error)
+      toast.error('Failed to duplicate service')
+    }
+  }
+
+  const filteredServices = services.filter(service => {
+    const matchesSearch = searchTerm === '' || 
+      service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'all' || service.status === statusFilter
+    const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
+    
+    return matchesSearch && matchesStatus && matchesCategory
+  })
+
+  const getStatusBadge = (status: string) => {
+    const config = {
+      active: { color: 'bg-green-100 text-green-800', label: 'Active' },
+      inactive: { color: 'bg-gray-100 text-gray-800', label: 'Inactive' },
+      draft: { color: 'bg-yellow-100 text-yellow-800', label: 'Draft' }
+    }
+    
+    const statusConfig = config[status as keyof typeof config] || config.draft
+    return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+  }
+
+  const getApprovalBadge = (status: string) => {
+    const config = {
+      approved: { color: 'bg-green-100 text-green-800', label: 'Approved' },
+      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
+      rejected: { color: 'bg-red-100 text-red-800', label: 'Rejected' }
+    }
+    
+    const statusConfig = config[status as keyof typeof config] || config.pending
+    return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+  }
+
+  const getRatingStars = (rating: number) => {
+    const stars = []
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Star
+          key={i}
+          className={`h-4 w-4 ${
+            i <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+          }`}
+        />
+      )
+    }
+    return stars
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 text-lg">Loading services...</p>
-          </div>
+      <div className="container mx-auto p-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading services...</p>
         </div>
       </div>
     )
   }
 
-  const isProvider = userRole === 'provider'
-  const pageTitle = isProvider ? 'My Services' : 'Available Services'
-  const pageDescription = isProvider 
-    ? 'Manage and optimize your professional service offerings' 
-    : 'Discover and book professional services from trusted providers'
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Enhanced Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-                <Building2 className="h-10 w-10 text-blue-600" />
-                {pageTitle}
-              </h1>
-              <p className="text-gray-600 text-lg">{pageDescription}</p>
-            </div>
-            {isProvider && (
-              <Button onClick={handleCreateService} size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                <Plus className="mr-2 h-5 w-5" />
-                Add New Service
-              </Button>
-            )}
-          </div>
-
-          {/* Service Statistics Dashboard - Only for Providers */}
-          {isProvider && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-600">Total Services</p>
-                      <p className="text-2xl font-bold text-blue-900">{stats.totalServices}</p>
-                    </div>
-                    <div className="p-3 bg-blue-200 rounded-full">
-                      <Building2 className="h-6 w-6 text-blue-700" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-green-600">Active Services</p>
-                      <p className="text-2xl font-bold text-green-900">{stats.activeServices}</p>
-                      <p className="text-xs text-green-700">
-                        {stats.totalServices > 0 ? Math.round((stats.activeServices / stats.totalServices) * 100) : 0}% of total
-                      </p>
-                    </div>
-                    <div className="p-3 bg-green-200 rounded-full">
-                      <TrendingUp className="h-6 w-6 text-green-700" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-purple-600">Total Revenue</p>
-                      <p className="text-2xl font-bold text-purple-900">{formatCurrency(stats.totalRevenue, 'OMR')}</p>
-                    </div>
-                    <div className="p-3 bg-purple-200 rounded-full">
-                      <DollarSign className="h-6 w-6 text-purple-700" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-orange-600">Avg. Rating</p>
-                      <p className="text-2xl font-bold text-orange-900">{stats.averageRating.toFixed(1)}</p>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star 
-                            key={star} 
-                            className={`h-3 w-3 ${star <= stats.averageRating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} 
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="p-3 bg-orange-200 rounded-full">
-                      <Star className="h-6 w-6 text-orange-700" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Services</h1>
+          <p className="text-gray-600 mt-2">Manage and track your service offerings</p>
         </div>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => router.push('/dashboard/services/create')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Service
+          </Button>
+          <Button onClick={() => router.push('/dashboard/services/create')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Service
+          </Button>
+        </div>
+      </div>
 
-        {/* Enhanced Search and Filters */}
-        <Card className="mb-8 border-0 shadow-lg">
-          <CardContent className="p-6">
-            <form onSubmit={handleSearch} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search services..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 border-2 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-                
-                <div>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="border-2 focus:border-blue-500 transition-colors">
-                      <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {isProvider && (
-                  <div>
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger className="border-2 focus:border-blue-500 transition-colors">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        {statuses.map(status => (
-                          <SelectItem key={status} value={status}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                
-                <div>
-                  <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    <Search className="mr-2 h-4 w-4" />
-                    Search
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={clearFilters} className="border-2">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Clear Filters
-                  </Button>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">View:</span>
-                  <div className="flex border rounded-lg overflow-hidden">
-                    <Button
-                      type="button"
-                      variant={selectedView === 'grid' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setSelectedView('grid')}
-                      className="rounded-none"
-                    >
-                      Grid
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={selectedView === 'list' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setSelectedView('list')}
-                      className="rounded-none"
-                    >
-                      List
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </form>
+      {/* Service Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Services</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalServices || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.activeServices || 0} active
+            </p>
           </CardContent>
         </Card>
 
-        {/* Services Display */}
-        {services.length === 0 ? (
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-12 text-center">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Building2 className="h-12 w-12 text-blue-600" />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.totalBookings || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              Across all services
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
+            <p className="text-xs text-muted-foreground">
+              From all services
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
+            <p className="text-xs text-muted-foreground">
+              Across all services
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Search & Filters</CardTitle>
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="h-4 w-4 mr-2" />
+              {showFilters ? 'Hide' : 'Show'} Filters
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Search Bar */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search by service title or description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">No services found</h3>
-              <p className="text-gray-600 mb-6 text-lg">
-                {searchQuery || selectedCategory !== 'all' || (isProvider && selectedStatus !== 'all')
-                  ? 'Try adjusting your search criteria to find what you\'re looking for'
-                  : isProvider 
-                    ? 'Start building your professional service portfolio today'
-                    : 'No services are currently available'
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="web-development">Web Development</SelectItem>
+                <SelectItem value="mobile-development">Mobile Development</SelectItem>
+                <SelectItem value="design">Design</SelectItem>
+                <SelectItem value="marketing">Marketing</SelectItem>
+                <SelectItem value="consulting">Consulting</SelectItem>
+                <SelectItem value="translation">Translation</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Created Date</SelectItem>
+                  <SelectItem value="title">Title</SelectItem>
+                  <SelectItem value="base_price">Price</SelectItem>
+                  <SelectItem value="total_bookings">Bookings</SelectItem>
+                  <SelectItem value="average_rating">Rating</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort Order" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Newest First</SelectItem>
+                  <SelectItem value="asc">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setSearchTerm('')
+                  setStatusFilter('all')
+                  setCategoryFilter('all')
+                  setSortBy('created_at')
+                  setSortOrder('desc')
+                }}
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Services List */}
+      <div className="space-y-4">
+        {filteredServices.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {searchTerm || statusFilter !== 'all' ? 'No services match your filters' : 'No services yet'}
+              </h3>
+              <p className="text-gray-600">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Try adjusting your search criteria or filters.'
+                  : 'Create your first service to start receiving bookings.'
                 }
               </p>
-              <div className="flex gap-3 justify-center">
-                {(searchQuery || selectedCategory !== 'all' || (isProvider && selectedStatus !== 'all')) && (
-                  <Button onClick={clearFilters} variant="outline" size="lg">
-                    Clear all filters
-                  </Button>
-                )}
-                {!searchQuery && selectedCategory === 'all' && (!isProvider || selectedStatus === 'all') && isProvider && (
-                  <Button onClick={handleCreateService} size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600">
-                    <Plus className="mr-2 h-5 w-5" />
-                    Create Your First Service
-                  </Button>
-                )}
-              </div>
+              <Button 
+                className="mt-4"
+                onClick={() => router.push('/dashboard/services/create')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Service
+              </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className={selectedView === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
-            : 'space-y-4'
-          }>
-            {services.map((service) => (
-              <Card key={service.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-3 group-hover:text-blue-600 transition-colors">
-                        {service.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-3 text-gray-600 leading-relaxed">
-                        {service.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
-                      {service.category}
-                    </Badge>
-                    {isProvider && (
-                      <Badge className={`${getStatusColor(service.status)} flex items-center gap-1`}>
-                        {getStatusIcon(service.status)}
-                        {service.status}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-semibold">
-                      {formatCurrency(service.base_price, service.currency)}
-                    </Badge>
-                  </div>
-
-                  {/* Provider Information for Clients */}
-                  {!isProvider && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <User className="h-4 w-4" />
-                      <span>Service Provider</span>
-                      <span className="text-gray-500">• Business</span>
-                    </div>
+          filteredServices.map((service) => (
+            <Card key={service.id} className="overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  {/* Service Image */}
+                  {service.cover_image_url && (
+                    <img
+                      src={service.cover_image_url}
+                      alt={service.title}
+                      className="w-24 h-24 object-cover rounded-lg"
+                    />
                   )}
-                </CardHeader>
-                
-                <CardContent className="pt-0">
-                  <div className="space-y-4">
-                    {/* Service Metrics - Only for Providers */}
-                    {isProvider && (
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="text-center p-2 bg-gray-50 rounded-lg">
-                          <div className="font-semibold text-gray-900">{service.views_count || 0}</div>
-                          <div className="text-gray-500 text-xs">Views</div>
-                        </div>
-                        <div className="text-center p-2 bg-gray-50 rounded-lg">
-                          <div className="font-semibold text-gray-900">{service.bookings_count || 0}</div>
-                          <div className="text-gray-500 text-xs">Bookings</div>
-                        </div>
-                        <div className="text-center p-2 bg-gray-50 rounded-lg">
-                          <div className="font-semibold text-gray-900">{service.rating ? service.rating.toFixed(1) : 'N/A'}</div>
-                          <div className="text-gray-500 text-xs">Rating</div>
+                  
+                  {/* Service Details */}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                          {service.title}
+                        </h3>
+                        <div className="flex items-center space-x-3 mb-3">
+                          {getStatusBadge(service.status)}
+                          {getApprovalBadge(service.approval_status)}
+                          <Badge variant="outline">{service.category}</Badge>
                         </div>
                       </div>
-                    )}
-
-                    {/* Creation Date */}
-                    <div className="text-sm text-gray-500 flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Created: {new Date(service.created_at).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/services/${service.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicateService(service)}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteService(service.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleViewService(service.id)}
-                        className="hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        {isProvider ? 'View' : 'Book Service'}
-                      </Button>
-                      
-                      {isProvider && (
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditService(service.id)}
-                            className="hover:bg-green-50 hover:text-green-600 hover:border-green-200"
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => handleDeleteService(service.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
+                    <p className="text-gray-600 mb-4 line-clamp-2">{service.description}</p>
+                    
+                    {/* Service Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {formatCurrency(service.base_price, service.currency)}
                         </div>
-                      )}
+                        <div className="text-xs text-gray-600">Base Price</div>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">
+                          {service.total_bookings || 0}
+                        </div>
+                        <div className="text-xs text-gray-600">Total Bookings</div>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {formatCurrency(service.total_revenue || 0, service.currency)}
+                        </div>
+                        <div className="text-xs text-gray-600">Total Revenue</div>
+                      </div>
+                      
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-center space-x-1 mb-1">
+                          {getRatingStars(service.average_rating || 0)}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {service.average_rating?.toFixed(1) || '0.0'} ({service.total_reviews || 0} reviews)
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Additional Info */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t text-sm text-gray-600">
+                      <div className="flex items-center space-x-4">
+                        <span>Created: {formatDate(service.created_at)}</span>
+                        <span>Updated: {formatDate(service.updated_at)}</span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/services/${service.id}/analytics`)}
+                        >
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Analytics
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/services/${service.id}/packages`)}
+                        >
+                          <Package className="h-4 w-4 mr-2" />
+                          Packages
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
+
+      {/* Quick Actions */}
+      {filteredServices.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
+                <p className="text-sm text-gray-600">Manage your services efficiently</p>
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/services/create')}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Service
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/services/analytics')}
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Analytics
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/services/settings')}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Service Settings
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
