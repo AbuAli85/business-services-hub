@@ -32,6 +32,8 @@ class EdgeFunctionManager {
 
   constructor() {
     this.baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/rest/v1', '') || ''
+    // Ensure monitoringEvents is always initialized
+    this.monitoringEvents = []
   }
 
   // Enable/disable monitoring
@@ -41,17 +43,28 @@ class EdgeFunctionManager {
 
   // Get monitoring events
   getMonitoringEvents(): MonitoringEvent[] {
+    if (!this.monitoringEvents) {
+      this.monitoringEvents = []
+    }
     return [...this.monitoringEvents]
   }
 
   // Clear monitoring events
   clearMonitoringEvents() {
+    if (!this.monitoringEvents) {
+      this.monitoringEvents = []
+    }
     this.monitoringEvents = []
   }
 
   // Record monitoring event
   private recordEvent(event: Omit<MonitoringEvent, 'timestamp'>) {
     if (!this.isMonitoringEnabled) return
+
+    // Ensure monitoringEvents is initialized
+    if (!this.monitoringEvents) {
+      this.monitoringEvents = []
+    }
 
     const monitoringEvent: MonitoringEvent = {
       ...event,
@@ -282,7 +295,7 @@ class EdgeFunctionManager {
 
   // Get performance statistics
   getPerformanceStats() {
-    const events = this.monitoringEvents
+    const events = this.monitoringEvents || []
     const totalCalls = events.length
     const successfulCalls = events.filter(e => e.success).length
     const failedCalls = totalCalls - successfulCalls

@@ -627,13 +627,6 @@ export default function ServicesPage() {
                   <BarChart3 className="h-4 w-4 mr-2" />
                   View Analytics
                 </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => router.push('/dashboard/services/settings')}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Service Settings
-                </Button>
               </div>
             </div>
           </CardContent>
