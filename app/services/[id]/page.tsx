@@ -95,6 +95,15 @@ interface User {
   email: string
 }
 
+interface ServiceStats {
+  totalViews: number
+  totalBookings: number
+  completedBookings: number
+  totalRevenue: number
+  averageRating: number
+  responseRate: number
+}
+
 interface BookingForm {
   package_id: string
   scheduled_date: string
@@ -104,15 +113,6 @@ interface BookingForm {
   requirements: string
   budget: number
   urgency: 'low' | 'medium' | 'high'
-}
-
-interface ServiceStats {
-  totalViews: number
-  totalBookings: number
-  completedBookings: number
-  totalRevenue: number
-  averageRating: number
-  responseRate: number
 }
 
 export default function ServiceDetailPage() {
