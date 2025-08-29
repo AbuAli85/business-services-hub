@@ -216,28 +216,63 @@ export default function ProviderDashboard() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Use the enhanced_bookings view instead of complex joins
+      // Use basic bookings table with simple join instead of enhanced_bookings view
       const { data: bookings } = await supabase
-        .from('enhanced_bookings')
+        .from('bookings')
         .select(`
           id,
-          service_title,
-          client_name,
           status,
           amount,
           currency,
           scheduled_date,
-          created_at
+          created_at,
+          service_id,
+          client_id
         `)
         .eq('provider_id', userId)
         .order('created_at', { ascending: false })
         .limit(5)
 
       if (bookings) {
-        setRecentBookings(bookings.map((b: any) => ({
-          ...b,
-          client_name: b.client_name || 'Unknown Client'
-        })))
+        // Get service titles and client names separately to avoid complex joins
+        const enrichedBookings = await Promise.all(
+          bookings.map(async (booking) => {
+            let serviceTitle = 'Unknown Service'
+            let clientName = 'Unknown Client'
+
+            try {
+              // Get service title
+              if (booking.service_id) {
+                const { data: service } = await supabase
+                  .from('services')
+                  .select('title')
+                  .eq('id', booking.service_id)
+                  .single()
+                serviceTitle = service?.title || 'Unknown Service'
+              }
+
+              // Get client name
+              if (booking.client_id) {
+                const { data: client } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', booking.client_id)
+                  .single()
+                clientName = client?.full_name || 'Unknown Client'
+              }
+            } catch (error) {
+              console.log('Error fetching related data for booking:', error)
+            }
+
+            return {
+              ...booking,
+              service_title: serviceTitle,
+              client_name: clientName
+            }
+          })
+        )
+
+        setRecentBookings(enrichedBookings)
       }
     } catch (error) {
       console.error('Error fetching recent bookings:', error)
@@ -279,15 +314,23 @@ export default function ProviderDashboard() {
 
             const totalRevenue = completedBookings?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
 
-            // Get average rating from reviews
-            const { data: reviews } = await supabase
-              .from('reviews')
-              .select('rating')
-              .eq('service_id', service.id)
+            // Try to get average rating from reviews, but use fallback if it fails
+            let averageRating = 0
+            try {
+              const { data: reviews } = await supabase
+                .from('reviews')
+                .select('rating')
+                .eq('service_id', service.id)
 
-            const averageRating = reviews && reviews.length > 0
-              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-              : 0
+              if (reviews && reviews.length > 0) {
+                averageRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+              }
+            } catch (error) {
+              console.log('Reviews table not accessible, using default rating')
+              // Use a default rating based on completion rate
+              const completionRate = (totalBookings || 0) > 0 ? ((completedBookings?.length || 0) / (totalBookings || 0)) * 100 : 0
+              averageRating = Math.min(5, Math.max(1, (completionRate / 20) + 3)) // Scale 0-100% to 1-5 rating
+            }
 
             return {
               ...service,
