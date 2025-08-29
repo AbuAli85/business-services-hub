@@ -354,28 +354,83 @@ export default function BookingsPage() {
     try {
       setIsUpdatingStatus(bookingId)
       
+      // Get the current Supabase session for authentication
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.')
+      }
+
+      // Map the status to the correct action for the API
+      const getActionFromStatus = (status: string) => {
+        switch (status) {
+          case 'approved': return 'approve'
+          case 'declined': return 'decline'
+          case 'completed': return 'complete'
+          case 'cancelled': return 'cancel'
+          case 'in_progress': return 'approve' // Start work is like approving
+          default: return 'approve'
+        }
+      }
+
+      const requestBody = {
+        booking_id: bookingId,
+        action: getActionFromStatus(newStatus),
+        scheduled_date: new Date().toISOString(),
+        reason: `Status updated to ${newStatus}`
+      }
+
+      console.log('🔍 Sending PATCH request to /api/bookings:')
+      console.log('🔍 Request body:', requestBody)
+      console.log('🔍 Authorization header present:', !!session.access_token)
+
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          id: bookingId,
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update booking')
+        const errorData = await response.json()
+        console.error('API Error Response:', errorData)
+        console.error('Response Status:', response.status)
+        console.error('Response Headers:', Object.fromEntries(response.headers.entries()))
+        
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.')
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to update this booking.')
+        } else if (response.status === 404) {
+          throw new Error('Booking not found.')
+        } else if (response.status === 400) {
+          throw new Error(errorData.error || 'Invalid request data')
+        } else {
+          throw new Error(errorData.error || `Failed to update booking (${response.status})`)
+        }
       }
 
       toast.success('Booking status updated successfully')
       await fetchBookings(user.id, userRole)
     } catch (error) {
       console.error('Error updating booking status:', error)
-      toast.error('Failed to update booking status')
+      
+      // More specific error messages
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error('Failed to update booking status')
+      }
+      
+      // If authentication failed, redirect to login
+      if (error instanceof Error && error.message.includes('Authentication failed')) {
+        setTimeout(() => {
+          router.push('/auth/sign-in')
+        }, 2000)
+      }
     } finally {
       setIsUpdatingStatus('')
     }
@@ -660,27 +715,43 @@ export default function BookingsPage() {
               </Button>
             )}
             
-            {/* Provider-specific actions */}
-            {userRole === 'provider' && (
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={() => router.push('/dashboard/services')}
-                  className="border-green-200 text-green-700 hover:bg-green-50"
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  Manage Services
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => router.push('/dashboard/provider')}
-                  className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Analytics
-                </Button>
-              </div>
-            )}
+                         {/* Provider-specific actions */}
+             {userRole === 'provider' && (
+               <div className="flex gap-2">
+                 <Button 
+                   variant="outline"
+                   onClick={() => router.push('/dashboard/services')}
+                   className="border-green-200 text-green-700 hover:bg-green-50"
+                 >
+                   <Package className="h-4 w-4 mr-2" />
+                   Manage Services
+                 </Button>
+                 <Button 
+                   variant="outline"
+                   onClick={() => router.push('/dashboard/provider')}
+                   className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                 >
+                   <BarChart3 className="h-4 w-4 mr-2" />
+                   View Analytics
+                 </Button>
+               </div>
+             )}
+
+             {/* Refresh Button */}
+             <Button 
+               variant="outline"
+               onClick={() => {
+                 if (user) {
+                   fetchBookings(user.id, userRole)
+                   toast.success('Bookings refreshed')
+                 }
+               }}
+               className="border-gray-200 text-gray-700 hover:bg-gray-50"
+               disabled={loading}
+             >
+               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+               Refresh
+             </Button>
           </div>
         </div>
 
