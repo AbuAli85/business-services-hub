@@ -169,7 +169,7 @@ export default function BookingsPage() {
         // Fetch services data
         serviceIds.length > 0 ? supabase
           .from('services')
-          .select('id, service_name, description')
+          .select('id, title, description')
           .in('id', serviceIds)
           .then(({ data, error }) => {
             if (error) {
@@ -182,7 +182,7 @@ export default function BookingsPage() {
         // Fetch clients data
         clientIds.length > 0 ? supabase
           .from('profiles')
-          .select('id, full_name, company_name, email, phone')
+          .select('id, full_name, company_name, phone')
           .in('id', clientIds)
           .then(({ data, error }) => {
             if (error) {
@@ -219,11 +219,11 @@ export default function BookingsPage() {
 
         return {
           ...booking,
-          service_name: service?.service_name || null,
+          service_name: service?.title || null,
           service_description: service?.description || null,
           client_name: client?.full_name || null,
           client_company_name: client?.company_name || null,
-          client_email: client?.email || null,
+          client_email: null, // Email not available in profiles table
           client_phone: client?.phone || null,
           provider_name: provider?.full_name || null,
           provider_company_name: provider?.company_name || null,
@@ -794,9 +794,6 @@ export default function BookingsPage() {
                         {booking.client_name || `Client ID: ${booking.client_id?.slice(0, 8) || 'Unknown'}`}
                       </p>
                       <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
-                      {booking.client_email && (
-                        <p className="text-xs text-gray-400 truncate mt-1">{booking.client_email}</p>
-                      )}
                       {!booking.client_name && (
                         <p className="text-xs text-orange-600 mt-1">Client name not available</p>
                       )}
