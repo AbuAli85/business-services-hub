@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import ServiceNavigation from '@/components/service-navigation'
 
 import { 
   Calendar, 
@@ -257,26 +258,12 @@ export default function ServiceDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Navigation */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" onClick={() => router.back()}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Services
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Heart className="w-4 h-4 mr-2" />
-                Save
-              </Button>
-              <Button variant="outline" size="sm">
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ServiceNavigation 
+        serviceTitle={service.title}
+        providerName={service.provider?.full_name}
+        providerId={service.provider_id}
+        showProviderInfo={true}
+      />
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
