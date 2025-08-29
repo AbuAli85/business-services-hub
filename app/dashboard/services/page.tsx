@@ -122,27 +122,40 @@ export default function ServicesPage() {
       const enrichedServices = await Promise.all(
         (services || []).map(async (service) => {
           try {
+            console.log(`🔍 Enriching service: ${service.title} (${service.id})`)
+            
             // Get booking statistics
             const { data: bookings } = await supabase
               .from('bookings')
               .select('status, amount')
               .eq('service_id', service.id)
 
-            // Get review statistics
-            const { data: reviews } = await supabase
+            // Get review statistics - fetch all reviews and filter in JS to avoid 400 errors
+            const { data: allReviews } = await supabase
               .from('reviews')
-              .select('rating')
-              .eq('service_id', service.id)
+              .select('rating, service_id')
+              
+            // Filter reviews for this service
+            const serviceReviews = allReviews?.filter(r => r.service_id === service.id) || []
 
             // Calculate statistics
             const totalBookings = bookings?.length || 0
             const totalRevenue = bookings
               ?.filter(b => ['completed', 'in_progress'].includes(b.status))
               .reduce((sum, b) => sum + (b.amount || 0), 0) || 0
-            const averageRating = reviews && reviews.length > 0
-              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+            const averageRating = serviceReviews.length > 0 
+              ? serviceReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / serviceReviews.length 
               : 0
-            const totalReviews = reviews?.length || 0
+            const totalReviews = serviceReviews.length || 0
+
+            console.log(`✅ Service ${service.title} enriched:`, {
+              totalBookings,
+              totalRevenue,
+              averageRating,
+              totalReviews,
+              bookingsCount: bookings?.length || 0,
+              reviewsCount: serviceReviews.length
+            })
 
             return {
               ...service,
@@ -152,7 +165,7 @@ export default function ServicesPage() {
               total_reviews: totalReviews
             }
           } catch (error) {
-            console.error(`Error enriching service ${service.id}:`, error)
+            console.error(`❌ Error enriching service ${service.id}:`, error)
             return {
               ...service,
               total_bookings: 0,
@@ -164,6 +177,7 @@ export default function ServicesPage() {
         })
       )
 
+      console.log('🎯 All services enriched:', enrichedServices.length)
       setServices(enrichedServices)
       
       // Calculate overall statistics
@@ -191,6 +205,16 @@ export default function ServicesPage() {
         const averageRating = servicesWithRatings.length > 0 
           ? servicesWithRatings.reduce((sum, s) => sum + (s.average_rating || 0), 0) / servicesWithRatings.length 
           : 0
+
+        console.log('📊 Service Stats Calculated:', {
+          totalServices,
+          activeServices,
+          pendingApproval,
+          totalBookings,
+          totalRevenue,
+          averageRating,
+          servicesCount: services.length
+        })
 
         setStats({
           totalServices,
@@ -356,13 +380,9 @@ export default function ServicesPage() {
           <p className="text-gray-600 mt-2">Manage and track your service offerings</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/services/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Service
-          </Button>
           <Button onClick={() => router.push('/dashboard/services/create')}>
             <Plus className="h-4 w-4 mr-2" />
-            Add New Service
+            Create Service
           </Button>
         </div>
       </div>
@@ -685,11 +705,10 @@ export default function ServicesPage() {
               </div>
               <div className="flex gap-3">
                 <Button 
-                  variant="outline"
                   onClick={() => router.push('/dashboard/services/create')}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add New Service
+                  Create New Service
                 </Button>
                 <Button 
                   variant="outline"
