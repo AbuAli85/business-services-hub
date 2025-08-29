@@ -779,6 +779,9 @@ export default function BookingsPage() {
                       {booking.service_description && (
                         <p className="text-xs text-gray-400 truncate mt-1">{booking.service_description}</p>
                       )}
+                      {!booking.service_name && (
+                        <p className="text-xs text-orange-600 mt-1">Service name not available</p>
+                      )}
                     </div>
                   </div>
                   
@@ -794,6 +797,9 @@ export default function BookingsPage() {
                       {booking.client_email && (
                         <p className="text-xs text-gray-400 truncate mt-1">{booking.client_email}</p>
                       )}
+                      {!booking.client_name && (
+                        <p className="text-xs text-orange-600 mt-1">Client name not available</p>
+                      )}
                     </div>
                   </div>
 
@@ -808,6 +814,9 @@ export default function BookingsPage() {
                           {booking.provider_name || `Provider ID: ${booking.provider_id?.slice(0, 8) || 'Unknown'}`}
                         </p>
                         <p className="text-sm text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
+                        {!booking.provider_name && (
+                          <p className="text-xs text-orange-600 mt-1">Provider name not available</p>
+                        )}
                       </div>
                     </div>
                   )}
