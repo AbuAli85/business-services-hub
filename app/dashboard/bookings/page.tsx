@@ -54,7 +54,8 @@ import {
   Settings,
   CreditCard,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Copy
 } from 'lucide-react'
 
 interface Booking {
@@ -339,7 +340,20 @@ export default function BookingsPage() {
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [showOperationalModal, setShowOperationalModal] = useState(false)
   const [selectedBookingForApproval, setSelectedBookingForApproval] = useState<Booking | null>(null)
+  const [selectedBookingForQuickActions, setSelectedBookingForQuickActions] = useState<string | null>(null)
   const [approvalMode, setApprovalMode] = useState<'simple' | 'detailed'>('simple')
+  
+  // Close quick actions dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (selectedBookingForQuickActions) {
+        setSelectedBookingForQuickActions(null)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [selectedBookingForQuickActions])
   const [approvalForm, setApprovalForm] = useState({
     action: 'request_approval',
     comments: '',
@@ -3278,58 +3292,58 @@ export default function BookingsPage() {
         ) : (
           <div className="space-y-4">
             {filteredBookings.map((booking) => (
-              <Card key={booking.id} className="hover:shadow-lg transition-all duration-300 border-0 shadow-sm bg-white/90 backdrop-blur-sm">
+              <Card key={booking.id} className="hover:shadow-lg transition-all duration-300 border border-gray-200 shadow-sm bg-white hover:border-gray-300">
                 <CardContent className="p-6">
                   {/* Enhanced Professional Header with Smart Indicators */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
                       <input
                         type="checkbox"
                         id={`booking-${booking.id}`}
                         checked={selectedBookings.includes(booking.id)}
                         onChange={() => toggleBookingSelection(booking.id)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                         aria-label={`Select booking ${booking.id}`}
                       />
                       
                       {/* Smart Status Badge with Priority */}
                       <div className="flex items-center gap-2">
-                        <Badge className={`${getStatusColor(booking.status)} flex items-center gap-2 px-3 py-1`}>
+                        <Badge className={`${getStatusColor(booking.status)} flex items-center gap-2 px-3 py-1.5 font-medium`}>
                           {getStatusIcon(booking.status)}
                           <span className="capitalize">{booking.status.replace('_', ' ')}</span>
                         </Badge>
                         
                         {/* Priority Indicator */}
                         {booking.priority && (
-                          <Badge className={`${getPriorityColor(booking.priority)} text-xs px-2 py-1`}>
+                          <Badge className={`${getPriorityColor(booking.priority)} text-xs px-2.5 py-1 font-medium`}>
                             {getPriorityIcon(booking.priority)} {booking.priority.toUpperCase()}
                           </Badge>
                         )}
                         
                         {/* Approval Status */}
                         {booking.approval_status && booking.approval_status !== 'pending' && (
-                          <Badge className={`${getApprovalStatusColor(booking.approval_status)} text-xs px-2 py-1`}>
+                          <Badge className={`${getApprovalStatusColor(booking.approval_status)} text-xs px-2.5 py-1 font-medium`}>
                             {getApprovalStatusIcon(booking.approval_status)} {booking.approval_status.replace('_', ' ')}
                           </Badge>
                         )}
                       </div>
                       
-                      <span className="text-sm text-gray-500 font-mono">
+                      <span className="text-sm text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
                         #{booking.id.slice(0, 8)}
                       </span>
                     </div>
                     
                     <div className="text-right">
-                      <div className="text-sm text-gray-500 mb-1">
+                      <div className="text-sm text-gray-500 mb-2 bg-gray-50 px-3 py-1 rounded-lg inline-block">
                         Created {formatDate(booking.created_at)}
                       </div>
                       
                       {/* Smart Amount Display */}
                       {booking.amount && (
-                        <div className="text-lg font-bold text-emerald-600">
+                        <div className="text-lg font-bold text-emerald-600 mb-2">
                           {formatCurrency(booking.amount)}
                           {booking.payment_schedule && booking.payment_schedule.length > 0 && (
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs text-gray-500 mt-1 bg-emerald-50 px-2 py-1 rounded">
                               {booking.payment_schedule.filter(p => p.status === 'paid').length}/{booking.payment_schedule.length} payments
                             </div>
                           )}
@@ -3361,84 +3375,109 @@ export default function BookingsPage() {
                   </div>
 
                   {/* Enhanced Information Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Package className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">{booking.service_name}</p>
-                        <p className="text-gray-500">Service</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Package className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{booking.service_name}</p>
+                        <p className="text-sm text-gray-500">Service</p>
                         {booking.service_description && (
-                          <p className="text-xs text-gray-400 truncate">{booking.service_description}</p>
+                          <p className="text-xs text-gray-400 truncate mt-1">{booking.service_description}</p>
                         )}
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">{booking.client_name}</p>
-                        <p className="text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <User className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{booking.client_name}</p>
+                        <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
                         {booking.client_email && (
-                          <p className="text-xs text-gray-400">{booking.client_email}</p>
+                          <p className="text-xs text-gray-400 truncate mt-1">{booking.client_email}</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm">
-                      <Building2 className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">{booking.provider_name}</p>
-                        <p className="text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
+                    {/* Provider info - Only show for clients, not for providers viewing their own bookings */}
+                    {userRole === 'client' && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                        <div>
+                          <p className="font-medium text-gray-900">{booking.provider_name}</p>
+                          <p className="text-gray-500">Provider{booking.provider_company_name ? ` • ${booking.provider_company_name}` : ''}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    
+                    {/* Provider-specific info - Show when provider is viewing their own bookings */}
+                    {userRole === 'provider' && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                          <User className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{booking.client_name}</p>
+                          <p className="text-sm text-gray-500">Client{booking.client_company_name ? ` • ${booking.client_company_name}` : ''}</p>
+                          {booking.client_email && (
+                            <p className="text-xs text-gray-400 truncate mt-1">{booking.client_email}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <div>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900">
                           {booking.scheduled_date ? formatDate(booking.scheduled_date) : formatDate(booking.created_at)}
                         </p>
-                        <p className="text-gray-500">
+                        <p className="text-sm text-gray-500">
                           {booking.scheduled_date ? 'Scheduled for' : 'Booked on'}
                         </p>
                         {booking.scheduled_time && (
-                          <p className="text-xs text-gray-400">{booking.scheduled_time}</p>
+                          <p className="text-xs text-gray-400 mt-1">{booking.scheduled_time}</p>
                         )}
                       </div>
                     </div>
                   </div>
 
                   {/* Additional Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                     {booking.estimated_duration && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded-lg border border-blue-100">
+                        <Clock className="h-4 w-4 text-blue-500" />
                         <div>
-                          <p className="font-medium text-gray-900">{booking.estimated_duration}</p>
-                          <p className="text-gray-500">Duration</p>
+                          <p className="font-medium text-blue-900">{booking.estimated_duration}</p>
+                          <p className="text-blue-600 text-xs">Duration</p>
                         </div>
                       </div>
                     )}
                     
                     {booking.location && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2 text-sm p-2 bg-orange-50 rounded-lg border border-orange-100">
+                        <MapPin className="h-4 w-4 text-orange-500" />
                         <div>
-                          <p className="font-medium text-gray-900">{booking.location}</p>
-                          <p className="text-gray-500">Location</p>
+                          <p className="font-medium text-orange-900">{booking.location}</p>
+                          <p className="text-orange-600 text-xs">Location</p>
                         </div>
                       </div>
                     )}
 
                     {booking.rating && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Star className="h-4 w-4 text-gray-400" />
+                      <div className="flex items-center gap-2 text-sm p-2 bg-yellow-50 rounded-lg border border-yellow-100">
+                        <Star className="h-4 w-4 text-yellow-500" />
                         <div>
                           <div className="flex items-center gap-1">
                             {getRatingStars(booking.rating)}
-                            <span className="font-medium text-gray-900 ml-1">({booking.rating}/5)</span>
+                            <span className="font-medium text-yellow-900 ml-1">({booking.rating}/5)</span>
                           </div>
-                          <p className="text-gray-500">Rating</p>
+                          <p className="text-yellow-600 text-xs">Rating</p>
                         </div>
                       </div>
                     )}
@@ -3614,38 +3653,91 @@ export default function BookingsPage() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between">
+                  {/* Professional Action Buttons */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex gap-2 flex-wrap">
-                                             <Button 
+                      {/* Primary Actions */}
+                      <Button 
                         size="sm" 
                         variant="outline" 
-                        className="border-gray-200 hover:bg-gray-50"
+                        className="border-gray-200 hover:bg-gray-50 text-gray-700"
                         onClick={() => openDetailsModal(booking)}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
                       </Button>
+                      
                       <Button 
                         size="sm"
-                        className="bg-indigo-600 hover:bg-indigo-700"
+                        variant="outline"
+                        className="border-blue-200 hover:bg-blue-50 text-blue-700"
                         onClick={() => openTicket(booking.id)}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Open Ticket
                       </Button>
                      
-                     {/* Dynamic Status Actions */}
-                     {getStatusActions(booking)}
-                   </div>
+                      {/* Dynamic Status Actions */}
+                      {getStatusActions(booking)}
+                    </div>
                     
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">
                         Last updated: {formatDate(booking.last_updated || booking.created_at)}
                       </span>
-                      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-gray-600">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      
+                      {/* Quick Actions Menu */}
+                      <div className="relative">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          onClick={() => setSelectedBookingForQuickActions(booking.id)}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Quick Actions Dropdown */}
+                        {selectedBookingForQuickActions === booking.id && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              onClick={() => {
+                                openMessageModal(booking)
+                                setSelectedBookingForQuickActions(null)
+                              }}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Send Message
+                            </button>
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              onClick={() => {
+                                // Copy booking ID to clipboard
+                                navigator.clipboard.writeText(booking.id)
+                                toast.success('Booking ID copied to clipboard')
+                                setSelectedBookingForQuickActions(null)
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                              Copy ID
+                            </button>
+                            {userRole === 'provider' && (
+                              <button
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                onClick={() => {
+                                  // Navigate to service details
+                                  router.push(`/dashboard/services/${booking.service_id}`)
+                                  setSelectedBookingForQuickActions(null)
+                                }}
+                              >
+                                <Package className="h-4 w-4" />
+                                View Service
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
