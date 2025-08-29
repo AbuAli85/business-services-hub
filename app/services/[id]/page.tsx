@@ -41,7 +41,19 @@ import {
   Users,
   Award,
   Shield,
-  Zap
+  Zap,
+  Edit,
+  Trash2,
+  Settings,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  UserCheck,
+  UserX,
+  Calendar as CalendarIcon,
+  Target,
+  Activity
 } from 'lucide-react'
 
 interface Service {
@@ -76,6 +88,13 @@ interface Service {
   }
 }
 
+interface User {
+  id: string
+  role: 'client' | 'provider' | 'admin'
+  full_name: string
+  email: string
+}
+
 interface BookingForm {
   package_id: string
   scheduled_date: string
@@ -87,15 +106,27 @@ interface BookingForm {
   urgency: 'low' | 'medium' | 'high'
 }
 
+interface ServiceStats {
+  totalViews: number
+  totalBookings: number
+  completedBookings: number
+  totalRevenue: number
+  averageRating: number
+  responseRate: number
+}
+
 export default function ServiceDetailPage() {
   const params = useParams()
   const router = useRouter()
   const serviceId = params.id as string
   
   const [service, setService] = useState<Service | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showBooking, setShowBooking] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
   const [bookingForm, setBookingForm] = useState<BookingForm>({
     package_id: '',
     scheduled_date: '',
@@ -107,13 +138,44 @@ export default function ServiceDetailPage() {
     urgency: 'medium'
   })
   const [submitting, setSubmitting] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'reviews' | 'provider'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'reviews' | 'provider' | 'analytics' | 'bookings'>('overview')
+  const [serviceStats, setServiceStats] = useState<ServiceStats>({
+    totalViews: 0,
+    totalBookings: 0,
+    completedBookings: 0,
+    totalRevenue: 0,
+    averageRating: 0,
+    responseRate: 0
+  })
 
   useEffect(() => {
-    async function fetchService() {
+    async function fetchData() {
       try {
         const supabase = await getSupabaseClient()
         
+        // Get current user
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (!authUser) {
+          router.push('/auth/sign-in')
+          return
+        }
+
+        // Get user profile and role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, role')
+          .eq('id', authUser.id)
+          .single()
+
+        if (profile) {
+          setUser({
+            id: profile.id,
+            role: profile.role || 'client',
+            full_name: profile.full_name,
+            email: profile.email
+          })
+        }
+
         // Fetch service with packages
         const { data: serviceData, error: serviceError } = await supabase
           .from('services')
@@ -151,18 +213,53 @@ export default function ServiceDetailPage() {
         }
 
         setService(serviceData)
+
+        // If user is the provider, fetch service stats
+        if (profile?.role === 'provider' && profile.id === serviceData.provider_id) {
+          await fetchServiceStats(serviceId)
+        }
+
       } catch (err) {
-        console.error('Error fetching service:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch service')
+        console.error('Error fetching data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch data')
       } finally {
         setLoading(false)
       }
     }
 
     if (serviceId) {
-      fetchService()
+      fetchData()
     }
-  }, [serviceId])
+  }, [serviceId, router])
+
+  const fetchServiceStats = async (serviceId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Get bookings for this service
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('status, amount, created_at')
+        .eq('service_id', serviceId)
+
+      const totalBookings = bookings?.length || 0
+      const completedBookings = bookings?.filter(b => b.status === 'completed').length || 0
+      const totalRevenue = bookings
+        ?.filter(b => ['completed', 'in_progress'].includes(b.status))
+        .reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+
+      setServiceStats({
+        totalViews: Math.floor(Math.random() * 1000) + 100, // Mock data
+        totalBookings,
+        completedBookings,
+        totalRevenue,
+        averageRating: 4.8, // Mock data
+        responseRate: totalBookings > 0 ? ((totalBookings - (bookings?.filter(b => b.status === 'pending').length || 0)) / totalBookings) * 100 : 0
+      })
+    } catch (error) {
+      console.error('Error fetching service stats:', error)
+    }
+  }
 
   const handleBookingSubmit = async () => {
     if (!service) return
@@ -214,6 +311,32 @@ export default function ServiceDetailPage() {
     }
   }
 
+  const handleDeleteService = async () => {
+    if (!service || !user || user.role !== 'provider') return
+
+    if (confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+      try {
+        const supabase = await getSupabaseClient()
+        const { error } = await supabase
+          .from('services')
+          .delete()
+          .eq('id', service.id)
+
+        if (error) throw error
+
+        alert('Service deleted successfully!')
+        router.push('/dashboard/services')
+      } catch (error) {
+        console.error('Error deleting service:', error)
+        alert('Failed to delete service')
+      }
+    }
+    setShowDelete(false)
+  }
+
+  const isOwner = user && service && user.role === 'provider' && user.id === service.provider_id
+  const isClient = user && user.role === 'client'
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -232,7 +355,7 @@ export default function ServiceDetailPage() {
     )
   }
 
-  if (error || !service) {
+  if (error || !service || !user) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
@@ -262,7 +385,7 @@ export default function ServiceDetailPage() {
         serviceTitle={service.title}
         providerName={service.provider?.full_name}
         providerId={service.provider_id}
-        showProviderInfo={true}
+        showProviderInfo={!isOwner}
       />
 
       <div className="container mx-auto px-4 py-8">
@@ -293,6 +416,11 @@ export default function ServiceDetailPage() {
                       {service.status}
                     </Badge>
                     <Badge variant="outline">{service.category}</Badge>
+                    {isOwner && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        Your Service
+                      </Badge>
+                    )}
                   </div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{service.title}</h1>
                   <p className="text-gray-600 text-lg leading-relaxed">
@@ -300,8 +428,8 @@ export default function ServiceDetailPage() {
                   </p>
                 </div>
 
-                {/* Provider Info */}
-                {service.provider && (
+                {/* Provider Info (only show if not owner) */}
+                {!isOwner && service.provider && (
                   <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
                     <Avatar className="w-12 h-12">
                       <AvatarImage src={service.provider.avatar_url} />
@@ -331,6 +459,28 @@ export default function ServiceDetailPage() {
                   </div>
                 )}
 
+                {/* Service Stats (only show if owner) */}
+                {isOwner && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{serviceStats.totalViews}</div>
+                      <div className="text-sm text-gray-600">Total Views</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{serviceStats.totalBookings}</div>
+                      <div className="text-sm text-gray-600">Total Bookings</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{serviceStats.completedBookings}</div>
+                      <div className="text-sm text-gray-600">Completed</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{formatCurrency(serviceStats.totalRevenue, service.currency)}</div>
+                      <div className="text-sm text-gray-600">Revenue</div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Price and Actions */}
                 <div className="flex items-center justify-between pt-4">
                   <div>
@@ -340,13 +490,34 @@ export default function ServiceDetailPage() {
                     <p className="text-sm text-gray-500">Starting price</p>
                   </div>
                   <div className="flex gap-3">
-                    <Button variant="outline" size="lg">
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Contact Provider
-                    </Button>
-                    <Button size="lg" onClick={() => setShowBooking(true)}>
-                      Book This Service
-                    </Button>
+                    {/* Provider Actions */}
+                    {isOwner ? (
+                      <>
+                        <Button variant="outline" size="lg" onClick={() => setShowEdit(true)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Service
+                        </Button>
+                        <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/services')}>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Manage
+                        </Button>
+                        <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/bookings')}>
+                          <CalendarIcon className="w-4 h-4 mr-2" />
+                          View Bookings
+                        </Button>
+                      </>
+                    ) : (
+                      /* Client Actions */
+                      <>
+                        <Button variant="outline" size="lg">
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Contact Provider
+                        </Button>
+                        <Button size="lg" onClick={() => setShowBooking(true)}>
+                          Book This Service
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -356,17 +527,22 @@ export default function ServiceDetailPage() {
           {/* Navigation Tabs */}
           <div className="bg-white rounded-lg shadow-sm border mb-8">
             <div className="border-b">
-              <nav className="flex space-x-8 px-6">
+              <nav className="flex space-x-8 px-6 overflow-x-auto">
                 {[
                   { id: 'overview', label: 'Overview', icon: Eye },
                   { id: 'packages', label: 'Packages', icon: Package },
                   { id: 'reviews', label: 'Reviews', icon: Star },
-                  { id: 'provider', label: 'Provider', icon: Users }
+                  ...(isOwner ? [
+                    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+                    { id: 'bookings', label: 'Bookings', icon: CalendarIcon }
+                  ] : [
+                    { id: 'provider', label: 'Provider', icon: Users }
+                  ])
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -514,8 +690,8 @@ export default function ServiceDetailPage() {
                 </div>
               )}
 
-              {/* Provider Tab */}
-              {activeTab === 'provider' && service.provider && (
+              {/* Provider Tab (only for clients) */}
+              {activeTab === 'provider' && !isOwner && service.provider && (
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -576,13 +752,91 @@ export default function ServiceDetailPage() {
                   </Card>
                 </div>
               )}
+
+              {/* Analytics Tab (only for owners) */}
+              {activeTab === 'analytics' && isOwner && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Performance Overview</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Response Rate</span>
+                              <span className="text-sm text-gray-600">{serviceStats.responseRate.toFixed(1)}%</span>
+                            </div>
+                            <Progress value={serviceStats.responseRate} className="h-2" />
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">Completion Rate</span>
+                              <span className="text-sm text-gray-600">
+                                {serviceStats.totalBookings > 0 ? ((serviceStats.completedBookings / serviceStats.totalBookings) * 100).toFixed(1) : 0}%
+                              </span>
+                            </div>
+                            <Progress 
+                              value={serviceStats.totalBookings > 0 ? (serviceStats.completedBookings / serviceStats.totalBookings) * 100 : 0} 
+                              className="h-2" 
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Revenue Trends</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold text-green-600 mb-2">
+                            {formatCurrency(serviceStats.totalRevenue, service.currency)}
+                          </div>
+                          <p className="text-sm text-gray-500">Total Revenue</p>
+                          <div className="mt-4 text-sm text-gray-600">
+                            <div className="flex items-center justify-between">
+                              <span>Total Bookings:</span>
+                              <span className="font-medium">{serviceStats.totalBookings}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Completed:</span>
+                              <span className="font-medium">{serviceStats.completedBookings}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span>Average Rating:</span>
+                              <span className="font-medium">{serviceStats.averageRating.toFixed(1)}/5</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {/* Bookings Tab (only for owners) */}
+              {activeTab === 'bookings' && isOwner && (
+                <div className="space-y-6">
+                  <div className="text-center py-8">
+                    <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-600">Manage Bookings</h3>
+                    <p className="text-gray-500 mb-4">View and manage all booking requests for this service</p>
+                    <Button onClick={() => router.push('/dashboard/bookings')}>
+                      View All Bookings
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Booking Modal */}
-      {showBooking && (
+      {/* Booking Modal (only for clients) */}
+      {showBooking && isClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="mb-6 flex items-center justify-between">
@@ -720,6 +974,29 @@ export default function ServiceDetailPage() {
                   className="min-w-[120px]"
                 >
                   {submitting ? 'Submitting...' : 'Submit Booking'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <div className="text-center">
+              <Trash2 className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold mb-2">Delete Service</h2>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "{service.title}"? This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" onClick={() => setShowDelete(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteService}>
+                  Delete Service
                 </Button>
               </div>
             </div>
