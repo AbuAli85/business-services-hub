@@ -78,19 +78,45 @@ export default function DashboardLayout({
       let userRole = userMetadata?.role
       console.log('Initial role from metadata:', userRole)
       
-             // In production mode, roles must be set during registration
-       // No fallback to profiles table or role selection allowed
+      // In production mode, roles must be set during registration
+      // No fallback to profiles table or role selection allowed
       
-             // In production mode, users must have a role set during registration
-       if (!userRole) {
-         console.log('No role found - user must contact support')
-       }
+      // In production mode, users must have a role set during registration
+      if (!userRole) {
+        console.log('No role found - user must contact support')
+      }
+      
+      // Fetch company name from profile if user is a provider
+      let companyName = undefined
+      if (userRole === 'provider') {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', session.user.id)
+            .maybeSingle()
+          
+          if (profile?.company_id) {
+            const { data: company } = await supabase
+              .from('companies')
+              .select('name')
+              .eq('id', profile.company_id)
+              .maybeSingle()
+            
+            if (company?.name) {
+              companyName = company.name
+            }
+          }
+        } catch (error) {
+          console.warn('Could not fetch company name:', error)
+        }
+      }
       
       const finalUser = {
         id: session.user.id,
         role: userRole,
         full_name: userMetadata?.full_name || 'User',
-        company_name: undefined
+        company_name: companyName
       }
       
       console.log('Final user state:', finalUser)

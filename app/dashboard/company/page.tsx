@@ -32,6 +32,7 @@ import {
   Award,
   Star
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 interface Company {
   id: string
@@ -95,6 +96,8 @@ export default function CompanyPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [showCreateCompany, setShowCreateCompany] = useState(false)
+
 
   // Helper function to safely render company data values
   const safeRenderValue = (value: any): string => {
@@ -421,39 +424,83 @@ export default function CompanyPage() {
           setCompany(companyData)
           
           // Initialize form with safe values, filtering out empty objects and null values
-          const safeFormData = {
-            name: safeRenderValue(companyData.name) || '',
-            description: safeRenderValue(companyData.description) || '',
-            cr_number: safeRenderValue(companyData.cr_number) || '',
-            vat_number: safeRenderValue(companyData.vat_number) || '',
-            address: safeRenderValue(companyData.address) || '',
-            phone: safeRenderValue(companyData.phone) || '',
-            email: safeRenderValue(companyData.email) || '',
-            website: safeRenderValue(companyData.website) || '',
-            industry: safeRenderValue(companyData.industry) || '',
-            size: safeRenderValue(companyData.size) || '',
-            founded_year: (() => {
-              const year = safeRenderValue(companyData.founded_year)
-              if (year && !isNaN(parseInt(year))) {
-                return parseInt(year)
-              }
-              return new Date().getFullYear()
-            })(),
-            logo_url: safeRenderValue(companyData.logo_url) || ''
-          }
-          
-          setForm(safeFormData)
-          
-          // Debug: Check form values after setting
-          console.log('Form values after setting:', safeFormData)
-          console.log('Form value types:', Object.entries(safeFormData).map(([key, value]) => `${key}: ${typeof value} (${value})`))
+          setForm({
+            name: companyData.name || '',
+            description: companyData.description || '',
+            cr_number: companyData.cr_number || '',
+            vat_number: companyData.vat_number || '',
+            address: companyData.address || '',
+            phone: companyData.phone || '',
+            email: companyData.email || '',
+            website: companyData.website || '',
+            industry: companyData.industry || '',
+            size: companyData.size || '',
+                         founded_year: typeof companyData.founded_year === 'number' ? companyData.founded_year : undefined
+          })
         }
+      } else {
+        console.log('No company found for user, company_id:', profile?.company_id)
+        // Show option to create company
+        setShowCreateCompany(true)
       }
-
-      setLoading(false)
     } catch (error) {
       console.error('Error fetching company data:', error)
+      // Show option to create company if there's an error
+      setShowCreateCompany(true)
+    } finally {
       setLoading(false)
+    }
+  }
+
+  const createCompany = async () => {
+    try {
+      setCreating(true)
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Create company with basic info
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .insert({
+          owner_id: user.id,
+          name: user.user_metadata?.full_name + ' Company' || 'My Company',
+          description: 'Company created during onboarding',
+          cr_number: null,
+          vat_number: null
+        })
+        .select()
+        .single()
+
+      if (companyError) {
+        console.error('Company creation error:', companyError)
+        toast.error(`Company creation failed: ${companyError.message}`)
+        return
+      }
+
+      // Update profile with company_id
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ company_id: company.id })
+        .eq('id', user.id)
+
+      if (profileError) {
+        console.error('Profile update error:', profileError)
+        toast.error(`Profile update failed: ${profileError.message}`)
+        return
+      }
+
+      toast.success('Company created successfully!')
+      setCompany(company)
+      setShowCreateCompany(false)
+      
+      // Refresh company data
+      await fetchCompanyData()
+    } catch (error) {
+      console.error('Error creating company:', error)
+      toast.error('Failed to create company')
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -1083,27 +1130,19 @@ export default function CompanyPage() {
   const handleCancel = () => {
     if (company) {
       // Use the same safe initialization logic as fetchCompanyData
-      const safeFormData = {
-        name: safeRenderValue(company.name) || '',
-        description: safeRenderValue(company.description) || '',
-        cr_number: safeRenderValue(company.cr_number) || '',
-        vat_number: safeRenderValue(company.vat_number) || '',
-        address: safeRenderValue(company.address) || '',
-        phone: safeRenderValue(company.phone) || '',
-        email: safeRenderValue(company.email) || '',
-        website: safeRenderValue(company.website) || '',
-        industry: safeRenderValue(company.industry) || '',
-        size: safeRenderValue(company.size) || '',
-        founded_year: (() => {
-          const year = safeRenderValue(company.founded_year)
-          if (year && !isNaN(parseInt(year))) {
-            return parseInt(year)
-          }
-          return new Date().getFullYear()
-        })(),
-        logo_url: safeRenderValue(company.logo_url) || ''
-      }
-      setForm(safeFormData)
+      setForm({
+        name: company.name || '',
+        description: company.description || '',
+        cr_number: company.cr_number || '',
+        vat_number: company.vat_number || '',
+        address: company.address || '',
+        phone: company.phone || '',
+        email: company.email || '',
+        website: company.website || '',
+        industry: company.industry || '',
+        size: company.size || '',
+                     founded_year: typeof company.founded_year === 'number' ? company.founded_year : undefined
+      })
     } else {
       setForm({
         name: '',

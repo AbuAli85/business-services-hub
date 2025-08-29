@@ -188,12 +188,47 @@ export default function OnboardingPage() {
       console.log('Skipping bio and profile image update - columns not yet available')
 
       if (role === 'provider') {
-        // Skip company creation for now due to database schema mismatch
-        // TODO: Fix database schema and re-enable company creation
-        console.log('Skipping company creation - database schema mismatch')
-        console.log('Company name would be:', formData.companyName)
-        console.log('CR number would be:', formData.crNumber)
-        console.log('VAT number would be:', formData.vatNumber)
+        // Create company for provider
+        try {
+          console.log('Creating company for provider...')
+          const { data: company, error: companyError } = await supabase
+            .from('companies')
+            .insert({
+              owner_id: user.id,
+              name: formData.companyName,
+              cr_number: formData.crNumber || null,
+              vat_number: formData.vatNumber || null,
+              description: formData.bio || null
+            })
+            .select()
+            .single()
+
+          if (companyError) {
+            console.error('Company creation error:', companyError)
+            toast.error(`Company creation failed: ${companyError.message}`)
+            return
+          }
+
+          console.log('Company created successfully:', company)
+
+          // Update profile with company_id
+          const { error: profileUpdateError } = await supabase
+            .from('profiles')
+            .update({ company_id: company.id })
+            .eq('id', user.id)
+
+          if (profileUpdateError) {
+            console.error('Profile update error:', profileUpdateError)
+            toast.error(`Profile update failed: ${profileUpdateError.message}`)
+            return
+          }
+
+          console.log('Profile updated with company_id successfully')
+        } catch (error) {
+          console.error('Company creation error:', error)
+          toast.error('Failed to create company profile')
+          return
+        }
       }
 
       // Profile update skipped - no updatable fields in current schema
