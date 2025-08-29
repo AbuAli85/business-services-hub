@@ -93,7 +93,20 @@ export default function DashboardPage() {
       }
 
       setUser(user)
-      setUserRole(user.user_metadata?.role || 'client')
+      const role = user.user_metadata?.role || 'client'
+      setUserRole(role)
+
+      // Redirect users to their role-specific dashboard
+      if (role === 'provider') {
+        router.push('/dashboard/provider')
+        return
+      } else if (role === 'client') {
+        router.push('/dashboard/client')
+        return
+      } else if (role === 'admin') {
+        // Admin stays on main dashboard
+        return
+      }
     } catch (error) {
       console.error('Auth check error:', error)
       router.push('/auth/sign-in')

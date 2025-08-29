@@ -76,10 +76,10 @@ export default function ServicesPage() {
   const [stats, setStats] = useState<ServiceStats | null>(null)
 
   useEffect(() => {
-    checkUserAndFetchServices()
-  }, [])
+    checkUserAndLoadServices()
+  }, [searchTerm, statusFilter, categoryFilter, sortBy])
 
-  const checkUserAndFetchServices = async () => {
+  const checkUserAndLoadServices = async () => {
     try {
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -89,20 +89,23 @@ export default function ServicesPage() {
         return
       }
 
+      // Check if user is a provider
+      const userRole = user.user_metadata?.role
+      if (userRole !== 'provider') {
+        router.push('/dashboard')
+        return
+      }
+
       setUser(user)
-      await Promise.all([
-        fetchServices(user.id),
-        fetchServiceStats(user.id)
-      ])
+      await loadServices(user.id)
     } catch (error) {
       console.error('Error loading services:', error)
-      toast.error('Failed to load services')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchServices = async (userId: string) => {
+  const loadServices = async (userId: string) => {
     try {
       const supabase = await getSupabaseClient()
       

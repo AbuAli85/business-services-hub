@@ -74,6 +74,7 @@ export default function ProviderDashboard() {
   const [topServices, setTopServices] = useState<ServicePerformance[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -90,14 +91,22 @@ export default function ProviderDashboard() {
         return
       }
 
+      // Check if user is a provider
+      const userRole = user.user_metadata?.role
+      if (userRole !== 'provider') {
+        router.push('/dashboard')
+        return
+      }
+
       setUser(user)
+      setUserRole(userRole)
       await Promise.all([
         fetchProviderStats(user.id),
         fetchRecentBookings(user.id),
         fetchTopServices(user.id)
       ])
     } catch (error) {
-      console.error('Error loading provider data:', error)
+      console.error('Error loading provider dashboard:', error)
     } finally {
       setLoading(false)
     }

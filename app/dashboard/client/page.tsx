@@ -86,6 +86,7 @@ export default function ClientDashboard() {
   const [upcomingBookings, setUpcomingBookings] = useState<UpcomingBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -102,7 +103,15 @@ export default function ClientDashboard() {
         return
       }
 
+      // Check if user is a client
+      const userRole = user.user_metadata?.role
+      if (userRole !== 'client') {
+        router.push('/dashboard')
+        return
+      }
+
       setUser(user)
+      setUserRole(userRole)
       await Promise.all([
         fetchClientStats(user.id),
         fetchRecentBookings(user.id),
