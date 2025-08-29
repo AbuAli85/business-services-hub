@@ -559,11 +559,19 @@ export async function PATCH(request: NextRequest) {
       // Try to check if the booking exists at all
       const { data: allBookings, error: listError } = await supabase
         .from('bookings')
-        .select('id, client_id, provider_id')
-        .limit(5)
+        .select('id, client_id, provider_id, status, created_at')
+        .limit(10)
       
       console.log('🔍 API: Sample bookings in database:', allBookings)
       console.log('🔍 API: List error:', listError)
+      
+      // Also check if there are any bookings at all
+      const { count: totalBookings, error: countError } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+      
+      console.log('🔍 API: Total bookings in database:', totalBookings)
+      console.log('🔍 API: Count error:', countError)
       
       // Check if the booking ID exists but belongs to a different user
       const { data: anyBooking, error: anyBookingError } = await supabase

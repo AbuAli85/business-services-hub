@@ -390,6 +390,15 @@ export default function BookingsPage() {
       
       // Also log the current bookings to see what's available
       console.log('🔍 Current bookings in state:', bookings.map(b => ({ id: b.id, status: b.status, service_name: b.service_name })))
+      
+      // Check if the specific booking exists in our state
+      const currentBooking = bookings.find(b => b.id === bookingId)
+      console.log('🔍 Current booking being updated:', currentBooking)
+      if (!currentBooking) {
+        console.error('❌ Booking not found in frontend state!')
+        toast.error('Booking not found in current data. Please refresh the page.')
+        return
+      }
 
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
