@@ -132,7 +132,7 @@ export default function ProviderDashboard() {
       // Get bookings count and earnings
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('status, amount, currency')
+        .select('status, amount, currency, created_at')
         .eq('provider_id', userId)
 
       const totalBookings = bookings?.length || 0
@@ -161,9 +161,9 @@ export default function ProviderDashboard() {
         .select('rating')
         .eq('provider_id', userId)
 
-      const totalReviews = reviews?.length || 0
-      const averageRating = totalReviews > 0 
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews 
+            const totalReviews = reviews?.length || 0
+      const averageRating = totalReviews > 0 && reviews
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
         : 0
 
       // Calculate response and completion rates
@@ -209,7 +209,7 @@ export default function ProviderDashboard() {
         .limit(5)
 
       if (bookings) {
-        setRecentBookings(bookings.map(b => ({
+        setRecentBookings(bookings.map((b: any) => ({
           ...b,
           client_name: b.client?.full_name || 'Unknown Client'
         })))
@@ -378,7 +378,7 @@ export default function ProviderDashboard() {
               </div>
               <Progress value={stats?.responseRate || 0} className="h-2" />
               <p className="text-xs text-gray-500 mt-1">
-                Responding to {stats?.totalBookings - (stats?.pendingBookings || 0)} out of {stats?.totalBookings} bookings
+                                 Responding to {(stats?.totalBookings || 0) - (stats?.pendingBookings || 0)} out of {stats?.totalBookings || 0} bookings
               </p>
             </div>
 

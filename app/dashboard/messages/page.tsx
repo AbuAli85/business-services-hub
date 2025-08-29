@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Send, 
   Paperclip, 
@@ -171,14 +172,14 @@ export default function MessagesPage() {
           conversationMap.set(participantId, {
             id: participantId,
             participant_id: participantId,
-            participant_name: participant?.full_name || 'Unknown User',
-            participant_avatar: participant?.avatar_url,
-            participant_role: participant?.role || 'user',
+            participant_name: (participant as any)?.full_name || 'Unknown User',
+            participant_avatar: (participant as any)?.avatar_url,
+            participant_role: (participant as any)?.role || 'user',
             last_message: msg.content,
             last_message_time: msg.created_at,
             unread_count: isSender ? 0 : (msg.read_at ? 0 : 1),
             booking_id: msg.booking_id,
-            booking_title: msg.booking?.title
+            booking_title: (msg.booking as any)?.title
           })
         } else {
           const existing = conversationMap.get(participantId)!

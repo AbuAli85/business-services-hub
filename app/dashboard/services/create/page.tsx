@@ -156,7 +156,7 @@ export default function CreateServicePage() {
   }
 
   const addPackage = () => {
-    if (newPackage.name && newPackage.description && newPackage.price > 0) {
+    if (newPackage.name && newPackage.description && newPackage.price && newPackage.price > 0) {
       const packageToAdd: ServicePackage = {
         id: Date.now().toString(),
         name: newPackage.name,
