@@ -130,13 +130,24 @@ export default function ServicesPage() {
               .select('status, amount')
               .eq('service_id', service.id)
 
-            // Get review statistics - fetch all reviews and filter in JS to avoid 400 errors
+            // Get review statistics - use two-step approach to avoid 400 errors
+            // First get all reviews for this provider
             const { data: allReviews } = await supabase
               .from('reviews')
-              .select('rating, service_id')
-              
-            // Filter reviews for this service
-            const serviceReviews = allReviews?.filter(r => r.service_id === service.id) || []
+              .select('rating, booking_id')
+              .eq('provider_id', service.provider_id)
+            
+            // Then get all bookings for this service to find matching reviews
+            const { data: serviceBookings } = await supabase
+              .from('bookings')
+              .select('id')
+              .eq('service_id', service.id)
+            
+            // Filter reviews that match the service bookings
+            const serviceBookingIds = serviceBookings?.map(b => b.id) || []
+            const serviceReviews = allReviews?.filter(r => 
+              serviceBookingIds.includes(r.booking_id)
+            ) || []
 
             // Calculate statistics
             const totalBookings = bookings?.length || 0
