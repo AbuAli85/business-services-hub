@@ -254,9 +254,15 @@ export default function BookingsPage() {
         }
       })
 
-      setBookings(transformedBookings)
-      setFilteredBookings(transformedBookings)
-      calculateStats(transformedBookings)
+             // Additional debugging: Log the transformed data
+       console.log('🔍 Transformed bookings data:')
+       console.log('  - Total bookings:', transformedBookings.length)
+       console.log('  - Sample booking:', transformedBookings[0])
+       console.log('  - All IDs:', transformedBookings.map(b => b.id))
+       
+       setBookings(transformedBookings)
+       setFilteredBookings(transformedBookings)
+       calculateStats(transformedBookings)
     } catch (error) {
       console.error('Error fetching bookings:', error)
       toast.error('Failed to fetch bookings')
@@ -399,6 +405,17 @@ export default function BookingsPage() {
         toast.error('Booking not found in current data. Please refresh the page.')
         return
       }
+      
+      // Additional debugging: Check if the booking ID format is correct
+      console.log('🔍 Booking ID format check:')
+      console.log('  - Length:', bookingId.length)
+      console.log('  - Format:', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId))
+      console.log('  - Original ID from booking object:', currentBooking.id)
+      console.log('  - IDs match:', currentBooking.id === bookingId)
+      
+      // Also check if there are any duplicate IDs in the state
+      const duplicateIds = bookings.filter(b => b.id === bookingId)
+      console.log('🔍 Duplicate IDs found:', duplicateIds.length)
 
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
