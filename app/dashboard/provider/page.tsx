@@ -155,11 +155,35 @@ export default function ProviderDashboard() {
       
       const monthlyEarnings = monthlyBookings.reduce((sum, b) => sum + (b.amount || 0), 0)
 
-      // Get ratings and reviews
-      const { data: reviews } = await supabase
-        .from('service_reviews')
-        .select('rating')
-        .eq('provider_id', userId)
+      // Fetch reviews for rating calculation
+      let reviews: any[] = []
+      try {
+        // Try to fetch from reviews table first
+        const { data: reviewsData } = await supabase
+          .from('reviews')
+          .select('rating')
+          .eq('provider_id', userId)
+        
+        if (reviewsData) {
+          reviews = reviewsData
+        }
+      } catch (error) {
+        console.log('Reviews table not found, trying alternative approach')
+        // Fallback: try to get ratings from bookings table
+        try {
+          const { data: bookingsWithRatings } = await supabase
+            .from('bookings')
+            .select('rating')
+            .eq('provider_id', userId)
+            .not('rating', 'is', null)
+          
+          if (bookingsWithRatings) {
+            reviews = bookingsWithRatings
+          }
+        } catch (fallbackError) {
+          console.log('No ratings found in bookings table either')
+        }
+      }
 
             const totalReviews = reviews?.length || 0
       const averageRating = totalReviews > 0 && reviews
@@ -192,12 +216,13 @@ export default function ProviderDashboard() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Use the enhanced_bookings view instead of complex joins
       const { data: bookings } = await supabase
-        .from('bookings')
+        .from('enhanced_bookings')
         .select(`
           id,
           service_title,
-          client:profiles!bookings_client_id_fkey (full_name),
+          client_name,
           status,
           amount,
           currency,
@@ -211,7 +236,7 @@ export default function ProviderDashboard() {
       if (bookings) {
         setRecentBookings(bookings.map((b: any) => ({
           ...b,
-          client_name: b.client?.full_name || 'Unknown Client'
+          client_name: b.client_name || 'Unknown Client'
         })))
       }
     } catch (error) {
@@ -223,24 +248,64 @@ export default function ProviderDashboard() {
     try {
       const supabase = await getSupabaseClient()
       
+      // First get all services for this provider
       const { data: services } = await supabase
         .from('services')
         .select(`
           id,
           title,
-          total_bookings,
-          total_revenue,
-          average_rating
+          base_price,
+          currency
         `)
         .eq('provider_id', userId)
-        .order('total_bookings', { ascending: false })
-        .limit(5)
+        .eq('status', 'active')
 
       if (services) {
-        setTopServices(services.map(s => ({
-          ...s,
-          completion_rate: Math.random() * 100 // This would come from actual data
-        })))
+        // Calculate stats for each service
+        const servicesWithStats = await Promise.all(
+          services.map(async (service) => {
+            // Get booking count for this service
+            const { count: totalBookings } = await supabase
+              .from('bookings')
+              .select('*', { count: 'exact', head: true })
+              .eq('service_id', service.id)
+
+            // Get total revenue from completed bookings
+            const { data: completedBookings } = await supabase
+              .from('bookings')
+              .select('amount')
+              .eq('service_id', service.id)
+              .eq('status', 'completed')
+
+            const totalRevenue = completedBookings?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+
+            // Get average rating from reviews
+            const { data: reviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('service_id', service.id)
+
+            const averageRating = reviews && reviews.length > 0
+              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+              : 0
+
+            return {
+              ...service,
+              total_bookings: totalBookings || 0,
+              total_revenue: totalRevenue,
+              average_rating: averageRating,
+              completion_rate: (totalBookings || 0) > 0 ? ((completedBookings?.length || 0) / (totalBookings || 0)) * 100 : 0,
+              service_name: service.title || 'Unknown Service'
+            }
+          })
+        )
+
+        // Sort by total bookings and take top 5
+        const topServices = servicesWithStats
+          .sort((a, b) => (b.total_bookings || 0) - (a.total_bookings || 0))
+          .slice(0, 5)
+
+        setTopServices(topServices)
       }
     } catch (error) {
       console.error('Error fetching top services:', error)
