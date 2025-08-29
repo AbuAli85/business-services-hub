@@ -674,13 +674,23 @@ export default function BookingsPage() {
     const thisYear = now.getFullYear()
     const thisWeek = getWeekNumber(now)
     
+    // Calculate revenue only from completed/paid bookings
+    const completedBookings = bookingsData.filter(b => b.status === 'completed')
+    const revenue = completedBookings.reduce((sum, b) => sum + (b.amount || 0), 0)
+    
+    // Calculate ratings only from completed bookings with ratings
+    const completedWithRatings = completedBookings.filter(b => b.rating && b.rating > 0)
+    const averageRating = completedWithRatings.length > 0 
+      ? completedWithRatings.reduce((sum, b) => sum + (b.rating || 0), 0) / completedWithRatings.length
+      : 0
+    
     const stats: BookingStats = {
       total: bookingsData.length,
       pending: bookingsData.filter(b => b.status === 'pending').length,
       inProgress: bookingsData.filter(b => b.status === 'in_progress').length,
-      completed: bookingsData.filter(b => b.status === 'completed').length,
+      completed: completedBookings.length,
       cancelled: bookingsData.filter(b => b.status === 'cancelled').length,
-      revenue: bookingsData.reduce((sum, b) => sum + (b.amount || 0), 0),
+      revenue: revenue,
       thisMonth: bookingsData.filter(b => {
         const date = new Date(b.created_at)
         return date.getMonth() === thisMonth && date.getFullYear() === thisYear
@@ -689,10 +699,8 @@ export default function BookingsPage() {
         const date = new Date(b.created_at)
         return getWeekNumber(date) === thisWeek && date.getFullYear() === thisYear
       }).length,
-      averageRating: bookingsData.filter(b => b.rating).length > 0 
-        ? bookingsData.filter(b => b.rating).reduce((sum, b) => sum + (b.rating || 0), 0) / bookingsData.filter(b => b.rating).length
-        : 0,
-      totalReviews: bookingsData.filter(b => b.rating).length
+      averageRating: averageRating,
+      totalReviews: completedWithRatings.length
     }
     setStats(stats)
   }
@@ -2406,10 +2414,35 @@ export default function BookingsPage() {
                  Export PDF
                </Button>
                                {/* Enhanced Data Test Button - Removed since not needed */}
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                New Booking
-              </Button>
+              {/* New Booking button - Only show for clients, not providers */}
+              {userRole === 'client' && (
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Booking
+                </Button>
+              )}
+              
+              {/* Provider-specific actions */}
+              {userRole === 'provider' && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => router.push('/dashboard/services')}
+                    className="border-green-200 text-green-700 hover:bg-green-50"
+                  >
+                    <Package className="h-4 w-4 mr-2" />
+                    Manage Services
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => router.push('/dashboard/provider')}
+                    className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    View Analytics
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2439,8 +2472,15 @@ export default function BookingsPage() {
                 <TrendingUp className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">Smart Insights Summary</h3>
-                <p className="text-slate-600 text-sm">AI-powered analysis of your booking performance</p>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {userRole === 'provider' ? 'Provider Performance Summary' : 'Smart Insights Summary'}
+                </h3>
+                <p className="text-slate-600 text-sm">
+                  {userRole === 'provider' 
+                    ? 'Overview of your service bookings and client satisfaction' 
+                    : 'AI-powered analysis of your booking performance'
+                  }
+                </p>
               </div>
             </div>
             
@@ -2467,17 +2507,17 @@ export default function BookingsPage() {
               
               <div className="text-center p-3 bg-white/60 rounded-lg border border-slate-200">
                 <div className="text-2xl font-bold text-slate-900 mb-1">
-                  ${bookings.reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(0)}
+                  ${bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(0)}
                 </div>
                 <p className="text-sm text-slate-600">Revenue</p>
                 <div className="text-xs text-slate-500 mt-1">
-                  This period
+                  From completed bookings
                 </div>
               </div>
               
               <div className="text-center p-3 bg-white/60 rounded-lg border border-slate-200">
                 <div className="text-2xl font-bold text-slate-900 mb-1">
-                  {bookings.filter(b => b.rating && b.rating >= 4).length}
+                  {bookings.filter(b => b.status === 'completed' && b.rating && b.rating >= 4).length}
                 </div>
                 <p className="text-sm text-slate-600">High Ratings</p>
                 <div className="text-xs text-slate-500 mt-1">
@@ -2506,8 +2546,106 @@ export default function BookingsPage() {
                   View AI Insights
                 </Button>
               </div>
+              
+              {/* Provider-specific quick actions */}
+              {userRole === 'provider' && (
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
+                    <Settings className="h-4 w-4" />
+                    <span>Quick Actions for Providers</span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push('/dashboard/services')}
+                      className="border-green-200 text-green-700 hover:bg-green-50"
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Manage Services
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push('/dashboard/messages')}
+                      className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      View Messages
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push('/dashboard/provider')}
+                      className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Business Analytics
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Provider-specific status summary */}
+          {userRole === 'provider' && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center">
+                  <Building2 className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900">Provider Status Overview</h3>
+                  <p className="text-blue-600 text-sm">Key metrics for your service business</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-white/60 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-900 mb-1">
+                    {bookings.filter(b => b.status === 'pending').length}
+                  </div>
+                  <p className="text-sm text-blue-700">Pending Approval</p>
+                  <div className="text-xs text-blue-600 mt-1">
+                    Require your action
+                  </div>
+                </div>
+                
+                <div className="text-center p-3 bg-white/60 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-900 mb-1">
+                    {bookings.filter(b => b.status === 'in_progress').length}
+                  </div>
+                  <p className="text-sm text-blue-700">Active Work</p>
+                  <div className="text-xs text-blue-600 mt-1">
+                    Currently delivering
+                  </div>
+                </div>
+                
+                <div className="text-center p-3 bg-white/60 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-900 mb-1">
+                    {bookings.filter(b => b.status === 'completed' && b.rating && b.rating >= 4).length}
+                  </div>
+                  <p className="text-sm text-blue-700">Satisfied Clients</p>
+                  <div className="text-xs text-blue-600 mt-1">
+                    4+ star ratings
+                  </div>
+                </div>
+                
+                <div className="text-center p-3 bg-white/60 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-900 mb-1">
+                    {bookings.filter(b => b.status === 'completed').length > 0 
+                      ? Math.round((bookings.filter(b => b.status === 'completed').length / bookings.length) * 100) 
+                      : 0}%
+                  </div>
+                  <p className="text-sm text-blue-700">Completion Rate</p>
+                  <div className="text-xs text-blue-600 mt-1">
+                    Success rate
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Enhanced Smart Dashboard Toggle */}
           <div className="mb-6">
@@ -2956,7 +3094,7 @@ export default function BookingsPage() {
                     <p className="text-sm font-medium text-gray-600">Completed</p>
                     <p className="text-2xl font-bold text-emerald-600">{stats.completed}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {stats.averageRating.toFixed(1)}★ avg rating
+                      {stats.averageRating > 0 ? `${stats.averageRating.toFixed(1)}★ avg rating` : 'No ratings yet'}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -3009,7 +3147,6 @@ export default function BookingsPage() {
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-        
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -3077,7 +3214,7 @@ export default function BookingsPage() {
 
               {/* Bulk Actions */}
               {selectedBookings.length > 0 && (
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">
                       {selectedBookings.length} booking{selectedBookings.length !== 1 ? 's' : ''} selected
@@ -3092,26 +3229,26 @@ export default function BookingsPage() {
                     </Button>
                   </div>
                   
-                                                         <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => bulkUpdateStatus(selectedBookings, 'completed')}
-                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Complete All
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => bulkUpdateStatus(selectedBookings, 'cancelled')}
-                        className="border-red-200 text-red-700 hover:bg-red-50"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancel All
-                      </Button>
-                    </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkUpdateStatus(selectedBookings, 'completed')}
+                      className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Complete All
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => bulkUpdateStatus(selectedBookings, 'cancelled')}
+                      className="border-red-200 text-red-700 hover:bg-red-50"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel All
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
