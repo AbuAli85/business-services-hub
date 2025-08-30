@@ -440,11 +440,11 @@ export async function PATCH(request: NextRequest) {
       console.error('❌ API: Booking ID requested:', booking_id)
       console.error('❌ API: User ID:', user.id)
       
-      // Try to check if the booking exists at all
-      const { data: allBookings, error: listError } = await supabase
-        .from('bookings')
-        .select('id, client_id, provider_id, status, created_at')
-        .limit(10)
+             // Try to check if the booking exists at all
+       const { data: allBookings, error: listError } = await supabase
+         .from('bookings')
+         .select('id, client_id, provider_id, status, created_at, title')
+         .limit(10)
       
       console.log('🔍 API: Sample bookings in database:', allBookings)
       console.log('🔍 API: List error:', listError)
