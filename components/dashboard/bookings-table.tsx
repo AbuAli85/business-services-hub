@@ -104,8 +104,8 @@ export default function BookingsTable() {
           scheduled_date,
           notes,
           amount,
-          service:services(name, description),
-          client:profiles(full_name, email, phone)
+          client_id,
+          service_id
         `)
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
@@ -116,25 +116,65 @@ export default function BookingsTable() {
         return
       }
 
-      // Transform the data to match our interface
-      const transformedBookings = bookingsData?.map((booking: any) => ({
-        id: booking.id,
-        status: booking.status,
-        priority: booking.priority || 'normal',
-        created_at: booking.created_at,
-        scheduled_date: booking.scheduled_date,
-        notes: booking.notes,
-        amount: booking.amount,
-        service: {
-          name: Array.isArray(booking.service) ? booking.service[0]?.name || 'Unknown Service' : booking.service?.name || 'Unknown Service',
-          description: Array.isArray(booking.service) ? booking.service[0]?.description : booking.service?.description
-        },
-        client: {
-          full_name: Array.isArray(booking.client) ? booking.client[0]?.full_name || 'Unknown Client' : booking.client?.full_name || 'Unknown Client',
-          email: Array.isArray(booking.client) ? booking.client[0]?.email || '' : booking.client?.email || '',
-          phone: Array.isArray(booking.client) ? booking.client[0]?.phone : booking.client?.phone
+      // Load related data separately to avoid relationship conflicts
+      const clientIds = Array.from(new Set(bookingsData?.map(b => b.client_id).filter(Boolean) || []))
+      const serviceIds = Array.from(new Set(bookingsData?.map(b => b.service_id).filter(Boolean) || []))
+
+      let clientsData: any[] = []
+      let servicesData: any[] = []
+
+      if (clientIds.length > 0) {
+        const { data: clients, error: clientsError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, phone')
+          .in('id', clientIds)
+        
+        if (!clientsError) {
+          clientsData = clients || []
         }
-      })) || []
+      }
+
+      if (serviceIds.length > 0) {
+        const { data: services, error: servicesError } = await supabase
+          .from('services')
+          .select('id, name, description')
+          .in('id', serviceIds)
+        
+        if (!servicesError) {
+          servicesData = services || []
+        }
+      }
+
+      if (error) {
+        console.error('Error loading bookings:', error)
+        toast.error('Failed to load bookings')
+        return
+      }
+
+      // Transform the data to match our interface
+      const transformedBookings = bookingsData?.map((booking: any) => {
+        const client = clientsData.find(c => c.id === booking.client_id)
+        const service = servicesData.find(s => s.id === booking.service_id)
+        
+        return {
+          id: booking.id,
+          status: booking.status,
+          priority: booking.priority || 'normal',
+          created_at: booking.created_at,
+          scheduled_date: booking.scheduled_date,
+          notes: booking.notes,
+          amount: booking.amount,
+          service: {
+            name: service?.name || 'Unknown Service',
+            description: service?.description
+          },
+          client: {
+            full_name: client?.full_name || 'Unknown Client',
+            email: client?.email || '',
+            phone: client?.phone
+          }
+        }
+      }) || []
 
       setBookings(transformedBookings)
       calculateStats(transformedBookings)

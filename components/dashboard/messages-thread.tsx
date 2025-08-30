@@ -68,14 +68,29 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       // Load booking details to get client and provider info
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
-        .select(`
-          id,
-          client_id,
-          provider_id,
-          client:profiles(full_name, email),
-          provider:profiles(full_name, email)
-        `)
+        .select('id, client_id, provider_id')
         .eq('id', bookingId)
+        .single()
+
+      if (bookingError) {
+        console.error('Error loading booking:', bookingError)
+        toast.error('Failed to load booking details')
+        return
+      }
+
+      setBooking(bookingData)
+
+      // Load client and provider profiles separately
+      const { data: clientData, error: clientError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('id', bookingData.client_id)
+        .single()
+
+      const { data: providerData, error: providerError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('id', bookingData.provider_id)
         .single()
 
       if (bookingError) {
@@ -89,13 +104,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       // Load messages
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
-        .select(`
-          id,
-          content,
-          sender_id,
-          created_at,
-          profiles(full_name, role)
-        `)
+        .select('id, content, sender_id, created_at')
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: true })
 
@@ -105,16 +114,40 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
         return
       }
 
+      // Load sender profiles separately
+      const senderIds = Array.from(new Set(messagesData?.map(m => m.sender_id).filter(Boolean) || []))
+      let senderProfiles: any[] = []
+
+      if (senderIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, role')
+          .in('id', senderIds)
+        
+        if (!profilesError) {
+          senderProfiles = profiles || []
+        }
+      }
+
+      if (messagesError) {
+        console.error('Error loading messages:', messagesError)
+        toast.error('Failed to load messages')
+        return
+      }
+
       // Transform messages
-      const transformedMessages = messagesData?.map((msg: any) => ({
-        id: msg.id,
-        content: msg.content,
-        sender_id: msg.sender_id,
-        sender_name: Array.isArray(msg.profiles) ? msg.profiles[0]?.full_name || 'Unknown User' : msg.profiles?.full_name || 'Unknown User',
-        sender_role: Array.isArray(msg.profiles) ? msg.profiles[0]?.role || 'client' : msg.profiles?.role || 'client',
-        created_at: msg.created_at,
-        is_own_message: msg.sender_id === user.id
-      })) || []
+      const transformedMessages = messagesData?.map((msg: any) => {
+        const senderProfile = senderProfiles.find(p => p.id === msg.sender_id)
+        return {
+          id: msg.id,
+          content: msg.content,
+          sender_id: msg.sender_id,
+          sender_name: senderProfile?.full_name || 'Unknown User',
+          sender_role: senderProfile?.role || 'client',
+          created_at: msg.created_at,
+          is_own_message: msg.sender_id === user.id
+        }
+      }) || []
 
       setMessages(transformedMessages)
       setLoading(false)
@@ -141,13 +174,20 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           content: newMessage.trim(),
           message_type: 'chat'
         })
-        .select(`
-          id,
-          content,
-          sender_id,
-          created_at,
-          profiles(full_name, role)
-        `)
+        .select('id, content, sender_id, created_at')
+        .single()
+
+      if (error) {
+        console.error('Error sending message:', error)
+        toast.error('Failed to send message')
+        return
+      }
+
+      // Get sender profile for the new message
+      const { data: senderProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', user.id)
         .single()
 
       if (error) {
@@ -161,8 +201,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
         id: messageData.id,
         content: messageData.content,
         sender_id: messageData.sender_id,
-        sender_name: Array.isArray((messageData as any).profiles) ? (messageData as any).profiles[0]?.full_name || 'Unknown User' : (messageData as any).profiles?.full_name || 'Unknown User',
-        sender_role: Array.isArray((messageData as any).profiles) ? (messageData as any).profiles[0]?.role || 'client' : (messageData as any).profiles?.role || 'client',
+        sender_name: senderProfile?.full_name || 'Unknown User',
+        sender_role: senderProfile?.role || 'client',
         created_at: messageData.created_at,
         is_own_message: true
       }

@@ -103,13 +103,34 @@ export default function BookingDetailsPage() {
       // Load booking details
       const { data: bookingData, error } = await supabase
         .from('bookings')
-        .select(`
-          *,
-          service:services(id, name, description, category),
-          client:profiles(id, full_name, email, phone, company_name)
-        `)
+        .select('*')
         .eq('id', bookingId)
         .eq('provider_id', user.id)
+        .single()
+
+      if (error) {
+        console.error('Error loading booking:', error)
+        toast.error('Failed to load booking details')
+        return
+      }
+
+      if (!bookingData) {
+        toast.error('Booking not found')
+        router.push('/dashboard/bookings')
+        return
+      }
+
+      // Load related data separately to avoid relationship conflicts
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('services')
+        .select('id, name, description, category')
+        .eq('id', bookingData.service_id)
+        .single()
+
+      const { data: clientData, error: clientError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone, company_name')
+        .eq('id', bookingData.client_id)
         .single()
 
       if (error) {
@@ -142,17 +163,17 @@ export default function BookingDetailsPage() {
         rating: bookingData.rating,
         review: bookingData.review,
         service: {
-          id: bookingData.service?.id || '',
-          name: bookingData.service?.name || 'Unknown Service',
-          description: bookingData.service?.description,
-          category: bookingData.service?.category
+          id: serviceData?.id || '',
+          name: serviceData?.name || 'Unknown Service',
+          description: serviceData?.description,
+          category: serviceData?.category
         },
         client: {
-          id: bookingData.client?.id || '',
-          full_name: bookingData.client?.full_name || 'Unknown Client',
-          email: bookingData.client?.email || '',
-          phone: bookingData.client?.phone,
-          company_name: bookingData.client?.company_name
+          id: clientData?.id || '',
+          full_name: clientData?.full_name || 'Unknown Client',
+          email: clientData?.email || '',
+          phone: clientData?.phone,
+          company_name: clientData?.company_name
         }
       }
 
