@@ -72,8 +72,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           id,
           client_id,
           provider_id,
-          client:profiles(full_name, email),
-          provider:profiles(full_name, email)
+          client:profiles!bookings_client_id_fkey(full_name, email),
+          provider:profiles!bookings_provider_id_fkey(full_name, email)
         `)
         .eq('id', bookingId)
         .single()
@@ -94,7 +94,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           content,
           sender_id,
           created_at,
-          profiles(full_name, role)
+          profiles!messages_sender_id_fkey(full_name, role)
         `)
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: true })
@@ -146,7 +146,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           content,
           sender_id,
           created_at,
-          profiles(full_name, role)
+          profiles!messages_sender_id_fkey(full_name, role)
         `)
         .single()
 
