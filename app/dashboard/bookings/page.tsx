@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
-import { getApiUrl } from '@/lib/api-utils'
+import { getApiUrl } from '@/lib/api-config'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { 
@@ -446,7 +446,7 @@ export default function BookingsPage() {
       const duplicateIds = bookings.filter(b => b.id === bookingId)
       console.log('🔍 Duplicate IDs found:', duplicateIds.length)
 
-      const response = await fetch('/api/bookings', {
+      const response = await fetch(getApiUrl('/api/bookings'), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
+import { getApiUrl } from '@/lib/api-config'
 import { toast } from 'sonner'
 
 export default function TestReviewsPage() {
@@ -26,7 +27,7 @@ export default function TestReviewsPage() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/reviews', {
+      const response = await fetch(getApiUrl('/api/reviews'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +60,7 @@ export default function TestReviewsPage() {
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch('/api/reviews')
+      const response = await fetch(getApiUrl('/api/reviews'))
       const result = await response.json()
       
       if (response.ok) {
