@@ -415,25 +415,55 @@ export async function PATCH(request: NextRequest) {
     console.log('🔍 API: User Role:', user.user_metadata?.role || 'unknown')
     console.log('🔍 API: Request body:', body)
     
-    // First, let's check what bookings exist for this user
-    const { data: userBookings, error: userBookingsError } = await supabase
-      .from('bookings')
-      .select('id, client_id, provider_id, status, title')
-      .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+         // First, let's check what bookings exist for this user
+     console.log('🔍 API: Checking user bookings with user ID:', user.id)
+     
+     // Try different query approaches to debug the issue
+     const { data: userBookings, error: userBookingsError } = await supabase
+       .from('bookings')
+       .select('id, client_id, provider_id, status, title')
+       .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+     
+     console.log('🔍 API: User bookings found:', userBookings)
+     console.log('🔍 API: User bookings error:', userBookingsError)
+     
+     // Also try a simple count query to see if there are any bookings at all
+     const { count: totalBookingsCount, error: countError } = await supabase
+       .from('bookings')
+       .select('*', { count: 'exact', head: true })
+     
+     console.log('🔍 API: Total bookings in database:', totalBookingsCount)
+     console.log('🔍 API: Count error:', countError)
+     
+     // Try to get any booking to see if the table is accessible
+     const { data: anyBooking, error: anyError } = await supabase
+       .from('bookings')
+       .select('id, client_id, provider_id, status')
+       .limit(1)
+     
+     console.log('🔍 API: Any booking found:', anyBooking)
+     console.log('🔍 API: Any booking error:', anyError)
     
-    console.log('🔍 API: User bookings found:', userBookings)
-    console.log('🔍 API: User bookings error:', userBookingsError)
-    
-    // Now try to fetch the specific booking
-    const { data: booking, error: fetchError } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('id', booking_id)
-      .single()
-
-    console.log('🔍 API: Supabase response:', { data: booking, error: fetchError })
-    console.log('🔍 API: Booking data:', booking)
-    console.log('🔍 API: Fetch error:', fetchError)
+         // Now try to fetch the specific booking
+     console.log('🔍 API: Attempting to fetch specific booking:', booking_id)
+     
+     const { data: booking, error: fetchError } = await supabase
+       .from('bookings')
+       .select('*')
+       .eq('id', booking_id)
+       .single()
+     
+     console.log('🔍 API: Supabase response:', { data: booking, error: fetchError })
+     console.log('🔍 API: Booking data:', booking)
+     console.log('🔍 API: Fetch error:', fetchError)
+     
+     // Also try without .single() to see if the booking exists at all
+     const { data: bookingMaybe, error: fetchMaybeError } = await supabase
+       .from('bookings')
+       .select('id, client_id, provider_id, status')
+       .eq('id', booking_id)
+     
+     console.log('🔍 API: Maybe booking response:', { data: bookingMaybe, error: fetchMaybeError })
 
     if (fetchError || !booking) {
       console.error('❌ API: Failed to fetch booking:', fetchError)
