@@ -105,7 +105,7 @@ export default function BookingsTable() {
           notes,
           amount,
           service:services(name, description),
-          client:profiles!bookings_client_id_fkey(full_name, email, phone)
+          client:profiles(full_name, email, phone)
         `)
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
