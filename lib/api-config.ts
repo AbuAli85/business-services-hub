@@ -101,8 +101,24 @@ export function validateApiConfig(): string[] {
 
 // Log configuration on load
 if (typeof window !== 'undefined') {
-  console.log('🔧 Local API Configuration loaded:', {
-    currentHost: window.location.hostname,
-    mode: 'local-only'
-  })
+  const currentHost = window.location.hostname
+  
+  if (currentHost === 'marketing.thedigitalmorph.com' || 
+      currentHost === 'www.marketing.thedigitalmorph.com') {
+    console.error('🚨 🚨 🚨 IMPORTANT: You are on the marketing site! 🚨 🚨 🚨')
+    console.error('🚨 The API endpoints (/api/bookings, /api/services, etc.) do NOT exist on this domain')
+    console.error('🚨 This will cause 404 errors for all API calls')
+    console.error('🚨')
+    console.error('🚨 SOLUTIONS:')
+    console.error('🚨 1. Use localhost:3001 for development (npm run dev)')
+    console.error('🚨 2. Use the portal site for production')
+    console.error('🚨 3. Contact your developer to set up proper cross-domain API routing')
+    console.error('🚨')
+    console.error('🔧 Current configuration: Local-only API (no cross-domain support)')
+  } else {
+    console.log('🔧 Local API Configuration loaded:', {
+      currentHost: currentHost,
+      mode: 'local-only'
+    })
+  }
 }
