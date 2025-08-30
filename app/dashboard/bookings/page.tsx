@@ -156,6 +156,45 @@ export default function BookingsPage() {
       setLoading(true)
       const supabase = await getSupabaseClient()
       
+      // Add comprehensive database connection debugging
+      console.log('🔍 Frontend: Database Connection Debug:')
+      console.log('  - Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log('  - Environment:', process.env.NODE_ENV)
+      console.log('  - User ID:', userId)
+      console.log('  - User Role:', role)
+      
+      // Test database connection and permissions
+      console.log('🔍 Frontend: Testing database connection...')
+      
+      // Test 1: Check if we can access the bookings table at all
+      const { data: testBookings, error: testError } = await supabase
+        .from('bookings')
+        .select('count', { count: 'exact', head: true })
+      
+      console.log('🔍 Frontend: Database connection test:')
+      console.log('  - Total bookings in connected DB:', testBookings)
+      console.log('  - Connection error:', testError)
+      
+      // Test 2: Check if we can see any bookings without filters
+      const { data: anyBookings, error: anyError } = await supabase
+        .from('bookings')
+        .select('id, client_id, provider_id, status')
+        .limit(3)
+      
+      console.log('🔍 Frontend: Any bookings test:')
+      console.log('  - Any bookings found:', anyBookings)
+      console.log('  - Any bookings error:', anyError)
+      
+      // Test 3: Check specific user permissions
+      const { data: userBookingsTest, error: userTestError } = await supabase
+        .from('bookings')
+        .select('id, client_id, provider_id, status')
+        .or(`client_id.eq.${userId},provider_id.eq.${userId}`)
+      
+      console.log('🔍 Frontend: User permissions test:')
+      console.log('  - User bookings test:', userBookingsTest)
+      console.log('  - User test error:', userTestError)
+      
       // First, fetch the basic booking data
       console.log('🔍 Frontend: Querying table: bookings')
       console.log('🔍 Frontend: User ID:', userId)
@@ -409,6 +448,15 @@ export default function BookingsPage() {
       console.log('🔍 User ID:', user.id)
       console.log('🔍 User Role:', userRole)
       
+      // Enhanced debugging for API request
+      const apiUrl = '/api/bookings'
+      console.log('🔍 API Request Details:')
+      console.log('  - API URL:', apiUrl)
+      console.log('  - Full URL:', window.location.origin + apiUrl)
+      console.log('  - Current domain:', window.location.hostname)
+      console.log('  - Environment:', process.env.NODE_ENV)
+      console.log('  - Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      
       // Also log the current bookings to see what's available
       console.log('🔍 Current bookings in state:', bookings.map(b => ({ id: b.id, status: b.status, service_name: b.service_name })))
       
@@ -446,7 +494,7 @@ export default function BookingsPage() {
       const duplicateIds = bookings.filter(b => b.id === bookingId)
       console.log('🔍 Duplicate IDs found:', duplicateIds.length)
 
-      const response = await fetch('/api/bookings', {
+      const response = await fetch(apiUrl, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
