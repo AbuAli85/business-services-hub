@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/popover"
 
 interface DatePickerWithRangeProps {
-  date?: DateRange
-  onDateChange: (date: DateRange | undefined) => void
+  date?: { from: Date; to: Date } | undefined
+  onDateChange: (date: { from: Date; to: Date } | undefined) => void
   className?: string
 }
 
@@ -25,7 +25,7 @@ export function DatePickerWithRange({
   onDateChange,
   className,
 }: DatePickerWithRangeProps) {
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(date)
+  const [dateRange, setDateRange] = React.useState<{ from: Date; to: Date } | undefined>(date)
 
   React.useEffect(() => {
     setDateRange(date)
