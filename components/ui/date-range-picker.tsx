@@ -32,8 +32,14 @@ export function DatePickerWithRange({
   }, [date])
 
   const handleDateSelect = (selectedDate: DateRange | undefined) => {
-    setDateRange(selectedDate)
-    onDateChange(selectedDate)
+    if (selectedDate?.from && selectedDate?.to) {
+      const convertedDate = { from: selectedDate.from, to: selectedDate.to }
+      setDateRange(convertedDate)
+      onDateChange(convertedDate)
+    } else {
+      setDateRange(undefined)
+      onDateChange(undefined)
+    }
   }
 
   return (
