@@ -1,20 +1,12 @@
 /**
- * Cross-Domain API Configuration
+ * Local API Configuration
  * 
- * This file automatically routes API calls between different domains:
- * - Marketing site (marketing.thedigitalmorph.com) → Portal site (portal.thesmartpro.io)
- * - Portal site (portal.thesmartpro.io) → Same domain
- * - Development (localhost) → Same domain
+ * This file handles API calls using relative URLs for local development
+ * and same-domain requests. No cross-domain routing is implemented.
  */
 
 // API Configuration
 export const API_CONFIG = {
-  // Portal site base URL (where the actual APIs are hosted)
-  PORTAL_BASE_URL: process.env.NEXT_PUBLIC_PORTAL_API_URL || 'https://portal.thesmartpro.io',
-  
-  // Marketing site URL
-  MARKETING_URL: process.env.NEXT_PUBLIC_MARKETING_URL || 'https://marketing.thedigitalmorph.com',
-  
   // Development fallback
   DEV_FALLBACK: 'http://localhost:3001'
 }
@@ -22,41 +14,16 @@ export const API_CONFIG = {
 /**
  * Gets the appropriate API URL based on the current domain
  * @param endpoint - The API endpoint (e.g., '/api/bookings')
- * @returns The full API URL
+ * @returns The API URL (always relative for now)
  */
 export function getApiUrl(endpoint: string): string {
-  // If we're in a browser environment
-  if (typeof window !== 'undefined') {
-    const currentHost = window.location.hostname
-    
-    // If we're on the marketing site, call the portal site
-    if (currentHost === 'marketing.thedigitalmorph.com' || 
-        currentHost === 'www.marketing.thedigitalmorph.com') {
-      console.log('🔗 Marketing site detected, routing to portal:', `${API_CONFIG.PORTAL_BASE_URL}${endpoint}`)
-      return `${API_CONFIG.PORTAL_BASE_URL}${endpoint}`
-    }
-    
-    // If we're on the portal site, use relative URLs
-    if (currentHost === 'portal.thesmartpro.io' || 
-        currentHost === 'www.portal.thesmartpro.io') {
-      console.log('🔗 Portal site detected, using relative URL:', endpoint)
-      return endpoint
-    }
-    
-    // If we're in development (localhost), use relative URLs
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      console.log('🔗 Development environment detected, using relative URL:', endpoint)
-      return endpoint
-    }
-  }
-  
-  // Server-side or fallback: use relative URLs
-  console.log('🔗 Server-side or fallback, using relative URL:', endpoint)
+  // Always use relative URLs to avoid cross-domain issues
+  console.log('🔗 Using relative URL:', endpoint)
   return endpoint
 }
 
 /**
- * Creates a fetch request with proper cross-domain configuration
+ * Creates a fetch request with proper configuration
  * @param endpoint - The API endpoint
  * @param options - Fetch options
  * @returns Fetch promise
@@ -64,22 +31,19 @@ export function getApiUrl(endpoint: string): string {
 export async function crossDomainFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const url = getApiUrl(endpoint)
   
-  // Add CORS headers for cross-domain requests
+  // Add headers for requests
   const fetchOptions: RequestInit = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
-    // Include credentials for cross-domain requests
-    credentials: 'include',
   }
   
-  console.log('🌐 Making cross-domain API call:', {
+  console.log('🌐 Making API call:', {
     originalEndpoint: endpoint,
     finalUrl: url,
-    method: options.method || 'GET',
-    isCrossDomain: url !== endpoint
+    method: options.method || 'GET'
   })
   
   return fetch(url, fetchOptions)
@@ -111,10 +75,6 @@ export function getApiUrlFor(endpoint: keyof typeof API_ENDPOINTS): string {
  */
 export function testApiConfiguration(): {
   currentHost: string | null
-  portalUrl: string
-  marketingUrl: string
-  isMarketingSite: boolean
-  isPortalSite: boolean
   isDevelopment: boolean
 } {
   let currentHost: string | null = null
@@ -123,20 +83,10 @@ export function testApiConfiguration(): {
     currentHost = window.location.hostname
   }
   
-  const isMarketingSite = currentHost === 'marketing.thedigitalmorph.com' || 
-                          currentHost === 'www.marketing.thedigitalmorph.com'
-  
-  const isPortalSite = currentHost === 'portal.thesmartpro.io' || 
-                       currentHost === 'www.portal.thesmartpro.io'
-  
   const isDevelopment = currentHost === 'localhost' || currentHost === '127.0.0.1'
   
   return {
     currentHost,
-    portalUrl: API_CONFIG.PORTAL_BASE_URL,
-    marketingUrl: API_CONFIG.MARKETING_URL,
-    isMarketingSite,
-    isPortalSite,
     isDevelopment
   }
 }
@@ -145,24 +95,14 @@ export function testApiConfiguration(): {
  * Environment variable validation
  */
 export function validateApiConfig(): string[] {
-  const errors: string[] = []
-  
-  if (!process.env.NEXT_PUBLIC_PORTAL_API_URL) {
-    errors.push('NEXT_PUBLIC_PORTAL_API_URL is not set')
-  }
-  
-  if (!process.env.NEXT_PUBLIC_MARKETING_URL) {
-    errors.push('NEXT_PUBLIC_MARKETING_URL is not set')
-  }
-  
-  return errors
+  // No environment variables required for local-only setup
+  return []
 }
 
 // Log configuration on load
 if (typeof window !== 'undefined') {
-  console.log('🔧 API Configuration loaded:', {
-    portalBaseUrl: API_CONFIG.PORTAL_BASE_URL,
-    marketingUrl: API_CONFIG.MARKETING_URL,
-    currentHost: window.location.hostname
+  console.log('🔧 Local API Configuration loaded:', {
+    currentHost: window.location.hostname,
+    mode: 'local-only'
   })
 }

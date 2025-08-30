@@ -9,10 +9,6 @@ import { getApiUrl, testApiConfiguration, validateApiConfig } from '@/lib/api-co
 export default function TestApiPage() {
   const [configStatus, setConfigStatus] = useState<{
     currentHost?: string | null
-    portalUrl?: string
-    marketingUrl?: string
-    isMarketingSite?: boolean
-    isPortalSite?: boolean
     isDevelopment?: boolean
     envValidation?: string
   } | null>(null)
@@ -69,7 +65,7 @@ export default function TestApiPage() {
   const validateEnvironment = () => {
     const errors = validateApiConfig()
     if (errors.length === 0) {
-      setConfigStatus(prev => ({ ...prev, envValidation: '✅ All environment variables are set correctly' }))
+      setConfigStatus(prev => ({ ...prev, envValidation: '✅ No environment variables required for local setup' }))
     } else {
       setConfigStatus(prev => ({ ...prev, envValidation: `❌ Environment validation errors: ${errors.join(', ')}` }))
     }
@@ -78,8 +74,8 @@ export default function TestApiPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">🔧 API Configuration Test</h1>
-        <p className="text-gray-600 mt-2">Test and verify cross-domain API configuration</p>
+        <h1 className="text-3xl font-bold">🔧 Local API Configuration Test</h1>
+        <p className="text-gray-600 mt-2">Test and verify local API configuration</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -103,18 +99,6 @@ export default function TestApiPage() {
                 <h4 className="font-semibold mb-2">Configuration Status:</h4>
                 <div className="space-y-2 text-sm">
                   <div><strong>Current Host:</strong> {configStatus.currentHost || 'Unknown'}</div>
-                  <div><strong>Portal URL:</strong> {configStatus.portalUrl}</div>
-                  <div><strong>Marketing URL:</strong> {configStatus.marketingUrl}</div>
-                  <div><strong>Is Marketing Site:</strong> 
-                    <Badge variant={configStatus.isMarketingSite ? 'default' : 'secondary'} className="ml-2">
-                      {configStatus.isMarketingSite ? 'Yes' : 'No'}
-                    </Badge>
-                  </div>
-                  <div><strong>Is Portal Site:</strong> 
-                    <Badge variant={configStatus.isPortalSite ? 'default' : 'secondary'} className="ml-2">
-                      {configStatus.isPortalSite ? 'Yes' : 'No'}
-                    </Badge>
-                  </div>
                   <div><strong>Is Development:</strong> 
                     <Badge variant={configStatus.isDevelopment ? 'default' : 'secondary'} className="ml-2">
                       {configStatus.isDevelopment ? 'Yes' : 'No'}
@@ -177,22 +161,12 @@ export default function TestApiPage() {
       <Card>
         <CardHeader>
           <CardTitle>How It Works</CardTitle>
-          <CardDescription>Understanding the cross-domain API configuration</CardDescription>
+          <CardDescription>Understanding the local API configuration</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <h4 className="font-semibold">Marketing Site (marketing.thedigitalmorph.com)</h4>
-              <p className="text-sm text-gray-600">
-                API calls are automatically routed to the portal site (portal.thesmartpro.io)
-              </p>
-              <code className="text-xs bg-gray-100 p-1 rounded">
-                /api/bookings → https://portal.thesmartpro.io/api/bookings
-              </code>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold">Portal Site (portal.thesmartpro.io)</h4>
+              <h4 className="font-semibold">Local Development (localhost)</h4>
               <p className="text-sm text-gray-600">
                 API calls use relative URLs (same domain)
               </p>
@@ -202,7 +176,7 @@ export default function TestApiPage() {
             </div>
             
             <div>
-              <h4 className="font-semibold">Development (localhost)</h4>
+              <h4 className="font-semibold">Production Deployment</h4>
               <p className="text-sm text-gray-600">
                 API calls use relative URLs (same domain)
               </p>
@@ -225,21 +199,21 @@ export default function TestApiPage() {
             <div>
               <h5 className="font-semibold text-red-600">404 Errors</h5>
               <p className="text-sm text-gray-600">
-                Ensure the API endpoint exists on the portal site and environment variables are set correctly.
+                Ensure the API endpoint exists and the development server is running.
               </p>
             </div>
             
             <div>
-              <h5 className="font-semibold text-red-600">CORS Errors</h5>
+              <h5 className="font-semibold text-red-600">Authentication Errors</h5>
               <p className="text-sm text-gray-600">
-                Verify that the portal site allows requests from the marketing site domain.
+                Check that you're logged in and have the proper permissions.
               </p>
             </div>
             
             <div>
-              <h5 className="font-semibold text-red-600">Environment Variables</h5>
+              <h5 className="font-semibold text-red-600">Development Server</h5>
               <p className="text-sm text-gray-600">
-                Check that NEXT_PUBLIC_PORTAL_API_URL and NEXT_PUBLIC_MARKETING_URL are set correctly.
+                Make sure to run `npm run dev` to start the development server.
               </p>
             </div>
           </div>
