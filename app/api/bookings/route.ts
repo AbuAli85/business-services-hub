@@ -28,74 +28,77 @@ const CreateBookingSchema = z.object({
   location: z.string().optional()
 })
 
+// Helper function to authenticate user
+async function authenticateUser(request: NextRequest, supabase: any) {
+  let user = null
+  let authError = null
+  
+  // Try to get user from cookies first
+  const cookieHeader = request.headers.get('cookie')
+  console.log('🔍 Cookie header:', cookieHeader ? 'Present' : 'Missing')
+  
+  if (cookieHeader) {
+    try {
+      const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser()
+      if (cookieUser && !cookieError) {
+        user = cookieUser
+        console.log('✅ User authenticated from cookies:', user.id)
+        return { user, authError }
+      } else {
+        console.log('⚠️ No user found in cookies, trying alternative auth method')
+      }
+    } catch (cookieAuthError) {
+      console.log('⚠️ Cookie auth failed, trying alternative method')
+    }
+  }
+  
+  // If no user from cookies, try alternative method
+  console.log('🔍 Trying alternative authentication method...')
+  
+  // Try to get user from the request headers (Authorization header)
+  const authHeader = request.headers.get('authorization')
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7)
+    console.log('🔍 Bearer token found, length:', token.length)
+    try {
+      // Set the auth token for this request
+      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
+      if (tokenUser && !tokenError) {
+        user = tokenUser
+        console.log('✅ User authenticated from token:', user.id)
+        return { user, authError }
+      } else {
+        console.log('❌ Token auth failed:', tokenError)
+        authError = tokenError
+      }
+    } catch (tokenAuthError) {
+      console.log('❌ Token auth exception:', tokenAuthError)
+      authError = tokenAuthError
+    }
+  } else {
+    console.log('⚠️ No Authorization header found')
+    // Try the standard method as fallback
+    const { data: { user: standardUser }, error: standardError } = await supabase.auth.getUser()
+    if (standardUser && !standardError) {
+      user = standardUser
+      console.log('✅ User authenticated from standard method:', user.id)
+      return { user, authError }
+    } else {
+      authError = standardError
+    }
+  }
+  
+  return { user, authError }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Bookings API POST called')
     
-    // Extract cookies from the request
-    const cookieHeader = request.headers.get('cookie')
-    console.log('🔍 Cookie header:', cookieHeader ? 'Present' : 'Missing')
-    
     const supabase = await getSupabaseClient()
     console.log('✅ Supabase client obtained')
     
-    // Try to get user from cookies first
-    let user = null
-    let authError = null
-    
-    if (cookieHeader) {
-      // Create a cookies object from the header
-      const cookies = Object.fromEntries(
-        cookieHeader.split(';').map(cookie => {
-          const [name, value] = cookie.trim().split('=')
-          return [name, value]
-        })
-      )
-      
-      // Try to get the session from cookies
-      try {
-        const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser()
-        if (cookieUser && !cookieError) {
-          user = cookieUser
-          console.log('✅ User authenticated from cookies:', user.id)
-        } else {
-          console.log('⚠️ No user found in cookies, trying alternative auth method')
-        }
-      } catch (cookieAuthError) {
-        console.log('⚠️ Cookie auth failed, trying alternative method')
-      }
-    }
-    
-    // If no user from cookies, try alternative method
-    if (!user) {
-      console.log('🔍 Trying alternative authentication method...')
-      
-      // Try to get user from the request headers (Authorization header)
-      const authHeader = request.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7)
-        try {
-          const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
-          if (tokenUser && !tokenError) {
-            user = tokenUser
-            console.log('✅ User authenticated from token:', user.id)
-          } else {
-            authError = tokenError
-          }
-        } catch (tokenAuthError) {
-          authError = tokenAuthError
-        }
-      } else {
-        // Try the standard method as fallback
-        const { data: { user: standardUser }, error: standardError } = await supabase.auth.getUser()
-        if (standardUser && !standardError) {
-          user = standardUser
-          console.log('✅ User authenticated from standard method:', user.id)
-        } else {
-          authError = standardError
-        }
-      }
-    }
+    const { user, authError } = await authenticateUser(request, supabase)
     
     if (authError) {
       console.error('❌ Auth error:', authError)
@@ -246,70 +249,10 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Bookings API GET called')
     
-    // Extract cookies from the request
-    const cookieHeader = request.headers.get('cookie')
-    console.log('🔍 Cookie header:', cookieHeader ? 'Present' : 'Missing')
-    
     const supabase = await getSupabaseClient()
     console.log('✅ Supabase client obtained')
     
-    // Try to get user from cookies first
-    let user = null
-    let authError = null
-    
-    if (cookieHeader) {
-      // Create a cookies object from the header
-      const cookies = Object.fromEntries(
-        cookieHeader.split(';').map(cookie => {
-          const [name, value] = cookie.trim().split('=')
-          return [name, value]
-        })
-      )
-      
-      // Try to get the session from cookies
-      try {
-        const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser()
-        if (cookieUser && !cookieError) {
-          user = cookieUser
-          console.log('✅ User authenticated from cookies:', user.id)
-        } else {
-          console.log('⚠️ No user found in cookies, trying alternative auth method')
-        }
-      } catch (cookieAuthError) {
-        console.log('⚠️ Cookie auth failed, trying alternative method')
-      }
-    }
-    
-    // If no user from cookies, try alternative method
-    if (!user) {
-      console.log('🔍 Trying alternative authentication method...')
-      
-      // Try to get user from the request headers (Authorization header)
-      const authHeader = request.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7)
-        try {
-          const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
-          if (tokenUser && !tokenError) {
-            user = tokenUser
-            console.log('✅ User authenticated from token:', user.id)
-          } else {
-            authError = tokenError
-          }
-        } catch (tokenAuthError) {
-          authError = tokenAuthError
-        }
-      } else {
-        // Try the standard method as fallback
-        const { data: { user: standardUser }, error: standardError } = await supabase.auth.getUser()
-        if (standardUser && !standardError) {
-          user = standardUser
-          console.log('✅ User authenticated from standard method:', user.id)
-        } else {
-          authError = standardError
-        }
-      }
-    }
+    const { user, authError } = await authenticateUser(request, supabase)
     
     if (authError) {
       console.error('❌ Auth error:', authError)
@@ -426,70 +369,10 @@ export async function PATCH(request: NextRequest) {
   try {
     console.log('🔍 Bookings API PATCH called')
     
-    // Extract cookies from the request
-    const cookieHeader = request.headers.get('cookie')
-    console.log('🔍 Cookie header:', cookieHeader ? 'Present' : 'Missing')
-    
     const supabase = await getSupabaseClient()
     console.log('✅ Supabase client obtained')
     
-    // Try to get user from cookies first
-    let user = null
-    let authError = null
-    
-    if (cookieHeader) {
-      // Create a cookies object from the header
-      const cookies = Object.fromEntries(
-        cookieHeader.split(';').map(cookie => {
-          const [name, value] = cookie.trim().split('=')
-          return [name, value]
-        })
-      )
-      
-      // Try to get the session from cookies
-      try {
-        const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser()
-        if (cookieUser && !cookieError) {
-          user = cookieUser
-          console.log('✅ User authenticated from cookies:', user.id)
-        } else {
-          console.log('⚠️ No user found in cookies, trying alternative auth method')
-        }
-      } catch (cookieAuthError) {
-        console.log('⚠️ Cookie auth failed, trying alternative method')
-      }
-    }
-    
-    // If no user from cookies, try alternative method
-    if (!user) {
-      console.log('🔍 Trying alternative authentication method...')
-      
-      // Try to get user from the request headers (Authorization header)
-      const authHeader = request.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7)
-        try {
-          const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
-          if (tokenUser && !tokenError) {
-            user = tokenUser
-            console.log('✅ User authenticated from token:', user.id)
-          } else {
-            authError = tokenError
-          }
-        } catch (tokenAuthError) {
-          authError = tokenAuthError
-        }
-      } else {
-        // Try the standard method as fallback
-        const { data: { user: standardUser }, error: standardError } = await supabase.auth.getUser()
-        if (standardUser && !standardError) {
-          user = standardUser
-          console.log('✅ User authenticated from standard method:', user.id)
-        } else {
-          authError = standardError
-        }
-      }
-    }
+    const { user, authError } = await authenticateUser(request, supabase)
     
     if (authError) {
       console.error('❌ Auth error:', authError)

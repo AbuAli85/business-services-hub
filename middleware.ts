@@ -130,7 +130,7 @@ export const config = {
   matcher: [
     // Temporarily disabled for testing
     // '/dashboard/:path*',
-    '/api/bookings/:path*',
+    // '/api/bookings/:path*', // Temporarily disabled to fix 404 issue
     '/api/services/:path*',
     '/api/admin/:path*',
   ],
