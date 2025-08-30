@@ -166,17 +166,40 @@ export default function BookingDetailsPage() {
       }
 
       // Load related data separately to avoid relationship conflicts
-      const { data: serviceData, error: serviceError } = await supabase
-        .from('services')
-        .select('id, name, description, category')
-        .eq('id', bookingData.service_id)
-        .single()
+      let serviceData: any = null
+      let clientData: any = null
 
-      const { data: clientData, error: clientError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, phone, company_name')
-        .eq('id', bookingData.client_id)
-        .single()
+      if (bookingData.service_id) {
+        try {
+          const { data, error: serviceError } = await supabase
+            .from('services')
+            .select('id, name, description, category')
+            .eq('id', bookingData.service_id)
+            .single()
+          
+          if (!serviceError && data) {
+            serviceData = data
+          }
+        } catch (serviceError) {
+          console.warn('Could not load service data:', serviceError)
+        }
+      }
+
+      if (bookingData.client_id) {
+        try {
+          const { data, error: clientError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, phone, company_name')
+            .eq('id', bookingData.client_id)
+            .single()
+          
+          if (!clientError && data) {
+            clientData = data
+          }
+        } catch (clientError) {
+          console.warn('Could not load client data:', clientError)
+        }
+      }
 
       // Transform the data
       const transformedBooking: Booking = {
@@ -256,34 +279,52 @@ export default function BookingDetailsPage() {
 
   const loadRelatedBookings = async () => {
     try {
+      // Only load related bookings if we have a client ID and it's different from the current booking
+      if (!booking?.client?.id) {
+        setRelatedBookings([])
+        return
+      }
+
       const supabase = await getSupabaseClient()
-      // Load bookings from the same client
+      // Load bookings from the same client, excluding the current booking
       const { data: relatedData, error } = await supabase
         .from('bookings')
         .select('id, created_at, amount, service_id')
-        .eq('client_id', booking?.client?.id)
-        .neq('id', bookingId)
+        .eq('client_id', booking.client.id)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(6) // Get one extra to account for potential filtering
 
       if (!error && relatedData) {
         // Load service names for related bookings
         const serviceIds = relatedData.map(b => b.service_id).filter(Boolean)
-        const { data: servicesData } = await supabase
-          .from('services')
-          .select('id, name')
-          .in('id', serviceIds)
-
-        const transformedRelated: RelatedBooking[] = relatedData.map(booking => {
-          const service = servicesData?.find(s => s.id === booking.service_id)
-          return {
-            id: booking.id,
-            service_name: service?.name || 'Unknown Service',
-            status: 'completed', // Mock status
-            created_at: booking.created_at,
-            amount: booking.amount
+        let servicesData: any[] = []
+        
+        if (serviceIds.length > 0) {
+          try {
+            const { data } = await supabase
+              .from('services')
+              .select('id, name')
+              .in('id', serviceIds)
+            servicesData = data || []
+          } catch (serviceError) {
+            console.warn('Could not load related service data:', serviceError)
+            servicesData = []
           }
-        })
+        }
+
+        const transformedRelated: RelatedBooking[] = relatedData
+          .filter(relatedBooking => relatedBooking.id !== bookingId) // Filter out current booking
+          .slice(0, 5) // Ensure we only show max 5
+          .map(relatedBooking => {
+            const service = servicesData?.find(s => s.id === relatedBooking.service_id)
+            return {
+              id: relatedBooking.id,
+              service_name: service?.name || 'Unknown Service',
+              status: 'completed', // Mock status
+              created_at: relatedBooking.created_at,
+              amount: relatedBooking.amount
+            }
+          })
         setRelatedBookings(transformedRelated)
       }
     } catch (error) {
