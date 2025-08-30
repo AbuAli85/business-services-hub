@@ -413,12 +413,26 @@ export default function BookingsPage() {
       console.log('🔍 Current bookings in state:', bookings.map(b => ({ id: b.id, status: b.status, service_name: b.service_name })))
       
       // Check if the specific booking exists in our state
-      const currentBooking = bookings.find(b => b.id === bookingId)
+      let currentBooking = bookings.find(b => b.id === bookingId)
       console.log('🔍 Current booking being updated:', currentBooking)
       if (!currentBooking) {
         console.error('❌ Booking not found in frontend state!')
-        toast.error('Booking not found in current data. Please refresh the page.')
-        return
+        console.log('🔍 Available booking IDs:', bookings.map(b => b.id))
+        toast.error('Booking not found in current data. Refreshing data...')
+        
+        // Try to refresh the data first
+        try {
+          await fetchBookings(user.id, userRole)
+          currentBooking = bookings.find(b => b.id === bookingId)
+          if (!currentBooking) {
+            toast.error('Booking still not found after refresh. Please check if it was deleted.')
+            return
+          }
+        } catch (refreshError) {
+          console.error('Failed to refresh bookings:', refreshError)
+          toast.error('Failed to refresh data. Please reload the page.')
+          return
+        }
       }
       
       // Additional debugging: Check if the booking ID format is correct
@@ -452,7 +466,15 @@ export default function BookingsPage() {
         } else if (response.status === 403) {
           throw new Error('You do not have permission to update this booking.')
         } else if (response.status === 404) {
-          throw new Error('Booking not found.')
+          // Show detailed debug information
+          if (errorData.debug) {
+            console.log('🔍 Debug Information:', errorData.debug)
+            const debugInfo = errorData.debug
+            const message = `Booking not found. Debug: Requested ID: ${debugInfo.requested_booking_id}, Available: ${debugInfo.available_bookings?.length || 0} bookings`
+            throw new Error(message)
+          } else {
+            throw new Error('Booking not found.')
+          }
         } else if (response.status === 400) {
           throw new Error(errorData.error || 'Invalid request data')
         } else {

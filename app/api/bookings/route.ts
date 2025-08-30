@@ -483,16 +483,18 @@ export async function PATCH(request: NextRequest) {
       console.log('🔍 API: No booking found with ID:', booking_id)
       console.log('🔍 API: Available user bookings:', userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status })))
       
-      const response = NextResponse.json({ 
-        error: 'Booking not found', 
-        details: 'The specified booking ID does not exist in the database',
-        debug: {
-          requested_booking_id: booking_id,
-          user_id: user.id,
-          user_role: user.user_metadata?.role,
-          available_bookings: userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status }))
-        }
-      }, { status: 404 })
+             const response = NextResponse.json({ 
+         error: 'Booking not found', 
+         details: 'The specified booking ID does not exist in the database',
+         debug: {
+           requested_booking_id: booking_id,
+           user_id: user.id,
+           user_role: user.user_metadata?.role,
+           available_bookings: userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status })),
+           total_user_bookings: userBookings?.length || 0,
+           database_sample: allBookings?.slice(0, 3).map(b => ({ id: b.id, title: b.title || 'No title', status: b.status, created_at: b.created_at }))
+         }
+       }, { status: 404 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
