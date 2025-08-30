@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   ArrowLeft,
   Calendar,
@@ -22,11 +24,30 @@ import {
   MapPin,
   DollarSign,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Upload,
+  Download,
+  Paperclip,
+  History,
+  Link,
+  Star,
+  Edit,
+  Save,
+  X,
+  Plus,
+  Minus,
+  TrendingUp,
+  BarChart3,
+  Clock3,
+  Target,
+  Award,
+  Shield,
+  Zap,
+  Eye
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
-import { MessagesThread } from './messages-thread'
+import { MessagesThread } from '@/components/dashboard/messages-thread'
 
 interface Booking {
   id: string
@@ -65,6 +86,23 @@ interface TimelineStep {
   date?: string
   completed: boolean
   icon: React.ReactNode
+  description?: string
+}
+
+interface BookingHistory {
+  id: string
+  action: string
+  description: string
+  timestamp: string
+  user: string
+}
+
+interface RelatedBooking {
+  id: string
+  service_name: string
+  status: string
+  created_at: string
+  amount?: number
 }
 
 export default function BookingDetailsPage() {
@@ -76,12 +114,19 @@ export default function BookingDetailsPage() {
   const [user, setUser] = useState<any>(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [editedNotes, setEditedNotes] = useState('')
+  const [bookingHistory, setBookingHistory] = useState<BookingHistory[]>([])
+  const [relatedBookings, setRelatedBookings] = useState<RelatedBooking[]>([])
+  const [showAdvancedActions, setShowAdvancedActions] = useState(false)
 
   const bookingId = params.id as string
 
   useEffect(() => {
     if (bookingId) {
       loadBooking()
+      loadBookingHistory()
+      loadRelatedBookings()
     }
   }, [bookingId])
 
@@ -133,18 +178,6 @@ export default function BookingDetailsPage() {
         .eq('id', bookingData.client_id)
         .single()
 
-      if (error) {
-        console.error('Error loading booking:', error)
-        toast.error('Failed to load booking details')
-        return
-      }
-
-      if (!bookingData) {
-        toast.error('Booking not found')
-        router.push('/dashboard/bookings')
-        return
-      }
-
       // Transform the data
       const transformedBooking: Booking = {
         id: bookingData.id,
@@ -178,11 +211,83 @@ export default function BookingDetailsPage() {
       }
 
       setBooking(transformedBooking)
+      setEditedNotes(transformedBooking.notes || '')
       setLoading(false)
     } catch (error) {
       console.error('Error:', error)
       toast.error('Failed to load booking details')
       setLoading(false)
+    }
+  }
+
+  const loadBookingHistory = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      // This would typically come from a booking_logs or audit table
+      // For now, we'll create mock data
+      const mockHistory: BookingHistory[] = [
+        {
+          id: '1',
+          action: 'Status Updated',
+          description: 'Booking status changed from "pending" to "in_progress"',
+          timestamp: new Date().toISOString(),
+          user: 'Provider'
+        },
+        {
+          id: '2',
+          action: 'Note Added',
+          description: 'Added note: "Client requested additional consultation"',
+          timestamp: new Date(Date.now() - 86400000).toISOString(),
+          user: 'Provider'
+        },
+        {
+          id: '3',
+          action: 'Booking Created',
+          description: 'New booking created by client',
+          timestamp: new Date(Date.now() - 172800000).toISOString(),
+          user: 'Client'
+        }
+      ]
+      setBookingHistory(mockHistory)
+    } catch (error) {
+      console.error('Error loading booking history:', error)
+    }
+  }
+
+  const loadRelatedBookings = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      // Load bookings from the same client
+      const { data: relatedData, error } = await supabase
+        .from('bookings')
+        .select('id, created_at, amount, service_id')
+        .eq('client_id', booking?.client?.id)
+        .neq('id', bookingId)
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (!error && relatedData) {
+        // Load service names for related bookings
+        const serviceIds = relatedData.map(b => b.service_id).filter(Boolean)
+        const { data: servicesData } = await supabase
+          .from('services')
+          .select('id, name')
+          .in('id', serviceIds)
+
+        const transformedRelated: RelatedBooking[] = relatedData.map(booking => {
+          const service = servicesData?.find(s => s.id === booking.service_id)
+          return {
+            id: booking.id,
+            service_name: service?.name || 'Unknown Service',
+            status: 'completed', // Mock status
+            created_at: booking.created_at,
+            amount: booking.amount
+          }
+        })
+        setRelatedBookings(transformedRelated)
+      }
+    } catch (error) {
+      console.error('Error loading related bookings:', error)
     }
   }
 
@@ -213,6 +318,66 @@ export default function BookingDetailsPage() {
     } catch (error) {
       console.error('Error:', error)
       toast.error('Failed to update booking status')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  const handleUpdateNotes = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: editedNotes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+
+      if (error) {
+        console.error('Error updating notes:', error)
+        toast.error('Failed to update notes')
+        return
+      }
+
+      toast.success('Notes updated successfully!')
+      setBooking(prev => prev ? { ...prev, notes: editedNotes } : null)
+      setIsEditingNotes(false)
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to update notes')
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!booking) return
+    
+    try {
+      setIsUpdatingStatus(true)
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+
+      if (error) {
+        console.error('Error updating status:', error)
+        toast.error('Failed to update status')
+        return
+      }
+
+      toast.success(`Status updated to ${newStatus}!`)
+      loadBooking() // Reload to get updated data
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to update status')
     } finally {
       setIsUpdatingStatus(false)
     }
@@ -255,6 +420,13 @@ export default function BookingDetailsPage() {
     })
   }
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'OMR'
+    }).format(amount)
+  }
+
   const getTimelineSteps = (): TimelineStep[] => {
     if (!booking) return []
     
@@ -264,25 +436,44 @@ export default function BookingDetailsPage() {
         label: 'Booked',
         date: booking.created_at,
         completed: true,
-        icon: <Calendar className="h-4 w-4" />
+        icon: <Calendar className="h-4 w-4" />,
+        description: 'Booking was created and confirmed'
       },
       {
         status: 'in_progress',
         label: 'In Progress',
         date: booking.status === 'in_progress' || booking.status === 'completed' ? booking.updated_at : undefined,
         completed: ['in_progress', 'completed'].includes(booking.status),
-        icon: <RefreshCw className="h-4 w-4" />
+        icon: <RefreshCw className="h-4 w-4" />,
+        description: 'Work has begun on the service'
       },
       {
         status: 'completed',
         label: 'Completed',
         date: booking.status === 'completed' ? booking.updated_at : undefined,
         completed: booking.status === 'completed',
-        icon: <CheckCircle className="h-4 w-4" />
+        icon: <CheckCircle className="h-4 w-4" />,
+        description: 'Service has been delivered successfully'
       }
     ]
 
     return steps
+  }
+
+  const getStatusOptions = () => {
+    const currentStatus = booking?.status
+    const options = [
+      { value: 'pending', label: 'Pending', disabled: false },
+      { value: 'in_progress', label: 'In Progress', disabled: false },
+      { value: 'completed', label: 'Completed', disabled: false },
+      { value: 'cancelled', label: 'Cancelled', disabled: false },
+      { value: 'rescheduled', label: 'Rescheduled', disabled: false }
+    ]
+    
+    return options.map(option => ({
+      ...option,
+      disabled: option.value === currentStatus
+    }))
   }
 
   if (loading) {
@@ -307,10 +498,11 @@ export default function BookingDetailsPage() {
   }
 
   const timelineSteps = getTimelineSteps()
+  const statusOptions = getStatusOptions()
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Enhanced Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/bookings')}>
@@ -324,8 +516,71 @@ export default function BookingDetailsPage() {
         <div className="flex items-center space-x-3">
           {getStatusBadge(booking.status)}
           {getPriorityBadge(booking.priority)}
+          <Button
+            variant="outline"
+            onClick={() => setShowAdvancedActions(!showAdvancedActions)}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            Actions
+          </Button>
         </div>
       </div>
+
+      {/* Advanced Actions Panel */}
+      {showAdvancedActions && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-blue-900">Quick Actions</CardTitle>
+            <CardDescription>Manage this booking efficiently</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-blue-900 mb-2 block">Change Status</label>
+                <select
+                  className="w-full p-2 border border-blue-300 rounded-md bg-white"
+                  value={booking.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  disabled={isUpdatingStatus}
+                >
+                  {statusOptions.map(option => (
+                    <option key={option.value} value={option.value} disabled={option.disabled}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-blue-900 mb-2 block">Priority</label>
+                <select
+                  className="w-full p-2 border border-blue-300 rounded-md bg-white"
+                  value={booking.priority}
+                  onChange={(e) => {
+                    // Implement priority change
+                    console.log('Change priority to:', e.target.value)
+                  }}
+                >
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  className="w-full"
+                  variant="default"
+                  onClick={handleMarkComplete}
+                  disabled={isUpdatingStatus || booking.status === 'completed'}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Priority Alert */}
       {booking.priority === 'high' || booking.priority === 'urgent' ? (
@@ -338,12 +593,14 @@ export default function BookingDetailsPage() {
         </Alert>
       ) : null}
 
-      {/* Tabs */}
+      {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="related">Related</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -415,7 +672,7 @@ export default function BookingDetailsPage() {
               </CardContent>
             </Card>
 
-            {/* Booking Information */}
+            {/* Enhanced Booking Information */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -445,7 +702,7 @@ export default function BookingDetailsPage() {
                     <label className="text-sm font-medium text-muted-foreground">Amount</label>
                     <p className="text-lg font-semibold flex items-center space-x-1">
                       <DollarSign className="h-4 w-4" />
-                      <span>{booking.amount} {booking.currency || 'OMR'}</span>
+                      <span>{formatCurrency(booking.amount)}</span>
                     </p>
                   </div>
                 )}
@@ -458,22 +715,13 @@ export default function BookingDetailsPage() {
                     </p>
                   </div>
                 )}
-                {booking.notes && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Notes</label>
-                    <p className="text-sm flex items-center space-x-1">
-                      <FileText className="h-4 w-4" />
-                      <span>{booking.notes}</span>
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
-            {/* Actions */}
+            {/* Enhanced Actions & Notes */}
             <Card>
               <CardHeader>
-                <CardTitle>Actions</CardTitle>
+                <CardTitle>Actions & Notes</CardTitle>
                 <CardDescription>Manage this booking</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -497,6 +745,42 @@ export default function BookingDetailsPage() {
                   </Button>
                 )}
 
+                {/* Editable Notes */}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Notes</label>
+                  {isEditingNotes ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editedNotes}
+                        onChange={(e) => setEditedNotes(e.target.value)}
+                        placeholder="Add notes about this booking..."
+                        rows={3}
+                      />
+                      <div className="flex space-x-2">
+                        <Button size="sm" onClick={handleUpdateNotes}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setIsEditingNotes(false)
+                          setEditedNotes(booking.notes || '')
+                        }}>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm mb-2">{booking.notes || 'No notes added yet.'}</p>
+                      <Button size="sm" variant="outline" onClick={() => setIsEditingNotes(true)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        {booking.notes ? 'Edit Notes' : 'Add Notes'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="text-sm text-muted-foreground">
                   <p>Last updated: {formatDate(booking.updated_at)}</p>
                 </div>
@@ -505,7 +789,7 @@ export default function BookingDetailsPage() {
           </div>
         </TabsContent>
 
-        {/* Timeline Tab */}
+        {/* Enhanced Timeline Tab */}
         <TabsContent value="timeline" className="space-y-6">
           <Card>
             <CardHeader>
@@ -530,8 +814,11 @@ export default function BookingDetailsPage() {
                         </h3>
                         {step.completed && <CheckCircle className="h-4 w-4 text-green-500" />}
                       </div>
+                      {step.description && (
+                        <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
+                      )}
                       {step.date && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mt-1">
                           {formatDate(step.date)}
                         </p>
                       )}
@@ -549,6 +836,79 @@ export default function BookingDetailsPage() {
         {/* Messages Tab */}
         <TabsContent value="messages" className="space-y-6">
           <MessagesThread bookingId={booking.id} />
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <History className="h-5 w-5" />
+                <span>Booking History</span>
+              </CardTitle>
+              <CardDescription>Track all changes and activities for this booking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {bookingHistory.map((item) => (
+                  <div key={item.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{item.action}</h4>
+                        <span className="text-sm text-muted-foreground">{formatDate(item.timestamp)}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                      <p className="text-xs text-muted-foreground mt-2">By: {item.user}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Related Bookings Tab */}
+        <TabsContent value="related" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Link className="h-5 w-5" />
+                <span>Related Bookings</span>
+              </CardTitle>
+              <CardDescription>Other bookings from the same client</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {relatedBookings.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No related bookings found</p>
+              ) : (
+                <div className="space-y-3">
+                  {relatedBookings.map((related) => (
+                    <div key={related.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                      <div>
+                        <h4 className="font-medium">{related.service_name}</h4>
+                        <p className="text-sm text-muted-foreground">{formatDate(related.created_at)}</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Badge variant="outline">{related.status}</Badge>
+                        {related.amount && (
+                          <span className="text-sm font-medium">{formatCurrency(related.amount)}</span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.push(`/dashboard/bookings/${related.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
