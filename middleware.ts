@@ -85,7 +85,8 @@ export async function middleware(req: NextRequest) {
     }
 
     // Protect API routes that require authentication
-    if (url.startsWith('/api/bookings') || url.startsWith('/api/services')) {
+    if (url === '/api/bookings' || url.startsWith('/api/services')) {
+      console.log('🔐 Middleware: Checking API route:', url)
       if (!session) {
         console.log('🚫 API access denied: No session')
         return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
@@ -93,6 +94,7 @@ export async function middleware(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' }
         })
       }
+      console.log('✅ API access granted for user:', session.user.id)
     }
 
     // Protect admin API routes
@@ -130,7 +132,7 @@ export const config = {
   matcher: [
     // Temporarily disabled for testing
     // '/dashboard/:path*',
-    // '/api/bookings/:path*', // Temporarily disabled to fix 404 issue
+    '/api/bookings', // Re-enabled to fix 404 issue
     '/api/services/:path*',
     '/api/admin/:path*',
   ],
