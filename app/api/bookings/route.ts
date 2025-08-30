@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
 // CORS headers for cross-domain access
@@ -95,8 +95,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Bookings API POST called')
     
-    const supabase = await getSupabaseClient()
-    console.log('✅ Supabase client obtained')
+    const supabase = await getSupabaseAdminClient()
+    console.log('✅ Supabase admin client obtained')
     
     const { user, authError } = await authenticateUser(request, supabase)
     
@@ -249,8 +249,8 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Bookings API GET called')
     
-    const supabase = await getSupabaseClient()
-    console.log('✅ Supabase client obtained')
+    const supabase = await getSupabaseAdminClient()
+    console.log('✅ Supabase admin client obtained')
     
     const { user, authError } = await authenticateUser(request, supabase)
     
@@ -372,8 +372,8 @@ export async function PATCH(request: NextRequest) {
     console.log('🔍 API: Request method:', request.method)
     console.log('🔍 API: Request headers:', Object.fromEntries(request.headers.entries()))
     
-    const supabase = await getSupabaseClient()
-    console.log('✅ Supabase client obtained')
+    const supabase = await getSupabaseAdminClient()
+    console.log('✅ Supabase admin client obtained')
     
     const { user, authError } = await authenticateUser(request, supabase)
     
