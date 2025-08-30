@@ -412,12 +412,13 @@ export async function PATCH(request: NextRequest) {
     // Fetch booking to validate permissions
     console.log('🔍 API: Fetching booking with ID:', booking_id)
     console.log('🔍 API: User ID:', user.id)
+    console.log('🔍 API: User Role:', user.user_metadata?.role || 'unknown')
     console.log('🔍 API: Request body:', body)
     
     // First, let's check what bookings exist for this user
     const { data: userBookings, error: userBookingsError } = await supabase
       .from('bookings')
-      .select('id, client_id, provider_id, status')
+      .select('id, client_id, provider_id, status, title')
       .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
     
     console.log('🔍 API: User bookings found:', userBookings)
@@ -467,13 +468,31 @@ export async function PATCH(request: NextRequest) {
         console.log('🔍 API: Booking exists but belongs to different user:', anyBooking)
         const response = NextResponse.json({ 
           error: 'Booking not found or access denied',
-          details: 'The booking exists but you do not have permission to access it'
+          details: 'The booking exists but you do not have permission to access it',
+          debug: {
+            requested_booking_id: booking_id,
+            user_id: user.id,
+            user_role: user.user_metadata?.role,
+            existing_booking: anyBooking
+          }
         }, { status: 404 })
         Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
         return response
       }
       
-      const response = NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+      console.log('🔍 API: No booking found with ID:', booking_id)
+      console.log('🔍 API: Available user bookings:', userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status })))
+      
+      const response = NextResponse.json({ 
+        error: 'Booking not found', 
+        details: 'The specified booking ID does not exist in the database',
+        debug: {
+          requested_booking_id: booking_id,
+          user_id: user.id,
+          user_role: user.user_metadata?.role,
+          available_bookings: userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status }))
+        }
+      }, { status: 404 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
