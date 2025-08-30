@@ -106,7 +106,7 @@ export default function BookingDetailsPage() {
         .select(`
           *,
           service:services(id, name, description, category),
-          client:profiles!bookings_client_id_fkey(id, full_name, email, phone, company_name)
+          client:profiles(id, full_name, email, phone, company_name)
         `)
         .eq('id', bookingId)
         .eq('provider_id', user.id)
