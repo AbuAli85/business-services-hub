@@ -65,7 +65,7 @@ export class RealtimeManager {
             event: 'INSERT', 
             schema: 'public', 
             table: 'notifications',
-            filter: `user_id=eq.${userId}`
+            filter: `user_id = '${userId}'`
           },
           (payload: any) => {
             callback(payload.new as Notification)
@@ -99,7 +99,7 @@ export class RealtimeManager {
             event: '*', 
             schema: 'public', 
             table: 'bookings',
-            filter: `client_id=eq.${userId} OR provider_id=eq.${userId}`
+            filter: `client_id = '${userId}' OR provider_id = '${userId}'`
           },
           (payload: any) => {
             callback({
@@ -137,7 +137,7 @@ export class RealtimeManager {
             event: '*', 
             schema: 'public', 
             table: 'messages',
-            filter: `sender_id=eq.${userId} OR receiver_id=eq.${userId}`
+            filter: `sender_id = '${userId}' OR receiver_id = '${userId}'`
           },
           (payload: any) => {
             callback({
@@ -175,7 +175,7 @@ export class RealtimeManager {
             event: '*', 
             schema: 'public', 
             table: 'services',
-            filter: `provider_id=eq.${providerId}`
+            filter: `provider_id = '${providerId}'`
           },
           (payload: any) => {
             callback(payload)
@@ -209,7 +209,7 @@ export class RealtimeManager {
             event: '*', 
             schema: 'public', 
             table: 'payments',
-            filter: `booking_id IN (SELECT id FROM bookings WHERE client_id=eq.${userId} OR provider_id=eq.${userId})`
+            filter: `booking_id IN (SELECT id FROM bookings WHERE client_id = '${userId}' OR provider_id = '${userId}')`
           },
           (payload: any) => {
             callback(payload)
