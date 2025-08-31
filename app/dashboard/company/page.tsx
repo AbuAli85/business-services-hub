@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { getSupabaseClient } from '@/lib/supabase'
-import { createNonBlockingHandler } from '@/lib/performance'
+
 import { formatDate } from '@/lib/utils'
 import { 
   Building2, 
@@ -136,98 +136,7 @@ export default function CompanyPage() {
     }
   }
 
-  // Helper function to fetch current company data from database
-  const fetchCurrentCompanyData = async (companyId: string) => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', companyId)
-        .single()
-      
-      if (error) {
-        console.error('Error fetching current company data:', error)
-        return null
-      }
-      
-      console.log('Current company data from database:', data)
-      return data
-    } catch (error) {
-      console.error('Error fetching current company data:', error)
-      return null
-    }
-  }
 
-  // Helper function to check for existing email conflicts in the database
-  const checkExistingEmailConflicts = async (email: string): Promise<any[]> => {
-    try {
-      if (!email || !email.trim()) return []
-      
-      const normalizedEmail = email.toLowerCase().trim()
-      
-      const supabase = await getSupabaseClient()
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, email, owner_id, name')
-        .eq('email', normalizedEmail)
-      
-      if (error) {
-        console.error('Error checking existing email conflicts:', error)
-        return []
-      }
-      
-      console.log('Existing email conflicts found:', data)
-      return data || []
-    } catch (error) {
-      console.error('Error checking existing email conflicts:', error)
-      return []
-    }
-  }
-
-  // Helper function to check for email conflicts
-  const checkEmailConflict = async (email: string, excludeCompanyId?: string): Promise<boolean> => {
-    try {
-      if (!email || !email.trim()) return false
-      
-      const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return false
-      
-      // Normalize email (lowercase and trim)
-      const normalizedEmail = email.toLowerCase().trim()
-      
-      let query = supabase
-        .from('companies')
-        .select('id, email, owner_id')
-        .eq('email', normalizedEmail)
-        .neq('owner_id', user.id) // Exclude companies owned by other users
-      
-      if (excludeCompanyId) {
-        query = query.neq('id', excludeCompanyId)
-      }
-      
-      const { data, error } = await query
-      
-      if (error) {
-        console.error('Error checking email conflict:', error)
-        return false
-      }
-      
-      // Log the conflict check for debugging
-      console.log('Email conflict check:', {
-        email: normalizedEmail,
-        excludeCompanyId,
-        conflictsFound: data?.length || 0,
-        conflicts: data
-      })
-      
-      return data && data.length > 0
-    } catch (error) {
-      console.error('Error checking email conflict:', error)
-      return false
-    }
-  }
 
   // Helper function to validate form data
   const validateForm = (): { isValid: boolean; errors: string[] } => {
@@ -603,30 +512,66 @@ export default function CompanyPage() {
   const handleUpdateCompany = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // VERY OBVIOUS TEST - THIS SHOULD DEFINITELY SHOW
-    alert('🚨 FUNCTION UPDATED - THIS IS THE NEW VERSION 🚨')
-    
-    // SIMPLE TEST TO VERIFY LOGGING IS WORKING
-    console.log('=== SIMPLE TEST LOGGING ===')
-    console.log('1. Function called')
-    console.log('2. Event prevented')
-    console.log('3. About to continue')
-    
-    console.log('🚀 handleUpdateCompany STARTED')
-    console.log('Form event:', e)
-    console.log('Current company state:', company)
-    console.log('Current form state:', form)
-    
-    // IMMEDIATE ALERT TO CONFIRM FUNCTION IS CALLED
-    alert('handleUpdateCompany function is being called! Check console for logs.')
-    
-    // IMMEDIATE CONSOLE LOGS TO VERIFY LOGGING IS WORKING
-    console.log('=== IMMEDIATE LOGGING VERIFICATION ===')
-    console.log('Function started successfully')
-    console.log('Company ID:', company?.id)
-    console.log('Company email:', company?.email)
-    console.log('Form email:', form.email)
-    console.log('=== END IMMEDIATE LOGGING ===')
+    if (!company) {
+      setError('No company data available')
+      return
+    }
+
+    try {
+      setSubmitting(true)
+      setError(null)
+
+      if (!form.name.trim()) {
+        setError('Company name is required')
+        return
+      }
+
+      let logoUrl = form.logo_url
+      if (logoFile) {
+        const uploadedLogoUrl = await uploadLogoToStorage()
+        if (uploadedLogoUrl) {
+          logoUrl = uploadedLogoUrl
+        }
+      }
+
+      const updateData = {
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        cr_number: form.cr_number.trim() || null,
+        vat_number: form.vat_number.trim() || null,
+        address: form.address.trim() || null,
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        website: form.website.trim() || null,
+        industry: form.industry.trim() || null,
+        size: form.size.trim() || null,
+        founded_year: form.founded_year || null,
+        logo_url: logoUrl || null
+      }
+
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('companies')
+        .update(updateData)
+        .eq('id', company.id)
+
+      if (error) {
+        setError(`Failed to update company: ${error.message}`)
+        return
+      }
+
+      setCompany(prev => prev ? { ...prev, ...updateData } : null)
+      setLogoFile(null)
+      setLogoPreview(null)
+      setEditing(false)
+      setSuccess('Company updated successfully!')
+    } catch (error) {
+      console.error('Error updating company:', error)
+      setError('An unexpected error occurred')
+    } finally {
+      setSubmitting(false)
+    }
+  }
     
     if (!company) {
       console.log('❌ No company data, returning early')
@@ -649,31 +594,6 @@ export default function CompanyPage() {
       
       setSubmitting(true)
 
-      // Check for email conflict
-      if (form.email && form.email.trim() && company.email && form.email.trim() !== company.email) {
-        const isConflict = await checkEmailConflict(form.email.trim(), company.id);
-        if (isConflict) {
-          setError('Email address is already in use by another company.');
-          return;
-        }
-      }
-
-      // Debug: Check current company email status
-      console.log('Current company email status:', {
-        companyId: company.id,
-        currentEmail: company.email,
-        formEmail: form.email,
-        ownerId: company.owner_id
-      })
-      
-      // Debug: Check form email value
-      console.log('=== FORM EMAIL DEBUG ===')
-      console.log('Form email value:', form.email)
-      console.log('Form email type:', typeof form.email)
-      console.log('Form email length:', form.email ? form.email.length : 'undefined')
-      console.log('Form email trimmed:', form.email ? form.email.trim() : 'undefined')
-      console.log('Form email trimmed length:', form.email ? form.email.trim().length : 'undefined')
-
       // Verify user authentication
       const supabase = await getSupabaseClient()
       const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -688,21 +608,6 @@ export default function CompanyPage() {
         return
       }
 
-      // Fetch the most current company data from database
-      const currentCompanyData = await fetchCurrentCompanyData(company.id)
-      if (!currentCompanyData) {
-        setError('Unable to fetch current company data. Please try again.')
-        return
-      }
-      
-      // Debug: Compare state email vs database email
-      console.log('=== EMAIL COMPARISON DEBUG ===')
-      console.log('State company email:', company.email)
-      console.log('Database company email:', currentCompanyData.email)
-      console.log('Are they the same?', company.email === currentCompanyData.email)
-      console.log('Are they the same (trimmed)?', (company.email || '').trim() === (currentCompanyData.email || '').trim())
-      console.log('Are they the same (case-insensitive)?', (company.email || '').trim().toLowerCase() === (currentCompanyData.email || '').trim().toLowerCase())
-
       // Upload logo if file is selected
       let logoUrl = form.logo_url
       let shouldRemoveOldLogo = false
@@ -715,390 +620,29 @@ export default function CompanyPage() {
         }
       }
 
-      // Prepare update data - only include fields that have actual values
-      // and avoid sending null for fields that might have unique constraints
-      let updateData: any = {
-        name: form.name,
-      }
-      
-      console.log('=== INITIAL UPDATE DATA ===')
-      console.log('updateData after adding name:', updateData)
-
-      // Only add fields that have actual values (not empty strings)
-      if (form.description && form.description.trim()) {
-        updateData.description = form.description.trim()
-        console.log('Added description to updateData:', updateData)
-      }
-      
-      if (form.cr_number && form.cr_number.trim()) {
-        updateData.cr_number = form.cr_number.trim()
-        console.log('Added cr_number to updateData:', updateData)
-      }
-      
-      if (form.vat_number && form.vat_number.trim()) {
-        updateData.vat_number = form.vat_number.trim()
-        console.log('Added vat_number to updateData:', updateData)
-      }
-      
-      if (form.address && form.address.trim()) {
-        updateData.address = form.address.trim()
-        console.log('Added address to updateData:', updateData)
-      }
-      
-      if (form.phone && form.phone.trim()) {
-        updateData.phone = form.phone.trim()
-        console.log('Added phone to updateData:', updateData)
-      }
-      
-      // Handle email carefully - only update if it's different and not empty
-      // AND if it's actually different from the current email
-      // TEMPORARILY DISABLED: Completely prevent email updates
-      console.log('*** EMAIL HANDLING TEMPORARILY DISABLED ***')
-      console.log('Form email value:', form.email)
-      console.log('Current company email from DB:', currentCompanyData.email)
-      
-      /*
-      if (form.email && form.email.trim()) {
-        const currentEmail = currentCompanyData.email ? currentCompanyData.email.trim() : ''
-        const newEmail = form.email.trim()
-        
-        console.log('=== EMAIL HANDLING DEBUG ===')
-        console.log('Email comparison (using fresh DB data):', {
-          currentEmailFromDB: currentEmail,
-          newEmail,
-          isDifferent: newEmail !== currentEmail,
-          currentEmailLower: currentEmail.toLowerCase(),
-          newEmailLower: newEmail.toLowerCase(),
-          isDifferentCaseInsensitive: newEmail.toLowerCase() !== currentEmail.toLowerCase()
-        })
-        
-        // Check for existing email conflicts in the database
-        const existingConflicts = await checkExistingEmailConflicts(newEmail)
-        if (existingConflicts.length > 0) {
-          console.log('Found existing email conflicts:', existingConflicts)
-          
-          // Check if any of these conflicts are with the current company
-          const currentCompanyConflict = existingConflicts.find(c => c.id === company.id)
-          if (currentCompanyConflict) {
-            console.log('Current company found in conflicts:', currentCompanyConflict)
-          }
-          
-          // Check for conflicts with other companies
-          const otherCompanyConflicts = existingConflicts.filter(c => c.id !== company.id)
-          if (otherCompanyConflicts.length > 0) {
-            console.log('Conflicts with other companies:', otherCompanyConflicts)
-            setError(`Email address is already in use by another company: ${otherCompanyConflicts[0].name}`)
-            return
-          }
-          
-          // If we found ANY conflicts, don't update email at all
-          console.log('*** CONFLICTS DETECTED - NOT UPDATING EMAIL ***')
-          // Don't add email to updateData
-        } else {
-          // Only update email if it's actually different (case-insensitive comparison)
-          if (newEmail.toLowerCase() !== currentEmail.toLowerCase()) {
-            // Double-check for email conflict before adding to update data
-            const isConflict = await checkEmailConflict(newEmail, company.id)
-            if (isConflict) {
-              setError('Email address is already in use by another company.')
-              return
-            }
-            updateData.email = newEmail
-            console.log('*** ADDING EMAIL TO UPDATE DATA ***:', newEmail)
-          } else {
-            console.log('*** EMAIL UNCHANGED - NOT UPDATING ***')
-          }
-        }
-      } else {
-        console.log('*** NO EMAIL IN FORM OR EMAIL IS EMPTY ***')
-      }
-      */
-      
-      if (form.website && form.website.trim()) {
-        updateData.website = form.website.trim()
-        console.log('Added website to updateData:', updateData)
-      }
-      
-      if (form.industry && form.industry.trim()) {
-        updateData.industry = form.industry.trim()
-        console.log('Added industry to updateData:', updateData)
-      }
-      
-      if (form.size && form.size.trim()) {
-        updateData.size = form.size.trim()
-        console.log('Added size to updateData:', updateData)
-      }
-      
-      if (form.founded_year && form.founded_year > 0) {
-        updateData.founded_year = form.founded_year
-        console.log('Added founded_year to updateData:', updateData)
-      }
-      
-      if (logoUrl) {
-        updateData.logo_url = logoUrl
-        console.log('Added logo_url to updateData:', updateData)
-      }
-      
-      // IMMEDIATE EMAIL REMOVAL: Remove email if it somehow got added
-      if (updateData.email) {
-        console.log('*** IMMEDIATE EMAIL REMOVAL: Email found in updateData ***')
-        console.log('Email value:', updateData.email)
-        delete updateData.email
-        console.log('Email removed from updateData')
-      }
-      
-      // AGGRESSIVE OVERRIDE: Completely rebuild updateData without email
-      console.log('*** AGGRESSIVE OVERRIDE: Rebuilding updateData without email ***')
-      const safeUpdateData: any = {}
-      
-      // Only copy non-email fields
-      Object.entries(updateData).forEach(([key, value]) => {
-        if (key !== 'email') {
-          safeUpdateData[key] = value
-          console.log(`Copied ${key} to safeUpdateData:`, value)
-        } else {
-          console.log(`*** SKIPPED EMAIL FIELD: ${key} = ${value} ***`)
-        }
-      })
-      
-      // Replace updateData with safe version
-      Object.keys(updateData).forEach(key => delete updateData[key])
-      Object.assign(updateData, safeUpdateData)
-      
-      console.log('*** FINAL UPDATE DATA AFTER AGGRESSIVE OVERRIDE ***')
-      console.log('Original updateData:', updateData)
-      console.log('Safe updateData:', safeUpdateData)
-      
-      // Final verification: Ensure email is completely gone
-      if (updateData.email) {
-        console.error('*** CRITICAL ERROR: Email still present after aggressive override ***')
-        console.error('updateData:', updateData)
-        setError('Critical error: Email field cannot be removed from update data')
-        return
-      }
-      
-      console.log('=== UPDATE DATA AFTER ALL FIELDS ===')
-      console.log('Final updateData before email handling:', updateData)
-
-      // Final validation: Remove email from updateData if it's the same as current
-      if (updateData.email && currentCompanyData.email) {
-        const currentEmail = currentCompanyData.email.trim().toLowerCase()
-        const newEmail = updateData.email.trim().toLowerCase()
-        
-        if (currentEmail === newEmail) {
-          console.log('Final check: Removing email from updateData (same as current)')
-          delete updateData.email
-        }
-      }
-      
-      // Final safety check: If we have ANY doubts about email, remove it completely
-      if (updateData.email) {
-        console.log('*** FINAL SAFETY CHECK: REMOVING EMAIL FROM UPDATE ***')
-        console.log('Email in updateData:', updateData.email)
-        console.log('Current company email from DB:', currentCompanyData.email)
-        delete updateData.email
-      }
-      
-      // HARD OVERRIDE: Completely prevent email updates for now
-      console.log('*** HARD OVERRIDE: COMPLETELY BLOCKING EMAIL UPDATES ***')
-      if (updateData.email) {
-        console.log('Email found in updateData, removing it completely')
-        delete updateData.email
-      }
-      
-      // Double-check: Ensure email is never in updateData
-      if (updateData.email) {
-        console.error('*** CRITICAL ERROR: Email still in updateData after removal ***')
-        console.error('updateData:', updateData)
-        setError('Critical error: Email field still present in update data')
-        return
+      // Prepare update data
+      const updateData = {
+        name: form.name.trim(),
+        description: form.description.trim() || null,
+        cr_number: form.cr_number.trim() || null,
+        vat_number: form.vat_number.trim() || null,
+        address: form.address.trim() || null,
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        website: form.website.trim() || null,
+        industry: form.industry.trim() || null,
+        size: form.size.trim() || null,
+        founded_year: form.founded_year || null,
+        logo_url: logoUrl || null
       }
 
-      console.log('Final update data before sanitization:', updateData)
-
-      // Validate and sanitize update data before sending
-      let sanitizedUpdateData: any = {}
-      
-      console.log('=== STARTING SANITIZATION PROCESS ===')
-      console.log('Input updateData:', updateData)
-      console.log('Input updateData keys:', Object.keys(updateData))
-      console.log('Input updateData has email?', 'email' in updateData)
-      
-      // Ensure all string fields are properly trimmed and not empty
-      Object.entries(updateData).forEach(([key, value]) => {
-        console.log(`Processing field: ${key} = ${value} (type: ${typeof value})`)
-        
-        if (typeof value === 'string') {
-          const trimmedValue = value.trim()
-          if (trimmedValue) {
-            sanitizedUpdateData[key] = trimmedValue
-            console.log(`Added string field: ${key} = "${trimmedValue}"`)
-          } else {
-            console.log(`Skipped empty string field: ${key}`)
-          }
-        } else if (typeof value === 'number') {
-          // Ensure numbers are valid
-          if (!isNaN(value) && isFinite(value)) {
-            sanitizedUpdateData[key] = value
-            console.log(`Added number field: ${key} = ${value}`)
-          } else {
-            console.log(`Skipped invalid number field: ${key} = ${value}`)
-          }
-        } else if (value !== null && value !== undefined) {
-          // Keep other valid values
-          sanitizedUpdateData[key] = value
-          console.log(`Added other field: ${key} = ${value}`)
-        } else {
-          console.log(`Skipped null/undefined field: ${key} = ${value}`)
-        }
-      })
-      
-      console.log('=== SANITIZATION COMPLETE ===')
-      console.log('Output sanitizedUpdateData:', sanitizedUpdateData)
-      console.log('Output sanitizedUpdateData keys:', Object.keys(sanitizedUpdateData))
-      console.log('Output sanitizedUpdateData has email?', 'email' in sanitizedUpdateData)
-
-      // FINAL CHECK: Verify no email in sanitizedUpdateData
-      if (sanitizedUpdateData.email) {
-        console.error('*** CRITICAL ERROR: Email found in sanitizedUpdateData ***')
-        console.error('sanitizedUpdateData:', sanitizedUpdateData)
-        setError('Critical error: Email field found in sanitized update data')
-        return
-      }
-
-      // Check if we have any data to update
-      if (Object.keys(sanitizedUpdateData).length === 0) {
-        setError('No valid data to update. Please fill in at least one field.')
-        return
-      }
-
-      console.log('*** ABOUT TO SEND TO SUPABASE ***')
-      console.log('Final sanitizedUpdateData being sent:', sanitizedUpdateData)
-      console.log('Keys being sent:', Object.keys(sanitizedUpdateData))
-      console.log('Email field present?', 'email' in sanitizedUpdateData)
-
-      // COMPLETE REQUEST LOGGING
-      console.log('*** COMPLETE REQUEST ANALYSIS ***')
-      console.log('Company ID:', company.id)
-      console.log('Company current email:', company.email)
-      console.log('Form email:', form.email)
-      console.log('updateData keys:', Object.keys(updateData))
-      console.log('sanitizedUpdateData keys:', Object.keys(sanitizedUpdateData))
-      console.log('updateData has email?', 'email' in updateData)
-      console.log('sanitizedUpdateData has email?', 'email' in sanitizedUpdateData)
-      
-      // Check if email is somehow being added by Supabase
-      console.log('*** CHECKING FOR HIDDEN EMAIL FIELDS ***')
-      Object.keys(sanitizedUpdateData).forEach(key => {
-        if (key.toLowerCase().includes('email')) {
-          console.error(`*** WARNING: Found email-related field: ${key} = ${sanitizedUpdateData[key]} ***`)
-        }
-      })
-
-      // CHECK CURRENT DATABASE STATE
-      console.log('*** CHECKING CURRENT DATABASE STATE ***')
-      const supabaseDb = await getSupabaseClient()
-      const { data: currentDbData, error: fetchError } = await supabaseDb
+      const { error } = await supabase
         .from('companies')
-        .select('*')
-        .eq('id', company.id)
-        .single()
-      
-      if (fetchError) {
-        console.error('Error fetching current company data:', fetchError)
-      } else {
-        console.log('Current company data in database:', currentDbData)
-        console.log('Database email:', currentDbData.email)
-        console.log('Local company email:', company.email)
-        console.log('Form email:', form.email)
-        
-        // Check if there are any other companies with the same email
-        const { data: emailConflicts, error: conflictError } = await supabaseDb
-        .from('companies')
-          .select('id, name, email, owner_id')
-          .eq('email', currentDbData.email)
-          .neq('id', company.id)
-        
-        if (conflictError) {
-          console.error('Error checking email conflicts:', conflictError)
-        } else {
-          console.log('Other companies with same email:', emailConflicts)
-        }
-      }
-
-      // CHECK DATABASE CONSTRAINTS
-      console.log('*** CHECKING DATABASE CONSTRAINTS ***')
-      try {
-        const supabaseRpc = await getSupabaseClient()
-        const { data: constraintData, error: constraintError } = await supabaseRpc
-          .rpc('get_table_constraints', { table_name: 'companies' })
-        
-        if (constraintError) {
-          console.log('Could not fetch constraints via RPC, trying direct query...')
-          // Try a different approach to see constraints
-          const { data: tableInfo, error: tableError } = await supabaseRpc
-            .from('information_schema.table_constraints')
-            .select('*')
-            .eq('table_name', 'companies')
-            .eq('table_schema', 'public')
-          
-          if (tableError) {
-            console.error('Error fetching table constraints:', tableError)
-          } else {
-            console.log('Table constraints:', tableInfo)
-          }
-        } else {
-          console.log('Table constraints via RPC:', constraintData)
-        }
-      } catch (err) {
-        console.log('Error checking constraints:', err)
-      }
-
-      // FINAL VERIFICATION BEFORE SUPABASE CALL
-      console.log('🚨 FINAL VERIFICATION BEFORE SUPABASE CALL 🚨')
-      console.log('sanitizedUpdateData:', sanitizedUpdateData)
-      console.log('sanitizedUpdateData keys:', Object.keys(sanitizedUpdateData))
-      console.log('sanitizedUpdateData has email?', 'email' in sanitizedUpdateData)
-      console.log('sanitizedUpdateData.email value:', sanitizedUpdateData.email)
-      
-      // CRITICAL CHECK: If email is present, log it and remove it
-      if (sanitizedUpdateData.email) {
-        console.error('🚨🚨🚨 CRITICAL ERROR: Email found in sanitizedUpdateData before Supabase call 🚨🚨🚨')
-        console.error('Email value:', sanitizedUpdateData.email)
-        console.error('Full sanitizedUpdateData:', sanitizedUpdateData)
-        
-        // Remove email immediately
-        delete sanitizedUpdateData.email
-        console.log('Email removed from sanitizedUpdateData')
-        
-        // Verify removal
-        console.log('After removal - has email?', 'email' in sanitizedUpdateData)
-        console.log('sanitizedUpdateData after email removal:', sanitizedUpdateData)
-      }
-
-      const { error } = await supabaseDb
-        .from('companies')
-        .update(sanitizedUpdateData)
+        .update(updateData)
         .eq('id', company.id)
 
       if (error) {
         console.error('Error updating company:', error)
-        console.error('Error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          updateData,
-          sanitizedUpdateData,
-          companyId: company.id
-        })
-        
-        // Log what we actually sent
-        console.error('*** WHAT WE ACTUALLY SENT TO SUPABASE ***')
-        console.error('sanitizedUpdateData sent:', sanitizedUpdateData)
-        console.error('Keys sent:', Object.keys(sanitizedUpdateData))
-        console.error('Email field present in sent data?', 'email' in sanitizedUpdateData)
-        
         setError(`Failed to update company: ${error.message}`)
         return
       }
@@ -1841,228 +1385,7 @@ export default function CompanyPage() {
                   Edit Profile
                 </Button>
                 
-                {/* Debug button for testing */}
-                <Button 
-                  variant="outline" 
-                  onClick={createNonBlockingHandler(async () => {
-                    if (!company) return
-                    
-                    try {
-                      console.log('Testing minimal update...')
-                      const supabaseTest = await getSupabaseClient()
-                      const { error } = await supabaseTest
-                        .from('companies')
-                        .update({ name: company.name }) // Just update the name to test
-                        .eq('id', company.id)
-                      
-                      if (error) {
-                        console.error('Test update error:', error)
-                        alert(`Test update failed: ${error.message}`)
-                      } else {
-                        console.log('Test update successful')
-                        alert('Test update successful')
-                      }
-                    } catch (err) {
-                      console.error('Test update exception:', err)
-                      alert(`Test update exception: ${err}`)
-                    }
-                  }, { deferHeavyWork: true })}
-                  className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
-                >
-                  Test Update
-                </Button>
-                
-                {/* Test update without email */}
-                <Button 
-                  variant="outline" 
-                  onClick={createNonBlockingHandler(async () => {
-                    if (!company) return
-                    
-                    try {
-                      console.log('Testing update without email...')
-                      const updateData = {
-                        name: company.name,
-                        description: company.description || 'Test description update'
-                      }
-                      
-                      console.log('Update data (no email):', updateData)
-                      
-                      const supabaseTest2 = await getSupabaseClient()
-                      const { error } = await supabaseTest2
-                        .from('companies')
-                        .update(updateData)
-                        .eq('id', company.id)
-                      
-                      if (error) {
-                        console.error('Test update without email error:', error)
-                        alert(`Test update without email failed: ${error.message}`)
-                      } else {
-                        console.log('Test update without email successful')
-                        alert('Test update without email successful')
-                      }
-                    } catch (err) {
-                      console.error('Test update without email exception:', err)
-                      alert(`Test update without email exception: ${err}`)
-                    }
-                  }, { deferHeavyWork: true })}
-                  className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
-                >
-                  Test No Email
-                </Button>
-                
-                {/* Test update with just name */}
-                <Button 
-                  variant="outline" 
-                  onClick={createNonBlockingHandler(async () => {
-                    if (!company) return
-                    
-                    try {
-                      console.log('Testing update with just name...')
-                      const updateData = {
-                        name: company.name + ' (Test)'
-                      }
-                      
-                      console.log('Update data (just name):', updateData)
-                      
-                      const supabaseTest3 = await getSupabaseClient()
-                      const { error } = await supabaseTest3
-                        .from('companies')
-                        .update(updateData)
-                        .eq('id', company.id)
-                      
-                      if (error) {
-                        console.error('Test update with just name error:', error)
-                        alert(`Test update with just name failed: ${error.message}`)
-                      } else {
-                        console.log('Test update with just name successful')
-                        alert('Test update with just name successful')
-                      }
-                    } catch (err) {
-                      console.error('Test update with just name exception:', err)
-                      alert(`Test update with just name exception: ${err}`)
-                    }
-                  }, { deferHeavyWork: true })}
-                  className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
-                >
-                  Test Just Name
-                </Button>
-                
-                {/* Test update with no data */}
-                <Button 
-                  variant="outline" 
-                  onClick={createNonBlockingHandler(async () => {
-                    if (!company) return
-                    
-                    try {
-                      console.log('Testing update with no data...')
-                      const updateData = {}
-                      
-                      console.log('Update data (empty):', updateData)
-                      
-                      const supabaseTest4 = await getSupabaseClient()
-                      const { error } = await supabaseTest4
-                        .from('companies')
-                        .update(updateData)
-                        .eq('id', company.id)
-                      
-                      if (error) {
-                        console.error('Test update with no data error:', error)
-                        alert(`Test update with no data failed: ${error.message}`)
-                      } else {
-                        console.log('Test update with no data successful')
-                        alert('Test update with no data successful')
-                      }
-                    } catch (err) {
-                      console.error('Test update with no data exception:', err)
-                      alert(`Test update with no data exception: ${err}`)
-                    }
-                  }, { deferHeavyWork: true })}
-                  className="border-white/20 text-white/80 hover:bg-white/10 ml-2 text-xs"
-                >
-                  Test No Data
-                </Button>
-                
-                {/* Test raw SQL update */}
-                <Button 
-                  variant="outline" 
-                  onClick={createNonBlockingHandler(async () => {
-                    if (!company) return
-                    
-                    try {
-                      console.log('Testing raw SQL update...')
-                      
-                      const supabaseRpcTest = await getSupabaseClient()
-                      const { error } = await supabaseRpcTest.rpc('update_company_name_only', { 
-                        company_id: company.id, 
-                        new_name: company.name + ' (Raw SQL Test)' 
-                      })
-                      
-                      if (error) {
-                        console.error('Test raw SQL update error:', error)
-                        alert(`Test raw SQL update failed: ${error.message}`)
-                      } else {
-                        console.log('Test raw SQL update successful')
-                        alert('Test raw SQL update successful')
-                      }
-                    } catch (err) {
-                      console.error('Test raw SQL update exception:', err)
-                      alert(`Test raw SQL update exception: ${err}`)
-                    }
-                  }, { deferHeavyWork: true })}
-                  className="border-white/20 text-white/80 hover:bg-white/80 ml-2 text-xs"
-                >
-                  Test Raw SQL
-                </Button>
-                
-                {/* Test Logging */}
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    console.log('=== TEST LOGGING ===')
-                    console.log('Company data:', company)
-                    console.log('Form data:', form)
-                    console.log('=== END TEST LOGGING ===')
-                    alert('Check console for test logging output')
-                  }}
-                  className="border-white/20 text-white/80 hover:bg-white/80 ml-2 text-xs"
-                >
-                  Test Logging
-                </Button>
-                
-                {/* Test Function Call */}
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    console.log('=== TESTING FUNCTION CALL ===')
-                    try {
-                      // Create a mock event
-                      const mockEvent = { preventDefault: () => {} } as React.FormEvent
-                      console.log('Mock event created:', mockEvent)
-                      
-                      // Call our function
-                      console.log('About to call handleUpdateCompany...')
-                      handleUpdateCompany(mockEvent)
-                      console.log('handleUpdateCompany called successfully')
-                    } catch (error) {
-                      console.error('Error calling handleUpdateCompany:', error)
-                    }
-                  }}
-                  className="border-white/20 text-white/80 hover:bg-white/80 ml-2 text-xs"
-                >
-                  Test Function Call
-                </Button>
-                
-                {/* Simple Test */}
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    alert('Simple test button works!')
-                    console.log('Simple test button clicked')
-                  }}
-                  className="border-white/20 text-white/80 hover:bg-white/80 ml-2 text-xs"
-                >
-                  Simple Test
-                </Button>
+
               </div>
             </div>
           </Card>
