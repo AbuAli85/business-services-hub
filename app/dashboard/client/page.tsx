@@ -12,26 +12,15 @@ import {
   Clock, 
   User, 
   Package, 
-  Star, 
   MessageSquare, 
   Plus,
   Eye,
   Search,
-  Filter,
-  TrendingUp,
   CheckCircle,
-  XCircle,
-  AlertCircle,
-  Clock as ClockIcon,
   DollarSign,
   MapPin,
-  Phone,
-  Mail,
-  Building,
   ArrowRight,
-  Award,
-  Target,
-  BarChart3
+  Target
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -59,17 +48,6 @@ interface RecentBooking {
   created_at: string
 }
 
-interface FavoriteService {
-  id: string
-  title: string
-  category: string
-  base_price: number
-  currency: string
-  provider_name: string
-  average_rating: number
-  total_bookings: number
-}
-
 interface UpcomingBooking {
   id: string
   service_title: string
@@ -83,7 +61,6 @@ interface UpcomingBooking {
 export default function ClientDashboard() {
   const [stats, setStats] = useState<ClientStats | null>(null)
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([])
-  const [favoriteServices, setFavoriteServices] = useState<FavoriteService[]>([])
   const [upcomingBookings, setUpcomingBookings] = useState<UpcomingBooking[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
@@ -134,7 +111,7 @@ export default function ClientDashboard() {
         const serviceSubscription = await realtimeManager.subscribeToServices('', (update) => {
           if (update.eventType === 'INSERT' || update.eventType === 'UPDATE') {
             // Service updated - refresh favorites
-            fetchFavoriteServices(user.id)
+            // fetchFavoriteServices(user.id) // This line is removed as per the edit hint
           }
         })
         subscriptionKeys.push('services:')
@@ -176,7 +153,7 @@ export default function ClientDashboard() {
       await Promise.all([
         fetchClientStats(user.id),
         fetchRecentBookings(user.id),
-        fetchFavoriteServices(user.id),
+        // fetchFavoriteServices(user.id), // This line is removed as per the edit hint
         fetchUpcomingBookings(user.id)
       ])
     } catch (error) {
@@ -193,16 +170,16 @@ export default function ClientDashboard() {
       // Get bookings count and spending
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('status, amount, currency, created_at')
+        .select('status, subtotal, total_amount, currency, created_at')
         .eq('client_id', userId)
 
       const totalBookings = bookings?.length || 0
-      const activeBookings = bookings?.filter(b => ['pending', 'approved', 'in_progress'].includes(b.status)).length || 0
+      const activeBookings = bookings?.filter(b => ['paid', 'in_progress'].includes(b.status)).length || 0
       const completedBookings = bookings?.filter(b => b.status === 'completed').length || 0
       
       const totalSpent = bookings
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
-        .reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+        .reduce((sum, b) => sum + (b.total_amount || b.subtotal || 0), 0) || 0
 
       // Get monthly spending
       const currentMonth = new Date().getMonth()
@@ -214,24 +191,21 @@ export default function ClientDashboard() {
                ['completed', 'in_progress'].includes(b.status)
       }) || []
       
-      const monthlySpent = monthlyBookings.reduce((sum, b) => sum + (b.amount || 0), 0)
+      const monthlySpent = monthlyBookings.reduce((sum, b) => sum + (b.total_amount || b.subtotal || 0), 0)
 
-      // Get ratings and reviews
+      // Get ratings and reviews from the 'reviews' table (not 'service_reviews')
       const { data: reviews } = await supabase
-        .from('service_reviews')
+        .from('reviews')
         .select('rating')
         .eq('client_id', userId)
 
-            const totalReviews = reviews?.length || 0
+      const totalReviews = reviews?.length || 0
       const averageRating = totalReviews > 0 && reviews
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
         : 0
 
-      // Get favorite providers count
-      const { count: favoriteProviders } = await supabase
-        .from('favorite_providers')
-        .select('*', { count: 'exact', head: true })
-        .eq('client_id', userId)
+      // Since favorite_providers table doesn't exist, we'll set this to 0 for now
+      const favoriteProviders = 0
 
       setStats({
         totalBookings,
@@ -241,7 +215,7 @@ export default function ClientDashboard() {
         monthlySpent,
         averageRating,
         totalReviews,
-        favoriteProviders: favoriteProviders || 0
+        favoriteProviders
       })
     } catch (error) {
       console.error('Error fetching client stats:', error)
@@ -332,56 +306,6 @@ export default function ClientDashboard() {
       }
     } catch (error) {
       console.error('Error fetching recent bookings:', error)
-    }
-  }
-
-  const fetchFavoriteServices = async (userId: string) => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const { data: favorites } = await supabase
-        .from('favorite_services')
-        .select(`
-          service:services (
-            id,
-            title,
-            category,
-            base_price,
-            currency,
-            provider_id,
-            average_rating,
-            total_bookings
-          )
-        `)
-        .eq('client_id', userId)
-        .limit(5)
-
-      if (favorites) {
-        // Fetch provider information separately
-        const providerIds = Array.from(new Set(favorites.map((f: any) => f.service.provider_id).filter(Boolean)))
-        const { data: providers } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', providerIds)
-
-        const enrichedFavorites = favorites.map((f: any) => {
-          const provider = providers?.find(p => p.id === f.service.provider_id)
-          return {
-            id: f.service.id,
-            title: f.service.title,
-            category: f.service.category,
-            base_price: f.service.base_price,
-            currency: f.service.currency,
-            provider_name: provider?.full_name || 'Unknown Provider',
-            average_rating: f.service.average_rating || 0,
-            total_bookings: f.service.total_bookings || 0
-          }
-        })
-
-        setFavoriteServices(enrichedFavorites)
-      }
-    } catch (error) {
-      console.error('Error fetching favorite services:', error)
     }
   }
 
@@ -487,21 +411,6 @@ export default function ClientDashboard() {
     return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
   }
 
-  const getRatingStars = (rating: number) => {
-    const stars = []
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Star
-          key={i}
-          className={`h-4 w-4 ${
-            i <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-          }`}
-        />
-      )
-    }
-    return stars
-  }
-
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -577,7 +486,7 @@ export default function ClientDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Rating</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
@@ -762,60 +671,18 @@ export default function ClientDashboard() {
             <CardDescription>Services you've saved</CardDescription>
           </CardHeader>
           <CardContent>
-            {favoriteServices.length === 0 ? (
-              <div className="text-center py-6">
-                <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No favorite services yet</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => router.push('/services')}
-                >
-                  Discover Services
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {favoriteServices.map((service) => (
-                  <div key={service.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm">{service.title}</h4>
-                      <div className="flex items-center space-x-1">
-                        {getRatingStars(service.average_rating)}
-                        <span className="text-xs text-gray-600 ml-1">
-                          ({service.average_rating.toFixed(1)})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-3">
-                      <div>
-                        <span className="font-medium">{service.category}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">{formatCurrency(service.base_price, service.currency)}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600">{service.provider_name}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/services/${service.id}`)}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/services')}
-                >
-                  Browse All Services
-                </Button>
-              </div>
-            )}
+            {/* Favorite services section removed as per edit hint */}
+            <div className="text-center py-6">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No favorite services yet</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => router.push('/services')}
+              >
+                Discover Services
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -942,7 +809,7 @@ export default function ClientDashboard() {
             </div>
             
             <div className="text-center p-6 border rounded-lg">
-              <Star className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <Package className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
               <h3 className="font-semibold text-lg mb-2">Top Rated</h3>
               <p className="text-gray-600 mb-4">Discover highly-rated services from top providers</p>
               <Button 
