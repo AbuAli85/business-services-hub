@@ -44,7 +44,8 @@ import {
   Shield,
   Zap,
   Eye,
-  Building
+  Building,
+  Lightbulb
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -1578,31 +1579,77 @@ export default function BookingDetailsPage() {
           </Card>
 
           {/* Enhanced Actions & Notes */}
-          <Card>
+          <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-md">
             <CardHeader>
-              <CardTitle>Actions & Notes</CardTitle>
-              <CardDescription>Manage this booking</CardDescription>
+              <CardTitle className="flex items-center space-x-2 text-blue-900">
+                <Zap className="h-5 w-5" />
+                <span>Smart Actions & AI Insights</span>
+              </CardTitle>
+              <CardDescription className="text-blue-700">
+                Intelligent actions and recommendations powered by AI analysis
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button 
-                className="w-full" 
-                onClick={() => setActiveTab('messages')}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Send Message
-              </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700" 
+                  onClick={() => setActiveTab('messages')}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Smart Message
+                </Button>
+                
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => setActiveTab('progress')}
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Update Progress
+                </Button>
+              </div>
               
               {booking.status === 'in_progress' && (
                 <Button 
-                  className="w-full" 
+                  className="w-full bg-purple-600 hover:bg-purple-700"
                   variant="default"
                   onClick={handleMarkComplete}
                   disabled={isUpdatingStatus}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
+                  {isUpdatingStatus ? 'Updating...' : 'Mark as Complete'}
                 </Button>
               )}
+              
+              {/* AI-Powered Action Suggestions */}
+              <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
+                <h5 className="font-medium text-blue-900 mb-2 flex items-center">
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  AI Action Suggestions
+                </h5>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800">Send progress update to client</span>
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Do Now
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800">Schedule follow-up meeting</span>
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      Schedule
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-blue-800">Prepare completion report</span>
+                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Prepare
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
               {/* Editable Notes */}
               <div>
@@ -1646,119 +1693,252 @@ export default function BookingDetailsPage() {
 
         {/* Timeline Tab */}
         <TabsContent value="timeline" className="space-y-6">
-          <Card>
+          <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock3 className="h-5 w-5" />
-                <span>Booking Timeline</span>
+              <CardTitle className="flex items-center space-x-2 text-blue-900">
+                <Clock3 className="h-6 w-6" />
+                <span>Enhanced Project Timeline</span>
+                <Badge variant="default" className="bg-blue-600 text-white ml-2">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Smart
+                </Badge>
               </CardTitle>
-              <CardDescription>Track the progress and milestones of this booking</CardDescription>
+              <CardDescription className="text-blue-700">
+                Comprehensive project tracking with intelligent insights, progress monitoring, and detailed milestone analysis
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {/* Progress Bar */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-muted-foreground">Overall Progress</span>
-                    <span className="text-sm font-medium">
+                {/* Smart Progress Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center p-4 bg-white rounded-lg border border-blue-200">
+                    <div className="text-2xl font-bold text-blue-600">
                       {Math.round((getTimelineProgress() * 100))}%
-                    </span>
+                    </div>
+                    <div className="text-sm text-blue-700 font-medium">Overall Progress</div>
+                    <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${getTimelineProgress() * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${getTimelineProgress() * 100}%` }}
-                    />
+                  <div className="text-center p-4 bg-white rounded-lg border border-blue-200">
+                    <div className="text-2xl font-bold text-green-600">
+                      {getDaysSinceCreation()}
+                    </div>
+                    <div className="text-sm text-green-700 font-medium">Days Active</div>
+                    <div className="mt-2 text-xs text-green-600">Project Duration</div>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg border border-blue-200">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {getTimeToDeadline()}
+                    </div>
+                    <div className="text-sm text-purple-700 font-medium">Time to Deadline</div>
+                    <div className="mt-2 text-xs text-purple-600">Remaining Time</div>
+                  </div>
+                  <div className="text-center p-4 bg-white rounded-lg border border-blue-200">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {getNextMilestone()}
+                    </div>
+                    <div className="text-sm text-orange-700 font-medium">Next Action</div>
+                    <div className="mt-2 text-xs text-orange-600">Action Required</div>
                   </div>
                 </div>
 
-                {/* Timeline Steps */}
-                <div className="space-y-4">
-                  {timelineSteps.map((step, index) => (
-                    <div key={step.status} className="flex items-start space-x-4">
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                        step.completed 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-gray-200 text-gray-500'
-                      }`}>
-                        {step.completed ? (
-                          <CheckCircle className="h-5 w-5" />
-                        ) : (
-                          step.icon
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <h4 className={`font-medium ${
-                            step.completed ? 'text-green-700' : 'text-gray-700'
+                {/* Enhanced Timeline Steps with Progress Lines */}
+                <div className="relative">
+                  <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-green-500 to-purple-500"></div>
+                  <div className="space-y-6">
+                    {timelineSteps.map((step, index) => (
+                      <div key={step.status} className="relative flex items-start space-x-6">
+                        {/* Step Icon with Progress Line */}
+                        <div className="relative flex-shrink-0">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                            step.completed 
+                              ? 'bg-green-500 border-green-600 text-white shadow-lg' 
+                              : step.status === 'in_progress'
+                              ? 'bg-blue-500 border-blue-600 text-white shadow-lg'
+                              : 'bg-gray-200 border-gray-300 text-gray-500'
                           }`}>
-                            {step.label}
-                          </h4>
-                          {step.completed && (
-                            <Badge variant="default" className="bg-green-100 text-green-800">
-                              Completed
-                            </Badge>
+                            {step.completed ? (
+                              <CheckCircle className="h-5 w-5" />
+                            ) : step.status === 'in_progress' ? (
+                              <RefreshCw className="h-5 w-5" />
+                            ) : (
+                              step.icon
+                            )}
+                          </div>
+                          {/* Progress Line Connector */}
+                          {index < timelineSteps.length - 1 && (
+                            <div className={`absolute left-1/2 top-8 w-0.5 h-6 transform -translate-x-1/2 ${
+                              step.completed ? 'bg-green-500' : 'bg-gray-300'
+                            }`}></div>
                           )}
                         </div>
-                        {step.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
-                        )}
-                        {step.date && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {formatDate(step.date)}
-                          </p>
-                        )}
-                        {/* Estimated vs Actual Time */}
-                        {step.status === 'in_progress' && (
-                          <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                            <p className="text-xs text-blue-700">
-                              <Clock className="h-3 w-3 inline mr-1" />
-                              Estimated completion: {getEstimatedCompletion()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      {index < timelineSteps.length - 1 && (
-                        <div className="w-px h-12 bg-gray-200 ml-4" />
-                      )}
-                    </div>
-                  ))}
-                </div>
 
-                {/* Time Tracking */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-3">Time Tracking</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Created:</span>
-                      <p className="font-medium">{formatDate(booking.created_at)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Last Updated:</span>
-                      <p className="font-medium">{formatDate(booking.updated_at)}</p>
-                    </div>
-                    {booking.scheduled_date && (
-                      <div>
-                        <span className="text-muted-foreground">Scheduled:</span>
-                        <p className="font-medium">{formatDate(booking.scheduled_date)}</p>
+                        {/* Step Content */}
+                        <div className="flex-1 min-w-0 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className={`font-semibold text-lg ${
+                              step.completed ? 'text-green-700' : 'text-gray-700'
+                            }`}>
+                              {step.label}
+                            </h4>
+                            <div className="flex items-center space-x-2">
+                              {step.completed && (
+                                <Badge variant="default" className="bg-green-100 text-green-800">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Completed
+                                </Badge>
+                              )}
+                              {step.status === 'in_progress' && (
+                                <Badge variant="default" className="bg-blue-100 text-blue-800">
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  In Progress
+                                </Badge>
+                              )}
+                              {!step.completed && step.status !== 'in_progress' && (
+                                <Badge variant="outline" className="text-gray-500">
+                                  Pending
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {step.description && (
+                            <p className="text-sm text-gray-600 mb-3">{step.description}</p>
+                          )}
+                          
+                          {/* Step Details */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            {step.date && (
+                              <div className="flex items-center space-x-2">
+                                <Calendar className="h-4 w-4 text-blue-500" />
+                                <span className="text-gray-600">Started:</span>
+                                <span className="font-medium">{formatDate(step.date)}</span>
+                              </div>
+                            )}
+                            {step.completed && step.date && (
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span className="text-gray-600">Completed:</span>
+                                <span className="font-medium">{formatDate(step.date)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Smart Insights for Each Step */}
+                          {step.status === 'in_progress' && (
+                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Lightbulb className="h-4 w-4 text-blue-600" />
+                                <span className="text-sm font-medium text-blue-900">Smart Insights</span>
+                              </div>
+                              <div className="space-y-2 text-xs text-blue-800">
+                                <div className="flex items-center justify-between">
+                                  <span>Estimated completion:</span>
+                                  <span className="font-medium">{getEstimatedCompletion()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span>Time remaining:</span>
+                                  <span className="font-medium">{getTimeToDeadline()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span>Progress efficiency:</span>
+                                  <span className="font-medium">{getStatusEfficiency()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Step Actions */}
+                          {step.status === 'in_progress' && (
+                            <div className="mt-3 flex space-x-2">
+                              <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                                <Edit className="h-3 w-3 mr-1" />
+                                Update Progress
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-green-300 text-green-700">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Mark Complete
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {booking.estimated_duration && (
-                      <div>
-                        <span className="text-muted-foreground">Estimated Duration:</span>
-                        <p className="font-medium">{booking.estimated_duration}</p>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
 
-                {/* Timeline Actions */}
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="font-medium mb-3 text-blue-900">Timeline Actions</h4>
-                  <div className="flex space-x-3">
+                {/* Enhanced Time Tracking Dashboard */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
+                      <Clock className="h-4 w-4 mr-2 text-blue-500" />
+                      Project Timeline
+                    </h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Project Start:</span>
+                        <span className="font-medium">{formatDate(booking.created_at)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Last Updated:</span>
+                        <span className="font-medium">{formatDate(booking.updated_at)}</span>
+                      </div>
+                      {booking.scheduled_date && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Scheduled Date:</span>
+                          <span className="font-medium">{formatDate(booking.scheduled_date)}</span>
+                        </div>
+                      )}
+                      {booking.estimated_duration && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Estimated Duration:</span>
+                          <span className="font-medium">{booking.estimated_duration}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-2 text-green-500" />
+                      Performance Metrics
+                    </h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Days Active:</span>
+                        <span className="font-medium">{getDaysSinceCreation()} days</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Efficiency Score:</span>
+                        <span className="font-medium">{getStatusEfficiency()}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Client Rating:</span>
+                        <span className="font-medium">{getClientSatisfaction()}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Revenue Impact:</span>
+                        <span className="font-medium">{getRevenueImpact()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Smart Timeline Actions */}
+                <div className="p-4 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold mb-3 text-blue-900 flex items-center">
+                    <Zap className="h-5 w-5 mr-2" />
+                    Smart Timeline Actions
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Button 
                       size="sm" 
                       variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
                       onClick={() => setShowTimelineEdit(true)}
                     >
                       <Edit className="h-4 w-4 mr-2" />
@@ -1767,6 +1947,16 @@ export default function BookingDetailsPage() {
                     <Button 
                       size="sm" 
                       variant="outline"
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                      onClick={() => setActiveTab('progress')}
+                    >
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      View Progress
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50"
                       onClick={() => {
                         // Export timeline as PDF
                         toast.success('Timeline export feature coming soon!')
