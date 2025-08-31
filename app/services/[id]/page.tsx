@@ -175,7 +175,7 @@ export default function ServiceDetailPage() {
           .from('profiles')
           .select('id, full_name, email, role')
           .eq('id', authUser.id)
-          .single()
+          .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
         if (profileError) {
           console.error('Profile error:', profileError)
@@ -191,6 +191,14 @@ export default function ServiceDetailPage() {
             full_name: profile.full_name,
             email: profile.email
           })
+        } else {
+          // Profile doesn't exist, create a basic user object
+          setUser({
+            id: authUser.id,
+            role: 'client',
+            full_name: authUser.user_metadata?.full_name || 'User',
+            email: authUser.email || ''
+          })
         }
 
         // Fetch service with packages
@@ -201,11 +209,17 @@ export default function ServiceDetailPage() {
             service_packages(*)
           `)
           .eq('id', serviceId)
-          .single()
+          .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
         if (serviceError) {
           console.error('Service error:', serviceError)
           setError('Service not found or access denied')
+          setLoading(false)
+          return
+        }
+
+        if (!serviceData) {
+          setError('Service not found')
           setLoading(false)
           return
         }
@@ -221,7 +235,7 @@ export default function ServiceDetailPage() {
               company_name
             `)
             .eq('id', serviceData.provider_id)
-            .single()
+            .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
           if (providerData && !providerError) {
             serviceData.provider = {
@@ -230,6 +244,18 @@ export default function ServiceDetailPage() {
               total_reviews: 24,
               response_time: '2 hours',
               completion_rate: 98
+            }
+          } else {
+            // Provider profile doesn't exist, create a fallback
+            serviceData.provider = {
+              id: serviceData.provider_id,
+              full_name: 'Unknown Provider',
+              avatar_url: null,
+              company_name: 'Unknown Company',
+              rating: 0,
+              total_reviews: 0,
+              response_time: 'Unknown',
+              completion_rate: 0
             }
           }
         }
@@ -277,7 +303,7 @@ export default function ServiceDetailPage() {
                   .from('profiles')
                   .select('id, full_name, email, role')
                   .eq('id', session.user.id)
-                  .single()
+                  .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
                 if (profile) {
                   setUser({
@@ -285,6 +311,14 @@ export default function ServiceDetailPage() {
                     role: profile.role || 'client',
                     full_name: profile.full_name,
                     email: profile.email
+                  })
+                } else {
+                  // Profile doesn't exist, create a basic user object
+                  setUser({
+                    id: session.user.id,
+                    role: 'client',
+                    full_name: session.user.user_metadata?.full_name || 'User',
+                    email: session.user.email || ''
                   })
                 }
 
@@ -297,7 +331,7 @@ export default function ServiceDetailPage() {
                       service_packages(*)
                     `)
                     .eq('id', serviceId)
-                    .single()
+                    .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
                   if (serviceData) {
                     setService(serviceData)

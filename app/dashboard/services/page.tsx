@@ -192,7 +192,7 @@ export default function ServicesPage() {
               .from('profiles')
               .select('id, full_name, email, phone, company_name, avatar_url')
               .eq('id', service.provider_id)
-              .single()
+              .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
             if (providerError) {
               console.warn(`Could not fetch provider for service ${service.id}:`, providerError)
