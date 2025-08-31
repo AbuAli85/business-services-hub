@@ -591,50 +591,66 @@ export default function BookingDetailsPage() {
   const handleDeleteBooking = async () => {
     if (!booking) return
     
+    // Immediately close modal and show loading state
+    setShowDeleteConfirmation(false)
+    setDeleteReason('')
+    
     try {
       setIsUpdatingStatus(true)
-      const supabase = await getSupabaseClient()
       
-      // First, check if we can actually delete this booking
-      if (['completed', 'cancelled'].includes(booking.status)) {
-        // For completed/cancelled bookings, we can delete
-        const { error } = await supabase
-          .from('bookings')
-          .delete()
-          .eq('id', booking.id)
-        
-        if (error) {
-          console.error('Error deleting booking:', error)
-          toast.error('Failed to delete booking')
-          return
+      // Use setTimeout to defer heavy operations and prevent UI blocking
+      setTimeout(async () => {
+        try {
+          const supabase = await getSupabaseClient()
+          
+          // First, check if we can actually delete this booking
+          if (['completed', 'cancelled'].includes(booking.status)) {
+            // For completed/cancelled bookings, we can delete
+            const { error } = await supabase
+              .from('bookings')
+              .delete()
+              .eq('id', booking.id)
+            
+            if (error) {
+              console.error('Error deleting booking:', error)
+              toast.error('Failed to delete booking')
+              setIsUpdatingStatus(false)
+              return
+            }
+            
+            toast.success('Booking deleted successfully!')
+            router.push('/dashboard/bookings')
+          } else {
+            // For active bookings, we should cancel instead of delete
+            const { error } = await supabase
+              .from('bookings')
+              .update({ 
+                status: 'cancelled',
+                updated_at: new Date().toISOString(),
+                status_change_reason: 'Booking cancelled by provider'
+              })
+              .eq('id', booking.id)
+            
+            if (error) {
+              console.error('Error cancelling booking:', error)
+              toast.error('Failed to cancel booking')
+              setIsUpdatingStatus(false)
+              return
+            }
+            
+            toast.success('Booking cancelled successfully!')
+            loadBooking() // Reload to get updated data
+          }
+        } catch (error) {
+          console.error('Error:', error)
+          toast.error('Failed to process booking deletion')
+          setIsUpdatingStatus(false)
         }
-        
-        toast.success('Booking deleted successfully!')
-        router.push('/dashboard/bookings')
-      } else {
-        // For active bookings, we should cancel instead of delete
-        const { error } = await supabase
-          .from('bookings')
-          .update({ 
-            status: 'cancelled',
-            updated_at: new Date().toISOString(),
-            status_change_reason: 'Booking cancelled by provider'
-          })
-          .eq('id', booking.id)
-        
-        if (error) {
-          console.error('Error cancelling booking:', error)
-          toast.error('Failed to cancel booking')
-          return
-        }
-        
-        toast.success('Booking cancelled successfully!')
-        loadBooking() // Reload to get updated data
-      }
+      }, 0) // Defer to next tick
+      
     } catch (error) {
       console.error('Error:', error)
       toast.error('Failed to process booking deletion')
-    } finally {
       setIsUpdatingStatus(false)
     }
   }
@@ -645,38 +661,55 @@ export default function BookingDetailsPage() {
     try {
       setIsExporting(true)
       
-      // Create a comprehensive booking report
-      const reportData = {
-        booking_id: booking.id,
-        service_name: booking.service.name,
-        client_name: booking.client.full_name,
-        status: booking.status,
-        priority: booking.priority,
-        created_at: booking.created_at,
-        amount: booking.amount,
-        notes: booking.notes,
-        timeline_progress: getTimelineProgress(),
-        days_active: getDaysSinceCreation(),
-        next_milestone: getNextMilestone()
+      // Use requestIdleCallback to prevent UI blocking during export
+      const performExport = async () => {
+        try {
+          // Create a comprehensive booking report
+          const reportData = {
+            booking_id: booking.id,
+            service_name: booking.service.name,
+            client_name: booking.client.full_name,
+            status: booking.status,
+            priority: booking.priority,
+            created_at: booking.created_at,
+            amount: booking.amount,
+            notes: booking.notes,
+            timeline_progress: getTimelineProgress(),
+            days_active: getDaysSinceCreation(),
+            next_milestone: getNextMilestone()
+          }
+          
+          // Convert to JSON and download
+          const dataStr = JSON.stringify(reportData, null, 2)
+          const dataBlob = new Blob([dataStr], { type: 'application/json' })
+          const url = URL.createObjectURL(dataBlob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `booking-${booking.id.slice(0, 8)}-report.json`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+          
+          toast.success('Booking report exported successfully!')
+        } catch (error) {
+          console.error('Error exporting booking:', error)
+          toast.error('Failed to export booking report')
+        } finally {
+          setIsExporting(false)
+        }
+      }
+
+      // Defer heavy operations to prevent UI blocking
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(performExport)
+      } else {
+        setTimeout(performExport, 0)
       }
       
-      // Convert to JSON and download
-      const dataStr = JSON.stringify(reportData, null, 2)
-      const dataBlob = new Blob([dataStr], { type: 'application/json' })
-      const url = URL.createObjectURL(dataBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `booking-${booking.id.slice(0, 8)}-report.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      
-      toast.success('Booking report exported successfully!')
     } catch (error) {
       console.error('Error exporting booking:', error)
       toast.error('Failed to export booking report')
-    } finally {
       setIsExporting(false)
     }
   }
@@ -706,34 +739,51 @@ export default function BookingDetailsPage() {
         file: file // Keep reference for actual upload
       }))
 
-      // Simulate file upload to Supabase storage
-      // In a real implementation, you would upload to Supabase storage
-      for (const fileData of newFiles) {
-        // Simulate upload delay
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Add to uploaded files list
-        setUploadedFiles(prev => [fileData, ...prev])
+      // Use requestIdleCallback to prevent UI blocking during file processing
+      const processFiles = async () => {
+        try {
+          // Simulate file upload to Supabase storage
+          // In a real implementation, you would upload to Supabase storage
+          for (const fileData of newFiles) {
+            // Simulate upload delay
+            await new Promise(resolve => setTimeout(resolve, 100)) // Reduced delay
+            
+            // Add to uploaded files list
+            setUploadedFiles(prev => [fileData, ...prev])
+          }
+
+          toast.success(`${selectedFiles.length} file(s) uploaded successfully!`)
+          setSelectedFiles([])
+          setShowFileUpload(false)
+          
+          // Add to booking history
+          const historyEntry: BookingHistory = {
+            id: Date.now().toString(),
+            action: 'Files Uploaded',
+            description: `Uploaded ${selectedFiles.length} file(s) in category: ${fileCategory}`,
+            timestamp: new Date().toISOString(),
+            user: 'Provider'
+          }
+          setBookingHistory(prev => [historyEntry, ...prev])
+          
+        } catch (error) {
+          console.error('Error uploading files:', error)
+          toast.error('Failed to upload files')
+        } finally {
+          setIsUploading(false)
+        }
       }
 
-      toast.success(`${selectedFiles.length} file(s) uploaded successfully!`)
-      setSelectedFiles([])
-      setShowFileUpload(false)
-      
-      // Add to booking history
-      const historyEntry: BookingHistory = {
-        id: Date.now().toString(),
-        action: 'Files Uploaded',
-        description: `Uploaded ${selectedFiles.length} file(s) in category: ${fileCategory}`,
-        timestamp: new Date().toISOString(),
-        user: 'Provider'
+      // Defer heavy operations to prevent UI blocking
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(processFiles)
+      } else {
+        setTimeout(processFiles, 0)
       }
-      setBookingHistory(prev => [historyEntry, ...prev])
       
     } catch (error) {
       console.error('Error uploading files:', error)
       toast.error('Failed to upload files')
-    } finally {
       setIsUploading(false)
     }
   }
@@ -2126,9 +2176,16 @@ export default function BookingDetailsPage() {
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                   onClick={() => {
                     if (deleteReason.trim()) {
-                      handleDeleteBooking()
-                      setShowDeleteConfirmation(false)
-                      setDeleteReason('')
+                      // Use requestIdleCallback or setTimeout to prevent UI blocking
+                      if (window.requestIdleCallback) {
+                        window.requestIdleCallback(() => {
+                          handleDeleteBooking()
+                        })
+                      } else {
+                        setTimeout(() => {
+                          handleDeleteBooking()
+                        }, 0)
+                      }
                     } else {
                       toast.error('Please provide a reason')
                     }
