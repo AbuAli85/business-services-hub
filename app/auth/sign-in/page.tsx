@@ -9,91 +9,78 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [attempts, setAttempts] = useState(0)
   const router = useRouter()
 
   const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    e.preventDefault()
+    
+    // Rate limiting for production
+    if (attempts >= 5) {
+      toast.error('Too many failed attempts. Please try again later.')
+      return
+    }
+    
+    setLoading(true)
 
     try {
-      const supabase = await getSupabaseClient();
+      const supabase = await getSupabaseClient()
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      });
+      })
 
       if (error) {
-        console.log('Sign-in error:', error);
+        setAttempts(prev => prev + 1)
         
-        // Handle specific error cases
+        // Handle specific error cases for production
         if (error.message.includes('Email not confirmed')) {
-          toast.error('Please check your email and click the confirmation link before signing in.');
+          toast.error('Please check your email and click the confirmation link before signing in.')
         } else if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password. Please try again.');
+          toast.error('Invalid email or password. Please try again.')
+        } else if (error.message.includes('Too many requests')) {
+          toast.error('Too many login attempts. Please wait a moment before trying again.')
         } else {
-          toast.error(error.message);
+          toast.error('Sign in failed. Please check your credentials and try again.')
         }
-        return;
+        return
       }
 
       if (data.user) {
-        console.log('Sign-in successful:', data.user);
-        console.log('User email confirmed at:', data.user.email_confirmed_at);
-        console.log('User metadata:', data.user.user_metadata);
-        
         // Check if email is confirmed
         if (!data.user.email_confirmed_at) {
-          toast.error('Please check your email and click the confirmation link before signing in.');
-          return;
+          toast.error('Please check your email and click the confirmation link before signing in.')
+          return
         }
 
+        // Reset attempts on successful login
+        setAttempts(0)
+        
         // Show success message
-        toast.success('Signed in successfully!');
+        toast.success('Signed in successfully!')
         
-        // Debug: Log before redirect
-        console.log('About to redirect to /dashboard');
-        console.log('Current URL:', window.location.href);
-        console.log('Router object:', router);
-        console.log('Router.push function:', typeof router.push);
-        
-        // Try router.push first, then fallback to hard navigation
-        try {
-          console.log('Attempting router.push...');
-          await router.push('/dashboard');
-          console.log('Router.push completed');
-          
-          // Force a hard navigation if router.push doesn't work
-          setTimeout(() => {
-            if (window.location.pathname !== '/dashboard') {
-              console.log('Router.push didn\'t change URL, forcing hard navigation...');
-              window.location.href = '/dashboard';
-            }
-          }, 100);
-          
-        } catch (redirectError) {
-          console.error('Router.push failed:', redirectError);
-          console.log('Using window.location fallback...');
-          window.location.href = '/dashboard';
-        }
+        // Redirect to dashboard
+        router.push('/dashboard')
       }
     } catch (err) {
-      console.error('Sign-in error:', err);
-      toast.error('An unexpected error occurred. Please try again.');
+      setAttempts(prev => prev + 1)
+      toast.error('An unexpected error occurred. Please try again.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleGoogleSignIn = async () => {
     try {
-      const supabase = await getSupabaseClient();
+      setLoading(true)
+      const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -102,11 +89,12 @@ export default function SignInPage() {
       })
 
       if (error) {
-        toast.error(error.message)
+        toast.error('Google sign in failed. Please try again.')
       }
     } catch (error) {
       toast.error('An unexpected error occurred')
-      console.error('Google sign in error:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -117,20 +105,47 @@ export default function SignInPage() {
     }
 
     try {
-      const supabase = await getSupabaseClient();
+      setLoading(true)
+      const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email
       })
 
       if (error) {
-        toast.error(error.message)
+        toast.error('Failed to send confirmation email. Please try again.')
       } else {
         toast.success('Confirmation email sent! Please check your inbox.')
       }
     } catch (error) {
       toast.error('Failed to send confirmation email')
-      console.error('Resend confirmation error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Please enter your email address first')
+      return
+    }
+
+    try {
+      setLoading(true)
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`
+      })
+
+      if (error) {
+        toast.error('Failed to send password reset email. Please try again.')
+      } else {
+        toast.success('Password reset email sent! Please check your inbox.')
+      }
+    } catch (error) {
+      toast.error('Failed to send password reset email')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -143,12 +158,17 @@ export default function SignInPage() {
             Sign in to your Business Services Hub account
           </CardDescription>
           
-          {/* Debug info for development */}
-          <div className="mt-4 p-2 bg-yellow-100 rounded text-sm text-left">
-            <strong>Development Mode:</strong><br />
-            Email confirmation disabled for development<br />
-            Check console for detailed authentication logs
-          </div>
+          {/* Security Notice */}
+          {attempts > 0 && (
+            <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+              <div className="flex items-center space-x-2 text-red-700">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {attempts >= 3 ? 'Multiple failed attempts detected' : 'Failed login attempt'}
+                </span>
+              </div>
+            </div>
+          )}
         </CardHeader>
         
         <CardContent>
@@ -162,6 +182,8 @@ export default function SignInPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
+                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
@@ -175,13 +197,16 @@ export default function SignInPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={loading}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent disabled:opacity-50"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -194,8 +219,8 @@ export default function SignInPage() {
             
             <Button
               type="submit"
-              className="w-full"
-              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+              disabled={loading || attempts >= 5}
             >
               {loading ? (
                 <>
@@ -222,7 +247,7 @@ export default function SignInPage() {
             
             <Button
               variant="outline"
-              className="w-full mt-4"
+              className="w-full mt-4 border-gray-300 hover:bg-gray-50 transition-colors duration-200"
               onClick={handleGoogleSignIn}
               disabled={loading}
             >
@@ -244,97 +269,32 @@ export default function SignInPage() {
                   fill="#EA4335"
                 />
               </svg>
-              Google
+              Continue with Google
             </Button>
           </div>
           
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground">Don't have an account? </span>
-            <Link href="/auth/sign-up" className="text-blue-600 hover:underline">
+            <Link href="/auth/sign-up" className="text-blue-600 hover:underline font-medium">
               Sign up
             </Link>
           </div>
           
-          <div className="mt-4 text-center text-sm">
-            <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
+          <div className="mt-4 text-center text-sm space-y-2">
+            <button 
+              onClick={handleForgotPassword}
+              className="text-blue-600 hover:underline block w-full"
+              disabled={loading}
+            >
               Forgot your password?
-            </Link>
-            <span className="mx-2">•</span>
+            </button>
             <button 
               onClick={handleResendConfirmation}
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 hover:underline block w-full"
+              disabled={loading}
             >
               Resend confirmation email
             </button>
-          </div>
-          
-          {/* Development bypass */}
-          <div className="mt-4 text-center space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('Skip Sign-in clicked');
-                console.log('Current URL:', window.location.href);
-                try {
-                  router.push('/dashboard');
-                } catch (e) {
-                  console.error('Router.push failed:', e);
-                  window.location.href = '/dashboard';
-                }
-              }}
-              className="text-gray-500"
-            >
-              Skip Sign-in (Dev Mode)
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('Testing manual redirect...');
-                console.log('Current URL:', window.location.href);
-                console.log('Router object:', router);
-                console.log('Router.push function:', typeof router.push);
-                
-                // Test multiple redirect methods
-                try {
-                  console.log('Testing router.push...');
-                  router.push('/dashboard');
-                } catch (e) {
-                  console.error('Router.push failed:', e);
-                  console.log('Testing window.location...');
-                  window.location.href = '/dashboard';
-                }
-              }}
-              className="text-gray-500 ml-2"
-            >
-              Test Redirect
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('Testing direct navigation...');
-                window.location.href = '/dashboard';
-              }}
-              className="text-gray-500 ml-2"
-            >
-              Direct Navigation
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                console.log('Testing simple dashboard route...');
-                window.location.href = '/dashboard/test';
-              }}
-              className="text-gray-500 ml-2"
-            >
-              Test Simple Route
-            </Button>
           </div>
         </CardContent>
       </Card>
