@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { realtimeManager } from '@/lib/realtime'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -92,6 +93,66 @@ export default function ClientDashboard() {
   useEffect(() => {
     checkUserAndFetchData()
   }, [])
+
+  // Real-time updates
+  useEffect(() => {
+    if (!user?.id) return
+
+    let currentUserId: string | null = null
+    let subscriptionKeys: string[] = []
+
+    ;(async () => {
+      try {
+        currentUserId = user.id
+
+        // Subscribe to real-time booking updates
+        const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, (update) => {
+          if (update.eventType === 'INSERT') {
+            // New booking - refresh data
+            fetchRecentBookings(user.id)
+            fetchUpcomingBookings(user.id)
+            fetchClientStats(user.id)
+          } else if (update.eventType === 'UPDATE') {
+            // Booking updated - refresh data
+            fetchRecentBookings(user.id)
+            fetchUpcomingBookings(user.id)
+            fetchClientStats(user.id)
+          }
+        })
+        subscriptionKeys.push(`bookings:${user.id}`)
+
+        // Subscribe to real-time message updates
+        const messageSubscription = await realtimeManager.subscribeToMessages(user.id, (update) => {
+          if (update.eventType === 'INSERT') {
+            // New message - refresh data if needed
+            // This could trigger a notification or refresh conversations
+          }
+        })
+        subscriptionKeys.push(`messages:${user.id}`)
+
+        // Subscribe to general service updates (for favorites)
+        const serviceSubscription = await realtimeManager.subscribeToServices('', (update) => {
+          if (update.eventType === 'INSERT' || update.eventType === 'UPDATE') {
+            // Service updated - refresh favorites
+            fetchFavoriteServices(user.id)
+          }
+        })
+        subscriptionKeys.push('services:')
+
+      } catch (error) {
+        console.error('Error setting up realtime subscriptions:', error)
+      }
+    })()
+
+    return () => {
+      if (currentUserId) {
+        // Unsubscribe from all channels
+        subscriptionKeys.forEach(key => {
+          realtimeManager.unsubscribe(key)
+        })
+      }
+    }
+  }, [user?.id])
 
   const checkUserAndFetchData = async () => {
     try {

@@ -97,14 +97,12 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user?.id) return
 
-    let currentUserId: string | null = null
+    let subscriptionKeys: string[] = []
 
     ;(async () => {
       try {
-        currentUserId = user.id
-
         // Subscribe to real-time message updates
-        await realtimeManager.subscribeToMessages(user.id, (update) => {
+        const messageSubscription = await realtimeManager.subscribeToMessages(user.id, (update) => {
           if (update.eventType === 'INSERT') {
             // New message - refresh conversations and messages
             fetchConversations(user.id)
@@ -118,15 +116,18 @@ export default function MessagesPage() {
             }
           }
         })
+        subscriptionKeys.push(`messages:${user.id}`)
+
       } catch (error) {
-        console.error('Failed to subscribe to real-time messages:', error)
+        console.error('Error setting up realtime subscriptions:', error)
       }
     })()
 
     return () => {
-      if (currentUserId) {
-        realtimeManager.unsubscribe(`messages:${currentUserId}`)
-      }
+      // Unsubscribe from all channels
+      subscriptionKeys.forEach(key => {
+        realtimeManager.unsubscribe(key)
+      })
     }
   }, [user?.id, selectedConversation])
 
@@ -668,6 +669,7 @@ export default function MessagesPage() {
                       onChange={handleFileUpload}
                       className="hidden"
                       accept="image/*,.pdf,.doc,.docx,.txt"
+                      aria-label="Upload file"
                     />
                     <label htmlFor="file-upload">
                       <Button variant="outline" size="sm" disabled={uploading}>

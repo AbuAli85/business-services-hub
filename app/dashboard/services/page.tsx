@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { realtimeManager } from '@/lib/realtime'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -86,6 +87,36 @@ export default function ServicesPage() {
   useEffect(() => {
     checkUserAndLoadServices()
   }, [searchTerm, statusFilter, categoryFilter, sortBy])
+
+  // Real-time service updates
+  useEffect(() => {
+    if (!user?.id) return
+
+    let subscriptionKeys: string[] = []
+
+    ;(async () => {
+      try {
+        // Subscribe to real-time service updates
+        const serviceSubscription = await realtimeManager.subscribeToServices(user.id, (update) => {
+          if (update.eventType === 'INSERT' || update.eventType === 'UPDATE' || update.eventType === 'DELETE') {
+            // Service updated - refresh services
+            checkUserAndLoadServices()
+          }
+        })
+        subscriptionKeys.push(`services:${user.id}`)
+
+      } catch (error) {
+        console.error('Error setting up realtime subscriptions:', error)
+      }
+    })()
+
+    return () => {
+      // Unsubscribe from all channels
+      subscriptionKeys.forEach(key => {
+        realtimeManager.unsubscribe(key)
+      })
+    }
+  }, [user?.id])
 
   const checkUserAndLoadServices = async () => {
     try {

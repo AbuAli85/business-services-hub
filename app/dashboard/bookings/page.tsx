@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +39,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { DatePickerWithRange } from '@/components/ui/date-range-picker'
 import { format, isWithinInterval, parseISO } from 'date-fns'
+import { realtimeManager } from '@/lib/realtime'
 
 interface Booking {
   id: string
@@ -100,6 +101,36 @@ export default function BookingsPage() {
   useEffect(() => {
     loadUserAndBookings()
   }, [])
+
+  // Real-time booking updates
+  useEffect(() => {
+    if (!user?.id) return
+
+    let subscriptionKeys: string[] = []
+
+    ;(async () => {
+      try {
+        // Subscribe to real-time booking updates
+        const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, (update) => {
+          if (update.eventType === 'INSERT' || update.eventType === 'UPDATE' || update.eventType === 'DELETE') {
+            // Booking updated - refresh data
+            loadUserAndBookings()
+          }
+        })
+        subscriptionKeys.push(`bookings:${user.id}`)
+
+      } catch (error) {
+        console.error('Error setting up realtime subscriptions:', error)
+      }
+    })()
+
+    return () => {
+      // Unsubscribe from all channels
+      subscriptionKeys.forEach(key => {
+        realtimeManager.unsubscribe(key)
+      })
+    }
+  }, [user?.id])
 
   // Filter and sort bookings when dependencies change
   useEffect(() => {
