@@ -67,7 +67,7 @@ interface SortConfig {
   direction: 'asc' | 'desc'
 }
 
-export default function BookingsTable() {
+export default function BookingsPage() {
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
