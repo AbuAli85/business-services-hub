@@ -72,6 +72,7 @@ interface SortConfig {
 }
 
 export default function BookingsPage() {
+  console.log('🚀 BookingsPage component rendering')
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
@@ -99,6 +100,7 @@ export default function BookingsPage() {
 
   // Load user and bookings
   useEffect(() => {
+    console.log('🔍 Bookings page useEffect triggered')
     loadUserAndBookings()
   }, [])
 
@@ -149,6 +151,7 @@ export default function BookingsPage() {
   }, [bookings, searchQuery, statusFilter, priorityFilter, dateRange, amountRange, sortConfig])
 
   const loadUserAndBookings = async () => {
+    console.log('🔍 loadUserAndBookings function called')
     try {
       const supabase = await getSupabaseClient()
       
