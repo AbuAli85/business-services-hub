@@ -134,16 +134,16 @@ export default function DashboardPage() {
     let timeoutId: NodeJS.Timeout | null = null
     
     try {
-      console.log('Starting dashboard data load for user:', user?.id)
+      // Production logging removed
       
       if (!user?.id) {
-        console.log('User ID not available yet, skipping data load')
+        // Production logging removed
         return
       }
 
       // Add timeout to prevent infinite loading
       timeoutId = setTimeout(() => {
-        console.log('Dashboard data load timeout, setting loading to false')
+        // Production logging removed
         setLoading(false)
         // Set empty dashboard data to prevent infinite loading
         setDashboardData({
@@ -182,7 +182,7 @@ export default function DashboardPage() {
           .eq('provider_id', user.id)
         servicesCount = servicesCountResult || 0
       } catch (error) {
-        console.log('Error loading services count:', error)
+        // Production logging removed
         servicesCount = 0
       }
 
@@ -195,7 +195,7 @@ export default function DashboardPage() {
             .eq('status', 'in_progress')
           bookingsCount = bookingsCountResult || 0
         } catch (error) {
-          console.log('Error loading active bookings count (table might not exist):', error)
+          // Production logging removed
           bookingsCount = 0
         }
 
@@ -214,7 +214,7 @@ export default function DashboardPage() {
             .limit(5)
           recentActivity = recentActivityResult || []
         } catch (error) {
-          console.log('Error loading recent activity:', error)
+          // Production logging removed
           recentActivity = []
         }
 
@@ -234,7 +234,7 @@ export default function DashboardPage() {
             .limit(5)
           upcomingBookings = upcomingBookingsResult || []
         } catch (error) {
-          console.log('Error loading upcoming bookings with created_at:', error)
+          // Production logging removed
           upcomingBookings = []
         }
 
@@ -247,7 +247,7 @@ export default function DashboardPage() {
             .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
           allBookings = allBookingsResult || []
         } catch (error) {
-          console.log('Error loading performance metrics data:', error)
+          // Production logging removed
           allBookings = []
         }
       } else {
@@ -259,7 +259,7 @@ export default function DashboardPage() {
             .eq('client_id', user.id)
           bookingsCount = clientBookingsCount || 0
         } catch (error) {
-          console.log('Error loading client bookings count:', error)
+          // Production logging removed
           bookingsCount = 0
         }
 
@@ -278,7 +278,7 @@ export default function DashboardPage() {
             .limit(5)
           recentActivity = clientRecentActivity || []
         } catch (error) {
-          console.log('Error loading client recent activity:', error)
+          // Production logging removed
           recentActivity = []
         }
 
@@ -298,7 +298,7 @@ export default function DashboardPage() {
             .limit(5)
           upcomingBookings = clientUpcomingBookings || []
         } catch (error) {
-          console.log('Error loading client upcoming bookings with created_at:', error)
+          // Production logging removed
           upcomingBookings = []
         }
       }
@@ -337,7 +337,7 @@ export default function DashboardPage() {
         }
       }
 
-      console.log('Dashboard data loaded successfully:', dashboardData)
+      // Production logging removed
       setDashboardData(dashboardData)
       setLoading(false)
       if (timeoutId) clearTimeout(timeoutId)

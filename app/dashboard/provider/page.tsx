@@ -106,7 +106,7 @@ export default function ProviderDashboard() {
         fetchTopServices(user.id)
       ])
     } catch (error) {
-      console.error('Error loading provider dashboard:', error)
+      // Production logging removed
     } finally {
       setLoading(false)
     }
@@ -184,7 +184,7 @@ export default function ProviderDashboard() {
         completionRate
       })
     } catch (error) {
-      console.error('Error fetching provider stats:', error)
+      // Production logging removed
     }
   }
 
@@ -237,7 +237,7 @@ export default function ProviderDashboard() {
                 clientName = client?.full_name || 'Unknown Client'
               }
             } catch (error) {
-              console.log('Error fetching related data for booking:', error)
+              // Production logging removed
             }
 
             return {
@@ -251,7 +251,7 @@ export default function ProviderDashboard() {
         setRecentBookings(enrichedBookings)
       }
     } catch (error) {
-      console.error('Error fetching recent bookings:', error)
+      // Production logging removed
     }
   }
 
@@ -322,7 +322,7 @@ export default function ProviderDashboard() {
         setTopServices(topServices)
       }
     } catch (error) {
-      console.error('Error fetching top services:', error)
+      // Production logging removed
     }
   }
 
