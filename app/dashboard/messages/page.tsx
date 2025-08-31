@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -16,20 +15,15 @@ import {
   Image as ImageIcon, 
   File, 
   Search, 
-  Filter,
-  MoreHorizontal,
   Phone,
   Video,
   Mail,
+  MessageSquare,
   User,
   Calendar,
   Clock,
-  MessageSquare,
-  Trash2,
-  Archive,
-  Star,
-  CheckCircle,
-  AlertCircle
+  MapPin,
+  Eye
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -47,11 +41,6 @@ interface Message {
   file_size?: number
   created_at: string
   read_at?: string
-  sender: {
-    full_name: string
-    avatar_url?: string
-    role: string
-  }
 }
 
 interface Conversation {
@@ -65,15 +54,6 @@ interface Conversation {
   unread_count: number
   booking_id?: string
   booking_title?: string
-}
-
-interface Booking {
-  id: string
-  title: string
-  status: string
-  scheduled_date: string
-  amount: number
-  currency: string
 }
 
 export default function MessagesPage() {
@@ -174,6 +154,8 @@ export default function MessagesPage() {
 
       if (error) throw error
 
+      console.log('Raw conversations data:', conversationsData)
+
       // Process conversations and fetch related data separately
       const conversationMap = new Map<string, Conversation>()
       
@@ -188,17 +170,32 @@ export default function MessagesPage() {
         if (msg.booking_id) bookingIds.add(msg.booking_id)
       })
       
+      console.log('Participant IDs:', Array.from(participantIds))
+      console.log('Booking IDs:', Array.from(bookingIds))
+      
       // Fetch participant profiles
-      const { data: participants } = await supabase
+      const { data: participants, error: participantError } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, role')
         .in('id', Array.from(participantIds))
+
+      if (participantError) {
+        console.error('Error fetching participants:', participantError)
+      }
+
+      console.log('Fetched participants:', participants)
       
       // Fetch booking information
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingError } = await supabase
         .from('bookings')
         .select('id, title, service_title')
         .in('id', Array.from(bookingIds))
+
+      if (bookingError) {
+        console.error('Error fetching bookings:', bookingError)
+      }
+
+      console.log('Fetched bookings:', bookings)
       
       // Process conversations
       conversationsData?.forEach((msg) => {
@@ -206,6 +203,10 @@ export default function MessagesPage() {
         const participantId = isSender ? msg.receiver_id : msg.sender_id
         const participant = participants?.find(p => p.id === participantId)
         const booking = bookings?.find(b => b.id === msg.booking_id)
+        
+        console.log(`Processing message: sender=${msg.sender_id}, receiver=${msg.receiver_id}, participant=${participantId}`)
+        console.log(`Found participant:`, participant)
+        console.log(`Found booking:`, booking)
         
         if (!conversationMap.has(participantId)) {
           conversationMap.set(participantId, {
@@ -232,7 +233,9 @@ export default function MessagesPage() {
         }
       })
 
-      setConversations(Array.from(conversationMap.values()))
+      const finalConversations = Array.from(conversationMap.values())
+      console.log('Final conversations:', finalConversations)
+      setConversations(finalConversations)
     } catch (error) {
       console.error('Error fetching conversations:', error)
       toast.error('Failed to load conversations')
@@ -251,6 +254,7 @@ export default function MessagesPage() {
 
       if (error) throw error
 
+      console.log('Fetched messages:', messagesData)
       setMessages(messagesData || [])
       
       // Mark messages as read
@@ -383,18 +387,6 @@ export default function MessagesPage() {
     
     return matchesSearch && matchesRole
   })
-
-  const getMessageTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    
-    if (diffInHours < 24) {
-      return formatTime(timestamp)
-    } else {
-      return formatDate(timestamp)
-    }
-  }
 
   const getFileIcon = (messageType: string, fileName?: string) => {
     if (messageType === 'image') return <ImageIcon className="h-4 w-4" />

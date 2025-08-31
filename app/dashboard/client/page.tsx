@@ -269,8 +269,11 @@ export default function ClientDashboard() {
         .limit(5)
 
       if (bookings) {
+        console.log('Raw recent bookings:', bookings)
+        
         // Fetch provider information separately
         const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
+        console.log('Provider IDs to fetch:', providerIds)
         
         if (providerIds.length > 0) {
           const { data: providers, error: providerError } = await supabase
@@ -282,8 +285,11 @@ export default function ClientDashboard() {
             console.error('Error fetching providers:', providerError)
           }
 
+          console.log('Fetched providers:', providers)
+
           const enrichedBookings = bookings.map((b: any) => {
             const provider = providers?.find(p => p.id === b.provider_id)
+            console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
             return {
               ...b,
               provider_name: provider?.full_name || 'Unknown Provider',
@@ -291,8 +297,10 @@ export default function ClientDashboard() {
             }
           })
 
+          console.log('Enriched recent bookings:', enrichedBookings)
           setRecentBookings(enrichedBookings)
         } else {
+          console.log('No provider IDs found in recent bookings')
           // If no provider IDs, still set the bookings with default provider info
           const enrichedBookings = bookings.map((b: any) => ({
             ...b,
@@ -370,7 +378,9 @@ export default function ClientDashboard() {
           scheduled_date,
           scheduled_time,
           location,
-          status
+          status,
+          amount,
+          currency
         `)
         .eq('client_id', userId)
         .in('status', ['approved', 'in_progress'])
@@ -379,22 +389,45 @@ export default function ClientDashboard() {
         .limit(3)
 
       if (bookings) {
+        console.log('Raw upcoming bookings:', bookings)
+        
         // Fetch provider information separately
         const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-        const { data: providers } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', providerIds)
+        console.log('Provider IDs to fetch:', providerIds)
+        
+        if (providerIds.length > 0) {
+          const { data: providers, error: providerError } = await supabase
+            .from('profiles')
+            .select('id, full_name, company_name')
+            .in('id', providerIds)
 
-        const enrichedBookings = bookings.map((b: any) => {
-          const provider = providers?.find(p => p.id === b.provider_id)
-          return {
-            ...b,
-            provider_name: provider?.full_name || 'Unknown Provider'
+          if (providerError) {
+            console.error('Error fetching providers:', providerError)
           }
-        })
 
-        setUpcomingBookings(enrichedBookings)
+          console.log('Fetched providers:', providers)
+
+          const enrichedBookings = bookings.map((b: any) => {
+            const provider = providers?.find(p => p.id === b.provider_id)
+            console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
+            return {
+              ...b,
+              provider_name: provider?.full_name || 'Unknown Provider',
+              provider_company: provider?.company_name || 'Unknown Company'
+            }
+          })
+
+          console.log('Enriched upcoming bookings:', enrichedBookings)
+          setUpcomingBookings(enrichedBookings)
+        } else {
+          console.log('No provider IDs found in upcoming bookings')
+          const enrichedBookings = bookings.map((b: any) => ({
+            ...b,
+            provider_name: 'Unknown Provider',
+            provider_company: 'Unknown Company'
+          }))
+          setUpcomingBookings(enrichedBookings)
+        }
       }
     } catch (error) {
       console.error('Error fetching upcoming bookings:', error)
