@@ -168,57 +168,57 @@ export default function MessagesPage() {
       // Get conversations where user is either sender or receiver
       const { data: conversationsData, error } = await supabase
         .from('messages')
-        .select(`
-          id,
-          sender_id,
-          receiver_id,
-          content,
-          created_at,
-          read_at,
-          booking_id,
-          sender:profiles!messages_sender_id_fkey (
-            full_name,
-            avatar_url,
-            role
-          ),
-          receiver:profiles!messages_receiver_id_fkey (
-            full_name,
-            avatar_url,
-            role
-          ),
-          booking:bookings (
-            title,
-            status,
-            scheduled_date,
-            amount,
-            currency
-          )
-        `)
+        .select('id, sender_id, receiver_id, content, created_at, read_at, booking_id')
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      // Process conversations
+      // Process conversations and fetch related data separately
       const conversationMap = new Map<string, Conversation>()
+      
+      // First, collect all unique participant IDs and booking IDs
+      const participantIds = new Set<string>()
+      const bookingIds = new Set<string>()
       
       conversationsData?.forEach((msg) => {
         const isSender = msg.sender_id === userId
         const participantId = isSender ? msg.receiver_id : msg.sender_id
-        const participant = isSender ? msg.receiver : msg.sender
+        participantIds.add(participantId)
+        if (msg.booking_id) bookingIds.add(msg.booking_id)
+      })
+      
+      // Fetch participant profiles
+      const { data: participants } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, role')
+        .in('id', Array.from(participantIds))
+      
+      // Fetch booking information
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id, title')
+        .in('id', Array.from(bookingIds))
+      
+      // Process conversations
+      conversationsData?.forEach((msg) => {
+        const isSender = msg.sender_id === userId
+        const participantId = isSender ? msg.receiver_id : msg.sender_id
+        const participant = participants?.find(p => p.id === participantId)
+        const booking = bookings?.find(b => b.id === msg.booking_id)
         
         if (!conversationMap.has(participantId)) {
           conversationMap.set(participantId, {
             id: participantId,
             participant_id: participantId,
-            participant_name: (participant as any)?.full_name || 'Unknown User',
-            participant_avatar: (participant as any)?.avatar_url,
-            participant_role: (participant as any)?.role || 'user',
+            participant_name: participant?.full_name || 'Unknown User',
+            participant_avatar: participant?.avatar_url,
+            participant_role: participant?.role || 'user',
             last_message: msg.content,
             last_message_time: msg.created_at,
             unread_count: isSender ? 0 : (msg.read_at ? 0 : 1),
             booking_id: msg.booking_id,
-            booking_title: (msg.booking as any)?.title
+            booking_title: booking?.title
           })
         } else {
           const existing = conversationMap.get(participantId)!
@@ -245,14 +245,7 @@ export default function MessagesPage() {
       
       const { data: messagesData, error } = await supabase
         .from('messages')
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey (
-            full_name,
-            avatar_url,
-            role
-          )
-        `)
+        .select('*')
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${conversationId}),and(sender_id.eq.${conversationId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true })
 
@@ -298,14 +291,7 @@ export default function MessagesPage() {
           booking_id: selectedConversation.booking_id,
           message_type: 'text'
         })
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey (
-            full_name,
-            avatar_url,
-            role
-          )
-        `)
+        .select('*')
         .single()
 
       if (error) throw error
@@ -369,14 +355,7 @@ export default function MessagesPage() {
           file_name: file.name,
           file_size: file.size
         })
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey (
-            full_name,
-            avatar_url,
-            role
-          )
-        `)
+        .select('*')
         .single()
 
       if (error) throw error
