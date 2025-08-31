@@ -311,44 +311,94 @@ export default function CompanyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Get user's company_id from profile
+      console.log('Fetching company data for user:', user.id)
+
+      // First, try to get company through profile.company_id
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id')
         .eq('id', user.id)
         .single()
 
+      console.log('User profile:', profile)
+
+      let companyData = null
+
       if (profile?.company_id) {
-        const { data: companyData } = await supabase
+        // Try to get company through profile.company_id
+        const { data: company, error: companyError } = await supabase
           .from('companies')
           .select('*')
           .eq('id', profile.company_id)
           .single()
 
-        if (companyData) {
-          console.log('Company data fetched:', companyData)
-          console.log('Company data keys:', Object.keys(companyData))
-          console.log('Company data values:', Object.values(companyData))
-          console.log('Company data types:', Object.entries(companyData).map(([key, value]) => `${key}: ${typeof value} (${value})`))
-          setCompany(companyData)
-          
-          // Initialize form with safe values, filtering out empty objects and null values
-          setForm({
-            name: companyData.name || '',
-            description: companyData.description || '',
-            cr_number: companyData.cr_number || '',
-            vat_number: companyData.vat_number || '',
-            address: companyData.address || '',
-            phone: companyData.phone || '',
-            email: companyData.email || '',
-            website: companyData.website || '',
-            industry: companyData.industry || '',
-            size: companyData.size || '',
-                         founded_year: typeof companyData.founded_year === 'number' ? companyData.founded_year : undefined
-          })
+        if (companyError) {
+          console.log('Error fetching company through profile.company_id:', companyError.message)
+        } else if (company) {
+          companyData = company
+          console.log('Company found through profile.company_id:', company.name)
         }
+      }
+
+      // If no company found through profile, try to find company where user is owner
+      if (!companyData) {
+        console.log('No company found through profile, checking if user owns a company...')
+        const { data: ownedCompany, error: ownedError } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('owner_id', user.id)
+          .single()
+
+        if (ownedError) {
+          console.log('Error fetching owned company:', ownedError.message)
+        } else if (ownedCompany) {
+          companyData = ownedCompany
+          console.log('Company found through owner_id:', ownedCompany.name)
+          
+          // Update profile with company_id for future reference
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ company_id: ownedCompany.id })
+            .eq('id', user.id)
+          
+          if (updateError) {
+            console.log('Warning: Could not update profile with company_id:', updateError.message)
+          } else {
+            console.log('Profile updated with company_id')
+          }
+        }
+      }
+
+      if (companyData) {
+        console.log('Company data fetched successfully:', companyData)
+        setCompany(companyData)
+        
+        // Initialize form with company data
+        setForm({
+          name: companyData.name || '',
+          description: companyData.description || '',
+          cr_number: companyData.cr_number || '',
+          vat_number: companyData.vat_number || '',
+          address: companyData.address || '',
+          phone: companyData.phone || '',
+          email: companyData.email || '',
+          website: companyData.website || '',
+          industry: companyData.industry || '',
+          size: companyData.size || '',
+          founded_year: typeof companyData.founded_year === 'number' ? companyData.founded_year : new Date().getFullYear(),
+          logo_url: companyData.logo_url || ''
+        })
+        
+        // Debug: Log what was set in the form
+        console.log('Form initialized with company data:')
+        console.log('  name:', companyData.name || '')
+        console.log('  description:', companyData.description || '')
+        console.log('  industry:', companyData.industry || '')
+        console.log('  size:', companyData.size || '')
+        console.log('  founded_year:', typeof companyData.founded_year === 'number' ? companyData.founded_year : new Date().getFullYear())
+        console.log('  logo_url:', companyData.logo_url || '')
       } else {
-        console.log('No company found for user, company_id:', profile?.company_id)
+        console.log('No company found for user')
         // Show option to create company
         setShowCreateCompany(true)
       }
@@ -673,7 +723,7 @@ export default function CompanyPage() {
 
   const handleCancel = () => {
     if (company) {
-      // Use the same safe initialization logic as fetchCompanyData
+      // Reset form to current company data
       setForm({
         name: company.name || '',
         description: company.description || '',
@@ -685,9 +735,11 @@ export default function CompanyPage() {
         website: company.website || '',
         industry: company.industry || '',
         size: company.size || '',
-                     founded_year: typeof company.founded_year === 'number' ? company.founded_year : undefined
+        founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
+        logo_url: company.logo_url || ''
       })
     } else {
+      // Reset form to default values
       setForm({
         name: '',
         description: '',
