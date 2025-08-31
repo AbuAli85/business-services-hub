@@ -170,7 +170,7 @@ export default function ClientDashboard() {
       // Get bookings count and spending
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('status, subtotal, vat_percent, currency, created_at')
+        .select('status, subtotal, currency, created_at')
         .eq('client_id', userId)
 
       const totalBookings = bookings?.length || 0
@@ -181,7 +181,7 @@ export default function ClientDashboard() {
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
         .reduce((sum, b) => {
           const subtotal = b.subtotal || 0
-          const vatAmount = subtotal * ((b.vat_percent || 5) / 100)
+          const vatAmount = subtotal * 0.05 // Default 5% VAT
           return sum + subtotal + vatAmount
         }, 0) || 0
 
@@ -197,7 +197,7 @@ export default function ClientDashboard() {
       
       const monthlySpent = monthlyBookings.reduce((sum, b) => {
         const subtotal = b.subtotal || 0
-        const vatAmount = subtotal * ((b.vat_percent || 5) / 100)
+        const vatAmount = subtotal * 0.05 // Default 5% VAT
         return sum + subtotal + vatAmount
       }, 0)
 
@@ -242,7 +242,6 @@ export default function ClientDashboard() {
           provider_id,
           status,
           subtotal,
-          vat_percent,
           currency,
           created_at
         `)
@@ -293,7 +292,7 @@ export default function ClientDashboard() {
               service_title: service?.title || 'Unknown Service',
               provider_name: provider?.full_name || 'Unknown Provider',
               provider_company: provider?.company_name || 'Unknown Company',
-              amount: b.subtotal + (b.subtotal * ((b.vat_percent || 5) / 100))
+              amount: b.subtotal + (b.subtotal * 0.05) // Default 5% VAT
             }
           })
 
@@ -307,7 +306,7 @@ export default function ClientDashboard() {
             service_title: 'Unknown Service',
             provider_name: 'Unknown Provider',
             provider_company: 'Unknown Company',
-            amount: b.subtotal + (b.subtotal * ((b.vat_percent || 5) / 100))
+            amount: b.subtotal + (b.subtotal * 0.05)
           }))
           setRecentBookings(enrichedBookings)
         }

@@ -345,7 +345,7 @@ export default function ServiceDetailPage() {
       // Get bookings for this service
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('status, subtotal, vat_percent, created_at')
+        .select('status, subtotal, created_at')
         .eq('service_id', serviceId)
 
       const totalBookings = bookings?.length || 0
@@ -354,7 +354,7 @@ export default function ServiceDetailPage() {
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
         .reduce((sum, b) => {
           const subtotal = b.subtotal || 0
-          const vatAmount = subtotal * ((b.vat_percent || 5) / 100)
+          const vatAmount = subtotal * 0.05 // Default 5% VAT
           return sum + subtotal + vatAmount
         }, 0) || 0
 
