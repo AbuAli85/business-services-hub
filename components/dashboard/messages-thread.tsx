@@ -122,11 +122,17 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
         .from('bookings')
         .select('id, client_id, provider_id')
         .eq('id', bookingId)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       if (bookingError) {
         console.error('Error loading booking:', bookingError)
         toast.error('Failed to load booking details')
+        return
+      }
+
+      if (!bookingData) {
+        console.error('Booking not found')
+        toast.error('Booking not found')
         return
       }
 
@@ -137,13 +143,13 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
         .from('profiles')
         .select('id, full_name, email')
         .eq('id', bookingData.client_id)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       const { data: providerData, error: providerError } = await supabase
         .from('profiles')
         .select('id, full_name, email')
         .eq('id', bookingData.provider_id)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       // Load messages
       const { data: messagesData, error: messagesError } = await supabase
@@ -215,11 +221,17 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           message_type: 'chat'
         })
         .select('id, content, sender_id, created_at')
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       if (error) {
         console.error('Error sending message:', error)
         toast.error('Failed to send message')
+        return
+      }
+
+      if (!messageData) {
+        console.error('Failed to create message')
+        toast.error('Failed to create message')
         return
       }
 
@@ -228,7 +240,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
         .from('profiles')
         .select('full_name, role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       // Add message to local state
       const newMsg: Message = {

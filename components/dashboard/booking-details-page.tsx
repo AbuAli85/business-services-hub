@@ -178,7 +178,7 @@ export default function BookingDetailsPage() {
         .select('*')
         .eq('id', bookingId)
         .eq('provider_id', user.id)
-        .single()
+        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       if (error) {
         console.error('Error loading booking:', error)
@@ -202,7 +202,7 @@ export default function BookingDetailsPage() {
             .from('services')
             .select('id, title, description, category')
             .eq('id', bookingData.service_id)
-            .single()
+            .maybeSingle() // Use maybeSingle instead of single to handle no rows
           
           if (!serviceError && data) {
             serviceData = data
@@ -218,7 +218,7 @@ export default function BookingDetailsPage() {
             .from('profiles')
             .select('id, full_name, email, phone, company_name')
             .eq('id', bookingData.client_id)
-            .single()
+            .maybeSingle() // Use maybeSingle instead of single to handle no rows
           
           if (!clientError && data) {
             clientData = data
