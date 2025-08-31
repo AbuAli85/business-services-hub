@@ -289,11 +289,17 @@ export default function ServicesPage() {
               .select('status, amount')
               .eq('service_id', service.id)
 
-            // Get review statistics
+            // Get review statistics - reviews are linked to services through bookings
+            const { data: serviceBookings } = await supabase
+              .from('bookings')
+              .select('id')
+              .eq('service_id', service.id)
+            
+            const serviceBookingIds = serviceBookings?.map(b => b.id) || []
             const { data: reviews } = await supabase
               .from('reviews')
               .select('rating')
-              .eq('service_id', service.id)
+              .in('booking_id', serviceBookingIds)
 
             const totalBookings = bookings?.length || 0
             const totalRevenue = bookings

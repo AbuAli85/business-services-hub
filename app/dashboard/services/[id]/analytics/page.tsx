@@ -113,11 +113,17 @@ export default function ServiceAnalyticsPage() {
 
       if (bookingsError) throw bookingsError
 
-      // Fetch reviews for this service
+      // Fetch reviews for this service - reviews are linked to services through bookings
+      const { data: serviceBookings } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('service_id', serviceId)
+      
+      const serviceBookingIds = serviceBookings?.map(b => b.id) || []
       const { data: reviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating, created_at')
-        .eq('provider_id', user.id)
+        .in('booking_id', serviceBookingIds)
 
       if (reviewsError) throw reviewsError
 

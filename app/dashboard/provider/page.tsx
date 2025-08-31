@@ -291,13 +291,16 @@ export default function ProviderDashboard() {
             const totalRevenue = completedBookings?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0
 
             // Get average rating from reviews by joining through bookings
+            const { data: serviceBookings } = await supabase
+              .from('bookings')
+              .select('id')
+              .eq('service_id', service.id)
+            
+            const serviceBookingIds = serviceBookings?.map(b => b.id) || []
             const { data: reviews } = await supabase
               .from('reviews')
-              .select(`
-                rating,
-                bookings!inner(service_id)
-              `)
-              .eq('bookings.service_id', service.id)
+              .select('rating')
+              .in('booking_id', serviceBookingIds)
 
             const averageRating = reviews && reviews.length > 0
               ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length

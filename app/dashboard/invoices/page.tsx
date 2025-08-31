@@ -43,12 +43,7 @@ export default function InvoicesPage() {
 
       let query = supabase
         .from('invoices')
-        .select(`
-          id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url,
-          bookings(services(title)),
-          client_profile:profiles!client_id(full_name),
-          provider_profile:profiles!provider_id(full_name)
-        `)
+        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url')
         .order('created_at', { ascending: false })
 
       if (userRole === 'client') {
@@ -57,9 +52,62 @@ export default function InvoicesPage() {
         query = query.eq('provider_id', user.id)
       }
 
-      const { data, error } = await query
+      const { data: invoicesData, error } = await query
       if (error) throw error
-      setInvoices((data || []) as any)
+      
+      // Fetch related data separately to avoid complex joins
+      const enrichedInvoices = await Promise.all(
+        (invoicesData || []).map(async (invoice: any) => {
+          try {
+            // Get booking and service info
+            const { data: booking } = await supabase
+              .from('bookings')
+              .select('id, service_id')
+              .eq('id', invoice.booking_id)
+              .single()
+            
+            let serviceTitle = 'Service'
+            if (booking?.service_id) {
+              const { data: service } = await supabase
+                .from('services')
+                .select('title')
+                .eq('id', booking.service_id)
+                .single()
+              serviceTitle = service?.title || 'Service'
+            }
+            
+            // Get client and provider names
+            const { data: client } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', invoice.client_id)
+              .single()
+            
+            const { data: provider } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', invoice.provider_id)
+              .single()
+            
+            return {
+              ...invoice,
+              serviceTitle,
+              clientName: client?.full_name || 'Unknown Client',
+              providerName: provider?.full_name || 'Unknown Provider'
+            }
+          } catch (error) {
+            console.error('Error enriching invoice:', error)
+            return {
+              ...invoice,
+              serviceTitle: 'Service',
+              clientName: 'Unknown Client',
+              providerName: 'Unknown Provider'
+            }
+          }
+        })
+      )
+      
+      setInvoices(enrichedInvoices)
     } catch (e) {
       console.error('Error fetching invoices', e)
       setInvoices([])
@@ -107,14 +155,14 @@ export default function InvoicesPage() {
               {invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="space-y-1">
-                    <div className="font-medium text-gray-900">{inv.bookings?.services?.title || 'Service'}</div>
+                    <div className="font-medium text-gray-900">{inv.serviceTitle}</div>
                     <div className="text-sm text-gray-500 flex items-center gap-3">
                       <span className="inline-flex items-center gap-1"><Calendar className="h-4 w-4" />{new Date(inv.created_at).toLocaleDateString()}</span>
                       <span className="inline-flex items-center gap-1"><Banknote className="h-4 w-4" />{formatCurrency(inv.amount || 0, inv.currency || 'OMR')}</span>
                       {role === 'client' ? (
-                        <span className="inline-flex items-center gap-1"><Building2 className="h-4 w-4" />{inv.providers?.full_name || 'Provider'}</span>
+                        <span className="inline-flex items-center gap-1"><Building2 className="h-4 w-4" />{inv.providerName}</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1"><User className="h-4 w-4" />{inv.clients?.full_name || 'Client'}</span>
+                        <span className="inline-flex items-center gap-1"><User className="h-4 w-4" />{inv.clientName}</span>
                       )}
                     </div>
                     <div className="text-xs">
