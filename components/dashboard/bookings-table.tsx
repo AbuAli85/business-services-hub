@@ -91,7 +91,7 @@ export default function BookingsTable() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [bookingsPerPage] = useState(10)
-  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
+  const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'created_at', direction: 'desc' })
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>()
@@ -173,10 +173,13 @@ export default function BookingsTable() {
       if (serviceIds.length > 0) {
         const { data: services, error: servicesError } = await supabase
           .from('services')
-          .select('id, name, description')
+          .select('id, title, description')
           .in('id', serviceIds)
         
-        if (!servicesError) {
+        if (servicesError) {
+          console.error('Error loading services:', servicesError)
+          // Continue without services data rather than failing completely
+        } else {
           servicesData = services || []
         }
       }
@@ -195,7 +198,7 @@ export default function BookingsTable() {
           notes: booking.notes,
           amount: booking.amount,
           service: {
-            name: service?.name || 'Unknown Service',
+            name: service?.title || 'Unknown Service',
             description: service?.description
           },
           client: {
@@ -236,64 +239,74 @@ export default function BookingsTable() {
   }
 
   const filterAndSortBookings = () => {
-    let filtered = [...bookings]
+    // Use requestIdleCallback to avoid blocking the UI during filtering
+    const processFiltering = () => {
+      let filtered = [...bookings]
 
-    // Advanced search filter
-    if (searchQuery) {
-      filtered = filtered.filter(booking =>
-        booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.client.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.client.email.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(booking => booking.status === statusFilter)
-    }
-
-    // Priority filter
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(booking => booking.priority === priorityFilter)
-    }
-
-    // Date range filter
-    if (dateRange?.from && dateRange?.to) {
-      filtered = filtered.filter(booking => {
-        const bookingDate = parseISO(booking.created_at)
-        return isWithinInterval(bookingDate, { start: dateRange.from, end: dateRange.to })
-      })
-    }
-
-    // Amount range filter
-    if (amountRange.min > 0 || amountRange.max < 10000) {
-      filtered = filtered.filter(booking => {
-        const amount = booking.amount || 0
-        return amount >= amountRange.min && amount <= amountRange.max
-      })
-    }
-
-    // Sort bookings
-    filtered.sort((a, b) => {
-      const aValue = a[sortConfig.key]
-      const bValue = b[sortConfig.key]
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
+      // Advanced search filter
+      if (searchQuery) {
+        filtered = filtered.filter(booking =>
+          booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.client.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.client.email.toLowerCase().includes(searchQuery.toLowerCase())
+        )
       }
-      
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
-      }
-      
-      return 0
-    })
 
-    setFilteredBookings(filtered)
-    setCurrentPage(1) // Reset to first page when filtering
+      // Status filter
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(booking => booking.status === statusFilter)
+      }
+
+      // Priority filter
+      if (priorityFilter !== 'all') {
+        filtered = filtered.filter(booking => booking.priority === priorityFilter)
+      }
+
+      // Date range filter
+      if (dateRange?.from && dateRange?.to) {
+        filtered = filtered.filter(booking => {
+          const bookingDate = parseISO(booking.created_at)
+          return isWithinInterval(bookingDate, { start: dateRange.from, end: dateRange.to })
+        })
+      }
+
+      // Amount range filter
+      if (amountRange.min > 0 || amountRange.max < 10000) {
+        filtered = filtered.filter(booking => {
+          const amount = booking.amount || 0
+          return amount >= amountRange.min && amount <= amountRange.max
+        })
+      }
+
+      // Sort bookings
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.key]
+        const bValue = b[sortConfig.key]
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue)
+        }
+        
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+        }
+        
+        return 0
+      })
+
+      setFilteredBookings(filtered)
+      setCurrentPage(1) // Reset to first page when filtering
+    }
+    
+    // Use requestIdleCallback if available, otherwise use setTimeout
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(processFiltering, { timeout: 100 })
+    } else {
+      setTimeout(processFiltering, 0)
+    }
   }
 
   const handleSort = (key: keyof Booking) => {
@@ -309,17 +322,17 @@ export default function BookingsTable() {
   }
 
   const handleBulkAction = (action: 'delete' | 'export' | 'status') => {
-    if (selectedBookings.size === 0) {
+    if (selectedBookings.length === 0) {
       toast.error('Please select bookings first')
       return
     }
 
     switch (action) {
       case 'delete':
-        if (confirm(`Are you sure you want to delete ${selectedBookings.size} selected bookings?`)) {
+        if (confirm(`Are you sure you want to delete ${selectedBookings.length} selected bookings?`)) {
           // Implement bulk delete
-          toast.success(`${selectedBookings.size} bookings deleted`)
-          setSelectedBookings(new Set())
+          toast.success(`${selectedBookings.length} bookings deleted`)
+          setSelectedBookings([])
         }
         break
       case 'export':
@@ -327,51 +340,74 @@ export default function BookingsTable() {
         break
       case 'status':
         // Implement bulk status update
-        toast.success(`Status updated for ${selectedBookings.size} bookings`)
+        toast.success(`Status updated for ${selectedBookings.length} bookings`)
         break
     }
   }
 
   const exportSelectedBookings = () => {
-    const selectedData = filteredBookings.filter(b => selectedBookings.has(b.id))
-    const csvContent = [
-      ['Booking ID', 'Service', 'Client', 'Status', 'Priority', 'Amount', 'Created Date'],
-      ...selectedData.map(b => [
-        b.id,
-        b.service.name,
-        b.client.full_name,
-        b.status,
-        b.priority,
-        b.amount || 0,
-        format(parseISO(b.created_at), 'yyyy-MM-dd')
-      ])
-    ].map(row => row.join(',')).join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `bookings-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
-    toast.success('Bookings exported successfully!')
+    // Use requestIdleCallback to avoid blocking the UI
+    const exportData = () => {
+      const selectedData = filteredBookings.filter(b => selectedBookings.includes(b.id))
+      
+      // Process data in chunks to avoid blocking
+      const processChunk = (data: any[], startIndex: number, chunkSize: number = 100) => {
+        const endIndex = Math.min(startIndex + chunkSize, data.length)
+        const chunk = data.slice(startIndex, endIndex)
+        
+        return chunk.map(b => [
+          b.id,
+          b.service.name,
+          b.client.full_name,
+          b.status,
+          b.priority,
+          b.amount || 0,
+          format(parseISO(b.created_at), 'yyyy-MM-dd')
+        ])
+      }
+      
+      // Process all data in chunks
+      const allRows = [['Booking ID', 'Service', 'Client', 'Status', 'Priority', 'Amount', 'Created Date']]
+      
+      for (let i = 0; i < selectedData.length; i += 100) {
+        const chunkRows = processChunk(selectedData, i, 100)
+        allRows.push(...chunkRows)
+      }
+      
+      const csvContent = allRows.map(row => row.join(',')).join('\n')
+      
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `bookings-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      toast.success('Bookings exported successfully!')
+    }
+    
+    // Use requestIdleCallback if available, otherwise use setTimeout
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(exportData, { timeout: 1000 })
+    } else {
+      setTimeout(exportData, 0)
+    }
   }
 
   const toggleBookingSelection = (bookingId: string) => {
-    const newSelected = new Set(selectedBookings)
-    if (newSelected.has(bookingId)) {
-      newSelected.delete(bookingId)
+    if (selectedBookings.includes(bookingId)) {
+      setSelectedBookings(selectedBookings.filter(id => id !== bookingId))
     } else {
-      newSelected.add(bookingId)
+      setSelectedBookings([...selectedBookings, bookingId])
     }
-    setSelectedBookings(newSelected)
   }
 
   const selectAllBookings = () => {
-    if (selectedBookings.size === currentBookings.length) {
-      setSelectedBookings(new Set())
+    if (selectedBookings.length === filteredBookings.length) {
+      setSelectedBookings([])
     } else {
-      setSelectedBookings(new Set(currentBookings.map(b => b.id)))
+      setSelectedBookings(filteredBookings.map(b => b.id))
     }
   }
 
@@ -614,10 +650,10 @@ export default function BookingsTable() {
               </Button>
 
               {/* Bulk Actions */}
-              {selectedBookings.size > 0 && (
+              {selectedBookings.length > 0 && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">
-                    {selectedBookings.size} selected
+                    {selectedBookings.length} selected
                   </span>
                   <Button
                     variant="outline"
@@ -696,7 +732,7 @@ export default function BookingsTable() {
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedBookings.size === currentBookings.length && currentBookings.length > 0}
+                      checked={selectedBookings.length === filteredBookings.length && filteredBookings.length > 0}
                       onCheckedChange={selectAllBookings}
                     />
                   </TableHead>
@@ -782,7 +818,7 @@ export default function BookingsTable() {
                     <TableRow key={booking.id} className="hover:bg-muted/50">
                       <TableCell>
                         <Checkbox
-                          checked={selectedBookings.has(booking.id)}
+                          checked={selectedBookings.includes(booking.id)}
                           onCheckedChange={() => toggleBookingSelection(booking.id)}
                         />
                       </TableCell>
