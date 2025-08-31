@@ -279,7 +279,7 @@ export default function ServicesPage() {
         // First try to get all completed bookings with basic info
         const { data: completedBookings, error: bookingError } = await supabase
           .from('bookings')
-          .select('subtotal, vat_amount, currency')
+          .select('subtotal, vat_percent, currency')
           .eq('status', 'completed')
 
         if (bookingError) {
@@ -287,9 +287,10 @@ export default function ServicesPage() {
           totalRevenue = 0
         } else if (completedBookings) {
           totalRevenue = completedBookings.reduce((sum, booking) => {
-            // Calculate total from subtotal + VAT if available
-            const vatAmount = booking.vat_amount || 0
-            const total = (booking.subtotal || 0) + vatAmount
+            // Calculate total from subtotal + VAT
+            const subtotal = booking.subtotal || 0
+            const vatAmount = subtotal * ((booking.vat_percent || 5) / 100)
+            const total = subtotal + vatAmount
             return sum + total
           }, 0)
         }

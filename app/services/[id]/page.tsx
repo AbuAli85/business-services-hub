@@ -345,14 +345,18 @@ export default function ServiceDetailPage() {
       // Get bookings for this service
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('status, subtotal, vat_amount, created_at')
+        .select('status, subtotal, vat_percent, created_at')
         .eq('service_id', serviceId)
 
       const totalBookings = bookings?.length || 0
       const completedBookings = bookings?.filter(b => b.status === 'completed').length || 0
       const totalRevenue = bookings
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
-        .reduce((sum, b) => sum + (b.subtotal || 0) + (b.vat_amount || 0), 0) || 0
+        .reduce((sum, b) => {
+          const subtotal = b.subtotal || 0
+          const vatAmount = subtotal * ((b.vat_percent || 5) / 100)
+          return sum + subtotal + vatAmount
+        }, 0) || 0
 
       setServiceStats({
         totalViews: Math.floor(Math.random() * 1000) + 100, // Mock data
