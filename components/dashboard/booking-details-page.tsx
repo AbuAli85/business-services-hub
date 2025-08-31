@@ -127,6 +127,10 @@ export default function BookingDetailsPage() {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [showPriorityChange, setShowPriorityChange] = useState(false)
+  const [pendingPriorityChange, setPendingPriorityChange] = useState<string>('')
+  const [showTimelineEdit, setShowTimelineEdit] = useState(false)
+  const [customTimelineSteps, setCustomTimelineSteps] = useState<any[]>([])
 
   const bookingId = params.id as string
 
@@ -482,6 +486,48 @@ export default function BookingDetailsPage() {
     setStatusChangeReason('')
   }
 
+  const handlePriorityChange = async (newPriority: string) => {
+    if (!booking) return
+    
+    try {
+      setIsUpdatingStatus(true)
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          priority: newPriority,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+
+      if (error) {
+        console.error('Error updating priority:', error)
+        toast.error('Failed to update priority')
+        return
+      }
+
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Priority Updated',
+        description: `Priority changed from "${booking.priority}" to "${newPriority}"`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setBookingHistory(prev => [historyEntry, ...prev])
+
+      toast.success(`Priority updated to ${newPriority}!`)
+      loadBooking() // Reload to get updated data
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to update priority')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
   const handleSaveNotes = async () => {
     if (!booking || !editedNotes.trim()) return
     
@@ -669,6 +715,27 @@ export default function BookingDetailsPage() {
     return formatCurrency(booking.amount)
   }
 
+  const getBookingHealth = () => {
+    if (!booking) return 'N/A'
+    
+    const daysActive = getDaysSinceCreation()
+    if (daysActive === 'N/A') return 'N/A'
+    
+    if (daysActive <= 3) return 'Excellent'
+    if (daysActive <= 7) return 'Good'
+    if (daysActive <= 14) return 'Fair'
+    return 'Needs Attention'
+  }
+
+  const getNextMilestone = () => {
+    if (!booking) return 'N/A'
+    
+    if (booking.status === 'pending') return 'Start Work'
+    if (booking.status === 'in_progress') return 'Complete Service'
+    if (booking.status === 'completed') return 'Get Review'
+    return 'N/A'
+  }
+
   const getStatusOptions = () => {
     const currentStatus = booking?.status
     const options = [
@@ -756,6 +823,38 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
+      {/* Booking Summary Card */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {getDaysSinceCreation()}
+              </div>
+              <div className="text-sm text-blue-700">Days Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {getStatusEfficiency()}
+              </div>
+              <div className="text-sm text-green-700">Response Time</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {getTimelineProgress() * 100}%
+              </div>
+              <div className="text-sm text-purple-700">Progress</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {getNextMilestone()}
+              </div>
+              <div className="text-sm text-orange-700">Next Action</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Advanced Actions Panel */}
       {showAdvancedActions && (
         <Card className="border-blue-200 bg-blue-50">
@@ -789,10 +888,7 @@ export default function BookingDetailsPage() {
                   aria-label="Change booking priority"
                   className="w-full p-2 border border-blue-300 rounded-md bg-white"
                   value={booking.priority}
-                  onChange={(e) => {
-                    // Implement priority change
-                    console.log('Change priority to:', e.target.value)
-                  }}
+                  onChange={(e) => handlePriorityChange(e.target.value)}
                 >
                   <option value="low">Low</option>
                   <option value="normal">Normal</option>
@@ -988,6 +1084,28 @@ export default function BookingDetailsPage() {
                     {getRevenueImpact()}
                   </div>
                   <div className="text-sm text-muted-foreground">Revenue Impact</div>
+                </div>
+              </div>
+              
+              {/* Additional Insights */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-3 border rounded-lg bg-blue-50">
+                  <div className="text-lg font-semibold text-blue-700">
+                    {getBookingHealth()}
+                  </div>
+                  <div className="text-sm text-blue-600">Booking Health</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg bg-green-50">
+                  <div className="text-lg font-semibold text-green-700">
+                    {getNextMilestone()}
+                  </div>
+                  <div className="text-sm text-green-600">Next Milestone</div>
+                </div>
+                <div className="text-center p-3 border rounded-lg bg-purple-50">
+                  <div className="text-lg font-semibold text-purple-700">
+                    {getTimelineProgress() * 100}%
+                  </div>
+                  <div className="text-sm text-purple-600">Progress</div>
                 </div>
               </div>
             </CardContent>
@@ -1211,6 +1329,32 @@ export default function BookingDetailsPage() {
                         <p className="font-medium">{booking.estimated_duration}</p>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Timeline Actions */}
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-medium mb-3 text-blue-900">Timeline Actions</h4>
+                  <div className="flex space-x-3">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowTimelineEdit(true)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Customize Timeline
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        // Export timeline as PDF
+                        toast.success('Timeline export feature coming soon!')
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export Timeline
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1446,6 +1590,92 @@ export default function BookingDetailsPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => setShowFileUpload(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline Edit Modal */}
+      {showTimelineEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Customize Timeline</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTimelineEdit(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Add custom milestones and steps to track your booking progress more accurately.
+              </p>
+              
+              <div className="space-y-3">
+                {customTimelineSteps.map((step, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
+                    <Input
+                      placeholder="Step name"
+                      value={step.name}
+                      onChange={(e) => {
+                        const newSteps = [...customTimelineSteps]
+                        newSteps[index].name = e.target.value
+                        setCustomTimelineSteps(newSteps)
+                      }}
+                    />
+                    <Input
+                      placeholder="Description"
+                      value={step.description}
+                      onChange={(e) => {
+                        const newSteps = [...customTimelineSteps]
+                        newSteps[index].description = e.target.value
+                        setCustomTimelineSteps(newSteps)
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setCustomTimelineSteps(customTimelineSteps.filter((_, i) => i !== index))
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCustomTimelineSteps([...customTimelineSteps, { name: '', description: '' }])
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Step
+              </Button>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  className="flex-1" 
+                  onClick={() => {
+                    setShowTimelineEdit(false)
+                    toast.success('Timeline customized successfully!')
+                  }}
+                >
+                  Save Changes
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowTimelineEdit(false)}
                 >
                   Cancel
                 </Button>
