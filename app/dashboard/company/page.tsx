@@ -173,6 +173,29 @@ export default function CompanyPage() {
     }
   }
 
+  // Helper function to check email conflicts
+  const checkEmailConflict = async (email: string): Promise<boolean> => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('email', email.trim())
+        .neq('id', company?.id || '')
+        .single()
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking email conflict:', error)
+        return false
+      }
+      
+      return !!data
+    } catch (error) {
+      console.error('Error checking email conflict:', error)
+      return false
+    }
+  }
+
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -586,17 +609,17 @@ export default function CompanyPage() {
 
       const updateData = {
         name: form.name.trim(),
-        description: form.description.trim() || null,
-        cr_number: form.cr_number.trim() || null,
-        vat_number: form.vat_number.trim() || null,
-        address: form.address.trim() || null,
-        phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
-        website: form.website.trim() || null,
-        industry: form.industry.trim() || null,
-        size: form.size.trim() || null,
-        founded_year: form.founded_year || null,
-        logo_url: logoUrl || null
+        description: form.description?.trim() || undefined,
+        cr_number: form.cr_number?.trim() || undefined,
+        vat_number: form.vat_number?.trim() || undefined,
+        address: form.address?.trim() || undefined,
+        phone: form.phone?.trim() || undefined,
+        email: form.email?.trim() || undefined,
+        website: form.website?.trim() || undefined,
+        industry: form.industry?.trim() || undefined,
+        size: form.size?.trim() || undefined,
+        founded_year: form.founded_year || undefined,
+        logo_url: logoUrl || undefined
       }
 
       const supabase = await getSupabaseClient()
@@ -610,105 +633,22 @@ export default function CompanyPage() {
         return
       }
 
-      setCompany(prev => prev ? { ...prev, ...updateData } : null)
-      setLogoFile(null)
-      setLogoPreview(null)
-      setEditing(false)
-      setSuccess('Company updated successfully!')
-    } catch (error) {
-      console.error('Error updating company:', error)
-      setError('An unexpected error occurred')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-    
-    if (!company) {
-      console.log('❌ No company data, returning early')
-      setError('No company data available')
-      return
-    }
-
-    if (!company.id) {
-      setError('Invalid company ID')
-      return
-    }
-
-    try {
-      // Validate form data first
-      const validation = validateForm()
-      if (!validation.isValid) {
-        setError(`Please fix the following errors:\n${validation.errors.join('\n')}`)
-        return
-      }
-      
-      setSubmitting(true)
-
-      // Verify user authentication
-      const supabase = await getSupabaseClient()
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        setError('Authentication error. Please log in again.')
-        return
-      }
-
-      // Verify user owns this company
-      if (company.owner_id && company.owner_id !== user.id) {
-        setError('You can only update your own company.')
-        return
-      }
-
-      // Upload logo if file is selected
-      let logoUrl = form.logo_url
-      let shouldRemoveOldLogo = false
-      
-      if (logoFile) {
-        const uploadedLogoUrl = await uploadLogoToStorage()
-        if (uploadedLogoUrl) {
-          logoUrl = uploadedLogoUrl
-          shouldRemoveOldLogo = true
-        }
-      }
-
-      // Prepare update data
-      const updateData = {
-        name: form.name.trim(),
-        description: form.description.trim() || null,
-        cr_number: form.cr_number.trim() || null,
-        vat_number: form.vat_number.trim() || null,
-        address: form.address.trim() || null,
-        phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
-        website: form.website.trim() || null,
-        industry: form.industry.trim() || null,
-        size: form.size.trim() || null,
-        founded_year: form.founded_year || null,
-        logo_url: logoUrl || null
-      }
-
-      const { error } = await supabase
-        .from('companies')
-        .update(updateData)
-        .eq('id', company.id)
-
-      if (error) {
-        console.error('Error updating company:', error)
-        setError(`Failed to update company: ${error.message}`)
-        return
-      }
-
-      // Remove old logo from storage if new logo was uploaded
-      if (shouldRemoveOldLogo && company.logo_url && company.logo_url !== logoUrl) {
-        await removeOldLogo(company.logo_url)
-      }
-
-      // Update local state
       setCompany(prev => prev ? { 
         ...prev, 
-        ...updateData
+        ...updateData,
+        // Ensure all optional fields are undefined instead of null
+        description: updateData.description || undefined,
+        cr_number: updateData.cr_number || undefined,
+        vat_number: updateData.vat_number || undefined,
+        address: updateData.address || undefined,
+        phone: updateData.phone || undefined,
+        email: updateData.email || undefined,
+        website: updateData.website || undefined,
+        industry: updateData.industry || undefined,
+        size: updateData.size || undefined,
+        founded_year: updateData.founded_year || undefined,
+        logo_url: updateData.logo_url || undefined
       } : null)
-      
-      // Clear file state
       setLogoFile(null)
       setLogoPreview(null)
       setEditing(false)
@@ -1627,5 +1567,5 @@ export default function CompanyPage() {
         </div>
       )}
     </div>
-  )
+  );
 }
