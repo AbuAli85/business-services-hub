@@ -53,6 +53,10 @@ interface Company {
   services_offered?: string
   created_at: string
   updated_at?: string
+  
+  // Database field mappings
+  registration_number?: string  // Maps to cr_number
+  business_type?: string        // Maps to size
 }
 
 interface CompanyForm {
@@ -110,14 +114,14 @@ export default function CompanyPage() {
       setForm({
         name: company.name || '',
         description: company.description || '',
-        cr_number: company.cr_number || '',
+        cr_number: company.registration_number || company.cr_number || '',
         vat_number: company.vat_number || '',
-        address: company.address || '',
+        address: typeof company.address === 'object' ? JSON.stringify(company.address) : company.address || '',
         phone: company.phone || '',
         email: company.email || '',
         website: company.website || '',
         industry: company.industry || '',
-        size: company.size || '',
+        size: company.business_type || company.size || '',
         founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
         logo_url: company.logo_url || ''
       })
@@ -139,7 +143,10 @@ export default function CompanyPage() {
     if (typeof value === 'object') {
       // If it's a JSON object, try to stringify it
       try {
-        return JSON.stringify(value)
+        const stringified = JSON.stringify(value)
+        // If it's an empty object, return empty string
+        if (stringified === '{}') return ''
+        return stringified
       } catch {
         return '[Complex Data]'
       }
@@ -428,18 +435,18 @@ export default function CompanyPage() {
         console.log('Company data fetched successfully:', companyData)
         setCompany(companyData)
         
-        // Initialize form with company data
+        // Initialize form with company data, mapping database fields to form fields
         setForm({
           name: companyData.name || '',
           description: companyData.description || '',
-          cr_number: companyData.cr_number || '',
+          cr_number: companyData.registration_number || companyData.cr_number || '',
           vat_number: companyData.vat_number || '',
-          address: companyData.address || '',
+          address: typeof companyData.address === 'object' ? JSON.stringify(companyData.address) : companyData.address || '',
           phone: companyData.phone || '',
           email: companyData.email || '',
           website: companyData.website || '',
           industry: companyData.industry || '',
-          size: companyData.size || '',
+          size: companyData.business_type || companyData.size || '',
           founded_year: typeof companyData.founded_year === 'number' ? companyData.founded_year : new Date().getFullYear(),
           logo_url: companyData.logo_url || ''
         })
@@ -704,14 +711,14 @@ export default function CompanyPage() {
       setForm({
         name: company.name || '',
         description: company.description || '',
-        cr_number: company.cr_number || '',
+        cr_number: company.registration_number || company.cr_number || '',
         vat_number: company.vat_number || '',
-        address: company.address || '',
+        address: typeof company.address === 'object' ? JSON.stringify(company.address) : company.address || '',
         phone: company.phone || '',
         email: company.email || '',
         website: company.website || '',
         industry: company.industry || '',
-        size: company.size || '',
+        size: company.business_type || company.size || '',
         founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
         logo_url: company.logo_url || ''
       })
