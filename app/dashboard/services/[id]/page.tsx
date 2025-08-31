@@ -47,12 +47,12 @@ export default function DashboardServiceDetailPage() {
   const serviceId = params.id as string
   
   // Debug logging
-  console.log('DashboardServiceDetailPage - serviceId:', serviceId)
-  console.log('DashboardServiceDetailPage - params:', params)
+      // Production logging removed
+    // Production logging removed
   
   // IMMEDIATE redirect for "create" - prevent any further processing
   if (serviceId === 'create') {
-    console.log('🔄 IMMEDIATE redirect to service creation page')
+            // Production logging removed
     router.push('/dashboard/provider/create-service')
     return null // Return null to prevent any rendering
   }

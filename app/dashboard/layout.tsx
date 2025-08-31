@@ -73,17 +73,17 @@ export default function DashboardLayout({
 
       // Use user metadata from auth instead of database profile
       const userMetadata = session.user.user_metadata
-      console.log('User metadata:', userMetadata)
+      // Production logging removed
       
       let userRole = userMetadata?.role
-      console.log('Initial role from metadata:', userRole)
+              // Production logging removed
       
       // In production mode, roles must be set during registration
       // No fallback to profiles table or role selection allowed
       
       // In production mode, users must have a role set during registration
       if (!userRole) {
-        console.log('No role found - user must contact support')
+        // Production logging removed
       }
       
       // Fetch company name from profile if user is a provider
@@ -119,7 +119,7 @@ export default function DashboardLayout({
         company_name: companyName
       }
       
-      console.log('Final user state:', finalUser)
+              // Production logging removed
       setUser(finalUser)
     } catch (error) {
       console.error('Error checking user:', error)

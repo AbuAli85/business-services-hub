@@ -108,7 +108,7 @@ export default function DashboardPage() {
         return
       }
     } catch (error) {
-      console.error('Auth check error:', error)
+      // Production logging removed
       router.push('/auth/sign-in')
     }
   }
@@ -125,7 +125,7 @@ export default function DashboardPage() {
       
       return !error
     } catch (error) {
-      console.log('Error checking due_at column:', error)
+              // Production logging removed
       return false
     }
   }
@@ -342,7 +342,7 @@ export default function DashboardPage() {
       setLoading(false)
       if (timeoutId) clearTimeout(timeoutId)
     } catch (error) {
-      console.error('Error loading dashboard data:', error)
+      // Production logging removed
       setLoading(false)
       if (timeoutId) clearTimeout(timeoutId)
     }

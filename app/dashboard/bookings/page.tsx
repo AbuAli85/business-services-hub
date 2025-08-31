@@ -902,7 +902,7 @@ export default function BookingsPage() {
                   value={bookingsPerPage.toString()}
                   onValueChange={(value) => {
                     // This would need to be implemented with state management
-                    console.log('Change page size to:', value)
+                    // Production logging removed
                   }}
                 >
                   <SelectTrigger className="w-20">
