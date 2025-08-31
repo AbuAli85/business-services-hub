@@ -209,29 +209,49 @@ export default function ServicesPage() {
 
   const loadServicesForClient = async () => {
     try {
+      console.log('🔍 Loading services for client...')
       const supabase = await getSupabaseClient()
       
-      // Fetch all available services for clients (including pending approval)
+      // First, let's try a simple count query to see if we can access the table
+      const { data: countData, error: countError } = await supabase
+        .from('services')
+        .select('*', { count: 'exact', head: true })
+      
+      console.log('📊 Total services count:', countData)
+      console.log('❌ Count error:', countError)
+      
+      // Now let's try to fetch all services without any filters
+      const { data: allServices, error: allError } = await supabase
+        .from('services')
+        .select('*')
+        .limit(5)
+      
+      console.log('📊 All services sample:', allServices)
+      console.log('❌ All services error:', allError)
+      
+      // Now let's try the actual filtered query
       const { data: services, error } = await supabase
         .from('services')
-        .select(`
-          *,
-          profiles!services_provider_id_fkey (
-            id,
-            full_name,
-            email,
-            phone
-          )
-        `)
+        .select('*')
         .in('status', ['active', 'draft'])
         .order(sortBy, { ascending: sortOrder === 'asc' })
 
+      console.log('📊 Filtered services data:', services)
+      console.log('❌ Filtered services error:', error)
+
       if (error) throw error
 
-      // Enrich services with statistics and provider info
+      // Now let's fetch provider information separately for each service
       const enrichedServices = await Promise.all(
         (services || []).map(async (service) => {
           try {
+            // Get provider information
+            const { data: provider } = await supabase
+              .from('profiles')
+              .select('id, full_name, email, phone')
+              .eq('id', service.provider_id)
+              .single()
+
             // Get booking statistics
             const { data: bookings } = await supabase
               .from('bookings')
@@ -253,14 +273,17 @@ export default function ServicesPage() {
               : 0
             const totalReviews = reviews?.length || 0
 
-            return {
+            const enrichedService = {
               ...service,
               total_bookings: totalBookings,
               total_revenue: totalRevenue,
               average_rating: averageRating,
               total_reviews: totalReviews,
-              provider: service.profiles
+              provider: provider
             }
+
+            console.log(`✨ Enriched service ${service.id}:`, enrichedService)
+            return enrichedService
           } catch (error) {
             console.error(`Error enriching service ${service.id}:`, error)
             return {
@@ -269,16 +292,17 @@ export default function ServicesPage() {
               total_revenue: 0,
               average_rating: 0,
               total_reviews: 0,
-              provider: service.profiles
+              provider: null
             }
           }
         })
       )
 
+      console.log('✨ All enriched services:', enrichedServices)
       setServices(enrichedServices)
       await fetchServiceStatsForClient()
     } catch (error) {
-      console.error('Error fetching client services:', error)
+      console.error('❌ Error fetching client services:', error)
       toast.error('Failed to load services')
     }
   }
