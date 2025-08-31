@@ -72,6 +72,11 @@ interface CompanyForm {
 
 export default function CompanyPage() {
   const [company, setCompany] = useState<Company | null>(null)
+  
+  // Debug: Log company state changes
+  useEffect(() => {
+    console.log('Company state changed:', company)
+  }, [company])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -92,6 +97,32 @@ export default function CompanyPage() {
     founded_year: new Date().getFullYear(),
     logo_url: ''
   })
+  
+  // Debug: Log form state changes
+  useEffect(() => {
+    console.log('Form state changed:', form)
+  }, [form])
+  
+  // Sync form with company data when company changes
+  useEffect(() => {
+    if (company && !editing && !creating) {
+      console.log('Syncing form with company data:', company)
+      setForm({
+        name: company.name || '',
+        description: company.description || '',
+        cr_number: company.cr_number || '',
+        vat_number: company.vat_number || '',
+        address: company.address || '',
+        phone: company.phone || '',
+        email: company.email || '',
+        website: company.website || '',
+        industry: company.industry || '',
+        size: company.size || '',
+        founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
+        logo_url: company.logo_url || ''
+      })
+    }
+  }, [company, editing, creating])
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -325,6 +356,7 @@ export default function CompanyPage() {
   }
 
   useEffect(() => {
+    console.log('CompanyPage useEffect triggered')
     fetchCompanyData()
   }, [])
 
@@ -633,22 +665,27 @@ export default function CompanyPage() {
         return
       }
 
-      setCompany(prev => prev ? { 
-        ...prev, 
-        ...updateData,
-        // Ensure all optional fields are undefined instead of null
-        description: updateData.description || undefined,
-        cr_number: updateData.cr_number || undefined,
-        vat_number: updateData.vat_number || undefined,
-        address: updateData.address || undefined,
-        phone: updateData.phone || undefined,
-        email: updateData.email || undefined,
-        website: updateData.website || undefined,
-        industry: updateData.industry || undefined,
-        size: updateData.size || undefined,
-        founded_year: updateData.founded_year || undefined,
-        logo_url: updateData.logo_url || undefined
-      } : null)
+      setCompany(prev => {
+        const updatedCompany = prev ? { 
+          ...prev, 
+          ...updateData,
+          // Ensure all optional fields are undefined instead of null
+          description: updateData.description || undefined,
+          cr_number: updateData.cr_number || undefined,
+          vat_number: updateData.vat_number || undefined,
+          address: updateData.address || undefined,
+          phone: updateData.phone || undefined,
+          email: updateData.email || undefined,
+          website: updateData.website || undefined,
+          industry: updateData.industry || undefined,
+          size: updateData.size || undefined,
+          founded_year: updateData.founded_year || undefined,
+          logo_url: updateData.logo_url || undefined
+        } : null
+        
+        console.log('Updating company state:', updatedCompany)
+        return updatedCompany
+      })
       setLogoFile(null)
       setLogoPreview(null)
       setEditing(false)
