@@ -755,7 +755,7 @@ export default function BookingsPage() {
                     onClick={() => handleSort('client')}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>Client Name</span>
+                      <span>{user?.role === 'client' ? 'Provider Name' : 'Client Name'}</span>
                       {getSortIcon('client')}
                     </div>
                   </TableHead>

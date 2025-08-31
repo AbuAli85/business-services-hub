@@ -28,7 +28,8 @@ import {
   BarChart3,
   Settings,
   Copy,
-  ExternalLink
+  ExternalLink,
+  User
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -50,6 +51,12 @@ interface Service {
   total_reviews: number
   created_at: string
   updated_at: string
+  provider?: {
+    id: string
+    full_name: string
+    email: string
+    phone?: string
+  }
 }
 
 interface ServiceStats {
@@ -65,6 +72,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -89,15 +97,33 @@ export default function ServicesPage() {
         return
       }
 
-      // Check if user is a provider
-      const userRole = user.user_metadata?.role
-      if (userRole !== 'provider') {
-        router.push('/dashboard')
+      setUser(user)
+      
+      // Check user role and load appropriate services
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError)
+        // Default to client if profile not found
+        setUserRole('client')
+        await loadServicesForClient()
         return
       }
 
-      setUser(user)
-      await loadServices(user.id)
+      const role = profile.role || 'client'
+      setUserRole(role)
+      
+      if (role === 'provider' || role === 'admin') {
+        // Provider sees their own services
+        await loadServicesForProvider(user.id)
+      } else {
+        // Client sees all available services
+        await loadServicesForClient()
+      }
     } catch (error) {
       console.error('Error loading services:', error)
     } finally {
@@ -105,11 +131,11 @@ export default function ServicesPage() {
     }
   }
 
-  const loadServices = async (userId: string) => {
+  const loadServicesForProvider = async (userId: string) => {
     try {
       const supabase = await getSupabaseClient()
       
-      // First, fetch basic service data
+      // Fetch basic service data for provider
       const { data: services, error } = await supabase
         .from('services')
         .select('*')
@@ -118,38 +144,32 @@ export default function ServicesPage() {
 
       if (error) throw error
 
-      // Fetch statistics for each service
+      // Enrich services with statistics
       const enrichedServices = await Promise.all(
         (services || []).map(async (service) => {
           try {
-            console.log(`🔍 Enriching service: ${service.title} (${service.id})`)
-            
             // Get booking statistics
             const { data: bookings } = await supabase
               .from('bookings')
               .select('status, amount')
               .eq('service_id', service.id)
 
-            // Get review statistics - use two-step approach to avoid 400 errors
-            // First get all reviews for this provider
+            // Get review statistics
             const { data: allReviews } = await supabase
               .from('reviews')
               .select('rating, booking_id')
               .eq('provider_id', service.provider_id)
             
-            // Then get all bookings for this service to find matching reviews
             const { data: serviceBookings } = await supabase
               .from('bookings')
               .select('id')
               .eq('service_id', service.id)
             
-            // Filter reviews that match the service bookings
             const serviceBookingIds = serviceBookings?.map(b => b.id) || []
             const serviceReviews = allReviews?.filter(r => 
               serviceBookingIds.includes(r.booking_id)
             ) || []
 
-            // Calculate statistics
             const totalBookings = bookings?.length || 0
             const totalRevenue = bookings
               ?.filter(b => ['completed', 'in_progress'].includes(b.status))
@@ -159,15 +179,6 @@ export default function ServicesPage() {
               : 0
             const totalReviews = serviceReviews.length || 0
 
-            console.log(`✅ Service ${service.title} enriched:`, {
-              totalBookings,
-              totalRevenue,
-              averageRating,
-              totalReviews,
-              bookingsCount: bookings?.length || 0,
-              reviewsCount: serviceReviews.length
-            })
-
             return {
               ...service,
               total_bookings: totalBookings,
@@ -176,7 +187,7 @@ export default function ServicesPage() {
               total_reviews: totalReviews
             }
           } catch (error) {
-            console.error(`❌ Error enriching service ${service.id}:`, error)
+            console.error(`Error enriching service ${service.id}:`, error)
             return {
               ...service,
               total_bookings: 0,
@@ -188,13 +199,86 @@ export default function ServicesPage() {
         })
       )
 
-      console.log('🎯 All services enriched:', enrichedServices.length)
       setServices(enrichedServices)
-      
-      // Calculate overall statistics
       await fetchServiceStats(userId)
     } catch (error) {
-      console.error('Error fetching services:', error)
+      console.error('Error fetching provider services:', error)
+      toast.error('Failed to load services')
+    }
+  }
+
+  const loadServicesForClient = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Fetch all available services for clients (including pending approval)
+      const { data: services, error } = await supabase
+        .from('services')
+        .select(`
+          *,
+          profiles!services_provider_id_fkey (
+            id,
+            full_name,
+            email,
+            phone
+          )
+        `)
+        .in('status', ['active', 'draft'])
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+
+      if (error) throw error
+
+      // Enrich services with statistics and provider info
+      const enrichedServices = await Promise.all(
+        (services || []).map(async (service) => {
+          try {
+            // Get booking statistics
+            const { data: bookings } = await supabase
+              .from('bookings')
+              .select('status, amount')
+              .eq('service_id', service.id)
+
+            // Get review statistics
+            const { data: reviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .eq('service_id', service.id)
+
+            const totalBookings = bookings?.length || 0
+            const totalRevenue = bookings
+              ?.filter(b => ['completed', 'in_progress'].includes(b.status))
+              .reduce((sum, b) => sum + (b.amount || 0), 0) || 0
+            const averageRating = reviews && reviews.length > 0 
+              ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length 
+              : 0
+            const totalReviews = reviews?.length || 0
+
+            return {
+              ...service,
+              total_bookings: totalBookings,
+              total_revenue: totalRevenue,
+              average_rating: averageRating,
+              total_reviews: totalReviews,
+              provider: service.profiles
+            }
+          } catch (error) {
+            console.error(`Error enriching service ${service.id}:`, error)
+            return {
+              ...service,
+              total_bookings: 0,
+              total_revenue: 0,
+              average_rating: 0,
+              total_reviews: 0,
+              provider: service.profiles
+            }
+          }
+        })
+      )
+
+      setServices(enrichedServices)
+      await fetchServiceStatsForClient()
+    } catch (error) {
+      console.error('Error fetching client services:', error)
       toast.error('Failed to load services')
     }
   }
@@ -204,7 +288,39 @@ export default function ServicesPage() {
       // Use the current services state which already has calculated statistics
       if (services.length > 0) {
         const totalServices = services.length
-        const activeServices = services.filter(s => s.status === 'active' && s.approval_status === 'approved').length
+        const activeServices = services.filter(s => s.status === 'active').length
+        const pendingApproval = services.filter(s => s.approval_status === 'pending').length
+
+        // Calculate totals from the current services state
+        const totalBookings = services.reduce((sum, s) => sum + (s.total_bookings || 0), 0)
+        const totalRevenue = services.reduce((sum, s) => sum + (s.total_revenue || 0), 0)
+        
+        // Calculate average rating from services with ratings
+        const servicesWithRatings = services.filter(s => (s.average_rating || 0) > 0)
+        const averageRating = servicesWithRatings.length > 0 
+          ? servicesWithRatings.reduce((sum, s) => sum + (s.average_rating || 0), 0) / servicesWithRatings.length 
+          : 0
+
+        setStats({
+          totalServices,
+          activeServices,
+          pendingApproval,
+          totalBookings,
+          totalRevenue,
+          averageRating
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching service stats:', error)
+    }
+  }
+
+  const fetchServiceStatsForClient = async () => {
+    try {
+      // Use the current services state which already has calculated statistics
+      if (services.length > 0) {
+        const totalServices = services.length
+        const activeServices = services.filter(s => s.status === 'active').length
         const pendingApproval = services.filter(s => s.approval_status === 'pending').length
         
         // Calculate totals from the enriched services
@@ -217,16 +333,6 @@ export default function ServicesPage() {
           ? servicesWithRatings.reduce((sum, s) => sum + (s.average_rating || 0), 0) / servicesWithRatings.length 
           : 0
 
-        console.log('📊 Service Stats Calculated:', {
-          totalServices,
-          activeServices,
-          pendingApproval,
-          totalBookings,
-          totalRevenue,
-          averageRating,
-          servicesCount: services.length
-        })
-
         setStats({
           totalServices,
           activeServices,
@@ -235,31 +341,44 @@ export default function ServicesPage() {
           totalRevenue,
           averageRating
         })
-      } else {
-        // If no services yet, fetch basic service count
-        const supabase = await getSupabaseClient()
-        const { data: basicServices } = await supabase
-          .from('services')
-          .select('status, approval_status')
-          .eq('provider_id', userId)
-
-        if (basicServices) {
-          const totalServices = basicServices.length
-          const activeServices = basicServices.filter(s => s.status === 'active' && s.approval_status === 'approved').length
-          const pendingApproval = basicServices.filter(s => s.approval_status === 'pending').length
-
-          setStats({
-            totalServices,
-            activeServices,
-            pendingApproval,
-            totalBookings: 0,
-            totalRevenue: 0,
-            averageRating: 0
-          })
-        }
       }
     } catch (error) {
-      console.error('Error fetching service stats:', error)
+      console.error('Error fetching service stats for client:', error)
+    }
+  }
+
+  const handleDuplicateService = async (service: Service) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { data: newService, error } = await supabase
+        .from('services')
+        .insert({
+          title: `${service.title} (Copy)`,
+          description: service.description,
+          category: service.category,
+          base_price: service.base_price,
+          currency: service.currency,
+          status: 'draft',
+          approval_status: 'pending',
+          provider_id: user.id
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      toast.success('Service duplicated successfully')
+      
+      // Refresh services
+      if (userRole === 'provider') {
+        await loadServicesForProvider(user.id)
+      } else {
+        await loadServicesForClient()
+      }
+    } catch (error) {
+      console.error('Error duplicating service:', error)
+      toast.error('Failed to duplicate service')
     }
   }
 
@@ -278,12 +397,13 @@ export default function ServicesPage() {
 
       if (error) throw error
 
-      setServices(prev => prev.filter(s => s.id !== serviceId))
       toast.success('Service deleted successfully')
       
-      // Refresh stats
-      if (user) {
-        fetchServiceStats(user.id)
+      // Refresh services
+      if (userRole === 'provider') {
+        await loadServicesForProvider(user.id)
+      } else {
+        await loadServicesForClient()
       }
     } catch (error) {
       console.error('Error deleting service:', error)
@@ -291,40 +411,9 @@ export default function ServicesPage() {
     }
   }
 
-  const handleDuplicateService = async (service: Service) => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const { data: newService, error } = await supabase
-        .from('services')
-        .insert({
-          title: `${service.title} (Copy)`,
-          description: service.description,
-          category: service.category,
-          base_price: service.base_price,
-          currency: service.currency,
-          provider_id: user.id,
-          status: 'draft',
-          approval_status: 'pending'
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      setServices(prev => [newService, ...prev])
-      toast.success('Service duplicated successfully')
-      
-      // Refresh stats
-      fetchServiceStats(user.id)
-    } catch (error) {
-      console.error('Error duplicating service:', error)
-      toast.error('Failed to duplicate service')
-    }
-  }
-
+  // Filter services based on search and filters
   const filteredServices = services.filter(service => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = !searchTerm || 
       service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.description.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -335,71 +424,58 @@ export default function ServicesPage() {
   })
 
   const getStatusBadge = (status: string) => {
-    const config = {
-      active: { color: 'bg-green-100 text-green-800', label: 'Active' },
-      inactive: { color: 'bg-gray-100 text-gray-800', label: 'Inactive' },
-      draft: { color: 'bg-yellow-100 text-yellow-800', label: 'Draft' }
+    switch (status) {
+      case 'active':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+      case 'inactive':
+        return <Badge variant="secondary">Inactive</Badge>
+      case 'draft':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Draft</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
     }
-    
-    const statusConfig = config[status as keyof typeof config] || config.draft
-    return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
   }
 
-  const getApprovalBadge = (status: string) => {
-    const config = {
-      approved: { color: 'bg-green-100 text-green-800', label: 'Approved' },
-      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
-      rejected: { color: 'bg-red-100 text-red-800', label: 'Rejected' }
+  const getApprovalBadge = (approvalStatus: string) => {
+    switch (approvalStatus) {
+      case 'approved':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Approved</Badge>
+      case 'pending':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>
+      default:
+        return <Badge variant="outline">{approvalStatus}</Badge>
     }
-    
-    const statusConfig = config[status as keyof typeof config] || config.pending
-    return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-  }
-
-  const getRatingStars = (rating: number) => {
-    const stars = []
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Star
-          key={i}
-          className={`h-4 w-4 ${
-            i <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-          }`}
-        />
-      )
-    }
-    return stars
   }
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading services...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-lg">Loading services...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Services</h1>
-          <p className="text-gray-600 mt-2">Manage and track your service offerings</p>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={() => router.push('/dashboard/services/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Service
-          </Button>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          {userRole === 'provider' ? 'My Services' : 'Available Services'}
+        </h1>
+        <p className="text-gray-600">
+          {userRole === 'provider' 
+            ? 'Manage your service offerings and track performance'
+            : 'Browse and book services from professional providers (including services pending approval)'
+          }
+        </p>
       </div>
 
-      {/* Service Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Service Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Services</CardTitle>
@@ -454,7 +530,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Search and Filters */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Search & Filters</CardTitle>
@@ -485,8 +561,8 @@ export default function ServicesPage() {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -501,75 +577,120 @@ export default function ServicesPage() {
                 <SelectItem value="marketing">Marketing</SelectItem>
                 <SelectItem value="consulting">Consulting</SelectItem>
                 <SelectItem value="translation">Translation</SelectItem>
+                <SelectItem value="PRO Services">PRO Services</SelectItem>
+                <SelectItem value="IT Services">IT Services</SelectItem>
+                <SelectItem value="Legal Services">Legal Services</SelectItem>
+                <SelectItem value="Design & Branding">Design & Branding</SelectItem>
+                <SelectItem value="Accounting">Accounting</SelectItem>
+                <SelectItem value="Content Creation">Content Creation</SelectItem>
+                <SelectItem value="Digital Marketing">Digital Marketing</SelectItem>
+                <SelectItem value="Testing">Testing</SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* Approval Status Filter for Clients */}
+            {userRole === 'client' && (
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Approved Services</SelectItem>
+                  <SelectItem value="draft">Pending Approval</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Advanced Filters */}
           {showFilters && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort By" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at">Created Date</SelectItem>
-                  <SelectItem value="title">Title</SelectItem>
-                  <SelectItem value="base_price">Price</SelectItem>
-                  <SelectItem value="total_bookings">Bookings</SelectItem>
-                  <SelectItem value="average_rating">Rating</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort Order" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">Newest First</SelectItem>
-                  <SelectItem value="asc">Oldest First</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchTerm('')
-                  setStatusFilter('all')
-                  setCategoryFilter('all')
-                  setSortBy('created_at')
-                  setSortOrder('desc')
-                }}
-              >
-                Clear All Filters
-              </Button>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Sort By</label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_at">Created Date</SelectItem>
+                    <SelectItem value="title">Title</SelectItem>
+                    <SelectItem value="base_price">Price</SelectItem>
+                    <SelectItem value="total_bookings">Bookings</SelectItem>
+                    <SelectItem value="average_rating">Rating</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Sort Order</label>
+                <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">Descending</SelectItem>
+                    <SelectItem value="asc">Ascending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchTerm('')
+                    setStatusFilter('all')
+                    setCategoryFilter('all')
+                    setSortBy('created_at')
+                    setSortOrder('desc')
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Services List */}
-      <div className="space-y-4">
+      {/* Create Service Button for Providers */}
+      {userRole === 'provider' && (
+        <div className="mb-6">
+          <Button 
+            onClick={() => router.push('/dashboard/services/create')}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Service
+          </Button>
+        </div>
+      )}
+
+      {/* Services Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredServices.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <Card className="col-span-full">
+            <CardContent className="text-center py-12">
+              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 {searchTerm || statusFilter !== 'all' ? 'No services match your filters' : 'No services yet'}
               </h3>
               <p className="text-gray-600">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Try adjusting your search criteria or filters.'
-                  : 'Create your first service to start receiving bookings.'
+                  : userRole === 'provider' 
+                    ? 'Create your first service to start receiving bookings.'
+                    : 'No services are currently available.'
                 }
               </p>
-              <Button 
-                className="mt-4"
-                onClick={() => router.push('/dashboard/services/create')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Service
-              </Button>
+              {userRole === 'provider' && (
+                <Button 
+                  className="mt-4"
+                  onClick={() => router.push('/dashboard/services/create')}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Service
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -597,6 +718,13 @@ export default function ServicesPage() {
                           {getStatusBadge(service.status)}
                           {getApprovalBadge(service.approval_status)}
                           <Badge variant="outline">{service.category}</Badge>
+                          {/* Show provider info for clients */}
+                          {userRole === 'client' && service.provider && (
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {service.provider.full_name}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       
@@ -609,34 +737,86 @@ export default function ServicesPage() {
                           <Eye className="h-4 w-4 mr-2" />
                           View
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDuplicateService(service)}
-                        >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteService(service.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {/* Only show edit/delete actions for providers */}
+                        {userRole === 'provider' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDuplicateService(service)}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteService(service.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        {/* Show book service button for clients */}
+                        {userRole === 'client' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Book Service
+                          </Button>
+                        )}
                       </div>
                     </div>
                     
                     <p className="text-gray-600 mb-4 line-clamp-2">{service.description}</p>
+                    
+                    {/* Provider contact info for clients */}
+                    {userRole === 'client' && service.provider && (
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium text-blue-900">Provider Information</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-gray-600">Name:</span> {service.provider.full_name}
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Email:</span> {service.provider.email}
+                          </div>
+                          {service.provider.phone && (
+                            <div>
+                              <span className="text-gray-600">Phone:</span> {service.provider.phone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Status note for draft services */}
+                    {userRole === 'client' && service.status === 'draft' && (
+                      <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-yellow-600" />
+                          <span className="text-sm text-yellow-800">
+                            This service is currently under review. You can still book it, but it may take some time to be fully approved.
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     
                     {/* Service Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -656,45 +836,24 @@ export default function ServicesPage() {
                       
                       <div className="text-center p-3 bg-gray-50 rounded-lg">
                         <div className="text-2xl font-bold text-purple-600">
-                          {formatCurrency(service.total_revenue || 0, service.currency)}
+                          {service.average_rating?.toFixed(1) || '0.0'}
                         </div>
-                        <div className="text-xs text-gray-600">Total Revenue</div>
+                        <div className="text-xs text-gray-600">Rating</div>
                       </div>
                       
                       <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-center space-x-1 mb-1">
-                          {getRatingStars(service.average_rating || 0)}
+                        <div className="text-2xl font-bold text-orange-600">
+                          {service.total_reviews || 0}
                         </div>
-                        <div className="text-xs text-gray-600">
-                          {service.average_rating?.toFixed(1) || '0.0'} ({service.total_reviews || 0} reviews)
-                        </div>
+                        <div className="text-xs text-gray-600">Reviews</div>
                       </div>
                     </div>
                     
-                    {/* Additional Info */}
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t text-sm text-gray-600">
-                      <div className="flex items-center space-x-4">
+                    {/* Service Meta */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between text-sm text-gray-500">
                         <span>Created: {formatDate(service.created_at)}</span>
                         <span>Updated: {formatDate(service.updated_at)}</span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/services/${service.id}/analytics`)}
-                        >
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          Analytics
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/services/${service.id}/packages`)}
-                        >
-                          <Package className="h-4 w-4 mr-2" />
-                          Packages
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -704,35 +863,6 @@ export default function ServicesPage() {
           ))
         )}
       </div>
-
-      {/* Quick Actions */}
-      {filteredServices.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
-                <p className="text-sm text-gray-600">Manage your services efficiently</p>
-              </div>
-              <div className="flex gap-3">
-                <Button 
-                  onClick={() => router.push('/dashboard/services/create')}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Service
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => router.push('/dashboard/services/analytics')}
-                >
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Analytics
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
-}
+} 
