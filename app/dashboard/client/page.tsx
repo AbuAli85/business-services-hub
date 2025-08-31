@@ -271,21 +271,36 @@ export default function ClientDashboard() {
       if (bookings) {
         // Fetch provider information separately
         const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-        const { data: providers } = await supabase
-          .from('profiles')
-          .select('id, full_name, company_name')
-          .in('id', providerIds)
+        
+        if (providerIds.length > 0) {
+          const { data: providers, error: providerError } = await supabase
+            .from('profiles')
+            .select('id, full_name, company_name')
+            .in('id', providerIds)
 
-        const enrichedBookings = bookings.map((b: any) => {
-          const provider = providers?.find(p => p.id === b.provider_id)
-          return {
-            ...b,
-            provider_name: provider?.full_name || 'Unknown Provider',
-            provider_company: provider?.company_name
+          if (providerError) {
+            console.error('Error fetching providers:', providerError)
           }
-        })
 
-        setRecentBookings(enrichedBookings)
+          const enrichedBookings = bookings.map((b: any) => {
+            const provider = providers?.find(p => p.id === b.provider_id)
+            return {
+              ...b,
+              provider_name: provider?.full_name || 'Unknown Provider',
+              provider_company: provider?.company_name || 'Unknown Company'
+            }
+          })
+
+          setRecentBookings(enrichedBookings)
+        } else {
+          // If no provider IDs, still set the bookings with default provider info
+          const enrichedBookings = bookings.map((b: any) => ({
+            ...b,
+            provider_name: 'Unknown Provider',
+            provider_company: 'Unknown Company'
+          }))
+          setRecentBookings(enrichedBookings)
+        }
       }
     } catch (error) {
       console.error('Error fetching recent bookings:', error)

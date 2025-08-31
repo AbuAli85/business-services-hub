@@ -197,7 +197,7 @@ export default function MessagesPage() {
       // Fetch booking information
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('id, title')
+        .select('id, title, service_title')
         .in('id', Array.from(bookingIds))
       
       // Process conversations
@@ -214,16 +214,16 @@ export default function MessagesPage() {
             participant_name: participant?.full_name || 'Unknown User',
             participant_avatar: participant?.avatar_url,
             participant_role: participant?.role || 'user',
-            last_message: msg.content,
+            last_message: msg.content || 'No message content',
             last_message_time: msg.created_at,
             unread_count: isSender ? 0 : (msg.read_at ? 0 : 1),
             booking_id: msg.booking_id,
-            booking_title: booking?.title
+            booking_title: booking?.title || booking?.service_title || 'General Conversation'
           })
         } else {
           const existing = conversationMap.get(participantId)!
           if (new Date(msg.created_at) > new Date(existing.last_message_time || '')) {
-            existing.last_message = msg.content
+            existing.last_message = msg.content || 'No message content'
             existing.last_message_time = msg.created_at
             if (!isSender && !msg.read_at) {
               existing.unread_count += 1
@@ -415,17 +415,17 @@ export default function MessagesPage() {
 
   return (
     <div className="container mx-auto p-6 h-[calc(100vh-120px)]">
-      <div className="flex h-full space-x-6">
+      <div className="flex h-full space-x-6 bg-white rounded-lg shadow-sm border">
         {/* Conversations Sidebar */}
-        <div className="w-80 flex flex-col">
+        <div className="w-80 flex flex-col border-r border-gray-200">
           {/* Header */}
-          <div className="mb-4">
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-            <p className="text-gray-600">Stay connected with your clients and providers</p>
+            <p className="text-gray-600 text-sm">Stay connected with your clients and providers</p>
           </div>
 
           {/* Search and Filters */}
-          <div className="space-y-3 mb-4">
+          <div className="p-4 space-y-3 border-b border-gray-200">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -437,7 +437,7 @@ export default function MessagesPage() {
             </div>
             
             <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
@@ -450,63 +450,73 @@ export default function MessagesPage() {
           </div>
 
           {/* Conversations List */}
-          <div className="flex-1 overflow-y-auto space-y-2">
+          <div className="flex-1 overflow-y-auto">
             {filteredConversations.length === 0 ? (
-              <div className="text-center py-8">
-                <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No conversations yet</p>
+              <div className="text-center py-12 px-4">
+                <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">No conversations yet</p>
+                <p className="text-gray-400 text-sm">Start a conversation to connect with others</p>
               </div>
             ) : (
               filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border-b border-gray-100 cursor-pointer transition-all hover:bg-gray-50 ${
                     selectedConversation?.id === conversation.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                      : ''
                   }`}
                   onClick={() => setSelectedConversation(conversation)}
                 >
                   <div className="flex items-start space-x-3">
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-12 w-12 flex-shrink-0">
                       <AvatarImage src={conversation.participant_avatar} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                         {conversation.participant_name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-medium text-gray-900 truncate">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900 truncate">
                           {conversation.participant_name}
                         </h3>
                         {conversation.unread_count > 0 && (
-                          <Badge className="bg-blue-500 text-white text-xs">
+                          <Badge className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
                             {conversation.unread_count}
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="flex items-center space-x-2 text-xs text-gray-500 mb-1">
-                        <Badge variant="outline" className="text-xs">
-                          {conversation.participant_role}
+                      <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            conversation.participant_role === 'provider' 
+                              ? 'border-blue-200 text-blue-700 bg-blue-50'
+                              : conversation.participant_role === 'client'
+                              ? 'border-green-200 text-green-700 bg-green-50'
+                              : 'border-gray-200 text-gray-700 bg-gray-50'
+                          }`}
+                        >
+                          {conversation.participant_role === 'provider' ? 'Provider' :
+                           conversation.participant_role === 'client' ? 'Client' :
+                           conversation.participant_role === 'admin' ? 'Admin' : 'User'}
                         </Badge>
                         {conversation.booking_title && (
-                          <span className="truncate">• {conversation.booking_title}</span>
+                          <span className="truncate text-gray-400">• {conversation.booking_title}</span>
                         )}
                       </div>
                       
                       {conversation.last_message && (
-                        <p className="text-sm text-gray-600 truncate">
+                        <p className="text-sm text-gray-600 truncate leading-relaxed">
                           {conversation.last_message}
                         </p>
                       )}
                       
-                      {conversation.last_message_time && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {getMessageTime(conversation.last_message_time)}
-                        </p>
-                      )}
+                      <div className="mt-2 text-xs text-gray-400">
+                        {conversation.last_message_time ? formatDate(conversation.last_message_time) : 'No messages'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -520,41 +530,52 @@ export default function MessagesPage() {
           {selectedConversation ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b bg-gray-50">
+              <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
+                    <Avatar className="h-12 w-12">
                       <AvatarImage src={selectedConversation.participant_avatar} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                         {selectedConversation.participant_name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     
                     <div>
-                      <h3 className="font-medium text-gray-900">
+                      <h3 className="font-semibold text-gray-900 text-lg">
                         {selectedConversation.participant_name}
                       </h3>
                       <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Badge variant="outline">
-                          {selectedConversation.participant_role}
+                        <Badge 
+                          variant="outline" 
+                          className={`px-2 py-1 rounded-full ${
+                            selectedConversation.participant_role === 'provider' 
+                              ? 'border-blue-200 text-blue-700 bg-blue-50'
+                              : selectedConversation.participant_role === 'client'
+                              ? 'border-green-200 text-green-700 bg-green-50'
+                              : 'border-gray-200 text-gray-700 bg-gray-50'
+                          }`}
+                        >
+                          {selectedConversation.participant_role === 'provider' ? 'Provider' :
+                           selectedConversation.participant_role === 'client' ? 'Client' :
+                           selectedConversation.participant_role === 'admin' ? 'Admin' : 'User'}
                         </Badge>
                         {selectedConversation.booking_title && (
-                          <span>• {selectedConversation.booking_title}</span>
+                          <span className="text-gray-400">• {selectedConversation.booking_title}</span>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="hover:bg-blue-50 hover:border-blue-200">
                       <Phone className="h-4 w-4 mr-2" />
                       Call
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="hover:bg-green-50 hover:border-green-200">
                       <Video className="h-4 w-4 mr-2" />
                       Video
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="hover:bg-purple-50 hover:border-purple-200">
                       <Mail className="h-4 w-4 mr-2" />
                       Email
                     </Button>
@@ -563,12 +584,12 @@ export default function MessagesPage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
                 {messages.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No messages yet</p>
-                    <p className="text-sm text-gray-500">Start the conversation!</p>
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">No messages yet</p>
+                    <p className="text-gray-400 text-sm">Start the conversation by sending a message!</p>
                   </div>
                 ) : (
                   messages.map((message) => (
@@ -579,45 +600,29 @@ export default function MessagesPage() {
                       <div className={`max-w-xs lg:max-w-md ${
                         message.sender_id === user.id ? 'order-2' : 'order-1'
                       }`}>
-                        <div className={`p-3 rounded-lg ${
+                        <div className={`p-4 rounded-2xl shadow-sm ${
                           message.sender_id === user.id
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-900'
+                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                            : 'bg-white text-gray-900 border border-gray-200'
                         }`}>
                           {message.message_type === 'text' ? (
-                            <p>{message.content}</p>
+                            <p className="leading-relaxed">{message.content}</p>
                           ) : (
                             <div className="space-y-2">
                               <div className="flex items-center space-x-2">
                                 {getFileIcon(message.message_type, message.file_name)}
                                 <span className="font-medium">{message.file_name}</span>
                               </div>
-                              <p className="text-sm opacity-80">
-                                {(message.file_size || 0) / 1024 / 1024 > 1
-                                  ? `${((message.file_size || 0) / 1024 / 1024).toFixed(2)} MB`
-                                  : `${Math.round((message.file_size || 0) / 1024)} KB`
-                                }
-                              </p>
-                              {message.file_url && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => window.open(message.file_url, '_blank')}
-                                  className="w-full"
-                                >
-                                  Download File
-                                </Button>
-                              )}
+                              <p className="text-sm opacity-90">{message.content}</p>
                             </div>
                           )}
                         </div>
-                        
-                        <div className={`text-xs text-gray-500 mt-1 ${
+                        <div className={`text-xs text-gray-400 mt-2 ${
                           message.sender_id === user.id ? 'text-right' : 'text-left'
                         }`}>
-                          {getMessageTime(message.created_at)}
-                          {message.read_at && (
-                            <CheckCircle className="h-3 w-3 inline ml-1 text-blue-500" />
+                          {formatTime(message.created_at)}
+                          {message.sender_id === user.id && message.read_at && (
+                            <span className="ml-2 text-blue-500">✓ Read</span>
                           )}
                         </div>
                       </div>
@@ -628,8 +633,8 @@ export default function MessagesPage() {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t">
-                <div className="flex items-end space-x-2">
+              <div className="p-4 border-t bg-white">
+                <div className="flex items-end space-x-3">
                   <div className="flex-1">
                     <Textarea
                       placeholder="Type your message..."
@@ -637,7 +642,7 @@ export default function MessagesPage() {
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
                       rows={1}
-                      className="resize-none"
+                      className="resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   
@@ -651,16 +656,34 @@ export default function MessagesPage() {
                       aria-label="Upload file"
                     />
                     <label htmlFor="file-upload">
-                      <Button variant="outline" size="sm" disabled={uploading}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={uploading}
+                        className="hover:bg-gray-50 hover:border-gray-300"
+                        title="Attach file"
+                      >
                         <Paperclip className="h-4 w-4" />
                       </Button>
                     </label>
                     
-                    <Button onClick={sendMessage} disabled={!newMessage.trim() || uploading}>
-                      <Send className="h-4 w-4" />
+                    <Button 
+                      onClick={sendMessage} 
+                      disabled={!newMessage.trim() || uploading}
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Send
                     </Button>
                   </div>
                 </div>
+                
+                {uploading && (
+                  <div className="mt-2 text-sm text-gray-500 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                    Uploading file...
+                  </div>
+                )}
               </div>
             </>
           ) : (
