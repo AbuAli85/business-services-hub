@@ -256,12 +256,12 @@ export default function ClientDashboard() {
         .from('bookings')
         .select(`
           id,
-          service_title,
+          service_id,
           provider_id,
           status,
-          amount,
+          subtotal,
+          total_amount,
           currency,
-          scheduled_date,
           created_at
         `)
         .eq('client_id', userId)
@@ -271,41 +271,61 @@ export default function ClientDashboard() {
       if (bookings) {
         console.log('Raw recent bookings:', bookings)
         
+        // Fetch service information separately
+        const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
+        console.log('Service IDs to fetch:', serviceIds)
+        
         // Fetch provider information separately
         const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
         console.log('Provider IDs to fetch:', providerIds)
         
-        if (providerIds.length > 0) {
-          const { data: providers, error: providerError } = await supabase
-            .from('profiles')
-            .select('id, full_name, company_name')
-            .in('id', providerIds)
+        if (serviceIds.length > 0 && providerIds.length > 0) {
+          const [servicesResponse, providersResponse] = await Promise.all([
+            supabase
+              .from('services')
+              .select('id, title')
+              .in('id', serviceIds),
+            supabase
+              .from('profiles')
+              .select('id, full_name, company_name')
+              .in('id', providerIds)
+          ])
 
-          if (providerError) {
-            console.error('Error fetching providers:', providerError)
+          if (servicesResponse.error) {
+            console.error('Error fetching services:', servicesResponse.error)
+          }
+          if (providersResponse.error) {
+            console.error('Error fetching providers:', providersResponse.error)
           }
 
-          console.log('Fetched providers:', providers)
+          console.log('Fetched services:', servicesResponse.data)
+          console.log('Fetched providers:', providersResponse.data)
 
           const enrichedBookings = bookings.map((b: any) => {
-            const provider = providers?.find(p => p.id === b.provider_id)
+            const service = servicesResponse.data?.find(s => s.id === b.service_id)
+            const provider = providersResponse.data?.find(p => p.id === b.provider_id)
+            console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
             console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
             return {
               ...b,
+              service_title: service?.title || 'Unknown Service',
               provider_name: provider?.full_name || 'Unknown Provider',
-              provider_company: provider?.company_name || 'Unknown Company'
+              provider_company: provider?.company_name || 'Unknown Company',
+              amount: b.total_amount || b.subtotal || 0
             }
           })
 
           console.log('Enriched recent bookings:', enrichedBookings)
           setRecentBookings(enrichedBookings)
         } else {
-          console.log('No provider IDs found in recent bookings')
-          // If no provider IDs, still set the bookings with default provider info
+          console.log('No service or provider IDs found in recent bookings')
+          // If no IDs, still set the bookings with default info
           const enrichedBookings = bookings.map((b: any) => ({
             ...b,
+            service_title: 'Unknown Service',
             provider_name: 'Unknown Provider',
-            provider_company: 'Unknown Company'
+            provider_company: 'Unknown Company',
+            amount: b.total_amount || b.subtotal || 0
           }))
           setRecentBookings(enrichedBookings)
         }
@@ -373,58 +393,77 @@ export default function ClientDashboard() {
         .from('bookings')
         .select(`
           id,
-          service_title,
+          service_id,
           provider_id,
-          scheduled_date,
-          scheduled_time,
-          location,
           status,
-          amount,
-          currency
+          created_at
         `)
         .eq('client_id', userId)
-        .in('status', ['approved', 'in_progress'])
-        .gte('scheduled_date', new Date().toISOString())
-        .order('scheduled_date', { ascending: true })
+        .in('status', ['paid', 'in_progress'])
+        .order('created_at', { ascending: true })
         .limit(3)
 
       if (bookings) {
         console.log('Raw upcoming bookings:', bookings)
         
+        // Fetch service information separately
+        const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
+        console.log('Service IDs to fetch:', serviceIds)
+        
         // Fetch provider information separately
         const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
         console.log('Provider IDs to fetch:', providerIds)
         
-        if (providerIds.length > 0) {
-          const { data: providers, error: providerError } = await supabase
-            .from('profiles')
-            .select('id, full_name, company_name')
-            .in('id', providerIds)
+        if (serviceIds.length > 0 && providerIds.length > 0) {
+          const [servicesResponse, providersResponse] = await Promise.all([
+            supabase
+              .from('services')
+              .select('id, title')
+              .in('id', serviceIds),
+            supabase
+              .from('profiles')
+              .select('id, full_name, company_name')
+              .in('id', providerIds)
+          ])
 
-          if (providerError) {
-            console.error('Error fetching providers:', providerError)
+          if (servicesResponse.error) {
+            console.error('Error fetching services:', servicesResponse.error)
+          }
+          if (providersResponse.error) {
+            console.error('Error fetching providers:', providersResponse.error)
           }
 
-          console.log('Fetched providers:', providers)
+          console.log('Fetched services:', servicesResponse.data)
+          console.log('Fetched providers:', providersResponse.data)
 
           const enrichedBookings = bookings.map((b: any) => {
-            const provider = providers?.find(p => p.id === b.provider_id)
+            const service = servicesResponse.data?.find(s => s.id === b.service_id)
+            const provider = providersResponse.data?.find(p => p.id === b.provider_id)
+            console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
             console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
             return {
               ...b,
+              service_title: service?.title || 'Unknown Service',
               provider_name: provider?.full_name || 'Unknown Provider',
-              provider_company: provider?.company_name || 'Unknown Company'
+              provider_company: provider?.company_name || 'Unknown Company',
+              scheduled_date: b.created_at, // Use created_at as fallback since scheduled_date doesn't exist
+              scheduled_time: 'TBD', // This field doesn't exist in the schema
+              location: 'TBD' // This field doesn't exist in the schema
             }
           })
 
           console.log('Enriched upcoming bookings:', enrichedBookings)
           setUpcomingBookings(enrichedBookings)
         } else {
-          console.log('No provider IDs found in upcoming bookings')
+          console.log('No service or provider IDs found in upcoming bookings')
           const enrichedBookings = bookings.map((b: any) => ({
             ...b,
+            service_title: 'Unknown Service',
             provider_name: 'Unknown Provider',
-            provider_company: 'Unknown Company'
+            provider_company: 'Unknown Company',
+            scheduled_date: b.created_at,
+            scheduled_time: 'TBD',
+            location: 'TBD'
           }))
           setUpcomingBookings(enrichedBookings)
         }

@@ -188,7 +188,7 @@ export default function MessagesPage() {
       // Fetch booking information
       const { data: bookings, error: bookingError } = await supabase
         .from('bookings')
-        .select('id, title, service_title')
+        .select('id, service_id')
         .in('id', Array.from(bookingIds))
 
       if (bookingError) {
@@ -197,16 +197,37 @@ export default function MessagesPage() {
 
       console.log('Fetched bookings:', bookings)
       
+      // Fetch service information for the bookings
+      const serviceIds = Array.from(new Set(bookings?.map(b => b.service_id).filter(Boolean) || []))
+      let services: any[] = []
+      
+      if (serviceIds.length > 0) {
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('id, title')
+          .in('id', serviceIds)
+        
+        if (servicesError) {
+          console.error('Error fetching services:', servicesError)
+        } else {
+          services = servicesData || []
+        }
+      }
+      
+      console.log('Fetched services:', services)
+      
       // Process conversations
       conversationsData?.forEach((msg) => {
         const isSender = msg.sender_id === userId
         const participantId = isSender ? msg.receiver_id : msg.sender_id
         const participant = participants?.find(p => p.id === participantId)
         const booking = bookings?.find(b => b.id === msg.booking_id)
+        const service = services?.find(s => s.id === booking?.service_id)
         
         console.log(`Processing message: sender=${msg.sender_id}, receiver=${msg.receiver_id}, participant=${participantId}`)
         console.log(`Found participant:`, participant)
         console.log(`Found booking:`, booking)
+        console.log(`Found service:`, service)
         
         if (!conversationMap.has(participantId)) {
           conversationMap.set(participantId, {
@@ -219,7 +240,7 @@ export default function MessagesPage() {
             last_message_time: msg.created_at,
             unread_count: isSender ? 0 : (msg.read_at ? 0 : 1),
             booking_id: msg.booking_id,
-            booking_title: booking?.title || booking?.service_title || 'General Conversation'
+            booking_title: service?.title || 'General Conversation'
           })
         } else {
           const existing = conversationMap.get(participantId)!
