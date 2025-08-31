@@ -124,6 +124,9 @@ export default function BookingDetailsPage() {
   const [showStatusConfirmation, setShowStatusConfirmation] = useState(false)
   const [pendingStatusChange, setPendingStatusChange] = useState<string>('')
   const [statusChangeReason, setStatusChangeReason] = useState('')
+  const [showFileUpload, setShowFileUpload] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
+  const [isUploading, setIsUploading] = useState(false)
 
   const bookingId = params.id as string
 
@@ -633,22 +636,6 @@ export default function BookingDetailsPage() {
     })
   }
 
-  const getStatusOptions = () => {
-    const currentStatus = booking?.status
-    const options = [
-      { value: 'pending', label: 'Pending', disabled: false },
-      { value: 'in_progress', label: 'In Progress', disabled: false },
-      { value: 'completed', label: 'Completed', disabled: false },
-      { value: 'cancelled', label: 'Cancelled', disabled: false },
-      { value: 'rescheduled', label: 'Rescheduled', disabled: false }
-    ]
-    
-    return options.map(option => ({
-      ...option,
-      disabled: option.value === currentStatus
-    }))
-  }
-
   const getDaysSinceCreation = () => {
     if (!booking || !booking.created_at) return 'N/A'
     const createdAt = new Date(booking.created_at)
@@ -680,6 +667,22 @@ export default function BookingDetailsPage() {
   const getRevenueImpact = () => {
     if (!booking || booking.amount === undefined) return 'N/A'
     return formatCurrency(booking.amount)
+  }
+
+  const getStatusOptions = () => {
+    const currentStatus = booking?.status
+    const options = [
+      { value: 'pending', label: 'Pending', disabled: false },
+      { value: 'in_progress', label: 'In Progress', disabled: false },
+      { value: 'completed', label: 'Completed', disabled: false },
+      { value: 'cancelled', label: 'Cancelled', disabled: false },
+      { value: 'rescheduled', label: 'Rescheduled', disabled: false }
+    ]
+    
+    return options.map(option => ({
+      ...option,
+      disabled: option.value === currentStatus
+    }))
   }
 
   if (loading) {
@@ -1238,7 +1241,7 @@ export default function BookingDetailsPage() {
                 <p className="text-sm text-gray-500 mb-4">
                   Upload contracts, invoices, receipts, or any other documents related to this booking
                 </p>
-                <Button variant="outline" className="mb-2">
+                <Button variant="outline" className="mb-2" onClick={() => setShowFileUpload(true)}>
                   <Upload className="h-4 w-4 mr-2" />
                   Choose Files
                 </Button>
@@ -1252,28 +1255,51 @@ export default function BookingDetailsPage() {
                 <div className="p-4 border rounded-lg bg-blue-50">
                   <h4 className="font-medium text-blue-900 mb-2">Contracts</h4>
                   <p className="text-sm text-blue-700">Service agreements and terms</p>
-                  <div className="mt-2 text-xs text-blue-600">0 files</div>
+                  <div className="mt-2 text-xs text-blue-600">{uploadedFiles.filter(f => f.category === 'contract').length} files</div>
                 </div>
                 <div className="p-4 border rounded-lg bg-green-50">
                   <h4 className="font-medium text-green-900 mb-2">Invoices</h4>
                   <p className="text-sm text-green-700">Billing and payment documents</p>
-                  <div className="mt-2 text-xs text-green-600">0 files</div>
+                  <div className="mt-2 text-xs text-green-600">{uploadedFiles.filter(f => f.category === 'invoice').length} files</div>
                 </div>
                 <div className="p-4 border rounded-lg bg-purple-50">
                   <h4 className="font-medium text-purple-900 mb-2">Deliverables</h4>
                   <p className="text-sm text-purple-700">Completed work and assets</p>
-                  <div className="mt-2 text-xs text-purple-600">0 files</div>
+                  <div className="mt-2 text-xs text-purple-600">{uploadedFiles.filter(f => f.category === 'deliverable').length} files</div>
                 </div>
               </div>
 
               {/* Recent Files */}
               <div>
                 <h4 className="font-medium mb-3">Recent Files</h4>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Paperclip className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No files uploaded yet</p>
-                  <p className="text-sm">Upload your first document to get started</p>
-                </div>
+                {uploadedFiles.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Paperclip className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No files uploaded yet</p>
+                    <p className="text-sm">Upload your first document to get started</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                        <div className="flex items-center space-x-3">
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <h4 className="font-medium">{file.name}</h4>
+                            <p className="text-sm text-muted-foreground">{file.category} • {file.size}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline">{file.category}</Badge>
+                          <Button size="sm" variant="outline">
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1352,6 +1378,82 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* File Upload Modal */}
+      {showFileUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Upload Files</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFileUpload(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="file-category" className="text-sm font-medium mb-2 block">File Category</label>
+                <select 
+                  id="file-category"
+                  aria-label="Select file category"
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="contract">Contract</option>
+                  <option value="invoice">Invoice</option>
+                  <option value="deliverable">Deliverable</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="file-input" className="text-sm font-medium mb-2 block">Choose Files</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Drag & drop files here or click to browse</p>
+                  <input 
+                    id="file-input"
+                    type="file" 
+                    multiple 
+                    className="hidden"
+                    aria-label="Choose files to upload"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  className="flex-1" 
+                  disabled={isUploading}
+                  onClick={() => {
+                    // Mock file upload
+                    const mockFile = {
+                      name: 'Sample Document.pdf',
+                      category: 'contract',
+                      size: '2.5 MB',
+                      uploadedAt: new Date().toISOString()
+                    }
+                    setUploadedFiles(prev => [mockFile, ...prev])
+                    setShowFileUpload(false)
+                    toast.success('File uploaded successfully!')
+                  }}
+                >
+                  {isUploading ? 'Uploading...' : 'Upload Files'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowFileUpload(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
