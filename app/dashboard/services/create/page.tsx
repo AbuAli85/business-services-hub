@@ -204,13 +204,13 @@ export default function CreateServicePage() {
       const filePath = `service-images/${user.id}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('public')
+        .from('service-images')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('public')
+        .from('service-images')
         .getPublicUrl(filePath)
 
       handleInputChange('cover_image_url', publicUrl)

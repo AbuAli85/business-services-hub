@@ -306,13 +306,13 @@ export default function MessagesPage() {
       const filePath = `message-files/${user.id}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('public')
+        .from('message-files')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('public')
+        .from('message-files')
         .getPublicUrl(filePath)
 
       // Send file message
