@@ -91,13 +91,58 @@ export default function EarningsPage() {
       // Fetch payments as earnings for this provider
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('id, amount, currency, status, booking_id, created_at, bookings(service_id, services(title)), client_profile:profiles!client_id(full_name)')
+        .select('id, amount, currency, status, booking_id, created_at')
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
 
       let liveEarnings: Earning[] = []
       if (!paymentsError && paymentsData) {
-        liveEarnings = paymentsData.map((p: any) => ({
+        // Fetch related data separately to avoid complex joins
+        const enrichedPayments = await Promise.all(
+          (paymentsData || []).map(async (p: any) => {
+            try {
+              // Get booking and service info
+              const { data: booking } = await supabase
+                .from('bookings')
+                .select('service_id')
+                .eq('id', p.booking_id)
+                .single()
+              
+              let serviceTitle = 'Service'
+              if (booking?.service_id) {
+                const { data: service } = await supabase
+                  .from('services')
+                  .select('title')
+                  .eq('id', booking.service_id)
+                  .single()
+                serviceTitle = service?.title || 'Service'
+              }
+              
+              // Get client name from the payment's client_id (assuming payments table has client_id)
+              // If not, we'll need to get it from the booking
+              const { data: client } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', p.client_id || '')
+                .single()
+              
+              return {
+                ...p,
+                service_title: serviceTitle,
+                client_name: client?.full_name || 'Client'
+              }
+            } catch (error) {
+              console.error('Error enriching payment:', error)
+              return {
+                ...p,
+                service_title: 'Service',
+                client_name: 'Client'
+              }
+            }
+          })
+        )
+
+        liveEarnings = enrichedPayments.map((p: any) => ({
           id: p.id,
           amount: p.amount || 0,
           currency: (p.currency || 'OMR').toUpperCase(),
@@ -105,8 +150,8 @@ export default function EarningsPage() {
           source: 'service',
           booking_id: p.booking_id,
           created_at: p.created_at,
-          service_title: p.bookings?.services?.title || 'Service',
-          client_name: p.client_profile?.full_name || 'Client'
+          service_title: p.service_title,
+          client_name: p.client_name
         }))
       }
 
@@ -116,10 +161,55 @@ export default function EarningsPage() {
       // Fetch invoices for this provider
       const { data: invoicesData } = await supabase
         .from('invoices')
-        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url, bookings(services(title)), client_profile:profiles!client_id(full_name)')
+        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url')
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
-      setInvoices((invoicesData || []) as any)
+      
+      // Enrich invoices with related data separately
+      const enrichedInvoices = await Promise.all(
+        (invoicesData || []).map(async (invoice: any) => {
+          try {
+            // Get booking and service info
+            const { data: booking } = await supabase
+              .from('bookings')
+              .select('service_id')
+              .eq('id', invoice.booking_id)
+              .single()
+            
+            let serviceTitle = 'Service'
+            if (booking?.service_id) {
+              const { data: service } = await supabase
+                .from('services')
+                .select('title')
+                .eq('id', booking.service_id)
+                .single()
+              serviceTitle = service?.title || 'Service'
+            }
+            
+            // Get client name
+            const { data: client } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', invoice.client_id)
+              .single()
+            
+            return {
+              ...invoice,
+              service_title: serviceTitle,
+              client_name: client?.full_name || 'Unknown Client'
+            }
+          } catch (error) {
+            console.error('Error enriching invoice:', error)
+            return {
+              ...invoice,
+              service_title: 'Service',
+              client_name: 'Unknown Client'
+            }
+          }
+        })
+      )
+      
+      setInvoices(enrichedInvoices as any)
 
       // Calculate stats
       const totalEarnings = liveEarnings

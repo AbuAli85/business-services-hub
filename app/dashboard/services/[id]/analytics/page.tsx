@@ -107,7 +107,7 @@ export default function ServiceAnalyticsPage() {
       // Fetch bookings for this service
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select('*, profiles!bookings_client_id_fkey(full_name, avatar_url)')
+        .select('*')
         .eq('service_id', serviceId)
         .order('created_at', { ascending: false })
 

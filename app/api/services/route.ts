@@ -36,14 +36,6 @@ export async function GET(request: NextRequest) {
       .from('services')
       .select(`
         *,
-        provider:profiles!services_provider_id_fkey(
-          id,
-          full_name,
-          email,
-          phone,
-          company_name,
-          avatar_url
-        ),
         service_packages(
           id,
           name,
@@ -80,6 +72,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 })
     }
     
+    // Fetch provider information separately to avoid complex joins
+    const enrichedServices = await Promise.all(
+      (services || []).map(async (service) => {
+        try {
+          const { data: provider } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, phone, company_name, avatar_url')
+            .eq('id', service.provider_id)
+            .single()
+          
+          return {
+            ...service,
+            provider: provider || { id: '', full_name: 'Unknown Provider', email: '', phone: '', company_name: '', avatar_url: '' }
+          }
+        } catch (error) {
+          console.error('Error enriching service:', error)
+          return {
+            ...service,
+            provider: { id: '', full_name: 'Unknown Provider', email: '', phone: '', company_name: '', avatar_url: '' }
+          }
+        }
+      })
+    )
+    
     // Get total count for pagination
     const { count: totalCount } = await supabase
       .from('services')
@@ -87,7 +103,7 @@ export async function GET(request: NextRequest) {
       .eq('status', status)
     
     return NextResponse.json({
-      services,
+      services: enrichedServices,
       pagination: {
         page,
         limit,
@@ -145,15 +161,7 @@ export async function POST(request: NextRequest) {
         status: 'active',
         created_at: new Date().toISOString()
       })
-      .select(`
-        *,
-        provider:profiles!services_provider_id_fkey(
-          id,
-          full_name,
-          email,
-          company_name
-        )
-      `)
+      .select('*')
       .single()
     
     if (createError) {
@@ -237,15 +245,7 @@ export async function PUT(request: NextRequest) {
         updated_at: new Date().toISOString()
       })
       .eq('id', service_id)
-      .select(`
-        *,
-        provider:profiles!services_provider_id_fkey(
-          id,
-          full_name,
-          email,
-          company_name
-        )
-      `)
+      .select('*')
       .single()
     
     if (updateError) {

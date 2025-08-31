@@ -257,7 +257,7 @@ export default function ClientDashboard() {
         .select(`
           id,
           service_title,
-          provider:profiles!bookings_provider_id_fkey (full_name, company_name),
+          provider_id,
           status,
           amount,
           currency,
@@ -269,11 +269,23 @@ export default function ClientDashboard() {
         .limit(5)
 
       if (bookings) {
-        setRecentBookings(bookings.map((b: any) => ({
-          ...b,
-          provider_name: b.provider?.full_name || 'Unknown Provider',
-          provider_company: b.provider?.company_name
-        })))
+        // Fetch provider information separately
+        const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
+        const { data: providers } = await supabase
+          .from('profiles')
+          .select('id, full_name, company_name')
+          .in('id', providerIds)
+
+        const enrichedBookings = bookings.map((b: any) => {
+          const provider = providers?.find(p => p.id === b.provider_id)
+          return {
+            ...b,
+            provider_name: provider?.full_name || 'Unknown Provider',
+            provider_company: provider?.company_name
+          }
+        })
+
+        setRecentBookings(enrichedBookings)
       }
     } catch (error) {
       console.error('Error fetching recent bookings:', error)
@@ -293,7 +305,7 @@ export default function ClientDashboard() {
             category,
             base_price,
             currency,
-            provider:profiles!services_provider_id_fkey (full_name),
+            provider_id,
             average_rating,
             total_bookings
           )
@@ -302,16 +314,28 @@ export default function ClientDashboard() {
         .limit(5)
 
       if (favorites) {
-        setFavoriteServices(favorites.map((f: any) => ({
-          id: f.service.id,
-          title: f.service.title,
-          category: f.service.category,
-          base_price: f.service.base_price,
-          currency: f.service.currency,
-          provider_name: f.service.provider?.full_name || 'Unknown Provider',
-          average_rating: f.service.average_rating || 0,
-          total_bookings: f.service.total_bookings || 0
-        })))
+        // Fetch provider information separately
+        const providerIds = Array.from(new Set(favorites.map((f: any) => f.service.provider_id).filter(Boolean)))
+        const { data: providers } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', providerIds)
+
+        const enrichedFavorites = favorites.map((f: any) => {
+          const provider = providers?.find(p => p.id === f.service.provider_id)
+          return {
+            id: f.service.id,
+            title: f.service.title,
+            category: f.service.category,
+            base_price: f.service.base_price,
+            currency: f.service.currency,
+            provider_name: provider?.full_name || 'Unknown Provider',
+            average_rating: f.service.average_rating || 0,
+            total_bookings: f.service.total_bookings || 0
+          }
+        })
+
+        setFavoriteServices(enrichedFavorites)
       }
     } catch (error) {
       console.error('Error fetching favorite services:', error)
@@ -327,7 +351,7 @@ export default function ClientDashboard() {
         .select(`
           id,
           service_title,
-          provider:profiles!bookings_provider_id_fkey (full_name),
+          provider_id,
           scheduled_date,
           scheduled_time,
           location,
@@ -340,10 +364,22 @@ export default function ClientDashboard() {
         .limit(3)
 
       if (bookings) {
-        setUpcomingBookings(bookings.map((b: any) => ({
-          ...b,
-          provider_name: b.provider?.full_name || 'Unknown Provider'
-        })))
+        // Fetch provider information separately
+        const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
+        const { data: providers } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', providerIds)
+
+        const enrichedBookings = bookings.map((b: any) => {
+          const provider = providers?.find(p => p.id === b.provider_id)
+          return {
+            ...b,
+            provider_name: provider?.full_name || 'Unknown Provider'
+          }
+        })
+
+        setUpcomingBookings(enrichedBookings)
       }
     } catch (error) {
       console.error('Error fetching upcoming bookings:', error)

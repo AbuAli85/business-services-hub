@@ -69,19 +69,6 @@ export async function GET(request: NextRequest) {
           description,
           category
         ),
-        client:profiles!bookings_client_id_fkey(
-          id,
-          full_name,
-          email,
-          phone
-        ),
-        provider:profiles!bookings_provider_id_fkey(
-          id,
-          full_name,
-          email,
-          phone,
-          company_name
-        ),
         tracking_updates(
           id,
           status,
@@ -135,8 +122,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch tracking data' }, { status: 500 })
     }
     
+    // Fetch client and provider information separately to avoid complex joins
+    const enrichedBookings = await Promise.all(
+      (bookings || []).map(async (booking) => {
+        try {
+          // Get client information
+          const { data: client } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, phone')
+            .eq('id', booking.client_id)
+            .single()
+          
+          // Get provider information
+          const { data: provider } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, phone, company_name')
+            .eq('id', booking.provider_id)
+            .single()
+          
+          return {
+            ...booking,
+            client: client || { id: '', full_name: 'Unknown Client', email: '', phone: '' },
+            provider: provider || { id: '', full_name: 'Unknown Provider', email: '', phone: '', company_name: '' }
+          }
+        } catch (error) {
+          console.error('Error enriching booking:', error)
+          return {
+            ...booking,
+            client: { id: '', full_name: 'Unknown Client', email: '', phone: '' },
+            provider: { id: '', full_name: 'Unknown Provider', email: '', phone: '', company_name: '' }
+          }
+        }
+      })
+    )
+
     // Transform data for better frontend consumption
-    const trackingData = bookings?.map(booking => {
+    const trackingData = enrichedBookings.map(booking => {
       const serviceObj: any = Array.isArray(booking.services)
         ? booking.services[0]
         : booking.services
@@ -157,7 +178,7 @@ export async function GET(request: NextRequest) {
         tracking_updates: booking.tracking_updates || [],
         progress: calculateProgress(booking.tracking_updates || [])
       })
-    }) || []
+    })
     
     return NextResponse.json({ 
       tracking_data: trackingData,

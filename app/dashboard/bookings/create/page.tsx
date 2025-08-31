@@ -125,13 +125,6 @@ export default function CreateBookingPage() {
         .from('services')
         .select(`
           *,
-          provider:profiles!services_provider_id_fkey (
-            id,
-            full_name,
-            company_name,
-            email,
-            phone
-          ),
           packages:service_packages (*)
         `)
         .eq('status', 'active')
@@ -139,7 +132,31 @@ export default function CreateBookingPage() {
 
       if (error) throw error
 
-      setServices(services || [])
+      // Fetch provider information separately to avoid complex joins
+      const enrichedServices = await Promise.all(
+        (services || []).map(async (service) => {
+          try {
+            const { data: provider } = await supabase
+              .from('profiles')
+              .select('id, full_name, company_name, email, phone')
+              .eq('id', service.provider_id)
+              .single()
+            
+            return {
+              ...service,
+              provider: provider || { id: '', full_name: 'Unknown Provider', company_name: '', email: '', phone: '' }
+            }
+          } catch (error) {
+            console.error('Error enriching service:', error)
+            return {
+              ...service,
+              provider: { id: '', full_name: 'Unknown Provider', company_name: '', email: '', phone: '' }
+            }
+          }
+        })
+      )
+
+      setServices(enrichedServices || [])
     } catch (error) {
       console.error('Error fetching services:', error)
       toast.error('Failed to load services')
