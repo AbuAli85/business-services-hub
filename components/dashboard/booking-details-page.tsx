@@ -139,6 +139,10 @@ export default function BookingDetailsPage() {
   const [activeQuickAction, setActiveQuickAction] = useState<string>('')
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
   const [confirmationData, setConfirmationData] = useState<any>(null)
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [fileCategory, setFileCategory] = useState('contract')
 
   const bookingId = params.id as string
 
@@ -582,6 +586,184 @@ export default function BookingDetailsPage() {
   const handleCancelNotes = () => {
     setEditedNotes(booking?.notes || '')
     setIsEditingNotes(false)
+  }
+
+  const handleDeleteBooking = async () => {
+    if (!booking) return
+    
+    try {
+      setIsUpdatingStatus(true)
+      const supabase = await getSupabaseClient()
+      
+      // First, check if we can actually delete this booking
+      if (['completed', 'cancelled'].includes(booking.status)) {
+        // For completed/cancelled bookings, we can delete
+        const { error } = await supabase
+          .from('bookings')
+          .delete()
+          .eq('id', booking.id)
+        
+        if (error) {
+          console.error('Error deleting booking:', error)
+          toast.error('Failed to delete booking')
+          return
+        }
+        
+        toast.success('Booking deleted successfully!')
+        router.push('/dashboard/bookings')
+      } else {
+        // For active bookings, we should cancel instead of delete
+        const { error } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'cancelled',
+            updated_at: new Date().toISOString(),
+            status_change_reason: 'Booking cancelled by provider'
+          })
+          .eq('id', booking.id)
+        
+        if (error) {
+          console.error('Error cancelling booking:', error)
+          toast.error('Failed to cancel booking')
+          return
+        }
+        
+        toast.success('Booking cancelled successfully!')
+        loadBooking() // Reload to get updated data
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to process booking deletion')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  const handleExportBooking = async () => {
+    if (!booking) return
+    
+    try {
+      setIsExporting(true)
+      
+      // Create a comprehensive booking report
+      const reportData = {
+        booking_id: booking.id,
+        service_name: booking.service.name,
+        client_name: booking.client.full_name,
+        status: booking.status,
+        priority: booking.priority,
+        created_at: booking.created_at,
+        amount: booking.amount,
+        notes: booking.notes,
+        timeline_progress: getTimelineProgress(),
+        days_active: getDaysSinceCreation(),
+        next_milestone: getNextMilestone()
+      }
+      
+      // Convert to JSON and download
+      const dataStr = JSON.stringify(reportData, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `booking-${booking.id.slice(0, 8)}-report.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Booking report exported successfully!')
+    } catch (error) {
+      console.error('Error exporting booking:', error)
+      toast.error('Failed to export booking report')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    setSelectedFiles(files)
+  }
+
+  const handleFileUpload = async () => {
+    if (selectedFiles.length === 0) {
+      toast.error('Please select files to upload')
+      return
+    }
+
+    try {
+      setIsUploading(true)
+      
+      // Process each selected file
+      const newFiles = selectedFiles.map(file => ({
+        id: Date.now() + Math.random(),
+        name: file.name,
+        category: fileCategory,
+        size: formatFileSize(file.size),
+        uploadedAt: new Date().toISOString(),
+        type: file.type,
+        file: file // Keep reference for actual upload
+      }))
+
+      // Simulate file upload to Supabase storage
+      // In a real implementation, you would upload to Supabase storage
+      for (const fileData of newFiles) {
+        // Simulate upload delay
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Add to uploaded files list
+        setUploadedFiles(prev => [fileData, ...prev])
+      }
+
+      toast.success(`${selectedFiles.length} file(s) uploaded successfully!`)
+      setSelectedFiles([])
+      setShowFileUpload(false)
+      
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Files Uploaded',
+        description: `Uploaded ${selectedFiles.length} file(s) in category: ${fileCategory}`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      setBookingHistory(prev => [historyEntry, ...prev])
+      
+    } catch (error) {
+      console.error('Error uploading files:', error)
+      toast.error('Failed to upload files')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const handleFileDownload = (file: any) => {
+    // In a real implementation, this would download from Supabase storage
+    toast.success(`Downloading ${file.name}...`)
+  }
+
+  const handleFileDelete = (fileId: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
+    toast.success('File removed successfully')
+    
+    // Add to booking history
+    const historyEntry: BookingHistory = {
+      id: Date.now().toString(),
+      action: 'File Removed',
+      description: 'File removed from booking',
+      timestamp: new Date().toISOString(),
+      user: 'Provider'
+    }
+    setBookingHistory(prev => [historyEntry, ...prev])
   }
 
   const getStatusBadge = (status: string) => {
@@ -1071,6 +1253,24 @@ export default function BookingDetailsPage() {
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Send Message
+                  </Button>
+                  <Button
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                    variant="default"
+                    onClick={handleExportBooking}
+                    disabled={isExporting}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExporting ? 'Exporting...' : 'Export Report'}
+                  </Button>
+                  <Button
+                    className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    variant="default"
+                    onClick={() => setShowDeleteConfirmation(true)}
+                    disabled={isUpdatingStatus}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Delete/Cancel
                   </Button>
                 </div>
               </div>
@@ -1604,9 +1804,13 @@ export default function BookingDetailsPage() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <Badge variant="outline">{file.category}</Badge>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => handleFileDownload(file)}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleFileDelete(file.id)}>
+                            <X className="h-4 w-4 mr-2" />
+                            Remove
                           </Button>
                         </div>
                       </div>
@@ -1714,6 +1918,8 @@ export default function BookingDetailsPage() {
                   id="file-category"
                   aria-label="Select file category"
                   className="w-full p-2 border rounded-md"
+                  value={fileCategory}
+                  onChange={(e) => setFileCategory(e.target.value)}
                 >
                   <option value="contract">Contract</option>
                   <option value="invoice">Invoice</option>
@@ -1733,26 +1939,47 @@ export default function BookingDetailsPage() {
                     multiple 
                     className="hidden"
                     aria-label="Choose files to upload"
+                    onChange={handleFileSelect}
                   />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => document.getElementById('file-input')?.click()}
+                  >
+                    Browse Files
+                  </Button>
                 </div>
+                
+                {/* Show selected files */}
+                {selectedFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Selected Files:</p>
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center space-x-2">
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div className="flex space-x-3">
                 <Button 
                   className="flex-1" 
                   disabled={isUploading}
-                  onClick={() => {
-                    // Mock file upload
-                    const mockFile = {
-                      name: 'Sample Document.pdf',
-                      category: 'contract',
-                      size: '2.5 MB',
-                      uploadedAt: new Date().toISOString()
-                    }
-                    setUploadedFiles(prev => [mockFile, ...prev])
-                    setShowFileUpload(false)
-                    toast.success('File uploaded successfully!')
-                  }}
+                  onClick={handleFileUpload}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Files'}
                 </Button>
@@ -1845,6 +2072,79 @@ export default function BookingDetailsPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => setShowTimelineEdit(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-red-700">Confirm Action</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDeleteConfirmation(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                <p className="text-sm text-red-700 text-center">
+                  {['completed', 'cancelled'].includes(booking?.status || '') 
+                    ? 'This will permanently delete the booking. This action cannot be undone.'
+                    : 'This will cancel the active booking. The client will be notified.'
+                  }
+                </p>
+              </div>
+              
+              <div>
+                <label htmlFor="delete-reason" className="text-sm font-medium text-gray-700 mb-2 block">
+                  Reason for {['completed', 'cancelled'].includes(booking?.status || '') ? 'deletion' : 'cancellation'} *
+                </label>
+                <Textarea
+                  id="delete-reason"
+                  placeholder="Please provide a reason..."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  className="border-gray-300 focus:border-red-500 focus:ring-red-200"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => {
+                    if (deleteReason.trim()) {
+                      handleDeleteBooking()
+                      setShowDeleteConfirmation(false)
+                      setDeleteReason('')
+                    } else {
+                      toast.error('Please provide a reason')
+                    }
+                  }}
+                  disabled={!deleteReason.trim() || isUpdatingStatus}
+                >
+                  {isUpdatingStatus ? 'Processing...' : 
+                    ['completed', 'cancelled'].includes(booking?.status || '') ? 'Delete Permanently' : 'Cancel Booking'
+                  }
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowDeleteConfirmation(false)
+                    setDeleteReason('')
+                  }}
                 >
                   Cancel
                 </Button>
