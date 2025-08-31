@@ -21,6 +21,10 @@ interface InvoiceRecord {
   bookings?: { services?: { title?: string } | null } | null
   clients?: { full_name?: string } | null
   providers?: { full_name?: string } | null
+  // Enriched properties added during data fetching
+  serviceTitle?: string
+  clientName?: string
+  providerName?: string
 }
 
 export default function InvoicesPage() {
@@ -155,14 +159,14 @@ export default function InvoicesPage() {
               {invoices.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="space-y-1">
-                    <div className="font-medium text-gray-900">{inv.serviceTitle}</div>
+                    <div className="font-medium text-gray-900">{inv.serviceTitle || 'Service'}</div>
                     <div className="text-sm text-gray-500 flex items-center gap-3">
                       <span className="inline-flex items-center gap-1"><Calendar className="h-4 w-4" />{new Date(inv.created_at).toLocaleDateString()}</span>
                       <span className="inline-flex items-center gap-1"><Banknote className="h-4 w-4" />{formatCurrency(inv.amount || 0, inv.currency || 'OMR')}</span>
                       {role === 'client' ? (
-                        <span className="inline-flex items-center gap-1"><Building2 className="h-4 w-4" />{inv.providerName}</span>
+                        <span className="inline-flex items-center gap-1"><Building2 className="h-4 w-4" />{inv.providerName || 'Unknown Provider'}</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1"><User className="h-4 w-4" />{inv.clientName}</span>
+                        <span className="inline-flex items-center gap-1"><User className="h-4 w-4" />{inv.clientName || 'Unknown Client'}</span>
                       )}
                     </div>
                     <div className="text-xs">
