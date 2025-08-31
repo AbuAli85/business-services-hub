@@ -48,6 +48,9 @@ interface Booking {
   scheduled_date?: string
   notes?: string
   amount?: number
+  subtotal?: number
+  total_price?: number
+  currency?: string
   service: any
   client: any
 }
@@ -116,7 +119,7 @@ export default function BookingsPage() {
       
       setUser(user)
       
-      // Load bookings for the provider
+      // Load bookings for the provider with enhanced fields
       const { data: bookingsData, error } = await supabase
         .from('bookings')
         .select(`
@@ -127,6 +130,9 @@ export default function BookingsPage() {
           scheduled_date,
           notes,
           amount,
+          subtotal,
+          total_price,
+          currency,
           client_id,
           service_id
         `)
@@ -163,10 +169,7 @@ export default function BookingsPage() {
           .select('id, title, description')
           .in('id', serviceIds)
         
-        if (servicesError) {
-          console.error('Error loading services:', servicesError)
-          // Continue without services data rather than failing completely
-        } else {
+        if (!servicesError) {
           servicesData = services || []
         }
       }
@@ -176,6 +179,9 @@ export default function BookingsPage() {
         const client = clientsData.find(c => c.id === booking.client_id)
         const service = servicesData.find(s => s.id === booking.service_id)
         
+        // Use the best available amount field
+        const displayAmount = booking.subtotal || booking.total_price || booking.amount || 0
+        
         return {
           id: booking.id,
           status: booking.status,
@@ -183,7 +189,10 @@ export default function BookingsPage() {
           created_at: booking.created_at,
           scheduled_date: booking.scheduled_date,
           notes: booking.notes,
-          amount: booking.amount,
+          amount: displayAmount,
+          subtotal: booking.subtotal,
+          total_price: booking.total_price,
+          currency: booking.currency || 'OMR',
           service: {
             name: service?.title || 'Unknown Service',
             description: service?.description
@@ -433,10 +442,10 @@ export default function BookingsPage() {
     })
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number, currency: string = 'OMR') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'OMR'
+      currency: currency
     }).format(amount)
   }
 
@@ -849,8 +858,8 @@ export default function BookingsPage() {
                       <TableCell>{getStatusBadge(booking.status)}</TableCell>
                       <TableCell>{getPriorityBadge(booking.priority)}</TableCell>
                       <TableCell>
-                        {booking.amount ? (
-                          <span className="font-medium">{formatCurrency(booking.amount)}</span>
+                        {booking.amount && booking.amount > 0 ? (
+                          <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
