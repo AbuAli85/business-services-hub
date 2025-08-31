@@ -17,7 +17,7 @@ interface InvoiceRecord {
   currency: string
   status: 'draft' | 'issued' | 'paid' | 'void'
   created_at: string
-  invoice_pdf_url?: string | null
+  pdf_url?: string | null
   bookings?: { services?: { title?: string } | null } | null
   clients?: { full_name?: string } | null
   providers?: { full_name?: string } | null
@@ -47,7 +47,7 @@ export default function InvoicesPage() {
 
       let query = supabase
         .from('invoices')
-        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, invoice_pdf_url')
+        .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, pdf_url')
         .order('created_at', { ascending: false })
 
       if (userRole === 'client') {
@@ -180,8 +180,8 @@ export default function InvoicesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {inv.invoice_pdf_url ? (
-                      <a href={inv.invoice_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50">
+                    {inv.pdf_url ? (
+                      <a href={inv.pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50">
                         <Download className="h-4 w-4 mr-2" /> Download
                       </a>
                     ) : (
