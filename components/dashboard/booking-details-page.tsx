@@ -131,6 +131,14 @@ export default function BookingDetailsPage() {
   const [pendingPriorityChange, setPendingPriorityChange] = useState<string>('')
   const [showTimelineEdit, setShowTimelineEdit] = useState(false)
   const [customTimelineSteps, setCustomTimelineSteps] = useState<any[]>([])
+  const [showQuickActions, setShowQuickActions] = useState(false)
+  const [showExportOptions, setShowExportOptions] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [showClientDetails, setShowClientDetails] = useState(false)
+  const [showServiceDetails, setShowServiceDetails] = useState(false)
+  const [activeQuickAction, setActiveQuickAction] = useState<string>('')
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [confirmationData, setConfirmationData] = useState<any>(null)
 
   const bookingId = params.id as string
 
@@ -736,6 +744,64 @@ export default function BookingDetailsPage() {
     return 'N/A'
   }
 
+  const getBookingScore = () => {
+    if (!booking) return 0
+    
+    let score = 0
+    if (booking.status === 'completed') score += 40
+    if (booking.priority === 'high' || booking.priority === 'urgent') score += 20
+    if (booking.notes) score += 15
+    if (booking.rating && booking.rating >= 4) score += 25
+    
+    return Math.min(score, 100)
+  }
+
+  const getTimeToDeadline = () => {
+    if (!booking || !booking.estimated_duration) return 'N/A'
+    
+    const createdAt = new Date(booking.created_at)
+    const now = new Date()
+    const duration = parseInt(booking.estimated_duration.split(' ')[0])
+    const unit = booking.estimated_duration.split(' ')[1]
+    
+    let deadline: Date
+    if (unit === 'days') {
+      deadline = new Date(createdAt.getTime() + (duration * 24 * 60 * 60 * 1000))
+    } else if (unit === 'hours') {
+      deadline = new Date(createdAt.getTime() + (duration * 60 * 60 * 1000))
+    } else {
+      return 'N/A'
+    }
+    
+    const timeLeft = deadline.getTime() - now.getTime()
+    if (timeLeft <= 0) return 'Overdue'
+    
+    const daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000))
+    const hoursLeft = Math.ceil(timeLeft / (60 * 60 * 1000))
+    
+    if (daysLeft > 1) return `${daysLeft} days`
+    if (daysLeft === 1) return '1 day'
+    if (hoursLeft > 1) return `${hoursLeft} hours`
+    return '1 hour'
+  }
+
+  const getClientEngagement = () => {
+    if (!booking) return 'N/A'
+    
+    // Mock engagement score based on booking data
+    const engagementFactors = [
+      booking.notes ? 20 : 0,
+      booking.rating ? 30 : 0,
+      booking.review ? 25 : 0,
+      ['in_progress', 'completed'].includes(booking.status) ? 25 : 0
+    ]
+    
+    const total = engagementFactors.reduce((sum, factor) => sum + factor, 0)
+    if (total >= 80) return 'High'
+    if (total >= 50) return 'Medium'
+    return 'Low'
+  }
+
   const getStatusOptions = () => {
     const currentStatus = booking?.status
     const options = [
@@ -823,53 +889,137 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      {/* Booking Summary Card */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {getDaysSinceCreation()}
+      {/* Professional Booking Summary Dashboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Key Metrics Card */}
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-blue-900 text-lg">Key Performance Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-blue-600">
+                  {getDaysSinceCreation()}
+                </div>
+                <div className="text-sm text-blue-700 font-medium">Days Active</div>
               </div>
-              <div className="text-sm text-blue-700">Days Active</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {getStatusEfficiency()}
+              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-green-600">
+                  {getStatusEfficiency()}
+                </div>
+                <div className="text-sm text-green-700 font-medium">Response Time</div>
               </div>
-              <div className="text-sm text-green-700">Response Time</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {getTimelineProgress() * 100}%
+              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-purple-600">
+                  {getTimelineProgress() * 100}%
+                </div>
+                <div className="text-sm text-purple-700 font-medium">Progress</div>
               </div>
-              <div className="text-sm text-purple-700">Progress</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {getNextMilestone()}
+              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                <div className="text-2xl font-bold text-orange-600">
+                  {getNextMilestone()}
+                </div>
+                <div className="text-sm text-orange-700 font-medium">Next Action</div>
               </div>
-              <div className="text-sm text-orange-700">Next Action</div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Advanced Insights Card */}
+        <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center space-x-2 text-indigo-900">
+              <BarChart3 className="h-5 w-5" />
+              <span>Professional Analytics & Insights</span>
+            </CardTitle>
+            <CardDescription className="text-indigo-700">Comprehensive performance metrics and business intelligence</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
+                <div className="text-2xl font-bold text-indigo-600">
+                  {getDaysSinceCreation()}
+                </div>
+                <div className="text-sm text-indigo-700 font-medium">Days Active</div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
+                <div className="text-2xl font-bold text-green-600">
+                  {getStatusEfficiency()}
+                </div>
+                <div className="text-sm text-green-700 font-medium">Efficiency Score</div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
+                <div className="text-2xl font-bold text-purple-600">
+                  {getClientSatisfaction()}
+                </div>
+                <div className="text-sm text-purple-700 font-medium">Client Satisfaction</div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
+                <div className="text-2xl font-bold text-orange-600">
+                  {getRevenueImpact()}
+                </div>
+                <div className="text-sm text-orange-700 font-medium">Revenue Impact</div>
+              </div>
+            </div>
+            
+            {/* Advanced Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-200 shadow-sm">
+                <div className="text-lg font-bold text-blue-700 mb-2">
+                  {getBookingHealth()}
+                </div>
+                <div className="text-sm text-blue-600 font-medium">Booking Health</div>
+                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${getBookingHealth() === 'Excellent' ? 100 : getBookingHealth() === 'Good' ? 75 : getBookingHealth() === 'Fair' ? 50 : 25}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-green-200 shadow-sm">
+                <div className="text-lg font-bold text-green-700 mb-2">
+                  {getNextMilestone()}
+                </div>
+                <div className="text-sm text-green-600 font-medium">Next Milestone</div>
+                <div className="mt-2 text-xs text-green-500">Action Required</div>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg border-2 border-purple-200 shadow-sm">
+                <div className="text-lg font-bold text-purple-700 mb-2">
+                  {getTimelineProgress() * 100}%
+                </div>
+                <div className="text-sm text-purple-600 font-medium">Progress</div>
+                <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
+                  <div 
+                    className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${getTimelineProgress() * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Advanced Actions Panel */}
       {showAdvancedActions && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-blue-900">Quick Actions</CardTitle>
-            <CardDescription>Manage this booking efficiently</CardDescription>
+            <CardTitle className="text-blue-900 flex items-center space-x-2">
+              <Zap className="h-5 w-5" />
+              <span>Professional Quick Actions</span>
+            </CardTitle>
+            <CardDescription className="text-blue-700">Manage this booking efficiently with advanced controls</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="status-select" className="text-sm font-medium text-blue-900 mb-2 block">Change Status</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Status Management */}
+              <div className="space-y-3">
+                <label htmlFor="status-select" className="text-sm font-semibold text-blue-900 block">Change Status</label>
                 <select
                   id="status-select"
                   aria-label="Change booking status"
-                  className="w-full p-2 border border-blue-300 rounded-md bg-white"
+                  className="w-full p-3 border-2 border-blue-300 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   value={booking.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   disabled={isUpdatingStatus}
@@ -880,32 +1030,49 @@ export default function BookingDetailsPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-blue-600">Select new status for this booking</p>
               </div>
-              <div>
-                <label htmlFor="priority-select" className="text-sm font-medium text-blue-900 mb-2 block">Priority</label>
+
+              {/* Priority Management */}
+              <div className="space-y-3">
+                <label htmlFor="priority-select" className="text-sm font-semibold text-blue-900 block">Priority Level</label>
                 <select
                   id="priority-select"
                   aria-label="Change booking priority"
-                  className="w-full p-2 border border-blue-300 rounded-md bg-white"
+                  className="w-full p-3 border-2 border-blue-300 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   value={booking.priority}
                   onChange={(e) => handlePriorityChange(e.target.value)}
                 >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="low">Low Priority</option>
+                  <option value="normal">Normal Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="urgent">Urgent Priority</option>
                 </select>
+                <p className="text-xs text-blue-600">Set booking importance level</p>
               </div>
-              <div className="flex items-end">
-                <Button
-                  className="w-full"
-                  variant="default"
-                  onClick={handleMarkComplete}
-                  disabled={isUpdatingStatus || booking.status === 'completed'}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
-                </Button>
+
+              {/* Quick Actions */}
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-blue-900 block">Quick Actions</label>
+                <div className="space-y-2">
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    variant="default"
+                    onClick={handleMarkComplete}
+                    disabled={isUpdatingStatus || booking.status === 'completed'}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
+                  </Button>
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    variant="default"
+                    onClick={() => setActiveTab('messages')}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Send Message
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -984,66 +1151,68 @@ export default function BookingDetailsPage() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Service Information */}
-            <Card>
+            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-md">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-purple-900">
                   <Package className="h-5 w-5" />
                   <span>Service Information</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Service Name</label>
-                  <p className="text-lg font-semibold">{booking.service.name}</p>
+                  <label className="text-sm font-semibold text-purple-700 mb-2 block">Service Name</label>
+                  <p className="text-lg font-bold text-purple-900">{booking.service.name}</p>
                 </div>
                 {booking.service.description && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Description</label>
-                    <p className="text-sm">{booking.service.description}</p>
+                    <label className="text-sm font-semibold text-purple-700 mb-2 block">Description</label>
+                    <p className="text-sm text-purple-800 bg-white p-3 rounded border border-purple-200">{booking.service.description}</p>
                   </div>
                 )}
                 {booking.service.category && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Category</label>
-                    <p className="text-sm">{booking.service.category}</p>
+                    <label className="text-sm font-semibold text-purple-700 mb-2 block">Category</label>
+                    <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
+                      {booking.service.category}
+                    </Badge>
                   </div>
                 )}
                 {booking.estimated_duration && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Estimated Duration</label>
-                    <p className="text-sm">{booking.estimated_duration}</p>
+                    <label className="text-sm font-semibold text-purple-700 mb-2 block">Estimated Duration</label>
+                    <p className="text-sm text-purple-800 bg-white p-3 rounded border border-purple-200">{booking.estimated_duration}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Client Information */}
-            <Card>
+            <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-md">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-green-900">
                   <User className="h-5 w-5" />
                   <span>Client Information</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Client Name</label>
-                  <p className="text-lg font-semibold">{booking.client.full_name}</p>
+                  <label className="text-sm font-semibold text-green-700 mb-2 block">Client Name</label>
+                  <p className="text-lg font-bold text-green-900">{booking.client.full_name}</p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{booking.client.email}</span>
+                <div className="flex items-center space-x-2 bg-white p-3 rounded border border-green-200">
+                  <Mail className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-800">{booking.client.email}</span>
                 </div>
                 {booking.client.phone && (
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{booking.client.phone}</span>
+                  <div className="flex items-center space-x-2 bg-white p-3 rounded border border-green-200">
+                    <Phone className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-800">{booking.client.phone}</span>
                   </div>
                 )}
                 {booking.client.company_name && (
-                  <div className="flex items-center space-x-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{booking.client.company_name}</span>
+                  <div className="flex items-center space-x-2 bg-white p-3 rounded border border-green-200">
+                    <Building className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-800">{booking.client.company_name}</span>
                   </div>
                 )}
               </CardContent>
