@@ -110,7 +110,7 @@ export default function BookingsPage() {
 
     ;(async () => {
       try {
-        // Subscribe to real-time booking updates
+        // Subscribe to real-time booking updates for both client and provider roles
         const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, (update) => {
           if (update.eventType === 'INSERT' || update.eventType === 'UPDATE' || update.eventType === 'DELETE') {
             // Booking updated - refresh data
@@ -118,6 +118,17 @@ export default function BookingsPage() {
           }
         })
         subscriptionKeys.push(`bookings:${user.id}`)
+        
+        // Also subscribe to general bookings channel for broader updates
+        const generalBookingSubscription = await realtimeManager.subscribeToBookings('', (update) => {
+          if (update.eventType === 'INSERT' || update.eventType === 'UPDATE' || update.eventType === 'DELETE') {
+            // Check if this update affects the current user
+            if (update.new && (update.new.client_id === user.id || update.new.provider_id === user.id)) {
+              loadUserAndBookings()
+            }
+          }
+        })
+        subscriptionKeys.push('bookings:')
 
       } catch (error) {
         console.error('Error setting up realtime subscriptions:', error)
@@ -148,9 +159,20 @@ export default function BookingsPage() {
         return
       }
       
-      setUser(user)
+      // Get user profile to determine role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .eq('id', user.id)
+        .single()
       
-      // Load bookings for the provider with enhanced fields
+      if (profile) {
+        setUser({ ...user, ...profile })
+      } else {
+        setUser(user)
+      }
+      
+      // Load bookings for the user (either as client or provider)
       const { data: bookingsData, error } = await supabase
         .from('bookings')
         .select(`
@@ -165,9 +187,10 @@ export default function BookingsPage() {
           total_price,
           currency,
           client_id,
+          provider_id,
           service_id
         `)
-        .eq('provider_id', user.id)
+        .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -175,6 +198,10 @@ export default function BookingsPage() {
         toast.error('Failed to load bookings')
         return
       }
+
+      console.log('Raw bookings data:', bookingsData)
+      console.log('User ID:', user.id)
+      console.log('User role:', profile?.role)
 
       // Load related data separately to avoid relationship conflicts
       const clientIds = Array.from(new Set(bookingsData?.map(b => b.client_id).filter(Boolean) || []))
@@ -213,6 +240,10 @@ export default function BookingsPage() {
         // Use the best available amount field
         const displayAmount = booking.subtotal || booking.total_price || booking.amount || 0
         
+        // Determine if user is viewing as client or provider
+        const isClient = booking.client_id === user.id
+        const isProvider = booking.provider_id === user.id
+        
         return {
           id: booking.id,
           status: booking.status,
@@ -232,7 +263,10 @@ export default function BookingsPage() {
             full_name: client?.full_name || 'Unknown Client',
             email: client?.email || '',
             phone: client?.phone
-          }
+          },
+          // Add relationship info
+          isClient,
+          isProvider
         }
       }) || []
 
