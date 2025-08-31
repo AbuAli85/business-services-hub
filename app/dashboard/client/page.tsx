@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { toast } from 'react-hot-toast'
 
 interface ClientStats {
   totalBookings: number
@@ -134,9 +135,10 @@ export default function ClientDashboard() {
   const checkUserAndFetchData = async () => {
     try {
       const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
       
-      if (!user) {
+      if (userError || !user) {
+        console.error('User authentication error:', userError)
         router.push('/auth/sign-in')
         return
       }
@@ -144,20 +146,28 @@ export default function ClientDashboard() {
       // Check if user is a client
       const userRole = user.user_metadata?.role
       if (userRole !== 'client') {
+        console.log('User is not a client, redirecting to main dashboard')
         router.push('/dashboard')
         return
       }
 
       setUser(user)
       setUserRole(userRole)
-      await Promise.all([
-        fetchClientStats(user.id),
-        fetchRecentBookings(user.id),
-        // fetchFavoriteServices(user.id), // This line is removed as per the edit hint
-        fetchUpcomingBookings(user.id)
-      ])
+      
+      // Fetch data with error handling
+      try {
+        await Promise.all([
+          fetchClientStats(user.id),
+          fetchRecentBookings(user.id),
+          fetchUpcomingBookings(user.id)
+        ])
+      } catch (fetchError) {
+        console.error('Error fetching user data:', fetchError)
+        // Continue with loading state even if some data fails
+      }
     } catch (error) {
       console.error('Error loading client data:', error)
+      toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
@@ -168,10 +178,26 @@ export default function ClientDashboard() {
       const supabase = await getSupabaseClient()
       
       // Get bookings count and spending
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('status, subtotal, currency, created_at')
         .eq('client_id', userId)
+
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError)
+        // Set default stats if bookings can't be fetched
+        setStats({
+          totalBookings: 0,
+          activeBookings: 0,
+          completedBookings: 0,
+          totalSpent: 0,
+          monthlySpent: 0,
+          averageRating: 0,
+          totalReviews: 0,
+          favoriteProviders: 0
+        })
+        return
+      }
 
       const totalBookings = bookings?.length || 0
       const activeBookings = bookings?.filter(b => ['paid', 'in_progress'].includes(b.status)).length || 0
@@ -202,10 +228,14 @@ export default function ClientDashboard() {
       }, 0)
 
       // Get ratings and reviews from the 'reviews' table (not 'service_reviews')
-      const { data: reviews } = await supabase
+      const { data: reviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating')
         .eq('client_id', userId)
+
+      if (reviewsError) {
+        console.error('Error fetching reviews:', reviewsError)
+      }
 
       const totalReviews = reviews?.length || 0
       const averageRating = totalReviews > 0 && reviews
@@ -227,6 +257,17 @@ export default function ClientDashboard() {
       })
     } catch (error) {
       console.error('Error fetching client stats:', error)
+      // Set default stats if there's an error
+      setStats({
+        totalBookings: 0,
+        activeBookings: 0,
+        completedBookings: 0,
+        totalSpent: 0,
+        monthlySpent: 0,
+        averageRating: 0,
+        totalReviews: 0,
+        favoriteProviders: 0
+      })
     }
   }
 
@@ -234,7 +275,7 @@ export default function ClientDashboard() {
     try {
       const supabase = await getSupabaseClient()
       
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -249,70 +290,81 @@ export default function ClientDashboard() {
         .order('created_at', { ascending: false })
         .limit(5)
 
-      if (bookings) {
-        console.log('Raw recent bookings:', bookings)
-        
-        // Fetch service information separately
-        const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
-        console.log('Service IDs to fetch:', serviceIds)
-        
-        // Fetch provider information separately
-        const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-        console.log('Provider IDs to fetch:', providerIds)
-        
-        if (serviceIds.length > 0 && providerIds.length > 0) {
-          const [servicesResponse, providersResponse] = await Promise.all([
-            supabase
-              .from('services')
-              .select('id, title')
-              .in('id', serviceIds),
-            supabase
-              .from('profiles')
-              .select('id, full_name, company_name')
-              .in('id', providerIds)
-          ])
+      if (bookingsError) {
+        console.error('Error fetching recent bookings:', bookingsError)
+        setRecentBookings([])
+        return
+      }
 
-          if (servicesResponse.error) {
-            console.error('Error fetching services:', servicesResponse.error)
-          }
-          if (providersResponse.error) {
-            console.error('Error fetching providers:', providersResponse.error)
-          }
+      if (!bookings || bookings.length === 0) {
+        console.log('No recent bookings found')
+        setRecentBookings([])
+        return
+      }
 
-          console.log('Fetched services:', servicesResponse.data)
-          console.log('Fetched providers:', providersResponse.data)
+      console.log('Raw recent bookings:', bookings)
+      
+      // Fetch service information separately
+      const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
+      console.log('Service IDs to fetch:', serviceIds)
+      
+      // Fetch provider information separately
+      const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
+      console.log('Provider IDs to fetch:', providerIds)
+      
+      if (serviceIds.length > 0 && providerIds.length > 0) {
+        const [servicesResponse, providersResponse] = await Promise.all([
+          supabase
+            .from('services')
+            .select('id, title')
+            .in('id', serviceIds),
+          supabase
+            .from('profiles')
+            .select('id, full_name, company_name')
+            .in('id', providerIds)
+        ])
 
-          const enrichedBookings = bookings.map((b: any) => {
-            const service = servicesResponse.data?.find(s => s.id === b.service_id)
-            const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-            console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
-            console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
-            return {
-              ...b,
-              service_title: service?.title || 'Unknown Service',
-              provider_name: provider?.full_name || 'Unknown Provider',
-              provider_company: provider?.company_name || 'Unknown Company',
-              amount: b.subtotal + (b.subtotal * 0.05) // Default 5% VAT
-            }
-          })
-
-          console.log('Enriched recent bookings:', enrichedBookings)
-          setRecentBookings(enrichedBookings)
-        } else {
-          console.log('No service or provider IDs found in recent bookings')
-          // If no IDs, still set the bookings with default info
-          const enrichedBookings = bookings.map((b: any) => ({
-            ...b,
-            service_title: 'Unknown Service',
-            provider_name: 'Unknown Provider',
-            provider_company: 'Unknown Company',
-            amount: b.subtotal + (b.subtotal * 0.05)
-          }))
-          setRecentBookings(enrichedBookings)
+        if (servicesResponse.error) {
+          console.error('Error fetching services:', servicesResponse.error)
         }
+        if (providersResponse.error) {
+          console.error('Error fetching providers:', providersResponse.error)
+        }
+
+        console.log('Fetched services:', servicesResponse.data)
+        console.log('Fetched providers:', providersResponse.data)
+
+        const enrichedBookings = bookings.map((b: any) => {
+          const service = servicesResponse.data?.find(s => s.id === b.service_id)
+          const provider = providersResponse.data?.find(p => p.id === b.provider_id)
+          console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
+          console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
+          return {
+            ...b,
+            service_title: service?.title || 'Unknown Service',
+            provider_name: provider?.full_name || 'Unknown Provider',
+            provider_company: provider?.company_name || 'Unknown Company',
+            amount: b.subtotal + (b.subtotal * 0.05) // Default 5% VAT
+          }
+        })
+
+        console.log('Enriched recent bookings:', enrichedBookings)
+        setRecentBookings(enrichedBookings)
+      } else {
+        console.log('No service or provider IDs found in recent bookings')
+        // If no IDs, still set the bookings with default info
+        const enrichedBookings = bookings.map((b: any) => ({
+          ...b,
+          service_title: 'Unknown Service',
+          provider_name: 'Unknown Provider',
+          provider_company: 'Unknown Company',
+          amount: b.subtotal + (b.subtotal * 0.05)
+        }))
+        setRecentBookings(enrichedBookings)
       }
     } catch (error) {
       console.error('Error fetching recent bookings:', error)
+      setRecentBookings([])
     }
   }
 
@@ -320,7 +372,7 @@ export default function ClientDashboard() {
     try {
       const supabase = await getSupabaseClient()
       
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -334,73 +386,84 @@ export default function ClientDashboard() {
         .order('created_at', { ascending: true })
         .limit(3)
 
-      if (bookings) {
-        console.log('Raw upcoming bookings:', bookings)
-        
-        // Fetch service information separately
-        const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
-        console.log('Service IDs to fetch:', serviceIds)
-        
-        // Fetch provider information separately
-        const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-        console.log('Provider IDs to fetch:', providerIds)
-        
-        if (serviceIds.length > 0 && providerIds.length > 0) {
-          const [servicesResponse, providersResponse] = await Promise.all([
-            supabase
-              .from('services')
-              .select('id, title')
-              .in('id', serviceIds),
-            supabase
-              .from('profiles')
-              .select('id, full_name, company_name')
-              .in('id', providerIds)
-          ])
+      if (bookingsError) {
+        console.error('Error fetching upcoming bookings:', bookingsError)
+        setUpcomingBookings([])
+        return
+      }
 
-          if (servicesResponse.error) {
-            console.error('Error fetching services:', servicesResponse.error)
-          }
-          if (providersResponse.error) {
-            console.error('Error fetching providers:', providersResponse.error)
-          }
+      if (!bookings || bookings.length === 0) {
+        console.log('No upcoming bookings found')
+        setUpcomingBookings([])
+        return
+      }
 
-          console.log('Fetched services:', servicesResponse.data)
-          console.log('Fetched providers:', providersResponse.data)
+      console.log('Raw upcoming bookings:', bookings)
+      
+      // Fetch service information separately
+      const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
+      console.log('Service IDs to fetch:', serviceIds)
+      
+      // Fetch provider information separately
+      const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
+      console.log('Provider IDs to fetch:', providerIds)
+      
+      if (serviceIds.length > 0 && providerIds.length > 0) {
+        const [servicesResponse, providersResponse] = await Promise.all([
+          supabase
+            .from('services')
+            .select('id, title')
+            .in('id', serviceIds),
+          supabase
+            .from('profiles')
+            .select('id, full_name, company_name')
+            .in('id', providerIds)
+        ])
 
-          const enrichedBookings = bookings.map((b: any) => {
-            const service = servicesResponse.data?.find(s => s.id === b.service_id)
-            const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-            console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
-            console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
-            return {
-              ...b,
-              service_title: service?.title || 'Unknown Service',
-              provider_name: provider?.full_name || 'Unknown Provider',
-              provider_company: provider?.company_name || 'Unknown Company',
-              scheduled_date: b.created_at, // Use created_at as fallback since scheduled_date doesn't exist
-              scheduled_time: 'TBD', // This field doesn't exist in the schema
-              location: 'TBD' // This field doesn't exist in the schema
-            }
-          })
-
-          console.log('Enriched upcoming bookings:', enrichedBookings)
-          setUpcomingBookings(enrichedBookings)
-        } else {
-          console.log('No service or provider IDs found in upcoming bookings')
-          const enrichedBookings = bookings.map((b: any) => ({
-            ...b,
-            service_title: 'Unknown Service',
-            provider_name: 'Unknown Provider',
-            provider_company: 'Unknown Company',
-            scheduled_date: b.created_at,
-            scheduled_time: 'TBD',
-            location: 'TBD'
-          }))
-          setUpcomingBookings(enrichedBookings)
+        if (servicesResponse.error) {
+          console.error('Error fetching services:', servicesResponse.error)
         }
+        if (providersResponse.error) {
+          console.error('Error fetching providers:', providersResponse.error)
+        }
+
+        console.log('Fetched services:', servicesResponse.data)
+        console.log('Fetched providers:', providersResponse.data)
+
+        const enrichedBookings = bookings.map((b: any) => {
+          const service = servicesResponse.data?.find(s => s.id === b.service_id)
+          const provider = providersResponse.data?.find(p => p.id === b.provider_id)
+          console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
+          console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
+          return {
+            ...b,
+            service_title: service?.title || 'Unknown Service',
+            provider_name: provider?.full_name || 'Unknown Provider',
+            provider_company: provider?.company_name || 'Unknown Company',
+            scheduled_date: b.created_at, // Use created_at as fallback since scheduled_date doesn't exist
+            scheduled_time: 'TBD', // This field doesn't exist in the schema
+            location: 'TBD' // This field doesn't exist in the schema
+          }
+        })
+
+        console.log('Enriched upcoming bookings:', enrichedBookings)
+        setUpcomingBookings(enrichedBookings)
+      } else {
+        console.log('No service or provider IDs found in upcoming bookings')
+        const enrichedBookings = bookings.map((b: any) => ({
+          ...b,
+          service_title: 'Unknown Service',
+          provider_name: 'Unknown Provider',
+          provider_company: 'Unknown Company',
+          scheduled_date: b.created_at,
+          scheduled_time: 'TBD',
+          location: 'TBD'
+        }))
+        setUpcomingBookings(enrichedBookings)
       }
     } catch (error) {
       console.error('Error fetching upcoming bookings:', error)
+      setUpcomingBookings([])
     }
   }
 
