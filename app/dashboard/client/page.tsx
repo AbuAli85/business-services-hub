@@ -170,7 +170,7 @@ export default function ClientDashboard() {
       // Get bookings count and spending
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('status, subtotal, total_amount, currency, created_at')
+        .select('status, subtotal, vat_amount, currency, created_at')
         .eq('client_id', userId)
 
       const totalBookings = bookings?.length || 0
@@ -179,7 +179,7 @@ export default function ClientDashboard() {
       
       const totalSpent = bookings
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
-        .reduce((sum, b) => sum + (b.total_amount || b.subtotal || 0), 0) || 0
+        .reduce((sum, b) => sum + (b.subtotal || 0) + (b.vat_amount || 0), 0) || 0
 
       // Get monthly spending
       const currentMonth = new Date().getMonth()
@@ -191,7 +191,7 @@ export default function ClientDashboard() {
                ['completed', 'in_progress'].includes(b.status)
       }) || []
       
-      const monthlySpent = monthlyBookings.reduce((sum, b) => sum + (b.total_amount || b.subtotal || 0), 0)
+      const monthlySpent = monthlyBookings.reduce((sum, b) => sum + (b.subtotal || 0) + (b.vat_amount || 0), 0)
 
       // Get ratings and reviews from the 'reviews' table (not 'service_reviews')
       const { data: reviews } = await supabase
@@ -234,7 +234,7 @@ export default function ClientDashboard() {
           provider_id,
           status,
           subtotal,
-          total_amount,
+          vat_amount,
           currency,
           created_at
         `)
@@ -285,7 +285,7 @@ export default function ClientDashboard() {
               service_title: service?.title || 'Unknown Service',
               provider_name: provider?.full_name || 'Unknown Provider',
               provider_company: provider?.company_name || 'Unknown Company',
-              amount: b.total_amount || b.subtotal || 0
+              amount: b.subtotal + b.vat_amount
             }
           })
 
@@ -299,7 +299,7 @@ export default function ClientDashboard() {
             service_title: 'Unknown Service',
             provider_name: 'Unknown Provider',
             provider_company: 'Unknown Company',
-            amount: b.total_amount || b.subtotal || 0
+            amount: b.subtotal + b.vat_amount
           }))
           setRecentBookings(enrichedBookings)
         }
