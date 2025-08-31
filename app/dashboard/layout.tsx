@@ -19,11 +19,7 @@ import {
   Building2,
   Users,
   BarChart3,
-  FileText,
-  Bell,
-  Target,
-  Activity,
-  Webhook
+  FileText
 } from 'lucide-react'
 
 interface UserProfile {
@@ -200,6 +196,7 @@ export default function DashboardLayout({
       { name: 'Dashboard', href: '/dashboard', icon: Home },
       { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
       { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
+      { name: 'Profile', href: '/dashboard/profile', icon: User },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ]
 
@@ -208,29 +205,23 @@ export default function DashboardLayout({
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
         { name: 'Users', href: '/dashboard/admin/users', icon: Users },
         { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
-        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText },
-        { name: 'Profile', href: '/dashboard/profile', icon: User }
+        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText }
       )
     }
 
     if (user.role === 'provider') {
       baseItems.splice(1, 0, 
         { name: 'My Services', href: `/dashboard/services`, icon: Building2 },
-        { name: 'Digital Marketing', href: '/dashboard/provider/digital-marketing', icon: Target },
-        { name: 'Edge Functions Monitor', href: '/dashboard/monitor', icon: Activity },
-        { name: 'Integration Monitor', href: '/dashboard/integration', icon: Webhook },
         { name: 'Company', href: '/dashboard/company', icon: Building2 },
         { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
-        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText },
-        { name: 'Profile', href: '/dashboard/profile', icon: User }
+        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
       )
     }
 
     if (user.role === 'client') {
       baseItems.splice(1, 0, 
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
-        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText },
-        { name: 'Profile', href: '/dashboard/profile', icon: User }
+        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
       )
     }
 

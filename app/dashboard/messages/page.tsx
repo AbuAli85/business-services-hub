@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { realtimeManager } from '@/lib/realtime'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -91,6 +92,43 @@ export default function MessagesPage() {
   useEffect(() => {
     checkUserAndFetchData()
   }, [])
+
+  // Real-time message updates
+  useEffect(() => {
+    if (!user?.id) return
+
+    let currentUserId: string | null = null
+
+    ;(async () => {
+      try {
+        currentUserId = user.id
+
+        // Subscribe to real-time message updates
+        await realtimeManager.subscribeToMessages(user.id, (update) => {
+          if (update.eventType === 'INSERT') {
+            // New message - refresh conversations and messages
+            fetchConversations(user.id)
+            if (selectedConversation) {
+              fetchMessages(selectedConversation.id)
+            }
+          } else if (update.eventType === 'UPDATE') {
+            // Message updated (e.g., read status) - refresh if needed
+            if (selectedConversation) {
+              fetchMessages(selectedConversation.id)
+            }
+          }
+        })
+      } catch (error) {
+        console.error('Failed to subscribe to real-time messages:', error)
+      }
+    })()
+
+    return () => {
+      if (currentUserId) {
+        realtimeManager.unsubscribe(`messages:${currentUserId}`)
+      }
+    }
+  }, [user?.id, selectedConversation])
 
   useEffect(() => {
     if (selectedConversation) {
