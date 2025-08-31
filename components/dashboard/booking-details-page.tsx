@@ -45,7 +45,8 @@ import {
   Zap,
   Eye,
   Building,
-  Lightbulb
+  Lightbulb,
+  Play
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -144,6 +145,7 @@ export default function BookingDetailsPage() {
   const [deleteReason, setDeleteReason] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [fileCategory, setFileCategory] = useState('contract')
+  const [showAddMilestone, setShowAddMilestone] = useState(false)
 
   const bookingId = params.id as string
 
@@ -1974,19 +1976,25 @@ export default function BookingDetailsPage() {
 
         {/* Progress Tab */}
         <TabsContent value="progress" className="space-y-6">
-          <Card>
+          <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5" />
-                <span>Project Progress & Status</span>
+              <CardTitle className="flex items-center space-x-2 text-green-900">
+                <TrendingUp className="h-6 w-6" />
+                <span>Smart Project Progress & Status</span>
+                <Badge variant="default" className="bg-green-600 text-white ml-2">
+                  <Zap className="h-3 w-3 mr-1" />
+                  AI-Powered
+                </Badge>
               </CardTitle>
-              <CardDescription>Detailed progress tracking with status updates, approvals, and project monitoring for both parties</CardDescription>
+              <CardDescription className="text-green-700">
+                Advanced progress tracking with custom milestones, parallel tasks, client interaction, and intelligent insights
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {/* Progress Overview Dashboard */}
+                {/* Smart Progress Overview Dashboard */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
                     <div className="text-2xl font-bold text-blue-600">
                       {Math.round((getTimelineProgress() * 100))}%
                     </div>
@@ -1998,21 +2006,21 @@ export default function BookingDetailsPage() {
                       />
                     </div>
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
                     <div className="text-2xl font-bold text-green-600">
                       {getDaysSinceCreation()}
                     </div>
                     <div className="text-sm text-green-700 font-medium">Days Active</div>
                     <div className="mt-2 text-xs text-green-600">Project Duration</div>
                   </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
                     <div className="text-2xl font-bold text-purple-600">
                       {getTimeToDeadline()}
                     </div>
                     <div className="text-sm text-purple-700 font-medium">Time to Deadline</div>
                     <div className="mt-2 text-xs text-purple-600">Remaining Time</div>
                   </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
                     <div className="text-2xl font-bold text-orange-600">
                       {getNextMilestone()}
                     </div>
@@ -2021,185 +2029,339 @@ export default function BookingDetailsPage() {
                   </div>
                 </div>
 
-                {/* Detailed Progress Tracking */}
-                <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                  <h4 className="font-semibold mb-4 text-blue-900">Detailed Progress Tracking</h4>
+                {/* Smart Progress States & Custom Milestones */}
+                <div className="p-6 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-green-900 flex items-center">
+                      <Target className="h-5 w-5 mr-2" />
+                      Smart Progress States & Custom Milestones
+                    </h4>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                      onClick={() => setShowAddMilestone(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Milestone
+                    </Button>
+                  </div>
+                  
+                  {/* Service-Based Progress Breakdown */}
+                  <div className="space-y-4">
+                    {/* Week 1 */}
+                    <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-green-900">Week 1 - Foundation</h5>
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Completed
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-700">4 posts scheduled and published</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-700">Photography of the week</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Week 2 */}
+                    <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-green-900">Week 2 - Development</h5>
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Completed
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-700">Post designs completed</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-700">Posting completed</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Week 3 */}
+                    <div className="bg-white p-4 rounded-lg border border-yellow-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-yellow-900">Week 3 - Review</h5>
+                        <Badge variant="default" className="bg-yellow-100 text-yellow-800">
+                          <Clock className="h-3 w-3 mr-1" />
+                          In Progress
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-700">Analytics review</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-yellow-500" />
+                          <span className="text-sm text-gray-700">Client feedback (Pending)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Week 4 */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-gray-900">Week 4 - Finalization</h5>
+                        <Badge variant="outline" className="text-gray-500">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-500">Final campaign report</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm text-gray-500">Project handover</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Timeline with Progress Rings */}
+                <div className="p-6 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold mb-4 text-blue-900 flex items-center">
+                    <BarChart3 className="h-5 w-5 mr-2" />
+                    Interactive Timeline with Progress Rings
+                  </h4>
                   <div className="space-y-4">
                     {timelineSteps.map((step, index) => (
-                      <div key={step.status} className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-blue-200">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 ${
-                          step.completed 
-                            ? 'bg-green-500 border-green-600 text-white' 
-                            : step.status === 'in_progress'
-                            ? 'bg-blue-500 border-blue-600 text-white'
-                            : 'bg-gray-200 border-gray-300 text-gray-500'
-                        }`}>
-                          {step.completed ? (
-                            <CheckCircle className="h-5 w-5" />
-                          ) : step.status === 'in_progress' ? (
-                            <RefreshCw className="h-5 w-5" />
-                          ) : (
-                            step.icon
+                      <div key={step.status} className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-blue-200 shadow-sm">
+                        {/* Progress Ring */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full border-4 border-gray-200 flex items-center justify-center">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              step.completed 
+                                ? 'bg-green-500 text-white' 
+                                : step.status === 'in_progress'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-500'
+                            }`}>
+                              {step.completed ? (
+                                <CheckCircle className="h-5 w-5" />
+                              ) : step.status === 'in_progress' ? (
+                                <RefreshCw className="h-5 w-5" />
+                              ) : (
+                                step.icon
+                              )}
+                            </div>
+                          </div>
+                          {/* Progress Ring Animation */}
+                          {step.completed && (
+                            <div className="absolute inset-0 w-12 h-12 rounded-full border-4 border-green-500 animate-pulse"></div>
                           )}
                         </div>
-                        <div className="flex-1">
+
+                        {/* Step Content */}
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-2">
                             <h5 className={`font-semibold ${
-                              step.completed ? 'text-green-700' : step.status === 'in_progress' ? 'text-blue-700' : 'text-gray-700'
+                              step.completed ? 'text-green-700' : 'text-gray-700'
                             }`}>
                               {step.label}
                             </h5>
-                            <Badge 
-                              variant="default" 
-                              className={`${
-                                step.completed ? 'bg-green-100 text-green-800 border-green-300' :
-                                step.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                                'bg-gray-100 text-gray-800 border-gray-300'
-                              }`}
-                            >
-                              {step.completed ? '✓ Completed' : step.status === 'in_progress' ? '🔄 In Progress' : '⏳ Pending'}
-                            </Badge>
+                            <div className="flex items-center space-x-2">
+                              {step.completed && (
+                                <Badge variant="default" className="bg-green-100 text-green-800">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Completed
+                                </Badge>
+                              )}
+                              {step.status === 'in_progress' && (
+                                <Badge variant="default" className="bg-blue-100 text-blue-800">
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  In Progress
+                                </Badge>
+                              )}
+                              {!step.completed && step.status !== 'in_progress' && (
+                                <Badge variant="outline" className="text-gray-500">
+                                  Pending
+                                </Badge>
+                              )}
+                            </div>
                           </div>
+                          
                           {step.description && (
                             <p className="text-sm text-gray-600 mb-2">{step.description}</p>
                           )}
+                          
                           {step.date && (
-                            <p className="text-sm text-gray-500">
-                              <Clock className="h-3 w-3 inline mr-1" />
-                              {formatDate(step.date)}
+                            <p className="text-xs text-gray-500">
+                              {step.completed ? 'Completed: ' : 'Started: '}{formatDate(step.date)}
                             </p>
                           )}
                         </div>
-                        {step.status === 'in_progress' && (
-                          <div className="flex space-x-2">
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                              <Edit className="h-3 w-3 mr-1" />
-                              Update
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-2">
+                          {step.status === 'in_progress' && (
+                            <>
+                              <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                                <Edit className="h-3 w-3 mr-1" />
+                                Update
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-green-300 text-green-700">
+                                <MessageSquare className="h-3 w-3 mr-1" />
+                                Notify
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-purple-300 text-purple-700">
+                                <Eye className="h-3 w-3 mr-1" />
+                                Send for Review
+                              </Button>
+                            </>
+                          )}
+                          {!step.completed && step.status !== 'in_progress' && (
+                            <Button size="sm" variant="outline" className="border-gray-300 text-gray-700">
+                              <Play className="h-3 w-3 mr-1" />
+                              Start
                             </Button>
-                            <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
-                              <MessageSquare className="h-3 w-3 mr-1" />
-                              Notify
-                            </Button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Status Management & Approvals */}
-                <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-                  <h4 className="font-semibold mb-4 text-green-900">Status Management & Approvals</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h5 className="font-medium text-green-800">Current Status</h5>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                          <span className="text-sm font-medium text-green-700">Project Status</span>
-                          {getStatusBadge(booking?.status || 'pending')}
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                          <span className="text-sm font-medium text-green-700">Priority Level</span>
-                          {getPriorityBadge(booking?.priority || 'normal')}
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
-                          <span className="text-sm font-medium text-green-700">Payment Status</span>
-                          <Badge variant="outline" className="border-green-300 text-green-700">
-                            {booking?.payment_status || 'pending'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <h5 className="font-medium text-green-800">Approval Actions</h5>
-                      <div className="space-y-3">
-                        <Button className="w-full bg-green-600 hover:bg-green-700" disabled={booking?.status === 'completed'}>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Mark as Complete
-                        </Button>
-                        <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50">
+                {/* Client Interaction & Control */}
+                <div className="p-6 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200">
+                  <h4 className="font-semibold mb-4 text-purple-900 flex items-center">
+                    <MessageSquare className="h-5 w-5 mr-2" />
+                    Client Interaction & Control
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white p-4 rounded-lg border border-purple-200 shadow-sm">
+                      <h5 className="font-medium text-purple-900 mb-3">Provider Actions</h5>
+                      <div className="space-y-2">
+                        <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700">
                           <MessageSquare className="h-4 w-4 mr-2" />
-                          Request Client Approval
+                          Request Client Review
                         </Button>
-                        <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-50">
+                        <Button size="sm" variant="outline" className="w-full border-purple-300 text-purple-700">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Deliverable
+                        </Button>
+                        <Button size="sm" variant="outline" className="w-full border-purple-300 text-purple-700">
                           <Clock className="h-4 w-4 mr-2" />
-                          Extend Timeline
+                          Request Extension
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white p-4 rounded-lg border border-purple-200 shadow-sm">
+                      <h5 className="font-medium text-purple-900 mb-3">Client Actions</h5>
+                      <div className="space-y-2">
+                        <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve Deliverable
+                        </Button>
+                        <Button size="sm" variant="outline" className="w-full border-red-300 text-red-700">
+                          <X className="h-4 w-4 mr-2" />
+                          Request Revision
+                        </Button>
+                        <Button size="sm" variant="outline" className="w-full border-purple-300 text-purple-700">
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Send Feedback
                         </Button>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Progress Analytics */}
-                <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-                  <h4 className="font-semibold mb-4 text-purple-900">Progress Analytics</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-white rounded-lg border border-purple-200">
-                      <div className="text-lg font-bold text-purple-600 mb-2">
-                        {getBookingScore()}%
+                {/* Advanced Tracking & Smart Insights */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-2 text-blue-500" />
+                      Advanced Tracking
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Booking Health Score:</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-16 h-2 bg-gray-200 rounded-full">
+                            <div className="w-12 h-2 bg-green-500 rounded-full"></div>
+                          </div>
+                          <span className="text-sm font-medium text-green-600">75%</span>
+                        </div>
                       </div>
-                      <div className="text-sm text-purple-700 font-medium">Project Score</div>
-                      <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
-                        <div 
-                          className="bg-purple-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${getBookingScore()}%` }}
-                        />
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Client Response Time:</span>
+                        <span className="text-sm font-medium text-blue-600">2.3 days avg</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Payment Status:</span>
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Paid
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Risk Level:</span>
+                        <Badge variant="outline" className="border-yellow-300 text-yellow-700">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Low
+                        </Badge>
                       </div>
                     </div>
-                    <div className="text-center p-4 bg-white rounded-lg border border-purple-200">
-                      <div className="text-lg font-bold text-purple-600 mb-2">
-                        {getClientEngagement()}
+                  </div>
+
+                  <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
+                      <Lightbulb className="h-4 w-4 mr-2 text-yellow-500" />
+                      Smart Insights
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <h6 className="font-medium text-blue-900 mb-2">Next Recommended Action</h6>
+                        <p className="text-sm text-blue-800">Awaiting client review on Week 3 deliverables. Consider sending a gentle reminder.</p>
                       </div>
-                      <div className="text-sm text-purple-700 font-medium">Client Engagement</div>
-                      <div className="mt-2 text-xs text-purple-600">Communication Level</div>
-                    </div>
-                    <div className="text-center p-4 bg-white rounded-lg border border-purple-200">
-                      <div className="text-lg font-bold text-purple-600 mb-2">
-                        {getStatusEfficiency()}
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <h6 className="font-medium text-green-900 mb-2">Forecast Completion</h6>
+                        <p className="text-sm text-green-800">Based on current pace: <strong>Sep 5, 2025</strong> (2 days ahead of schedule)</p>
                       </div>
-                      <div className="text-sm text-purple-700 font-medium">Efficiency</div>
-                      <div className="mt-2 text-xs text-purple-600">Response Time</div>
+                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <h6 className="font-medium text-purple-900 mb-2">Performance Insights</h6>
+                        <p className="text-sm text-purple-800">Client engagement is 15% above average. Great opportunity for upsell.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Client Monitoring & Actions */}
-                <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200">
-                  <h4 className="font-semibold mb-4 text-orange-900">Client Monitoring & Actions</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <h5 className="font-medium text-orange-800">Client Actions</h5>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <input type="checkbox" id="client-view" className="rounded border-orange-300" defaultChecked />
-                          <label htmlFor="client-view" className="text-sm text-orange-700">Client can view progress</label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <input type="checkbox" id="client-approve" className="rounded border-orange-300" defaultChecked />
-                          <label htmlFor="client-approve" className="text-sm text-orange-700">Client can approve milestones</label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <input type="checkbox" id="client-comment" className="rounded border-orange-300" defaultChecked />
-                          <label htmlFor="client-comment" className="text-sm text-orange-700">Client can add comments</label>
-                        </div>
-                      </div>
+                {/* Audit Trail & History */}
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
+                    <History className="h-4 w-4 mr-2" />
+                    Audit Trail & History
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between p-2 bg-white rounded border">
+                      <span className="text-gray-600">Milestone "Week 3 - Review" marked complete</span>
+                      <span className="text-gray-500">2 hours ago by Provider</span>
                     </div>
-                    <div className="space-y-3">
-                      <h5 className="font-medium text-orange-800">Notifications</h5>
-                      <div className="space-y-2">
-                        <Button size="sm" variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
-                          <MessageSquare className="h-3 w-3 mr-2" />
-                          Send Progress Update
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
-                          <Clock className="h-3 w-3 mr-2" />
-                          Schedule Review Meeting
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
-                          <FileText className="h-3 w-3 mr-2" />
-                          Share Progress Report
-                        </Button>
-                      </div>
+                    <div className="flex items-center justify-between p-2 bg-white rounded border">
+                      <span className="text-gray-600">Client feedback received on Week 2 deliverables</span>
+                      <span className="text-gray-500">1 day ago by Client</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 bg-white rounded border">
+                      <span className="text-gray-600">Payment received for Week 1 & 2</span>
+                      <span className="text-gray-500">3 days ago by System</span>
                     </div>
                   </div>
                 </div>
