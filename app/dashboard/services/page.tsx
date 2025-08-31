@@ -153,20 +153,10 @@ export default function ServicesPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // First try to fetch services with the foreign key relationship
+      // Start with a simple query to check if the basic table structure works
       let query = supabase
         .from('services')
-        .select(`
-          *,
-          provider:profiles!services_provider_id_fkey (
-            id,
-            full_name,
-            email,
-            phone,
-            company_name,
-            avatar_url
-          )
-        `)
+        .select('*')
 
       // Apply filters
       if (statusFilter !== 'all') {
@@ -187,58 +177,25 @@ export default function ServicesPage() {
       const { data: servicesData, error } = await query
 
       if (error) {
-        console.error('Error fetching services with foreign key:', error)
-        
-        // Fallback: fetch services without foreign key relationship
-        console.log('Trying fallback query without foreign key...')
-        const fallbackQuery = supabase
-          .from('services')
-          .select('*')
-        
-        // Apply filters to fallback query
-        if (statusFilter !== 'all') {
-          fallbackQuery.eq('status', statusFilter)
-        }
-        if (categoryFilter !== 'all') {
-          fallbackQuery.eq('category', categoryFilter)
-        }
-        if (searchTerm) {
-          fallbackQuery.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
-        }
-        fallbackQuery.order(sortBy, { ascending: sortOrder === 'asc' })
+        console.error('Error fetching services:', error)
+        toast.error('Failed to fetch services')
+        setServices([])
+        return
+      }
 
-        const { data: fallbackData, error: fallbackError } = await fallbackQuery
+      // Now try to enrich services with provider information
+      const enrichedServices = await Promise.all(
+        (servicesData || []).map(async (service) => {
+          try {
+            // Try to fetch provider information
+            const { data: provider, error: providerError } = await supabase
+              .from('profiles')
+              .select('id, full_name, email, phone, company_name, avatar_url')
+              .eq('id', service.provider_id)
+              .single()
 
-        if (fallbackError) {
-          console.error('Fallback query also failed:', fallbackError)
-          toast.error('Failed to fetch services')
-          setServices([])
-          return
-        }
-
-        // Manually fetch provider information for each service
-        const enrichedServices = await Promise.all(
-          (fallbackData || []).map(async (service) => {
-            try {
-              const { data: provider } = await supabase
-                .from('profiles')
-                .select('id, full_name, email, phone, company_name, avatar_url')
-                .eq('id', service.provider_id)
-                .single()
-
-              return {
-                ...service,
-                provider: provider || {
-                  id: service.provider_id,
-                  full_name: 'Unknown Provider',
-                  email: '',
-                  phone: '',
-                  company_name: '',
-                  avatar_url: ''
-                }
-              }
-            } catch (error) {
-              console.warn(`Could not fetch provider for service ${service.id}:`, error)
+            if (providerError) {
+              console.warn(`Could not fetch provider for service ${service.id}:`, providerError)
               return {
                 ...service,
                 provider: {
@@ -251,16 +208,37 @@ export default function ServicesPage() {
                 }
               }
             }
-          })
-        )
 
-        console.log('Enriched services with fallback method:', enrichedServices)
-        setServices(enrichedServices)
-        return
-      }
+            return {
+              ...service,
+              provider: provider || {
+                id: service.provider_id,
+                full_name: 'Unknown Provider',
+                email: '',
+                phone: '',
+                company_name: '',
+                avatar_url: ''
+              }
+            }
+          } catch (error) {
+            console.warn(`Error enriching service ${service.id}:`, error)
+            return {
+              ...service,
+              provider: {
+                id: service.provider_id,
+                full_name: 'Unknown Provider',
+                email: '',
+                phone: '',
+                company_name: '',
+                avatar_url: ''
+              }
+            }
+          }
+        })
+      )
 
-      console.log('Fetched services with foreign key:', servicesData)
-      setServices(servicesData || [])
+      console.log('Enriched services:', enrichedServices)
+      setServices(enrichedServices)
     } catch (error) {
       console.error('Error fetching services:', error)
       toast.error('Failed to fetch services')
@@ -295,32 +273,29 @@ export default function ServicesPage() {
         .select('*', { count: 'exact', head: true })
 
       // Get total revenue from completed bookings
-      // Try to use total_amount first, fallback to subtotal if total_amount doesn't exist
+      // Use a safer approach that doesn't rely on specific column names
       let totalRevenue = 0
       try {
-        const { data: completedBookings } = await supabase
+        // First try to get all completed bookings with basic info
+        const { data: completedBookings, error: bookingError } = await supabase
           .from('bookings')
-          .select('total_amount, subtotal, currency')
+          .select('subtotal, vat_amount, currency')
           .eq('status', 'completed')
 
-        totalRevenue = completedBookings?.reduce((sum, booking) => {
-          // Use total_amount if available, otherwise calculate from subtotal + VAT
-          const amount = booking.total_amount || (booking.subtotal ? booking.subtotal * 1.05 : 0)
-          return sum + amount
-        }, 0) || 0
+        if (bookingError) {
+          console.warn('Could not fetch bookings for revenue calculation:', bookingError)
+          totalRevenue = 0
+        } else if (completedBookings) {
+          totalRevenue = completedBookings.reduce((sum, booking) => {
+            // Calculate total from subtotal + VAT if available
+            const vatAmount = booking.vat_amount || 0
+            const total = (booking.subtotal || 0) + vatAmount
+            return sum + total
+          }, 0)
+        }
       } catch (error) {
-        console.warn('Could not fetch total_amount, using subtotal fallback:', error)
-        // Fallback: use subtotal if total_amount column doesn't exist
-        const { data: completedBookings } = await supabase
-          .from('bookings')
-          .select('subtotal, currency')
-          .eq('status', 'completed')
-
-        totalRevenue = completedBookings?.reduce((sum, booking) => {
-          // Calculate approximate total with 5% VAT
-          const amount = booking.subtotal ? booking.subtotal * 1.05 : 0
-          return sum + amount
-        }, 0) || 0
+        console.warn('Error calculating revenue from bookings:', error)
+        totalRevenue = 0
       }
 
       // Get average rating from reviews
