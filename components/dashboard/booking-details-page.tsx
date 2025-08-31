@@ -43,7 +43,8 @@ import {
   Award,
   Shield,
   Zap,
-  Eye
+  Eye,
+  Building
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -116,9 +117,13 @@ export default function BookingDetailsPage() {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [editedNotes, setEditedNotes] = useState('')
+  const [isSavingNotes, setIsSavingNotes] = useState(false)
   const [bookingHistory, setBookingHistory] = useState<BookingHistory[]>([])
   const [relatedBookings, setRelatedBookings] = useState<RelatedBooking[]>([])
   const [showAdvancedActions, setShowAdvancedActions] = useState(false)
+  const [showStatusConfirmation, setShowStatusConfirmation] = useState(false)
+  const [pendingStatusChange, setPendingStatusChange] = useState<string>('')
+  const [statusChangeReason, setStatusChangeReason] = useState('')
 
   const bookingId = params.id as string
 
@@ -173,7 +178,7 @@ export default function BookingDetailsPage() {
         try {
           const { data, error: serviceError } = await supabase
             .from('services')
-            .select('id, name, description, category')
+            .select('id, title, description, category')
             .eq('id', bookingData.service_id)
             .single()
           
@@ -220,7 +225,7 @@ export default function BookingDetailsPage() {
         review: bookingData.review,
         service: {
           id: serviceData?.id || '',
-          name: serviceData?.name || 'Unknown Service',
+          name: serviceData?.title || 'Unknown Service',
           description: serviceData?.description,
           category: serviceData?.category
         },
@@ -396,16 +401,38 @@ export default function BookingDetailsPage() {
   const handleStatusChange = async (newStatus: string) => {
     if (!booking) return
     
+    // Check if status change requires confirmation
+    const requiresConfirmation = ['cancelled', 'declined', 'rescheduled'].includes(newStatus)
+    
+    if (requiresConfirmation) {
+      setPendingStatusChange(newStatus)
+      setShowStatusConfirmation(true)
+      return
+    }
+    
+    await updateBookingStatus(newStatus)
+  }
+
+  const updateBookingStatus = async (newStatus: string, reason?: string) => {
+    if (!booking) return
+    
     try {
       setIsUpdatingStatus(true)
       const supabase = await getSupabaseClient()
       
+      const updateData: any = { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Add reason if provided
+      if (reason) {
+        updateData.status_change_reason = reason
+      }
+      
       const { error } = await supabase
         .from('bookings')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', booking.id)
 
       if (error) {
@@ -413,6 +440,17 @@ export default function BookingDetailsPage() {
         toast.error('Failed to update status')
         return
       }
+
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Status Updated',
+        description: `Status changed from "${booking.status}" to "${newStatus}"${reason ? ` - Reason: ${reason}` : ''}`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setBookingHistory(prev => [historyEntry, ...prev])
 
       toast.success(`Status updated to ${newStatus}!`)
       loadBooking() // Reload to get updated data
@@ -422,6 +460,71 @@ export default function BookingDetailsPage() {
     } finally {
       setIsUpdatingStatus(false)
     }
+  }
+
+  const confirmStatusChange = async () => {
+    if (pendingStatusChange && statusChangeReason.trim()) {
+      await updateBookingStatus(pendingStatusChange, statusChangeReason.trim())
+      setShowStatusConfirmation(false)
+      setPendingStatusChange('')
+      setStatusChangeReason('')
+    } else {
+      toast.error('Please provide a reason for the status change')
+    }
+  }
+
+  const cancelStatusChange = () => {
+    setShowStatusConfirmation(false)
+    setPendingStatusChange('')
+    setStatusChangeReason('')
+  }
+
+  const handleSaveNotes = async () => {
+    if (!booking || !editedNotes.trim()) return
+    
+    try {
+      setIsSavingNotes(true)
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          notes: editedNotes.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+
+      if (error) {
+        console.error('Error saving notes:', error)
+        toast.error('Failed to save notes')
+        return
+      }
+
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Notes Updated',
+        description: `Notes updated: "${editedNotes.trim().substring(0, 100)}${editedNotes.trim().length > 100 ? '...' : ''}"`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setBookingHistory(prev => [historyEntry, ...prev])
+
+      toast.success('Notes saved successfully!')
+      setIsEditingNotes(false)
+      loadBooking() // Reload to get updated data
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error('Failed to save notes')
+    } finally {
+      setIsSavingNotes(false)
+    }
+  }
+
+  const handleCancelNotes = () => {
+    setEditedNotes(booking?.notes || '')
+    setIsEditingNotes(false)
   }
 
   const getStatusBadge = (status: string) => {
@@ -501,6 +604,35 @@ export default function BookingDetailsPage() {
     return steps
   }
 
+  const getTimelineProgress = () => {
+    if (!booking) return 0
+
+    const steps = getTimelineSteps()
+    const completedSteps = steps.filter(step => step.completed).length
+    return completedSteps / steps.length
+  }
+
+  const getEstimatedCompletion = () => {
+    if (!booking || !booking.estimated_duration) return 'N/A'
+    const estimatedDate = new Date(booking.created_at)
+    const duration = booking.estimated_duration.split(' ')[0] // Extract number of days
+    const unit = booking.estimated_duration.split(' ')[1] // Extract unit (e.g., 'days', 'hours')
+
+    if (unit === 'days') {
+      estimatedDate.setDate(estimatedDate.getDate() + parseInt(duration, 10))
+    } else if (unit === 'hours') {
+      estimatedDate.setHours(estimatedDate.getHours() + parseInt(duration, 10))
+    }
+
+    return estimatedDate.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   const getStatusOptions = () => {
     const currentStatus = booking?.status
     const options = [
@@ -517,10 +649,63 @@ export default function BookingDetailsPage() {
     }))
   }
 
+  const getDaysSinceCreation = () => {
+    if (!booking || !booking.created_at) return 'N/A'
+    const createdAt = new Date(booking.created_at)
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - createdAt.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const getStatusEfficiency = () => {
+    if (!booking || !booking.updated_at) return 'N/A'
+    const createdAt = new Date(booking.created_at)
+    const updatedAt = new Date(booking.updated_at)
+    const diffTime = Math.abs(updatedAt.getTime() - createdAt.getTime())
+    const diffHours = Math.ceil(diffTime / (1000 * 60 * 60))
+
+    if (diffHours < 24) {
+      return `${diffHours}h`
+    } else {
+      return `${Math.floor(diffHours / 24)}d`
+    }
+  }
+
+  const getClientSatisfaction = () => {
+    if (!booking || booking.rating === undefined) return 'N/A'
+    return `${booking.rating}/5`
+  }
+
+  const getRevenueImpact = () => {
+    if (!booking || booking.amount === undefined) return 'N/A'
+    return formatCurrency(booking.amount)
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="space-y-6">
+        {/* Skeleton Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+
+        {/* Skeleton Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-gray-200 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+
+        {/* Skeleton Content */}
+        <div className="space-y-4">
+          <div className="h-64 bg-gray-200 rounded-lg animate-pulse"></div>
+          <div className="h-96 bg-gray-200 rounded-lg animate-pulse"></div>
+        </div>
       </div>
     )
   }
@@ -528,8 +713,9 @@ export default function BookingDetailsPage() {
   if (!booking) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">No booking found</h2>
-        <p className="text-gray-600 mb-6">The booking you're looking for doesn't exist or you don't have access to it.</p>
+        <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Booking Not Found</h2>
+        <p className="text-gray-600 mb-4">The booking you're looking for doesn't exist or you don't have permission to view it.</p>
         <Button onClick={() => router.push('/dashboard/bookings')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Bookings
@@ -577,8 +763,10 @@ export default function BookingDetailsPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium text-blue-900 mb-2 block">Change Status</label>
+                <label htmlFor="status-select" className="text-sm font-medium text-blue-900 mb-2 block">Change Status</label>
                 <select
+                  id="status-select"
+                  aria-label="Change booking status"
                   className="w-full p-2 border border-blue-300 rounded-md bg-white"
                   value={booking.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
@@ -592,8 +780,10 @@ export default function BookingDetailsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-blue-900 mb-2 block">Priority</label>
+                <label htmlFor="priority-select" className="text-sm font-medium text-blue-900 mb-2 block">Priority</label>
                 <select
+                  id="priority-select"
+                  aria-label="Change booking priority"
                   className="w-full p-2 border border-blue-300 rounded-md bg-white"
                   value={booking.priority}
                   onChange={(e) => {
@@ -634,12 +824,59 @@ export default function BookingDetailsPage() {
         </Alert>
       ) : null}
 
+      {/* Status Change Confirmation Dialog */}
+      {showStatusConfirmation && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-orange-800">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Confirm Status Change</span>
+            </CardTitle>
+            <CardDescription className="text-orange-700">
+              You are about to change the status to "{pendingStatusChange}". This action requires a reason.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label htmlFor="status-reason" className="text-sm font-medium text-orange-800 mb-2 block">
+                Reason for Status Change *
+              </label>
+              <Textarea
+                id="status-reason"
+                placeholder="Please provide a reason for changing the status..."
+                value={statusChangeReason}
+                onChange={(e) => setStatusChangeReason(e.target.value)}
+                className="border-orange-300 focus:border-orange-500"
+                rows={3}
+              />
+            </div>
+            <div className="flex space-x-3">
+              <Button
+                onClick={confirmStatusChange}
+                disabled={!statusChangeReason.trim()}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Confirm Change
+              </Button>
+              <Button
+                variant="outline"
+                onClick={cancelStatusChange}
+                className="border-orange-300 text-orange-700 hover:bg-orange-100"
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="related">Related</TabsTrigger>
         </TabsList>
@@ -705,170 +942,274 @@ export default function BookingDetailsPage() {
                   </div>
                 )}
                 {booking.client.company_name && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Company</label>
-                    <p className="text-sm">{booking.client.company_name}</p>
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{booking.client.company_name}</span>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Enhanced Booking Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5" />
-                  <span>Booking Information</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Status</label>
-                    <div className="mt-1">{getStatusBadge(booking.status)}</div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Priority</label>
-                    <div className="mt-1">{getPriorityBadge(booking.priority)}</div>
-                  </div>
-                </div>
-                {booking.scheduled_date && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Scheduled Date</label>
-                    <p className="text-sm">{formatDate(booking.scheduled_date)}</p>
-                  </div>
-                )}
-                {booking.amount && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Amount</label>
-                    <p className="text-lg font-semibold flex items-center space-x-1">
-                      <DollarSign className="h-4 w-4" />
-                      <span>{formatCurrency(booking.amount)}</span>
-                    </p>
-                  </div>
-                )}
-                {booking.location && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Location</label>
-                    <p className="text-sm flex items-center space-x-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{booking.location}</span>
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Enhanced Actions & Notes */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions & Notes</CardTitle>
-                <CardDescription>Manage this booking</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full" 
-                  onClick={() => setActiveTab('messages')}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send Message
-                </Button>
-                
-                {booking.status === 'in_progress' && (
-                  <Button 
-                    className="w-full" 
-                    variant="default"
-                    onClick={handleMarkComplete}
-                    disabled={isUpdatingStatus}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
-                  </Button>
-                )}
-
-                {/* Editable Notes */}
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Notes</label>
-                  {isEditingNotes ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={editedNotes}
-                        onChange={(e) => setEditedNotes(e.target.value)}
-                        placeholder="Add notes about this booking..."
-                        rows={3}
-                      />
-                      <div className="flex space-x-2">
-                        <Button size="sm" onClick={handleUpdateNotes}>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => {
-                          setIsEditingNotes(false)
-                          setEditedNotes(booking.notes || '')
-                        }}>
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-sm mb-2">{booking.notes || 'No notes added yet.'}</p>
-                      <Button size="sm" variant="outline" onClick={() => setIsEditingNotes(true)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        {booking.notes ? 'Edit Notes' : 'Add Notes'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  <p>Last updated: {formatDate(booking.updated_at)}</p>
-                </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Enhanced Analytics & Insights */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <BarChart3 className="h-5 w-5" />
+                <span>Analytics & Insights</span>
+              </CardTitle>
+              <CardDescription>Performance metrics and insights for this booking</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {getDaysSinceCreation()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Days Active</div>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {getStatusEfficiency()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Efficiency Score</div>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {getClientSatisfaction()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Client Satisfaction</div>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {getRevenueImpact()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Revenue Impact</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Booking Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5" />
+                <span>Booking Information</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <div className="mt-1">{getStatusBadge(booking.status)}</div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Priority</label>
+                  <div className="mt-1">{getPriorityBadge(booking.priority)}</div>
+                </div>
+              </div>
+              {booking.scheduled_date && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Scheduled Date</label>
+                  <p className="text-sm">{formatDate(booking.scheduled_date)}</p>
+                </div>
+              )}
+              {booking.amount && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Amount</label>
+                  <p className="text-lg font-semibold flex items-center space-x-1">
+                    <DollarSign className="h-4 w-4" />
+                    <span>{formatCurrency(booking.amount)}</span>
+                  </p>
+                </div>
+              )}
+              {booking.location && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Location</label>
+                  <p className="text-sm flex items-center space-x-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{booking.location}</span>
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Actions & Notes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Actions & Notes</CardTitle>
+              <CardDescription>Manage this booking</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                className="w-full" 
+                onClick={() => setActiveTab('messages')}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Send Message
+              </Button>
+              
+              {booking.status === 'in_progress' && (
+                <Button 
+                  className="w-full" 
+                  variant="default"
+                  onClick={handleMarkComplete}
+                  disabled={isUpdatingStatus}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
+                </Button>
+              )}
+
+              {/* Editable Notes */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Notes</label>
+                {isEditingNotes ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={editedNotes}
+                      onChange={(e) => setEditedNotes(e.target.value)}
+                      placeholder="Add notes about this booking..."
+                      rows={3}
+                    />
+                    <div className="flex space-x-2">
+                      <Button size="sm" onClick={handleSaveNotes} disabled={isSavingNotes}>
+                        <Save className="h-4 w-4 mr-2" />
+                        {isSavingNotes ? 'Saving...' : 'Save'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleCancelNotes} disabled={isSavingNotes}>
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm mb-2">{booking.notes || 'No notes added yet.'}</p>
+                    <Button size="sm" variant="outline" onClick={() => setIsEditingNotes(true)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      {booking.notes ? 'Edit Notes' : 'Add Notes'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                <p>Last updated: {formatDate(booking.updated_at)}</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        {/* Enhanced Timeline Tab */}
+        {/* Timeline Tab */}
         <TabsContent value="timeline" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Booking Timeline</CardTitle>
-              <CardDescription>Track the progress of this booking</CardDescription>
+              <CardTitle className="flex items-center space-x-2">
+                <Clock3 className="h-5 w-5" />
+                <span>Booking Timeline</span>
+              </CardTitle>
+              <CardDescription>Track the progress and milestones of this booking</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {timelineSteps.map((step, index) => (
-                  <div key={step.status} className="flex items-start space-x-4">
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                      step.completed 
-                        ? 'border-green-500 bg-green-100 text-green-600' 
-                        : 'border-gray-300 bg-gray-100 text-gray-400'
-                    }`}>
-                      {step.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h3 className={`font-medium ${step.completed ? 'text-green-700' : 'text-gray-500'}`}>
-                          {step.label}
-                        </h3>
-                        {step.completed && <CheckCircle className="h-4 w-4 text-green-500" />}
+                {/* Progress Bar */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-muted-foreground">Overall Progress</span>
+                    <span className="text-sm font-medium">
+                      {Math.round((getTimelineProgress() * 100))}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${getTimelineProgress() * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Timeline Steps */}
+                <div className="space-y-4">
+                  {timelineSteps.map((step, index) => (
+                    <div key={step.status} className="flex items-start space-x-4">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        step.completed 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {step.completed ? (
+                          <CheckCircle className="h-5 w-5" />
+                        ) : (
+                          step.icon
+                        )}
                       </div>
-                      {step.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
-                      )}
-                      {step.date && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formatDate(step.date)}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <h4 className={`font-medium ${
+                            step.completed ? 'text-green-700' : 'text-gray-700'
+                          }`}>
+                            {step.label}
+                          </h4>
+                          {step.completed && (
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              Completed
+                            </Badge>
+                          )}
+                        </div>
+                        {step.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
+                        )}
+                        {step.date && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {formatDate(step.date)}
+                          </p>
+                        )}
+                        {/* Estimated vs Actual Time */}
+                        {step.status === 'in_progress' && (
+                          <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                            <p className="text-xs text-blue-700">
+                              <Clock className="h-3 w-3 inline mr-1" />
+                              Estimated completion: {getEstimatedCompletion()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      {index < timelineSteps.length - 1 && (
+                        <div className="w-px h-12 bg-gray-200 ml-4" />
                       )}
                     </div>
-                    {index < timelineSteps.length - 1 && (
-                      <div className="w-px h-12 bg-gray-200 ml-4" />
+                  ))}
+                </div>
+
+                {/* Time Tracking */}
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium mb-3">Time Tracking</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Created:</span>
+                      <p className="font-medium">{formatDate(booking.created_at)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Last Updated:</span>
+                      <p className="font-medium">{formatDate(booking.updated_at)}</p>
+                    </div>
+                    {booking.scheduled_date && (
+                      <div>
+                        <span className="text-muted-foreground">Scheduled:</span>
+                        <p className="font-medium">{formatDate(booking.scheduled_date)}</p>
+                      </div>
+                    )}
+                    {booking.estimated_duration && (
+                      <div>
+                        <span className="text-muted-foreground">Estimated Duration:</span>
+                        <p className="font-medium">{booking.estimated_duration}</p>
+                      </div>
                     )}
                   </div>
-                ))}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -877,6 +1218,65 @@ export default function BookingDetailsPage() {
         {/* Messages Tab */}
         <TabsContent value="messages" className="space-y-6">
           <MessagesThread bookingId={booking.id} />
+        </TabsContent>
+
+        {/* Files & Documents Tab */}
+        <TabsContent value="files" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Paperclip className="h-5 w-5" />
+                <span>Files & Documents</span>
+              </CardTitle>
+              <CardDescription>Manage files, contracts, and documents related to this booking</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* File Upload Section */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Files</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Upload contracts, invoices, receipts, or any other documents related to this booking
+                </p>
+                <Button variant="outline" className="mb-2">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Files
+                </Button>
+                <p className="text-xs text-gray-400">
+                  Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB per file)
+                </p>
+              </div>
+
+              {/* File Categories */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border rounded-lg bg-blue-50">
+                  <h4 className="font-medium text-blue-900 mb-2">Contracts</h4>
+                  <p className="text-sm text-blue-700">Service agreements and terms</p>
+                  <div className="mt-2 text-xs text-blue-600">0 files</div>
+                </div>
+                <div className="p-4 border rounded-lg bg-green-50">
+                  <h4 className="font-medium text-green-900 mb-2">Invoices</h4>
+                  <p className="text-sm text-green-700">Billing and payment documents</p>
+                  <div className="mt-2 text-xs text-green-600">0 files</div>
+                </div>
+                <div className="p-4 border rounded-lg bg-purple-50">
+                  <h4 className="font-medium text-purple-900 mb-2">Deliverables</h4>
+                  <p className="text-sm text-purple-700">Completed work and assets</p>
+                  <div className="mt-2 text-xs text-purple-600">0 files</div>
+                </div>
+              </div>
+
+              {/* Recent Files */}
+              <div>
+                <h4 className="font-medium mb-3">Recent Files</h4>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Paperclip className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No files uploaded yet</p>
+                  <p className="text-sm">Upload your first document to get started</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* History Tab */}
