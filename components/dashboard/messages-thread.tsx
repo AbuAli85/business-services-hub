@@ -93,7 +93,11 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    loadUserAndMessages()
+    if (bookingId && bookingId.trim() !== '') {
+      loadUserAndMessages()
+    } else {
+      setLoading(false)
+    }
   }, [bookingId])
 
   useEffect(() => {
@@ -105,6 +109,13 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
 
   const loadUserAndMessages = async () => {
     try {
+      // Validate bookingId before proceeding
+      if (!bookingId || bookingId.trim() === '') {
+        console.log('Invalid bookingId, skipping data load')
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       const supabase = await getSupabaseClient()
       

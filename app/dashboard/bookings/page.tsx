@@ -176,25 +176,116 @@ export default function BookingsPage() {
       }
       
       // Load bookings for the user (either as client or provider)
-      const { data: bookingsData, error } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          status,
-          priority,
-          created_at,
-          scheduled_date,
-          notes,
-          amount,
-          subtotal,
-          total_price,
-          currency,
-          client_id,
-          provider_id,
-          service_id
-        `)
-        .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
+      let bookingsData: any[] = []
+      let error: any = null
+
+      // Apply role-based filtering
+      if (profile?.role === 'provider') {
+        // Provider sees their own services
+        const { data, error: providerError } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            priority,
+            created_at,
+            scheduled_date,
+            notes,
+            amount,
+            subtotal,
+            total_price,
+            currency,
+            client_id,
+            provider_id,
+            service_id
+          `)
+          .eq('provider_id', user.id)
+          .order('created_at', { ascending: false })
+        
+        bookingsData = data || []
+        error = providerError
+      } else if (profile?.role === 'client') {
+        // Client sees their own bookings
+        const { data, error: clientError } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            priority,
+            created_at,
+            scheduled_date,
+            notes,
+            amount,
+            subtotal,
+            total_price,
+            currency,
+            client_id,
+            provider_id,
+            service_id
+          `)
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false })
+        
+        bookingsData = data || []
+        error = clientError
+      } else {
+        // Fallback: show bookings where user is either client or provider
+        // Use separate queries and combine results
+        const [clientBookings, providerBookings] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select(`
+              id,
+              status,
+              priority,
+              created_at,
+              scheduled_date,
+              notes,
+              amount,
+              subtotal,
+              total_price,
+              currency,
+              client_id,
+              provider_id,
+              service_id
+            `)
+            .eq('client_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('bookings')
+            .select(`
+              id,
+              status,
+              priority,
+              created_at,
+              scheduled_date,
+              notes,
+              amount,
+              subtotal,
+              total_price,
+              currency,
+              client_id,
+              provider_id,
+              service_id
+            `)
+            .eq('provider_id', user.id)
+            .order('created_at', { ascending: false })
+        ])
+
+        // Combine and deduplicate results
+        const allBookings = [
+          ...(clientBookings.data || []),
+          ...(providerBookings.data || [])
+        ]
+        
+        // Remove duplicates based on booking ID
+        const uniqueBookings = allBookings.filter((booking, index, self) => 
+          index === self.findIndex(b => b.id === booking.id)
+        )
+        
+        bookingsData = uniqueBookings
+        error = clientBookings.error || providerBookings.error
+      }
 
       if (error) {
         console.error('Error loading bookings:', error)
