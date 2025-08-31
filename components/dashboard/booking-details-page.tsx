@@ -172,13 +172,59 @@ export default function BookingDetailsPage() {
       
       setUser(user)
       
-      // Load booking details
-      const { data: bookingData, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('id', bookingId)
-        .eq('provider_id', user.id)
-        .maybeSingle() // Use maybeSingle instead of single to handle no rows
+      // Get user profile to determine role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      // Load booking details based on user role
+      let bookingData: any = null
+      let error: any = null
+
+      if (profile?.role === 'provider') {
+        const { data, error: providerError } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', bookingId)
+          .eq('provider_id', user.id)
+          .maybeSingle()
+        
+        bookingData = data
+        error = providerError
+      } else if (profile?.role === 'client') {
+        const { data, error: clientError } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', bookingId)
+          .eq('client_id', user.id)
+          .maybeSingle()
+        
+        bookingData = data
+        error = clientError
+      } else {
+        // Fallback: check if user is either client or provider for this booking
+        // Use separate queries and check if either returns results
+        const [clientBooking, providerBooking] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .eq('client_id', user.id)
+            .maybeSingle(),
+          supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .eq('provider_id', user.id)
+            .maybeSingle()
+        ])
+        
+        // Use whichever booking was found
+        bookingData = clientBooking.data || providerBooking.data
+        error = clientBooking.error || providerBooking.error
+      }
 
       if (error) {
         console.error('Error loading booking:', error)

@@ -54,6 +54,7 @@ interface Booking {
   currency?: string
   service: any
   client: any
+  provider: any
 }
 
 interface BookingStats {
@@ -299,9 +300,11 @@ export default function BookingsPage() {
 
       // Load related data separately to avoid relationship conflicts
       const clientIds = Array.from(new Set(bookingsData?.map(b => b.client_id).filter(Boolean) || []))
+      const providerIds = Array.from(new Set(bookingsData?.map(b => b.provider_id).filter(Boolean) || []))
       const serviceIds = Array.from(new Set(bookingsData?.map(b => b.service_id).filter(Boolean) || []))
 
       let clientsData: any[] = []
+      let providersData: any[] = []
       let servicesData: any[] = []
 
       if (clientIds.length > 0) {
@@ -312,6 +315,17 @@ export default function BookingsPage() {
         
         if (!clientsError) {
           clientsData = clients || []
+        }
+      }
+
+      if (providerIds.length > 0) {
+        const { data: providers, error: providersError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, phone')
+          .in('id', providerIds)
+        
+        if (!providersError) {
+          providersData = providers || []
         }
       }
 
@@ -329,6 +343,7 @@ export default function BookingsPage() {
       // Transform the data to match our interface
       const transformedBookings = bookingsData?.map((booking: any) => {
         const client = clientsData.find(c => c.id === booking.client_id)
+        const provider = providersData.find(p => p.id === booking.provider_id)
         const service = servicesData.find(s => s.id === booking.service_id)
         
         // Use the best available amount field
@@ -357,6 +372,11 @@ export default function BookingsPage() {
             full_name: client?.full_name || 'Unknown Client',
             email: client?.email || '',
             phone: client?.phone
+          },
+          provider: {
+            full_name: provider?.full_name || 'Unknown Provider',
+            email: provider?.email || '',
+            phone: provider?.phone
           },
           // Add relationship info
           isClient,
@@ -1001,10 +1021,22 @@ export default function BookingsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{booking.client.full_name}</p>
-                          <p className="text-sm text-muted-foreground">{booking.client.email}</p>
-                          {booking.client.phone && (
-                            <p className="text-xs text-muted-foreground">{booking.client.phone}</p>
+                          <p className="font-medium">
+                            {user?.role === 'client' 
+                              ? (booking.provider?.full_name || 'Unknown Provider')
+                              : (booking.client?.full_name || 'Unknown Client')
+                            }
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {user?.role === 'client' 
+                              ? (booking.provider?.email || '')
+                              : (booking.client?.email || '')
+                            }
+                          </p>
+                          {(user?.role === 'client' ? booking.provider?.phone : booking.client?.phone) && (
+                            <p className="text-xs text-muted-foreground">
+                              {user?.role === 'client' ? booking.provider?.phone : booking.client?.phone}
+                            </p>
                           )}
                         </div>
                       </TableCell>
