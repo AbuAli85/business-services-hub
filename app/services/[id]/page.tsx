@@ -63,6 +63,7 @@ interface Service {
   description: string
   category: string
   status: string
+  approval_status: string
   base_price: number
   currency: string
   cover_image_url: string
