@@ -87,6 +87,8 @@ interface Service {
   provider?: {
     id: string
     full_name: string
+    email?: string
+    phone?: string
     avatar_url?: string
     company_name?: string
     rating?: number
@@ -248,6 +250,8 @@ export default function ServiceDetailPage() {
             .select(`
               id,
               full_name,
+              email,
+              phone,
               avatar_url,
               company_name
             `)
@@ -267,7 +271,9 @@ export default function ServiceDetailPage() {
             serviceData.provider = {
               id: serviceData.provider_id,
               full_name: 'Unknown Provider',
-              avatar_url: null,
+              email: undefined,
+              phone: undefined,
+              avatar_url: undefined,
               company_name: 'Unknown Company',
               rating: 0,
               total_reviews: 0,
@@ -630,9 +636,10 @@ Please review and respond to this booking request.`,
       }
 
       // If contact method is email, also send email notification
-      if (contactForm.contactMethod === 'email' && service.provider?.email) {
+      if (contactForm.contactMethod === 'email') {
         // You can implement email notification here
-        console.log('Email notification would be sent to:', service.provider.email)
+        console.log('Email notification would be sent for service:', service.id)
+        // Note: Email functionality would require provider email from profile data
       }
 
       toast.success('Message sent successfully!')
@@ -1297,7 +1304,8 @@ Please review and respond to this booking request.`,
                                 if (service?.provider?.phone) {
                                   window.open(`tel:${service.provider.phone}`, '_self')
                                 } else {
-                                  toast.error('Phone number not available')
+                                  toast.error('Phone number not available. Please use the contact form instead.')
+                                  handleContactProvider()
                                 }
                               }}
                             >
@@ -1310,7 +1318,8 @@ Please review and respond to this booking request.`,
                                 if (service?.provider?.email) {
                                   window.open(`mailto:${service.provider.email}?subject=Inquiry about ${service.title}`, '_blank')
                                 } else {
-                                  toast.error('Email not available')
+                                  toast.error('Provider email not available. Please use the contact form instead.')
+                                  handleContactProvider()
                                 }
                               }}
                             >
