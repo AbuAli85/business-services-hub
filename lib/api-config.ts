@@ -14,10 +14,26 @@ export const API_CONFIG = {
 /**
  * Gets the appropriate API URL based on the current domain
  * @param endpoint - The API endpoint (e.g., '/api/bookings')
- * @returns The API URL (always relative for now)
+ * @returns The API URL with proper domain routing
  */
 export function getApiUrl(endpoint: string): string {
-  // Always use relative URLs to avoid cross-domain issues
+  if (typeof window === 'undefined') {
+    // Server-side: use relative URL
+    return endpoint
+  }
+
+  const currentHost = window.location.hostname
+  
+  // Marketing site - route to portal site
+  if (currentHost === 'marketing.thedigitalmorph.com' || 
+      currentHost === 'www.marketing.thedigitalmorph.com') {
+    const portalUrl = 'https://portal.thesmartpro.io'
+    const fullUrl = `${portalUrl}${endpoint}`
+    console.log('🔗 Cross-domain API call:', fullUrl)
+    return fullUrl
+  }
+  
+  // Portal site or localhost - use relative URL
   console.log('🔗 Using relative URL:', endpoint)
   return endpoint
 }
@@ -38,12 +54,15 @@ export async function crossDomainFetch(endpoint: string, options: RequestInit = 
       'Content-Type': 'application/json',
       ...options.headers,
     },
+    // Add CORS credentials for cross-domain requests
+    credentials: 'include',
   }
   
   console.log('🌐 Making API call:', {
     originalEndpoint: endpoint,
     finalUrl: url,
-    method: options.method || 'GET'
+    method: options.method || 'GET',
+    isCrossDomain: url.startsWith('http')
   })
   
   return fetch(url, fetchOptions)
@@ -105,16 +124,12 @@ if (typeof window !== 'undefined') {
   
   if (currentHost === 'marketing.thedigitalmorph.com' || 
       currentHost === 'www.marketing.thedigitalmorph.com') {
-    console.error('🚨 🚨 🚨 IMPORTANT: You are on the marketing site! 🚨 🚨 🚨')
-    console.error('🚨 The API endpoints (/api/bookings, /api/services, etc.) do NOT exist on this domain')
-    console.error('🚨 This will cause 404 errors for all API calls')
-    console.error('🚨')
-    console.error('🚨 SOLUTIONS:')
-    console.error('🚨 1. Use localhost:3001 for development (npm run dev)')
-    console.error('🚨 2. Use the portal site for production')
-    console.error('🚨 3. Contact your developer to set up proper cross-domain API routing')
-    console.error('🚨')
-    console.error('🔧 Current configuration: Local-only API (no cross-domain support)')
+    console.log('🔧 Cross-Domain API Configuration loaded:', {
+      currentHost: currentHost,
+      mode: 'cross-domain',
+      targetDomain: 'https://portal.thesmartpro.io',
+      status: 'API calls will be routed to portal site'
+    })
   } else {
     console.log('🔧 Local API Configuration loaded:', {
       currentHost: currentHost,

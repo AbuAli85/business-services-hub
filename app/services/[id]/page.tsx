@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
-import { getApiUrl } from '@/lib/api-utils'
+import { getApiUrl, crossDomainFetch } from '@/lib/api-config'
 import { createNonBlockingHandler } from '@/lib/performance'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
@@ -456,10 +456,9 @@ export default function ServiceDetailPage() {
       
       console.log('🔍 Making booking request with token:', session.access_token.substring(0, 20) + '...')
       
-      const res = await fetch(getApiUrl('BOOKINGS'), {
+      const res = await crossDomainFetch(getApiUrl('/api/bookings'), {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
