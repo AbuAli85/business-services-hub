@@ -222,8 +222,7 @@ export async function POST(request: NextRequest) {
         service_package_id,
         title: `Booking for ${service.title}`, // Add required title field
         start_time: scheduled_date, // Add required start_time field
-        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add required end_time field (2 hours later)
-        total_amount: amount // Add required total_amount field
+        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString() // Add required end_time field (2 hours later)
       })
       .select(`
         *,
