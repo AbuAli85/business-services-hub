@@ -18,6 +18,7 @@ import {
   X,
   Building2,
   Users,
+  Package,
   BarChart3,
   FileText,
   DollarSign
@@ -227,6 +228,7 @@ export default function DashboardLayout({
     if (user.role === 'client') {
       baseItems.splice(1, 0, 
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
+        { name: 'Suggestions', href: '/dashboard/suggestions', icon: Package },
         { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
       )
     }

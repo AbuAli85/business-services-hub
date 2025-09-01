@@ -220,46 +220,38 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
     
     try {
       setSending(true)
-      const supabase = await getSupabaseClient()
       
-      // Insert message
-      const { data: messageData, error } = await supabase
-        .from('messages')
-        .insert({
-          booking_id: bookingId,
-          sender_id: user.id,
-          content: newMessage.trim()
+      // Determine receiver ID based on current user
+      const receiverId = user.id === booking.client_id ? booking.provider_id : booking.client_id
+      
+      // Use the messages API instead of direct database insertion
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiver_id: receiverId,
+          content: newMessage.trim(),
+          subject: 'Message from booking thread',
+          booking_id: bookingId
         })
-        .select('id, content, sender_id, created_at')
-        .maybeSingle() // Use maybeSingle instead of single to handle no rows
+      })
 
-      if (error) {
-        console.error('Error sending message:', error)
-        toast.error('Failed to send message')
-        return
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send message')
       }
-
-      if (!messageData) {
-        console.error('Failed to create message')
-        toast.error('Failed to create message')
-        return
-      }
-
-      // Get sender profile for the new message
-      const { data: senderProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name, role')
-        .eq('id', user.id)
-        .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       // Add message to local state
       const newMsg: Message = {
-        id: messageData.id,
-        content: messageData.content,
-        sender_id: messageData.sender_id,
-        sender_name: senderProfile?.full_name || 'Unknown User',
-        sender_role: senderProfile?.role || 'client',
-        created_at: messageData.created_at,
+        id: data.message.id,
+        content: data.message.content,
+        sender_id: data.message.sender_id,
+        sender_name: user.user_metadata?.full_name || 'You',
+        sender_role: user.user_metadata?.role || 'client',
+        created_at: data.message.created_at,
         is_own_message: true,
         attachments: [],
         reactions: []
@@ -269,6 +261,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       setNewMessage('')
       
       // Update booking last_message_at
+      const supabase = await getSupabaseClient()
       await supabase
         .from('bookings')
         .update({ last_message_at: new Date().toISOString() })

@@ -130,6 +130,24 @@ export default function BookingDetailsPage() {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [showPriorityChange, setShowPriorityChange] = useState(false)
+  const [showProgressUpdate, setShowProgressUpdate] = useState(false)
+  const [progressUpdate, setProgressUpdate] = useState({
+    progress_percentage: 0,
+    milestone_notes: '',
+    estimated_completion_date: '',
+    actual_start_date: '',
+    quality_score: 0
+  })
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false)
+  const [showServiceSuggestion, setShowServiceSuggestion] = useState(false)
+  const [suggestedService, setSuggestedService] = useState({
+    service_id: '',
+    reason: '',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent'
+  })
+  const [availableServices, setAvailableServices] = useState<any[]>([])
+  const [isLoadingServices, setIsLoadingServices] = useState(false)
+  const [isCreatingSuggestion, setIsCreatingSuggestion] = useState(false)
   const [pendingPriorityChange, setPendingPriorityChange] = useState<string>('')
   const [showTimelineEdit, setShowTimelineEdit] = useState(false)
   const [customTimelineSteps, setCustomTimelineSteps] = useState<any[]>([])
@@ -865,6 +883,160 @@ export default function BookingDetailsPage() {
     setBookingHistory(prev => [historyEntry, ...prev])
   }
 
+  const handleUpdateProgress = async () => {
+    if (!booking) return
+
+    try {
+      setIsUpdatingProgress(true)
+      const supabase = await getSupabaseClient()
+
+      // Update booking with progress information
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          progress_percentage: progressUpdate.progress_percentage,
+          milestone_notes: progressUpdate.milestone_notes,
+          estimated_completion_date: progressUpdate.estimated_completion_date || null,
+          actual_start_date: progressUpdate.actual_start_date || null,
+          quality_score: progressUpdate.quality_score || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+
+      if (error) {
+        console.error('Error updating progress:', error)
+        toast.error('Failed to update progress')
+        return
+      }
+
+      // Update local state
+      setBooking(prev => prev ? {
+        ...prev,
+        progress_percentage: progressUpdate.progress_percentage,
+        milestone_notes: progressUpdate.milestone_notes,
+        estimated_completion_date: progressUpdate.estimated_completion_date,
+        actual_start_date: progressUpdate.actual_start_date,
+        quality_score: progressUpdate.quality_score,
+        updated_at: new Date().toISOString()
+      } : null)
+
+      // Reset form
+      setProgressUpdate({
+        progress_percentage: 0,
+        milestone_notes: '',
+        estimated_completion_date: '',
+        actual_start_date: '',
+        quality_score: 0
+      })
+      setShowProgressUpdate(false)
+
+      toast.success('Progress updated successfully!')
+    } catch (error) {
+      console.error('Error updating progress:', error)
+      toast.error('Failed to update progress')
+    } finally {
+      setIsUpdatingProgress(false)
+    }
+  }
+
+  const handleOpenProgressUpdate = () => {
+    if (booking) {
+      setProgressUpdate({
+        progress_percentage: (booking as any).progress_percentage || 0,
+        milestone_notes: (booking as any).milestone_notes || '',
+        estimated_completion_date: (booking as any).estimated_completion_date || '',
+        actual_start_date: (booking as any).actual_start_date || '',
+        quality_score: (booking as any).quality_score || 0
+      })
+    }
+    setShowProgressUpdate(true)
+  }
+
+  const loadAvailableServices = async () => {
+    if (!user?.id) return
+
+    try {
+      setIsLoadingServices(true)
+      const supabase = await getSupabaseClient()
+
+      const { data: services, error } = await supabase
+        .from('services')
+        .select('id, title, description, base_price, currency, category')
+        .eq('provider_id', user.id)
+        .eq('approval_status', 'approved')
+        .eq('status', 'active')
+        .order('title')
+
+      if (error) {
+        console.error('Error loading services:', error)
+        toast.error('Failed to load services')
+        return
+      }
+
+      setAvailableServices(services || [])
+    } catch (error) {
+      console.error('Error loading services:', error)
+      toast.error('Failed to load services')
+    } finally {
+      setIsLoadingServices(false)
+    }
+  }
+
+  const handleOpenServiceSuggestion = async () => {
+    await loadAvailableServices()
+    setShowServiceSuggestion(true)
+  }
+
+  const handleCreateServiceSuggestion = async () => {
+    if (!booking || !suggestedService.service_id || !suggestedService.reason.trim()) {
+      toast.error('Please select a service and provide a reason')
+      return
+    }
+
+    try {
+      setIsCreatingSuggestion(true)
+      const supabase = await getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('service_suggestions')
+        .insert({
+          provider_id: user.id,
+          client_id: (booking as any).client_id || booking.client?.id,
+          suggested_service_id: suggestedService.service_id,
+          original_booking_id: booking.id,
+          suggestion_reason: suggestedService.reason,
+          priority: suggestedService.priority,
+          status: 'pending'
+        })
+        .select(`
+          *,
+          suggested_service:services(id, title, description, base_price, currency)
+        `)
+        .single()
+
+      if (error) {
+        console.error('Error creating suggestion:', error)
+        toast.error('Failed to create service suggestion')
+        return
+      }
+
+      // Reset form
+      setSuggestedService({
+        service_id: '',
+        reason: '',
+        priority: 'medium'
+      })
+      setShowServiceSuggestion(false)
+
+      toast.success('Service suggestion sent successfully!')
+    } catch (error) {
+      console.error('Error creating suggestion:', error)
+      toast.error('Failed to create service suggestion')
+    } finally {
+      setIsCreatingSuggestion(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: 'Pending', variant: 'secondary' as const },
@@ -1435,6 +1607,207 @@ export default function BookingDetailsPage() {
         </Card>
       )}
 
+      {/* Progress Update Dialog */}
+      {showProgressUpdate && (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-green-800">
+              <TrendingUp className="h-5 w-5" />
+              <span>Update Progress</span>
+            </CardTitle>
+            <CardDescription className="text-green-700">
+              Update the progress and milestones for this booking.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="progress-percentage" className="text-sm font-medium text-green-800 mb-2 block">
+                  Progress Percentage *
+                </label>
+                <Input
+                  id="progress-percentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={progressUpdate.progress_percentage}
+                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, progress_percentage: parseInt(e.target.value) || 0 }))}
+                  className="border-green-300 focus:border-green-500"
+                  placeholder="0-100"
+                />
+              </div>
+              <div>
+                <label htmlFor="quality-score" className="text-sm font-medium text-green-800 mb-2 block">
+                  Quality Score (1-5)
+                </label>
+                <Input
+                  id="quality-score"
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={progressUpdate.quality_score}
+                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, quality_score: parseInt(e.target.value) || 0 }))}
+                  className="border-green-300 focus:border-green-500"
+                  placeholder="1-5"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="milestone-notes" className="text-sm font-medium text-green-800 mb-2 block">
+                Milestone Notes
+              </label>
+              <Textarea
+                id="milestone-notes"
+                placeholder="Describe the current progress and any important milestones..."
+                value={progressUpdate.milestone_notes}
+                onChange={(e) => setProgressUpdate(prev => ({ ...prev, milestone_notes: e.target.value }))}
+                className="border-green-300 focus:border-green-500"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="actual-start-date" className="text-sm font-medium text-green-800 mb-2 block">
+                  Actual Start Date
+                </label>
+                <Input
+                  id="actual-start-date"
+                  type="datetime-local"
+                  value={progressUpdate.actual_start_date}
+                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, actual_start_date: e.target.value }))}
+                  className="border-green-300 focus:border-green-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="estimated-completion" className="text-sm font-medium text-green-800 mb-2 block">
+                  Estimated Completion Date
+                </label>
+                <Input
+                  id="estimated-completion"
+                  type="datetime-local"
+                  value={progressUpdate.estimated_completion_date}
+                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, estimated_completion_date: e.target.value }))}
+                  className="border-green-300 focus:border-green-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <Button
+                onClick={handleUpdateProgress}
+                disabled={isUpdatingProgress}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isUpdatingProgress ? 'Updating...' : 'Update Progress'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowProgressUpdate(false)}
+                className="border-green-300 text-green-700 hover:bg-green-100"
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Service Suggestion Dialog */}
+      {showServiceSuggestion && (
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-purple-800">
+              <Package className="h-5 w-5" />
+              <span>Suggest Additional Service</span>
+            </CardTitle>
+            <CardDescription className="text-purple-700">
+              Recommend an additional service to {booking?.client?.full_name || 'this client'}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label htmlFor="suggested-service" className="text-sm font-medium text-purple-800 mb-2 block">
+                Select Service *
+              </label>
+              {isLoadingServices ? (
+                <div className="p-4 text-center text-purple-600">
+                  Loading your services...
+                </div>
+              ) : (
+                <select
+                  id="suggested-service"
+                  value={suggestedService.service_id}
+                  onChange={(e) => setSuggestedService(prev => ({ ...prev, service_id: e.target.value }))}
+                  className="w-full p-3 border border-purple-300 rounded-md focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value="">Choose a service to suggest...</option>
+                  {availableServices.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.title} - {service.base_price} {service.currency}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {availableServices.length === 0 && !isLoadingServices && (
+                <p className="text-sm text-purple-600 mt-2">
+                  No approved services available. Please create and get approval for services first.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="suggestion-reason" className="text-sm font-medium text-purple-800 mb-2 block">
+                Why are you suggesting this service? *
+              </label>
+              <Textarea
+                id="suggestion-reason"
+                placeholder="Explain why this service would be beneficial for the client..."
+                value={suggestedService.reason}
+                onChange={(e) => setSuggestedService(prev => ({ ...prev, reason: e.target.value }))}
+                className="border-purple-300 focus:border-purple-500"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="suggestion-priority" className="text-sm font-medium text-purple-800 mb-2 block">
+                Priority Level
+              </label>
+              <select
+                id="suggestion-priority"
+                value={suggestedService.priority}
+                onChange={(e) => setSuggestedService(prev => ({ ...prev, priority: e.target.value as any }))}
+                className="w-full p-3 border border-purple-300 rounded-md focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+              >
+                <option value="low">Low - General recommendation</option>
+                <option value="medium">Medium - Good fit for client</option>
+                <option value="high">High - Highly recommended</option>
+                <option value="urgent">Urgent - Time-sensitive opportunity</option>
+              </select>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <Button
+                onClick={handleCreateServiceSuggestion}
+                disabled={isCreatingSuggestion || !suggestedService.service_id || !suggestedService.reason.trim()}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {isCreatingSuggestion ? 'Sending...' : 'Send Suggestion'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowServiceSuggestion(false)}
+                className="border-purple-300 text-purple-700 hover:bg-purple-100"
+              >
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
@@ -1649,10 +2022,20 @@ export default function BookingDetailsPage() {
                 
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={() => setActiveTab('progress')}
+                  onClick={handleOpenProgressUpdate}
+                  disabled={isUpdatingProgress}
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Update Progress
+                  {isUpdatingProgress ? 'Updating...' : 'Update Progress'}
+                </Button>
+                
+                <Button 
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  onClick={handleOpenServiceSuggestion}
+                  disabled={isCreatingSuggestion}
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  {isCreatingSuggestion ? 'Loading...' : 'Suggest Service'}
                 </Button>
               </div>
               
@@ -1903,9 +2286,15 @@ export default function BookingDetailsPage() {
                           {/* Step Actions */}
                           {step.status === 'in_progress' && (
                             <div className="mt-3 flex space-x-2">
-                              <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="border-blue-300 text-blue-700"
+                                onClick={handleOpenProgressUpdate}
+                                disabled={isUpdatingProgress}
+                              >
                                 <Edit className="h-3 w-3 mr-1" />
-                                Update Progress
+                                {isUpdatingProgress ? 'Updating...' : 'Update Progress'}
                               </Button>
                               <Button size="sm" variant="outline" className="border-green-300 text-green-700">
                                 <CheckCircle className="h-3 w-3 mr-1" />

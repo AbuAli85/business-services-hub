@@ -20,6 +20,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Ensure sender has a profile
+    let { data: senderProfile, error: senderError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('id', user.id)
+      .single()
+
+    if (senderError || !senderProfile) {
+      // Create profile for sender if they don't exist
+      console.log(`Creating profile for sender: ${user.id}`)
+      
+      const { data: newSender, error: createSenderError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email || `user-${user.id}@temp.com`,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || `User ${user.id.slice(0, 8)}`,
+          role: user.user_metadata?.role || 'client',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id, full_name')
+        .single()
+
+      if (createSenderError) {
+        console.error('Error creating sender profile:', createSenderError)
+        return NextResponse.json({ error: 'Could not create sender profile' }, { status: 500 })
+      }
+      
+      senderProfile = newSender
+    }
+
     const body = await request.json()
     
     // Validate request body
@@ -33,15 +65,36 @@ export async function POST(request: NextRequest) {
 
     const { receiver_id, content, subject, booking_id } = validationResult.data
 
-    // Validate receiver exists
-    const { data: receiver, error: receiverError } = await supabase
+    // Validate receiver exists, create profile if needed
+    let { data: receiver, error: receiverError } = await supabase
       .from('profiles')
       .select('id, full_name')
       .eq('id', receiver_id)
       .single()
 
     if (receiverError || !receiver) {
-      return NextResponse.json({ error: 'Receiver not found' }, { status: 404 })
+      // Try to create a profile for the receiver if they don't exist
+      console.log(`Creating profile for receiver: ${receiver_id}`)
+      
+      const { data: newReceiver, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: receiver_id,
+          email: `user-${receiver_id}@temp.com`, // Temporary email
+          full_name: `User ${receiver_id.slice(0, 8)}`,
+          role: 'client', // Default role
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id, full_name')
+        .single()
+
+      if (createError) {
+        console.error('Error creating receiver profile:', createError)
+        return NextResponse.json({ error: 'Receiver not found and could not create profile' }, { status: 404 })
+      }
+      
+      receiver = newReceiver
     }
 
     // Validate booking if specified
@@ -224,6 +277,38 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ User authenticated:', user.id)
+
+    // Ensure user has a profile
+    let { data: userProfile, error: userProfileError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('id', user.id)
+      .single()
+
+    if (userProfileError || !userProfile) {
+      // Create profile for user if they don't exist
+      console.log(`Creating profile for user: ${user.id}`)
+      
+      const { data: newUserProfile, error: createUserError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          email: user.email || `user-${user.id}@temp.com`,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || `User ${user.id.slice(0, 8)}`,
+          role: user.user_metadata?.role || 'client',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id, full_name')
+        .single()
+
+      if (createUserError) {
+        console.error('Error creating user profile:', createUserError)
+        return NextResponse.json({ error: 'Could not create user profile' }, { status: 500 })
+      }
+      
+      userProfile = newUserProfile
+    }
 
     const { searchParams } = new URL(request.url)
     const booking_id = searchParams.get('booking_id')
