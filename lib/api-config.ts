@@ -27,9 +27,10 @@ export function getApiUrl(endpoint: string): string {
   // Marketing site - route to portal site
   if (currentHost === 'marketing.thedigitalmorph.com' || 
       currentHost === 'www.marketing.thedigitalmorph.com') {
-    const portalUrl = 'https://portal.thesmartpro.io'
+    // For development, route to localhost
+    const portalUrl = 'http://localhost:3001'
     const fullUrl = `${portalUrl}${endpoint}`
-    console.log('🔗 Cross-domain API call:', fullUrl)
+    console.log('🔗 Cross-domain API call (dev):', fullUrl)
     return fullUrl
   }
   
@@ -126,9 +127,9 @@ if (typeof window !== 'undefined') {
       currentHost === 'www.marketing.thedigitalmorph.com') {
     console.log('🔧 Cross-Domain API Configuration loaded:', {
       currentHost: currentHost,
-      mode: 'cross-domain',
-      targetDomain: 'https://portal.thesmartpro.io',
-      status: 'API calls will be routed to portal site'
+      mode: 'cross-domain-dev',
+      targetDomain: 'http://localhost:3001',
+      status: 'API calls will be routed to localhost for development'
     })
   } else {
     console.log('🔧 Local API Configuration loaded:', {
