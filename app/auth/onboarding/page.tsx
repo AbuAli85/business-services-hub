@@ -157,9 +157,9 @@ export default function OnboardingPage() {
               .insert({
                 id: user.id,
                 email: user.email,
-                full_name: formData.fullName,
+                full_name: user.user_metadata?.full_name || 'Provider',
                 role: 'provider',
-                phone: formData.phone || '',
+                phone: user.user_metadata?.phone || '',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
