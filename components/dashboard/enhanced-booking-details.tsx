@@ -68,7 +68,6 @@ import {
   Wallet,
   Receipt,
   Activity,
-  Timeline,
   MessageCircle,
   PhoneCall,
   VideoIcon,
@@ -830,7 +829,7 @@ export default function EnhancedBookingDetails() {
                   <span className="hidden sm:inline">Overview</span>
                 </TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs sm:text-sm">
-                  <Timeline className="h-4 w-4 mr-1" />
+                  <Activity className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Timeline</span>
                 </TabsTrigger>
                 <TabsTrigger value="messages" className="text-xs sm:text-sm">
@@ -1042,7 +1041,7 @@ export default function EnhancedBookingDetails() {
                 <Card className="border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
-                      <Timeline className="h-5 w-5 text-blue-600" />
+                      <Activity className="h-5 w-5 text-blue-600" />
                       <span>Project Timeline</span>
                     </CardTitle>
                   </CardHeader>
@@ -1050,7 +1049,7 @@ export default function EnhancedBookingDetails() {
                     <div className="space-y-6">
                       {/* Timeline items would go here */}
                       <div className="text-center py-8 text-gray-500">
-                        <Timeline className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                        <Activity className="h-16 w-16 mx-auto mb-4 opacity-50" />
                         <p>Timeline view coming soon</p>
                       </div>
                     </div>

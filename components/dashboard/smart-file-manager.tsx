@@ -56,8 +56,7 @@ import {
   FileVideo,
   FileAudio,
   FileSpreadsheet,
-  FileCode,
-  FilePdf
+  FileCode
 } from 'lucide-react'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -326,7 +325,7 @@ export default function SmartFileManager({
     if (mimeType.startsWith('image/')) return <FileImage className="h-8 w-8 text-green-500" />
     if (mimeType.startsWith('video/')) return <FileVideo className="h-8 w-8 text-purple-500" />
     if (mimeType.startsWith('audio/')) return <FileAudio className="h-8 w-8 text-orange-500" />
-    if (mimeType.includes('pdf')) return <FilePdf className="h-8 w-8 text-red-500" />
+    if (mimeType.includes('pdf')) return <FileText className="h-8 w-8 text-red-500" />
     if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return <FileSpreadsheet className="h-8 w-8 text-green-600" />
     if (mimeType.includes('text/') || mimeType.includes('document')) return <FileText className="h-8 w-8 text-blue-600" />
     
