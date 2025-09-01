@@ -61,7 +61,8 @@ import {
   Forward,
   Bookmark,
   Flag,
-  Info
+  Info,
+  X
 } from 'lucide-react'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -115,7 +116,7 @@ interface SmartCommunicationCenterProps {
     full_name: string
     avatar_url?: string
     role: 'client' | 'provider'
-    status: 'online' | 'away' | 'busy' | 'offline'
+    status: 'online' | 'away' | 'busy' | 'offline' | 'available'
     timezone?: string
     preferred_contact?: string
     response_time?: string
@@ -306,6 +307,7 @@ export default function SmartCommunicationCenter({
   const getStatusColor = (status: string) => {
     const colors = {
       online: 'bg-green-400',
+      available: 'bg-green-400',
       away: 'bg-yellow-400',
       busy: 'bg-red-400',
       offline: 'bg-gray-400'
@@ -352,7 +354,7 @@ export default function SmartCommunicationCenter({
           <div>
             <h3 className="font-semibold text-gray-900">{otherParty.full_name}</h3>
             <p className="text-sm text-gray-600 capitalize">
-              {otherParty.status === 'online' ? 'Online now' : 
+              {otherParty.status === 'online' || otherParty.status === 'available' ? 'Online now' : 
                otherParty.status === 'away' ? 'Away' :
                otherParty.status === 'busy' ? 'Busy' : 'Offline'}
               {otherParty.response_time && ` • Responds in ${otherParty.response_time}`}

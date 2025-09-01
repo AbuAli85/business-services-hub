@@ -1023,7 +1023,7 @@ export default function EnhancedBookingDetails() {
                       full_name: isClient ? booking.provider.full_name : booking.client.full_name,
                       avatar_url: isClient ? booking.provider.avatar_url : booking.client.avatar_url,
                       role: isClient ? 'provider' : 'client',
-                      status: isClient ? booking.provider.availability_status || 'offline' : 'online',
+                      status: isClient ? (booking.provider.availability_status === 'available' ? 'online' : booking.provider.availability_status || 'offline') : 'online',
                       timezone: isClient ? undefined : booking.client.timezone,
                       preferred_contact: isClient ? undefined : booking.client.preferred_contact,
                       response_time: isClient ? booking.provider.response_time : undefined

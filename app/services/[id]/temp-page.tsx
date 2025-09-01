@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export default function ServicePackages() {
+export default function ServiceDetailTemp() {
   const router = useRouter()
 
   return (
@@ -20,9 +20,9 @@ export default function ServicePackages() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 className="text-2xl font-bold text-gray-900">Service Packages</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Service Details</h1>
           <p className="text-gray-600 mt-2">
-            Package management is temporarily unavailable
+            Service details page is temporarily unavailable
           </p>
         </div>
 
@@ -30,20 +30,20 @@ export default function ServicePackages() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Package className="h-5 w-5" />
-              <span>Service Packages</span>
+              <span>Service Information</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Packages Feature Coming Soon
+                Service Details Coming Soon
               </h3>
               <p className="text-gray-600 mb-6">
                 This feature is currently being enhanced and will be available soon.
               </p>
-              <Button onClick={() => router.back()}>
-                Return to Service
+              <Button onClick={() => router.push('/services')}>
+                Browse All Services
               </Button>
             </div>
           </CardContent>

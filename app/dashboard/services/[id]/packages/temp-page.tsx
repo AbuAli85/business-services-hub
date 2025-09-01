@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Package } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
-export default function ServicePackages() {
+export default function ServicePackagesTemp() {
   const router = useRouter()
 
   return (
