@@ -413,12 +413,12 @@ export default function ServiceDetailPage() {
     }
   }
 
-  const handleBookingSubmit = async () => {
+    const handleBookingSubmit = async () => {
     if (!service) return
 
     try {
       setSubmitting(true)
-      
+
       // Validate required fields
       if (!bookingForm.scheduled_date || !bookingForm.scheduled_time) {
         toast.error('Please select a date and time for your booking')
@@ -428,7 +428,7 @@ export default function ServiceDetailPage() {
       // Check if user is authenticated
       const supabase = await getSupabaseClient()
       const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
+
       if (userError || !user) {
         toast.error('Please sign in to make a booking')
         router.push('/auth/sign-in')
@@ -436,17 +436,17 @@ export default function ServiceDetailPage() {
       }
 
       const scheduledDateTime = new Date(`${bookingForm.scheduled_date}T${bookingForm.scheduled_time}`)
-      
+
       // Get session for authentication
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
+
       if (sessionError) {
         console.error('Session error:', sessionError)
         toast.error('Authentication error. Please sign in again.')
         router.push('/auth/sign-in')
         return
       }
-      
+
       if (!session?.access_token) {
         console.error('No access token in session')
         toast.error('Please sign in to make a booking')
@@ -456,7 +456,7 @@ export default function ServiceDetailPage() {
       
       console.log('🔍 Making booking request with token:', session.access_token.substring(0, 20) + '...')
       
-            const res = await crossDomainFetch('/api/bookings', {
+      const res = await crossDomainFetch('/api/bookings', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session.access_token}`
@@ -476,6 +476,12 @@ export default function ServiceDetailPage() {
       const json = await res.json()
 
       if (!res.ok) {
+        // Check if it's a server error (API endpoint not available)
+        if (res.status >= 500) {
+          toast.error('Booking service is temporarily unavailable. Please try again later or contact support.')
+          console.error('Server error:', res.status, json)
+          return
+        }
         throw new Error(json.error || 'Failed to create booking')
       }
 
@@ -490,9 +496,9 @@ export default function ServiceDetailPage() {
         budget: 0,
         urgency: 'medium'
       })
-      
+
       toast.success('Booking request submitted successfully! We will contact you soon.')
-      
+
       // Refresh service stats if owner
       if (isOwner) {
         fetchServiceStats(service.id)
