@@ -89,9 +89,17 @@ export default function ServicesPage() {
   const [stats, setStats] = useState<ServiceStats | null>(null)
   const router = useRouter()
 
+  // Initial load when component mounts
   useEffect(() => {
     checkUserAndLoadServices()
-  }, [searchTerm, statusFilter, categoryFilter, sortBy, sortOrder])
+  }, [])
+
+  // Reload when filters change (only if we have user data)
+  useEffect(() => {
+    if (userRole && user?.id) {
+      checkUserAndLoadServices()
+    }
+  }, [userRole, user?.id, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder])
 
   // Real-time service updates
   useEffect(() => {
@@ -159,8 +167,14 @@ export default function ServicesPage() {
         .select('*')
 
       // Role-based filtering: Providers only see their own services, clients see all services
-      if (userRole === 'provider') {
+      console.log('Current userRole:', userRole, 'User ID:', user?.id)
+      if (userRole === 'provider' && user?.id) {
+        console.log('Filtering services for provider:', user.id)
         query = query.eq('provider_id', user.id)
+      } else if (userRole === 'provider' && !user?.id) {
+        console.log('Provider role but no user ID, skipping services fetch')
+        setServices([])
+        return
       }
       // Admins can see all services (no additional filter needed)
       // Clients can see all services (no additional filter needed)
