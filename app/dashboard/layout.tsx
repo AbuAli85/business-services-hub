@@ -204,6 +204,7 @@ export default function DashboardLayout({
       baseItems.splice(1, 0, 
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
         { name: 'Users', href: '/dashboard/admin/users', icon: Users },
+        { name: 'Permissions', href: '/dashboard/admin/permissions', icon: Settings },
         { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
         { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText }
       )

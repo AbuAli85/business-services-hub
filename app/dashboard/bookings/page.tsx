@@ -682,6 +682,54 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Bookings Management</h1>
+            <p className="text-cyan-100 text-lg mb-4">
+              Manage and track all service bookings with real-time updates
+            </p>
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>Total: {stats.total}</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>Pending: {stats.pending}</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                <span>Completed: {stats.completed}</span>
+              </div>
+              <div className="flex items-center">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                <span>Revenue: {formatCurrency(stats.revenue)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button 
+              variant="secondary"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Advanced Filters
+            </Button>
+            <Button 
+              variant="secondary"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={exportBookings}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Enhanced Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card>

@@ -431,10 +431,20 @@ export default function MessagesPage() {
       <div className="flex h-full space-x-6 bg-white rounded-lg shadow-sm border">
         {/* Conversations Sidebar */}
         <div className="w-80 flex flex-col border-r border-gray-200">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-            <p className="text-gray-600 text-sm">Stay connected with your clients and providers</p>
+          {/* Enhanced Header */}
+          <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-6 text-white">
+            <h1 className="text-2xl font-bold mb-1">Messages</h1>
+            <p className="text-violet-100 text-sm mb-3">Stay connected with your clients and providers</p>
+            <div className="flex items-center space-x-4 text-xs">
+              <div className="flex items-center">
+                <MessageSquare className="h-3 w-3 mr-1" />
+                <span>{conversations.length} Total</span>
+              </div>
+              <div className="flex items-center">
+                <Eye className="h-3 w-3 mr-1" />
+                <span>{conversations.filter(c => c.unread_count > 0).length} Unread</span>
+              </div>
+            </div>
           </div>
 
           {/* Search and Filters */}

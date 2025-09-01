@@ -273,23 +273,65 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {userRole === 'provider' ? 'Provider Profile' : 'Client Profile'}
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {userRole === 'provider' 
-              ? 'Manage your profile, company information, and services'
-              : 'Manage your profile and booking history'
-            }
-          </p>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-rose-600 to-pink-600 rounded-xl p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">
+              {userRole === 'provider' ? 'Provider Profile' : 'Client Profile'}
+            </h1>
+            <p className="text-rose-100 text-lg mb-4">
+              {userRole === 'provider' 
+                ? 'Manage your profile, company information, and services'
+                : 'Manage your profile and track your activity'
+              }
+            </p>
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center">
+                <User className="h-4 w-4 mr-1" />
+                <span>Role: {userRole}</span>
+              </div>
+              {profile?.is_verified && (
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  <span>Verified Account</span>
+                </div>
+              )}
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>Member since {formatDate(profile?.created_at || '')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button 
+              onClick={() => setEditing(!editing)}
+              variant="secondary"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              {editing ? (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Profile
+                </>
+              )}
+            </Button>
+            {userRole === 'provider' && (
+              <Button 
+                variant="secondary"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <Award className="h-4 w-4 mr-2" />
+                View Portfolio
+              </Button>
+            )}
+          </div>
         </div>
-        <Button onClick={() => setEditing(!editing)}>
-          <Edit className="h-4 w-4 mr-2" />
-          {editing ? 'Cancel' : 'Edit Profile'}
-        </Button>
       </div>
 
       {/* Profile Stats */}

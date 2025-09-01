@@ -22,7 +22,8 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -374,10 +375,38 @@ export default function SettingsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-gray-900 to-gray-700 rounded-xl p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Settings</h1>
+            <p className="text-gray-200 text-lg mb-4">Manage your account settings and preferences</p>
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center">
+                <User className="h-4 w-4 mr-1" />
+                <span>Account: {profile?.full_name || 'User'}</span>
+              </div>
+              <div className="flex items-center">
+                <Shield className="h-4 w-4 mr-1" />
+                <span>Security: {security.two_factor_enabled ? 'Enhanced' : 'Standard'}</span>
+              </div>
+              <div className="flex items-center">
+                <Bell className="h-4 w-4 mr-1" />
+                <span>Notifications: {notifications.email_notifications ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="secondary"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={() => window.print()}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}

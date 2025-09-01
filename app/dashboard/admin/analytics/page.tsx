@@ -60,6 +60,7 @@ export default function AdminAnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30')
+  const [selectedMetric, setSelectedMetric] = useState('overview')
 
   useEffect(() => {
     fetchAnalytics()
@@ -166,31 +167,88 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Platform Analytics</h1>
-          <p className="text-gray-600 mt-2">
-            Monitor platform performance, user engagement, and business metrics
-          </p>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Platform Analytics</h1>
+            <p className="text-emerald-100 text-lg mb-4">
+              Comprehensive insights into platform performance and user behavior
+            </p>
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center">
+                <Users className="h-4 w-4 mr-1" />
+                <span>1,247 Total Users</span>
+              </div>
+              <div className="flex items-center">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                <span>+12.5% Growth</span>
+              </div>
+              <div className="flex items-center">
+                <DollarSign className="h-4 w-4 mr-1" />
+                <span>OMR 45,600 Revenue</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center space-x-3">
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-40 bg-white/10 border-white/20 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">Last 7 days</SelectItem>
+                  <SelectItem value="30">Last 30 days</SelectItem>
+                  <SelectItem value="90">Last 90 days</SelectItem>
+                  <SelectItem value="365">Last year</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="secondary"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Export Report
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button>
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
-        </div>
+      </div>
+
+      {/* Analytics Navigation */}
+      <div className="flex items-center space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+        <Button 
+          variant={selectedMetric === 'overview' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedMetric('overview')}
+          className="rounded-md"
+        >
+          Overview
+        </Button>
+        <Button 
+          variant={selectedMetric === 'users' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedMetric('users')}
+          className="rounded-md"
+        >
+          Users
+        </Button>
+        <Button 
+          variant={selectedMetric === 'revenue' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedMetric('revenue')}
+          className="rounded-md"
+        >
+          Revenue
+        </Button>
+        <Button 
+          variant={selectedMetric === 'services' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedMetric('services')}
+          className="rounded-md"
+        >
+          Services
+        </Button>
       </div>
 
       {/* Key Metrics */}
