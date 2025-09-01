@@ -85,7 +85,7 @@ async function testServiceWorkflow() {
         currency: 'OMR',
         duration: '2-3 weeks',
         location: 'Remote',
-        delivery_method: 'Online',
+
         tags: ['responsive', 'modern', 'seo-friendly'],
         requirements: 'Client should provide content and design preferences',
         terms_conditions: 'Standard terms and conditions apply',

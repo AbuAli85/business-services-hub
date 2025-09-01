@@ -171,7 +171,7 @@ export default function CreateServicePage() {
         currency: formData.currency,
         duration: formData.duration,
         location: formData.location,
-        delivery_method: formData.delivery_method,
+
         tags: formData.tags,
         requirements: formData.requirements,
         terms_conditions: formData.terms_conditions,

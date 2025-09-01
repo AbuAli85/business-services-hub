@@ -30,6 +30,7 @@ import {
   Globe, 
   Package, 
   CheckCircle, 
+  XCircle,
   ArrowLeft,
   Eye,
   Heart,
@@ -572,9 +573,22 @@ export default function ServiceDetailPage() {
               <div className="lg:col-span-2 space-y-4">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
-                      {service.status}
-                    </Badge>
+                    {/* Only show status to owner or if service is active/approved */}
+                    {(isOwner || service.status === 'active' || service.approval_status === 'approved') && (
+                      <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
+                        {service.status}
+                      </Badge>
+                    )}
+                    {/* Show approval status only to owner */}
+                    {isOwner && service.approval_status && (
+                      <Badge variant={
+                        service.approval_status === 'approved' ? 'default' : 
+                        service.approval_status === 'pending' ? 'secondary' : 
+                        'destructive'
+                      }>
+                        {service.approval_status}
+                      </Badge>
+                    )}
                     <Badge variant="outline">{service.category}</Badge>
                     {isOwner && (
                       <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -641,6 +655,38 @@ export default function ServiceDetailPage() {
                   </div>
                 )}
 
+                {/* Approval Status Notice (only show if owner and pending) */}
+                {isOwner && service.approval_status === 'pending' && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-yellow-900">Service Pending Approval</h4>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          Your service is currently under review by our admin team. 
+                          It will be visible to clients once approved. This usually takes 1-2 business days.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rejected Status Notice (only show if owner and rejected) */}
+                {isOwner && service.approval_status === 'rejected' && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-red-900">Service Rejected</h4>
+                        <p className="text-sm text-red-700 mt-1">
+                          Your service was not approved. Please review our guidelines and update your service 
+                          before resubmitting for approval.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Price and Actions */}
                 <div className="flex items-center justify-between pt-4">
                   <div>
@@ -673,9 +719,16 @@ export default function ServiceDetailPage() {
                           <MessageSquare className="w-4 h-4 mr-2" />
                           Contact Provider
                         </Button>
-                        <Button size="lg" onClick={() => setShowBooking(true)}>
-                          Book This Service
-                        </Button>
+                        {/* Only show booking button if service is approved and active */}
+                        {(service.approval_status === 'approved' && service.status === 'active') ? (
+                          <Button size="lg" onClick={() => setShowBooking(true)}>
+                            Book This Service
+                          </Button>
+                        ) : (
+                          <Button size="lg" disabled>
+                            Service Not Available
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
@@ -732,16 +785,30 @@ export default function ServiceDetailPage() {
                       </CardContent>
                     </Card>
 
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600">Status</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
-                          {service.status}
-                        </Badge>
-                      </CardContent>
-                    </Card>
+                    {/* Only show status card to owner or if service is active/approved */}
+                    {(isOwner || service.status === 'active' || service.approval_status === 'approved') && (
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-medium text-gray-600">Status</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
+                            {service.status}
+                          </Badge>
+                          {isOwner && service.approval_status && (
+                            <div className="mt-2">
+                              <Badge variant={
+                                service.approval_status === 'approved' ? 'default' : 
+                                service.approval_status === 'pending' ? 'secondary' : 
+                                'destructive'
+                              }>
+                                {service.approval_status}
+                              </Badge>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
 
                     <Card>
                       <CardHeader className="pb-3">
