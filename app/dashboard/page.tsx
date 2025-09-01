@@ -20,7 +20,8 @@ import {
   DollarSign,
   Package,
   Clock,
-  Star
+  Star,
+  BarChart3
 } from 'lucide-react'
 
 interface DashboardData {
