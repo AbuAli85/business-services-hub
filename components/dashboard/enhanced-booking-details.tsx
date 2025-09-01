@@ -233,26 +233,67 @@ export default function EnhancedBookingDetails() {
       }
       setUser(user)
 
-      // Load booking with enhanced data
-      const { data: bookingData, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          service:services(
-            id, title, description, category, base_price, 
-            currency, estimated_duration, requirements
-          ),
-          client:profiles!client_id(
-            id, full_name, email, phone, company_name, 
-            avatar_url, timezone, preferred_contact_method
-          ),
-          provider:profiles!provider_id(
-            id, full_name, email, phone, company_name,
-            avatar_url, specialization, rating, response_time
-          )
-        `)
-        .eq('id', bookingId)
-        .single()
+      // Load booking with enhanced data - graceful fallback for schema issues
+      let bookingData, error
+
+      try {
+        // Try enhanced query first
+        const result = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            service:services(
+              id, title, description, category, base_price, 
+              currency, estimated_duration, requirements
+            ),
+            client:profiles!client_id(
+              id, full_name, email, phone, company_name, 
+              avatar_url, timezone, preferred_contact_method
+            ),
+            provider:profiles!provider_id(
+              id, full_name, email, phone, company_name,
+              avatar_url, specialization, rating, response_time
+            )
+          `)
+          .eq('id', bookingId)
+          .single()
+        
+        bookingData = result.data
+        error = result.error
+      } catch (schemaError) {
+        console.warn('Enhanced query failed, trying fallback:', schemaError)
+        
+        // Fallback to simpler query without foreign key hints
+        try {
+          const simpleResult = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .single()
+          
+          if (simpleResult.data) {
+            // Manually fetch related data
+            const [serviceRes, clientRes, providerRes] = await Promise.all([
+              supabase.from('services').select('*').eq('id', simpleResult.data.service_id).single(),
+              supabase.from('profiles').select('*').eq('id', simpleResult.data.client_id).single(),
+              supabase.from('profiles').select('*').eq('id', simpleResult.data.provider_id).single()
+            ])
+            
+            bookingData = {
+              ...simpleResult.data,
+              service: serviceRes.data,
+              client: clientRes.data,
+              provider: providerRes.data
+            }
+            error = null
+          } else {
+            error = simpleResult.error
+          }
+        } catch (fallbackError) {
+          console.error('Both queries failed:', fallbackError)
+          error = fallbackError
+        }
+      }
 
       if (error) {
         console.error('Error loading booking:', error)
@@ -260,21 +301,90 @@ export default function EnhancedBookingDetails() {
         return
       }
 
-      // Transform and enhance the booking data
+      // Transform and enhance the booking data with comprehensive defaults
       const enhancedBooking: EnhancedBooking = {
         ...bookingData,
-        amount: bookingData.amount || bookingData.total_amount || 0,
+        // Core booking data with fallbacks
+        id: bookingData.id,
+        status: bookingData.status || 'pending',
+        priority: bookingData.priority || 'normal',
+        created_at: bookingData.created_at,
+        updated_at: bookingData.updated_at || bookingData.created_at,
+        
+        // Financial data
+        amount: bookingData.amount || bookingData.total_amount || bookingData.subtotal || 0,
         currency: bookingData.currency || 'OMR',
         payment_status: bookingData.payment_status || 'pending',
+        payment_method: bookingData.payment_method || '',
+        
+        // Progress tracking
         progress_percentage: bookingData.progress_percentage || 0,
+        estimated_completion: bookingData.estimated_completion || '',
+        actual_completion: bookingData.actual_completion || '',
+        
+        // Duration and timing
         estimated_duration: bookingData.estimated_duration || bookingData.service?.estimated_duration || '2 hours',
+        actual_duration: bookingData.actual_duration || '',
+        scheduled_date: bookingData.scheduled_date || bookingData.due_at || '',
+        scheduled_time: bookingData.scheduled_time || '',
+        
+        // Location
+        location: bookingData.location || '',
         location_type: bookingData.location_type || 'on_site',
+        
+        // Ratings and satisfaction
+        rating: bookingData.rating || bookingData.client_rating || 0,
+        review: bookingData.review || bookingData.notes || '',
+        client_satisfaction: bookingData.client_satisfaction || 0,
+        provider_rating: bookingData.provider_rating || 0,
+        
+        // Additional data
+        notes: bookingData.notes || '',
         tags: bookingData.tags || [],
         attachments: bookingData.attachments || [],
         milestones: bookingData.milestones || [],
         issues: bookingData.issues || [],
-        client_satisfaction: bookingData.client_satisfaction || 0,
-        provider_rating: bookingData.provider_rating || 0
+        
+        // Service data with fallbacks
+        service: {
+          id: bookingData.service?.id || bookingData.service_id || '',
+          title: bookingData.service?.title || bookingData.service?.name || 'Service',
+          description: bookingData.service?.description || '',
+          category: bookingData.service?.category || 'General',
+          base_price: bookingData.service?.base_price || bookingData.amount || 0,
+          currency: bookingData.service?.currency || bookingData.currency || 'OMR',
+          duration: bookingData.service?.estimated_duration || bookingData.estimated_duration || '2 hours',
+          requirements: bookingData.service?.requirements || [],
+          deliverables: bookingData.service?.deliverables || []
+        },
+        
+        // Client data with fallbacks
+        client: {
+          id: bookingData.client?.id || bookingData.client_id || '',
+          full_name: bookingData.client?.full_name || 'Client',
+          email: bookingData.client?.email || '',
+          phone: bookingData.client?.phone || '',
+          company_name: bookingData.client?.company_name || '',
+          avatar_url: bookingData.client?.avatar_url || '',
+          timezone: bookingData.client?.timezone || 'Asia/Muscat',
+          preferred_contact: bookingData.client?.preferred_contact_method || 'message',
+          response_time: bookingData.client?.response_time || '< 1 hour'
+        },
+        
+        // Provider data with fallbacks
+        provider: {
+          id: bookingData.provider?.id || bookingData.provider_id || '',
+          full_name: bookingData.provider?.full_name || 'Provider',
+          email: bookingData.provider?.email || '',
+          phone: bookingData.provider?.phone || '',
+          company_name: bookingData.provider?.company_name || '',
+          avatar_url: bookingData.provider?.avatar_url || '',
+          specialization: bookingData.provider?.specialization || [],
+          rating: bookingData.provider?.rating || 5.0,
+          total_reviews: bookingData.provider?.total_reviews || 0,
+          response_time: bookingData.provider?.response_time || '< 1 hour',
+          availability_status: bookingData.provider?.availability_status || 'available'
+        }
       }
 
       setBooking(enhancedBooking)
