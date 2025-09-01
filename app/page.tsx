@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,123 +13,296 @@ import {
   CheckCircle,
   ArrowRight,
   Building2,
-  Briefcase
+  Briefcase,
+  Menu,
+  X,
+  Play,
+  Quote,
+  TrendingUp,
+  Award,
+  Globe,
+  Phone,
+  Mail,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  ChevronRight,
+  Zap,
+  Target,
+  Heart,
+  Sparkles
 } from 'lucide-react'
+import { useState } from 'react'
 
 export default function HomePage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
+    <div className="min-h-screen">
+      {/* Enhanced Header */}
+      <header className="fixed w-full top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
+        <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-xl font-bold text-gradient-primary">Business Services Hub</span>
+              </Link>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-8">
+              <Link href="/services" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                Services
+              </Link>
+              <Link href="/about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                About
+              </Link>
+              <Link href="/contact" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                Contact
+              </Link>
+              <div className="flex items-center space-x-4">
+                <Link href="/auth/sign-in">
+                  <Button variant="ghost" className="font-medium">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/sign-up">
+                  <Button className="btn-primary-gradient font-medium">
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Navigation */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 bg-white">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <Link
+                  href="/services"
+                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Services
+                </Link>
+                <Link
+                  href="/about"
+                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+                <Link
+                  href="/contact"
+                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Contact
+                </Link>
+                <div className="border-t border-gray-200 pt-3">
+                  <Link href="/auth/sign-in" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/auth/sign-up" onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full btn-primary-gradient mt-2">
+                      Get Started
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+        </nav>
+      </header>
+
+      {/* Enhanced Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-16">
+        {/* Background decorations */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full opacity-20 blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-purple-400 to-pink-600 rounded-full opacity-20 blur-3xl"></div>
+        </div>
+        
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+            {/* Badge */}
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-8">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Trusted by 5000+ businesses in Oman
+            </div>
+            
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
               Connect with Trusted
-              <span className="text-blue-600"> Business Services</span>
+              <span className="text-gradient-primary block"> Business Services</span>
             </h1>
-            <p className="mt-6 text-lg leading-8 text-gray-600 max-w-3xl mx-auto">
+            <p className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto">
               Find verified service providers in Oman for all your business needs. 
               From digital marketing to legal services, connect with professionals 
-              who deliver quality results.
+              who deliver quality results with guaranteed satisfaction.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6">
+            
+            {/* CTA Buttons */}
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/services">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+                <Button size="lg" className="btn-primary-gradient text-lg px-8 py-4 rounded-xl">
                   Browse Services
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link href="/auth/sign-up">
-                <Button variant="outline" size="lg">
-                  Join as Provider
-                </Button>
-              </Link>
+              <Button variant="outline" size="lg" className="text-lg px-8 py-4 rounded-xl border-2">
+                <Play className="h-4 w-4 mr-2" />
+                Watch Demo
+              </Button>
+            </div>
+
+            {/* Trust Indicators */}
+            <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-8 text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span>5000+ Happy Customers</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Shield className="h-5 w-5 text-blue-500" />
+                <span>100% Verified Providers</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                <span>4.9/5 Average Rating</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 bg-white">
+      {/* Stats Section */}
+      <section className="py-16 bg-white border-b border-gray-100">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div className="space-y-2">
+              <div className="text-3xl md:text-4xl font-bold text-gradient-primary">5000+</div>
+              <div className="text-gray-600 font-medium">Happy Customers</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl md:text-4xl font-bold text-gradient-primary">800+</div>
+              <div className="text-gray-600 font-medium">Verified Providers</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl md:text-4xl font-bold text-gradient-primary">15000+</div>
+              <div className="text-gray-600 font-medium">Projects Completed</div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-3xl md:text-4xl font-bold text-gradient-primary">99%</div>
+              <div className="text-gray-600 font-medium">Satisfaction Rate</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced Features Section */}
+      <section className="py-24 bg-gray-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-4">
+              <Target className="h-4 w-4 mr-2" />
+              Why Choose Us
+            </div>
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Why Choose Business Services Hub?
+              Everything You Need to Succeed
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              We make it easy to find and work with trusted business service providers
+            <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+              We make it easy to find and work with trusted business service providers who deliver exceptional results
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Shield className="h-6 w-6 text-blue-600" />
+            <Card className="card-elevated hover-lift border-0 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                  <Shield className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Verified Providers</CardTitle>
-                <CardDescription>
-                  All providers are verified and reviewed by our team
+                <CardTitle className="text-xl mb-3">Verified Providers</CardTitle>
+                <CardDescription className="text-gray-600 leading-relaxed">
+                  All providers are thoroughly verified and reviewed by our expert team to ensure quality and reliability
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+            <Card className="card-elevated hover-lift border-0 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                  <CheckCircle className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Quality Guaranteed</CardTitle>
-                <CardDescription>
-                  Get the results you expect or your money back
+                <CardTitle className="text-xl mb-3">Quality Guaranteed</CardTitle>
+                <CardDescription className="text-gray-600 leading-relaxed">
+                  Get the results you expect with our satisfaction guarantee or your money back - no questions asked
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <Clock className="h-6 w-6 text-purple-600" />
+            <Card className="card-elevated hover-lift border-0 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                  <Zap className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Fast Delivery</CardTitle>
-                <CardDescription>
-                  Quick turnaround times with clear delivery schedules
+                <CardTitle className="text-xl mb-3">Fast Delivery</CardTitle>
+                <CardDescription className="text-gray-600 leading-relaxed">
+                  Quick turnaround times with clear delivery schedules and milestone tracking for all projects
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-orange-600" />
+            <Card className="card-elevated hover-lift border-0 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                  <Users className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Expert Support</CardTitle>
-                <CardDescription>
-                  24/7 customer support to help you succeed
+                <CardTitle className="text-xl mb-3">Expert Support</CardTitle>
+                <CardDescription className="text-gray-600 leading-relaxed">
+                  24/7 customer support from our dedicated team to help you succeed at every step of your journey
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                  <Star className="h-6 w-6 text-red-600" />
+            <Card className="card-elevated hover-lift border-0 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                  <Star className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Customer Reviews</CardTitle>
-                <CardDescription>
-                  Read real reviews from satisfied customers
+                <CardTitle className="text-xl mb-3">Trusted Reviews</CardTitle>
+                <CardDescription className="text-gray-600 leading-relaxed">
+                  Read authentic reviews from real customers and make informed decisions based on proven track records
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-                  <Building2 className="h-6 w-6 text-indigo-600" />
+            <Card className="card-elevated hover-lift border-0 bg-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                  <Building2 className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle>Business Focused</CardTitle>
-                <CardDescription>
-                  Built specifically for business service needs
+                <CardTitle className="text-xl mb-3">Business Focused</CardTitle>
+                <CardDescription className="text-gray-600 leading-relaxed">
+                  Platform built specifically for business service needs with enterprise-grade security and compliance
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -136,35 +311,39 @@ export default function HomePage() {
       </section>
 
       {/* Popular Services Section */}
-      <section className="py-24 bg-gray-50">
+      <section className="py-24 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-sm font-medium mb-4">
+              <Briefcase className="h-4 w-4 mr-2" />
+              Popular Categories
+            </div>
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Popular Service Categories
+              Most Requested Services
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              Discover the most requested business services
+            <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+              Discover the business services that companies trust most for their growth and success
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: 'Digital Marketing', count: '150+', color: 'bg-blue-500' },
-              { name: 'Legal Services', count: '80+', color: 'bg-green-500' },
-              { name: 'Accounting', count: '120+', color: 'bg-purple-500' },
-              { name: 'IT Services', count: '200+', color: 'bg-orange-500' },
-              { name: 'Design & Branding', count: '180+', color: 'bg-pink-500' },
-              { name: 'Consulting', count: '90+', color: 'bg-indigo-500' },
-              { name: 'Translation', count: '60+', color: 'bg-teal-500' },
-              { name: 'HR Services', count: '70+', color: 'bg-red-500' },
+              { name: 'Digital Marketing', count: '150+', color: 'from-blue-500 to-blue-600' },
+              { name: 'Legal Services', count: '80+', color: 'from-green-500 to-green-600' },
+              { name: 'Accounting', count: '120+', color: 'from-purple-500 to-purple-600' },
+              { name: 'IT Services', count: '200+', color: 'from-orange-500 to-orange-600' },
+              { name: 'Design & Branding', count: '180+', color: 'from-pink-500 to-pink-600' },
+              { name: 'Consulting', count: '90+', color: 'from-indigo-500 to-indigo-600' },
+              { name: 'Translation', count: '60+', color: 'from-teal-500 to-teal-600' },
+              { name: 'HR Services', count: '70+', color: 'from-red-500 to-red-600' },
             ].map((service) => (
-              <Card key={service.name} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card key={service.name} className="card-elevated hover-lift border-0 cursor-pointer group">
                 <CardContent className="p-6 text-center">
-                  <div className={`w-16 h-16 ${service.color} rounded-full mx-auto mb-4 flex items-center justify-center`}>
+                  <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                     <Briefcase className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{service.name}</h3>
-                  <Badge variant="secondary">{service.count} providers</Badge>
+                  <h3 className="font-bold text-gray-900 mb-2 text-lg">{service.name}</h3>
+                  <Badge className="badge-enhanced bg-gray-100 text-gray-800">{service.count} providers</Badge>
                 </CardContent>
               </Card>
             ))}
@@ -172,38 +351,237 @@ export default function HomePage() {
           
           <div className="text-center mt-12">
             <Link href="/services">
-              <Button size="lg" variant="outline">
+              <Button size="lg" className="btn-primary-gradient text-lg px-8 py-4 rounded-xl">
                 View All Services
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 bg-blue-600">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-6">
-            Ready to Get Started?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of businesses who trust us to connect them with the right service providers
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/sign-up">
-              <Button size="lg" variant="secondary">
-                Sign Up Now
-              </Button>
-            </Link>
-            <Link href="/auth/sign-in">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">
-                Sign In
-              </Button>
-            </Link>
+      {/* Testimonials Section */}
+      <section className="py-24 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-4">
+              <Heart className="h-4 w-4 mr-2" />
+              Customer Stories
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              What Our Clients Say
+            </h2>
+            <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+              Don't just take our word for it - hear from the businesses that have transformed their operations with our platform
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                name: "Ahmed Al-Rashid",
+                title: "CEO, TechStart Oman",
+                image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+                content: "Business Services Hub helped us find the perfect digital marketing partner. Our online presence has grown by 300% in just 6 months!",
+                rating: 5
+              },
+              {
+                name: "Fatima Al-Zahra", 
+                title: "Founder, Muscat Retail",
+                image: "https://images.unsplash.com/photo-1494790108755-2616b612b123?w=150&h=150&fit=crop&crop=face",
+                content: "The quality of service providers is exceptional. We found our accounting firm here and they've been fantastic for our business growth.",
+                rating: 5
+              },
+              {
+                name: "Omar Hassan",
+                title: "Operations Manager, Gulf Logistics",
+                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face", 
+                content: "Professional, reliable, and results-driven. The platform made it easy to connect with trusted legal advisors for our expansion.",
+                rating: 5
+              }
+            ].map((testimonial, index) => (
+              <Card key={index} className="card-glass border-0 hover-lift">
+                <CardContent className="p-8">
+                  <div className="flex items-center mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
+                  <Quote className="h-8 w-8 text-blue-500 mb-4" />
+                  <p className="text-gray-700 leading-relaxed mb-6 italic">
+                    "{testimonial.content}"
+                  </p>
+                  <div className="flex items-center">
+                    <img
+                      src={testimonial.image}
+                      alt={testimonial.name}
+                      className="w-12 h-12 rounded-full object-cover mr-4"
+                    />
+                    <div>
+                      <div className="font-semibold text-gray-900">{testimonial.name}</div>
+                      <div className="text-sm text-gray-600">{testimonial.title}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Enhanced CTA Section */}
+      <section className="relative py-24 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-64 h-64 bg-white rounded-full opacity-10 blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-white rounded-full opacity-10 blur-3xl"></div>
+        </div>
+        
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-4xl font-bold tracking-tight text-white sm:text-5xl mb-6">
+              Ready to Transform Your Business?
+            </h2>
+            <p className="text-xl text-blue-100 mb-8 leading-relaxed">
+              Join over 5,000 businesses in Oman who trust us to connect them with verified, professional service providers. 
+              Start your journey to success today.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <Link href="/auth/sign-up">
+                <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4 rounded-xl font-medium shadow-xl">
+                  <Zap className="h-5 w-5 mr-2" />
+                  Get Started Free
+                </Button>
+              </Link>
+              <Link href="/services">
+                <Button size="lg" variant="outline" className="border-2 border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-4 rounded-xl font-medium">
+                  <Search className="h-5 w-5 mr-2" />
+                  Browse Services
+                </Button>
+              </Link>
+            </div>
+            
+            {/* Mini features */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-blue-100">
+              <div className="flex flex-col items-center">
+                <CheckCircle className="h-8 w-8 mb-2" />
+                <span className="text-sm font-medium">No Setup Fees</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <Shield className="h-8 w-8 mb-2" />
+                <span className="text-sm font-medium">100% Verified</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <Users className="h-8 w-8 mb-2" />
+                <span className="text-sm font-medium">24/7 Support</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Company Info */}
+            <div className="lg:col-span-1">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-xl font-bold">Business Services Hub</span>
+              </div>
+              <p className="text-gray-400 mb-6 leading-relaxed">
+                Your trusted platform for connecting with verified business service providers in Oman. 
+                Quality, reliability, and results guaranteed.
+              </p>
+              <div className="flex space-x-4">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
+                  <Facebook className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
+                  <Twitter className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
+                  <Instagram className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
+                  <Linkedin className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Services */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Services</h3>
+              <ul className="space-y-3">
+                <li><Link href="/services" className="text-gray-400 hover:text-white transition-colors">Browse All Services</Link></li>
+                <li><Link href="/services?category=digital-marketing" className="text-gray-400 hover:text-white transition-colors">Digital Marketing</Link></li>
+                <li><Link href="/services?category=legal" className="text-gray-400 hover:text-white transition-colors">Legal Services</Link></li>
+                <li><Link href="/services?category=accounting" className="text-gray-400 hover:text-white transition-colors">Accounting</Link></li>
+                <li><Link href="/services?category=it" className="text-gray-400 hover:text-white transition-colors">IT Services</Link></li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Company</h3>
+              <ul className="space-y-3">
+                <li><Link href="/about" className="text-gray-400 hover:text-white transition-colors">About Us</Link></li>
+                <li><Link href="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
+                <li><Link href="/careers" className="text-gray-400 hover:text-white transition-colors">Careers</Link></li>
+                <li><Link href="/blog" className="text-gray-400 hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/press" className="text-gray-400 hover:text-white transition-colors">Press</Link></li>
+              </ul>
+            </div>
+
+            {/* Contact & Legal */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Get in Touch</h3>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center space-x-3 text-gray-400">
+                  <Phone className="h-4 w-4" />
+                  <span>+968 2234 5678</span>
+                </div>
+                <div className="flex items-center space-x-3 text-gray-400">
+                  <Mail className="h-4 w-4" />
+                  <span>hello@businesshub.om</span>
+                </div>
+                <div className="flex items-center space-x-3 text-gray-400">
+                  <MapPin className="h-4 w-4" />
+                  <span>Muscat, Oman</span>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Legal</h4>
+                <ul className="space-y-1 text-sm">
+                  <li><Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</Link></li>
+                  <li><Link href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</Link></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-400 text-sm">
+              © 2024 Business Services Hub. All rights reserved.
+            </p>
+            <div className="flex items-center space-x-4 mt-4 md:mt-0">
+              <Badge className="bg-green-100 text-green-800 text-xs">
+                <Award className="h-3 w-3 mr-1" />
+                ISO 27001 Certified
+              </Badge>
+              <Badge className="bg-blue-100 text-blue-800 text-xs">
+                <Shield className="h-3 w-3 mr-1" />
+                SSL Secured
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
