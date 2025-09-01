@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import ServiceNavigation from '@/components/service-navigation'
 
 import { 
@@ -135,6 +136,7 @@ export default function ServiceDetailPage() {
   const [showBooking, setShowBooking] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
+  const [showContactModal, setShowContactModal] = useState(false)
   const [bookingForm, setBookingForm] = useState<BookingForm>({
     package_id: 'base',
     scheduled_date: '',
@@ -146,6 +148,13 @@ export default function ServiceDetailPage() {
     urgency: 'medium'
   })
   const [submitting, setSubmitting] = useState(false)
+  const [contactForm, setContactForm] = useState({
+    subject: '',
+    message: '',
+    contactMethod: 'message',
+    urgency: 'normal'
+  })
+  const [isContactSending, setIsContactSending] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'reviews' | 'provider' | 'analytics' | 'bookings' | 'settings' | 'admin'>('overview')
   const [serviceStats, setServiceStats] = useState<ServiceStats>({
     totalViews: 0,
@@ -419,9 +428,29 @@ export default function ServiceDetailPage() {
     try {
       setSubmitting(true)
 
-      // Validate required fields
+      // Enhanced validation
       if (!bookingForm.scheduled_date || !bookingForm.scheduled_time) {
         toast.error('Please select a date and time for your booking')
+        return
+      }
+
+      if (!bookingForm.requirements?.trim()) {
+        toast.error('Please describe your requirements for this service')
+        return
+      }
+
+      // Validate date is not in the past
+      const scheduledDateTime = new Date(`${bookingForm.scheduled_date}T${bookingForm.scheduled_time}`)
+      const now = new Date()
+      if (scheduledDateTime <= now) {
+        toast.error('Please select a future date and time')
+        return
+      }
+
+      // Validate business hours (9 AM to 6 PM)
+      const selectedHour = parseInt(bookingForm.scheduled_time.split(':')[0])
+      if (selectedHour < 9 || selectedHour >= 18) {
+        toast.error('Please select a time between 9:00 AM and 6:00 PM')
         return
       }
 
@@ -434,8 +463,6 @@ export default function ServiceDetailPage() {
         router.push('/auth/sign-in')
         return
       }
-
-      const scheduledDateTime = new Date(`${bookingForm.scheduled_date}T${bookingForm.scheduled_time}`)
 
       // Get session for authentication
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -466,9 +493,9 @@ export default function ServiceDetailPage() {
           scheduled_date: scheduledDateTime.toISOString(),
           notes: bookingForm.notes || undefined,
           service_package_id: bookingForm.package_id === 'base' ? undefined : bookingForm.package_id || undefined,
-          location: bookingForm.location || undefined,
-          requirements: bookingForm.requirements || undefined,
-          budget: bookingForm.budget || undefined,
+          location: bookingForm.location || 'Remote',
+          requirements: bookingForm.requirements,
+          budget: bookingForm.budget || service.base_price,
           urgency: bookingForm.urgency
         })
       })
@@ -485,6 +512,37 @@ export default function ServiceDetailPage() {
         throw new Error(json.error || 'Failed to create booking')
       }
 
+      // Send notification to provider
+      try {
+        await supabase
+          .from('messages')
+          .insert({
+            sender_id: user.id,
+            recipient_id: service.provider_id,
+            service_id: service.id,
+            subject: `New Booking Request: ${service.title}`,
+            content: `You have received a new booking request for your service "${service.title}".
+            
+Booking Details:
+- Date: ${bookingForm.scheduled_date}
+- Time: ${bookingForm.scheduled_time}
+- Location: ${bookingForm.location || 'Remote'}
+- Budget: ${formatCurrency(bookingForm.budget || service.base_price)}
+- Urgency: ${bookingForm.urgency}
+
+Requirements: ${bookingForm.requirements}
+
+${bookingForm.notes ? `Notes: ${bookingForm.notes}` : ''}
+
+Please review and respond to this booking request.`,
+            message_type: 'booking_request',
+            urgency: bookingForm.urgency
+          })
+      } catch (notificationError) {
+        console.error('Failed to send notification:', notificationError)
+        // Don't fail the booking if notification fails
+      }
+
       setShowBooking(false)
       setBookingForm({
         package_id: 'base',
@@ -497,12 +555,15 @@ export default function ServiceDetailPage() {
         urgency: 'medium'
       })
 
-      toast.success('Booking request submitted successfully! We will contact you soon.')
+      toast.success('Booking request submitted successfully! The provider will be notified and will contact you soon.')
 
       // Refresh service stats if owner
       if (isOwner) {
         fetchServiceStats(service.id)
       }
+
+      // Redirect to bookings page
+      router.push('/dashboard/bookings')
     } catch (error) {
       console.error('Booking error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to create booking')
@@ -531,11 +592,67 @@ export default function ServiceDetailPage() {
         return
       }
 
-      // Navigate to messages with the provider
-      router.push(`/dashboard/messages?provider=${service.provider_id}&service=${service.id}`)
+      // Open contact modal instead of redirecting
+      setShowContactModal(true)
     } catch (error) {
       console.error('Contact provider error:', error)
       toast.error('Failed to open contact form')
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if (!service || !user || !contactForm.subject.trim() || !contactForm.message.trim()) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    setIsContactSending(true)
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Create a message record
+      const { data: messageData, error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          recipient_id: service.provider_id,
+          service_id: service.id,
+          subject: contactForm.subject,
+          content: contactForm.message,
+          urgency: contactForm.urgency,
+          message_type: contactForm.contactMethod
+        })
+        .select()
+        .single()
+
+      if (messageError) {
+        throw messageError
+      }
+
+      // If contact method is email, also send email notification
+      if (contactForm.contactMethod === 'email' && service.provider?.email) {
+        // You can implement email notification here
+        console.log('Email notification would be sent to:', service.provider.email)
+      }
+
+      toast.success('Message sent successfully!')
+      setShowContactModal(false)
+      setContactForm({
+        subject: '',
+        message: '',
+        contactMethod: 'message',
+        urgency: 'normal'
+      })
+
+      // Optionally redirect to messages page to continue conversation
+      if (contactForm.contactMethod === 'message') {
+        router.push(`/dashboard/messages?conversation=${messageData.id}`)
+      }
+    } catch (error) {
+      console.error('Send message error:', error)
+      toast.error('Failed to send message. Please try again.')
+    } finally {
+      setIsContactSending(false)
     }
   }
 
@@ -712,8 +829,8 @@ export default function ServiceDetailPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Service Header */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
               {/* Service Image */}
               <div className="lg:col-span-1">
                 {service.cover_image_url ? (
@@ -946,7 +1063,7 @@ export default function ServiceDetailPage() {
           {/* Navigation Tabs */}
           <div className="bg-white rounded-lg shadow-sm border mb-8">
             <div className="border-b">
-              <nav className="flex space-x-8 px-6 overflow-x-auto">
+              <nav className="flex space-x-4 sm:space-x-8 px-4 sm:px-6 overflow-x-auto scrollbar-hide">
                 {[
                   { id: 'overview', label: 'Overview', icon: Eye },
                   { id: 'packages', label: 'Packages', icon: Package },
@@ -965,7 +1082,7 @@ export default function ServiceDetailPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+                    className={`flex items-center gap-2 py-4 px-2 sm:px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -978,7 +1095,7 @@ export default function ServiceDetailPage() {
               </nav>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {/* Overview Tab */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
@@ -1170,15 +1287,33 @@ export default function ServiceDetailPage() {
                           </div>
 
                           <div className="flex gap-3">
-                            <Button variant="outline">
+                            <Button variant="outline" onClick={handleContactProvider}>
                               <MessageSquare className="w-4 h-4 mr-2" />
                               Send Message
                             </Button>
-                            <Button variant="outline">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => {
+                                if (service?.provider?.phone) {
+                                  window.open(`tel:${service.provider.phone}`, '_self')
+                                } else {
+                                  toast.error('Phone number not available')
+                                }
+                              }}
+                            >
                               <Phone className="w-4 h-4 mr-2" />
                               Call Provider
                             </Button>
-                            <Button variant="outline">
+                            <Button 
+                              variant="outline"
+                              onClick={() => {
+                                if (service?.provider?.email) {
+                                  window.open(`mailto:${service.provider.email}?subject=Inquiry about ${service.title}`, '_blank')
+                                } else {
+                                  toast.error('Email not available')
+                                }
+                              }}
+                            >
                               <Mail className="w-4 h-4 mr-2" />
                               Send Email
                             </Button>
@@ -1569,26 +1704,42 @@ export default function ServiceDetailPage() {
 
               {/* Requirements */}
               <div>
-                <Label className="text-base font-medium">Project Requirements</Label>
+                <Label className="text-base font-medium">Project Requirements *</Label>
                 <Textarea
-                  placeholder="Describe your project requirements in detail..."
+                  placeholder="Describe your project requirements in detail... (minimum 20 characters)"
                   value={bookingForm.requirements}
                   onChange={(e) => setBookingForm(prev => ({ ...prev, requirements: e.target.value }))}
-                  className="mt-2"
+                  className={`mt-2 ${bookingForm.requirements.length > 0 && bookingForm.requirements.length < 20 ? 'border-red-300 focus:border-red-500' : bookingForm.requirements.length >= 20 ? 'border-green-300 focus:border-green-500' : ''}`}
                   rows={4}
+                  maxLength={500}
                 />
+                <div className="flex justify-between text-xs mt-1">
+                  <span className={bookingForm.requirements.length < 20 ? 'text-red-500' : 'text-green-600'}>
+                    {bookingForm.requirements.length < 20 ? 'Please provide more details about your requirements' : 'Great! Your requirements are detailed enough.'}
+                  </span>
+                  <span className={bookingForm.requirements.length < 20 ? 'text-red-500' : bookingForm.requirements.length > 450 ? 'text-orange-500' : 'text-green-600'}>
+                    {bookingForm.requirements.length}/500
+                  </span>
+                </div>
               </div>
 
               {/* Additional Notes */}
               <div>
-                <Label className="text-base font-medium">Additional Notes</Label>
+                <Label className="text-base font-medium">Additional Notes (Optional)</Label>
                 <Textarea
-                  placeholder="Any additional information or special requests..."
+                  placeholder="Any additional information, special requests, or preferences..."
                   value={bookingForm.notes}
                   onChange={(e) => setBookingForm(prev => ({ ...prev, notes: e.target.value }))}
                   className="mt-2"
                   rows={3}
+                  maxLength={300}
                 />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Share any additional context that might help the provider</span>
+                  <span className={bookingForm.notes.length > 250 ? 'text-orange-500' : 'text-gray-500'}>
+                    {bookingForm.notes.length}/300
+                  </span>
+                </div>
               </div>
 
               {/* Budget and Urgency */}
@@ -1630,7 +1781,13 @@ export default function ServiceDetailPage() {
                 </Button>
                 <Button 
                   onClick={handleBookingSubmit}
-                  disabled={submitting || !bookingForm.scheduled_date || !bookingForm.scheduled_time}
+                  disabled={
+                    submitting || 
+                    !bookingForm.scheduled_date || 
+                    !bookingForm.scheduled_time || 
+                    !bookingForm.requirements?.trim() ||
+                    bookingForm.requirements.length < 20
+                  }
                   className="min-w-[120px]"
                 >
                   {submitting ? 'Submitting...' : 'Submit Booking'}
@@ -1640,6 +1797,204 @@ export default function ServiceDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Enhanced Contact Provider Modal */}
+      <Dialog open={showContactModal} onOpenChange={setShowContactModal}>
+        <DialogContent className="sm:max-w-md lg:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-blue-600" />
+              Contact {service?.provider?.full_name || 'Provider'}
+            </DialogTitle>
+            <DialogDescription>
+              Send a message to the service provider. They will receive your message and can respond directly.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Provider Info Summary */}
+            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={service?.provider?.avatar_url} />
+                <AvatarFallback>
+                  {service?.provider?.full_name?.charAt(0) || 'P'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h3 className="font-semibold">{service?.provider?.full_name}</h3>
+                {service?.provider?.company_name && (
+                  <p className="text-sm text-gray-600">{service?.provider?.company_name}</p>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs">
+                    <Star className="h-3 w-3 mr-1" />
+                    {service?.provider?.rating || '5.0'}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {service?.provider?.response_time || '2h'} response
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Method */}
+            <div>
+              <Label className="text-sm font-medium">Contact Method</Label>
+              <Select
+                value={contactForm.contactMethod}
+                onValueChange={(value) => setContactForm(prev => ({ ...prev, contactMethod: value }))}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="message">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Platform Message
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="email">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email Notification
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <Label className="text-sm font-medium">Subject *</Label>
+              <Input
+                placeholder="What would you like to discuss?"
+                value={contactForm.subject}
+                onChange={(e) => setContactForm(prev => ({ ...prev, subject: e.target.value }))}
+                className="mt-2"
+              />
+            </div>
+
+            {/* Message */}
+            <div>
+              <Label className="text-sm font-medium">Message *</Label>
+              <Textarea
+                placeholder="Describe your project, requirements, timeline, or any questions you have..."
+                value={contactForm.message}
+                onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+
+            {/* Urgency */}
+            <div>
+              <Label className="text-sm font-medium">Urgency Level</Label>
+              <Select
+                value={contactForm.urgency}
+                onValueChange={(value) => setContactForm(prev => ({ ...prev, urgency: value }))}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      Low - General inquiry
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="normal">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                      Normal - Standard request
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="high">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full" />
+                      High - Urgent matter
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContactForm(prev => ({ 
+                  ...prev, 
+                  subject: 'Service Inquiry', 
+                  message: `Hi ${service?.provider?.full_name}, I'm interested in your ${service?.title} service. Could you please provide more details about...` 
+                }))}
+                className="text-xs"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                General Inquiry
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContactForm(prev => ({ 
+                  ...prev, 
+                  subject: 'Quote Request', 
+                  message: `Hi ${service?.provider?.full_name}, I would like to request a quote for your ${service?.title} service. My project involves...` 
+                }))}
+                className="text-xs"
+              >
+                <DollarSign className="h-3 w-3 mr-1" />
+                Quote Request
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContactForm(prev => ({ 
+                  ...prev, 
+                  subject: 'Schedule Consultation', 
+                  message: `Hi ${service?.provider?.full_name}, I'm interested in scheduling a consultation for your ${service?.title} service. Are you available for...` 
+                }))}
+                className="text-xs"
+              >
+                <Calendar className="h-3 w-3 mr-1" />
+                Schedule Call
+              </Button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowContactModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSendMessage}
+                disabled={isContactSending || !contactForm.subject.trim() || !contactForm.message.trim()}
+                className="min-w-[120px]"
+              >
+                {isContactSending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Send Message
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Help Text */}
+            <div className="text-xs text-gray-500 text-center">
+              Your message will be sent securely to the provider. You'll receive a response in your dashboard messages.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Modal */}
       {showDelete && (
