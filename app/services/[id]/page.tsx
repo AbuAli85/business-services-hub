@@ -438,13 +438,29 @@ export default function ServiceDetailPage() {
       const scheduledDateTime = new Date(`${bookingForm.scheduled_date}T${bookingForm.scheduled_time}`)
       
       // Get session for authentication
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+        toast.error('Authentication error. Please sign in again.')
+        router.push('/auth/sign-in')
+        return
+      }
+      
+      if (!session?.access_token) {
+        console.error('No access token in session')
+        toast.error('Please sign in to make a booking')
+        router.push('/auth/sign-in')
+        return
+      }
+      
+      console.log('🔍 Making booking request with token:', session.access_token.substring(0, 20) + '...')
       
       const res = await fetch(getApiUrl('BOOKINGS'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` })
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           service_id: service.id,

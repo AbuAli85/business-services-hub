@@ -34,28 +34,20 @@ async function authenticateUser(request: NextRequest) {
   let authError = null
   
   try {
-    // Use regular client for authentication
-    const supabase = await getSupabaseClient()
+    // Use admin client for server-side authentication
+    const supabase = await getSupabaseAdminClient()
     
-    // Try to get user from cookies/session
-    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+    // Get cookies from the request
+    const cookieHeader = request.headers.get('cookie')
+    console.log('🔍 Cookie header present:', !!cookieHeader)
     
-    if (sessionUser && !sessionError) {
-      user = sessionUser
-      console.log('✅ User authenticated from session:', user.id)
-      return { user, authError }
-    } else {
-      console.log('⚠️ No user found in session:', sessionError)
-      authError = sessionError
-    }
-    
-    // Try to get user from the request headers (Authorization header)
+    // Try to get user from Authorization header first
     const authHeader = request.headers.get('authorization')
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7)
       console.log('🔍 Bearer token found, length:', token.length)
       try {
-        // Set the auth token for this request
+        // Verify the JWT token
         const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
         if (tokenUser && !tokenError) {
           user = tokenUser
@@ -69,8 +61,40 @@ async function authenticateUser(request: NextRequest) {
         console.log('❌ Token auth exception:', tokenAuthError)
         authError = tokenAuthError
       }
-    } else {
-      console.log('⚠️ No Authorization header found')
+    }
+    
+    // If no Authorization header, try to extract session from cookies
+    if (!user && cookieHeader) {
+      try {
+        // Extract access token from cookies
+        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=')
+          acc[key] = value
+          return acc
+        }, {} as Record<string, string>)
+        
+        const accessToken = cookies['sb-access-token'] || cookies['supabase-auth-token']
+        if (accessToken) {
+          console.log('🔍 Access token found in cookies')
+          const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser(accessToken)
+          if (cookieUser && !cookieError) {
+            user = cookieUser
+            console.log('✅ User authenticated from cookies:', user.id)
+            return { user, authError }
+          } else {
+            console.log('❌ Cookie auth failed:', cookieError)
+            authError = cookieError
+          }
+        }
+      } catch (cookieError) {
+        console.log('❌ Cookie parsing error:', cookieError)
+        authError = cookieError
+      }
+    }
+    
+    if (!user) {
+      console.log('⚠️ No valid authentication found')
+      authError = new Error('Auth session missing!')
     }
     
   } catch (error) {
