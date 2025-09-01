@@ -84,17 +84,11 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    // Protect API routes that require authentication
+    // API routes handle their own authentication
+    // Let the API routes manage authentication instead of middleware
     if (url === '/api/bookings' || url.startsWith('/api/services')) {
-      console.log('🔐 Middleware: Checking API route:', url)
-      if (!session) {
-        console.log('🚫 API access denied: No session')
-        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
-      console.log('✅ API access granted for user:', session.user.id)
+      console.log('🔐 Middleware: API route detected, letting API handle authentication:', url)
+      // Don't block API routes - let them handle their own auth
     }
 
     // Protect admin API routes

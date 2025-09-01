@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/supabase'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
 // CORS headers for cross-domain access
@@ -29,63 +29,53 @@ const CreateBookingSchema = z.object({
 })
 
 // Helper function to authenticate user
-async function authenticateUser(request: NextRequest, supabase: any) {
+async function authenticateUser(request: NextRequest) {
   let user = null
   let authError = null
   
-  // Try to get user from cookies first
-  const cookieHeader = request.headers.get('cookie')
-  console.log('🔍 Cookie header:', cookieHeader ? 'Present' : 'Missing')
-  
-  if (cookieHeader) {
-    try {
-      const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser()
-      if (cookieUser && !cookieError) {
-        user = cookieUser
-        console.log('✅ User authenticated from cookies:', user.id)
-        return { user, authError }
-      } else {
-        console.log('⚠️ No user found in cookies, trying alternative auth method')
-      }
-    } catch (cookieAuthError) {
-      console.log('⚠️ Cookie auth failed, trying alternative method')
-    }
-  }
-  
-  // If no user from cookies, try alternative method
-  console.log('🔍 Trying alternative authentication method...')
-  
-  // Try to get user from the request headers (Authorization header)
-  const authHeader = request.headers.get('authorization')
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7)
-    console.log('🔍 Bearer token found, length:', token.length)
-    try {
-      // Set the auth token for this request
-      const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
-      if (tokenUser && !tokenError) {
-        user = tokenUser
-        console.log('✅ User authenticated from token:', user.id)
-        return { user, authError }
-      } else {
-        console.log('❌ Token auth failed:', tokenError)
-        authError = tokenError
-      }
-    } catch (tokenAuthError) {
-      console.log('❌ Token auth exception:', tokenAuthError)
-      authError = tokenAuthError
-    }
-  } else {
-    console.log('⚠️ No Authorization header found')
-    // Try the standard method as fallback
-    const { data: { user: standardUser }, error: standardError } = await supabase.auth.getUser()
-    if (standardUser && !standardError) {
-      user = standardUser
-      console.log('✅ User authenticated from standard method:', user.id)
+  try {
+    // Use regular client for authentication
+    const supabase = await getSupabaseClient()
+    
+    // Try to get user from cookies/session
+    const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
+    
+    if (sessionUser && !sessionError) {
+      user = sessionUser
+      console.log('✅ User authenticated from session:', user.id)
       return { user, authError }
     } else {
-      authError = standardError
+      console.log('⚠️ No user found in session:', sessionError)
+      authError = sessionError
     }
+    
+    // Try to get user from the request headers (Authorization header)
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7)
+      console.log('🔍 Bearer token found, length:', token.length)
+      try {
+        // Set the auth token for this request
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
+        if (tokenUser && !tokenError) {
+          user = tokenUser
+          console.log('✅ User authenticated from token:', user.id)
+          return { user, authError }
+        } else {
+          console.log('❌ Token auth failed:', tokenError)
+          authError = tokenError
+        }
+      } catch (tokenAuthError) {
+        console.log('❌ Token auth exception:', tokenAuthError)
+        authError = tokenAuthError
+      }
+    } else {
+      console.log('⚠️ No Authorization header found')
+    }
+    
+  } catch (error) {
+    console.log('❌ Authentication error:', error)
+    authError = error
   }
   
   return { user, authError }
@@ -95,12 +85,9 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Bookings API POST called')
     
-    const supabase = await getSupabaseAdminClient()
-    console.log('✅ Supabase admin client obtained')
+    const { user, authError } = await authenticateUser(request)
     
-    const { user, authError } = await authenticateUser(request, supabase)
-    
-    if (authError) {
+    if (authError || !user) {
       console.error('❌ Auth error:', authError)
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
@@ -110,12 +97,8 @@ export async function POST(request: NextRequest) {
       return response
     }
     
-    if (!user) {
-      console.log('❌ No user found from any authentication method')
-      const response = NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-      return response
-    }
+    const supabase = await getSupabaseAdminClient()
+    console.log('✅ Supabase admin client obtained')
 
     console.log('✅ User authenticated:', user.id)
 
@@ -249,12 +232,9 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Bookings API GET called')
     
-    const supabase = await getSupabaseAdminClient()
-    console.log('✅ Supabase admin client obtained')
+    const { user, authError } = await authenticateUser(request)
     
-    const { user, authError } = await authenticateUser(request, supabase)
-    
-    if (authError) {
+    if (authError || !user) {
       console.error('❌ Auth error:', authError)
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
@@ -264,12 +244,8 @@ export async function GET(request: NextRequest) {
       return response
     }
     
-    if (!user) {
-      console.log('❌ No user found from any authentication method')
-      const response = NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-      return response
-    }
+    const supabase = await getSupabaseAdminClient()
+    console.log('✅ Supabase admin client obtained')
 
     console.log('✅ User authenticated:', user.id)
 
@@ -372,12 +348,9 @@ export async function PATCH(request: NextRequest) {
     console.log('🔍 API: Request method:', request.method)
     console.log('🔍 API: Request headers:', Object.fromEntries(request.headers.entries()))
     
-    const supabase = await getSupabaseAdminClient()
-    console.log('✅ Supabase admin client obtained')
+    const { user, authError } = await authenticateUser(request)
     
-    const { user, authError } = await authenticateUser(request, supabase)
-    
-    if (authError) {
+    if (authError || !user) {
       console.error('❌ Auth error:', authError)
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
@@ -387,12 +360,8 @@ export async function PATCH(request: NextRequest) {
       return response
     }
     
-    if (!user) {
-      console.log('❌ No user found from any authentication method')
-      const response = NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-      return response
-    }
+    const supabase = await getSupabaseAdminClient()
+    console.log('✅ Supabase admin client obtained')
 
     console.log('✅ User authenticated:', user.id)
     console.log('🔍 API: Full user object:', JSON.stringify(user, null, 2))
