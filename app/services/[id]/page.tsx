@@ -520,27 +520,34 @@ export default function ServiceDetailPage() {
 
       // Send notification to provider
       try {
+        const bookingContent = `🎯 New Booking Request: ${service.title}
+
+📅 Booking Details:
+• Date: ${bookingForm.scheduled_date}
+• Time: ${bookingForm.scheduled_time}
+• Location: ${bookingForm.location || 'Remote'}
+• Budget: ${formatCurrency(bookingForm.budget || service.base_price)}
+• Urgency: ${bookingForm.urgency.charAt(0).toUpperCase() + bookingForm.urgency.slice(1)}
+
+📝 Requirements:
+${bookingForm.requirements}
+
+${bookingForm.notes ? `📋 Additional Notes:
+${bookingForm.notes}` : ''}
+
+⏰ Submitted: ${new Date().toLocaleString()}
+
+---
+🔔 Action Required: Please review this booking request and respond to the client through the platform.
+
+You can manage this booking in your Dashboard > Bookings section.`
+
         await supabase
           .from('messages')
           .insert({
             sender_id: user.id,
             receiver_id: service.provider_id,
-            content: `New Booking Request: ${service.title}
-
-You have received a new booking request for your service "${service.title}".
-            
-Booking Details:
-- Date: ${bookingForm.scheduled_date}
-- Time: ${bookingForm.scheduled_time}
-- Location: ${bookingForm.location || 'Remote'}
-- Budget: ${formatCurrency(bookingForm.budget || service.base_price)}
-- Urgency: ${bookingForm.urgency}
-
-Requirements: ${bookingForm.requirements}
-
-${bookingForm.notes ? `Notes: ${bookingForm.notes}` : ''}
-
-Please review and respond to this booking request.`
+            content: bookingContent
           })
       } catch (notificationError) {
         console.error('Failed to send notification:', notificationError)
@@ -620,13 +627,27 @@ Please review and respond to this booking request.`
         content: `Subject: ${contactForm.subject}\n\nMessage: ${contactForm.message}\n\nUrgency: ${contactForm.urgency}\nContact Method: ${contactForm.contactMethod}`
       })
       
-      // Create a message record
+      // Create a message record with better formatting
+      const messageContent = `📬 ${contactForm.subject}
+
+💬 Message:
+${contactForm.message}
+
+📋 Details:
+• Service: ${service.title}
+• Urgency: ${contactForm.urgency.charAt(0).toUpperCase() + contactForm.urgency.slice(1)}
+• Contact Method: ${contactForm.contactMethod === 'message' ? 'Platform Message' : 'Email Notification'}
+• Sent: ${new Date().toLocaleString()}
+
+---
+This message was sent through the BusinessHub platform regarding your service.`
+
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
           sender_id: user.id,
           receiver_id: service.provider_id,
-          content: `Subject: ${contactForm.subject}\n\nMessage: ${contactForm.message}\n\nUrgency: ${contactForm.urgency}\nContact Method: ${contactForm.contactMethod}`
+          content: messageContent
         })
         .select()
         .single()
@@ -645,7 +666,7 @@ Please review and respond to this booking request.`
         // Note: Email functionality would require provider email from profile data
       }
 
-      toast.success('Message sent successfully!')
+      toast.success(`Message sent successfully to ${service.provider?.full_name || 'the provider'}!`)
       setShowContactModal(false)
       setContactForm({
         subject: '',
@@ -657,7 +678,7 @@ Please review and respond to this booking request.`
       // Optionally redirect to messages page to continue conversation
       setTimeout(() => {
         router.push('/dashboard/messages')
-      }, 1500)
+      }, 2000) // Increased time to read success message
     } catch (error) {
       console.error('Send message error:', error)
       
@@ -1953,7 +1974,18 @@ Please review and respond to this booking request.`
                 onClick={() => setContactForm(prev => ({ 
                   ...prev, 
                   subject: 'Service Inquiry', 
-                  message: `Hi ${service?.provider?.full_name}, I'm interested in your ${service?.title} service. Could you please provide more details about...` 
+                  message: `Hi ${service?.provider?.full_name},
+
+I'm interested in your "${service?.title}" service and would like to learn more about:
+
+• Service details and process
+• Timeline and availability
+• Pricing for my specific needs
+• Next steps to get started
+
+I look forward to hearing from you!
+
+Best regards` 
                 }))}
                 className="text-xs"
               >
@@ -1966,7 +1998,23 @@ Please review and respond to this booking request.`
                 onClick={() => setContactForm(prev => ({ 
                   ...prev, 
                   subject: 'Quote Request', 
-                  message: `Hi ${service?.provider?.full_name}, I would like to request a quote for your ${service?.title} service. My project involves...` 
+                  message: `Hi ${service?.provider?.full_name},
+
+I would like to request a detailed quote for your "${service?.title}" service.
+
+Project Details:
+• [Please describe your project]
+• Budget range: [Your budget]
+• Timeline: [Your desired timeline]
+• Specific requirements: [Any special needs]
+
+Could you please provide:
+• Detailed pricing breakdown
+• Timeline estimates
+• What's included in the service
+• Next steps
+
+Thank you for your time!` 
                 }))}
                 className="text-xs"
               >
@@ -1979,7 +2027,21 @@ Please review and respond to this booking request.`
                 onClick={() => setContactForm(prev => ({ 
                   ...prev, 
                   subject: 'Schedule Consultation', 
-                  message: `Hi ${service?.provider?.full_name}, I'm interested in scheduling a consultation for your ${service?.title} service. Are you available for...` 
+                  message: `Hi ${service?.provider?.full_name},
+
+I'm interested in scheduling a consultation for your "${service?.title}" service.
+
+I would like to discuss:
+• My project requirements
+• Your approach and methodology
+• Timeline and milestones
+• Pricing and packages
+
+Are you available for a call this week? I'm flexible with timing and can accommodate your schedule.
+
+Please let me know what works best for you.
+
+Looking forward to our conversation!` 
                 }))}
                 className="text-xs"
               >
