@@ -569,10 +569,19 @@ export default function ServicesPage() {
            </p>
         </div>
         {userRole === 'provider' && (
-          <Button onClick={() => router.push('/dashboard/services/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Service
-          </Button>
+          <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline"
+              onClick={() => router.push('/dashboard/services/manage')}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Services
+            </Button>
+            <Button onClick={() => router.push('/dashboard/services/create')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Service
+            </Button>
+          </div>
         )}
       </div>
 

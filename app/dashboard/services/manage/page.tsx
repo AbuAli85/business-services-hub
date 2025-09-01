@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -16,8 +17,10 @@ import {
 } from '@/components/ui/table'
 import { 
   Search,
-  Filter,
+  Plus,
   Eye,
+  Edit,
+  Trash2,
   CheckCircle,
   XCircle,
   Clock,
@@ -25,13 +28,12 @@ import {
   FileText,
   DollarSign,
   Calendar,
-  User,
-  Building2,
   Star,
   AlertCircle,
   TrendingUp,
   Users,
-  Package
+  Package,
+  Settings
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -48,16 +50,11 @@ interface Service {
   featured: boolean
   created_at: string
   updated_at: string
-  provider: {
-    id: string
-    full_name: string
-    email: string
-    phone?: string
-  }
 }
 
 interface ServiceStats {
   total: number
+  active: number
   pending: number
   approved: number
   rejected: number
@@ -65,14 +62,17 @@ interface ServiceStats {
   totalRevenue: number
 }
 
-export default function AdminServicesPage() {
+export default function ManageServicesPage() {
+  const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState<ServiceStats>({
     total: 0,
+    active: 0,
     pending: 0,
     approved: 0,
     rejected: 0,
@@ -81,28 +81,39 @@ export default function AdminServicesPage() {
   })
 
   useEffect(() => {
-    loadServices()
+    loadUser()
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      loadServices()
+    }
+  }, [user])
 
   useEffect(() => {
     filterServices()
   }, [services, searchQuery, statusFilter])
 
+  const loadUser = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    } catch (error) {
+      console.error('Error loading user:', error)
+    }
+  }
+
   const loadServices = async () => {
+    if (!user) return
+
     try {
       const supabase = await getSupabaseClient()
       
       const { data, error } = await supabase
         .from('services')
-        .select(`
-          *,
-          provider:profiles!services_provider_id_fkey(
-            id,
-            full_name,
-            email,
-            phone
-          )
-        `)
+        .select('*')
+        .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -119,6 +130,7 @@ export default function AdminServicesPage() {
 
   const calculateStats = (servicesData: Service[]) => {
     const total = servicesData.length
+    const active = servicesData.filter(s => s.status === 'active').length
     const pending = servicesData.filter(s => s.approval_status === 'pending').length
     const approved = servicesData.filter(s => s.approval_status === 'approved').length
     const rejected = servicesData.filter(s => s.approval_status === 'rejected').length
@@ -127,6 +139,7 @@ export default function AdminServicesPage() {
 
     setStats({
       total,
+      active,
       pending,
       approved,
       rejected,
@@ -142,102 +155,74 @@ export default function AdminServicesPage() {
       filtered = filtered.filter(service =>
         service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.provider.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+        service.category.toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(service => service.approval_status === statusFilter)
+      if (statusFilter === 'active') {
+        filtered = filtered.filter(service => service.status === 'active')
+      } else {
+        filtered = filtered.filter(service => service.approval_status === statusFilter)
+      }
     }
 
     setFilteredServices(filtered)
   }
 
-  const approveService = async (serviceId: string) => {
+  const deleteService = async (serviceId: string) => {
+    if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+      return
+    }
+
     try {
       const supabase = await getSupabaseClient()
       
       const { error } = await supabase
         .from('services')
-        .update({ 
-          approval_status: 'approved',
-          status: 'active',
-          updated_at: new Date().toISOString()
-        })
+        .delete()
         .eq('id', serviceId)
 
       if (error) throw error
 
-      toast.success('Service approved successfully!')
+      toast.success('Service deleted successfully!')
       loadServices()
     } catch (error: any) {
-      console.error('Error approving service:', error)
-      toast.error('Failed to approve service')
+      console.error('Error deleting service:', error)
+      toast.error('Failed to delete service')
     }
   }
 
-  const rejectService = async (serviceId: string) => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const { error } = await supabase
-        .from('services')
-        .update({ 
-          approval_status: 'rejected',
-          status: 'inactive',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', serviceId)
-
-      if (error) throw error
-
-      toast.success('Service rejected')
-      loadServices()
-    } catch (error: any) {
-      console.error('Error rejecting service:', error)
-      toast.error('Failed to reject service')
+  const getStatusBadge = (service: Service) => {
+    if (service.approval_status === 'pending') {
+      return (
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Pending Review
+        </Badge>
+      )
+    } else if (service.approval_status === 'approved') {
+      return (
+        <Badge variant="default" className="flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Approved
+        </Badge>
+      )
+    } else if (service.approval_status === 'rejected') {
+      return (
+        <Badge variant="destructive" className="flex items-center gap-1">
+          <XCircle className="h-3 w-3" />
+          Rejected
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1">
+          <Settings className="h-3 w-3" />
+          {service.status}
+        </Badge>
+      )
     }
-  }
-
-  const toggleFeatured = async (serviceId: string, currentFeatured: boolean) => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const { error } = await supabase
-        .from('services')
-        .update({ 
-          featured: !currentFeatured,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', serviceId)
-
-      if (error) throw error
-
-      toast.success(`Service ${!currentFeatured ? 'featured' : 'unfeatured'} successfully!`)
-      loadServices()
-    } catch (error: any) {
-      console.error('Error toggling featured status:', error)
-      toast.error('Failed to update featured status')
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: 'Pending Review', variant: 'secondary' as const, icon: Clock },
-      approved: { label: 'Approved', variant: 'default' as const, icon: CheckCircle },
-      rejected: { label: 'Rejected', variant: 'destructive' as const, icon: XCircle }
-    }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, variant: 'secondary' as const, icon: Clock }
-    const Icon = config.icon
-    
-    return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    )
   }
 
   const formatCurrency = (amount: number, currency: string = 'OMR') => {
@@ -266,12 +251,12 @@ export default function AdminServicesPage() {
   return (
     <div className="space-y-6">
       {/* Enhanced Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-8 text-white">
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Service Management</h1>
-            <p className="text-blue-100 text-lg mb-4">
-              Review and approve services from providers with comprehensive oversight
+            <h1 className="text-4xl font-bold mb-2">My Services</h1>
+            <p className="text-purple-100 text-lg mb-4">
+              Manage your services and track their approval status
             </p>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">
@@ -279,12 +264,12 @@ export default function AdminServicesPage() {
                 <span>Total: {stats.total}</span>
               </div>
               <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>Pending: {stats.pending}</span>
-              </div>
-              <div className="flex items-center">
                 <CheckCircle className="h-4 w-4 mr-1" />
                 <span>Approved: {stats.approved}</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>Pending: {stats.pending}</span>
               </div>
               <div className="flex items-center">
                 <DollarSign className="h-4 w-4 mr-1" />
@@ -293,6 +278,14 @@ export default function AdminServicesPage() {
             </div>
           </div>
           <div className="flex flex-col gap-3">
+            <Button 
+              variant="secondary"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={() => router.push('/dashboard/services/create')}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Service
+            </Button>
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
@@ -321,10 +314,10 @@ export default function AdminServicesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
+              <CheckCircle className="h-4 w-4 text-green-600" />
               <div>
-                <p className="text-sm font-medium">Pending Review</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="text-sm font-medium">Active</p>
+                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
               </div>
             </div>
           </CardContent>
@@ -332,10 +325,10 @@ export default function AdminServicesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <Clock className="h-4 w-4 text-yellow-600" />
               <div>
-                <p className="text-sm font-medium">Approved</p>
-                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+                <p className="text-sm font-medium">Pending Review</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
               </div>
             </div>
           </CardContent>
@@ -356,8 +349,8 @@ export default function AdminServicesPage() {
       {/* Services Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Services</CardTitle>
-          <CardDescription>Review and manage all services submitted by providers</CardDescription>
+          <CardTitle>Your Services</CardTitle>
+          <CardDescription>Manage and track the status of your submitted services</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -366,7 +359,7 @@ export default function AdminServicesPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by title, description, category, or provider..."
+                  placeholder="Search your services..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -378,6 +371,7 @@ export default function AdminServicesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="pending">Pending Review</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
@@ -391,7 +385,6 @@ export default function AdminServicesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Service</TableHead>
-                    <TableHead>Provider</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Status</TableHead>
@@ -402,11 +395,18 @@ export default function AdminServicesPage() {
                 <TableBody>
                   {filteredServices.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         <div className="flex flex-col items-center space-y-2">
                           <Package className="h-12 w-12 opacity-50" />
                           <p className="text-lg font-medium">No services found</p>
-                          <p className="text-sm">Try adjusting your filters or search criteria</p>
+                          <p className="text-sm">Create your first service to get started</p>
+                          <Button 
+                            onClick={() => router.push('/dashboard/services/create')}
+                            className="mt-2"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Service
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -427,21 +427,12 @@ export default function AdminServicesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{service.provider.full_name}</p>
-                            <p className="text-sm text-muted-foreground">{service.provider.email}</p>
-                            {service.provider.phone && (
-                              <p className="text-xs text-muted-foreground">{service.provider.phone}</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
                           <Badge variant="outline">{service.category}</Badge>
                         </TableCell>
                         <TableCell>
                           <span className="font-medium">{formatCurrency(service.base_price, service.currency)}</span>
                         </TableCell>
-                        <TableCell>{getStatusBadge(service.approval_status)}</TableCell>
+                        <TableCell>{getStatusBadge(service)}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -454,35 +445,18 @@ export default function AdminServicesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View
                             </Button>
-                            {service.approval_status === 'pending' && (
-                              <>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  className="text-green-600 hover:text-green-700"
-                                  onClick={() => approveService(service.id)}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  className="text-red-600 hover:text-red-700"
-                                  onClick={() => rejectService(service.id)}
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Reject
-                                </Button>
-                              </>
-                            )}
+                            <Button size="sm" variant="outline">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => toggleFeatured(service.id, service.featured)}
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => deleteService(service.id)}
                             >
-                              <Star className={`h-4 w-4 mr-2 ${service.featured ? 'text-yellow-500 fill-current' : ''}`} />
-                              {service.featured ? 'Unfeature' : 'Feature'}
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
                             </Button>
                           </div>
                         </TableCell>
@@ -491,6 +465,23 @@ export default function AdminServicesPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Approval Process Info */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-blue-900">Service Approval Process</h4>
+              <p className="text-sm text-blue-700 mt-1">
+                All services go through a review process to ensure quality and compliance. 
+                Our admin team typically reviews submissions within 1-2 business days. 
+                You'll receive email notifications about approval status updates.
+              </p>
             </div>
           </div>
         </CardContent>
