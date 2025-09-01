@@ -142,8 +142,11 @@ export default function ServicesPage() {
         return
       }
 
+      console.log('User authenticated:', user.id, 'Role from metadata:', user.user_metadata?.role)
       setUser(user)
-      setUserRole(user.user_metadata?.role || 'client')
+      const role = user.user_metadata?.role || 'client'
+      console.log('Setting user role to:', role)
+      setUserRole(role)
       
       await Promise.all([
         fetchServices(),
@@ -171,6 +174,9 @@ export default function ServicesPage() {
       if (userRole === 'provider' && user?.id) {
         console.log('Filtering services for provider:', user.id)
         query = query.eq('provider_id', user.id)
+        
+        // Double-check the query is correct
+        console.log('Query after filtering for provider:', user.id)
       } else if (userRole === 'provider' && !user?.id) {
         console.log('Provider role but no user ID, skipping services fetch')
         setServices([])
