@@ -257,75 +257,122 @@ export default function ServicesPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Role-based filtering: Providers only see stats for their own services
-      let servicesQuery = supabase.from('services')
+      // Get total services count - role-based filtering
+      let totalServices = 0
       if (userRole === 'provider') {
-        servicesQuery = servicesQuery.eq('provider_id', user.id)
+        const { count } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', user.id)
+        totalServices = count || 0
+      } else {
+        const { count } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+        totalServices = count || 0
       }
-      
-      // Get total services count
-      const { count: totalServices } = await servicesQuery
-        .select('*', { count: 'exact', head: true })
 
-      // Get active services count
-      const { count: activeServices } = await servicesQuery
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active')
+      // Get active services count - role-based filtering
+      let activeServices = 0
+      if (userRole === 'provider') {
+        const { count } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', user.id)
+          .eq('status', 'active')
+        activeServices = count || 0
+      } else {
+        const { count } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active')
+        activeServices = count || 0
+      }
 
-      // Get pending approval count
-      const { count: pendingApproval } = await servicesQuery
-        .select('*', { count: 'exact', head: true })
-        .eq('approval_status', 'pending')
+      // Get pending approval count - role-based filtering
+      let pendingApproval = 0
+      if (userRole === 'provider') {
+        const { count } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('provider_id', user.id)
+          .eq('approval_status', 'pending')
+        pendingApproval = count || 0
+      } else {
+        const { count } = await supabase
+          .from('services')
+          .select('*', { count: 'exact', head: true })
+          .eq('approval_status', 'pending')
+        pendingApproval = count || 0
+      }
 
       // Get total bookings - role-based filtering
       let totalBookings = 0
       if (userRole === 'provider') {
         // For providers, get bookings for their services only
-        const { count: providerBookings } = await supabase
-          .from('bookings')
-          .select('*', { count: 'exact', head: true })
-          .in('service_id', (await servicesQuery.select('id')).data?.map(s => s.id) || [])
-        totalBookings = providerBookings || 0
+        const { data: providerServices } = await supabase
+          .from('services')
+          .select('id')
+          .eq('provider_id', user.id)
+        
+        if (providerServices && providerServices.length > 0) {
+          const serviceIds = providerServices.map(s => s.id)
+          const { count } = await supabase
+            .from('bookings')
+            .select('*', { count: 'exact', head: true })
+            .in('service_id', serviceIds)
+          totalBookings = count || 0
+        }
       } else {
         // For clients and admins, get all bookings
-        const { count: allBookings } = await supabase
+        const { count } = await supabase
           .from('bookings')
           .select('*', { count: 'exact', head: true })
-        totalBookings = allBookings || 0
+        totalBookings = count || 0
       }
 
       // Get total revenue from completed bookings - role-based filtering
       let totalRevenue = 0
       try {
-        let completedBookingsQuery = supabase
-          .from('bookings')
-          .select('subtotal, currency')
-          .eq('status', 'completed')
-        
-        // For providers, only get revenue from their services
         if (userRole === 'provider') {
-          const serviceIds = (await servicesQuery.select('id')).data?.map(s => s.id) || []
-          if (serviceIds.length > 0) {
-            completedBookingsQuery = completedBookingsQuery.in('service_id', serviceIds)
-          } else {
-            // No services, so no revenue
-            totalRevenue = 0
+          // For providers, only get revenue from their services
+          const { data: providerServices } = await supabase
+            .from('services')
+            .select('id')
+            .eq('provider_id', user.id)
+          
+          if (providerServices && providerServices.length > 0) {
+            const serviceIds = providerServices.map(s => s.id)
+            const { data: completedBookings } = await supabase
+              .from('bookings')
+              .select('subtotal, currency')
+              .eq('status', 'completed')
+              .in('service_id', serviceIds)
+            
+            if (completedBookings) {
+              totalRevenue = completedBookings.reduce((sum, booking) => {
+                const subtotal = booking.subtotal || 0
+                const vatAmount = subtotal * 0.05 // Default 5% VAT
+                const total = subtotal + vatAmount
+                return sum + total
+              }, 0)
+            }
           }
-        }
-        
-        const { data: completedBookings, error: bookingError } = await completedBookingsQuery
-
-        if (bookingError) {
-          console.warn('Could not fetch bookings for revenue calculation:', bookingError)
-          totalRevenue = 0
-        } else if (completedBookings) {
-          totalRevenue = completedBookings.reduce((sum, booking) => {
-            // Calculate total from subtotal + VAT
-            const subtotal = booking.subtotal || 0
-            const vatAmount = subtotal * 0.05 // Default 5% VAT
-            const total = subtotal + vatAmount
-            return sum + total
-          }, 0)
+        } else {
+          // For clients and admins, get revenue from all completed bookings
+          const { data: completedBookings } = await supabase
+            .from('bookings')
+            .select('subtotal, currency')
+            .eq('status', 'completed')
+          
+          if (completedBookings) {
+            totalRevenue = completedBookings.reduce((sum, booking) => {
+              const subtotal = booking.subtotal || 0
+              const vatAmount = subtotal * 0.05 // Default 5% VAT
+              const total = subtotal + vatAmount
+              return sum + total
+            }, 0)
+          }
         }
       } catch (error) {
         console.warn('Error calculating revenue from bookings:', error)
@@ -336,8 +383,13 @@ export default function ServicesPage() {
       let averageRating = 0
       if (userRole === 'provider') {
         // For providers, get reviews for their services only
-        const serviceIds = (await servicesQuery.select('id')).data?.map(s => s.id) || []
-        if (serviceIds.length > 0) {
+        const { data: providerServices } = await supabase
+          .from('services')
+          .select('id')
+          .eq('provider_id', user.id)
+        
+        if (providerServices && providerServices.length > 0) {
+          const serviceIds = providerServices.map(s => s.id)
           const { data: reviews } = await supabase
             .from('reviews')
             .select('rating')
