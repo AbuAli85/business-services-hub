@@ -223,7 +223,8 @@ export async function POST(request: NextRequest) {
         start_time: scheduled_date, // Add required start_time field
         end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add required end_time field (2 hours later)
         total_price: amount, // Add required total_price field (matches existing schema)
-        subtotal: amount // Add required subtotal field for total_amount generation
+        subtotal: amount, // Add required subtotal field for total_amount generation
+        total_amount: amount // Add required total_amount field (for webhook trigger)
       })
       .select(`
         *,
