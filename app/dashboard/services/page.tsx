@@ -175,7 +175,7 @@ export default function ServicesPage() {
         .from('services')
         .select('*')
 
-      // Role-based filtering: Providers only see their own services, clients see all services
+      // Role-based filtering: Providers only see their own services, clients see only approved services
       console.log('Current userRole:', userRole, 'User ID:', user?.id)
       if (userRole === 'provider' && user?.id) {
         console.log('Filtering services for provider:', user.id)
@@ -187,9 +187,12 @@ export default function ServicesPage() {
         console.log('Provider role but no user ID, skipping services fetch')
         setServices([])
         return
+      } else if (userRole === 'client') {
+        // Clients should only see approved services, not pending ones
+        console.log('Filtering services for client - showing only approved services')
+        query = query.eq('approval_status', 'approved')
       }
       // Admins can see all services (no additional filter needed)
-      // Clients can see all services (no additional filter needed)
 
       // Apply filters
       if (statusFilter !== 'all') {
@@ -207,14 +210,20 @@ export default function ServicesPage() {
       // Apply sorting
       query = query.order(sortBy, { ascending: sortOrder === 'asc' })
 
-      const { data: servicesData, error } = await query
+             const { data: servicesData, error } = await query
 
-      if (error) {
-        console.error('Error fetching services:', error)
-        toast.error('Failed to fetch services')
-        setServices([])
-        return
-      }
+       if (error) {
+         console.error('Error fetching services:', error)
+         toast.error('Failed to fetch services')
+         setServices([])
+         return
+       }
+
+       console.log(`Services fetched for ${userRole}:`, servicesData?.length || 0, 'services')
+       if (servicesData && servicesData.length > 0) {
+         console.log('First service provider_id:', servicesData[0].provider_id)
+         console.log('First service approval_status:', servicesData[0].approval_status)
+       }
 
       // Now try to enrich services with provider information
       const enrichedServices = await Promise.all(
@@ -289,54 +298,75 @@ export default function ServicesPage() {
 
       const supabase = await getSupabaseClient()
       
-      // Get total services count - role-based filtering
-      let totalServices = 0
-      if (userRole === 'provider') {
-        const { count } = await supabase
-          .from('services')
-          .select('*', { count: 'exact', head: true })
-          .eq('provider_id', user.id)
-        totalServices = count || 0
-      } else {
-        const { count } = await supabase
-          .from('services')
-          .select('*', { count: 'exact', head: true })
-        totalServices = count || 0
-      }
+             // Get total services count - role-based filtering
+       let totalServices = 0
+       if (userRole === 'provider') {
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('provider_id', user.id)
+         totalServices = count || 0
+       } else if (userRole === 'client') {
+         // Clients only see approved services
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('approval_status', 'approved')
+         totalServices = count || 0
+       } else {
+         // Admins see all services
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+         totalServices = count || 0
+       }
 
-      // Get active services count - role-based filtering
-      let activeServices = 0
-      if (userRole === 'provider') {
-        const { count } = await supabase
-          .from('services')
-          .select('*', { count: 'exact', head: true })
-          .eq('provider_id', user.id)
-          .eq('status', 'active')
-        activeServices = count || 0
-      } else {
-        const { count } = await supabase
-          .from('services')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active')
-        activeServices = count || 0
-      }
+             // Get active services count - role-based filtering
+       let activeServices = 0
+       if (userRole === 'provider') {
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('provider_id', user.id)
+           .eq('status', 'active')
+         activeServices = count || 0
+       } else if (userRole === 'client') {
+         // Clients only see approved and active services
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('approval_status', 'approved')
+           .eq('status', 'active')
+         activeServices = count || 0
+       } else {
+         // Admins see all active services
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('status', 'active')
+         activeServices = count || 0
+       }
 
-      // Get pending approval count - role-based filtering
-      let pendingApproval = 0
-      if (userRole === 'provider') {
-        const { count } = await supabase
-          .from('services')
-          .select('*', { count: 'exact', head: true })
-          .eq('provider_id', user.id)
-          .eq('approval_status', 'pending')
-        pendingApproval = count || 0
-      } else {
-        const { count } = await supabase
-          .from('services')
-          .select('*', { count: 'exact', head: true })
-          .eq('approval_status', 'pending')
-        pendingApproval = count || 0
-      }
+             // Get pending approval count - role-based filtering
+       let pendingApproval = 0
+       if (userRole === 'provider') {
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('provider_id', user.id)
+           .eq('approval_status', 'pending')
+         pendingApproval = count || 0
+       } else if (userRole === 'client') {
+         // Clients don't see pending services
+         pendingApproval = 0
+       } else {
+         // Admins see all pending services
+         const { count } = await supabase
+           .from('services')
+           .select('*', { count: 'exact', head: true })
+           .eq('approval_status', 'pending')
+         pendingApproval = count || 0
+       }
 
       // Get total bookings - role-based filtering
       let totalBookings = 0
@@ -531,12 +561,12 @@ export default function ServicesPage() {
           <h1 className="text-3xl font-bold text-gray-900">
             {userRole === 'provider' ? 'My Services' : 'Available Services'}
           </h1>
-          <p className="text-gray-600 mt-2">
-            {userRole === 'provider' 
-              ? 'Manage and monitor your service offerings' 
-              : `Browse and book services from professional providers ${userRole === 'client' ? '(including services pending approval)' : ''}`
-            }
-          </p>
+                     <p className="text-gray-600 mt-2">
+             {userRole === 'provider' 
+               ? 'Manage and monitor your service offerings' 
+               : `Browse and book services from professional providers ${userRole === 'client' ? '(approved services only)' : ''}`
+             }
+           </p>
         </div>
         {userRole === 'provider' && (
           <Button onClick={() => router.push('/dashboard/services/create')}>
@@ -623,15 +653,15 @@ export default function ServicesPage() {
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder={userRole === 'provider' 
-                ? "Search your services by title or description..." 
-                : "Search by service title or description..."
-              }
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+                         <Input
+               placeholder={userRole === 'provider' 
+                 ? "Search your services by title or description..." 
+                 : "Search approved services by title or description..."
+               }
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+               className="pl-10"
+             />
           </div>
 
           {/* Filters */}
