@@ -456,7 +456,7 @@ export default function ServiceDetailPage() {
       
       console.log('🔍 Making booking request with token:', session.access_token.substring(0, 20) + '...')
       
-      const res = await crossDomainFetch('/api/bookings', {
+            const res = await crossDomainFetch('/api/bookings', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${session.access_token}`
@@ -474,7 +474,7 @@ export default function ServiceDetailPage() {
       })
 
       const json = await res.json()
-      
+
       if (!res.ok) {
         throw new Error(json.error || 'Failed to create booking')
       }
