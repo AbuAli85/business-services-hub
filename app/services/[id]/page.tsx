@@ -6,6 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { getApiUrl } from '@/lib/api-utils'
 import { createNonBlockingHandler } from '@/lib/performance'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { toast } from 'react-hot-toast'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -135,7 +136,7 @@ export default function ServiceDetailPage() {
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [bookingForm, setBookingForm] = useState<BookingForm>({
-    package_id: '',
+    package_id: 'base',
     scheduled_date: '',
     scheduled_time: '',
     location: '',
@@ -418,11 +419,33 @@ export default function ServiceDetailPage() {
     try {
       setSubmitting(true)
       
+      // Validate required fields
+      if (!bookingForm.scheduled_date || !bookingForm.scheduled_time) {
+        toast.error('Please select a date and time for your booking')
+        return
+      }
+
+      // Check if user is authenticated
+      const supabase = await getSupabaseClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        toast.error('Please sign in to make a booking')
+        router.push('/auth/sign-in')
+        return
+      }
+
       const scheduledDateTime = new Date(`${bookingForm.scheduled_date}T${bookingForm.scheduled_time}`)
+      
+      // Get session for authentication
+      const { data: { session } } = await supabase.auth.getSession()
       
       const res = await fetch(getApiUrl('BOOKINGS'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` })
+        },
         body: JSON.stringify({
           service_id: service.id,
           scheduled_date: scheduledDateTime.toISOString(),
@@ -443,7 +466,7 @@ export default function ServiceDetailPage() {
 
       setShowBooking(false)
       setBookingForm({
-        package_id: '',
+        package_id: 'base',
         scheduled_date: '',
         scheduled_time: '',
         location: '',
@@ -453,12 +476,121 @@ export default function ServiceDetailPage() {
         urgency: 'medium'
       })
       
-      alert('Booking request submitted successfully! We will contact you soon.')
+      toast.success('Booking request submitted successfully! We will contact you soon.')
+      
+      // Refresh service stats if owner
+      if (isOwner) {
+        fetchServiceStats(service.id)
+      }
     } catch (error) {
       console.error('Booking error:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create booking')
+      toast.error(error instanceof Error ? error.message : 'Failed to create booking')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleContactProvider = async () => {
+    if (!service || !service.provider) return
+
+    try {
+      // Check if user is authenticated
+      const supabase = await getSupabaseClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        toast.error('Please sign in to contact the provider')
+        router.push('/auth/sign-in')
+        return
+      }
+
+      // Check if user is trying to contact themselves
+      if (user.id === service.provider_id) {
+        toast.error('You cannot contact yourself')
+        return
+      }
+
+      // Navigate to messages with the provider
+      router.push(`/dashboard/messages?provider=${service.provider_id}&service=${service.id}`)
+    } catch (error) {
+      console.error('Contact provider error:', error)
+      toast.error('Failed to open contact form')
+    }
+  }
+
+  const refreshServiceData = async () => {
+    if (!serviceId) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('services')
+        .select(`
+          *,
+          service_packages(*)
+        `)
+        .eq('id', serviceId)
+        .maybeSingle()
+
+      if (serviceData && !serviceError) {
+        setService(serviceData)
+      }
+    } catch (error) {
+      console.error('Error refreshing service data:', error)
+    }
+  }
+
+  const handleServiceStatusChange = async (newStatus: string) => {
+    if (!service || !isAdmin) return
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('services')
+        .update({ status: newStatus })
+        .eq('id', service.id)
+
+      if (error) {
+        throw error
+      }
+
+      toast.success(`Service ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
+      
+      // Refresh service data
+      await refreshServiceData()
+    } catch (error) {
+      console.error('Service status change error:', error)
+      toast.error('Failed to update service status')
+    }
+  }
+
+  const handleServiceApproval = async (action: 'approve' | 'reject') => {
+    if (!service || !isAdmin) return
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('services')
+        .update({ 
+          approval_status: action === 'approve' ? 'approved' : 'rejected',
+          status: action === 'approve' ? 'active' : 'inactive'
+        })
+        .eq('id', service.id)
+
+      if (error) {
+        throw error
+      }
+
+      toast.success(`Service ${action === 'approve' ? 'approved' : 'rejected'} successfully`)
+      
+      // Refresh service data
+      await refreshServiceData()
+    } catch (error) {
+      console.error('Service approval error:', error)
+      toast.error(`Failed to ${action} service`)
     }
   }
 
@@ -760,7 +892,7 @@ export default function ServiceDetailPage() {
                           <Settings className="w-4 h-4 mr-2" />
                           Admin Panel
                         </Button>
-                        <Button variant="outline" size="lg">
+                        <Button variant="outline" size="lg" onClick={handleContactProvider}>
                           <MessageSquare className="w-4 h-4 mr-2" />
                           Contact Provider
                         </Button>
@@ -768,7 +900,7 @@ export default function ServiceDetailPage() {
                     ) : (
                       /* Client Actions */
                       <>
-                        <Button variant="outline" size="lg">
+                        <Button variant="outline" size="lg" onClick={handleContactProvider}>
                           <MessageSquare className="w-4 h-4 mr-2" />
                           Contact Provider
                         </Button>
@@ -1217,10 +1349,20 @@ export default function ServiceDetailPage() {
                           <h4 className="font-medium mb-2">Service Status</h4>
                           <p className="text-sm text-gray-600 mb-3">Current: {service.status}</p>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleServiceStatusChange('active')}
+                              disabled={service.status === 'active'}
+                            >
                               Activate
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleServiceStatusChange('inactive')}
+                              disabled={service.status === 'inactive'}
+                            >
                               Deactivate
                             </Button>
                           </div>
@@ -1229,10 +1371,22 @@ export default function ServiceDetailPage() {
                           <h4 className="font-medium mb-2">Approval Status</h4>
                           <p className="text-sm text-gray-600 mb-3">Current: {service.approval_status}</p>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline" className="text-green-600">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-green-600"
+                              onClick={() => handleServiceApproval('approve')}
+                              disabled={service.approval_status === 'approved'}
+                            >
                               Approve
                             </Button>
-                            <Button size="sm" variant="outline" className="text-red-600">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-red-600"
+                              onClick={() => handleServiceApproval('reject')}
+                              disabled={service.approval_status === 'rejected'}
+                            >
                               Reject
                             </Button>
                           </div>
