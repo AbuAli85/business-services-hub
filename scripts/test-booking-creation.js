@@ -78,7 +78,10 @@ async function testBookingCreation() {
       amount: service.base_price,
       currency: service.currency || 'OMR',
       payment_status: 'pending',
-      location: 'Test Location'
+      location: 'Test Location',
+      title: `Booking for ${service.title}`, // Add required title field
+      start_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Add required start_time field
+      end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString() // Add required end_time field (2 hours later)
     }
 
     console.log('📝 Test booking data:')
