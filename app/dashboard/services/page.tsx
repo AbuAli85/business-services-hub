@@ -258,22 +258,22 @@ export default function ServicesPage() {
       const supabase = await getSupabaseClient()
       
       // Role-based filtering: Providers only see stats for their own services
-      let baseQuery = supabase.from('services')
+      let servicesQuery = supabase.from('services')
       if (userRole === 'provider') {
-        baseQuery = baseQuery.eq('provider_id', user.id)
+        servicesQuery = servicesQuery.eq('provider_id', user.id)
       }
       
       // Get total services count
-      const { count: totalServices } = await baseQuery
+      const { count: totalServices } = await servicesQuery
         .select('*', { count: 'exact', head: true })
 
       // Get active services count
-      const { count: activeServices } = await baseQuery
+      const { count: activeServices } = await servicesQuery
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
 
       // Get pending approval count
-      const { count: pendingApproval } = await baseQuery
+      const { count: pendingApproval } = await servicesQuery
         .select('*', { count: 'exact', head: true })
         .eq('approval_status', 'pending')
 
@@ -284,7 +284,7 @@ export default function ServicesPage() {
         const { count: providerBookings } = await supabase
           .from('bookings')
           .select('*', { count: 'exact', head: true })
-          .in('service_id', (await baseQuery.select('id')).data?.map(s => s.id) || [])
+          .in('service_id', (await servicesQuery.select('id')).data?.map(s => s.id) || [])
         totalBookings = providerBookings || 0
       } else {
         // For clients and admins, get all bookings
@@ -304,7 +304,7 @@ export default function ServicesPage() {
         
         // For providers, only get revenue from their services
         if (userRole === 'provider') {
-          const serviceIds = (await baseQuery.select('id')).data?.map(s => s.id) || []
+          const serviceIds = (await servicesQuery.select('id')).data?.map(s => s.id) || []
           if (serviceIds.length > 0) {
             completedBookingsQuery = completedBookingsQuery.in('service_id', serviceIds)
           } else {
@@ -336,7 +336,7 @@ export default function ServicesPage() {
       let averageRating = 0
       if (userRole === 'provider') {
         // For providers, get reviews for their services only
-        const serviceIds = (await baseQuery.select('id')).data?.map(s => s.id) || []
+        const serviceIds = (await servicesQuery.select('id')).data?.map(s => s.id) || []
         if (serviceIds.length > 0) {
           const { data: reviews } = await supabase
             .from('reviews')
