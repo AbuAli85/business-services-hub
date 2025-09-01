@@ -108,6 +108,12 @@ async function authenticateUser(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Bookings API POST called')
+    console.log('🔍 Environment check:', {
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      nodeEnv: process.env.NODE_ENV
+    })
     
     const { user, authError } = await authenticateUser(request)
     
@@ -121,8 +127,28 @@ export async function POST(request: NextRequest) {
       return response
     }
     
+    console.log('🔍 Attempting to get Supabase admin client...')
     const supabase = await getSupabaseAdminClient()
     console.log('✅ Supabase admin client obtained')
+    
+    // Test database connection
+    console.log('🔍 Testing database connection...')
+    const { data: testData, error: testError } = await supabase
+      .from('services')
+      .select('id')
+      .limit(1)
+    
+    if (testError) {
+      console.error('❌ Database connection test failed:', testError)
+      const response = NextResponse.json({ 
+        error: 'Database connection failed', 
+        details: testError.message,
+        type: 'database_connection_error'
+      }, { status: 500 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
+    }
+    console.log('✅ Database connection test passed')
 
     console.log('✅ User authenticated:', user.id)
 
@@ -245,8 +271,20 @@ export async function POST(request: NextRequest) {
     return response
 
   } catch (error) {
-    console.error('Booking creation error:', error)
-    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('❌ Booking creation error:', error)
+    console.error('❌ Error type:', typeof error)
+    console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    const errorType = error instanceof Error ? error.constructor.name : typeof error
+    
+    const response = NextResponse.json({ 
+      error: 'Internal server error', 
+      details: errorMessage,
+      type: errorType,
+      timestamp: new Date().toISOString()
+    }, { status: 500 })
     Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
     return response
   }
