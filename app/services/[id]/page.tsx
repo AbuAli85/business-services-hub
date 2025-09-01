@@ -69,6 +69,7 @@ interface Service {
   cover_image_url: string
   created_at: string
   provider_id: string
+  is_featured?: boolean
   tags?: string[]
   service_packages?: {
     id: string
@@ -95,6 +96,7 @@ interface User {
   role: 'client' | 'provider' | 'admin'
   full_name: string
   email: string
+  avatar_url?: string
 }
 
 interface ServiceStats {
@@ -140,7 +142,7 @@ export default function ServiceDetailPage() {
     urgency: 'medium'
   })
   const [submitting, setSubmitting] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'reviews' | 'provider' | 'analytics' | 'bookings'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'reviews' | 'provider' | 'analytics' | 'bookings' | 'settings' | 'admin'>('overview')
   const [serviceStats, setServiceStats] = useState<ServiceStats>({
     totalViews: 0,
     totalBookings: 0,
@@ -481,7 +483,8 @@ export default function ServiceDetailPage() {
   }
 
   const isOwner = user && service && user.role === 'provider' && user.id === service.provider_id
-  const isClient = user && user.role === 'client'
+  const isClient = user && user.role === 'client' && !isOwner
+  const isAdmin = user && user.role === 'admin'
 
   if (loading) {
     return (
@@ -634,6 +637,32 @@ export default function ServiceDetailPage() {
                   </div>
                 )}
 
+                {/* Owner Info (only show if owner) */}
+                {isOwner && (
+                  <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Avatar className="w-12 h-12">
+                      <AvatarImage src={user.avatar_url} />
+                      <AvatarFallback className="bg-blue-600 text-white">
+                        {user.full_name?.charAt(0) || 'Y'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-blue-900">
+                        Your Service
+                      </h3>
+                      <p className="text-sm text-blue-700">You are the owner of this service</p>
+                      <div className="flex items-center gap-4 mt-1">
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                          <span className="text-sm font-medium text-green-700">Service Owner</span>
+                        </div>
+                        <span className="text-sm text-blue-500">•</span>
+                        <span className="text-sm text-blue-500">Full Management Access</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Service Stats (only show if owner) */}
                 {isOwner && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
@@ -700,17 +729,33 @@ export default function ServiceDetailPage() {
                     {/* Provider Actions */}
                     {isOwner ? (
                       <>
-                        <Button variant="outline" size="lg" onClick={() => setShowEdit(true)}>
+                        <Button size="lg" onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}>
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Service
                         </Button>
-                        <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/services')}>
+                        <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/services/manage')}>
                           <Settings className="w-4 h-4 mr-2" />
-                          Manage
+                          Manage All Services
                         </Button>
                         <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/bookings')}>
                           <CalendarIcon className="w-4 h-4 mr-2" />
                           View Bookings
+                        </Button>
+                        <Button variant="outline" size="lg" onClick={() => router.push(`/dashboard/services/${service.id}/analytics`)}>
+                          <BarChart3 className="w-4 h-4 mr-2" />
+                          Analytics
+                        </Button>
+                      </>
+                    ) : isAdmin ? (
+                      /* Admin Actions */
+                      <>
+                        <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/admin/services')}>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Admin Panel
+                        </Button>
+                        <Button variant="outline" size="lg">
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Contact Provider
                         </Button>
                       </>
                     ) : (
@@ -748,7 +793,11 @@ export default function ServiceDetailPage() {
                   { id: 'reviews', label: 'Reviews', icon: Star },
                   ...(isOwner ? [
                     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-                    { id: 'bookings', label: 'Bookings', icon: CalendarIcon }
+                    { id: 'bookings', label: 'Bookings', icon: CalendarIcon },
+                    { id: 'settings', label: 'Settings', icon: Settings }
+                  ] : isAdmin ? [
+                    { id: 'provider', label: 'Provider', icon: Users },
+                    { id: 'admin', label: 'Admin', icon: Shield }
                   ] : [
                     { id: 'provider', label: 'Provider', icon: Users }
                   ])
@@ -1056,6 +1105,143 @@ export default function ServiceDetailPage() {
                       View All Bookings
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* Settings Tab (only for owners) */}
+              {activeTab === 'settings' && isOwner && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Service Settings</CardTitle>
+                        <CardDescription>Manage your service configuration</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">Service Status</h4>
+                            <p className="text-sm text-gray-600">Control service visibility</p>
+                          </div>
+                          <Badge variant={service.status === 'active' ? 'default' : 'secondary'}>
+                            {service.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">Featured Service</h4>
+                            <p className="text-sm text-gray-600">Highlight your service</p>
+                          </div>
+                          <Badge variant={service.is_featured ? 'default' : 'outline'}>
+                            {service.is_featured ? 'Featured' : 'Standard'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">Approval Status</h4>
+                            <p className="text-sm text-gray-600">Current approval state</p>
+                          </div>
+                          <Badge variant={
+                            service.approval_status === 'approved' ? 'default' : 
+                            service.approval_status === 'pending' ? 'secondary' : 
+                            'destructive'
+                          }>
+                            {service.approval_status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Quick Actions</CardTitle>
+                        <CardDescription>Manage your service</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Button 
+                          className="w-full justify-start" 
+                          variant="outline"
+                          onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Service Details
+                        </Button>
+                        <Button 
+                          className="w-full justify-start" 
+                          variant="outline"
+                          onClick={() => router.push(`/dashboard/services/${service.id}/packages`)}
+                        >
+                          <Package className="w-4 h-4 mr-2" />
+                          Manage Packages
+                        </Button>
+                        <Button 
+                          className="w-full justify-start" 
+                          variant="outline"
+                          onClick={() => router.push('/dashboard/services/manage')}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Service Management
+                        </Button>
+                        <Button 
+                          className="w-full justify-start text-red-600 hover:text-red-700" 
+                          variant="outline"
+                          onClick={() => setShowDelete(true)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Service
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Tab (only for admins) */}
+              {activeTab === 'admin' && isAdmin && (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Admin Controls</CardTitle>
+                      <CardDescription>Administrative actions for this service</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-medium mb-2">Service Status</h4>
+                          <p className="text-sm text-gray-600 mb-3">Current: {service.status}</p>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">
+                              Activate
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              Deactivate
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-medium mb-2">Approval Status</h4>
+                          <p className="text-sm text-gray-600 mb-3">Current: {service.approval_status}</p>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="text-green-600">
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600">
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pt-4 border-t">
+                        <Button 
+                          className="w-full" 
+                          onClick={() => router.push('/dashboard/admin/services')}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Go to Admin Panel
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
             </div>
