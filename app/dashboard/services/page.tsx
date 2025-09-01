@@ -162,6 +162,12 @@ export default function ServicesPage() {
 
   const fetchServices = async () => {
     try {
+      // Guard clause: don't fetch if we don't have user role or user ID
+      if (!userRole || !user?.id) {
+        console.log('fetchServices: Missing userRole or user ID, skipping')
+        return
+      }
+
       const supabase = await getSupabaseClient()
       
       // Start with a simple query to check if the basic table structure works
@@ -275,6 +281,12 @@ export default function ServicesPage() {
 
   const fetchServiceStats = async () => {
     try {
+      // Guard clause: don't fetch if we don't have user role or user ID
+      if (!userRole || !user?.id) {
+        console.log('fetchServiceStats: Missing userRole or user ID, skipping')
+        return
+      }
+
       const supabase = await getSupabaseClient()
       
       // Get total services count - role-based filtering
