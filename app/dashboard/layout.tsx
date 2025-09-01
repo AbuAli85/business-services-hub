@@ -216,6 +216,8 @@ export default function DashboardLayout({
         { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
         { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
       )
+      // Update dashboard link to use dynamic route
+      baseItems[0] = { name: 'Dashboard', href: `/dashboard/provider/${user.id}`, icon: Home }
     }
 
     if (user.role === 'client') {
