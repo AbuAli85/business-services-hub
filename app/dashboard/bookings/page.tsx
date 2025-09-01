@@ -628,6 +628,40 @@ export default function BookingsPage() {
     }).format(amount)
   }
 
+  const exportBookings = () => {
+    // Create CSV data
+    const csvData = bookings.map(booking => ({
+      'Booking ID': booking.id,
+      'Service': booking.service_name || 'N/A',
+      'Client': booking.client_name || 'N/A',
+      'Provider': booking.provider_name || 'N/A',
+      'Status': booking.status,
+      'Amount': formatCurrency(booking.amount, booking.currency),
+      'Date': new Date(booking.created_at).toLocaleDateString(),
+      'Scheduled Date': booking.scheduled_date ? new Date(booking.scheduled_date).toLocaleDateString() : 'Not scheduled'
+    }))
+
+    // Convert to CSV string
+    const headers = Object.keys(csvData[0] || {})
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(header => `"${row[header as keyof typeof row]}"`).join(','))
+    ].join('\n')
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `bookings-export-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success('Bookings data exported successfully')
+  }
+
   const handleViewDetails = (bookingId: string) => {
     router.push(`/dashboard/bookings/${bookingId}`)
   }
