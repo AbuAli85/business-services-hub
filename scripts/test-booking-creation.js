@@ -81,7 +81,8 @@ async function testBookingCreation() {
       location: 'Test Location',
       title: `Booking for ${service.title}`, // Add required title field
       start_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Add required start_time field
-      end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString() // Add required end_time field (2 hours later)
+      end_time: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(), // Add required end_time field (2 hours later)
+      total_price: service.base_price // Add required total_price field (matches existing schema)
     }
 
     console.log('📝 Test booking data:')

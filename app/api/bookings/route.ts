@@ -219,10 +219,10 @@ export async function POST(request: NextRequest) {
         payment_status: 'pending',
         estimated_duration,
         location,
-        service_package_id,
         title: `Booking for ${service.title}`, // Add required title field
         start_time: scheduled_date, // Add required start_time field
-        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString() // Add required end_time field (2 hours later)
+        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add required end_time field (2 hours later)
+        total_price: amount // Add required total_price field (matches existing schema)
       })
       .select(`
         *,
