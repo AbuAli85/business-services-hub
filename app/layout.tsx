@@ -10,12 +10,7 @@ export const metadata: Metadata = {
   title: 'Business Services Hub',
   description: 'Connect with trusted business service providers in Oman',
   icons: {
-    icon: [
-      {
-        url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzA4N0Y1QSIvPgo8cGF0aCBkPSJNOCAxMkgxNlYyMEg4VjEyWiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTE2IDEySDI0VjIwSDE2VjEyWiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTggMjBIMjRWMjRIMFYyMFoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
-        type: 'image/svg+xml',
-      }
-    ],
+    icon: '/favicon.svg',
   },
 }
 

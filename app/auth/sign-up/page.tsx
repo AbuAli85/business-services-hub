@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { EmailVerificationModal } from '@/components/ui/email-verification-modal'
+import { PlatformLogo } from '@/components/ui/platform-logo'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -24,6 +26,8 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showEmailVerification, setShowEmailVerification] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     feedback: '',
@@ -129,10 +133,12 @@ export default function SignUpPage() {
       }
 
       if (data.user) {
-        toast.success('Account created successfully! Please check your email to verify your account.')
+        // Show email verification modal instead of redirecting immediately
+        setRegisteredEmail(formData.email)
+        setShowEmailVerification(true)
         
-        // Redirect to onboarding
-        router.push(`/auth/onboarding?role=${formData.role}`)
+        // Don't redirect immediately - let user see the verification modal
+        // router.push(`/auth/onboarding?role=${formData.role}`)
       }
     } catch (error) {
       toast.error('An unexpected error occurred during signup. Please try again.')
@@ -157,10 +163,35 @@ export default function SignUpPage() {
     return 'bg-green-500'
   }
 
+  const handleResendVerificationEmail = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: registeredEmail
+      })
+
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+  const handleEmailVerificationClose = () => {
+    setShowEmailVerification(false)
+    // Redirect to onboarding after closing the modal
+    router.push(`/auth/onboarding?role=${formData.role}`)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <PlatformLogo size="lg" variant="full" />
+          </div>
           <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
           <CardDescription>
             Join Business Services Hub and start connecting with trusted service providers
@@ -391,6 +422,14 @@ export default function SignUpPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Email Verification Modal */}
+      <EmailVerificationModal
+        isOpen={showEmailVerification}
+        onClose={handleEmailVerificationClose}
+        email={registeredEmail}
+        onResendEmail={handleResendVerificationEmail}
+      />
     </div>
   )
 }

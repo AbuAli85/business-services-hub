@@ -424,7 +424,7 @@ export default function ServiceDetailPage() {
           service_id: service.id,
           scheduled_date: scheduledDateTime.toISOString(),
           notes: bookingForm.notes || undefined,
-          service_package_id: bookingForm.package_id || undefined,
+          service_package_id: bookingForm.package_id === 'base' ? undefined : bookingForm.package_id || undefined,
           location: bookingForm.location || undefined,
           requirements: bookingForm.requirements || undefined,
           budget: bookingForm.budget || undefined,
@@ -1275,7 +1275,7 @@ export default function ServiceDetailPage() {
                     <SelectValue placeholder="Choose a package" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">
+                    <SelectItem value="base">
                       Base Package - {formatCurrency(service.base_price, service.currency)}
                     </SelectItem>
                     {service.service_packages?.map((pkg) => (

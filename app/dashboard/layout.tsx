@@ -22,6 +22,7 @@ import {
   FileText,
   DollarSign
 } from 'lucide-react'
+import { PlatformLogo } from '@/components/ui/platform-logo'
 
 interface UserProfile {
   id: string
@@ -275,7 +276,7 @@ export default function DashboardLayout({
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
-            <h1 className="text-xl font-bold text-gray-900">Business Hub</h1>
+            <PlatformLogo size="md" variant="full" />
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"

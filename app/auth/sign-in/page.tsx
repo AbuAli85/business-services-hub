@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
+import { PlatformLogo } from '@/components/ui/platform-logo'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -153,6 +154,9 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <PlatformLogo size="lg" variant="full" />
+          </div>
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <CardDescription>
             Sign in to your Business Services Hub account
