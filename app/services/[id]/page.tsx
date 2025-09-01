@@ -524,10 +524,10 @@ export default function ServiceDetailPage() {
           .from('messages')
           .insert({
             sender_id: user.id,
-            recipient_id: service.provider_id,
-            service_id: service.id,
-            subject: `New Booking Request: ${service.title}`,
-            content: `You have received a new booking request for your service "${service.title}".
+            receiver_id: service.provider_id,
+            content: `New Booking Request: ${service.title}
+
+You have received a new booking request for your service "${service.title}".
             
 Booking Details:
 - Date: ${bookingForm.scheduled_date}
@@ -540,9 +540,7 @@ Requirements: ${bookingForm.requirements}
 
 ${bookingForm.notes ? `Notes: ${bookingForm.notes}` : ''}
 
-Please review and respond to this booking request.`,
-            message_type: 'booking_request',
-            urgency: bookingForm.urgency
+Please review and respond to this booking request.`
           })
       } catch (notificationError) {
         console.error('Failed to send notification:', notificationError)
@@ -616,24 +614,29 @@ Please review and respond to this booking request.`,
     try {
       const supabase = await getSupabaseClient()
       
+      console.log('Sending message with data:', {
+        sender_id: user.id,
+        receiver_id: service.provider_id,
+        content: `Subject: ${contactForm.subject}\n\nMessage: ${contactForm.message}\n\nUrgency: ${contactForm.urgency}\nContact Method: ${contactForm.contactMethod}`
+      })
+      
       // Create a message record
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
           sender_id: user.id,
-          recipient_id: service.provider_id,
-          service_id: service.id,
-          subject: contactForm.subject,
-          content: contactForm.message,
-          urgency: contactForm.urgency,
-          message_type: contactForm.contactMethod
+          receiver_id: service.provider_id,
+          content: `Subject: ${contactForm.subject}\n\nMessage: ${contactForm.message}\n\nUrgency: ${contactForm.urgency}\nContact Method: ${contactForm.contactMethod}`
         })
         .select()
         .single()
 
       if (messageError) {
+        console.error('Message insert error:', messageError)
         throw messageError
       }
+
+      console.log('Message sent successfully:', messageData)
 
       // If contact method is email, also send email notification
       if (contactForm.contactMethod === 'email') {
@@ -652,12 +655,22 @@ Please review and respond to this booking request.`,
       })
 
       // Optionally redirect to messages page to continue conversation
-      if (contactForm.contactMethod === 'message') {
-        router.push(`/dashboard/messages?conversation=${messageData.id}`)
-      }
+      setTimeout(() => {
+        router.push('/dashboard/messages')
+      }, 1500)
     } catch (error) {
       console.error('Send message error:', error)
-      toast.error('Failed to send message. Please try again.')
+      
+      // Provide more specific error messages
+      if (error?.message?.includes('permission denied')) {
+        toast.error('Permission denied. Please ensure you have the right permissions to send messages.')
+      } else if (error?.message?.includes('foreign key')) {
+        toast.error('Invalid recipient or service. Please try again.')
+      } else if (error?.message?.includes('null value')) {
+        toast.error('Missing required information. Please fill in all fields.')
+      } else {
+        toast.error(`Failed to send message: ${error?.message || 'Unknown error'}`)
+      }
     } finally {
       setIsContactSending(false)
     }
