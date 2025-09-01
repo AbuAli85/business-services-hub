@@ -222,7 +222,9 @@ export async function POST(request: NextRequest) {
         title: `Booking for ${service.title}`, // Add required title field
         start_time: scheduled_date, // Add required start_time field
         end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add required end_time field (2 hours later)
-        total_price: amount // Add required total_price field (matches existing schema)
+        total_price: amount, // Add required total_price field (matches existing schema)
+        subtotal: amount, // Add required subtotal field for total_amount generation
+        vat_percent: 5.00 // Add required vat_percent field for total_amount generation
       })
       .select(`
         *,
