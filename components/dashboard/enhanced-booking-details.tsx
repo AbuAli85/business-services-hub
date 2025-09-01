@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+// import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   ArrowLeft,
@@ -573,57 +573,13 @@ export default function EnhancedBookingDetails() {
                 Quick Actions
               </Button>
               
-              <Dialog open={showMessageModal} onOpenChange={setShowMessageModal}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Message {isClient ? 'Provider' : 'Client'}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Send Message</DialogTitle>
-                    <DialogDescription>
-                      Send a message to {isClient ? booking.provider.full_name : booking.client.full_name}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
-                      {[
-                        { type: 'text', icon: <MessageSquare className="h-4 w-4" />, label: 'Text' },
-                        { type: 'voice', icon: <Mic className="h-4 w-4" />, label: 'Voice' },
-                        { type: 'video', icon: <Video className="h-4 w-4" />, label: 'Video' }
-                      ].map(({ type, icon, label }) => (
-                        <Button
-                          key={type}
-                          variant={messageType === type ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setMessageType(type as any)}
-                          className="flex-1"
-                        >
-                          {icon}
-                          <span className="ml-1 hidden sm:inline">{label}</span>
-                        </Button>
-                      ))}
-                    </div>
-                    <Textarea
-                      placeholder="Type your message..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      rows={4}
-                    />
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setShowMessageModal(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSendMessage}>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                onClick={() => setShowMessageModal(!showMessageModal)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Message {isClient ? 'Provider' : 'Client'}
+              </Button>
               
               <Button variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
                 <Video className="h-4 w-4 mr-2" />

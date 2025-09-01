@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+// import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
@@ -478,8 +478,8 @@ export default function SmartCommunicationCenter({
             <div className="bg-gray-100 rounded-2xl px-4 py-2">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
               </div>
             </div>
           </div>
@@ -587,34 +587,39 @@ export default function SmartCommunicationCenter({
       </div>
 
       {/* Quick Templates Modal */}
-      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Quick Templates</DialogTitle>
-            <DialogDescription>
-              Choose a template to get started quickly
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {quickTemplates.map((template) => (
-              <div
-                key={template.id}
-                onClick={() => handleTemplateSelect(template)}
-                className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-              >
-                <div className="flex items-center space-x-2 mb-2">
-                  {template.icon}
-                  <h4 className="font-medium text-gray-900">{template.title}</h4>
-                  <Badge variant="secondary" className="text-xs">
-                    {template.category}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600">{template.content}</p>
+      {showTemplates && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-96 overflow-y-auto">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Quick Templates</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowTemplates(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-            ))}
+              <p className="text-sm text-gray-600">Choose a template to get started quickly</p>
+            </div>
+            <div className="p-4 space-y-2">
+              {quickTemplates.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => handleTemplateSelect(template)}
+                  className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center space-x-2 mb-2">
+                    {template.icon}
+                    <h4 className="font-medium text-gray-900">{template.title}</h4>
+                    <Badge variant="secondary" className="text-xs">
+                      {template.category}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600">{template.content}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   )
 }

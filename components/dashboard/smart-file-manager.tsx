@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+// import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { 
@@ -591,54 +591,64 @@ export default function SmartFileManager({
       </div>
 
       {/* Upload Modal */}
-      <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Upload Files</DialogTitle>
-            <DialogDescription>
-              Select files to upload to this project
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-2">Click to select files or drag and drop</p>
-              <p className="text-xs text-gray-500">
-                Max {maxFileSize}MB per file • {maxFiles} files max
-              </p>
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Upload Files</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowUploadModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-600">Select files to upload to this project</p>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept={allowedTypes.join(',')}
-              className="hidden"
-              aria-label="Upload files"
-              onChange={(e) => {
-                if (e.target.files) {
-                  handleFileUpload(Array.from(e.target.files))
-                  setShowUploadModal(false)
-                }
-              }}
-            />
+            <div className="p-4 space-y-4">
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-2">Click to select files or drag and drop</p>
+                <p className="text-xs text-gray-500">
+                  Max {maxFileSize}MB per file • {maxFiles} files max
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={allowedTypes.join(',')}
+                className="hidden"
+                aria-label="Upload files"
+                onChange={(e) => {
+                  if (e.target.files) {
+                    handleFileUpload(Array.from(e.target.files))
+                    setShowUploadModal(false)
+                  }
+                }}
+              />
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* File Details Modal */}
       {selectedFile && (
-        <Dialog open={!!selectedFile} onOpenChange={() => setSelectedFile(null)}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2">
-                {getFileIcon(selectedFile)}
-                <span>{selectedFile.name}</span>
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  {getFileIcon(selectedFile)}
+                  <h3 className="text-lg font-semibold">{selectedFile.name}</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <label className="font-medium text-gray-700">Size:</label>
@@ -682,8 +692,8 @@ export default function SmartFileManager({
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       )}
     </div>
   )
