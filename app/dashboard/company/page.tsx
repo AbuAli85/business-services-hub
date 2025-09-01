@@ -589,6 +589,42 @@ export default function CompanyPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
+      // First, ensure the user has a profile
+      const { data: existingProfile, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+
+      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+        console.error('Error checking profile:', profileCheckError)
+        setError('Failed to verify user profile')
+        return
+      }
+
+      // If no profile exists, create one
+      if (!existingProfile) {
+        console.log('Creating missing profile for user:', user.email)
+        const { error: profileCreateError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || 'User',
+            role: user.user_metadata?.role || 'client',
+            phone: user.user_metadata?.phone || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (profileCreateError) {
+          console.error('Profile creation error:', profileCreateError)
+          setError(`Profile creation failed: ${profileCreateError.message}`)
+          return
+        }
+        console.log('Profile created successfully')
+      }
+
       // Upload logo if file is selected
       let logoUrl = form.logo_url
       if (logoFile) {
