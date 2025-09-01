@@ -164,7 +164,12 @@
   }
   
   .card-elevated {
-    @apply bg-white shadow-strong hover:shadow-strong/80 transition-all duration-300;
+    @apply bg-white shadow-strong transition-all duration-300;
+  }
+  
+  .card-elevated:hover {
+    @apply shadow-strong;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.12), 0 20px 25px -5px rgba(0, 0, 0, 0.08);
   }
 
   /* Enhanced button styles */
