@@ -42,7 +42,7 @@ interface Invoice {
   provider_id: string
   amount: number
   currency: string
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'pending'
   due_date: string
   created_at: string
   paid_at?: string
@@ -243,6 +243,7 @@ export default function AdminInvoicesPage() {
       draft: { label: 'Draft', variant: 'secondary' as const, icon: FileText },
       sent: { label: 'Sent', variant: 'default' as const, icon: Clock },
       paid: { label: 'Paid', variant: 'default' as const, icon: CheckCircle },
+      pending: { label: 'Pending', variant: 'secondary' as const, icon: Clock },
       overdue: { label: 'Overdue', variant: 'destructive' as const, icon: AlertCircle },
       cancelled: { label: 'Cancelled', variant: 'destructive' as const, icon: XCircle }
     }
