@@ -632,11 +632,11 @@ export default function BookingsPage() {
     // Create CSV data
     const csvData = bookings.map(booking => ({
       'Booking ID': booking.id,
-      'Service': booking.service_name || 'N/A',
-      'Client': booking.client_name || 'N/A',
-      'Provider': booking.provider_name || 'N/A',
+      'Service': booking.service?.name || 'N/A',
+      'Client': booking.client?.full_name || 'N/A',
+      'Provider': booking.provider?.full_name || 'N/A',
       'Status': booking.status,
-      'Amount': formatCurrency(booking.amount, booking.currency),
+      'Amount': formatCurrency(booking.amount || 0, booking.currency),
       'Date': new Date(booking.created_at).toLocaleDateString(),
       'Scheduled Date': booking.scheduled_date ? new Date(booking.scheduled_date).toLocaleDateString() : 'Not scheduled'
     }))
