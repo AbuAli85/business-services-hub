@@ -158,6 +158,13 @@ export default function ServicesPage() {
         .from('services')
         .select('*')
 
+      // Role-based filtering: Providers only see their own services, clients see all services
+      if (userRole === 'provider') {
+        query = query.eq('provider_id', user.id)
+      }
+      // Admins can see all services (no additional filter needed)
+      // Clients can see all services (no additional filter needed)
+
       // Apply filters
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
@@ -250,37 +257,63 @@ export default function ServicesPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Role-based filtering: Providers only see stats for their own services
+      let baseQuery = supabase.from('services')
+      if (userRole === 'provider') {
+        baseQuery = baseQuery.eq('provider_id', user.id)
+      }
+      
       // Get total services count
-      const { count: totalServices } = await supabase
-        .from('services')
+      const { count: totalServices } = await baseQuery
         .select('*', { count: 'exact', head: true })
 
       // Get active services count
-      const { count: activeServices } = await supabase
-        .from('services')
+      const { count: activeServices } = await baseQuery
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
 
       // Get pending approval count
-      const { count: pendingApproval } = await supabase
-        .from('services')
+      const { count: pendingApproval } = await baseQuery
         .select('*', { count: 'exact', head: true })
         .eq('approval_status', 'pending')
 
-      // Get total bookings across all services
-      const { count: totalBookings } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
+      // Get total bookings - role-based filtering
+      let totalBookings = 0
+      if (userRole === 'provider') {
+        // For providers, get bookings for their services only
+        const { count: providerBookings } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+          .in('service_id', (await baseQuery.select('id')).data?.map(s => s.id) || [])
+        totalBookings = providerBookings || 0
+      } else {
+        // For clients and admins, get all bookings
+        const { count: allBookings } = await supabase
+          .from('bookings')
+          .select('*', { count: 'exact', head: true })
+        totalBookings = allBookings || 0
+      }
 
-      // Get total revenue from completed bookings
-      // Use a safer approach that doesn't rely on specific column names
+      // Get total revenue from completed bookings - role-based filtering
       let totalRevenue = 0
       try {
-        // First try to get all completed bookings with basic info
-        const { data: completedBookings, error: bookingError } = await supabase
+        let completedBookingsQuery = supabase
           .from('bookings')
           .select('subtotal, currency')
           .eq('status', 'completed')
+        
+        // For providers, only get revenue from their services
+        if (userRole === 'provider') {
+          const serviceIds = (await baseQuery.select('id')).data?.map(s => s.id) || []
+          if (serviceIds.length > 0) {
+            completedBookingsQuery = completedBookingsQuery.in('service_id', serviceIds)
+          } else {
+            // No services, so no revenue
+            totalRevenue = 0
+          }
+        }
+        
+        const { data: completedBookings, error: bookingError } = await completedBookingsQuery
 
         if (bookingError) {
           console.warn('Could not fetch bookings for revenue calculation:', bookingError)
@@ -299,14 +332,31 @@ export default function ServicesPage() {
         totalRevenue = 0
       }
 
-      // Get average rating from reviews
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('rating')
+      // Get average rating from reviews - role-based filtering
+      let averageRating = 0
+      if (userRole === 'provider') {
+        // For providers, get reviews for their services only
+        const serviceIds = (await baseQuery.select('id')).data?.map(s => s.id) || []
+        if (serviceIds.length > 0) {
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .in('service_id', serviceIds)
+          
+          averageRating = reviews && reviews.length > 0
+            ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+            : 0
+        }
+      } else {
+        // For clients and admins, get average rating from all reviews
+        const { data: reviews } = await supabase
+          .from('reviews')
+          .select('rating')
 
-      const averageRating = reviews && reviews.length > 0
-        ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-        : 0
+        averageRating = reviews && reviews.length > 0
+          ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+          : 0
+      }
 
       setStats({
         totalServices: totalServices || 0,
@@ -394,9 +444,14 @@ export default function ServicesPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Available Services</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {userRole === 'provider' ? 'My Services' : 'Available Services'}
+          </h1>
           <p className="text-gray-600 mt-2">
-            Browse and book services from professional providers {userRole === 'client' && '(including services pending approval)'}
+            {userRole === 'provider' 
+              ? 'Manage and monitor your service offerings' 
+              : `Browse and book services from professional providers ${userRole === 'client' ? '(including services pending approval)' : ''}`
+            }
           </p>
         </div>
         {userRole === 'provider' && (
@@ -430,7 +485,7 @@ export default function ServicesPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalBookings || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Across all services
+              {userRole === 'provider' ? 'For your services' : 'Across all services'}
             </p>
           </CardContent>
         </Card>
@@ -443,7 +498,7 @@ export default function ServicesPage() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats?.totalRevenue || 0)}</div>
             <p className="text-xs text-muted-foreground">
-              From all services
+              {userRole === 'provider' ? 'From your services' : 'From all services'}
             </p>
           </CardContent>
         </Card>
@@ -456,7 +511,7 @@ export default function ServicesPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
             <p className="text-xs text-muted-foreground">
-              Across all services
+              {userRole === 'provider' ? 'For your services' : 'Across all services'}
             </p>
           </CardContent>
         </Card>
@@ -485,7 +540,10 @@ export default function ServicesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search by service title or description..."
+              placeholder={userRole === 'provider' 
+                ? "Search your services by title or description..." 
+                : "Search by service title or description..."
+              }
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -553,7 +611,7 @@ export default function ServicesPage() {
           {/* Results Summary */}
           <div className="flex items-center justify-between pt-2 border-t">
             <span className="text-sm text-gray-600">
-              {services.length} services found
+              {services.length} {userRole === 'provider' ? 'of your services' : 'services'} found
             </span>
             <Button
               variant="outline"
@@ -577,11 +635,15 @@ export default function ServicesPage() {
         <Card>
           <CardContent className="text-center py-12">
             <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {userRole === 'provider' ? 'No services found' : 'No services found'}
+            </h3>
             <p className="text-gray-600 mb-4">
               {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
                 ? 'Try adjusting your search criteria or filters.'
-                : 'There are no services available at the moment.'}
+                : userRole === 'provider' 
+                  ? 'You haven\'t created any services yet. Start by adding your first service!'
+                  : 'There are no services available at the moment.'}
             </p>
             <Button
               variant="outline"
