@@ -35,10 +35,9 @@ interface Message {
   sender_id: string
   receiver_id: string
   booking_id?: string
-  message_type: 'text' | 'file' | 'image'
-  file_url?: string
-  file_name?: string
-  file_size?: number
+  message?: string
+  subject?: string
+  read?: boolean
   created_at: string
   read_at?: string
 }
@@ -313,8 +312,7 @@ export default function MessagesPage() {
           content: newMessage.trim(),
           sender_id: user.id,
           receiver_id: selectedConversation.participant_id,
-          booking_id: selectedConversation.booking_id,
-          message_type: 'text'
+          booking_id: selectedConversation.booking_id
         })
         .select('*')
         .single()
@@ -371,14 +369,10 @@ export default function MessagesPage() {
       const { data: message, error } = await supabase
         .from('messages')
         .insert({
-          content: `Sent a ${messageType}`,
+          content: `Sent a file: ${file.name}`,
           sender_id: user.id,
           receiver_id: selectedConversation.participant_id,
-          booking_id: selectedConversation.booking_id,
-          message_type: messageType,
-          file_url: publicUrl,
-          file_name: file.name,
-          file_size: file.size
+          booking_id: selectedConversation.booking_id
         })
         .select('*')
         .single()
@@ -628,17 +622,7 @@ export default function MessagesPage() {
                             ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
                             : 'bg-white text-gray-900 border border-gray-200'
                         }`}>
-                          {message.message_type === 'text' ? (
-                            <p className="leading-relaxed">{message.content}</p>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                {getFileIcon(message.message_type, message.file_name)}
-                                <span className="font-medium">{message.file_name}</span>
-                              </div>
-                              <p className="text-sm opacity-90">{message.content}</p>
-                            </div>
-                          )}
+                          <p className="leading-relaxed">{message.content || message.message}</p>
                         </div>
                         <div className={`text-xs text-gray-400 mt-2 ${
                           message.sender_id === user.id ? 'text-right' : 'text-left'

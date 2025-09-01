@@ -228,8 +228,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
         .insert({
           booking_id: bookingId,
           sender_id: user.id,
-          content: newMessage.trim(),
-          message_type: 'chat'
+          content: newMessage.trim()
         })
         .select('id, content, sender_id, created_at')
         .maybeSingle() // Use maybeSingle instead of single to handle no rows
