@@ -168,22 +168,22 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '50')
 
+    // Enhanced query with proper joins and error handling
     let query = supabase
       .from('service_suggestions')
       .select(`
         *,
         suggested_service:services(id, title, description, base_price, currency, category),
-        client:profiles!service_suggestions_client_id_fkey(id, full_name, email, avatar_url),
-        provider:profiles!service_suggestions_provider_id_fkey(id, full_name, email, avatar_url),
-        original_booking:bookings(id, title, status)
+        client:profiles!client_id(id, full_name, email, avatar_url),
+        provider:profiles!provider_id(id, full_name, email, avatar_url)
       `)
       .order('created_at', { ascending: false })
       .limit(limit)
 
-    // Get user profile to determine role
+    // Get user profile to determine role  
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('id, role, full_name, email')
       .eq('id', user.id)
       .single()
 
@@ -191,30 +191,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
     }
 
-    // Filter based on user role and type
+    console.log('User making request:', { 
+      id: user.id, 
+      email: user.email, 
+      role: profile.role, 
+      full_name: profile.full_name 
+    })
+    console.log('Request params:', { type, status, limit })
+
+    // Filter based on user role and type with improved logic
     if (profile.role === 'provider') {
       if (type === 'sent') {
         query = query.eq('provider_id', user.id)
       } else {
-        // Providers can see suggestions they sent
+        // Providers can see suggestions they sent (default for providers)
         query = query.eq('provider_id', user.id)
       }
     } else if (profile.role === 'client') {
-      if (type === 'received') {
+      if (type === 'received' || !type) {
+        // Clients see suggestions made to them (default for clients)
         query = query.eq('client_id', user.id)
-      } else {
-        // Clients can see suggestions they received
-        query = query.eq('client_id', user.id)
+      } else if (type === 'sent') {
+        // Clients don't send suggestions, return empty
+        query = query.eq('client_id', '00000000-0000-0000-0000-000000000000') // Non-existent ID
       }
     } else if (profile.role === 'admin') {
       // Admins can see all suggestions
+      console.log('Admin user - showing all suggestions')
       if (type === 'sent') {
         query = query.not('provider_id', 'is', null)
       } else if (type === 'received') {
         query = query.not('client_id', 'is', null)
       }
+      // For admin with no type specified, show all suggestions (no additional filter)
     } else {
-      return NextResponse.json({ error: 'Invalid user role' }, { status: 403 })
+      // For unknown roles, try to show suggestions related to this user
+      console.log('Unknown role, trying to find suggestions for user:', profile.role)
+      query = query.or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
     }
 
     // Filter by status if provided
@@ -222,21 +235,52 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status)
     }
 
+    console.log('Executing query for user:', user.id)
     const { data: suggestions, error } = await query
 
     if (error) {
       console.error('Error fetching suggestions:', error)
-      return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 })
+      console.error('Query details:', { type, status, limit, userRole: profile.role, userId: user.id })
+      return NextResponse.json({ 
+        error: 'Failed to fetch suggestions',
+        details: error.message,
+        debugInfo: {
+          userRole: profile.role,
+          queryType: type,
+          status: status,
+          userId: user.id
+        }
+      }, { status: 500 })
+    }
+
+    console.log(`Found ${suggestions?.length || 0} suggestions for user ${user.id} (${profile.role})`)
+    if (suggestions && suggestions.length > 0) {
+      console.log('Sample suggestion:', {
+        id: suggestions[0].id,
+        provider_id: suggestions[0].provider_id,
+        client_id: suggestions[0].client_id,
+        status: suggestions[0].status
+      })
     }
 
     return NextResponse.json({ 
       suggestions: suggestions || [],
-      count: suggestions?.length || 0
+      count: suggestions?.length || 0,
+      debugInfo: {
+        userRole: profile.role,
+        queryType: type,
+        foundSuggestions: suggestions?.length || 0,
+        userId: user.id
+      }
     })
 
   } catch (error) {
     console.error('Service suggestions fetch error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString()
+    }, { status: 500 })
   }
 }
 

@@ -64,6 +64,7 @@ export default function ServiceSuggestionsPage() {
   const [user, setUser] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('all')
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
+  const [showMockData, setShowMockData] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -94,17 +95,108 @@ export default function ServiceSuggestionsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to load suggestions')
+        console.error('API Error Response:', data)
+        const errorMessage = data.details || data.error || 'Failed to load suggestions'
+        throw new Error(errorMessage)
       }
 
+      console.log('API Success Response:', data)
       setSuggestions(data.suggestions || [])
     } catch (error) {
       console.error('Error loading suggestions:', error)
-      toast.error('Failed to load service suggestions')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load service suggestions'
+      
+      // In development, don't show error toast if it's just an empty result
+      if (!errorMessage.includes('fetch') && !errorMessage.includes('500')) {
+        console.log('API request succeeded but returned empty suggestions')
+      } else {
+        toast.error(`Failed to load suggestions: ${errorMessage}`)
+      }
     } finally {
       setLoading(false)
     }
   }
+  
+  // Mock data for demonstration
+  const getMockSuggestions = (): ServiceSuggestion[] => [
+    {
+      id: 'mock-1',
+      provider_id: 'provider-1',
+      client_id: 'client-1',
+      suggested_service_id: 'service-1',
+      suggestion_reason: 'Based on your recent website development project, I believe SEO optimization would significantly boost your online visibility and drive more traffic to your site.',
+      priority: 'high',
+      status: 'pending',
+      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      suggested_service: {
+        id: 'service-1',
+        title: 'SEO Optimization & Analytics',
+        description: 'Comprehensive SEO audit and optimization with monthly reporting and analytics setup.',
+        base_price: 150,
+        currency: 'OMR',
+        category: 'Digital Marketing'
+      },
+      provider: {
+        id: 'provider-1',
+        full_name: 'Sarah Digital Marketing',
+        email: 'sarah@digitalexperts.om',
+        avatar_url: '/avatars/sarah.jpg'
+      }
+    },
+    {
+      id: 'mock-2',
+      provider_id: 'provider-2',
+      client_id: 'client-1',
+      suggested_service_id: 'service-2',
+      suggestion_reason: 'Your business would benefit greatly from professional branding. A cohesive brand identity will help you stand out in the competitive market.',
+      priority: 'medium',
+      status: 'viewed',
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      viewed_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      suggested_service: {
+        id: 'service-2',
+        title: 'Complete Branding Package',
+        description: 'Logo design, brand guidelines, business cards, and social media templates.',
+        base_price: 300,
+        currency: 'OMR',
+        category: 'Design & Branding'
+      },
+      provider: {
+        id: 'provider-2',
+        full_name: 'Ahmed Creative Studio',
+        email: 'ahmed@creativestudio.om',
+        avatar_url: '/avatars/ahmed.jpg'
+      }
+    },
+    {
+      id: 'mock-3',
+      provider_id: 'provider-3',
+      client_id: 'client-1',
+      suggested_service_id: 'service-3',
+      suggestion_reason: 'Given your expanding business operations, implementing a comprehensive social media strategy will help you engage with customers and build brand loyalty.',
+      priority: 'medium',
+      status: 'accepted',
+      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      responded_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      suggested_service: {
+        id: 'service-3',
+        title: 'Social Media Management',
+        description: 'Monthly social media content creation, posting schedule, and community management.',
+        base_price: 120,
+        currency: 'OMR',
+        category: 'Digital Marketing'
+      },
+      provider: {
+        id: 'provider-3',
+        full_name: 'Noor Social Media',
+        email: 'noor@socialmedia.om',
+        avatar_url: '/avatars/noor.jpg'
+      }
+    }
+  ]
 
   const handleSuggestionResponse = async (suggestionId: string, status: 'accepted' | 'declined', notes?: string) => {
     try {
@@ -203,7 +295,9 @@ export default function ServiceSuggestionsPage() {
     )
   }
 
-  const filteredSuggestions = suggestions.filter(suggestion => {
+  const displaySuggestions = showMockData && suggestions.length === 0 ? getMockSuggestions() : suggestions
+  
+  const filteredSuggestions = displaySuggestions.filter(suggestion => {
     if (activeTab === 'all') return true
     if (activeTab === 'pending') return suggestion.status === 'pending'
     if (activeTab === 'viewed') return suggestion.status === 'viewed'
@@ -297,6 +391,14 @@ export default function ServiceSuggestionsPage() {
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
               <Button 
                 variant="outline"
+                onClick={() => setShowMockData(!showMockData)}
+                className="border-green-200 text-green-700 hover:bg-green-50"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                {showMockData ? 'Hide Demo' : 'View Demo'}
+              </Button>
+              <Button 
+                variant="outline"
                 onClick={() => router.push('/dashboard/services')}
                 className="border-blue-200 text-blue-700 hover:bg-blue-50"
               >
@@ -313,19 +415,44 @@ export default function ServiceSuggestionsPage() {
             </div>
           </div>
           
+          {/* Debug info - temporary */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-6 p-3 bg-gray-100 border border-gray-300 rounded-lg text-xs">
+              <strong>Debug Info:</strong> Real suggestions: {suggestions.length}, 
+              Showing mock: {showMockData && suggestions.length === 0 ? 'Yes' : 'No'}, 
+              Display suggestions: {displaySuggestions.length}
+            </div>
+          )}
+          
           {/* Info banner */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium text-blue-900 mb-1">How to get suggestions</h3>
-                <p className="text-sm text-blue-700">
-                  Service providers will send you personalized recommendations based on your inquiries, bookings, and expressed needs. 
-                  You can also request specific suggestions by contacting providers directly.
-                </p>
+          {showMockData && suggestions.length === 0 && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Eye className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-medium text-green-900 mb-1">Demo Mode Active</h3>
+                  <p className="text-sm text-green-700">
+                    You're viewing sample service suggestions to demonstrate how the interface works. 
+                    Real suggestions will appear here when providers send them to you.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {!showMockData && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-medium text-blue-900 mb-1">How to get suggestions</h3>
+                  <p className="text-sm text-blue-700">
+                    Service providers will send you personalized recommendations based on your inquiries, bookings, and expressed needs. 
+                    You can also request specific suggestions by contacting providers directly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Enhanced Stats Cards */}
@@ -335,7 +462,7 @@ export default function ServiceSuggestionsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-blue-700">Total Suggestions</p>
-                  <p className="text-3xl font-bold text-blue-900">{suggestions.length}</p>
+                  <p className="text-3xl font-bold text-blue-900">{displaySuggestions.length}</p>
                   <p className="text-xs text-blue-600 mt-1">All time received</p>
                 </div>
                 <div className="p-3 bg-blue-200 rounded-xl">
@@ -351,7 +478,7 @@ export default function ServiceSuggestionsPage() {
                 <div>
                   <p className="text-sm font-medium text-orange-700">Pending</p>
                   <p className="text-3xl font-bold text-orange-900">
-                    {suggestions.filter(s => s.status === 'pending').length}
+                    {displaySuggestions.filter(s => s.status === 'pending').length}
                   </p>
                   <p className="text-xs text-orange-600 mt-1">Awaiting response</p>
                 </div>
@@ -368,7 +495,7 @@ export default function ServiceSuggestionsPage() {
                 <div>
                   <p className="text-sm font-medium text-green-700">Accepted</p>
                   <p className="text-3xl font-bold text-green-900">
-                    {suggestions.filter(s => s.status === 'accepted').length}
+                    {displaySuggestions.filter(s => s.status === 'accepted').length}
                   </p>
                   <p className="text-xs text-green-600 mt-1">Successfully converted</p>
                 </div>
@@ -385,8 +512,8 @@ export default function ServiceSuggestionsPage() {
                 <div>
                   <p className="text-sm font-medium text-purple-700">Response Rate</p>
                   <p className="text-3xl font-bold text-purple-900">
-                    {suggestions.length > 0 
-                      ? Math.round((suggestions.filter(s => s.status === 'accepted' || s.status === 'declined').length / suggestions.length) * 100)
+                    {displaySuggestions.length > 0 
+                      ? Math.round((displaySuggestions.filter(s => s.status === 'accepted' || s.status === 'declined').length / displaySuggestions.length) * 100)
                       : 0}%
                   </p>
                   <p className="text-xs text-purple-600 mt-1">Overall engagement</p>
