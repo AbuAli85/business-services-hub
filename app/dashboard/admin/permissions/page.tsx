@@ -495,7 +495,7 @@ export default function AdminPermissionsPage() {
                     </div>
                     
                     <div className="flex items-center space-x-3">
-                      <Select value={user.role} onValueChange={(value) => handleAssignRole(user.user_id, value)}>
+                      <Select value={user.role || 'client'} onValueChange={(value) => handleAssignRole(user.user_id, value)}>
                         <SelectTrigger className="w-40">
                           <SelectValue />
                         </SelectTrigger>

@@ -10,7 +10,12 @@ export const metadata: Metadata = {
   title: 'Business Services Hub',
   description: 'Connect with trusted business service providers in Oman',
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      {
+        url: '/favicon.svg',
+        type: 'image/svg+xml',
+      }
+    ],
   },
 }
 

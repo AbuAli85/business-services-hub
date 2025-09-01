@@ -74,10 +74,13 @@ interface Service {
   service_packages?: {
     id: string
     name: string
+    description: string
     price: number
     delivery_days: number
     revisions: number
     features: string[]
+    is_popular?: boolean
+    is_premium?: boolean
   }[]
   provider?: {
     id: string
@@ -733,6 +736,10 @@ export default function ServiceDetailPage() {
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Service
                         </Button>
+                        <Button variant="outline" size="lg" onClick={() => router.push(`/dashboard/services/${service.id}/packages`)}>
+                          <Package className="w-4 h-4 mr-2" />
+                          Manage Packages
+                        </Button>
                         <Button variant="outline" size="lg" onClick={() => router.push('/dashboard/services/manage')}>
                           <Settings className="w-4 h-4 mr-2" />
                           Manage All Services
@@ -1266,25 +1273,89 @@ export default function ServiceDetailPage() {
             <div className="space-y-6">
               {/* Package Selection */}
               <div>
-                <Label className="text-base font-medium">Select Package</Label>
-                <Select
-                  value={bookingForm.package_id}
-                  onValueChange={(value) => setBookingForm(prev => ({ ...prev, package_id: value }))}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Choose a package" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="base">
-                      Base Package - {formatCurrency(service.base_price, service.currency)}
-                    </SelectItem>
-                    {service.service_packages?.map((pkg) => (
-                      <SelectItem key={pkg.id} value={pkg.id}>
-                        {pkg.name} - {formatCurrency(pkg.price, service.currency)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-base font-medium mb-4 block">Select Package</Label>
+                <div className="space-y-3">
+                  {/* Base Package Card */}
+                  <div 
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      bookingForm.package_id === 'base' 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setBookingForm(prev => ({ ...prev, package_id: 'base' }))}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center">
+                          {bookingForm.package_id === 'base' && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Base Package</h4>
+                          <p className="text-sm text-gray-600">Standard service delivery</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-lg text-gray-900">
+                          {formatCurrency(service.base_price, service.currency)}
+                        </div>
+                        <div className="text-sm text-gray-500">Standard delivery</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Custom Packages */}
+                  {service.service_packages?.map((pkg) => (
+                    <div 
+                      key={pkg.id}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                        bookingForm.package_id === pkg.id 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      } ${pkg.is_popular ? 'ring-2 ring-blue-200' : ''}`}
+                      onClick={() => setBookingForm(prev => ({ ...prev, package_id: pkg.id }))}
+                    >
+                      {pkg.is_popular && (
+                        <div className="flex items-center gap-1 mb-2">
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          <span className="text-xs font-semibold text-yellow-600">Most Popular</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center">
+                            {bookingForm.package_id === pkg.id && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{pkg.name}</h4>
+                            <p className="text-sm text-gray-600">{pkg.description}</p>
+                            {pkg.features && pkg.features.length > 0 && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <CheckCircle className="h-3 w-3 text-green-500" />
+                                <span className="text-xs text-green-600">
+                                  {pkg.features.length} features included
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg text-gray-900">
+                            {formatCurrency(pkg.price, service.currency)}
+                          </div>
+                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <Clock className="h-3 w-3" />
+                            {pkg.delivery_days} days
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Date and Time */}
