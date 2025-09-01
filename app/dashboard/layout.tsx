@@ -206,7 +206,8 @@ export default function DashboardLayout({
         { name: 'Users', href: '/dashboard/admin/users', icon: Users },
         { name: 'Permissions', href: '/dashboard/admin/permissions', icon: Settings },
         { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
-        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText }
+        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText },
+        { name: 'Invoices', href: '/dashboard/admin/invoices', icon: DollarSign }
       )
     }
 

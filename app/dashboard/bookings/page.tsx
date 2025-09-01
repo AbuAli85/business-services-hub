@@ -181,7 +181,30 @@ export default function BookingsPage() {
       let error: any = null
 
       // Apply role-based filtering
-      if (profile?.role === 'provider') {
+      if (profile?.role === 'admin') {
+        // Admin sees ALL bookings in the system
+        const { data, error: adminError } = await supabase
+          .from('bookings')
+          .select(`
+            id,
+            status,
+            priority,
+            created_at,
+            scheduled_date,
+            notes,
+            amount,
+            subtotal,
+            total_price,
+            currency,
+            client_id,
+            provider_id,
+            service_id
+          `)
+          .order('created_at', { ascending: false })
+        
+        bookingsData = data || []
+        error = adminError
+      } else if (profile?.role === 'provider') {
         // Provider sees their own services
         const { data, error: providerError } = await supabase
           .from('bookings')
@@ -1016,7 +1039,12 @@ export default function BookingsPage() {
                     onClick={() => handleSort('client')}
                   >
                     <div className="flex items-center space-x-1">
-                      <span>{user?.role === 'client' ? 'Provider Name' : 'Client Name'}</span>
+                      <span>
+                        {user?.role === 'admin' 
+                          ? 'Client & Provider' 
+                          : (user?.role === 'client' ? 'Provider Name' : 'Client Name')
+                        }
+                      </span>
                       {getSortIcon('client')}
                     </div>
                   </TableHead>
@@ -1103,22 +1131,47 @@ export default function BookingsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">
-                            {user?.role === 'client' 
-                              ? (booking.provider?.full_name || 'Unknown Provider')
-                              : (booking.client?.full_name || 'Unknown Client')
-                            }
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {user?.role === 'client' 
-                              ? (booking.provider?.email || '')
-                              : (booking.client?.email || '')
-                            }
-                          </p>
-                          {(user?.role === 'client' ? booking.provider?.phone : booking.client?.phone) && (
-                            <p className="text-xs text-muted-foreground">
-                              {user?.role === 'client' ? booking.provider?.phone : booking.client?.phone}
-                            </p>
+                          {user?.role === 'admin' ? (
+                            // Admin sees both client and provider details
+                            <div className="space-y-2">
+                              <div>
+                                <p className="text-xs font-medium text-blue-600">CLIENT</p>
+                                <p className="font-medium">{booking.client?.full_name || 'Unknown Client'}</p>
+                                <p className="text-sm text-muted-foreground">{booking.client?.email || ''}</p>
+                                {booking.client?.phone && (
+                                  <p className="text-xs text-muted-foreground">{booking.client.phone}</p>
+                                )}
+                              </div>
+                              <div className="border-t pt-2">
+                                <p className="text-xs font-medium text-green-600">PROVIDER</p>
+                                <p className="font-medium">{booking.provider?.full_name || 'Unknown Provider'}</p>
+                                <p className="text-sm text-muted-foreground">{booking.provider?.email || ''}</p>
+                                {booking.provider?.phone && (
+                                  <p className="text-xs text-muted-foreground">{booking.provider.phone}</p>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            // Non-admin users see role-appropriate details
+                            <div>
+                              <p className="font-medium">
+                                {user?.role === 'client' 
+                                  ? (booking.provider?.full_name || 'Unknown Provider')
+                                  : (booking.client?.full_name || 'Unknown Client')
+                                }
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {user?.role === 'client' 
+                                  ? (booking.provider?.email || '')
+                                  : (booking.client?.email || '')
+                                }
+                              </p>
+                              {(user?.role === 'client' ? booking.provider?.phone : booking.client?.phone) && (
+                                <p className="text-xs text-muted-foreground">
+                                  {user?.role === 'client' ? booking.provider?.phone : booking.client?.phone}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                       </TableCell>
