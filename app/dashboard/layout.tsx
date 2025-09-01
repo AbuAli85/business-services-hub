@@ -19,7 +19,8 @@ import {
   Building2,
   Users,
   BarChart3,
-  FileText
+  FileText,
+  DollarSign
 } from 'lucide-react'
 
 interface UserProfile {
