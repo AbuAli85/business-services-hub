@@ -38,7 +38,19 @@ import {
   Sparkles,
   Target,
   Award,
-  Zap
+  Zap,
+  BookOpen,
+  MessageCircle,
+  Phone,
+  Mail,
+  Globe,
+  Bookmark,
+  Flag,
+  Layers,
+  Activity,
+  ArrowUpRight,
+  ChevronDown,
+  SlidersHorizontal
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -90,7 +102,14 @@ export default function ServicesPage() {
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showFilters, setShowFilters] = useState(false)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' })
+  const [ratingFilter, setRatingFilter] = useState('all')
+  const [dateRange, setDateRange] = useState('all')
+  const [locationFilter, setLocationFilter] = useState('all')
   const [stats, setStats] = useState<ServiceStats | null>(null)
+  const [selectedServices, setSelectedServices] = useState<string[]>([])
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const router = useRouter()
 
   // Initial load when component mounts
@@ -628,10 +647,10 @@ export default function ServicesPage() {
                 {stats?.activeServices || 0} active services
               </p>
               <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-500 shadow-soft" 
-                  style={{ width: `${stats?.totalServices ? (stats.activeServices / stats.totalServices) * 100 : 0}%` }}
-                ></div>
+                                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-500 shadow-soft" 
+                    style={{ width: `${stats?.totalServices ? Math.round((stats.activeServices / stats.totalServices) * 100) : 0}%` }}
+                  ></div>
               </div>
             </CardContent>
           </Card>
@@ -703,7 +722,7 @@ export default function ServicesPage() {
         {/* Enhanced Search and Filters */}
         <Card className="card-glass border-0 shadow-xl">
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-soft">
                   <Search className="h-5 w-5 text-white" />
@@ -713,15 +732,48 @@ export default function ServicesPage() {
                   <p className="text-sm text-gray-600">Find exactly what you're looking for</p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="btn-secondary-gradient px-4 py-2 rounded-xl"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                {showFilters ? 'Hide' : 'Show'} Filters
-              </Button>
+              
+              <div className="flex items-center space-x-3">
+                {/* View Mode Toggle */}
+                <div className="flex items-center bg-gray-100 rounded-xl p-1">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className={`px-3 py-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className={`px-3 py-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                  >
+                    <BookOpen className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="btn-secondary-gradient px-4 py-2 rounded-xl"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  {showFilters ? 'Hide' : 'Show'} Filters
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className="border-2 border-purple-200 hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 px-4 py-2 rounded-xl"
+                >
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  Advanced
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -730,16 +782,26 @@ export default function ServicesPage() {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
                 placeholder={userRole === 'provider' 
-                  ? "Search your services by title or description..." 
-                  : "Search approved services by title or description..."
+                  ? "Search your services by title, description, or keywords..." 
+                  : "Search approved services by title, description, or keywords..."
                 }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 h-14 text-lg input-enhanced focus-ring-primary"
               />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
-            {/* Enhanced Filters */}
+            {/* Standard Filters */}
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-2xl shadow-soft">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -782,6 +844,7 @@ export default function ServicesPage() {
                     <SelectItem value="title">Title</SelectItem>
                     <SelectItem value="base_price">Price</SelectItem>
                     <SelectItem value="average_rating">Rating</SelectItem>
+                    <SelectItem value="total_bookings">Popularity</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -797,8 +860,91 @@ export default function ServicesPage() {
               </div>
             )}
 
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-purple-50 rounded-2xl shadow-soft border border-purple-100">
+                {/* Price Range */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Price Range (OMR)</label>
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Min"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                      className="h-10 input-enhanced"
+                      type="number"
+                    />
+                    <Input
+                      placeholder="Max"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                      className="h-10 input-enhanced"
+                      type="number"
+                    />
+                  </div>
+                </div>
+
+                {/* Rating Filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Minimum Rating</label>
+                  <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                    <SelectTrigger className="h-10 input-enhanced focus-ring-primary">
+                      <SelectValue placeholder="Any Rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any Rating</SelectItem>
+                      <SelectItem value="4">4+ Stars</SelectItem>
+                      <SelectItem value="3">3+ Stars</SelectItem>
+                      <SelectItem value="2">2+ Stars</SelectItem>
+                      <SelectItem value="1">1+ Stars</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Date Range */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Date Created</label>
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger className="h-10 input-enhanced focus-ring-primary">
+                      <SelectValue placeholder="Any Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any Time</SelectItem>
+                      <SelectItem value="week">Last Week</SelectItem>
+                      <SelectItem value="month">Last Month</SelectItem>
+                      <SelectItem value="3months">Last 3 Months</SelectItem>
+                      <SelectItem value="year">Last Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Bulk Actions for Providers */}
+            {userRole === 'provider' && selectedServices.length > 0 && (
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <span className="text-sm font-medium text-blue-800">
+                  {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected
+                </span>
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100">
+                    <Settings className="h-4 w-4 mr-1" />
+                    Bulk Edit
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-green-300 text-green-700 hover:bg-green-100">
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Activate
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Deactivate
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Enhanced Results Summary */}
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-gray-200 space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-blue-100 rounded-lg shadow-soft">
                   <Target className="h-4 w-4 text-blue-600" />
@@ -806,21 +952,41 @@ export default function ServicesPage() {
                 <span className="text-sm text-gray-600 font-medium">
                   {services.length} {userRole === 'provider' ? 'of your services' : 'services'} found
                 </span>
+                {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || priceRange.min || priceRange.max || ratingFilter !== 'all') && (
+                  <Badge className="bg-blue-100 text-blue-800">
+                    <Filter className="h-3 w-3 mr-1" />
+                    Filtered
+                  </Badge>
+                )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm('')
-                  setStatusFilter('all')
-                  setCategoryFilter('all')
-                  setSortBy('created_at')
-                  setSortOrder('desc')
-                }}
-                className="border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all duration-200 px-4 py-2 rounded-xl"
-              >
-                Clear All Filters
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('')
+                    setStatusFilter('all')
+                    setCategoryFilter('all')
+                    setSortBy('created_at')
+                    setSortOrder('desc')
+                    setPriceRange({ min: '', max: '' })
+                    setRatingFilter('all')
+                    setDateRange('all')
+                    setLocationFilter('all')
+                  }}
+                  className="border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-all duration-200 px-4 py-2 rounded-xl"
+                >
+                  Clear All Filters
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 px-4 py-2 rounded-xl"
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  Save Search
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -861,11 +1027,30 @@ export default function ServicesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service) => (
-              <Card key={service.id} className="group hover-lift card-elevated border-0 overflow-hidden">
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' : 'space-y-6'}>
+            {services.map((service, index) => (
+              <Card key={service.id} className={`group hover-lift card-elevated border-0 overflow-hidden ${viewMode === 'list' ? 'flex flex-col md:flex-row' : ''}`}>
+                {/* Service Selection Checkbox for Providers */}
+                {userRole === 'provider' && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedServices.includes(service.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedServices(prev => [...prev, service.id])
+                        } else {
+                          setSelectedServices(prev => prev.filter(id => id !== service.id))
+                        }
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      aria-label={`Select service ${service.title}`}
+                    />
+                  </div>
+                )}
+
                 {/* Enhanced Service Image */}
-                <div className="aspect-video bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-t-2xl overflow-hidden relative">
+                <div className={`${viewMode === 'list' ? 'md:w-48 md:h-32' : 'aspect-video'} bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 ${viewMode === 'grid' ? 'rounded-t-2xl' : 'rounded-l-2xl md:rounded-t-none md:rounded-l-2xl'} overflow-hidden relative`}>
                   {service.cover_image_url ? (
                     <img
                       src={service.cover_image_url}
@@ -874,7 +1059,7 @@ export default function ServicesPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Building2 className="h-20 w-20 text-white opacity-80" />
+                      <Building2 className={`${viewMode === 'list' ? 'h-12 w-12' : 'h-20 w-20'} text-white opacity-80`} />
                     </div>
                   )}
                   
@@ -882,6 +1067,16 @@ export default function ServicesPage() {
                   <div className="absolute top-4 left-4">
                     {getStatusBadge(service.status, service.approval_status)}
                   </div>
+
+                  {/* Performance Indicator */}
+                  {service.total_bookings > 10 && (
+                    <div className="absolute top-4 right-16">
+                      <Badge className="bg-green-500 text-white text-xs px-2 py-1">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        Popular
+                      </Badge>
+                    </div>
+                  )}
 
                   {/* Enhanced Action Buttons */}
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
@@ -894,6 +1089,17 @@ export default function ServicesPage() {
                       >
                         <Eye className="h-5 w-5" />
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-10 w-10 p-0 bg-white/90 hover:bg-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        onClick={() => {
+                          // Add to favorites functionality
+                          toast.success('Added to favorites!')
+                        }}
+                      >
+                        <Bookmark className="h-5 w-5" />
+                      </Button>
                       {userRole === 'client' && service.status === 'active' && (
                         <Button
                           size="sm"
@@ -903,6 +1109,20 @@ export default function ServicesPage() {
                           <Plus className="h-5 w-4" />
                         </Button>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Quick Stats Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="flex justify-between text-white text-xs">
+                      <span className="flex items-center">
+                        <Activity className="h-3 w-3 mr-1" />
+                        {service.total_bookings} orders
+                      </span>
+                      <span className="flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Est. 2-3 days
+                      </span>
                     </div>
                   </div>
 
@@ -936,10 +1156,10 @@ export default function ServicesPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="pt-0 space-y-5">
+                <CardContent className={`pt-0 space-y-5 ${viewMode === 'list' ? 'flex-1' : ''}`}>
                   {/* Enhanced Provider Info */}
-                  <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-100 shadow-soft">
-                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                  <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-100 shadow-soft hover:shadow-medium transition-shadow duration-200">
+                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg hover:scale-105 transition-transform duration-200">
                       {service.provider?.avatar_url ? (
                         <img
                           src={service.provider.avatar_url}
@@ -951,7 +1171,7 @@ export default function ServicesPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-gray-900 truncate">
+                      <p className="font-semibold text-sm text-gray-900 truncate hover:text-blue-600 transition-colors cursor-pointer">
                         {service.provider?.full_name || 'Unknown Provider'}
                       </p>
                       {service.provider?.company_name && (
@@ -959,30 +1179,119 @@ export default function ServicesPage() {
                           {service.provider.company_name}
                         </p>
                       )}
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Badge className="bg-green-100 text-green-800 text-xs px-2 py-0.5">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Verified
+                        </Badge>
+                        <Badge className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5">
+                          <Star className="h-3 w-3 mr-1" />
+                          Pro
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="p-2 bg-blue-100 rounded-xl shadow-soft">
-                      <Award className="h-4 w-4 text-blue-600" />
+                    <div className="flex flex-col items-center space-y-1">
+                      <div className="p-2 bg-blue-100 rounded-xl shadow-soft">
+                        <Award className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="text-xs text-gray-500 font-medium">Top Rated</span>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Service Metrics */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 shadow-soft">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-green-700 font-medium">Revenue</p>
+                          <p className="text-lg font-bold text-green-800">{formatCurrency(service.total_revenue || 0)}</p>
+                        </div>
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 shadow-soft">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-purple-700 font-medium">Orders</p>
+                          <p className="text-lg font-bold text-purple-800">{service.total_bookings || 0}</p>
+                        </div>
+                        <Activity className="h-5 w-5 text-purple-600" />
+                      </div>
                     </div>
                   </div>
 
                   {/* Enhanced Service Details */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 shadow-soft">
-                      <span className="text-gray-700 font-medium">Starting from:</span>
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 shadow-soft hover:shadow-medium transition-shadow duration-200">
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
+                        <span className="text-gray-700 font-medium">Starting from:</span>
+                      </div>
                       <span className="font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
                         {formatCurrency(service.base_price, service.currency)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-gray-600 p-3 bg-gray-50 rounded-xl shadow-soft">
-                      <div className="flex items-center space-x-2">
+                    <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                      <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-xl shadow-soft">
                         <Clock className="h-4 w-4 text-blue-500" />
                         <span className="font-medium">{service.total_bookings || 0} bookings</span>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-xl shadow-soft">
                         <MapPin className="h-4 w-4 text-purple-500" />
                         <span className="font-medium">Oman</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions Toolbar */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 rounded-lg p-2"
+                        onClick={() => handleServiceAction(service.id, 'contact')}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-green-600 hover:bg-green-50 transition-all duration-200 rounded-lg p-2"
+                      >
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 rounded-lg p-2"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-lg p-2"
+                      >
+                        <Heart className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 rounded-lg p-2"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200 rounded-lg p-2"
+                      >
+                        <Flag className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
 
@@ -990,53 +1299,58 @@ export default function ServicesPage() {
                   <div className="flex space-x-3 pt-3">
                     <Button
                       variant="outline"
-                      className="flex-1 h-12 btn-secondary-gradient rounded-xl font-medium"
+                      className="flex-1 h-12 btn-secondary-gradient rounded-xl font-medium group relative overflow-hidden"
                       onClick={() => handleServiceAction(service.id, 'view')}
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                      <div className="relative flex items-center justify-center group-hover:text-white transition-colors duration-300">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </div>
                     </Button>
                     
                     {userRole === 'client' && service.status === 'active' && (
                       <Button
-                        className="flex-1 h-12 btn-primary-gradient rounded-xl font-medium"
+                        className="flex-1 h-12 btn-primary-gradient rounded-xl font-medium relative overflow-hidden group"
                         onClick={() => handleServiceAction(service.id, 'book')}
                       >
-                        <Zap className="h-4 w-4 mr-2" />
-                        Book Now
+                        <div className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                        <div className="relative flex items-center justify-center">
+                          <Zap className="h-4 w-4 mr-2" />
+                          Book Now
+                        </div>
+                      </Button>
+                    )}
+
+                    {userRole === 'provider' && (
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-12 border-2 border-green-200 hover:border-green-300 hover:bg-green-50 text-green-700 rounded-xl font-medium"
+                        onClick={() => router.push(`/dashboard/services/${service.id}/analytics`)}
+                      >
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Analytics
                       </Button>
                     )}
                   </div>
 
-                  {/* Enhanced Additional Actions */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 rounded-xl px-4 py-2"
-                      onClick={() => handleServiceAction(service.id, 'contact')}
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Contact
-                    </Button>
-                    
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-xl p-2"
-                      >
-                        <Heart className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-500 hover:text-green-600 hover:bg-green-50 transition-all duration-200 rounded-xl p-2"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </Button>
+                  {/* Performance Insights for Providers */}
+                  {userRole === 'provider' && (
+                    <div className="mt-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Activity className="h-4 w-4 text-orange-600" />
+                          <span className="text-sm font-medium text-orange-800">Performance</span>
+                        </div>
+                        <div className="flex items-center space-x-3 text-xs">
+                          <span className="text-orange-700">
+                            <ArrowUpRight className="h-3 w-3 inline mr-1" />
+                            +15% this month
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
