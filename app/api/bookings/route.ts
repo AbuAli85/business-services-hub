@@ -219,7 +219,8 @@ export async function POST(request: NextRequest) {
         payment_status: 'pending',
         estimated_duration,
         location,
-        service_package_id
+        service_package_id,
+        title: `Booking for ${service.title}` // Add required title field
       })
       .select(`
         *,
@@ -228,8 +229,42 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (bookingError) {
-      console.error('Booking creation error:', bookingError)
-      const response = NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
+      console.error('❌ Booking creation error:', bookingError)
+      console.error('❌ Booking data being inserted:', {
+        service_id,
+        client_id: user.id,
+        provider_id: service.provider_id,
+        scheduled_date,
+        notes,
+        status: 'pending',
+        approval_status: 'pending',
+        operational_status: 'new',
+        amount,
+        currency: service.currency || 'OMR',
+        payment_status: 'pending',
+        estimated_duration,
+        location,
+        service_package_id
+      })
+      console.error('❌ Service data:', {
+        id: service.id,
+        title: service.title,
+        provider_id: service.provider_id,
+        base_price: service.base_price,
+        currency: service.currency
+      })
+      
+      const response = NextResponse.json({ 
+        error: 'Failed to create booking', 
+        details: bookingError.message,
+        type: 'booking_creation_error',
+        debug: {
+          bookingError: bookingError,
+          serviceId: service_id,
+          userId: user.id,
+          providerId: service.provider_id
+        }
+      }, { status: 500 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
