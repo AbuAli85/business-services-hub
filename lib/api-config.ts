@@ -17,24 +17,7 @@ export const API_CONFIG = {
  * @returns The API URL with proper domain routing
  */
 export function getApiUrl(endpoint: string): string {
-  if (typeof window === 'undefined') {
-    // Server-side: use relative URL
-    return endpoint
-  }
-
-  const currentHost = window.location.hostname
-  
-  // Marketing site - route to portal site
-  if (currentHost === 'marketing.thedigitalmorph.com' || 
-      currentHost === 'www.marketing.thedigitalmorph.com') {
-    // For development, route to localhost
-    const portalUrl = 'http://localhost:3001'
-    const fullUrl = `${portalUrl}${endpoint}`
-    console.log('🔗 Cross-domain API call (dev):', fullUrl)
-    return fullUrl
-  }
-  
-  // Portal site or localhost - use relative URL
+  // Always use relative URLs for all domains
   console.log('🔗 Using relative URL:', endpoint)
   return endpoint
 }
@@ -123,18 +106,9 @@ export function validateApiConfig(): string[] {
 if (typeof window !== 'undefined') {
   const currentHost = window.location.hostname
   
-  if (currentHost === 'marketing.thedigitalmorph.com' || 
-      currentHost === 'www.marketing.thedigitalmorph.com') {
-    console.log('🔧 Cross-Domain API Configuration loaded:', {
-      currentHost: currentHost,
-      mode: 'cross-domain-dev',
-      targetDomain: 'http://localhost:3001',
-      status: 'API calls will be routed to localhost for development'
-    })
-  } else {
-    console.log('🔧 Local API Configuration loaded:', {
-      currentHost: currentHost,
-      mode: 'local-only'
-    })
-  }
+  console.log('🔧 API Configuration loaded:', {
+    currentHost: currentHost,
+    mode: 'relative-urls',
+    status: 'API calls will use relative URLs on current domain'
+  })
 }
