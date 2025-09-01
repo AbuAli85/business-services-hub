@@ -662,14 +662,16 @@ Please review and respond to this booking request.`
       console.error('Send message error:', error)
       
       // Provide more specific error messages
-      if (error?.message?.includes('permission denied')) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      
+      if (errorMessage.includes('permission denied')) {
         toast.error('Permission denied. Please ensure you have the right permissions to send messages.')
-      } else if (error?.message?.includes('foreign key')) {
+      } else if (errorMessage.includes('foreign key')) {
         toast.error('Invalid recipient or service. Please try again.')
-      } else if (error?.message?.includes('null value')) {
+      } else if (errorMessage.includes('null value')) {
         toast.error('Missing required information. Please fill in all fields.')
       } else {
-        toast.error(`Failed to send message: ${error?.message || 'Unknown error'}`)
+        toast.error(`Failed to send message: ${errorMessage}`)
       }
     } finally {
       setIsContactSending(false)
