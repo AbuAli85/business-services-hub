@@ -93,22 +93,6 @@ export default function ServicesPage() {
       }
 
       setServices(filtered)
-      
-      // If no services found, add a test service to verify the UI works
-      if (transformedServices.length === 0) {
-        console.log('No services found in database, adding test service')
-        const testService: Service = {
-          id: 'test-1',
-          title: 'Test Service',
-          description: 'This is a test service to verify the UI is working correctly.',
-          category: 'IT Services',
-          base_price: 100,
-          currency: 'OMR',
-          provider: { full_name: 'Test Provider' },
-          service_packages: []
-        }
-        setServices([testService])
-      }
     } catch (error) {
       console.error('Error fetching services:', error)
     } finally {
