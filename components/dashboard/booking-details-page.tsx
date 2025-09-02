@@ -115,6 +115,7 @@ export default function BookingDetailsPage() {
   const [booking, setBooking] = useState<Booking | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
   const [isEditingNotes, setIsEditingNotes] = useState(false)
@@ -164,6 +165,11 @@ export default function BookingDetailsPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [fileCategory, setFileCategory] = useState('contract')
   const [showAddMilestone, setShowAddMilestone] = useState(false)
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [creatingSuggestion, setCreatingSuggestion] = useState(false)
+  const [newSuggestion, setNewSuggestion] = useState<{ service_id: string; reason: string; priority: 'low' | 'medium' | 'high' | 'urgent' }>({ service_id: '', reason: '', priority: 'medium' })
 
   const bookingId = params.id as string
 
@@ -172,8 +178,114 @@ export default function BookingDetailsPage() {
       loadBooking()
       loadBookingHistory()
       loadRelatedBookings()
+      // Realtime subscription for booking updates
+      setupRealtime()
+      loadSuggestions()
     }
+    return teardownRealtime
   }, [bookingId])
+
+  // --- Realtime: bookings/messages/files ---
+  let realtimeCleanup: (() => void) | null = null
+  const setupRealtime = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const channel = supabase.channel(`booking_${bookingId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `id=eq.${bookingId}`
+        }, (payload) => {
+          // Refresh quick state on updates
+          loadBooking()
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `booking_id=eq.${bookingId}`
+        }, () => {
+          // Ideally add incremental append; for now refresh the tab
+          if (activeTab === 'messages') loadBooking()
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'files',
+          filter: `booking_id=eq.${bookingId}`
+        }, () => {
+          if (activeTab === 'files') loadBooking()
+        })
+        .subscribe()
+      realtimeCleanup = () => {
+        try { supabase.removeChannel(channel) } catch {}
+      }
+    } catch (e) {}
+  }
+  const teardownRealtime = () => {
+    if (realtimeCleanup) realtimeCleanup()
+  }
+
+  // --- Suggestions ---
+  const loadSuggestions = async () => {
+    try {
+      setLoadingSuggestions(true)
+      const res = await fetch(`/api/service-suggestions?status=&limit=50`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      const filtered = (data.suggestions || []).filter((s: any) => s.original_booking_id === bookingId)
+      setSuggestions(filtered)
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  const createSuggestion = async () => {
+    if (!booking || !newSuggestion.service_id || !newSuggestion.reason) return
+    try {
+      setCreatingSuggestion(true)
+      const body = {
+        client_id: (booking as any).client_id || booking.client?.id,
+        suggested_service_id: newSuggestion.service_id,
+        original_booking_id: booking.id,
+        suggestion_reason: newSuggestion.reason,
+        priority: newSuggestion.priority
+      }
+      const res = await fetch('/api/service-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload?.error || 'Failed to create suggestion')
+      toast.success('Suggestion sent to client')
+      setNewSuggestion({ service_id: '', reason: '', priority: 'medium' })
+      loadSuggestions()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create suggestion')
+    } finally {
+      setCreatingSuggestion(false)
+    }
+  }
+
+  const respondSuggestion = async (id: string, status: 'accepted' | 'declined' | 'viewed', notes?: string) => {
+    try {
+      const res = await fetch(`/api/service-suggestions?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status, response_notes: notes || '' })
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload?.error || 'Failed to update suggestion')
+      toast.success(status === 'accepted' ? 'Suggestion accepted' : status === 'declined' ? 'Suggestion declined' : 'Viewed')
+      loadSuggestions()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update suggestion')
+    }
+  }
 
   const loadBooking = async () => {
     try {
@@ -196,6 +308,7 @@ export default function BookingDetailsPage() {
         .select('id, full_name, email, role')
         .eq('id', user.id)
         .maybeSingle()
+      setUserRole((profile?.role as any) || null)
       
       // Load booking details based on user role
       let bookingData: any = null
@@ -787,70 +900,51 @@ export default function BookingDetailsPage() {
   }
 
   const handleFileUpload = async () => {
-    if (selectedFiles.length === 0) {
+    if (selectedFiles.length === 0 || !booking) {
       toast.error('Please select files to upload')
       return
     }
-
     try {
       setIsUploading(true)
-      
-      // Process each selected file
-      const newFiles = selectedFiles.map(file => ({
-        id: Date.now() + Math.random(),
-        name: file.name,
-        category: fileCategory,
-        size: formatFileSize(file.size),
-        uploadedAt: new Date().toISOString(),
-        type: file.type,
-        file: file // Keep reference for actual upload
-      }))
+      const supabase = await getSupabaseClient()
+      for (const file of selectedFiles) {
+        const ext = file.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const objectPath = `booking-files/${booking.id}/${fileCategory}/${fileName}`
+        const { error: uploadError } = await supabase.storage
+          .from('message-files')
+          .upload(objectPath, file)
+        if (uploadError) throw uploadError
 
-      // Use requestIdleCallback to prevent UI blocking during file processing
-      const processFiles = async () => {
-        try {
-          // Simulate file upload to Supabase storage
-          // In a real implementation, you would upload to Supabase storage
-          for (const fileData of newFiles) {
-            // Simulate upload delay
-            await new Promise(resolve => setTimeout(resolve, 100)) // Reduced delay
-            
-            // Add to uploaded files list
-            setUploadedFiles(prev => [fileData, ...prev])
-          }
+        const { data: { publicUrl } } = supabase.storage
+          .from('message-files')
+          .getPublicUrl(objectPath)
 
-          toast.success(`${selectedFiles.length} file(s) uploaded successfully!`)
-          setSelectedFiles([])
-          setShowFileUpload(false)
-          
-          // Add to booking history
-          const historyEntry: BookingHistory = {
-            id: Date.now().toString(),
-            action: 'Files Uploaded',
-            description: `Uploaded ${selectedFiles.length} file(s) in category: ${fileCategory}`,
-            timestamp: new Date().toISOString(),
-            user: 'Provider'
-          }
-          setBookingHistory(prev => [historyEntry, ...prev])
-          
-        } catch (error) {
-          console.error('Error uploading files:', error)
-          toast.error('Failed to upload files')
-        } finally {
-          setIsUploading(false)
-        }
+        setUploadedFiles(prev => [{
+          id: objectPath,
+          name: file.name,
+          category: fileCategory,
+          size: formatFileSize(file.size),
+          uploadedAt: new Date().toISOString(),
+          type: file.type,
+          url: publicUrl
+        }, ...prev])
       }
-
-      // Defer heavy operations to prevent UI blocking
-      if (window.requestIdleCallback) {
-        window.requestIdleCallback(processFiles)
-      } else {
-        setTimeout(processFiles, 0)
+      toast.success(`${selectedFiles.length} file(s) uploaded successfully!`)
+      setSelectedFiles([])
+      setShowFileUpload(false)
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Files Uploaded',
+        description: `Uploaded ${selectedFiles.length} file(s) in category: ${fileCategory}`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
       }
-      
-    } catch (error) {
+      setBookingHistory(prev => [historyEntry, ...prev])
+    } catch (error: any) {
       console.error('Error uploading files:', error)
-      toast.error('Failed to upload files')
+      toast.error(error?.message || 'Failed to upload files')
+    } finally {
       setIsUploading(false)
     }
   }
@@ -864,8 +958,11 @@ export default function BookingDetailsPage() {
   }
 
   const handleFileDownload = (file: any) => {
-    // In a real implementation, this would download from Supabase storage
-    toast.success(`Downloading ${file.name}...`)
+    if (file?.url) {
+      window.open(file.url, '_blank')
+    } else {
+      toast.error('File URL not found')
+    }
   }
 
   const handleFileDelete = (fileId: string) => {
