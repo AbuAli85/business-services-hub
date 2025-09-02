@@ -97,6 +97,11 @@ interface Booking {
   payment_status?: 'pending' | 'paid' | 'refunded'
   rating?: number
   review?: string
+  progress_percentage?: number
+  milestone_notes?: string
+  estimated_completion_date?: string
+  actual_start_date?: string
+  quality_score?: number
   service: {
     id: string
     name: string
@@ -104,6 +109,13 @@ interface Booking {
     category?: string
   }
   client: {
+    id: string
+    full_name: string
+    email: string
+    phone?: string
+    company_name?: string
+  }
+  provider?: {
     id: string
     full_name: string
     email: string
@@ -842,6 +854,97 @@ export default function BookingDetailsPage() {
       toast.success('Comment added')
     } catch (error) {
       toast.error('Failed to add comment')
+    }
+  }
+
+  // Handle task status updates from timeline
+  const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
+    try {
+      setProjectTasks(prev => prev.map(task => {
+        if (task.id === taskId) {
+          const updatedTask = {
+            ...task,
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          }
+          
+          // If completing a task, update actual hours if not set
+          if (newStatus === 'completed' && !task.actual_hours) {
+            updatedTask.actual_hours = task.estimated_hours || '0'
+          }
+          
+          return updatedTask
+        }
+        return task
+      }))
+      
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Task Status Updated',
+        description: `Task "${projectTasks.find(t => t.id === taskId)?.title}" changed to ${newStatus}`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setBookingHistory(prev => [historyEntry, ...prev])
+      
+      // Update overall progress if needed
+      const updatedTasks = projectTasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+      const completedTasks = updatedTasks.filter(t => t.status === 'completed').length
+      const totalTasks = updatedTasks.length
+      const newProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+      
+      if (booking && newProgress !== booking.progress_percentage) {
+        handleUpdateProgress()
+      }
+      
+      toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'started'}!`)
+    } catch (error) {
+      console.error('Error updating task status:', error)
+      toast.error('Failed to update task status')
+    }
+  }
+
+  // Handle adding task comments from timeline
+  const handleAddTaskComment = (taskId: string) => {
+    const comment = prompt('Add a task update or comment:')
+    if (comment?.trim()) {
+      const newComment = {
+        id: Date.now().toString(),
+        text: comment.trim(),
+        created_at: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setProjectTasks(prev => prev.map(task =>
+        task.id === taskId
+          ? { ...task, comments: [...(task.comments || []), newComment], updated_at: new Date().toISOString() }
+          : task
+      ))
+      
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Task Comment Added',
+        description: `Comment added to task "${projectTasks.find(t => t.id === taskId)?.title}": ${comment.trim().substring(0, 50)}${comment.trim().length > 50 ? '...' : ''}`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setBookingHistory(prev => [historyEntry, ...prev])
+      toast.success('Task comment added successfully!')
+    }
+  }
+
+  // Handle task editing from timeline
+  const handleTaskEdit = (taskId: string) => {
+    const task = projectTasks.find(t => t.id === taskId)
+    if (task) {
+      setEditingTask(task)
+      setShowAddMilestone(true)
     }
   }
 
@@ -1656,6 +1759,39 @@ export default function BookingDetailsPage() {
         return
       }
 
+      // Create timeline entry for this progress update
+      const timelineEntry = {
+        booking_id: booking.id,
+        action_type: 'progress_update',
+        status: 'in_progress',
+        progress_percentage: progressUpdate.progress_percentage,
+        milestone: progressUpdate.milestone_notes,
+        quality_score: progressUpdate.quality_score,
+        estimated_completion: progressUpdate.estimated_completion_date,
+        actual_start: progressUpdate.actual_start_date,
+        created_by: user?.id,
+        created_at: new Date().toISOString()
+      }
+
+      // Call tracking API to create timeline entry
+      try {
+        await authenticatedPost('/api/tracking', timelineEntry)
+      } catch (trackingError) {
+        console.error('Error creating timeline entry:', trackingError)
+        // Don't fail the progress update if timeline creation fails
+      }
+
+      // Add to booking history
+      const historyEntry: BookingHistory = {
+        id: Date.now().toString(),
+        action: 'Progress Updated',
+        description: `Progress updated to ${progressUpdate.progress_percentage}%${progressUpdate.milestone_notes ? ` - ${progressUpdate.milestone_notes.substring(0, 100)}${progressUpdate.milestone_notes.length > 100 ? '...' : ''}` : ''}`,
+        timestamp: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setBookingHistory(prev => [historyEntry, ...prev])
+
       // Update local state
       setBooking(prev => prev ? {
         ...prev,
@@ -1667,17 +1803,43 @@ export default function BookingDetailsPage() {
         updated_at: new Date().toISOString()
       } : null)
 
+      // Auto-update booking status based on progress
+      if (progressUpdate.progress_percentage === 100 && booking.status !== 'completed') {
+        try {
+          await authenticatedPatch('/api/bookings', {
+            booking_id: booking.id,
+            action: 'complete'
+          })
+          toast.success('Project completed and marked as finished!')
+        } catch (statusError) {
+          console.error('Error updating booking status:', statusError)
+        }
+      } else if (progressUpdate.progress_percentage > 0 && booking.status === 'pending') {
+        try {
+          await authenticatedPatch('/api/bookings', {
+            booking_id: booking.id,
+            action: 'approve'
+          })
+        } catch (statusError) {
+          console.error('Error updating booking status:', statusError)
+        }
+      }
+
       // Reset form
       setProgressUpdate({
-        progress_percentage: 0,
+        progress_percentage: booking.progress_percentage || 0,
         milestone_notes: '',
         estimated_completion_date: '',
         actual_start_date: '',
-        quality_score: 0
+        quality_score: booking.quality_score || 0
       })
       setShowProgressUpdate(false)
 
       toast.success('Progress updated successfully!')
+      
+      // Reload to get fresh data
+      loadBooking()
+      loadProjectTasks()
     } catch (error) {
       console.error('Error updating progress:', error)
       toast.error('Failed to update progress')
@@ -2287,111 +2449,254 @@ export default function BookingDetailsPage() {
         </Card>
       )}
 
-      {/* Progress Update Dialog */}
+      {/* Enhanced Progress Update Modal */}
       {showProgressUpdate && (
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-green-800">
-              <TrendingUp className="h-5 w-5" />
-              <span>Update Progress</span>
-            </CardTitle>
-            <CardDescription className="text-green-700">
-              Update the progress and milestones for this booking.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="progress-percentage" className="text-sm font-medium text-green-800 mb-2 block">
-                  Progress Percentage *
-                </label>
-                <Input
-                  id="progress-percentage"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={progressUpdate.progress_percentage}
-                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, progress_percentage: parseInt(e.target.value) || 0 }))}
-                  className="border-green-300 focus:border-green-500"
-                  placeholder="0-100"
-                />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Update Project Progress</h3>
+                  <p className="text-sm text-gray-600">Track milestones and deliverables</p>
+                </div>
               </div>
-              <div>
-                <label htmlFor="quality-score" className="text-sm font-medium text-green-800 mb-2 block">
-                  Quality Score (1-5)
-                </label>
-                <Input
-                  id="quality-score"
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={progressUpdate.quality_score}
-                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, quality_score: parseInt(e.target.value) || 0 }))}
-                  className="border-green-300 focus:border-green-500"
-                  placeholder="1-5"
-                />
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowProgressUpdate(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
             
-            <div>
-              <label htmlFor="milestone-notes" className="text-sm font-medium text-green-800 mb-2 block">
-                Milestone Notes
-              </label>
-              <Textarea
-                id="milestone-notes"
-                placeholder="Describe the current progress and any important milestones..."
-                value={progressUpdate.milestone_notes}
-                onChange={(e) => setProgressUpdate(prev => ({ ...prev, milestone_notes: e.target.value }))}
-                className="border-green-300 focus:border-green-500"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="actual-start-date" className="text-sm font-medium text-green-800 mb-2 block">
-                  Actual Start Date
-                </label>
-                <Input
-                  id="actual-start-date"
-                  type="datetime-local"
-                  value={progressUpdate.actual_start_date}
-                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, actual_start_date: e.target.value }))}
-                  className="border-green-300 focus:border-green-500"
-                />
+            <div className="space-y-6">
+              {/* Progress Overview */}
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-gray-900">Current Progress</h4>
+                  <span className="text-2xl font-bold text-blue-600">
+                    {progressUpdate.progress_percentage || booking?.progress_percentage || 0}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-500" 
+                    style={{ width: `${progressUpdate.progress_percentage || booking?.progress_percentage || 0}%` }}
+                  ></div>
+                </div>
               </div>
-              <div>
-                <label htmlFor="estimated-completion" className="text-sm font-medium text-green-800 mb-2 block">
-                  Estimated Completion Date
-                </label>
-                <Input
-                  id="estimated-completion"
-                  type="datetime-local"
-                  value={progressUpdate.estimated_completion_date}
-                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, estimated_completion_date: e.target.value }))}
-                  className="border-green-300 focus:border-green-500"
-                />
+
+              {/* Progress Form */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block flex items-center">
+                      <BarChart3 className="h-4 w-4 mr-2 text-gray-600" />
+                      Progress Percentage
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                        value={progressUpdate.progress_percentage}
+                        onChange={(e) => setProgressUpdate(prev => ({ ...prev, progress_percentage: parseInt(e.target.value) }))}
+                        aria-label="Progress percentage from 0 to 100"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="absolute right-0 top-4 w-16 p-1 text-xs border rounded text-center"
+                        value={progressUpdate.progress_percentage}
+                        onChange={(e) => setProgressUpdate(prev => ({ ...prev, progress_percentage: parseInt(e.target.value) || 0 }))}
+                        aria-label="Progress percentage numeric input"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-2 block flex items-center">
+                      <Calendar className="h-4 w-4 mr-2 text-gray-600" />
+                      Estimated Completion
+                    </label>
+                    <Input
+                      type="date"
+                      className="w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={progressUpdate.estimated_completion_date}
+                      onChange={(e) => setProgressUpdate(prev => ({ ...prev, estimated_completion_date: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-2 block flex items-center">
+                      <Clock className="h-4 w-4 mr-2 text-gray-600" />
+                      Actual Start Date
+                    </label>
+                    <Input
+                      type="date"
+                      className="w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={progressUpdate.actual_start_date}
+                      onChange={(e) => setProgressUpdate(prev => ({ ...prev, actual_start_date: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium mb-2 block flex items-center">
+                      <Star className="h-4 w-4 mr-2 text-gray-600" />
+                      Quality Score (1-10)
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        value={progressUpdate.quality_score}
+                        onChange={(e) => setProgressUpdate(prev => ({ ...prev, quality_score: parseInt(e.target.value) }))}
+                        aria-label="Quality score from 1 to 10"
+                      />
+                      <span className="text-sm font-medium w-8 text-center">
+                        {progressUpdate.quality_score || 1}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block flex items-center">
+                      <FileText className="h-4 w-4 mr-2 text-gray-600" />
+                      Milestone Notes & Updates
+                    </label>
+                    <Textarea
+                      className="w-full min-h-[120px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={progressUpdate.milestone_notes}
+                      onChange={(e) => setProgressUpdate(prev => ({ ...prev, milestone_notes: e.target.value }))}
+                      placeholder="Describe current milestone achievements, completed tasks, next steps, and any blockers..."
+                    />
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="bg-gray-50 rounded-lg p-4 border">
+                    <h5 className="font-medium text-gray-900 mb-3">Quick Status Updates</h5>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setProgressUpdate(prev => ({ 
+                          ...prev, 
+                          milestone_notes: prev.milestone_notes + '\n• Project started successfully\n• Initial requirements gathered\n• Team assigned and briefed' 
+                        }))}
+                        className="text-xs"
+                      >
+                        <Play className="h-3 w-3 mr-1" />
+                        Project Started
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setProgressUpdate(prev => ({ 
+                          ...prev, 
+                          milestone_notes: prev.milestone_notes + '\n• 50% milestone reached\n• Key deliverables completed\n• On track for delivery' 
+                        }))}
+                        className="text-xs"
+                      >
+                        <Target className="h-3 w-3 mr-1" />
+                        Milestone Reached
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setProgressUpdate(prev => ({ 
+                          ...prev, 
+                          milestone_notes: prev.milestone_notes + '\n• Final review completed\n• All requirements met\n• Ready for client approval' 
+                        }))}
+                        className="text-xs"
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Review Ready
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setProgressUpdate(prev => ({ 
+                          ...prev, 
+                          milestone_notes: prev.milestone_notes + '\n• Project completed successfully\n• All deliverables provided\n• Client satisfaction confirmed' 
+                        }))}
+                        className="text-xs"
+                      >
+                        <Award className="h-3 w-3 mr-1" />
+                        Completed
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Task Summary */}
+              {projectTasks.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <h5 className="font-medium text-gray-900 mb-3 flex items-center">
+                    <List className="h-4 w-4 mr-2" />
+                    Task Summary
+                  </h5>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600">
+                        {projectTasks.filter(t => t.status === 'completed').length}
+                      </div>
+                      <div className="text-gray-600">Completed</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600">
+                        {projectTasks.filter(t => t.status === 'in_progress').length}
+                      </div>
+                      <div className="text-gray-600">In Progress</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-gray-600">
+                        {projectTasks.filter(t => t.status === 'not_started').length}
+                      </div>
+                      <div className="text-gray-600">Pending</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex space-x-3 pt-4 border-t">
+                <Button 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700" 
+                  disabled={isUpdatingProgress}
+                  onClick={handleUpdateProgress}
+                >
+                  {isUpdatingProgress ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Update Progress
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowProgressUpdate(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
-
-            <div className="flex space-x-3 pt-4">
-              <Button
-                onClick={() => (userRole === 'provider' || userRole === 'admin') ? handleUpdateProgress() : undefined}
-                disabled={isUpdatingProgress || !(userRole === 'provider' || userRole === 'admin')}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isUpdatingProgress ? 'Updating...' : 'Update Progress'}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowProgressUpdate(false)}
-                className="border-green-300 text-green-700 hover:bg-green-100"
-              >
-                Cancel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Service Suggestion Dialog */}
@@ -3715,6 +4020,8 @@ export default function BookingDetailsPage() {
                         value={taskFilter.status}
                         onChange={(e) => setTaskFilter(prev => ({ ...prev, status: e.target.value }))}
                         className="text-sm border border-gray-300 rounded px-2 py-1"
+                        aria-label="Filter tasks by status"
+                        title="Filter tasks by status"
                       >
                         <option value="all">All Status</option>
                         <option value="not_started">Not Started</option>
@@ -3727,6 +4034,8 @@ export default function BookingDetailsPage() {
                         value={taskFilter.priority}
                         onChange={(e) => setTaskFilter(prev => ({ ...prev, priority: e.target.value }))}
                         className="text-sm border border-gray-300 rounded px-2 py-1"
+                        aria-label="Filter tasks by priority"
+                        title="Filter tasks by priority"
                       >
                         <option value="all">All Priorities</option>
                         <option value="critical">Critical</option>
@@ -3739,6 +4048,8 @@ export default function BookingDetailsPage() {
                         value={taskFilter.category}
                         onChange={(e) => setTaskFilter(prev => ({ ...prev, category: e.target.value }))}
                         className="text-sm border border-gray-300 rounded px-2 py-1"
+                        aria-label="Filter tasks by category"
+                        title="Filter tasks by category"
                       >
                         <option value="all">All Categories</option>
                         <option value="development">Development</option>
@@ -4619,80 +4930,321 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Timeline Tab - Enhanced with Task Updates */}
+        {/* Enhanced Professional Timeline Tab */}
         <TabsContent value="timeline" className="space-y-6">
-          <Card className="border border-gray-200 bg-white shadow-sm">
+          {/* Progress Overview Card */}
+          <Card className="border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+            <CardHeader className="border-b border-blue-100 bg-gradient-to-r from-blue-100 to-indigo-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-gray-800 text-lg">Project Progress Overview</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Real-time tracking of project milestones and deliverables
+                    </CardDescription>
+                  </div>
+                </div>
+                {userRole === 'provider' && (
+                  <Button 
+                    onClick={() => setShowProgressUpdate(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Update Progress
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600">{booking?.progress_percentage || 0}%</div>
+                  <div className="text-sm text-gray-600 mt-1">Overall Progress</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-500" 
+                      style={{ width: `${booking?.progress_percentage || 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {projectTasks.filter(t => t.status === 'completed').length}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">Tasks Completed</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    of {projectTasks.length} total
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-600">
+                    {projectTasks.filter(t => t.status === 'in_progress').length}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">In Progress</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Active tasks
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600">
+                    {getDaysSinceCreation()}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">Days Active</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Project duration
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Main Timeline Card */}
+          <Card className="border border-gray-200 bg-white shadow-lg">
             <CardHeader className="border-b border-gray-100 bg-gray-50">
-              <CardTitle className="flex items-center space-x-2 text-gray-800">
-                <Clock3 className="h-5 w-5 text-gray-600" />
-                <span>Project Timeline</span>
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                Chronological view of all project activities and updates
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Clock3 className="h-5 w-5 text-gray-600" />
+                  <CardTitle className="text-gray-800">Project Timeline & Activities</CardTitle>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline" className="text-xs">
+                    {getTimelineProgress()}
+                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={loadProjectTasks}
+                    disabled={loadingTasks}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loadingTasks ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </div>
+              <CardDescription className="text-gray-600 mt-2">
+                Comprehensive chronological view of all project activities, milestones, and status changes
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {/* Timeline showing task updates */}
-              <div className="space-y-4">
-                {/* Generate timeline from project tasks */}
-                {projectTasks.length > 0 ? (
-                  <div className="space-y-6">
-                    {projectTasks.map((task) => (
-                      <div key={task.id} className="relative">
-                        {/* Timeline line */}
-                        <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-gray-200"></div>
-                        
-                        {/* Task entry */}
+              {/* Enhanced Timeline showing all activities */}
+              <div className="space-y-6">
+                {/* Booking Status History */}
+                {bookingHistory.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <History className="h-5 w-5 mr-2 text-blue-600" />
+                      Booking Status History
+                    </h3>
+                    {bookingHistory.slice(0, 3).map((entry, index) => (
+                      <div key={entry.id} className="relative">
+                        <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-blue-200"></div>
                         <div className="flex items-start space-x-4">
-                          <div className={`w-8 h-8 rounded-full border-2 bg-white flex items-center justify-center ${getStatusColor(task.status).replace('bg-', 'border-')}`}>
-                            {task.status === 'completed' ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : task.status === 'in_progress' ? (
-                              <Clock className="h-4 w-4 text-blue-600" />
-                            ) : (
-                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            )}
+                          <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-300 flex items-center justify-center">
+                            <History className="h-4 w-4 text-blue-600" />
                           </div>
-                          
-                          <div className="flex-1 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex-1 bg-blue-50 rounded-lg p-4 border border-blue-200">
                             <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-semibold text-gray-900">{task.title}</h4>
-                              <Badge className={getStatusColor(task.status)}>
-                                {task.status === 'not_started' ? 'Not Started' : 
-                                 task.status === 'in_progress' ? 'In Progress' : 'Completed'}
+                              <h4 className="font-semibold text-gray-900">{entry.action}</h4>
+                              <span className="text-xs text-gray-500">
+                                {formatDate(entry.timestamp)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">{entry.description}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-gray-500">by {entry.user}</span>
+                              <Badge variant="outline" className="text-xs">
+                                System Update
                               </Badge>
                             </div>
-                            
-                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                            
-                            <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
-                              <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
-                              {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
-                              <span>Est. {task.estimated_hours}h</span>
-                            </div>
-                            
-                            {/* Task comments in timeline */}
-                            {task.comments && task.comments.length > 0 && (
-                              <div className="space-y-2">
-                                {task.comments.map((comment: any) => (
-                                  <div key={comment.id} className="bg-white p-3 rounded border border-gray-200">
-                                    <p className="text-sm text-gray-700">{comment.text}</p>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {comment.user} • {new Date(comment.created_at).toLocaleString()}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Project Tasks Timeline */}
+                {projectTasks.length > 0 ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <Target className="h-5 w-5 mr-2 text-green-600" />
+                      Project Tasks & Milestones
+                    </h3>
+                    {projectTasks.map((task, index) => {
+                      const isLast = index === projectTasks.length - 1
+                      const statusColors = {
+                        completed: 'border-green-300 bg-green-50',
+                        in_progress: 'border-blue-300 bg-blue-50',
+                        not_started: 'border-gray-300 bg-gray-50',
+                        on_hold: 'border-yellow-300 bg-yellow-50',
+                        cancelled: 'border-red-300 bg-red-50'
+                      }
+                      
+                      return (
+                        <div key={task.id} className="relative">
+                          {!isLast && (
+                            <div className="absolute left-4 top-12 bottom-0 w-0.5 bg-gray-200"></div>
+                          )}
+                          
+                          <div className="flex items-start space-x-4">
+                            <div className={`w-8 h-8 rounded-full border-2 bg-white flex items-center justify-center shadow-sm ${getStatusColor(task.status).replace('bg-', 'border-')}`}>
+                              {task.status === 'completed' ? (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              ) : task.status === 'in_progress' ? (
+                                <Play className="h-4 w-4 text-blue-600" />
+                              ) : task.status === 'on_hold' ? (
+                                <Pause className="h-4 w-4 text-yellow-600" />
+                              ) : task.status === 'cancelled' ? (
+                                <X className="h-4 w-4 text-red-600" />
+                              ) : (
+                                <Clock className="h-4 w-4 text-gray-400" />
+                              )}
+                            </div>
+                            
+                            <div className={`flex-1 rounded-lg p-4 border shadow-sm ${statusColors[task.status as keyof typeof statusColors] || statusColors.not_started}`}>
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
+                                  <p className="text-sm text-gray-700 mb-2">{task.description}</p>
+                                </div>
+                                <div className="flex items-center space-x-2 ml-4">
+                                  <Badge className={getStatusColor(task.status)} variant="secondary">
+                                    {task.status === 'not_started' ? 'Pending' : 
+                                     task.status === 'in_progress' ? 'In Progress' : 
+                                     task.status === 'completed' ? 'Completed' :
+                                     task.status === 'on_hold' ? 'On Hold' :
+                                     task.status === 'cancelled' ? 'Cancelled' : 'Unknown'}
+                                  </Badge>
+                                  {userRole === 'provider' && task.status !== 'completed' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleTaskStatusUpdate(task.id, 
+                                        task.status === 'not_started' ? 'in_progress' : 'completed'
+                                      )}
+                                      className="text-xs"
+                                    >
+                                      {task.status === 'not_started' ? 'Start' : 'Complete'}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Task Metadata */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600 mb-3">
+                                <div className="flex items-center">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  Created: {new Date(task.created_at).toLocaleDateString()}
+                                </div>
+                                {task.due_date && (
+                                  <div className="flex items-center">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Due: {new Date(task.due_date).toLocaleDateString()}
+                                  </div>
+                                )}
+                                <div className="flex items-center">
+                                  <Timer className="h-3 w-3 mr-1" />
+                                  Est: {task.estimated_hours}h
+                                </div>
+                                {task.category && (
+                                  <div className="flex items-center">
+                                    <Tag className="h-3 w-3 mr-1" />
+                                    {task.category}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Task Progress Bar */}
+                              {task.status === 'in_progress' && (
+                                <div className="mb-3">
+                                  <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                    <span>Progress</span>
+                                    <span>67%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: '67%' }}></div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Task Comments */}
+                              {task.comments && task.comments.length > 0 && (
+                                <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
+                                  <h5 className="text-xs font-medium text-gray-700 flex items-center">
+                                    <MessageSquare className="h-3 w-3 mr-1" />
+                                    Recent Updates ({task.comments.length})
+                                  </h5>
+                                  {task.comments.slice(0, 2).map((comment: any) => (
+                                    <div key={comment.id} className="bg-white p-3 rounded border border-gray-200">
+                                      <p className="text-sm text-gray-700">{comment.text}</p>
+                                      <div className="flex items-center justify-between mt-1">
+                                        <span className="text-xs text-gray-500">{comment.user}</span>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(comment.created_at).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {task.comments.length > 2 && (
+                                    <Button variant="ghost" size="sm" className="text-xs">
+                                      View all {task.comments.length} comments
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {/* Provider Action Buttons */}
+                              {userRole === 'provider' && (
+                                <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-200">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleAddTaskComment(task.id)}
+                                    className="text-xs"
+                                  >
+                                    <MessageSquare className="h-3 w-3 mr-1" />
+                                    Add Update
+                                  </Button>
+                                  {task.status !== 'completed' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleTaskEdit(task.id)}
+                                      className="text-xs"
+                                    >
+                                      <Edit className="h-3 w-3 mr-1" />
+                                      Edit
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Clock3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                    <p>No timeline updates yet. Tasks and progress will appear here.</p>
+                  <div className="text-center py-12 text-gray-500">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Clock3 className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">No Timeline Activities Yet</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Project tasks, milestones, and status updates will appear here as work progresses.
+                    </p>
+                    {userRole === 'provider' && (
+                      <Button
+                        onClick={() => setShowAddMilestone(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Task
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
