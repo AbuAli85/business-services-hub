@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getSupabaseClient } from '@/lib/supabase'
 
 interface ServiceRecord {
   id: string
@@ -40,6 +41,7 @@ export default function ServiceDetail() {
   const [selectedPackageId, setSelectedPackageId] = useState<string>('')
   const [isBooking, setIsBooking] = useState<boolean>(false)
   const [isSaved, setIsSaved] = useState<boolean>(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
 
   useEffect(() => {
     const load = async () => {
@@ -47,6 +49,12 @@ export default function ServiceDetail() {
       try {
         setLoading(true)
         setError(null)
+        // check auth status to drive booking UX
+        try {
+          const supabase = await getSupabaseClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          setIsAuthenticated(!!user)
+        } catch {}
         const res = await fetch(`/api/services/${serviceId}`, { cache: 'no-store' })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
@@ -156,14 +164,14 @@ export default function ServiceDetail() {
             </div>
 
             {service.provider && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
                     <UserIcon className="h-5 w-5" />
                     <span>Provider</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
                   <div className="text-gray-800">
                     <div className="font-medium">{service.provider.full_name || 'Service Provider'}</div>
                     {service.provider.company_name && (
@@ -314,14 +322,29 @@ export default function ServiceDetail() {
                           variant="secondary"
                           onClick={async () => {
                             if (!service?.id) return
+                            if (!isAuthenticated) {
+                              alert('Please sign in to book a service.')
+                              router.push('/auth/sign-in')
+                              return
+                            }
                             try {
                               setIsBooking(true)
                               const iso = scheduledDate
                                 ? new Date(scheduledDate).toISOString()
                                 : new Date(Date.now() + 60 * 60 * 1000).toISOString()
+                              // Attach Supabase access token to Authorization header for server validation
+                              let authHeader: Record<string, string> = {}
+                              try {
+                                const supabase = await getSupabaseClient()
+                                const { data: { session } } = await supabase.auth.getSession()
+                                if (session?.access_token) {
+                                  authHeader = { Authorization: `Bearer ${session.access_token}` }
+                                }
+                              } catch {}
+
                               const res = await fetch('/api/bookings', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { 'Content-Type': 'application/json', ...authHeader },
                                 credentials: 'include',
                                 body: JSON.stringify({
                                   service_id: service.id,
@@ -347,11 +370,11 @@ export default function ServiceDetail() {
                           }}
                           disabled={isBooking}
                         >
-                          {isBooking ? 'Booking…' : 'Book Now'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          {isBooking ? 'Booking…' : (isAuthenticated ? 'Book Now' : 'Sign in to Book')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
                 </div>
               </div>
             </div>
