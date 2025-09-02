@@ -46,7 +46,33 @@ import {
   Eye,
   Building,
   Lightbulb,
-  Play
+  Play,
+  Code,
+  Palette,
+  Bug,
+  Pause,
+  SkipForward,
+  FastForward,
+  RotateCcw,
+  RotateCw,
+  Maximize2,
+  Minimize2,
+  Layout,
+  Grid,
+  List,
+  Columns,
+  Table2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Users,
+  Filter,
+  Tag,
+  Timer,
+  ChevronUp,
+  ChevronDown,
+  Copy,
+  Trash2
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
@@ -166,21 +192,41 @@ export default function BookingDetailsPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [fileCategory, setFileCategory] = useState('contract')
   const [showAddMilestone, setShowAddMilestone] = useState(false)
-  // Task Management State
+  // Enhanced Task Management State
   const [projectTasks, setProjectTasks] = useState<any[]>([])
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    status: 'not_started' as 'not_started' | 'in_progress' | 'completed',
-    priority: 'medium' as 'low' | 'medium' | 'high',
+    status: 'not_started' as 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     estimated_hours: '',
-    due_date: ''
+    actual_hours: '',
+    due_date: '',
+    category: 'development' as 'development' | 'design' | 'testing' | 'documentation' | 'meeting' | 'review',
+    assigned_to: '',
+    dependencies: [] as string[],
+    tags: [] as string[],
+    attachments: [] as any[]
   })
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const [editingTask, setEditingTask] = useState<any>(null)
   const [showTaskComments, setShowTaskComments] = useState<{ [key: string]: boolean }>({})
   const [taskComments, setTaskComments] = useState<{ [key: string]: string }>({})
+  
+  // Enhanced Features State
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [taskTemplates, setTaskTemplates] = useState<any[]>([])
+  const [showTaskDetails, setShowTaskDetails] = useState<{ [key: string]: boolean }>({})
+  const [taskFilter, setTaskFilter] = useState({
+    status: 'all',
+    priority: 'all',
+    category: 'all',
+    assignee: 'all'
+  })
+  const [showGanttView, setShowGanttView] = useState(false)
+  const [timeTracking, setTimeTracking] = useState<{ [key: string]: { start: Date | null, total: number } }>({})
+  const [showTaskTemplates, setShowTaskTemplates] = useState(false)
   // Suggestions state
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
@@ -320,11 +366,11 @@ export default function BookingDetailsPage() {
     }
   }
 
-  // --- Task Management Functions ---
+  // --- Enhanced Task Management Functions ---
   const loadProjectTasks = async () => {
     try {
       setLoadingTasks(true)
-      // For demo purposes, using mock data. In production, this would fetch from your database
+      // Enhanced mock data with more realistic project management features
       const mockTasks = [
         {
           id: '1',
@@ -332,12 +378,21 @@ export default function BookingDetailsPage() {
           description: 'Initial project setup, client requirements analysis, and project scope definition',
           status: 'completed',
           priority: 'high',
+          category: 'documentation',
           estimated_hours: '8',
+          actual_hours: '7.5',
           due_date: '2025-08-30',
+          assigned_to: 'provider',
+          tags: ['setup', 'requirements', 'planning'],
+          dependencies: [],
+          attachments: [
+            { id: '1', name: 'Requirements.pdf', type: 'document', size: '2.3MB', url: '#' }
+          ],
           created_at: '2025-08-25T10:00:00Z',
           updated_at: '2025-08-25T14:00:00Z',
           comments: [
-            { id: '1', text: 'Requirements document prepared and sent to client', created_at: '2025-08-25T12:00:00Z', user: 'Provider' }
+            { id: '1', text: 'Requirements document prepared and sent to client', created_at: '2025-08-25T12:00:00Z', user: 'Provider' },
+            { id: '2', text: 'Client approved requirements with minor adjustments', created_at: '2025-08-25T16:00:00Z', user: 'Client' }
           ]
         },
         {
@@ -346,12 +401,22 @@ export default function BookingDetailsPage() {
           description: 'Create initial designs, wireframes, and begin development work',
           status: 'in_progress',
           priority: 'high',
+          category: 'development',
           estimated_hours: '24',
+          actual_hours: '12',
           due_date: '2025-09-15',
+          assigned_to: 'provider',
+          tags: ['design', 'development', 'wireframes'],
+          dependencies: ['1'],
+          attachments: [
+            { id: '2', name: 'Wireframes.fig', type: 'design', size: '5.7MB', url: '#' },
+            { id: '3', name: 'Progress_Screenshot.png', type: 'image', size: '1.2MB', url: '#' }
+          ],
           created_at: '2025-08-26T09:00:00Z',
           updated_at: '2025-08-27T11:30:00Z',
           comments: [
-            { id: '2', text: 'Wireframes completed, starting development', created_at: '2025-08-27T11:30:00Z', user: 'Provider' }
+            { id: '3', text: 'Wireframes completed, starting development', created_at: '2025-08-27T11:30:00Z', user: 'Provider' },
+            { id: '4', text: 'Frontend layout 60% complete', created_at: '2025-08-28T14:00:00Z', user: 'Provider' }
           ]
         },
         {
@@ -360,14 +425,105 @@ export default function BookingDetailsPage() {
           description: 'Comprehensive testing, bug fixes, and quality assurance',
           status: 'not_started',
           priority: 'medium',
+          category: 'testing',
           estimated_hours: '12',
+          actual_hours: '0',
           due_date: '2025-09-20',
+          assigned_to: 'provider',
+          tags: ['testing', 'qa', 'bugs'],
+          dependencies: ['2'],
+          attachments: [],
+          created_at: '2025-08-25T10:00:00Z',
+          updated_at: '2025-08-25T10:00:00Z',
+          comments: []
+        },
+        {
+          id: '4',
+          title: 'Client Review & Feedback',
+          description: 'Present work to client and incorporate feedback',
+          status: 'not_started',
+          priority: 'medium',
+          category: 'review',
+          estimated_hours: '4',
+          actual_hours: '0',
+          due_date: '2025-09-22',
+          assigned_to: 'client',
+          tags: ['review', 'feedback', 'approval'],
+          dependencies: ['3'],
+          attachments: [],
           created_at: '2025-08-25T10:00:00Z',
           updated_at: '2025-08-25T10:00:00Z',
           comments: []
         }
       ]
       setProjectTasks(mockTasks)
+      
+      // Load task templates
+      const templates = [
+        {
+          id: 'web-dev',
+          name: 'Web Development Project',
+          tasks: [
+            { title: 'Requirements Gathering', category: 'documentation', estimated_hours: '8', priority: 'high' },
+            { title: 'UI/UX Design', category: 'design', estimated_hours: '16', priority: 'high' },
+            { title: 'Frontend Development', category: 'development', estimated_hours: '32', priority: 'high' },
+            { title: 'Backend Development', category: 'development', estimated_hours: '24', priority: 'high' },
+            { title: 'Testing & QA', category: 'testing', estimated_hours: '12', priority: 'medium' },
+            { title: 'Client Review', category: 'review', estimated_hours: '4', priority: 'medium' },
+            { title: 'Deployment', category: 'development', estimated_hours: '8', priority: 'medium' }
+          ]
+        },
+        {
+          id: 'marketing',
+          name: 'Digital Marketing Campaign',
+          tasks: [
+            { title: 'Campaign Strategy', category: 'documentation', estimated_hours: '6', priority: 'high' },
+            { title: 'Content Creation', category: 'design', estimated_hours: '20', priority: 'high' },
+            { title: 'Social Media Setup', category: 'development', estimated_hours: '8', priority: 'medium' },
+            { title: 'Campaign Launch', category: 'development', estimated_hours: '4', priority: 'high' },
+            { title: 'Performance Analysis', category: 'review', estimated_hours: '6', priority: 'medium' }
+          ]
+        }
+      ]
+      setTaskTemplates(templates)
+      
+      // Load milestones
+      const projectMilestones = [
+        {
+          id: 'm1',
+          title: 'Project Kickoff',
+          description: 'Project officially started',
+          date: '2025-08-25',
+          status: 'completed',
+          tasks: ['1']
+        },
+        {
+          id: 'm2',
+          title: 'Design Approval',
+          description: 'Client approves designs and wireframes',
+          date: '2025-09-05',
+          status: 'pending',
+          tasks: ['2']
+        },
+        {
+          id: 'm3',
+          title: 'Development Complete',
+          description: 'All development work finished',
+          date: '2025-09-15',
+          status: 'pending',
+          tasks: ['2', '3']
+        },
+        {
+          id: 'm4',
+          title: 'Project Delivery',
+          description: 'Final delivery to client',
+          date: '2025-09-25',
+          status: 'pending',
+          tasks: ['4']
+        }
+      ]
+      setMilestones(projectMilestones)
+      
     } catch (error) {
       console.error('Error loading tasks:', error)
     } finally {
@@ -386,9 +542,11 @@ export default function BookingDetailsPage() {
       const task = {
         id: Date.now().toString(),
         ...newTask,
+        actual_hours: '0',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        comments: []
+        comments: [],
+        attachments: []
       }
       
       setProjectTasks(prev => [task, ...prev])
@@ -398,7 +556,13 @@ export default function BookingDetailsPage() {
         status: 'not_started',
         priority: 'medium',
         estimated_hours: '',
-        due_date: ''
+        actual_hours: '',
+        due_date: '',
+        category: 'development',
+        assigned_to: '',
+        dependencies: [],
+        tags: [],
+        attachments: []
       })
       setShowAddMilestone(false)
       toast.success('Task created successfully')
@@ -406,6 +570,110 @@ export default function BookingDetailsPage() {
       toast.error('Failed to create task')
     } finally {
       setIsCreatingTask(false)
+    }
+  }
+
+  const createTaskFromTemplate = async (templateId: string) => {
+    const template = taskTemplates.find(t => t.id === templateId)
+    if (!template) return
+
+    try {
+      setIsCreatingTask(true)
+      const newTasks = template.tasks.map((taskTemplate: any, index: number) => ({
+        id: (Date.now() + index).toString(),
+        title: taskTemplate.title,
+        description: `Generated from ${template.name} template`,
+        status: 'not_started',
+        priority: taskTemplate.priority,
+        category: taskTemplate.category,
+        estimated_hours: taskTemplate.estimated_hours,
+        actual_hours: '0',
+        due_date: '',
+        assigned_to: 'provider',
+        dependencies: index > 0 ? [(Date.now() + index - 1).toString()] : [],
+        tags: [template.name.toLowerCase().replace(/\s+/g, '-')],
+        attachments: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        comments: []
+      }))
+
+      setProjectTasks(prev => [...newTasks, ...prev])
+      setShowTaskTemplates(false)
+      toast.success(`Created ${newTasks.length} tasks from ${template.name} template`)
+    } catch (error) {
+      toast.error('Failed to create tasks from template')
+    } finally {
+      setIsCreatingTask(false)
+    }
+  }
+
+  const startTimeTracking = (taskId: string) => {
+    setTimeTracking(prev => ({
+      ...prev,
+      [taskId]: {
+        start: new Date(),
+        total: prev[taskId]?.total || 0
+      }
+    }))
+    toast.success('Time tracking started')
+  }
+
+  const stopTimeTracking = (taskId: string) => {
+    setTimeTracking(prev => {
+      const current = prev[taskId]
+      if (!current?.start) return prev
+
+      const elapsed = (new Date().getTime() - current.start.getTime()) / (1000 * 60 * 60) // hours
+      return {
+        ...prev,
+        [taskId]: {
+          start: null,
+          total: current.total + elapsed
+        }
+      }
+    })
+    toast.success('Time tracking stopped')
+  }
+
+  const toggleTaskDetails = (taskId: string) => {
+    setShowTaskDetails(prev => ({
+      ...prev,
+      [taskId]: !prev[taskId]
+    }))
+  }
+
+  const deleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return
+    
+    try {
+      setProjectTasks(prev => prev.filter(task => task.id !== taskId))
+      toast.success('Task deleted successfully')
+    } catch (error) {
+      toast.error('Failed to delete task')
+    }
+  }
+
+  const duplicateTask = async (taskId: string) => {
+    const task = projectTasks.find(t => t.id === taskId)
+    if (!task) return
+
+    try {
+      const duplicatedTask = {
+        ...task,
+        id: Date.now().toString(),
+        title: `${task.title} (Copy)`,
+        status: 'not_started',
+        actual_hours: '0',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        comments: []
+      }
+      
+      setProjectTasks(prev => [duplicatedTask, ...prev])
+      toast.success('Task duplicated successfully')
+    } catch (error) {
+      toast.error('Failed to duplicate task')
     }
   }
 
@@ -451,17 +719,53 @@ export default function BookingDetailsPage() {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200'
       case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'on_hold': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200'
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200'
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200'
       case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'development': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'design': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'testing': return 'bg-green-100 text-green-800 border-green-200'
+      case 'documentation': return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'meeting': return 'bg-indigo-100 text-indigo-800 border-indigo-200'
+      case 'review': return 'bg-orange-100 text-orange-800 border-orange-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'development': return <Code className="h-4 w-4" />
+      case 'design': return <Palette className="h-4 w-4" />
+      case 'testing': return <Bug className="h-4 w-4" />
+      case 'documentation': return <FileText className="h-4 w-4" />
+      case 'meeting': return <Users className="h-4 w-4" />
+      case 'review': return <Eye className="h-4 w-4" />
+      default: return <Package className="h-4 w-4" />
+    }
+  }
+
+  const filteredTasks = projectTasks.filter(task => {
+    if (taskFilter.status !== 'all' && task.status !== taskFilter.status) return false
+    if (taskFilter.priority !== 'all' && task.priority !== taskFilter.priority) return false
+    if (taskFilter.category !== 'all' && task.category !== taskFilter.category) return false
+    if (taskFilter.assignee !== 'all' && task.assigned_to !== taskFilter.assignee) return false
+    return true
+  })
 
   // --- Timeline comments & reactions ---
   const loadTimelineComments = async () => {
@@ -1682,117 +1986,7 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      {/* Professional Booking Summary Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Key Metrics Card */}
-        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-blue-900 text-lg">Key Performance Metrics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
-                <div className="text-2xl font-bold text-blue-600">
-                  {getDaysSinceCreation()}
-                </div>
-                <div className="text-sm text-blue-700 font-medium">Days Active</div>
-              </div>
-              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
-                <div className="text-2xl font-bold text-green-600">
-                  {getStatusEfficiency()}
-                </div>
-                <div className="text-sm text-green-700 font-medium">Response Time</div>
-              </div>
-              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
-                <div className="text-2xl font-bold text-purple-600">
-                  {getTimelineProgress() * 100}%
-                </div>
-                <div className="text-sm text-purple-700 font-medium">Progress</div>
-              </div>
-              <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
-                <div className="text-2xl font-bold text-orange-600">
-                  {getNextMilestone()}
-                </div>
-                <div className="text-sm text-orange-700 font-medium">Next Action</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Advanced Insights Card */}
-        <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-2 text-indigo-900">
-              <BarChart3 className="h-5 w-5" />
-              <span>Professional Analytics & Insights</span>
-            </CardTitle>
-            <CardDescription className="text-indigo-700">Comprehensive performance metrics and business intelligence</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
-                <div className="text-2xl font-bold text-indigo-600">
-                  {getDaysSinceCreation()}
-                </div>
-                <div className="text-sm text-indigo-700 font-medium">Days Active</div>
-              </div>
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
-                <div className="text-2xl font-bold text-green-600">
-                  {getStatusEfficiency()}
-                </div>
-                <div className="text-sm text-green-700 font-medium">Efficiency Score</div>
-              </div>
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
-                <div className="text-2xl font-bold text-purple-600">
-                  {getClientSatisfaction()}
-                </div>
-                <div className="text-sm text-purple-700 font-medium">Client Satisfaction</div>
-              </div>
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-indigo-200 shadow-sm">
-                <div className="text-2xl font-bold text-orange-600">
-                  {getRevenueImpact()}
-                </div>
-                <div className="text-sm text-orange-700 font-medium">Revenue Impact</div>
-              </div>
-            </div>
-            
-            {/* Advanced Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-blue-200 shadow-sm">
-                <div className="text-lg font-bold text-blue-700 mb-2">
-                  {getBookingHealth()}
-                </div>
-                <div className="text-sm text-blue-600 font-medium">Booking Health</div>
-                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${getBookingHealth() === 'Excellent' ? 100 : getBookingHealth() === 'Good' ? 75 : getBookingHealth() === 'Fair' ? 50 : 25}%` }}
-                  />
-                </div>
-              </div>
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-green-200 shadow-sm">
-                <div className="text-lg font-bold text-green-700 mb-2">
-                  {getNextMilestone()}
-                </div>
-                <div className="text-sm text-green-600 font-medium">Next Milestone</div>
-                <div className="mt-2 text-xs text-green-500">Action Required</div>
-              </div>
-              <div className="text-center p-4 bg-white rounded-lg border-2 border-purple-200 shadow-sm">
-                <div className="text-lg font-bold text-purple-700 mb-2">
-                  {getTimelineProgress() * 100}%
-                </div>
-                <div className="text-sm text-purple-600 font-medium">Progress</div>
-                <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
-                  <div 
-                    className="bg-purple-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${getTimelineProgress() * 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Advanced Actions Panel (Provider/Admin only) */}
       {showAdvancedActions && (userRole === 'provider' || userRole === 'admin') && (
@@ -3030,97 +3224,299 @@ export default function BookingDetailsPage() {
               <CardTitle className="flex items-center justify-between text-gray-800">
                 <div className="flex items-center space-x-2">
                   <TrendingUp className="h-5 w-5 text-gray-600" />
-                  <span>Project Progress Management</span>
+                  <span>Advanced Project Management</span>
                 </div>
-                <Button 
-                  size="sm" 
-                  onClick={() => setShowAddMilestone(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setShowTaskTemplates(true)}
+                    className="border-gray-300"
+                  >
+                    <Layout className="h-4 w-4 mr-2" />
+                    Templates
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={() => setShowAddMilestone(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                  </Button>
+                </div>
               </CardTitle>
               <CardDescription className="text-gray-600">
-                Manage project tasks, milestones, and communicate progress to your client
+                Comprehensive project management with tasks, milestones, time tracking, and client communication
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {/* Task Management Interface */}
+              {/* Enhanced Project Dashboard */}
               <div className="space-y-6">
-                {/* Project Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                {/* Project Overview with More Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                    <CheckCircle className="h-6 w-6 text-green-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-green-600">
-                      {projectTasks.filter(t => t.status === 'completed').length}
+                      {filteredTasks.filter(t => t.status === 'completed').length}
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Completed Tasks</div>
+                    <div className="text-sm text-green-700 font-medium">Completed</div>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Clock className="h-6 w-6 text-blue-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-blue-600">
-                      {projectTasks.filter(t => t.status === 'in_progress').length}
+                      {filteredTasks.filter(t => t.status === 'in_progress').length}
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">In Progress</div>
+                    <div className="text-sm text-blue-700 font-medium">In Progress</div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <Calendar className="h-6 w-6 text-gray-600 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-gray-600">
-                      {projectTasks.filter(t => t.status === 'not_started').length}
+                      {filteredTasks.filter(t => t.status === 'not_started').length}
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Pending Tasks</div>
+                    <div className="text-sm text-gray-700 font-medium">Pending</div>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {Math.round((projectTasks.filter(t => t.status === 'completed').length / Math.max(projectTasks.length, 1)) * 100)}%
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <Pause className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {filteredTasks.filter(t => t.status === 'on_hold').length}
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Overall Progress</div>
+                    <div className="text-sm text-yellow-700 font-medium">On Hold</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <TrendingUp className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-purple-600">
+                      {Math.round((filteredTasks.filter(t => t.status === 'completed').length / Math.max(filteredTasks.length, 1)) * 100)}%
+                    </div>
+                    <div className="text-sm text-purple-700 font-medium">Progress</div>
                   </div>
                 </div>
 
-                {/* Task List */}
+                {/* Advanced Controls Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      size="sm"
+                      variant={showGanttView ? "default" : "outline"}
+                      onClick={() => setShowGanttView(!showGanttView)}
+                      className="border-gray-300"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      {showGanttView ? 'List View' : 'Timeline View'}
+                    </Button>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Filter className="h-4 w-4 text-gray-500" />
+                      <select
+                        value={taskFilter.status}
+                        onChange={(e) => setTaskFilter(prev => ({ ...prev, status: e.target.value }))}
+                        className="text-sm border border-gray-300 rounded px-2 py-1"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="not_started">Not Started</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="on_hold">On Hold</option>
+                      </select>
+                      
+                      <select
+                        value={taskFilter.priority}
+                        onChange={(e) => setTaskFilter(prev => ({ ...prev, priority: e.target.value }))}
+                        className="text-sm border border-gray-300 rounded px-2 py-1"
+                      >
+                        <option value="all">All Priorities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                      
+                      <select
+                        value={taskFilter.category}
+                        onChange={(e) => setTaskFilter(prev => ({ ...prev, category: e.target.value }))}
+                        className="text-sm border border-gray-300 rounded px-2 py-1"
+                      >
+                        <option value="all">All Categories</option>
+                        <option value="development">Development</option>
+                        <option value="design">Design</option>
+                        <option value="testing">Testing</option>
+                        <option value="documentation">Documentation</option>
+                        <option value="meeting">Meeting</option>
+                        <option value="review">Review</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600">
+                    Showing {filteredTasks.length} of {projectTasks.length} tasks
+                  </div>
+                </div>
+
+                {/* Enhanced Task Management Interface */}
                 <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-900 flex items-center">
-                    <Target className="h-5 w-5 mr-2" />
-                    Project Tasks & Milestones
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-gray-900 flex items-center">
+                      <Target className="h-5 w-5 mr-2" />
+                      Project Tasks & Milestones
+                    </h4>
+                    
+                    {/* View Toggle */}
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowGanttView(!showGanttView)}
+                        className="border-gray-300"
+                      >
+                        {showGanttView ? <List className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
                   
                   {loadingTasks ? (
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                       <p className="text-gray-600 mt-2">Loading tasks...</p>
                     </div>
-                  ) : projectTasks.length === 0 ? (
+                  ) : filteredTasks.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <Target className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                      <p>No tasks created yet. Add your first task to get started!</p>
+                      <p>{projectTasks.length === 0 ? 'No tasks created yet. Add your first task to get started!' : 'No tasks match the current filters.'}</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">{projectTasks.map((task) => (
-                      <div key={task.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h5 className="font-semibold text-gray-900 mb-1">{task.title}</h5>
-                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <span>Est. {task.estimated_hours} hours</span>
-                              {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
-                              <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
+                    <div className="space-y-4">
+                      {filteredTasks.map((task) => (
+                        <div key={task.id} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                          {/* Task Header */}
+                          <div className="p-4 border-b border-gray-100">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <h5 className="font-semibold text-gray-900">{task.title}</h5>
+                                  <Badge className={getCategoryColor(task.category)}>
+                                    <span className="flex items-center space-x-1">
+                                      {getCategoryIcon(task.category)}
+                                      <span className="ml-1 text-xs">{task.category}</span>
+                                    </span>
+                                  </Badge>
+                                  {task.tags && task.tags.length > 0 && (
+                                    <div className="flex items-center space-x-1">
+                                      {task.tags.slice(0, 2).map((tag: string) => (
+                                        <Badge key={tag} variant="outline" className="text-xs">
+                                          <Tag className="h-3 w-3 mr-1" />
+                                          {tag}
+                                        </Badge>
+                                      ))}
+                                      {task.tags.length > 2 && <span className="text-xs text-gray-500">+{task.tags.length - 2}</span>}
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                
+                                {/* Task Metadata */}
+                                <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                  <span className="flex items-center">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Est. {task.estimated_hours}h
+                                  </span>
+                                  {task.actual_hours && parseFloat(task.actual_hours) > 0 && (
+                                    <span className="flex items-center">
+                                      <Timer className="h-3 w-3 mr-1" />
+                                      Actual: {task.actual_hours}h
+                                    </span>
+                                  )}
+                                  {task.due_date && (
+                                    <span className="flex items-center">
+                                      <Calendar className="h-3 w-3 mr-1" />
+                                      Due: {new Date(task.due_date).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center">
+                                    <User className="h-3 w-3 mr-1" />
+                                    {task.assigned_to === 'provider' ? 'Provider' : task.assigned_to === 'client' ? 'Client' : 'Unassigned'}
+                                  </span>
+                                </div>
+                                
+                                {/* Dependencies */}
+                                {task.dependencies && task.dependencies.length > 0 && (
+                                  <div className="mt-2 text-xs text-gray-500">
+                                    <span className="flex items-center">
+                                      <Link className="h-3 w-3 mr-1" />
+                                      Depends on: {task.dependencies.length} task(s)
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Task Controls */}
+                              <div className="flex items-center space-x-2 ml-4">
+                                <Badge className={getPriorityColor(task.priority)}>
+                                  {task.priority}
+                                </Badge>
+                                <select
+                                  value={task.status}
+                                  onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                                  className={`text-xs px-2 py-1 border rounded ${getStatusColor(task.status)}`}
+                                >
+                                  <option value="not_started">Not Started</option>
+                                  <option value="in_progress">In Progress</option>
+                                  <option value="completed">Completed</option>
+                                  <option value="on_hold">On Hold</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
+                                
+                                {/* Task Actions */}
+                                <div className="flex items-center space-x-1">
+                                  {timeTracking[task.id]?.start ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => stopTimeTracking(task.id)}
+                                      className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
+                                    >
+                                      <Pause className="h-3 w-3" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => startTimeTracking(task.id)}
+                                      className="h-8 w-8 p-0 border-green-300 text-green-600 hover:bg-green-50"
+                                    >
+                                      <Play className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                  
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => toggleTaskDetails(task.id)}
+                                    className="h-8 w-8 p-0 border-gray-300"
+                                  >
+                                    {showTaskDetails[task.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                  </Button>
+                                  
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => duplicateTask(task.id)}
+                                    className="h-8 w-8 p-0 border-gray-300"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                  
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => deleteTask(task.id)}
+                                    className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Badge className={getPriorityColor(task.priority)}>
-                              {task.priority}
-                            </Badge>
-                            <select
-                              value={task.status}
-                              onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                              className={`text-xs px-2 py-1 border rounded ${getStatusColor(task.status)}`}
-                            >
-                              <option value="not_started">Not Started</option>
-                              <option value="in_progress">In Progress</option>
-                              <option value="completed">Completed</option>
-                            </select>
-                          </div>
-                        </div>
 
                         {/* Task Comments */}
                         {task.comments && task.comments.length > 0 && (
@@ -3165,95 +3561,222 @@ export default function BookingDetailsPage() {
                 </div>
               </div>
 
-              {/* Add Task Modal */}
+              {/* Enhanced Add Task Modal */}
               {showAddMilestone && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Add New Task</h3>
+                  <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-semibold">Create New Task</h3>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowAddMilestone(false)}
+                        className="text-gray-500 hover:text-gray-700"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </Button>
                     </div>
                     
                     <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Task Title *</label>
-                        <input
-                          type="text"
-                          value={newTask.title}
-                          onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          placeholder="Enter task title"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Description</label>
-                        <textarea
-                          value={newTask.description}
-                          onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          rows={3}
-                          placeholder="Describe the task..."
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* Basic Information */}
+                      <div className="grid grid-cols-1 gap-4">
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Priority</label>
-                          <select
-                            value={newTask.priority}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as any }))}
-                            className="w-full p-2 border border-gray-300 rounded-md"
-                          >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                          </select>
+                          <label className="text-sm font-medium mb-2 block">Task Title *</label>
+                          <input
+                            type="text"
+                            value={newTask.title}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Enter descriptive task title"
+                          />
                         </div>
                         
                         <div>
-                          <label className="text-sm font-medium mb-1 block">Est. Hours</label>
-                          <input
-                            type="number"
-                            value={newTask.estimated_hours}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: e.target.value }))}
-                            className="w-full p-2 border border-gray-300 rounded-md"
-                            placeholder="8"
+                          <label className="text-sm font-medium mb-2 block">Description</label>
+                          <textarea
+                            value={newTask.description}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            rows={3}
+                            placeholder="Provide detailed task description and requirements..."
                           />
                         </div>
                       </div>
                       
+                      {/* Task Properties */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Category</label>
+                          <select
+                            value={newTask.category}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value as any }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="development">Development</option>
+                            <option value="design">Design</option>
+                            <option value="testing">Testing</option>
+                            <option value="documentation">Documentation</option>
+                            <option value="meeting">Meeting</option>
+                            <option value="review">Review</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Priority</label>
+                          <select
+                            value={newTask.priority}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as any }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="low">Low Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="high">High Priority</option>
+                            <option value="critical">Critical Priority</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      {/* Time & Assignment */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Est. Hours</label>
+                          <input
+                            type="number"
+                            value={newTask.estimated_hours}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: e.target.value }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="8"
+                            min="0"
+                            step="0.5"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Due Date</label>
+                          <input
+                            type="date"
+                            value={newTask.due_date}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Assigned To</label>
+                          <select
+                            value={newTask.assigned_to}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, assigned_to: e.target.value }))}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="provider">Provider</option>
+                            <option value="client">Client</option>
+                            <option value="">Unassigned</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      {/* Tags */}
                       <div>
-                        <label className="text-sm font-medium mb-1 block">Due Date</label>
+                        <label className="text-sm font-medium mb-2 block">Tags (comma-separated)</label>
                         <input
-                          type="date"
-                          value={newTask.due_date}
-                          onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
-                          className="w-full p-2 border border-gray-300 rounded-md"
+                          type="text"
+                          value={newTask.tags.join(', ')}
+                          onChange={(e) => setNewTask(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag) }))}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="frontend, ui, responsive, mobile"
                         />
                       </div>
                       
-                      <div className="flex space-x-3 pt-4">
+                      {/* Action Buttons */}
+                      <div className="flex space-x-3 pt-6 border-t border-gray-200">
                         <Button
                           onClick={createTask}
                           disabled={isCreatingTask || !newTask.title.trim()}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3"
                         >
-                          {isCreatingTask ? 'Creating...' : 'Create Task'}
+                          {isCreatingTask ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                              <span>Creating...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <Plus className="h-4 w-4" />
+                              <span>Create Task</span>
+                            </div>
+                          )}
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => setShowAddMilestone(false)}
-                          className="flex-1"
+                          className="flex-1 py-3"
                         >
                           Cancel
                         </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Task Templates Modal */}
+              {showTaskTemplates && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-semibold">Project Templates</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowTaskTemplates(false)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {taskTemplates.map((template) => (
+                        <div key={template.id} className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-gray-900">{template.name}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {template.tasks.length} tasks
+                            </Badge>
+                          </div>
+                          
+                          <div className="space-y-2 mb-4">
+                            {template.tasks.slice(0, 3).map((task: any, index: number) => (
+                              <div key={index} className="flex items-center space-x-2 text-sm text-gray-600">
+                                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                <span>{task.title}</span>
+                                <Badge className={getCategoryColor(task.category)} variant="outline">
+                                  {task.category}
+                                </Badge>
+                              </div>
+                            ))}
+                            {template.tasks.length > 3 && (
+                              <div className="text-xs text-gray-500 ml-4">
+                                +{template.tasks.length - 3} more tasks
+                              </div>
+                            )}
+                          </div>
+                          
+                          <Button
+                            onClick={() => createTaskFromTemplate(template.id)}
+                            disabled={isCreatingTask}
+                            className="w-full bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Layout className="h-4 w-4 mr-2" />
+                            Use Template
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="text-center text-gray-500">
+                        <p className="text-sm">Templates help you quickly create standardized task sets for common project types.</p>
                       </div>
                     </div>
                   </div>
