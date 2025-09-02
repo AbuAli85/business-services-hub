@@ -148,28 +148,30 @@ export default function EnhancedMessagesThread({
     }
   }, [])
 
-  // Simple real-time capability test
+  // Simple real-time capability test (development only)
   useEffect(() => {
-    const testRealtimeConnection = async () => {
-      try {
-        const supabase = await getSupabaseClient()
-        console.log('🧪 Testing Supabase real-time capabilities...')
-        
-        // Simple test channel
-        const testChannel = supabase.channel('test-connection')
-        testChannel.subscribe((status) => {
-          console.log('🧪 Test channel status:', status)
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Real-time is working!')
-            testChannel.unsubscribe()
-          }
-        })
-      } catch (error) {
-        console.error('❌ Real-time test failed:', error)
+    if (process.env.NODE_ENV === 'development') {
+      const testRealtimeConnection = async () => {
+        try {
+          const supabase = await getSupabaseClient()
+          console.log('🧪 Testing Supabase real-time capabilities...')
+          
+          // Simple test channel
+          const testChannel = supabase.channel('test-connection')
+          testChannel.subscribe((status) => {
+            console.log('🧪 Test channel status:', status)
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Real-time is working!')
+              testChannel.unsubscribe()
+            }
+          })
+        } catch (error) {
+          console.error('❌ Real-time test failed:', error)
+        }
       }
+      
+      testRealtimeConnection()
     }
-    
-    testRealtimeConnection()
   }, [])
 
   useEffect(() => {
@@ -261,7 +263,10 @@ export default function EnhancedMessagesThread({
         created_at: new Date().toISOString()
       }
 
-      console.log('📤 Sending message:', messageData)
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📤 Sending message')
+      }
 
       const { error, data } = await supabase
         .from('booking_messages')
@@ -269,11 +274,15 @@ export default function EnhancedMessagesThread({
         .select()
 
       if (error) {
-        console.error('❌ Error sending message:', error)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Error sending message:', error)
+        }
         throw error
       }
 
-      console.log('✅ Message sent successfully:', data)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Message sent successfully')
+      }
 
       setNewMessage('')
       setSelectedPriority('normal')
@@ -424,7 +433,10 @@ export default function EnhancedMessagesThread({
       // Clean up any existing connections first
       cleanupRealtime()
       
-      console.log('🔄 Setting up real-time subscriptions for booking:', bookingId)
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Setting up real-time subscriptions for booking:', bookingId)
+      }
       const supabase = await getSupabaseClient()
       
       // Create a channel for real-time updates
@@ -444,7 +456,10 @@ export default function EnhancedMessagesThread({
             filter: `booking_id=eq.${bookingId}`
           },
           async (payload) => {
-            console.log('📨 New message received via real-time:', payload)
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log('📨 New message received via real-time')
+            }
             await handleNewMessage(payload.new as any)
           }
         )
@@ -456,23 +471,36 @@ export default function EnhancedMessagesThread({
             filter: `booking_id=eq.${bookingId}`
           },
           async (payload) => {
-            console.log('📝 Message updated:', payload.new)
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log('📝 Message updated')
+            }
             await handleMessageUpdate(payload.new as any)
           }
         )
         .on('broadcast', { event: 'typing' }, (payload) => {
-          console.log('⌨️ Typing event received:', payload)
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⌨️ Typing event received')
+          }
           handleTypingEvent(payload.payload)
         })
         .subscribe((status) => {
-          console.log('🔔 Real-time subscription status:', status, 'for booking:', bookingId)
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔔 Real-time subscription status:', status)
+          }
           if (status === 'SUBSCRIBED') {
-            console.log('✅ Real-time subscription successful!')
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Real-time subscription successful!')
+            }
             setRealtimeWorking(true)
             clearPolling() // Stop polling if real-time works
             toast.success('Real-time messaging connected!', { duration: 2000 })
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.error('❌ Real-time subscription failed:', status)
+            if (process.env.NODE_ENV === 'development') {
+              console.error('❌ Real-time subscription failed:', status)
+            }
             setRealtimeWorking(false)
             if (!pollingInterval) { // Only setup polling if not already running
               setupPolling()
@@ -493,7 +521,9 @@ export default function EnhancedMessagesThread({
 
   const cleanupRealtime = () => {
     if (realtimeChannel) {
-      console.log('🧹 Cleaning up real-time subscription')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🧹 Cleaning up real-time subscription')
+      }
       realtimeChannel.unsubscribe()
       setRealtimeChannel(null)
     }
@@ -501,21 +531,30 @@ export default function EnhancedMessagesThread({
   }
 
   const setupPolling = () => {
-    console.log('🔄 Setting up message polling as fallback')
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔄 Setting up message polling as fallback')
+    }
     clearPolling() // Clear any existing polling
     
     const interval = setInterval(async () => {
-      console.log('📡 Polling for new messages...')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📡 Polling for new messages...')
+      }
       try {
         await loadMessages()
         
         // Try to reconnect to real-time every 30 seconds while polling
         if (!realtimeWorking && Math.random() < 0.1) { // 10% chance every poll
-          console.log('🔄 Attempting real-time reconnection...')
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Attempting real-time reconnection...')
+          }
           setupRealtime()
         }
       } catch (error) {
-        console.error('❌ Polling error:', error)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Polling error:', error)
+        }
       }
     }, 5000) // Poll every 5 seconds (less aggressive)
     
@@ -528,7 +567,9 @@ export default function EnhancedMessagesThread({
 
   const clearPolling = () => {
     if (pollingInterval) {
-      console.log('🧹 Clearing message polling')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🧹 Clearing message polling')
+      }
       clearInterval(pollingInterval)
       setPollingInterval(null)
     }
@@ -536,27 +577,29 @@ export default function EnhancedMessagesThread({
 
   const handleNewMessage = async (newMessage: any) => {
     try {
-      console.log('🔥 Processing new message:', newMessage)
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔥 Processing new message')
+      }
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        console.log('❌ No user found, cannot process message')
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ No user found, cannot process message')
+        }
         return
       }
 
       // Fetch sender details for the new message
-      console.log('👤 Fetching sender details for user:', newMessage.sender_id)
       const { data: senderData, error: senderError } = await supabase
         .from('profiles')
         .select('id, full_name, role')
         .eq('id', newMessage.sender_id)
         .single()
 
-      if (senderError) {
+      if (senderError && process.env.NODE_ENV === 'development') {
         console.error('❌ Error fetching sender data:', senderError)
-      } else {
-        console.log('✅ Sender data fetched:', senderData)
       }
 
       const sender = senderData || {}
@@ -571,13 +614,15 @@ export default function EnhancedMessagesThread({
         attachments: []
       }
 
-      console.log('📝 Transformed message:', transformedMessage)
-
       // Add to messages state
       setMessages(prev => {
-        console.log('📊 Adding message to state. Previous count:', prev.length)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Adding message to state. Previous count:', prev.length)
+        }
         const newState = [...prev, transformedMessage]
-        console.log('📊 New message count will be:', newState.length)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 New message count will be:', newState.length)
+        }
         return newState
       })
       
@@ -588,10 +633,10 @@ export default function EnhancedMessagesThread({
           icon: '💬'
         })
         
-        // Play notification sound (optional)
+        // Play notification sound (optional) - don't show message content for privacy
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification(`New message from ${transformedMessage.sender_name}`, {
-            body: transformedMessage.content.substring(0, 100) + (transformedMessage.content.length > 100 ? '...' : ''),
+            body: 'You have a new message',
             icon: '/favicon.ico'
           })
         }
