@@ -457,8 +457,8 @@ export default function EnhancedMessagesThread({
       const sender = senderData || {}
       const transformedMessage = {
         ...newMessage,
-        sender_name: sender.full_name || 'Unknown User',
-        sender_role: sender.role || userRole,
+        sender_name: (sender as any).full_name || 'Unknown User',
+        sender_role: (sender as any).role || userRole,
         is_own_message: newMessage.sender_id === user.id,
         message_type: newMessage.message_type || 'text',
         priority: newMessage.priority || 'normal',
