@@ -21,7 +21,7 @@ select * from pg_publication_tables where pubname = 'supabase_realtime';
 -- 5. Test real-time permissions by checking if RLS is properly configured
 select 
   t.table_name,
-  p.policy_name,
+  p.policyname,
   p.permissive,
   p.roles,
   p.cmd,
