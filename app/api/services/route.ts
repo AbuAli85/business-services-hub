@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
 // Validation schema for service creation
@@ -73,10 +73,12 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch provider information separately to avoid complex joins
+    const admin = getSupabaseAdminClient()
+
     const enrichedServices = await Promise.all(
       (services || []).map(async (service) => {
         try {
-          const { data: provider } = await supabase
+          const { data: provider } = await admin
             .from('profiles')
             .select('id, full_name, email, phone, company_name, avatar_url')
             .eq('id', service.provider_id)
