@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getSupabaseClient } from '@/lib/supabase'
+// We now fetch from our API which already enriches services with provider and packages
 import { formatCurrency } from '@/lib/utils'
 import { Search, Filter, Star, MapPin, Building2, Eye } from 'lucide-react'
 
@@ -19,12 +19,14 @@ interface Service {
   base_price: number
   currency: string
   cover_image_url?: string
-  provider: {
-    full_name: string
-    company?: {
-      name: string
-    }
-  }
+  provider?: {
+    id?: string
+    full_name?: string
+    email?: string
+    phone?: string
+    company_name?: string
+    avatar_url?: string
+  } | null
   service_packages: Array<{
     id: string
     name: string
@@ -62,48 +64,35 @@ export default function ServicesPage() {
     setLoading(true)
     
     try {
-      const supabase = await getSupabaseClient()
-      let query = supabase
-        .from('services')
-        .select('*')
-        .eq('status', 'active') // Only fetch active services
+      // Build API query params
+      const params = new URLSearchParams()
+      params.set('status', 'active')
+      if (selectedCategory && selectedCategory !== 'all') params.set('category', selectedCategory)
+      if (searchQuery) params.set('search', searchQuery)
+      // Basic pagination (optional): fetch first 50
+      params.set('limit', '50')
+      params.set('page', '1')
 
-      if (selectedCategory && selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory)
-      }
-
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-      }
-
-      if (minPrice) {
-        query = query.gte('base_price', parseFloat(minPrice))
-      }
-
-      if (maxPrice) {
-        query = query.lte('base_price', parseFloat(maxPrice))
-      }
-
-      const { data: servicesData, error } = await query.order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching services:', error)
+      const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
+      if (!res.ok) {
+        console.error('Error fetching services via API:', await res.text())
+        setServices([])
         return
       }
+      const { services: servicesData } = await res.json()
 
-      // Log what we actually got from the database
-      console.log('Raw services data:', servicesData)
-      
-      // Transform the data to match our interface
-      const transformedServices = (servicesData || []).map(service => ({
-        ...service,
-        provider: {
-          full_name: 'Service Provider' // Default provider name
-        },
-        service_packages: [] // Empty packages for now
-      }))
+      // Client-side price range filtering if provided
+      let filtered = servicesData || []
+      if (minPrice) {
+        const min = parseFloat(minPrice)
+        filtered = filtered.filter((s: any) => (s.base_price ?? 0) >= min)
+      }
+      if (maxPrice) {
+        const max = parseFloat(maxPrice)
+        filtered = filtered.filter((s: any) => (s.base_price ?? 0) <= max)
+      }
 
-      setServices(transformedServices)
+      setServices(filtered)
       
       // If no services found, add a test service to verify the UI works
       if (transformedServices.length === 0) {
@@ -115,9 +104,7 @@ export default function ServicesPage() {
           category: 'IT Services',
           base_price: 100,
           currency: 'OMR',
-          provider: {
-            full_name: 'Test Provider'
-          },
+          provider: { full_name: 'Test Provider' },
           service_packages: []
         }
         setServices([testService])
@@ -273,10 +260,10 @@ export default function ServicesPage() {
                   
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-600">
-                      by <span className="font-medium">{service.provider.full_name}</span>
-                      {service.provider.company && (
+                      by <span className="font-medium">{service.provider?.full_name || 'Service Provider'}</span>
+                      {service.provider?.company_name && (
                         <span className="block text-xs text-gray-500">
-                          {service.provider.company.name}
+                          {service.provider.company_name}
                         </span>
                       )}
                     </div>
