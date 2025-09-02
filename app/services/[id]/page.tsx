@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 
 interface ServiceRecord {
   id: string
@@ -58,13 +59,16 @@ export default function ServiceDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <Button variant="outline" onClick={() => router.back()} className="mb-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <Button variant="outline" onClick={() => router.back()} className="mb-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h1 className="text-2xl font-bold text-gray-900">Service Details</h1>
+          <div className="hidden sm:flex gap-2">
+            <Button onClick={() => router.push('/services')}>Browse All Services</Button>
+            <Button variant="secondary" onClick={() => service && router.push(`/dashboard/services/${service.id}`)}>View in Dashboard</Button>
+          </div>
         </div>
 
         {loading && (
@@ -88,16 +92,26 @@ export default function ServiceDetail() {
 
         {!loading && !error && service && (
           <div className="space-y-6">
-            <Card>
+            <Card className="border-0 shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Package className="h-5 w-5" />
-                  <span>{service.title}</span>
-                </CardTitle>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      <span className="text-xl">{service.title}</span>
+                    </CardTitle>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                      <Badge variant="secondary">{service.category || 'Uncategorized'}</Badge>
+                      {service.currency && (
+                        <Badge variant="outline">Base {service.base_price ?? 0} {service.currency}</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {service.description ? (
-                  <p className="text-gray-700 whitespace-pre-line">{service.description}</p>
+                  <p className="text-gray-700 whitespace-pre-line leading-7">{service.description}</p>
                 ) : (
                   <p className="text-gray-500">No description provided.</p>
                 )}
@@ -123,43 +137,57 @@ export default function ServiceDetail() {
               </Card>
             )}
 
-            <Card>
+            <Card className="border-0">
               <CardHeader>
                 <CardTitle>Overview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex items-center text-gray-800">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex items-center rounded-md border bg-white p-3">
                     <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
-                    <span>
-                      {service.base_price != null ? service.base_price : 'N/A'} {service.currency || ''}
-                    </span>
+                    <div>
+                      <div className="text-xs text-gray-500">Starting at</div>
+                      <div className="text-gray-900 font-medium">{service.base_price != null ? service.base_price : 'N/A'} {service.currency || ''}</div>
+                    </div>
                   </div>
-                  <div className="flex items-center text-gray-800">
+                  <div className="flex items-center rounded-md border bg-white p-3">
                     <Building2 className="h-4 w-4 mr-2 text-gray-500" />
-                    <span>Category: {service.category || 'Uncategorized'}</span>
+                    <div>
+                      <div className="text-xs text-gray-500">Category</div>
+                      <div className="text-gray-900 font-medium">{service.category || 'Uncategorized'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center rounded-md border bg-white p-3">
+                    <UserIcon className="h-4 w-4 mr-2 text-gray-500" />
+                    <div>
+                      <div className="text-xs text-gray-500">Provider</div>
+                      <div className="text-gray-900 font-medium">{service.provider?.full_name || 'Service Provider'}</div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
-              <Card>
+              <Card className="border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Packages</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {service.service_packages.map((pkg) => (
-                      <div key={pkg.id} className="flex items-start justify-between rounded-md border p-3">
-                        <div>
-                          <div className="font-medium">{pkg.name}</div>
-                          {pkg.description && <div className="text-sm text-gray-600">{pkg.description}</div>}
+                      <button
+                        type="button"
+                        key={pkg.id}
+                        onClick={() => setSelectedPackageId(pkg.id)}
+                        className={`text-left rounded-lg border p-4 transition ${selectedPackageId === pkg.id ? 'border-blue-600 ring-2 ring-blue-100' : 'hover:border-gray-400'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold">{pkg.name}</div>
+                          <div className="text-gray-900">{pkg.price} {service.currency || 'OMR'}</div>
                         </div>
-                        <div className="text-gray-900">
-                          {pkg.price} {service.currency || 'OMR'}
-                        </div>
-                      </div>
+                        {pkg.description && <div className="mt-2 text-sm text-gray-600">{pkg.description}</div>}
+                      </button>
                     ))}
                   </div>
                 </CardContent>
@@ -167,7 +195,7 @@ export default function ServiceDetail() {
             )}
 
             {/* Simple booking form */}
-            <Card>
+            <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Book This Service</CardTitle>
               </CardHeader>
@@ -203,7 +231,7 @@ export default function ServiceDetail() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
                   <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the provider should know?" />
                 </div>
-                <div className="mt-4 flex gap-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   <Button onClick={() => router.push('/services')}>Browse All Services</Button>
                   <Button
                     variant="secondary"
@@ -218,6 +246,7 @@ export default function ServiceDetail() {
                         const res = await fetch('/api/bookings', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
                           body: JSON.stringify({
                             service_id: service.id,
                             scheduled_date: iso,
@@ -226,6 +255,11 @@ export default function ServiceDetail() {
                           })
                         })
                         const body = await res.json().catch(() => ({}))
+                        if (res.status === 401) {
+                          alert('Please sign in to book a service.')
+                          router.push('/auth/sign-in')
+                          return
+                        }
                         if (!res.ok) throw new Error(body?.error || 'Booking failed')
                         alert('Booking created successfully.')
                         router.push('/dashboard/bookings')
