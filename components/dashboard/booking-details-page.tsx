@@ -2311,9 +2311,6 @@ export default function BookingDetailsPage() {
               </div>
             </>
           )}
-        </TabsContent>
-
-
 
           {/* Enhanced Analytics & Insights */}
           <Card>
