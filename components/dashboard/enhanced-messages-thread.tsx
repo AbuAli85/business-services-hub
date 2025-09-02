@@ -164,7 +164,7 @@ export default function EnhancedMessagesThread({
       if (error) throw error
 
       // Get unique sender IDs to fetch sender details
-      const senderIds = [...new Set((data || []).map(msg => msg.sender_id))]
+      const senderIds = Array.from(new Set((data || []).map(msg => msg.sender_id)))
       
       // Fetch sender details from profiles table
       const { data: sendersData } = await supabase
