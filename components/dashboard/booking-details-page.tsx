@@ -1476,27 +1476,54 @@ export default function BookingDetailsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Header */}
+      {/* Role-Specific Enhanced Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/bookings')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Booking #{booking.id.slice(0, 8)}...</h1>
-            <p className="text-muted-foreground">Created {formatDate(booking.created_at)}</p>
+            <h1 className="text-3xl font-bold">
+              {userRole === 'provider' ? 'Service Booking' : 'Your Booking'} #{booking.id.slice(0, 8)}
+            </h1>
+            <p className="text-muted-foreground">
+              {userRole === 'provider' 
+                ? `Client: ${booking.client.full_name} • Created ${formatDate(booking.created_at)}`
+                : `Service: ${booking.service.name} • Created ${formatDate(booking.created_at)}`
+              }
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
           {getStatusBadge(booking.status)}
           {getPriorityBadge(booking.priority)}
-          <Button
-            variant="outline"
-            onClick={() => setShowAdvancedActions(!showAdvancedActions)}
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Actions
-          </Button>
+          {userRole === 'provider' ? (
+            <Button
+              variant="default"
+              onClick={() => setShowAdvancedActions(!showAdvancedActions)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Manage Booking
+            </Button>
+          ) : userRole === 'client' ? (
+            <Button
+              variant="outline"
+              onClick={() => setActiveTab('messages')}
+              className="border-green-500 text-green-700 hover:bg-green-50"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Contact Provider
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setShowAdvancedActions(!showAdvancedActions)}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Actions
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1722,12 +1749,7 @@ export default function BookingDetailsPage() {
         </Card>
       )}
 
-      {/* Client view hint: Quick Actions are provider-only */}
-      {userRole === 'client' && (
-        <div className="rounded-md border p-3 bg-gray-50 text-sm text-gray-700">
-          Quick Actions are managed by your provider. You can still message, upload files, and view timeline updates.
-        </div>
-      )}
+
 
       {/* Priority Alert */}
       {booking.priority === 'high' || booking.priority === 'urgent' ? (
@@ -1989,167 +2011,309 @@ export default function BookingDetailsPage() {
 
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsList className={`grid w-full ${userRole === 'provider' ? 'grid-cols-7' : 'grid-cols-6'}`}>
+          <TabsTrigger value="overview">{userRole === 'provider' ? 'Client Details' : 'Service Details'}</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="files">Files</TabsTrigger>
+          {userRole === 'provider' && <TabsTrigger value="progress">Progress</TabsTrigger>}
           <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="related">Related</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
+          {userRole === 'provider' && <TabsTrigger value="related">Related</TabsTrigger>}
         </TabsList>
 
-        {/* Overview Tab */}
+        {/* Role-Specific Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Service Information */}
-            <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-purple-900">
-                  <Package className="h-5 w-5" />
-                  <span>Service Information</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-purple-700 mb-2 block">Service Name</label>
-                  <p className="text-lg font-bold text-purple-900">{booking.service.name}</p>
-                </div>
-                {booking.service.description && (
-                  <div>
-                    <label className="text-sm font-semibold text-purple-700 mb-2 block">Description</label>
-                    <p className="text-sm text-purple-800 bg-white p-3 rounded border border-purple-200">{booking.service.description}</p>
-                  </div>
-                )}
-                {booking.service.category && (
-                  <div>
-                    <label className="text-sm font-semibold text-purple-700 mb-2 block">Category</label>
-                    <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
-                      {booking.service.category}
-                    </Badge>
-                  </div>
-                )}
-                {booking.estimated_duration && (
-                  <div>
-                    <label className="text-sm font-semibold text-purple-700 mb-2 block">Estimated Duration</label>
-                    <p className="text-sm text-purple-800 bg-white p-3 rounded border border-purple-200">{booking.estimated_duration}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Client Information */}
-            <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-green-900">
-                  <User className="h-5 w-5" />
-                  <span>Client Information</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-green-700 mb-2 block">Client Name</label>
-                  <p className="text-lg font-bold text-green-900">{booking.client.full_name}</p>
-                </div>
-                <div className="flex items-center space-x-2 bg-white p-3 rounded border border-green-200">
-                  <Mail className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-green-800">{booking.client.email}</span>
-                </div>
-                {booking.client.phone && (
-                  <div className="flex items-center space-x-2 bg-white p-3 rounded border border-green-200">
-                    <Phone className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-800">{booking.client.phone}</span>
-                  </div>
-                )}
-                {booking.client.company_name && (
-                  <div className="flex items-center space-x-2 bg-white p-3 rounded border border-green-200">
-                    <Building className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-800">{booking.client.company_name}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Role-aware quick panels */}
-          {userRole === 'provider' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle>Client Summary</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="text-sm text-gray-700 space-y-1">
-                    <div className="font-medium">{booking.client?.full_name || 'Client'}</div>
-                    {booking.client?.email && <div>{booking.client.email}</div>}
-                    {booking.client?.phone && <div>{booking.client.phone}</div>}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle>Next Steps</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab('messages')}>Message</Button>
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab('files')}>Request Files</Button>
-                    <Button size="sm" onClick={() => setActiveTab('timeline')}>Update Timeline</Button>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle>Billing</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+          {userRole === 'provider' ? (
+            <>
+              {/* Provider View - Focus on Client & Service Management */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Primary Client Information */}
+                <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-blue-900">
+                      <User className="h-5 w-5" />
+                      <span>Client Details</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
-                      <div className="text-gray-500">Amount</div>
-                      <div className="font-medium">{booking.amount || 0} {booking.currency || 'OMR'}</div>
+                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Client Name</label>
+                      <p className="text-xl font-bold text-blue-900">{booking.client.full_name}</p>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3 bg-white p-3 rounded-lg border border-blue-200">
+                        <Mail className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm text-blue-800">{booking.client.email}</span>
+                        <Button size="sm" variant="outline" onClick={() => window.location.href = `mailto:${booking.client.email}`}>
+                          Email
+                        </Button>
+                      </div>
+                      {booking.client.phone && (
+                        <div className="flex items-center space-x-3 bg-white p-3 rounded-lg border border-blue-200">
+                          <Phone className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm text-blue-800">{booking.client.phone}</span>
+                          <Button size="sm" variant="outline" onClick={() => window.location.href = `tel:${booking.client.phone}`}>
+                            Call
+                          </Button>
+                        </div>
+                      )}
+                      {booking.client.company_name && (
+                        <div className="flex items-center space-x-2 bg-white p-3 rounded-lg border border-blue-200">
+                          <Building className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm text-blue-800">{booking.client.company_name}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Service & Project Information */}
+                <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-purple-900">
+                      <Package className="h-5 w-5" />
+                      <span>Service Details</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-purple-700 mb-2 block">Service</label>
+                      <p className="text-lg font-bold text-purple-900">{booking.service.name}</p>
+                    </div>
+                    {booking.service.category && (
+                      <div>
+                        <label className="text-sm font-semibold text-purple-700 mb-2 block">Category</label>
+                        <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
+                          {booking.service.category}
+                        </Badge>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-purple-600 font-medium">Amount</div>
+                        <div className="text-lg font-bold text-purple-900">{formatCurrency(booking.amount || 0)}</div>
+                      </div>
+                      <div>
+                        <div className="text-purple-600 font-medium">Duration</div>
+                        <div className="font-medium text-purple-800">{booking.estimated_duration || '—'}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Provider Action Panels */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <CardHeader><CardTitle className="text-green-900">Quick Actions</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => setActiveTab('messages')}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message Client
+                      </Button>
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setActiveTab('progress')}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Update Progress
+                      </Button>
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setActiveTab('files')}>
+                        <Paperclip className="h-4 w-4 mr-2" />
+                        Request Files
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-yellow-50">
+                  <CardHeader><CardTitle className="text-orange-900">Project Status</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <div className="text-orange-600 font-medium">Next Milestone</div>
+                        <div className="font-medium text-orange-800">{getNextMilestone()}</div>
+                      </div>
+                      <div>
+                        <div className="text-orange-600 font-medium">Time to Deadline</div>
+                        <div className="font-medium text-orange-800">{getTimeToDeadline()}</div>
+                      </div>
+                      <div>
+                        <div className="text-orange-600 font-medium">Health Score</div>
+                        <div className="font-medium text-orange-800">{getBookingHealth()}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50">
+                  <CardHeader><CardTitle className="text-teal-900">Financial Overview</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <div className="text-teal-600 font-medium">Revenue</div>
+                        <div className="text-lg font-bold text-teal-900">{formatCurrency(booking.amount || 0)}</div>
+                      </div>
+                      <div>
+                        <div className="text-teal-600 font-medium">Payment Status</div>
+                        <Badge variant={booking.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                          {booking.payment_status || 'pending'}
+                        </Badge>
+                      </div>
+                      <div>
+                        <div className="text-teal-600 font-medium">Client Rating</div>
+                        <div className="font-medium text-teal-800">{getClientSatisfaction()}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Client View - Focus on Service Details & Provider Info */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Service Information - Primary for Clients */}
+                <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-purple-900">
+                      <Package className="h-5 w-5" />
+                      <span>Your Service</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-purple-700 mb-2 block">Service Name</label>
+                      <p className="text-xl font-bold text-purple-900">{booking.service.name}</p>
+                    </div>
+                    {booking.service.description && (
+                      <div>
+                        <label className="text-sm font-semibold text-purple-700 mb-2 block">Description</label>
+                        <p className="text-sm text-purple-800 bg-white p-3 rounded border border-purple-200">{booking.service.description}</p>
+                      </div>
+                    )}
+                    {booking.service.category && (
+                      <div>
+                        <label className="text-sm font-semibold text-purple-700 mb-2 block">Category</label>
+                        <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
+                          {booking.service.category}
+                        </Badge>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3 text-sm bg-white p-3 rounded border border-purple-200">
+                      <div>
+                        <div className="text-purple-600 font-medium">Duration</div>
+                        <div className="font-bold text-purple-900">{booking.estimated_duration || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-purple-600 font-medium">Total Cost</div>
+                        <div className="font-bold text-purple-900">{formatCurrency(booking.amount || 0)}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Booking Progress & Status */}
+                <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2 text-blue-900">
+                      <Clock className="h-5 w-5" />
+                      <span>Booking Status</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Current Status</label>
+                      <div className="flex items-center space-x-2">
+                        {getStatusBadge(booking.status)}
+                        {getPriorityBadge(booking.priority)}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Payment</div>
-                      <div className="font-medium">{booking.payment_status || 'pending'}</div>
+                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Scheduled</label>
+                      <p className="text-sm text-blue-800 bg-white p-3 rounded border border-blue-200">
+                        {booking.scheduled_date ? formatDate(booking.scheduled_date) : 'To be scheduled by provider'}
+                      </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    <div>
+                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Location</label>
+                      <p className="text-sm text-blue-800 bg-white p-3 rounded border border-blue-200">
+                        {booking.location || 'To be determined'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Client Action Panels */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <CardHeader><CardTitle className="text-green-900">Your Actions</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => setActiveTab('messages')}>
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message Provider
+                      </Button>
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setActiveTab('files')}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Files
+                      </Button>
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setActiveTab('timeline')}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Progress
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-yellow-50">
+                  <CardHeader><CardTitle className="text-orange-900">Project Timeline</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <div className="text-orange-600 font-medium">Created</div>
+                        <div className="font-medium text-orange-800">{formatDate(booking.created_at)}</div>
+                      </div>
+                      <div>
+                        <div className="text-orange-600 font-medium">Expected Completion</div>
+                        <div className="font-medium text-orange-800">{getTimeToDeadline()}</div>
+                      </div>
+                      <div>
+                        <div className="text-orange-600 font-medium">Days Active</div>
+                        <div className="font-medium text-orange-800">{getDaysSinceCreation()} days</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50">
+                  <CardHeader><CardTitle className="text-teal-900">Billing & Payment</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <div className="text-teal-600 font-medium">Total Amount</div>
+                        <div className="text-lg font-bold text-teal-900">{formatCurrency(booking.amount || 0)}</div>
+                      </div>
+                      <div>
+                        <div className="text-teal-600 font-medium">Payment Status</div>
+                        <Badge variant={booking.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                          {booking.payment_status || 'pending'}
+                        </Badge>
+                      </div>
+                      {booking.rating && (
+                        <div>
+                          <div className="text-teal-600 font-medium">Your Rating</div>
+                          <div className="font-medium text-teal-800">{booking.rating}/5 ⭐</div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
           )}
+        </TabsContent>
 
-          {userRole === 'client' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle>Provider Summary</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="text-sm text-gray-700 space-y-1">
-                    <div className="font-medium">{booking.service?.name || 'Provider'}</div>
-                    {booking.service?.category && <div>{booking.service.category}</div>}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle>Your Actions</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab('messages')}>Message Provider</Button>
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab('files')}>Upload Files</Button>
-                    <Button size="sm" onClick={() => setActiveTab('timeline')}>View Timeline</Button>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-0 shadow-sm">
-                <CardHeader><CardTitle>Booking Info</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <div className="text-gray-500">Scheduled</div>
-                      <div className="font-medium">{booking.scheduled_date ? new Date(booking.scheduled_date).toLocaleString() : 'TBD'}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Duration</div>
-                      <div className="font-medium">{booking.estimated_duration || '—'}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+
 
           {/* Enhanced Analytics & Insights */}
           <Card>
@@ -2668,8 +2832,9 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Progress Tab */}
-        <TabsContent value="progress" className="space-y-6">
+        {/* Progress Tab - Provider Only */}
+        {userRole === 'provider' && (
+          <TabsContent value="progress" className="space-y-6">
           <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2 text-green-900">
@@ -3063,6 +3228,7 @@ export default function BookingDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         {/* Messages Tab */}
         <TabsContent value="messages" className="space-y-6">
@@ -3192,8 +3358,9 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Related Bookings Tab */}
-        <TabsContent value="related" className="space-y-6">
+        {/* Related Bookings Tab - Provider Only */}
+        {userRole === 'provider' && (
+          <TabsContent value="related" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -3234,6 +3401,7 @@ export default function BookingDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
       </Tabs>
 
       {/* File Upload Modal */}
