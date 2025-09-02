@@ -30,14 +30,24 @@ export async function GET(
     }
 
     const supabase = await getSupabaseClient()
-    
-    const { data: service, error } = await supabase
+
+    // Fetch service with packages
+    const { data: serviceRow, error } = await supabase
       .from('services')
-      .select('*')
+      .select(`
+        *,
+        service_packages(
+          id,
+          name,
+          description,
+          price,
+          features
+        )
+      `)
       .eq('id', serviceId)
       .single()
 
-    if (error) {
+    if (error || !serviceRow) {
       console.error('Error fetching service:', error)
       return NextResponse.json(
         { error: 'Service not found' },
@@ -45,7 +55,21 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ service })
+    // Enrich with provider profile
+    let provider: any = null
+    try {
+      const { data: providerRow } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone, company_name, avatar_url')
+        .eq('id', serviceRow.provider_id)
+        .single()
+      provider = providerRow || null
+    } catch (e) {
+      // Ignore enrichment errors; still return service
+      provider = null
+    }
+
+    return NextResponse.json({ service: { ...serviceRow, provider } })
   } catch (error) {
     console.error('API error:', error)
     return NextResponse.json(
