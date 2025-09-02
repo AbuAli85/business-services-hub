@@ -277,6 +277,143 @@ export default function ServiceDetail() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Common Client Widgets */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Timeline Updates</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 text-sm text-gray-700">
+                        <div className="rounded-md border p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium">Initial briefing</div>
+                            <div className="text-xs text-gray-500">Today</div>
+                          </div>
+                          <p className="mt-1 text-gray-600">Provider will post progress here with files and screenshots.</p>
+                        </div>
+                        <div className="rounded-md border p-3 bg-gray-50">
+                          <div className="text-xs text-gray-500">Tip</div>
+                          <p>Sign in to react 👍👎 and comment on updates.</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Files</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-gray-700">
+                        <p className="mb-3">Secure uploads and downloads will appear here.</p>
+                        <Button variant="outline" disabled>Upload File (login required)</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Messaging</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-gray-700">
+                        <p className="mb-3">Direct chat between client and provider.</p>
+                        <Button variant="outline" onClick={() => router.push('/auth/sign-in')}>Sign in to Message</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Suggested Services</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2 text-sm text-gray-700">
+                        <div className="rounded-md border p-3">Advanced package with monthly optimization</div>
+                        <div className="rounded-md border p-3">Complementary audit and strategy session</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Analytics Snapshot</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="rounded-md border p-3 text-center">
+                          <div className="text-xs text-gray-500">Est. Value</div>
+                          <div className="text-lg font-semibold">—</div>
+                        </div>
+                        <div className="rounded-md border p-3 text-center">
+                          <div className="text-xs text-gray-500">Progress</div>
+                          <div className="text-lg font-semibold">0%</div>
+                        </div>
+                        <div className="rounded-md border p-3 text-center">
+                          <div className="text-xs text-gray-500">Files</div>
+                          <div className="text-lg font-semibold">0</div>
+                        </div>
+                        <div className="rounded-md border p-3 text-center">
+                          <div className="text-xs text-gray-500">Messages</div>
+                          <div className="text-lg font-semibold">0</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Category-Specific Widgets */}
+                {service.category?.toLowerCase().includes('seo') && (
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>SEO Insights</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div className="rounded-md border p-3">
+                          <div className="text-xs text-gray-500">Keywords Improved</div>
+                          <div className="text-lg font-semibold">—</div>
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <div className="text-xs text-gray-500">Backlinks</div>
+                          <div className="text-lg font-semibold">—</div>
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <div className="text-xs text-gray-500">Content Published</div>
+                          <div className="text-lg font-semibold">—</div>
+                        </div>
+                        <div className="rounded-md border p-3">
+                          <div className="text-xs text-gray-500">Tech Fixes</div>
+                          <div className="text-lg font-semibold">—</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {service.category?.toLowerCase().includes('social') && (
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Social Media Calendar</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-gray-700">Planned posts and previews will appear here.</div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {service.category?.toLowerCase().includes('web') && (
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>Development Timeline</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-gray-700">Feature updates, preview links, and change requests will appear here.</div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               {/* Sticky booking sidebar */}
