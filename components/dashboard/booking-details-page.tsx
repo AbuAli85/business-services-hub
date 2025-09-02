@@ -72,7 +72,8 @@ import {
   ChevronUp,
   ChevronDown,
   Copy,
-  Trash2
+  Trash2,
+  Send
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
@@ -2806,85 +2807,281 @@ export default function BookingDetailsPage() {
             </CardContent>
           </Card>
 
-          {/* Enhanced Actions & Notes */}
-          <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-md">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-blue-900">
-                <Zap className="h-5 w-5" />
+          {/* Enhanced Smart Actions & AI Insights - Role-Based */}
+          <Card className="border border-gray-200 bg-white shadow-sm">
+            <CardHeader className="border-b border-gray-100 bg-gray-50">
+              <CardTitle className="flex items-center space-x-2 text-gray-800">
+                <Lightbulb className="h-5 w-5 text-blue-600" />
                 <span>Smart Actions & AI Insights</span>
+                <Badge variant="outline" className="ml-2 text-xs">
+                  AI-Powered
+                </Badge>
               </CardTitle>
-              <CardDescription className="text-blue-700">
-                Intelligent actions and recommendations powered by AI analysis
+              <CardDescription className="text-gray-600">
+                {userRole === 'provider' 
+                  ? 'Intelligent project management and business optimization recommendations'
+                  : 'Smart tools to enhance your service experience and communication'
+                }
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700" 
-                  onClick={() => setActiveTab('messages')}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Smart Message
-                </Button>
-                
-                <Button 
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={handleOpenProgressUpdate}
-                  disabled={isUpdatingProgress}
-                >
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  {isUpdatingProgress ? 'Updating...' : 'Update Progress'}
-                </Button>
-                
-                <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  onClick={handleOpenServiceSuggestion}
-                  disabled={isCreatingSuggestion}
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  {isCreatingSuggestion ? 'Loading...' : 'Suggest Service'}
-                </Button>
-              </div>
-              
-              {booking.status === 'in_progress' && (
-                <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  variant="default"
-                  onClick={handleMarkComplete}
-                  disabled={isUpdatingStatus}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {isUpdatingStatus ? 'Updating...' : 'Mark as Complete'}
-                </Button>
-              )}
-              
-              {/* AI-Powered Action Suggestions */}
-              <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
-                <h5 className="font-medium text-blue-900 mb-2 flex items-center">
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  AI Action Suggestions
-                </h5>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800">Send progress update to client</span>
-                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      Do Now
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {/* Primary Action Buttons - Role Based */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700" 
+                    onClick={() => setActiveTab('messages')}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {userRole === 'provider' ? 'AI Message Client' : 'Contact Provider'}
+                  </Button>
+                  
+                  {userRole === 'provider' ? (
+                    <>
+                      <Button 
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        onClick={() => setActiveTab('progress')}
+                      >
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Manage Tasks
+                      </Button>
+                      
+                      <Button 
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        onClick={handleOpenServiceSuggestion}
+                        disabled={isCreatingSuggestion}
+                      >
+                        <Package className="h-4 w-4 mr-2" />
+                        {isCreatingSuggestion ? 'Loading...' : 'Suggest Service'}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button 
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        onClick={() => setActiveTab('timeline')}
+                      >
+                        <Clock className="h-4 w-4 mr-2" />
+                        View Progress
+                      </Button>
+                      
+                      <Button 
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                        onClick={() => setActiveTab('files')}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Share Files
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* Status-Based Quick Actions */}
+                {userRole === 'provider' && booking.status === 'in_progress' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button 
+                      className="w-full bg-emerald-600 hover:bg-emerald-700"
+                      onClick={handleMarkComplete}
+                      disabled={isUpdatingStatus}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {isUpdatingStatus ? 'Updating...' : 'Mark as Complete'}
+                    </Button>
+                    
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      onClick={handleOpenProgressUpdate}
+                      disabled={isUpdatingProgress}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      {isUpdatingProgress ? 'Sending...' : 'Send Update'}
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800">Schedule follow-up meeting</span>
-                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      Schedule
-                    </Button>
+                )}
+
+                {/* AI-Powered Action Suggestions - Role Based */}
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                  <h5 className="font-semibold text-blue-900 mb-3 flex items-center">
+                    <Lightbulb className="h-4 w-4 mr-2" />
+                    AI Action Suggestions
+                    <Badge variant="outline" className="ml-2 text-xs bg-blue-100 text-blue-700">
+                      Smart
+                    </Badge>
+                  </h5>
+                  
+                  <div className="space-y-3">
+                    {userRole === 'provider' ? (
+                      // Provider AI Suggestions
+                      <>
+                        {/* Task Management Suggestions */}
+                        {projectTasks.filter(t => t.status === 'in_progress').length > 0 && (
+                          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="text-sm text-blue-800">
+                                Update progress on {projectTasks.filter(t => t.status === 'in_progress').length} active task(s)
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                              onClick={() => setActiveTab('progress')}
+                            >
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              Update
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Communication Suggestions */}
+                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-sm text-blue-800">
+                              Send weekly progress report to client
+                            </span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                            onClick={() => setActiveTab('messages')}
+                          >
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Send
+                          </Button>
+                        </div>
+                        
+                        {/* Milestone Suggestions */}
+                        {Math.round((projectTasks.filter(t => t.status === 'completed').length / Math.max(projectTasks.length, 1)) * 100) >= 50 && (
+                          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                              <span className="text-sm text-blue-800">
+                                Project is 50%+ complete - Schedule client review
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                              onClick={() => setActiveTab('messages')}
+                            >
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Schedule
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Business Optimization */}
+                        {booking.status === 'completed' && (
+                          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-sm text-blue-800">
+                                Request client review and suggest follow-up services
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                              onClick={handleOpenServiceSuggestion}
+                            >
+                              <Star className="h-3 w-3 mr-1" />
+                              Request
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      // Client AI Suggestions
+                      <>
+                        {/* Progress Inquiry */}
+                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-sm text-blue-800">
+                              Request detailed progress update from provider
+                            </span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                            onClick={() => setActiveTab('messages')}
+                          >
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Request
+                          </Button>
+                        </div>
+                        
+                        {/* Feedback Suggestions */}
+                        {booking.status === 'completed' && (
+                          <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-sm text-blue-800">
+                                Share feedback and rate your experience
+                              </span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                              onClick={() => setActiveTab('messages')}
+                            >
+                              <Star className="h-3 w-3 mr-1" />
+                              Review
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Meeting Suggestions */}
+                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                            <span className="text-sm text-blue-800">
+                              Schedule clarification meeting with provider
+                            </span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                            onClick={() => setActiveTab('messages')}
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Schedule
+                          </Button>
+                        </div>
+                        
+                        {/* File Sharing */}
+                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <span className="text-sm text-blue-800">
+                              Share additional requirements or resources
+                            </span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                            onClick={() => setActiveTab('files')}
+                          >
+                            <Upload className="h-3 w-3 mr-1" />
+                            Share
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-blue-800">Prepare completion report</span>
-                    <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
-                      <FileText className="h-3 w-3 mr-1" />
-                      Prepare
-                    </Button>
+                  
+                  {/* AI Learning Notice */}
+                  <div className="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-700 text-center">
+                    🤖 AI suggestions improve based on your project patterns and industry best practices
                   </div>
                 </div>
               </div>
