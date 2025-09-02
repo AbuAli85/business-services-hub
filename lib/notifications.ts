@@ -279,4 +279,4 @@ class NotificationService {
 export const notificationService = new NotificationService()
 
 // Export types
-export type { NotificationData, ProgressUpdate, StatusUpdate }
+export type { ProgressUpdate, StatusUpdate }
