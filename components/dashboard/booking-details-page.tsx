@@ -79,6 +79,8 @@ import {
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
+import { notificationService } from '@/lib/notifications'
+import { deadlineMonitor } from '@/lib/deadline-monitor'
 import toast from 'react-hot-toast'
 import { MessagesThread } from '@/components/dashboard/messages-thread'
 import EnhancedMessagesThread from '@/components/dashboard/enhanced-messages-thread'
@@ -1937,6 +1939,7 @@ export default function BookingDetailsPage() {
     try {
       setIsUpdatingProgress(true)
       const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
       // Update booking with progress information
       const { error } = await supabase
@@ -2008,6 +2011,19 @@ export default function BookingDetailsPage() {
             booking_id: booking.id,
             action: 'complete'
           })
+          
+          // Send status update notification
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            notificationService.notifyStatusUpdate({
+              bookingId: booking.id,
+              oldStatus: booking.status,
+              newStatus: 'completed',
+              updatedBy: user.user_metadata?.full_name || 'User',
+              reason: 'Project completed (100% progress)'
+            })
+          }
+          
           toast.success('Project completed and marked as finished!')
         } catch (statusError) {
           console.error('Error updating booking status:', statusError)
@@ -2018,6 +2034,18 @@ export default function BookingDetailsPage() {
             booking_id: booking.id,
             action: 'approve'
           })
+          
+          // Send status update notification
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            notificationService.notifyStatusUpdate({
+              bookingId: booking.id,
+              oldStatus: booking.status,
+              newStatus: 'in_progress',
+              updatedBy: user.user_metadata?.full_name || 'User',
+              reason: 'Project started (progress > 0%)'
+            })
+          }
         } catch (statusError) {
           console.error('Error updating booking status:', statusError)
         }
@@ -2032,6 +2060,19 @@ export default function BookingDetailsPage() {
         quality_score: booking.quality_score || 0
       })
       setShowProgressUpdate(false)
+
+      // Send progress update notification
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        notificationService.notifyProgressUpdate({
+          bookingId: booking.id,
+          progressPercentage: progressUpdate.progress_percentage,
+          milestone: progressUpdate.milestone_notes || 'Progress updated',
+          notes: progressUpdate.milestone_notes,
+          updatedBy: user.user_metadata?.full_name || 'User',
+          previousProgress: booking.progress_percentage || 0
+        })
+      }
 
       toast.success('Progress updated successfully!')
       
