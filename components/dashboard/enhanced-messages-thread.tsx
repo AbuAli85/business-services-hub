@@ -148,14 +148,14 @@ export default function EnhancedMessagesThread({
     }
   }, [])
 
-  // Test real-time connection
+  // Simple real-time capability test
   useEffect(() => {
     const testRealtimeConnection = async () => {
       try {
         const supabase = await getSupabaseClient()
         console.log('🧪 Testing Supabase real-time capabilities...')
         
-        // Check if real-time is available
+        // Simple test channel
         const testChannel = supabase.channel('test-connection')
         testChannel.subscribe((status) => {
           console.log('🧪 Test channel status:', status)
@@ -164,24 +164,6 @@ export default function EnhancedMessagesThread({
             testChannel.unsubscribe()
           }
         })
-        
-        // Test a simple postgres_changes subscription
-        const testTableChannel = supabase.channel('test-table-changes')
-        testTableChannel
-          .on('postgres_changes', {
-            event: '*',
-            schema: 'public',
-            table: 'booking_messages'
-          }, (payload) => {
-            console.log('🧪 Test table change received:', payload)
-          })
-          .subscribe((status) => {
-            console.log('🧪 Test table channel status:', status)
-            if (status === 'SUBSCRIBED') {
-              console.log('✅ Table change subscription working!')
-              setTimeout(() => testTableChannel.unsubscribe(), 5000)
-            }
-          })
       } catch (error) {
         console.error('❌ Real-time test failed:', error)
       }
@@ -439,12 +421,21 @@ export default function EnhancedMessagesThread({
 
   const setupRealtime = async () => {
     try {
+      // Clean up any existing connections first
+      cleanupRealtime()
+      
       console.log('🔄 Setting up real-time subscriptions for booking:', bookingId)
       const supabase = await getSupabaseClient()
       
       // Create a channel for real-time updates
       const channel = supabase
-        .channel(`booking-messages-${bookingId}`)
+        .channel(`booking-messages-${bookingId}`, {
+          config: {
+            presence: {
+              key: bookingId
+            }
+          }
+        })
         .on('postgres_changes', 
           {
             event: 'INSERT',
@@ -454,7 +445,6 @@ export default function EnhancedMessagesThread({
           },
           async (payload) => {
             console.log('📨 New message received via real-time:', payload)
-            console.log('📊 Current messages count before:', messages.length)
             await handleNewMessage(payload.new as any)
           }
         )
@@ -479,35 +469,25 @@ export default function EnhancedMessagesThread({
           if (status === 'SUBSCRIBED') {
             console.log('✅ Real-time subscription successful!')
             setRealtimeWorking(true)
-            toast.success('Real-time messaging connected!', { duration: 2000 })
             clearPolling() // Stop polling if real-time works
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('❌ Real-time subscription error!')
+            toast.success('Real-time messaging connected!', { duration: 2000 })
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.error('❌ Real-time subscription failed:', status)
             setRealtimeWorking(false)
-            setupPolling() // Fallback to polling
-            toast.error('Real-time failed, using polling fallback')
-          } else if (status === 'TIMED_OUT') {
-            console.error('⏰ Real-time subscription timed out!')
-            setRealtimeWorking(false)
-            setupPolling() // Fallback to polling
-            toast.error('Real-time timed out, using polling fallback')
+            if (!pollingInterval) { // Only setup polling if not already running
+              setupPolling()
+            }
           }
         })
 
       setRealtimeChannel(channel)
       
-      // Set a timeout to fallback to polling if real-time doesn't connect in 10 seconds
-      setTimeout(() => {
-        if (!realtimeWorking) {
-          console.log('⏰ Real-time timeout, falling back to polling')
-          setupPolling()
-        }
-      }, 10000)
-      
     } catch (error) {
       console.error('❌ Failed to setup real-time:', error)
-      toast.error('Real-time messaging failed to connect')
-      setupPolling() // Immediate fallback on error
+      setRealtimeWorking(false)
+      if (!pollingInterval) { // Only setup polling if not already running
+        setupPolling()
+      }
     }
   }
 
@@ -526,11 +506,21 @@ export default function EnhancedMessagesThread({
     
     const interval = setInterval(async () => {
       console.log('📡 Polling for new messages...')
-      await loadMessages()
-    }, 3000) // Poll every 3 seconds
+      try {
+        await loadMessages()
+        
+        // Try to reconnect to real-time every 30 seconds while polling
+        if (!realtimeWorking && Math.random() < 0.1) { // 10% chance every poll
+          console.log('🔄 Attempting real-time reconnection...')
+          setupRealtime()
+        }
+      } catch (error) {
+        console.error('❌ Polling error:', error)
+      }
+    }, 5000) // Poll every 5 seconds (less aggressive)
     
     setPollingInterval(interval)
-    toast('Using message polling (refresh every 3s)', { 
+    toast('Using message polling (refresh every 5s)', { 
       duration: 3000,
       icon: '🔄'
     })
