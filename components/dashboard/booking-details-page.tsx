@@ -4198,6 +4198,8 @@ export default function BookingDetailsPage() {
                                       value={task.status}
                                       onChange={(e) => updateTaskStatus(task.id, e.target.value)}
                                       className={`text-xs px-2 py-1 border rounded ${getStatusColor(task.status)}`}
+                                      aria-label={`Change status for task: ${task.title}`}
+                                      title="Update task status"
                                     >
                                       <option value="not_started">Not Started</option>
                                       <option value="in_progress">In Progress</option>
@@ -4454,6 +4456,8 @@ export default function BookingDetailsPage() {
                                 value={newTask.category}
                                 onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value as any }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                                aria-label="Select task category"
+                                title="Choose task category"
                               >
                                 <option value="development">🔧 Development</option>
                                 <option value="design">🎨 Design</option>
@@ -4470,6 +4474,8 @@ export default function BookingDetailsPage() {
                                 value={newTask.priority}
                                 onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as any }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                                aria-label="Select task priority"
+                                title="Choose task priority level"
                               >
                                 <option value="low">🟢 Low Priority</option>
                                 <option value="medium">🟡 Medium Priority</option>
@@ -4484,6 +4490,8 @@ export default function BookingDetailsPage() {
                                 value={newTask.status}
                                 onChange={(e) => setNewTask(prev => ({ ...prev, status: e.target.value as any }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                                aria-label="Select task status"
+                                title="Choose initial task status"
                               >
                                 <option value="not_started">⏸️ Not Started</option>
                                 <option value="in_progress">▶️ In Progress</option>
@@ -4534,6 +4542,8 @@ export default function BookingDetailsPage() {
                                 onChange={(e) => setNewTask(prev => ({ ...prev, start_date: e.target.value }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                                 min={new Date().toISOString().split('T')[0]}
+                                aria-label="Task start date"
+                                title="Select task start date"
                               />
                             </div>
                             
@@ -4545,6 +4555,8 @@ export default function BookingDetailsPage() {
                                 onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                                 min={newTask.start_date || new Date().toISOString().split('T')[0]}
+                                aria-label="Task due date"
+                                title="Select task due date"
                               />
                             </div>
                             
@@ -4552,6 +4564,8 @@ export default function BookingDetailsPage() {
                               <label className="text-sm font-semibold text-gray-700 mb-2 block">Assigned To</label>
                               <select
                                 value={newTask.assigned_to}
+                                aria-label="Assign task to"
+                                title="Select team member to assign task to"
                                 onChange={(e) => setNewTask(prev => ({ ...prev, assigned_to: e.target.value }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                               >
@@ -4585,6 +4599,8 @@ export default function BookingDetailsPage() {
                                 }}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                                 size={3}
+                                aria-label="Select task dependencies"
+                                title="Choose tasks that must be completed before this task"
                               >
                                 {projectTasks.filter(task => task.id !== editingTask?.id).map(task => (
                                   <option key={task.id} value={task.id}>
@@ -4837,6 +4853,8 @@ export default function BookingDetailsPage() {
                                 checked={notificationSettings.email}
                                 onChange={(e) => setNotificationSettings(prev => ({ ...prev, email: e.target.checked }))}
                                 className="sr-only peer"
+                                aria-label="Enable email notifications"
+                                title="Toggle email notifications"
                               />
                               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
@@ -4853,6 +4871,8 @@ export default function BookingDetailsPage() {
                                 checked={notificationSettings.whatsapp}
                                 onChange={(e) => setNotificationSettings(prev => ({ ...prev, whatsapp: e.target.checked }))}
                                 className="sr-only peer"
+                                aria-label="Enable WhatsApp notifications"
+                                title="Toggle WhatsApp notifications"
                               />
                               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
@@ -4869,6 +4889,8 @@ export default function BookingDetailsPage() {
                                 checked={notificationSettings.push}
                                 onChange={(e) => setNotificationSettings(prev => ({ ...prev, push: e.target.checked }))}
                                 className="sr-only peer"
+                                aria-label="Enable push notifications"
+                                title="Toggle push notifications"
                               />
                               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
@@ -4885,6 +4907,8 @@ export default function BookingDetailsPage() {
                                 checked={notificationSettings.reports}
                                 onChange={(e) => setNotificationSettings(prev => ({ ...prev, reports: e.target.checked }))}
                                 className="sr-only peer"
+                                aria-label="Enable weekly reports"
+                                title="Toggle weekly reports"
                               />
                               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
@@ -5419,6 +5443,8 @@ export default function BookingDetailsPage() {
                   multiple
                   className="w-full p-2 border rounded-md"
                   onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+                  aria-label="Select files to upload"
+                  title="Choose files to upload"
                 />
               </div>
               
