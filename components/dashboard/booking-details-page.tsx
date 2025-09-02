@@ -1483,8 +1483,8 @@ export default function BookingDetailsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-red-600">
-              🔥 {userRole === 'provider' ? 'Provider Service Booking' : 'Client Your Booking'} #{booking.id.slice(0, 8)} 🔥
+            <h1 className="text-3xl font-bold text-gray-900">
+              {userRole === 'provider' ? 'Service Booking' : 'Your Booking'} #{booking.id.slice(0, 8)}
             </h1>
             <p className="text-muted-foreground">
               {userRole === 'provider' 
@@ -2028,74 +2028,97 @@ export default function BookingDetailsPage() {
               {/* Provider View - Focus on Client & Service Management */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Primary Client Information */}
-                <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-blue-900">
-                      <User className="h-5 w-5" />
-                      <span>Client Details</span>
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="flex items-center space-x-2 text-gray-800 text-lg font-semibold">
+                      <User className="h-5 w-5 text-gray-600" />
+                      <span>Client Information</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Client Name</label>
-                      <p className="text-xl font-bold text-blue-900">{booking.client.full_name}</p>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3 bg-white p-3 rounded-lg border border-blue-200">
-                        <Mail className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm text-blue-800">{booking.client.email}</span>
-                        <Button size="sm" variant="outline" onClick={() => window.location.href = `mailto:${booking.client.email}`}>
-                          Email
-                        </Button>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 mb-1 block">Client Name</label>
+                        <p className="text-lg font-semibold text-gray-900">{booking.client.full_name}</p>
                       </div>
-                      {booking.client.phone && (
-                        <div className="flex items-center space-x-3 bg-white p-3 rounded-lg border border-blue-200">
-                          <Phone className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm text-blue-800">{booking.client.phone}</span>
-                          <Button size="sm" variant="outline" onClick={() => window.location.href = `tel:${booking.client.phone}`}>
-                            Call
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center space-x-3">
+                            <Mail className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">{booking.client.email}</span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-xs h-8 px-3"
+                            onClick={() => window.location.href = `mailto:${booking.client.email}`}
+                          >
+                            Email
                           </Button>
                         </div>
-                      )}
-                      {booking.client.company_name && (
-                        <div className="flex items-center space-x-2 bg-white p-3 rounded-lg border border-blue-200">
-                          <Building className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm text-blue-800">{booking.client.company_name}</span>
-                        </div>
-                      )}
+                        
+                        {booking.client.phone && (
+                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center space-x-3">
+                              <Phone className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm font-medium text-gray-700">{booking.client.phone}</span>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-xs h-8 px-3"
+                              onClick={() => window.location.href = `tel:${booking.client.phone}`}
+                            >
+                              Call
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {booking.client.company_name && (
+                          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <Building className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">{booking.client.company_name}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Service & Project Information */}
-                <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-purple-900">
-                      <Package className="h-5 w-5" />
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="flex items-center space-x-2 text-gray-800 text-lg font-semibold">
+                      <Package className="h-5 w-5 text-gray-600" />
                       <span>Service Details</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-semibold text-purple-700 mb-2 block">Service</label>
-                      <p className="text-lg font-bold text-purple-900">{booking.service.name}</p>
-                    </div>
-                    {booking.service.category && (
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-semibold text-purple-700 mb-2 block">Category</label>
-                        <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
-                          {booking.service.category}
-                        </Badge>
+                        <label className="text-sm font-medium text-gray-600 mb-1 block">Service</label>
+                        <p className="text-lg font-semibold text-gray-900">{booking.service.name}</p>
                       </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <div className="text-purple-600 font-medium">Amount</div>
-                        <div className="text-lg font-bold text-purple-900">{formatCurrency(booking.amount || 0)}</div>
-                      </div>
-                      <div>
-                        <div className="text-purple-600 font-medium">Duration</div>
-                        <div className="font-medium text-purple-800">{booking.estimated_duration || '—'}</div>
+                      
+                      {booking.service.category && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600 mb-1 block">Category</label>
+                          <Badge variant="outline" className="text-gray-700 border-gray-300 bg-gray-50 font-medium">
+                            {booking.service.category}
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-sm font-medium text-gray-600 mb-1">Project Value</div>
+                          <div className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0)}</div>
+                        </div>
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-sm font-medium text-gray-600 mb-1">Duration</div>
+                          <div className="text-lg font-semibold text-gray-900">{booking.estimated_duration || '—'}</div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -2104,19 +2127,21 @@ export default function BookingDetailsPage() {
 
               {/* Provider Action Panels */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
-                  <CardHeader><CardTitle className="text-green-900">Quick Actions</CardTitle></CardHeader>
-                  <CardContent>
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="text-gray-800 text-lg font-semibold">Quick Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
                     <div className="space-y-2">
-                      <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => setActiveTab('messages')}>
+                      <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => setActiveTab('messages')}>
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Message Client
                       </Button>
-                      <Button size="sm" variant="outline" className="w-full" onClick={() => setActiveTab('progress')}>
+                      <Button size="sm" variant="outline" className="w-full border-gray-300" onClick={() => setActiveTab('progress')}>
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Update Progress
                       </Button>
-                      <Button size="sm" variant="outline" className="w-full" onClick={() => setActiveTab('files')}>
+                      <Button size="sm" variant="outline" className="w-full border-gray-300" onClick={() => setActiveTab('files')}>
                         <Paperclip className="h-4 w-4 mr-2" />
                         Request Files
                       </Button>
@@ -2124,43 +2149,47 @@ export default function BookingDetailsPage() {
                   </CardContent>
                 </Card>
                 
-                <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-yellow-50">
-                  <CardHeader><CardTitle className="text-orange-900">Project Status</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="text-orange-600 font-medium">Next Milestone</div>
-                        <div className="font-medium text-orange-800">{getNextMilestone()}</div>
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="text-gray-800 text-lg font-semibold">Project Status</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-600">Next Milestone</span>
+                        <span className="text-sm font-semibold text-gray-900">{getNextMilestone()}</span>
                       </div>
-                      <div>
-                        <div className="text-orange-600 font-medium">Time to Deadline</div>
-                        <div className="font-medium text-orange-800">{getTimeToDeadline()}</div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-600">Time to Deadline</span>
+                        <span className="text-sm font-semibold text-gray-900">{getTimeToDeadline()}</span>
                       </div>
-                      <div>
-                        <div className="text-orange-600 font-medium">Health Score</div>
-                        <div className="font-medium text-orange-800">{getBookingHealth()}</div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm font-medium text-gray-600">Project Health</span>
+                        <span className="text-sm font-semibold text-gray-900">{getBookingHealth()}</span>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50">
-                  <CardHeader><CardTitle className="text-teal-900">Financial Overview</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="text-teal-600 font-medium">Revenue</div>
-                        <div className="text-lg font-bold text-teal-900">{formatCurrency(booking.amount || 0)}</div>
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="text-gray-800 text-lg font-semibold">Financial Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-600">Project Value</span>
+                        <span className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0)}</span>
                       </div>
-                      <div>
-                        <div className="text-teal-600 font-medium">Payment Status</div>
-                        <Badge variant={booking.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-sm font-medium text-gray-600">Payment Status</span>
+                        <Badge variant={booking.payment_status === 'paid' ? 'default' : 'secondary'} className="text-xs font-medium">
                           {booking.payment_status || 'pending'}
                         </Badge>
                       </div>
-                      <div>
-                        <div className="text-teal-600 font-medium">Client Rating</div>
-                        <div className="font-medium text-teal-800">{getClientSatisfaction()}</div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-sm font-medium text-gray-600">Client Rating</span>
+                        <span className="text-sm font-semibold text-gray-900">{getClientSatisfaction()}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -2172,72 +2201,81 @@ export default function BookingDetailsPage() {
               {/* Client View - Focus on Service Details & Provider Info */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Service Information - Primary for Clients */}
-                <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-purple-900">
-                      <Package className="h-5 w-5" />
-                      <span>Your Service</span>
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="flex items-center space-x-2 text-gray-800 text-lg font-semibold">
+                      <Package className="h-5 w-5 text-gray-600" />
+                      <span>Service Information</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-semibold text-purple-700 mb-2 block">Service Name</label>
-                      <p className="text-xl font-bold text-purple-900">{booking.service.name}</p>
-                    </div>
-                    {booking.service.description && (
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-semibold text-purple-700 mb-2 block">Description</label>
-                        <p className="text-sm text-purple-800 bg-white p-3 rounded border border-purple-200">{booking.service.description}</p>
+                        <label className="text-sm font-medium text-gray-600 mb-1 block">Service Name</label>
+                        <p className="text-lg font-semibold text-gray-900">{booking.service.name}</p>
                       </div>
-                    )}
-                    {booking.service.category && (
-                      <div>
-                        <label className="text-sm font-semibold text-purple-700 mb-2 block">Category</label>
-                        <Badge variant="outline" className="text-purple-700 border-purple-300 bg-purple-50">
-                          {booking.service.category}
-                        </Badge>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-3 text-sm bg-white p-3 rounded border border-purple-200">
-                      <div>
-                        <div className="text-purple-600 font-medium">Duration</div>
-                        <div className="font-bold text-purple-900">{booking.estimated_duration || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-purple-600 font-medium">Total Cost</div>
-                        <div className="font-bold text-purple-900">{formatCurrency(booking.amount || 0)}</div>
+                      
+                      {booking.service.description && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600 mb-1 block">Description</label>
+                          <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-200">{booking.service.description}</p>
+                        </div>
+                      )}
+                      
+                      {booking.service.category && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600 mb-1 block">Category</label>
+                          <Badge variant="outline" className="text-gray-700 border-gray-300 bg-gray-50 font-medium">
+                            {booking.service.category}
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-sm font-medium text-gray-600 mb-1">Duration</div>
+                          <div className="text-lg font-semibold text-gray-900">{booking.estimated_duration || '—'}</div>
+                        </div>
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <div className="text-sm font-medium text-gray-600 mb-1">Total Cost</div>
+                          <div className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0)}</div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Booking Progress & Status */}
-                <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2 text-blue-900">
-                      <Clock className="h-5 w-5" />
+                <Card className="border border-gray-200 bg-white shadow-sm">
+                  <CardHeader className="border-b border-gray-100 bg-gray-50">
+                    <CardTitle className="flex items-center space-x-2 text-gray-800 text-lg font-semibold">
+                      <Clock className="h-5 w-5 text-gray-600" />
                       <span>Booking Status</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Current Status</label>
-                      <div className="flex items-center space-x-2">
-                        {getStatusBadge(booking.status)}
-                        {getPriorityBadge(booking.priority)}
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 mb-2 block">Current Status</label>
+                        <div className="flex items-center space-x-2">
+                          {getStatusBadge(booking.status)}
+                          {getPriorityBadge(booking.priority)}
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Scheduled</label>
-                      <p className="text-sm text-blue-800 bg-white p-3 rounded border border-blue-200">
-                        {booking.scheduled_date ? formatDate(booking.scheduled_date) : 'To be scheduled by provider'}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-blue-700 mb-2 block">Location</label>
-                      <p className="text-sm text-blue-800 bg-white p-3 rounded border border-blue-200">
-                        {booking.location || 'To be determined'}
-                      </p>
+                      
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 mb-2 block">Scheduled Date</label>
+                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          {booking.scheduled_date ? formatDate(booking.scheduled_date) : 'To be scheduled by provider'}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 mb-2 block">Location</label>
+                        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          {booking.location || 'To be determined'}
+                        </p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
