@@ -164,151 +164,150 @@ export default function ServiceDetail() {
               </Card>
             )}
 
-            <Card className="border-0">
-              <CardHeader>
-                <CardTitle>Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="flex items-center rounded-md border bg-white p-3">
-                    <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Starting at</div>
-                      <div className="text-gray-900 font-medium">{service.base_price != null ? service.base_price : 'N/A'} {service.currency || ''}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center rounded-md border bg-white p-3">
-                    <Building2 className="h-4 w-4 mr-2 text-gray-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Category</div>
-                      <div className="text-gray-900 font-medium">{service.category || 'Uncategorized'}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center rounded-md border bg-white p-3">
-                    <UserIcon className="h-4 w-4 mr-2 text-gray-500" />
-                    <div>
-                      <div className="text-xs text-gray-500">Provider</div>
-                      <div className="text-gray-900 font-medium">{service.provider?.full_name || 'Service Provider'}</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
-              <Card className="border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle>Packages</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {service.service_packages.map((pkg) => (
-                      <button
-                        type="button"
-                        key={pkg.id}
-                        onClick={() => setSelectedPackageId(pkg.id)}
-                        className={`text-left rounded-lg border p-4 transition ${selectedPackageId === pkg.id ? 'border-blue-600 ring-2 ring-blue-100' : 'hover:border-gray-400'}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="font-semibold">{pkg.name}</div>
-                          <div className="text-gray-900">{pkg.price} {service.currency || 'OMR'}</div>
+            {/* Main + sticky sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-6 lg:col-span-2">
+                <Card className="border-0">
+                  <CardHeader>
+                    <CardTitle>Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="flex items-center rounded-md border bg-white p-3">
+                        <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
+                        <div>
+                          <div className="text-xs text-gray-500">Starting at</div>
+                          <div className="text-gray-900 font-medium">{service.base_price != null ? service.base_price : 'N/A'} {service.currency || ''}</div>
                         </div>
-                        {pkg.description && <div className="mt-2 text-sm text-gray-600">{pkg.description}</div>}
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Simple booking form */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Book This Service</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Package (optional)</label>
-                      <select
-                        className="w-full rounded-md border px-3 py-2"
-                        value={selectedPackageId}
-                        onChange={(e) => setSelectedPackageId(e.target.value)}
-                      >
-                        <option value="">No package</option>
-                        {service.service_packages.map((pkg) => (
-                          <option key={pkg.id} value={pkg.id}>
-                            {pkg.name} — {pkg.price} {service.currency || 'OMR'}
-                          </option>
-                        ))}
-                      </select>
+                      </div>
+                      <div className="flex items-center rounded-md border bg-white p-3">
+                        <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+                        <div>
+                          <div className="text-xs text-gray-500">Category</div>
+                          <div className="text-gray-900 font-medium">{service.category || 'Uncategorized'}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center rounded-md border bg-white p-3">
+                        <UserIcon className="h-4 w-4 mr-2 text-gray-500" />
+                        <div>
+                          <div className="text-xs text-gray-500">Provider</div>
+                          <div className="text-gray-900 font-medium">{service.provider?.full_name || 'Service Provider'}</div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date & Time</label>
-                    <Input
-                      type="datetime-local"
-                      value={scheduledDate}
-                      onChange={(e) => setScheduledDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the provider should know?" />
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Button onClick={() => router.push('/services')}>Browse All Services</Button>
-                  <Button
-                    variant="secondary"
-                    onClick={async () => {
-                      if (!service?.id) return
-                      try {
-                        setIsBooking(true)
-                        // If user hasn't chosen a time, default to now + 1h
-                        const iso = scheduledDate
-                          ? new Date(scheduledDate).toISOString()
-                          : new Date(Date.now() + 60 * 60 * 1000).toISOString()
-                        const res = await fetch('/api/bookings', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          credentials: 'include',
-                          body: JSON.stringify({
-                            service_id: service.id,
-                            scheduled_date: iso,
-                            notes: notes || undefined,
-                            service_package_id: selectedPackageId || undefined
-                          })
-                        })
-                        const body = await res.json().catch(() => ({}))
-                        if (res.status === 401) {
-                          alert('Please sign in to book a service.')
-                          router.push('/auth/sign-in')
-                          return
-                        }
-                        if (!res.ok) throw new Error(body?.error || 'Booking failed')
-                        alert('Booking created successfully.')
-                        router.push('/dashboard/bookings')
-                      } catch (e: any) {
-                        alert(e?.message || 'Failed to create booking')
-                      } finally {
-                        setIsBooking(false)
-                      }
-                    }}
-                    disabled={isBooking}
-                  >
-                    {isBooking ? 'Booking…' : 'Book Now'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
-            <div className="flex gap-3">
-              <Button onClick={() => router.push('/services')}>Browse All Services</Button>
-              <Button variant="secondary" onClick={() => router.push(`/dashboard/services/${service.id}`)}>
-                View in Dashboard
-              </Button>
+                {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader>
+                      <CardTitle>Packages</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {service.service_packages.map((pkg) => (
+                          <button
+                            type="button"
+                            key={pkg.id}
+                            onClick={() => setSelectedPackageId(pkg.id)}
+                            className={`text-left rounded-lg border p-4 transition ${selectedPackageId === pkg.id ? 'border-blue-600 ring-2 ring-blue-100' : 'hover:border-gray-400'}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold">{pkg.name}</div>
+                              <div className="text-gray-900">{pkg.price} {service.currency || 'OMR'}</div>
+                            </div>
+                            {pkg.description && <div className="mt-2 text-sm text-gray-600">{pkg.description}</div>}
+                          </button>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Sticky booking sidebar */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-20 space-y-4">
+                  <Card className="border-0 shadow-lg">
+                    <CardHeader>
+                      <CardTitle>Book This Service</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Select Package (optional)</label>
+                          <select
+                            className="w-full rounded-md border px-3 py-2"
+                            value={selectedPackageId}
+                            onChange={(e) => setSelectedPackageId(e.target.value)}
+                          >
+                            <option value="">No package</option>
+                            {service.service_packages.map((pkg) => (
+                              <option key={pkg.id} value={pkg.id}>
+                                {pkg.name} — {pkg.price} {service.currency || 'OMR'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date & Time</label>
+                        <Input
+                          type="datetime-local"
+                          value={scheduledDate}
+                          onChange={(e) => setScheduledDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the provider should know?" />
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Button onClick={() => router.push('/services')}>Browse All Services</Button>
+                        <Button
+                          variant="secondary"
+                          onClick={async () => {
+                            if (!service?.id) return
+                            try {
+                              setIsBooking(true)
+                              const iso = scheduledDate
+                                ? new Date(scheduledDate).toISOString()
+                                : new Date(Date.now() + 60 * 60 * 1000).toISOString()
+                              const res = await fetch('/api/bookings', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                  service_id: service.id,
+                                  scheduled_date: iso,
+                                  notes: notes || undefined,
+                                  service_package_id: selectedPackageId || undefined
+                                })
+                              })
+                              const body = await res.json().catch(() => ({}))
+                              if (res.status === 401) {
+                                alert('Please sign in to book a service.')
+                                router.push('/auth/sign-in')
+                                return
+                              }
+                              if (!res.ok) throw new Error(body?.error || 'Booking failed')
+                              alert('Booking created successfully.')
+                              router.push('/dashboard/bookings')
+                            } catch (e: any) {
+                              alert(e?.message || 'Failed to create booking')
+                            } finally {
+                              setIsBooking(false)
+                            }
+                          }}
+                          disabled={isBooking}
+                        >
+                          {isBooking ? 'Booking…' : 'Book Now'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </div>
           </div>
         )}
