@@ -161,7 +161,7 @@ export default function ServiceDetail() {
                   <p className="mt-3 text-gray-700 whitespace-pre-line leading-7">{service.description}</p>
                 )}
               </div>
-            </div>
+        </div>
 
             {service.provider && (
         <Card>

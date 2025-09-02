@@ -1612,8 +1612,8 @@ export default function BookingDetailsPage() {
         </Card>
       </div>
 
-      {/* Advanced Actions Panel */}
-      {showAdvancedActions && (
+      {/* Advanced Actions Panel (Provider/Admin only) */}
+      {showAdvancedActions && (userRole === 'provider' || userRole === 'admin') && (
         <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
           <CardHeader>
             <CardTitle className="text-blue-900 flex items-center space-x-2">
@@ -1706,6 +1706,13 @@ export default function BookingDetailsPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Client view hint: Quick Actions are provider-only */}
+      {userRole === 'client' && (
+        <div className="rounded-md border p-3 bg-gray-50 text-sm text-gray-700">
+          Quick Actions are managed by your provider. You can still message, upload files, and view timeline updates.
+        </div>
       )}
 
       {/* Priority Alert */}
@@ -2049,6 +2056,86 @@ export default function BookingDetailsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Role-aware quick panels */}
+          {userRole === 'provider' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader><CardTitle>Client Summary</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <div className="font-medium">{booking.client?.full_name || 'Client'}</div>
+                    {booking.client?.email && <div>{booking.client.email}</div>}
+                    {booking.client?.phone && <div>{booking.client.phone}</div>}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardHeader><CardTitle>Next Steps</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('messages')}>Message</Button>
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('files')}>Request Files</Button>
+                    <Button size="sm" onClick={() => setActiveTab('timeline')}>Update Timeline</Button>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardHeader><CardTitle>Billing</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500">Amount</div>
+                      <div className="font-medium">{booking.amount || 0} {booking.currency || 'OMR'}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Payment</div>
+                      <div className="font-medium">{booking.payment_status || 'pending'}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {userRole === 'client' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="border-0 shadow-sm">
+                <CardHeader><CardTitle>Provider Summary</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <div className="font-medium">{booking.service?.name || 'Provider'}</div>
+                    {booking.service?.category && <div>{booking.service.category}</div>}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardHeader><CardTitle>Your Actions</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('messages')}>Message Provider</Button>
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('files')}>Upload Files</Button>
+                    <Button size="sm" onClick={() => setActiveTab('timeline')}>View Timeline</Button>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm">
+                <CardHeader><CardTitle>Booking Info</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500">Scheduled</div>
+                      <div className="font-medium">{booking.scheduled_date ? new Date(booking.scheduled_date).toLocaleString() : 'TBD'}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Duration</div>
+                      <div className="font-medium">{booking.estimated_duration || '—'}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Enhanced Analytics & Insights */}
           <Card>
