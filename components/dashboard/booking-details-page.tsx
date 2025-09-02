@@ -2656,7 +2656,7 @@ export default function BookingDetailsPage() {
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-white" />
                 </div>
-                <div>
+              <div>
                   <h3 className="text-lg font-semibold text-gray-900">Update Project Progress</h3>
                   <p className="text-sm text-gray-600">Track milestones and deliverables</p>
                 </div>
@@ -2694,7 +2694,7 @@ export default function BookingDetailsPage() {
                     <label className="text-sm font-medium mb-2 block flex items-center">
                       <BarChart3 className="h-4 w-4 mr-2 text-gray-600" />
                       Progress Percentage
-                    </label>
+                </label>
                     <div className="relative">
                       <input
                         type="range"
@@ -2706,48 +2706,48 @@ export default function BookingDetailsPage() {
                         aria-label="Progress percentage from 0 to 100"
                       />
                       <input
-                        type="number"
-                        min="0"
-                        max="100"
+                  type="number"
+                  min="0"
+                  max="100"
                         className="absolute right-0 top-4 w-16 p-1 text-xs border rounded text-center"
-                        value={progressUpdate.progress_percentage}
-                        onChange={(e) => setProgressUpdate(prev => ({ ...prev, progress_percentage: parseInt(e.target.value) || 0 }))}
+                  value={progressUpdate.progress_percentage}
+                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, progress_percentage: parseInt(e.target.value) || 0 }))}
                         aria-label="Progress percentage numeric input"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
+                />
+              </div>
+            </div>
+            
+            <div>
                     <label className="text-sm font-medium mb-2 block flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-gray-600" />
                       Estimated Completion
-                    </label>
+              </label>
                     <Input
                       type="date"
                       className="w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       value={progressUpdate.estimated_completion_date}
                       onChange={(e) => setProgressUpdate(prev => ({ ...prev, estimated_completion_date: e.target.value }))}
-                    />
-                  </div>
-                  
-                  <div>
+              />
+            </div>
+
+              <div>
                     <label className="text-sm font-medium mb-2 block flex items-center">
                       <Clock className="h-4 w-4 mr-2 text-gray-600" />
-                      Actual Start Date
-                    </label>
-                    <Input
+                  Actual Start Date
+                </label>
+                <Input
                       type="date"
                       className="w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      value={progressUpdate.actual_start_date}
-                      onChange={(e) => setProgressUpdate(prev => ({ ...prev, actual_start_date: e.target.value }))}
-                    />
-                  </div>
+                  value={progressUpdate.actual_start_date}
+                  onChange={(e) => setProgressUpdate(prev => ({ ...prev, actual_start_date: e.target.value }))}
+                />
+              </div>
                   
-                  <div>
+              <div>
                     <label className="text-sm font-medium mb-2 block flex items-center">
                       <Star className="h-4 w-4 mr-2 text-gray-600" />
                       Quality Score (1-10)
-                    </label>
+                </label>
                     <div className="flex items-center space-x-2">
                       <input
                         type="range"
@@ -2762,8 +2762,8 @@ export default function BookingDetailsPage() {
                         {progressUpdate.quality_score || 1}
                       </span>
                     </div>
-                  </div>
-                </div>
+              </div>
+            </div>
 
                 <div className="space-y-4">
                   <div>
@@ -2783,7 +2783,7 @@ export default function BookingDetailsPage() {
                   <div className="bg-gray-50 rounded-lg p-4 border">
                     <h5 className="font-medium text-gray-900 mb-3">Quick Status Updates</h5>
                     <div className="grid grid-cols-2 gap-2">
-                      <Button
+              <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setProgressUpdate(prev => ({ 
@@ -2883,15 +2883,15 @@ export default function BookingDetailsPage() {
                       Update Progress
                     </>
                   )}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowProgressUpdate(false)}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowProgressUpdate(false)}
                   className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
+              >
+                Cancel
+              </Button>
+            </div>
             </div>
           </div>
         </div>
@@ -5229,7 +5229,7 @@ export default function BookingDetailsPage() {
             <CardHeader className="border-b border-gray-100 bg-gray-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Clock3 className="h-5 w-5 text-gray-600" />
+                <Clock3 className="h-5 w-5 text-gray-600" />
                   <CardTitle className="text-gray-800">Project Timeline & Activities</CardTitle>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -5255,7 +5255,7 @@ export default function BookingDetailsPage() {
               <div className="space-y-6">
                 {/* Booking Status History */}
                 {bookingHistory.length > 0 && (
-                  <div className="space-y-4">
+              <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                       <History className="h-5 w-5 mr-2 text-blue-600" />
                       Booking Status History
@@ -5306,16 +5306,16 @@ export default function BookingDetailsPage() {
                       }
                       
                       return (
-                        <div key={task.id} className="relative">
+                      <div key={task.id} className="relative">
                           {!isLast && (
                             <div className="absolute left-4 top-12 bottom-0 w-0.5 bg-gray-200"></div>
                           )}
-                          
-                          <div className="flex items-start space-x-4">
+                        
+                        <div className="flex items-start space-x-4">
                             <div className={`w-8 h-8 rounded-full border-2 bg-white flex items-center justify-center shadow-sm ${getStatusColor(task.status).replace('bg-', 'border-')}`}>
-                              {task.status === 'completed' ? (
+                            {task.status === 'completed' ? (
                                 <CheckCircle className="h-5 w-5 text-green-600" />
-                              ) : task.status === 'in_progress' ? (
+                            ) : task.status === 'in_progress' ? (
                                 <Play className="h-4 w-4 text-blue-600" />
                               ) : task.status === 'on_hold' ? (
                                 <Pause className="h-4 w-4 text-yellow-600" />
@@ -5323,9 +5323,9 @@ export default function BookingDetailsPage() {
                                 <X className="h-4 w-4 text-red-600" />
                               ) : (
                                 <Clock className="h-4 w-4 text-gray-400" />
-                              )}
-                            </div>
-                            
+                            )}
+                          </div>
+                          
                             <div className={`flex-1 rounded-lg p-4 border shadow-sm ${statusColors[task.status as keyof typeof statusColors] || statusColors.not_started}`}>
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
@@ -5339,7 +5339,7 @@ export default function BookingDetailsPage() {
                                      task.status === 'completed' ? 'Completed' :
                                      task.status === 'on_hold' ? 'On Hold' :
                                      task.status === 'cancelled' ? 'Cancelled' : 'Unknown'}
-                                  </Badge>
+                              </Badge>
                                   {userRole === 'provider' && task.status !== 'completed' && (
                                     <Button
                                       size="sm"
@@ -5353,8 +5353,8 @@ export default function BookingDetailsPage() {
                                     </Button>
                                   )}
                                 </div>
-                              </div>
-                              
+                            </div>
+                            
                               {/* Task Metadata */}
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600 mb-3">
                                 <div className="flex items-center">
@@ -5385,37 +5385,37 @@ export default function BookingDetailsPage() {
                                   <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
                                     <span>Progress</span>
                                     <span>67%</span>
-                                  </div>
+                            </div>
                                   <div className="w-full bg-gray-200 rounded-full h-2">
                                     <div className="bg-blue-600 h-2 rounded-full" style={{ width: '67%' }}></div>
                                   </div>
                                 </div>
                               )}
-                              
+                            
                               {/* Task Comments */}
-                              {task.comments && task.comments.length > 0 && (
+                            {task.comments && task.comments.length > 0 && (
                                 <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
                                   <h5 className="text-xs font-medium text-gray-700 flex items-center">
                                     <MessageSquare className="h-3 w-3 mr-1" />
                                     Recent Updates ({task.comments.length})
                                   </h5>
                                   {task.comments.slice(0, 2).map((comment: any) => (
-                                    <div key={comment.id} className="bg-white p-3 rounded border border-gray-200">
-                                      <p className="text-sm text-gray-700">{comment.text}</p>
+                                  <div key={comment.id} className="bg-white p-3 rounded border border-gray-200">
+                                    <p className="text-sm text-gray-700">{comment.text}</p>
                                       <div className="flex items-center justify-between mt-1">
                                         <span className="text-xs text-gray-500">{comment.user}</span>
                                         <span className="text-xs text-gray-500">
                                           {new Date(comment.created_at).toLocaleString()}
                                         </span>
                                       </div>
-                                    </div>
-                                  ))}
+                                  </div>
+                                ))}
                                   {task.comments.length > 2 && (
                                     <Button variant="ghost" size="sm" className="text-xs">
                                       View all {task.comments.length} comments
                                     </Button>
                                   )}
-                                </div>
+                              </div>
                               )}
                               
                               {/* Provider Action Buttons */}
@@ -5440,11 +5440,11 @@ export default function BookingDetailsPage() {
                                       <Edit className="h-3 w-3 mr-1" />
                                       Edit
                                     </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            )}
                           </div>
+                              )}
+                        </div>
+                      </div>
                         </div>
                       )
                     })}
