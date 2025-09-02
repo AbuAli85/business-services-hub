@@ -155,7 +155,6 @@ export default function EnhancedMessagesThread({
         .from('booking_messages')
         .select(`
           *,
-          sender:profiles!booking_messages_sender_id_fkey(full_name, role, avatar_url),
           reactions:message_reactions(*),
           attachments:message_attachments(*)
         `)
@@ -164,14 +163,32 @@ export default function EnhancedMessagesThread({
 
       if (error) throw error
 
-      const transformedMessages = (data || []).map(msg => ({
-        ...msg,
-        sender_name: msg.sender?.full_name || 'Unknown',
-        sender_role: msg.sender?.role || userRole,
-        is_own_message: msg.sender_id === user.id,
-        message_type: msg.message_type || 'text',
-        priority: msg.priority || 'normal'
-      }))
+      // Get unique sender IDs to fetch sender details
+      const senderIds = [...new Set((data || []).map(msg => msg.sender_id))]
+      
+      // Fetch sender details from profiles table
+      const { data: sendersData } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .in('id', senderIds)
+      
+      // Create a lookup map for sender details
+      const sendersMap = (sendersData || []).reduce((acc, sender) => {
+        acc[sender.id] = sender
+        return acc
+      }, {} as Record<string, any>)
+
+      const transformedMessages = (data || []).map(msg => {
+        const sender = sendersMap[msg.sender_id] || {}
+        return {
+          ...msg,
+          sender_name: sender.full_name || 'Unknown User',
+          sender_role: sender.role || msg.sender_role || userRole,
+          is_own_message: msg.sender_id === user.id,
+          message_type: msg.message_type || 'text',
+          priority: msg.priority || 'normal'
+        }
+      })
 
       setMessages(transformedMessages)
       markMessagesAsRead()
