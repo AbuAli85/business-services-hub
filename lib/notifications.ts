@@ -278,5 +278,4 @@ class NotificationService {
 // Create singleton instance
 export const notificationService = new NotificationService()
 
-// Export types
-export type { ProgressUpdate, StatusUpdate }
+// Types are already exported in their interface declarations above
