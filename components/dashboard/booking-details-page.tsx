@@ -646,7 +646,7 @@ export default function BookingDetailsPage() {
         due_date: '',
         assigned_to: 'provider',
         dependencies: index > 0 ? [(Date.now() + index - 1).toString()] : [],
-        tags: [template.name.toLowerCase().replace(/\s+/g, '-')],
+        tags: [template.name ? template.name.toLowerCase().replace(/\s+/g, '-') : 'task'],
         attachments: [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -4618,8 +4618,8 @@ export default function BookingDetailsPage() {
                               </label>
                               <input
                                 type="text"
-                                value={newTask.tags.join(', ')}
-                                onChange={(e) => setNewTask(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag) }))}
+                                value={(newTask.tags || []).join(', ')}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag && tag.trim()).filter(tag => tag) }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                                 placeholder="frontend, api, database, responsive"
                               />
