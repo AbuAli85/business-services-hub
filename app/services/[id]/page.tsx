@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Image from 'next/image'
 import { ArrowLeft, Package, DollarSign, Building2, User as UserIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface ServiceRecord {
   id: string
@@ -18,6 +20,9 @@ interface ServiceRecord {
   currency?: string
   provider_id?: string
   status?: string
+  cover_image_url?: string
+  bookings_count?: number
+  rating?: number
   service_packages?: { id: string; name: string; description?: string; price: number; features?: string[] }[]
   provider?: { id: string; full_name?: string; email?: string; phone?: string; company_name?: string; avatar_url?: string } | null
 }
@@ -59,8 +64,8 @@ export default function ServiceDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mb-4 flex items-center justify-between">
           <Button variant="outline" onClick={() => router.back()} className="mb-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -92,31 +97,53 @@ export default function ServiceDetail() {
 
         {!loading && !error && service && (
           <div className="space-y-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <div className="flex items-start justify-between">
+            {/* Hero header */}
+            <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+              {service.cover_image_url && (
+                <div className="relative h-48 w-full">
+                  <Image src={service.cover_image_url} alt={service.title} fill className="object-cover" />
+                </div>
+              )}
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 text-xl font-semibold text-gray-900">
                       <Package className="h-5 w-5" />
-                      <span className="text-xl">{service.title}</span>
-                    </CardTitle>
+                      <span>{service.title}</span>
+                    </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
                       <Badge variant="secondary">{service.category || 'Uncategorized'}</Badge>
                       {service.currency && (
                         <Badge variant="outline">Base {service.base_price ?? 0} {service.currency}</Badge>
                       )}
+                      {typeof service.rating === 'number' && (
+                        <Badge variant="outline">Rating {service.rating.toFixed(1)}</Badge>
+                      )}
+                      {typeof service.bookings_count === 'number' && (
+                        <Badge variant="outline">{service.bookings_count} bookings</Badge>
+                      )}
                     </div>
                   </div>
+                  {service.provider && (
+                    <div className="hidden sm:flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={service.provider.avatar_url || ''} />
+                        <AvatarFallback>{(service.provider.full_name || 'SP').slice(0,2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-right">
+                        <div className="font-medium leading-5">{service.provider.full_name || 'Service Provider'}</div>
+                        {service.provider.company_name && (
+                          <div className="text-xs text-gray-500">{service.provider.company_name}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </CardHeader>
-              <CardContent>
-                {service.description ? (
-                  <p className="text-gray-700 whitespace-pre-line leading-7">{service.description}</p>
-                ) : (
-                  <p className="text-gray-500">No description provided.</p>
+                {service.description && (
+                  <p className="mt-3 text-gray-700 whitespace-pre-line leading-7">{service.description}</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {service.provider && (
               <Card>
