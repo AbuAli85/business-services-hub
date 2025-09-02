@@ -204,6 +204,7 @@ export default function BookingDetailsPage() {
     priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     estimated_hours: '',
     actual_hours: '',
+    start_date: '',
     due_date: '',
     category: 'development' as 'development' | 'design' | 'testing' | 'documentation' | 'meeting' | 'review',
     assigned_to: '',
@@ -576,6 +577,7 @@ export default function BookingDetailsPage() {
         priority: 'medium',
         estimated_hours: '',
         actual_hours: '',
+        start_date: '',
         due_date: '',
         category: 'development',
         assigned_to: '',
@@ -4033,158 +4035,373 @@ export default function BookingDetailsPage() {
                 </div>
               </div>
 
-              {/* Enhanced Add Task Modal */}
+              {/* Professional Task Creation Modal */}
               {showAddMilestone && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-semibold">Create New Task</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAddMilestone(false)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {/* Basic Information */}
-                      <div className="grid grid-cols-1 gap-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Task Title *</label>
-                          <input
-                            type="text"
-                            value={newTask.title}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enter descriptive task title"
-                          />
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden">
+                    {/* Modal Header */}
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                            <Plus className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold">Create New Task</h3>
+                            <p className="text-blue-100 text-sm">Add a new task to your project timeline</p>
+                          </div>
                         </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Description</label>
-                          <textarea
-                            value={newTask.description}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            rows={3}
-                            placeholder="Provide detailed task description and requirements..."
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Task Properties */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Category</label>
-                          <select
-                            value={newTask.category}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value as any }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            <option value="development">Development</option>
-                            <option value="design">Design</option>
-                            <option value="testing">Testing</option>
-                            <option value="documentation">Documentation</option>
-                            <option value="meeting">Meeting</option>
-                            <option value="review">Review</option>
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Priority</label>
-                          <select
-                            value={newTask.priority}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as any }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            <option value="low">Low Priority</option>
-                            <option value="medium">Medium Priority</option>
-                            <option value="high">High Priority</option>
-                            <option value="critical">Critical Priority</option>
-                          </select>
-                        </div>
-                      </div>
-                      
-                      {/* Time & Assignment */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Est. Hours</label>
-                          <input
-                            type="number"
-                            value={newTask.estimated_hours}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="8"
-                            min="0"
-                            step="0.5"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Due Date</label>
-                          <input
-                            type="date"
-                            value={newTask.due_date}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">Assigned To</label>
-                          <select
-                            value={newTask.assigned_to}
-                            onChange={(e) => setNewTask(prev => ({ ...prev, assigned_to: e.target.value }))}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            <option value="provider">Provider</option>
-                            <option value="client">Client</option>
-                            <option value="">Unassigned</option>
-                          </select>
-                        </div>
-                      </div>
-                      
-                      {/* Tags */}
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Tags (comma-separated)</label>
-                        <input
-                          type="text"
-                          value={newTask.tags.join(', ')}
-                          onChange={(e) => setNewTask(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag) }))}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="frontend, ui, responsive, mobile"
-                        />
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex space-x-3 pt-6 border-t border-gray-200">
                         <Button
-                          onClick={createTask}
-                          disabled={isCreatingTask || !newTask.title.trim()}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3"
-                        >
-                          {isCreatingTask ? (
-                            <div className="flex items-center space-x-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                              <span>Creating...</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <Plus className="h-4 w-4" />
-                              <span>Create Task</span>
-                            </div>
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setShowAddMilestone(false)}
-                          className="flex-1 py-3"
+                          className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg"
                         >
-                          Cancel
+                          <X className="h-5 w-5" />
                         </Button>
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto max-h-[calc(95vh-120px)]">
+                      <div className="p-6 space-y-6">
+                        {/* Task Title & Description */}
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                            <FileText className="h-4 w-4 mr-2 text-blue-600" />
+                            Task Information
+                          </h4>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Task Title *
+                                <span className="text-red-500 ml-1">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newTask.title}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                placeholder="e.g., Implement user authentication system"
+                              />
+                              {!newTask.title.trim() && (
+                                <p className="text-red-500 text-xs mt-1">Task title is required</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Detailed Description
+                              </label>
+                              <textarea
+                                value={newTask.description}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                rows={4}
+                                placeholder="Provide comprehensive task requirements, acceptance criteria, and implementation notes..."
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Include specific requirements, deliverables, and any special instructions
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Task Classification */}
+                        <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                          <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                            <Tag className="h-4 w-4 mr-2 text-purple-600" />
+                            Task Classification
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">Category</label>
+                              <select
+                                value={newTask.category}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value as any }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                              >
+                                <option value="development">🔧 Development</option>
+                                <option value="design">🎨 Design</option>
+                                <option value="testing">🧪 Testing</option>
+                                <option value="documentation">📚 Documentation</option>
+                                <option value="meeting">👥 Meeting</option>
+                                <option value="review">👁️ Review</option>
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">Priority Level</label>
+                              <select
+                                value={newTask.priority}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as any }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                              >
+                                <option value="low">🟢 Low Priority</option>
+                                <option value="medium">🟡 Medium Priority</option>
+                                <option value="high">🟠 High Priority</option>
+                                <option value="critical">🔴 Critical Priority</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">Task Status</label>
+                              <select
+                                value={newTask.status}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, status: e.target.value as any }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                              >
+                                <option value="not_started">⏸️ Not Started</option>
+                                <option value="in_progress">▶️ In Progress</option>
+                                <option value="on_hold">⏸️ On Hold</option>
+                                <option value="completed">✅ Completed</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Time & Resource Planning */}
+                        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                          <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                            <Clock className="h-4 w-4 mr-2 text-green-600" />
+                            Time & Resource Planning
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Estimated Hours
+                                <span className="text-gray-500 text-xs ml-1">(decimal allowed)</span>
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  value={newTask.estimated_hours}
+                                  onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: e.target.value }))}
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all pl-8"
+                                  placeholder="8.5"
+                                  min="0"
+                                  step="0.25"
+                                />
+                                <Timer className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1 space-y-1">
+                                <div>• Small: 1-4 hours</div>
+                                <div>• Medium: 4-16 hours</div>
+                                <div>• Large: 16+ hours</div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">Start Date</label>
+                              <input
+                                type="date"
+                                value={newTask.start_date || ''}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, start_date: e.target.value }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                                min={new Date().toISOString().split('T')[0]}
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">Due Date</label>
+                              <input
+                                type="date"
+                                value={newTask.due_date}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                                min={newTask.start_date || new Date().toISOString().split('T')[0]}
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">Assigned To</label>
+                              <select
+                                value={newTask.assigned_to}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, assigned_to: e.target.value }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                              >
+                                <option value="">👤 Unassigned</option>
+                                <option value="provider">👨‍💼 Provider</option>
+                                <option value="client">👥 Client</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Dependencies & Relationships */}
+                        <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                          <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                            <Link className="h-4 w-4 mr-2 text-orange-600" />
+                            Dependencies & Labels
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Task Dependencies
+                                <span className="text-gray-500 text-xs ml-1">(tasks that must be completed first)</span>
+                              </label>
+                              <select
+                                multiple
+                                value={newTask.dependencies}
+                                onChange={(e) => {
+                                  const selected = Array.from(e.target.selectedOptions, option => option.value)
+                                  setNewTask(prev => ({ ...prev, dependencies: selected }))
+                                }}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                                size={3}
+                              >
+                                {projectTasks.filter(task => task.id !== editingTask?.id).map(task => (
+                                  <option key={task.id} value={task.id}>
+                                    {task.title}
+                                  </option>
+                                ))}
+                              </select>
+                              <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple tasks</p>
+                            </div>
+                            
+                            <div>
+                              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                Tags & Labels
+                                <span className="text-gray-500 text-xs ml-1">(comma-separated)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newTask.tags.join(', ')}
+                                onChange={(e) => setNewTask(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag) }))}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                                placeholder="frontend, api, database, responsive"
+                              />
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {['frontend', 'backend', 'api', 'database', 'ui', 'ux', 'responsive', 'mobile', 'testing', 'security'].map(tag => (
+                                  <button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!newTask.tags.includes(tag)) {
+                                        setNewTask(prev => ({ ...prev, tags: [...prev.tags, tag] }))
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
+                                  >
+                                    +{tag}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Smart Suggestions */}
+                        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <Lightbulb className="h-4 w-4 mr-2 text-blue-600" />
+                            Smart Suggestions
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="p-3 bg-white rounded border border-blue-200">
+                              <h5 className="text-sm font-medium text-blue-900 mb-1">Quick Templates</h5>
+                              <div className="space-y-1">
+                                <button 
+                                  onClick={() => setNewTask(prev => ({ 
+                                    ...prev, 
+                                    title: 'API Endpoint Development',
+                                    category: 'development',
+                                    estimated_hours: '8',
+                                    tags: ['api', 'backend', 'endpoint']
+                                  }))}
+                                  className="text-xs text-blue-600 hover:text-blue-800 block"
+                                >
+                                  → API Development
+                                </button>
+                                <button 
+                                  onClick={() => setNewTask(prev => ({ 
+                                    ...prev, 
+                                    title: 'UI Component Design',
+                                    category: 'design',
+                                    estimated_hours: '6',
+                                    tags: ['ui', 'design', 'component']
+                                  }))}
+                                  className="text-xs text-blue-600 hover:text-blue-800 block"
+                                >
+                                  → UI Design
+                                </button>
+                                <button 
+                                  onClick={() => setNewTask(prev => ({ 
+                                    ...prev, 
+                                    title: 'Testing & QA Review',
+                                    category: 'testing',
+                                    estimated_hours: '4',
+                                    tags: ['testing', 'qa', 'review']
+                                  }))}
+                                  className="text-xs text-blue-600 hover:text-blue-800 block"
+                                >
+                                  → Testing
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <div className="p-3 bg-white rounded border border-blue-200">
+                              <h5 className="text-sm font-medium text-blue-900 mb-1">Time Estimates</h5>
+                              <div className="text-xs text-gray-600 space-y-1">
+                                <div>• Research: 2-4 hours</div>
+                                <div>• Simple feature: 4-8 hours</div>
+                                <div>• Complex feature: 16-32 hours</div>
+                                <div>• Testing: 25% of dev time</div>
+                                <div>• Documentation: 10% of dev time</div>
+                              </div>
+                            </div>
+                            
+                            <div className="p-3 bg-white rounded border border-blue-200">
+                              <h5 className="text-sm font-medium text-blue-900 mb-1">Best Practices</h5>
+                              <div className="text-xs text-gray-600 space-y-1">
+                                <div>✓ Keep tasks under 16 hours</div>
+                                <div>✓ Add detailed acceptance criteria</div>
+                                <div>✓ Set realistic deadlines</div>
+                                <div>✓ Include relevant tags</div>
+                                <div>✓ Define clear dependencies</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-500">
+                          <span className="font-medium">💡 Tip:</span> Use detailed descriptions and realistic time estimates for better project planning
+                        </div>
+                        <div className="flex space-x-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowAddMilestone(false)}
+                            className="px-6 py-2 border-gray-300"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={createTask}
+                            disabled={isCreatingTask || !newTask.title.trim()}
+                            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
+                          >
+                            {isCreatingTask ? (
+                              <div className="flex items-center space-x-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                <span>Creating Task...</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <Plus className="h-4 w-4" />
+                                <span>Create Task</span>
+                              </div>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
