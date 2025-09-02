@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 
 function isValidUuid(value: unknown): value is string {
   if (typeof value !== 'string') return false
@@ -55,10 +55,11 @@ export async function GET(
       )
     }
 
-    // Enrich with provider profile
+    // Enrich with provider profile (use admin client to bypass RLS for public view)
     let provider: any = null
     try {
-      const { data: providerRow } = await supabase
+      const admin = getSupabaseAdminClient()
+      const { data: providerRow } = await admin
         .from('profiles')
         .select('id, full_name, email, phone, company_name, avatar_url')
         .eq('id', serviceRow.provider_id)
