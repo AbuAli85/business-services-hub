@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, Package, DollarSign, Building2, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Package, DollarSign, Building2, User as UserIcon, Share2, Heart } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +39,7 @@ export default function ServiceDetail() {
   const [notes, setNotes] = useState<string>('')
   const [selectedPackageId, setSelectedPackageId] = useState<string>('')
   const [isBooking, setIsBooking] = useState<boolean>(false)
+  const [isSaved, setIsSaved] = useState<boolean>(false)
 
   useEffect(() => {
     const load = async () => {
@@ -124,20 +125,29 @@ export default function ServiceDetail() {
                       )}
                     </div>
                   </div>
-                  {service.provider && (
-                    <div className="hidden sm:flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={service.provider.avatar_url || ''} />
-                        <AvatarFallback>{(service.provider.full_name || 'SP').slice(0,2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div className="text-right">
-                        <div className="font-medium leading-5">{service.provider.full_name || 'Service Provider'}</div>
-                        {service.provider.company_name && (
-                          <div className="text-xs text-gray-500">{service.provider.company_name}</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          if (navigator.share) {
+                            await navigator.share({ title: service.title, url: window.location.href })
+                          } else {
+                            await navigator.clipboard.writeText(window.location.href)
+                            alert('Link copied to clipboard')
+                          }
+                        } catch {}
+                      }}
+                    >
+                      <Share2 className="h-4 w-4 mr-2" /> Share
+                    </Button>
+                    <Button
+                      variant={isSaved ? 'secondary' : 'outline'}
+                      onClick={() => setIsSaved((v) => !v)}
+                    >
+                      <Heart className={`h-4 w-4 mr-2 ${isSaved ? 'fill-current' : ''}`} /> {isSaved ? 'Saved' : 'Save'}
+                    </Button>
+                  </div>
                 </div>
                 {service.description && (
                   <p className="mt-3 text-gray-700 whitespace-pre-line leading-7">{service.description}</p>
@@ -167,6 +177,42 @@ export default function ServiceDetail() {
             {/* Main + sticky sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="space-y-6 lg:col-span-2">
+                {/* Provider card */}
+                {service.provider && (
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><UserIcon className="h-5 w-5" /> Provider</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={service.provider.avatar_url || ''} />
+                            <AvatarFallback>{(service.provider.full_name || 'SP').slice(0,2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{service.provider.full_name || 'Service Provider'}</div>
+                            {service.provider.company_name && (
+                              <div className="text-sm text-gray-600">{service.provider.company_name}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {service.provider.email && (
+                            <Button asChild variant="outline">
+                              <a href={`mailto:${service.provider.email}?subject=Inquiry about ${encodeURIComponent(service.title)}`}>Email</a>
+                            </Button>
+                          )}
+                          {service.provider.phone && (
+                            <Button asChild variant="outline">
+                              <a href={`tel:${service.provider.phone}`}>Call</a>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 <Card className="border-0">
                   <CardHeader>
                     <CardTitle>Overview</CardTitle>
