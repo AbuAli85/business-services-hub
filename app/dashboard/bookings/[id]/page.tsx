@@ -1,6 +1,6 @@
 'use client'
 
-import EnhancedBookingDetails from '@/components/dashboard/enhanced-booking-details'
+import BookingDetailsPage from '@/components/dashboard/booking-details-page'
 
 interface BookingDetailsProps {
   params: {
@@ -9,7 +9,7 @@ interface BookingDetailsProps {
 }
 
 export default function BookingDetails({ params }: BookingDetailsProps) {
-  return <EnhancedBookingDetails />
+  return <BookingDetailsPage />
 }
 
 
