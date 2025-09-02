@@ -1483,8 +1483,8 @@ export default function BookingDetailsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">
-              {userRole === 'provider' ? 'Service Booking' : 'Your Booking'} #{booking.id.slice(0, 8)}
+            <h1 className="text-3xl font-bold text-red-600">
+              🔥 {userRole === 'provider' ? 'Provider Service Booking' : 'Client Your Booking'} #{booking.id.slice(0, 8)} 🔥
             </h1>
             <p className="text-muted-foreground">
               {userRole === 'provider' 
