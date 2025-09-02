@@ -148,6 +148,30 @@ export default function EnhancedMessagesThread({
     }
   }, [])
 
+  // Test real-time connection
+  useEffect(() => {
+    const testRealtimeConnection = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        console.log('🧪 Testing Supabase real-time capabilities...')
+        
+        // Check if real-time is available
+        const testChannel = supabase.channel('test-connection')
+        testChannel.subscribe((status) => {
+          console.log('🧪 Test channel status:', status)
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Real-time is working!')
+            testChannel.unsubscribe()
+          }
+        })
+      } catch (error) {
+        console.error('❌ Real-time test failed:', error)
+      }
+    }
+    
+    testRealtimeConnection()
+  }, [])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -237,16 +261,26 @@ export default function EnhancedMessagesThread({
         created_at: new Date().toISOString()
       }
 
-      const { error } = await supabase
+      console.log('📤 Sending message:', messageData)
+
+      const { error, data } = await supabase
         .from('booking_messages')
         .insert(messageData)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error sending message:', error)
+        throw error
+      }
+
+      console.log('✅ Message sent successfully:', data)
 
       setNewMessage('')
       setSelectedPriority('normal')
       toast.success('Message sent!')
-      loadMessages()
+      
+      // Don't reload all messages - let real-time handle it
+      // The real-time subscription should pick up the new message automatically
       
     } catch (error) {
       console.error('Error sending message:', error)
@@ -382,9 +416,12 @@ export default function EnhancedMessagesThread({
   }
 
   const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+  const [realtimeWorking, setRealtimeWorking] = useState(false)
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
 
   const setupRealtime = async () => {
     try {
+      console.log('🔄 Setting up real-time subscriptions for booking:', bookingId)
       const supabase = await getSupabaseClient()
       
       // Create a channel for real-time updates
@@ -398,7 +435,8 @@ export default function EnhancedMessagesThread({
             filter: `booking_id=eq.${bookingId}`
           },
           async (payload) => {
-            console.log('📨 New message received:', payload.new)
+            console.log('📨 New message received via real-time:', payload)
+            console.log('📊 Current messages count before:', messages.length)
             await handleNewMessage(payload.new as any)
           }
         )
@@ -419,16 +457,39 @@ export default function EnhancedMessagesThread({
           handleTypingEvent(payload.payload)
         })
         .subscribe((status) => {
-          console.log('🔔 Real-time subscription status:', status)
+          console.log('🔔 Real-time subscription status:', status, 'for booking:', bookingId)
           if (status === 'SUBSCRIBED') {
+            console.log('✅ Real-time subscription successful!')
+            setRealtimeWorking(true)
             toast.success('Real-time messaging connected!', { duration: 2000 })
+            clearPolling() // Stop polling if real-time works
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Real-time subscription error!')
+            setRealtimeWorking(false)
+            setupPolling() // Fallback to polling
+            toast.error('Real-time failed, using polling fallback')
+          } else if (status === 'TIMED_OUT') {
+            console.error('⏰ Real-time subscription timed out!')
+            setRealtimeWorking(false)
+            setupPolling() // Fallback to polling
+            toast.error('Real-time timed out, using polling fallback')
           }
         })
 
       setRealtimeChannel(channel)
+      
+      // Set a timeout to fallback to polling if real-time doesn't connect in 10 seconds
+      setTimeout(() => {
+        if (!realtimeWorking) {
+          console.log('⏰ Real-time timeout, falling back to polling')
+          setupPolling()
+        }
+      }, 10000)
+      
     } catch (error) {
       console.error('❌ Failed to setup real-time:', error)
       toast.error('Real-time messaging failed to connect')
+      setupPolling() // Immediate fallback on error
     }
   }
 
@@ -438,21 +499,54 @@ export default function EnhancedMessagesThread({
       realtimeChannel.unsubscribe()
       setRealtimeChannel(null)
     }
+    clearPolling()
+  }
+
+  const setupPolling = () => {
+    console.log('🔄 Setting up message polling as fallback')
+    clearPolling() // Clear any existing polling
+    
+    const interval = setInterval(async () => {
+      console.log('📡 Polling for new messages...')
+      await loadMessages()
+    }, 3000) // Poll every 3 seconds
+    
+    setPollingInterval(interval)
+    toast.info('Using message polling (refresh every 3s)', { duration: 3000 })
+  }
+
+  const clearPolling = () => {
+    if (pollingInterval) {
+      console.log('🧹 Clearing message polling')
+      clearInterval(pollingInterval)
+      setPollingInterval(null)
+    }
   }
 
   const handleNewMessage = async (newMessage: any) => {
     try {
+      console.log('🔥 Processing new message:', newMessage)
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
-      if (!user) return
+      if (!user) {
+        console.log('❌ No user found, cannot process message')
+        return
+      }
 
       // Fetch sender details for the new message
-      const { data: senderData } = await supabase
+      console.log('👤 Fetching sender details for user:', newMessage.sender_id)
+      const { data: senderData, error: senderError } = await supabase
         .from('profiles')
         .select('id, full_name, role')
         .eq('id', newMessage.sender_id)
         .single()
+
+      if (senderError) {
+        console.error('❌ Error fetching sender data:', senderError)
+      } else {
+        console.log('✅ Sender data fetched:', senderData)
+      }
 
       const sender = senderData || {}
       const transformedMessage = {
@@ -466,8 +560,15 @@ export default function EnhancedMessagesThread({
         attachments: []
       }
 
+      console.log('📝 Transformed message:', transformedMessage)
+
       // Add to messages state
-      setMessages(prev => [...prev, transformedMessage])
+      setMessages(prev => {
+        console.log('📊 Adding message to state. Previous count:', prev.length)
+        const newState = [...prev, transformedMessage]
+        console.log('📊 New message count will be:', newState.length)
+        return newState
+      })
       
       // Show notification for messages from others
       if (!transformedMessage.is_own_message) {
