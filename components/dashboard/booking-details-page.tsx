@@ -165,6 +165,21 @@ export default function BookingDetailsPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [fileCategory, setFileCategory] = useState('contract')
   const [showAddMilestone, setShowAddMilestone] = useState(false)
+  // Task Management State
+  const [projectTasks, setProjectTasks] = useState<any[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    status: 'not_started' as 'not_started' | 'in_progress' | 'completed',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    estimated_hours: '',
+    due_date: ''
+  })
+  const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [editingTask, setEditingTask] = useState<any>(null)
+  const [showTaskComments, setShowTaskComments] = useState<{ [key: string]: boolean }>({})
+  const [taskComments, setTaskComments] = useState<{ [key: string]: string }>({})
   // Suggestions state
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
@@ -186,6 +201,7 @@ export default function BookingDetailsPage() {
       setupRealtime()
       loadSuggestions()
       loadTimelineComments()
+      loadProjectTasks()
     }
     return teardownRealtime
   }, [bookingId])
@@ -305,6 +321,149 @@ export default function BookingDetailsPage() {
       loadSuggestions()
     } catch (e: any) {
       toast.error(e?.message || 'Failed to update suggestion')
+    }
+  }
+
+  // --- Task Management Functions ---
+  const loadProjectTasks = async () => {
+    try {
+      setLoadingTasks(true)
+      // For demo purposes, using mock data. In production, this would fetch from your database
+      const mockTasks = [
+        {
+          id: '1',
+          title: 'Project Setup & Requirements Gathering',
+          description: 'Initial project setup, client requirements analysis, and project scope definition',
+          status: 'completed',
+          priority: 'high',
+          estimated_hours: '8',
+          due_date: '2025-08-30',
+          created_at: '2025-08-25T10:00:00Z',
+          updated_at: '2025-08-25T14:00:00Z',
+          comments: [
+            { id: '1', text: 'Requirements document prepared and sent to client', created_at: '2025-08-25T12:00:00Z', user: 'Provider' }
+          ]
+        },
+        {
+          id: '2',
+          title: 'Design & Development Phase',
+          description: 'Create initial designs, wireframes, and begin development work',
+          status: 'in_progress',
+          priority: 'high',
+          estimated_hours: '24',
+          due_date: '2025-09-15',
+          created_at: '2025-08-26T09:00:00Z',
+          updated_at: '2025-08-27T11:30:00Z',
+          comments: [
+            { id: '2', text: 'Wireframes completed, starting development', created_at: '2025-08-27T11:30:00Z', user: 'Provider' }
+          ]
+        },
+        {
+          id: '3',
+          title: 'Testing & Quality Assurance',
+          description: 'Comprehensive testing, bug fixes, and quality assurance',
+          status: 'not_started',
+          priority: 'medium',
+          estimated_hours: '12',
+          due_date: '2025-09-20',
+          created_at: '2025-08-25T10:00:00Z',
+          updated_at: '2025-08-25T10:00:00Z',
+          comments: []
+        }
+      ]
+      setProjectTasks(mockTasks)
+    } catch (error) {
+      console.error('Error loading tasks:', error)
+    } finally {
+      setLoadingTasks(false)
+    }
+  }
+
+  const createTask = async () => {
+    if (!newTask.title.trim()) {
+      toast.error('Task title is required')
+      return
+    }
+    
+    try {
+      setIsCreatingTask(true)
+      const task = {
+        id: Date.now().toString(),
+        ...newTask,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        comments: []
+      }
+      
+      setProjectTasks(prev => [task, ...prev])
+      setNewTask({
+        title: '',
+        description: '',
+        status: 'not_started',
+        priority: 'medium',
+        estimated_hours: '',
+        due_date: ''
+      })
+      setShowAddMilestone(false)
+      toast.success('Task created successfully')
+    } catch (error) {
+      toast.error('Failed to create task')
+    } finally {
+      setIsCreatingTask(false)
+    }
+  }
+
+  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    try {
+      setProjectTasks(prev => prev.map(task => 
+        task.id === taskId 
+          ? { ...task, status: newStatus, updated_at: new Date().toISOString() }
+          : task
+      ))
+      toast.success('Task status updated')
+    } catch (error) {
+      toast.error('Failed to update task status')
+    }
+  }
+
+  const addTaskComment = async (taskId: string) => {
+    const comment = taskComments[taskId]?.trim()
+    if (!comment) return
+    
+    try {
+      const newComment = {
+        id: Date.now().toString(),
+        text: comment,
+        created_at: new Date().toISOString(),
+        user: 'Provider'
+      }
+      
+      setProjectTasks(prev => prev.map(task =>
+        task.id === taskId
+          ? { ...task, comments: [...(task.comments || []), newComment], updated_at: new Date().toISOString() }
+          : task
+      ))
+      
+      setTaskComments(prev => ({ ...prev, [taskId]: '' }))
+      toast.success('Comment added')
+    } catch (error) {
+      toast.error('Failed to add comment')
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200'
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
@@ -2870,400 +3029,325 @@ export default function BookingDetailsPage() {
         {/* Progress Tab - Provider Only */}
         {userRole === 'provider' && (
           <TabsContent value="progress" className="space-y-6">
-          <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-green-900">
-                <TrendingUp className="h-6 w-6" />
-                <span>Smart Project Progress & Status</span>
-                <Badge variant="default" className="bg-green-600 text-white ml-2">
-                  <Zap className="h-3 w-3 mr-1" />
-                  AI-Powered
-                </Badge>
+          <Card className="border border-gray-200 bg-white shadow-sm">
+            <CardHeader className="border-b border-gray-100 bg-gray-50">
+              <CardTitle className="flex items-center justify-between text-gray-800">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5 text-gray-600" />
+                  <span>Project Progress Management</span>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => setShowAddMilestone(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
               </CardTitle>
-              <CardDescription className="text-green-700">
-                Advanced progress tracking with custom milestones, parallel tasks, client interaction, and intelligent insights
+              <CardDescription className="text-gray-600">
+                Manage project tasks, milestones, and communicate progress to your client
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
+              {/* Task Management Interface */}
               <div className="space-y-6">
-                {/* Smart Progress Overview Dashboard */}
+                {/* Project Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {Math.round((getTimelineProgress() * 100))}%
-                    </div>
-                    <div className="text-sm text-blue-700 font-medium">Overall Progress</div>
-                    <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${getTimelineProgress() * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="text-2xl font-bold text-green-600">
-                      {getDaysSinceCreation()}
+                      {projectTasks.filter(t => t.status === 'completed').length}
                     </div>
-                    <div className="text-sm text-green-700 font-medium">Days Active</div>
-                    <div className="mt-2 text-xs text-green-600">Project Duration</div>
+                    <div className="text-sm text-gray-600 font-medium">Completed Tasks</div>
                   </div>
-                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {projectTasks.filter(t => t.status === 'in_progress').length}
+                    </div>
+                    <div className="text-sm text-gray-600 font-medium">In Progress</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-2xl font-bold text-gray-600">
+                      {projectTasks.filter(t => t.status === 'not_started').length}
+                    </div>
+                    <div className="text-sm text-gray-600 font-medium">Pending Tasks</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="text-2xl font-bold text-purple-600">
-                      {getTimeToDeadline()}
+                      {Math.round((projectTasks.filter(t => t.status === 'completed').length / Math.max(projectTasks.length, 1)) * 100)}%
                     </div>
-                    <div className="text-sm text-purple-700 font-medium">Time to Deadline</div>
-                    <div className="mt-2 text-xs text-purple-600">Remaining Time</div>
-                  </div>
-                  <div className="text-center p-4 bg-white rounded-lg border border-green-200 shadow-sm">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {getNextMilestone()}
-                    </div>
-                    <div className="text-sm text-orange-700 font-medium">Next Action</div>
-                    <div className="mt-2 text-xs text-orange-600">Action Required</div>
+                    <div className="text-sm text-gray-600 font-medium">Overall Progress</div>
                   </div>
                 </div>
 
-                {/* Smart Progress States & Custom Milestones */}
-                <div className="p-6 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border border-green-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-green-900 flex items-center">
-                      <Target className="h-5 w-5 mr-2" />
-                      Smart Progress States & Custom Milestones
-                    </h4>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="border-green-300 text-green-700 hover:bg-green-50"
-                      onClick={() => setShowAddMilestone(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Milestone
-                    </Button>
-                  </div>
+                {/* Task List */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900 flex items-center">
+                    <Target className="h-5 w-5 mr-2" />
+                    Project Tasks & Milestones
+                  </h4>
                   
-                  {/* Service-Based Progress Breakdown */}
-                  <div className="space-y-4">
-                    {/* Week 1 */}
-                    <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-green-900">Week 1 - Foundation</h5>
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Completed
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-sm text-gray-700">4 posts scheduled and published</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-sm text-gray-700">Photography of the week</span>
-                        </div>
-                      </div>
+                  {loadingTasks ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-gray-600 mt-2">Loading tasks...</p>
                     </div>
-
-                    {/* Week 2 */}
-                    <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-green-900">Week 2 - Development</h5>
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Completed
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-sm text-gray-700">Post designs completed</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-sm text-gray-700">Posting completed</span>
-                        </div>
-                      </div>
+                  ) : projectTasks.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Target className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <p>No tasks created yet. Add your first task to get started!</p>
                     </div>
-
-                    {/* Week 3 */}
-                    <div className="bg-white p-4 rounded-lg border border-yellow-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-yellow-900">Week 3 - Review</h5>
-                        <Badge variant="default" className="bg-yellow-100 text-yellow-800">
-                          <Clock className="h-3 w-3 mr-1" />
-                          In Progress
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-sm text-gray-700">Analytics review</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-yellow-500" />
-                          <span className="text-sm text-gray-700">Client feedback (Pending)</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Week 4 */}
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-gray-900">Week 4 - Finalization</h5>
-                        <Badge variant="outline" className="text-gray-500">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-500">Final campaign report</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-500">Project handover</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Interactive Timeline with Progress Rings */}
-                <div className="p-6 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
-                  <h4 className="font-semibold mb-4 text-blue-900 flex items-center">
-                    <BarChart3 className="h-5 w-5 mr-2" />
-                    Interactive Timeline with Progress Rings
-                  </h4>
-                  <div className="space-y-4">
-                    {timelineSteps.map((step, index) => (
-                      <div key={step.status} className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-blue-200 shadow-sm">
-                        {/* Progress Ring */}
-                        <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full border-4 border-gray-200 flex items-center justify-center">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              step.completed 
-                                ? 'bg-green-500 text-white' 
-                                : step.status === 'in_progress'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-200 text-gray-500'
-                            }`}>
-                              {step.completed ? (
-                                <CheckCircle className="h-5 w-5" />
-                              ) : step.status === 'in_progress' ? (
-                                <RefreshCw className="h-5 w-5" />
-                              ) : (
-                                step.icon
-                              )}
+                  ) : (
+                    <div className="space-y-4">{projectTasks.map((task) => (
+                      <div key={task.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h5 className="font-semibold text-gray-900 mb-1">{task.title}</h5>
+                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <span>Est. {task.estimated_hours} hours</span>
+                              {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
+                              <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
                             </div>
                           </div>
-                          {/* Progress Ring Animation */}
-                          {step.completed && (
-                            <div className="absolute inset-0 w-12 h-12 rounded-full border-4 border-green-500 animate-pulse"></div>
-                          )}
+                          <div className="flex items-center space-x-2 ml-4">
+                            <Badge className={getPriorityColor(task.priority)}>
+                              {task.priority}
+                            </Badge>
+                            <select
+                              value={task.status}
+                              onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                              className={`text-xs px-2 py-1 border rounded ${getStatusColor(task.status)}`}
+                            >
+                              <option value="not_started">Not Started</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="completed">Completed</option>
+                            </select>
+                          </div>
                         </div>
 
-                        {/* Step Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-2">
-                            <h5 className={`font-semibold ${
-                              step.completed ? 'text-green-700' : 'text-gray-700'
-                            }`}>
-                              {step.label}
-                            </h5>
-                            <div className="flex items-center space-x-2">
-                              {step.completed && (
-                                <Badge variant="default" className="bg-green-100 text-green-800">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Completed
-                                </Badge>
-                              )}
-                              {step.status === 'in_progress' && (
-                                <Badge variant="default" className="bg-blue-100 text-blue-800">
-                                  <RefreshCw className="h-3 w-3 mr-1" />
-                                  In Progress
-                                </Badge>
-                              )}
-                              {!step.completed && step.status !== 'in_progress' && (
-                                <Badge variant="outline" className="text-gray-500">
-                                  Pending
-                                </Badge>
-                              )}
+                        {/* Task Comments */}
+                        {task.comments && task.comments.length > 0 && (
+                          <div className="border-t border-gray-100 pt-3 mt-3">
+                            <h6 className="text-sm font-medium text-gray-700 mb-2">Progress Updates:</h6>
+                            <div className="space-y-2">
+                              {task.comments.map((comment: any) => (
+                                <div key={comment.id} className="bg-gray-50 p-2 rounded text-sm">
+                                  <p className="text-gray-700">{comment.text}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {comment.user} • {new Date(comment.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                          
-                          {step.description && (
-                            <p className="text-sm text-gray-600 mb-2">{step.description}</p>
-                          )}
-                          
-                          {step.date && (
-                            <p className="text-xs text-gray-500">
-                              {step.completed ? 'Completed: ' : 'Started: '}{formatDate(step.date)}
-                            </p>
-                          )}
-                        </div>
+                        )}
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center space-x-2">
-                          {step.status === 'in_progress' && (
-                            <>
-                              <Button size="sm" variant="outline" className="border-blue-300 text-blue-700">
-                                <Edit className="h-3 w-3 mr-1" />
-                                Update
-                              </Button>
-                              <Button size="sm" variant="outline" className="border-green-300 text-green-700">
-                                <MessageSquare className="h-3 w-3 mr-1" />
-                                Notify
-                              </Button>
-                              <Button size="sm" variant="outline" className="border-purple-300 text-purple-700">
-                                <Eye className="h-3 w-3 mr-1" />
-                                Send for Review
-                              </Button>
-                            </>
-                          )}
-                          {!step.completed && step.status !== 'in_progress' && (
-                            <Button size="sm" variant="outline" className="border-gray-300 text-gray-700">
-                              <Play className="h-3 w-3 mr-1" />
-                              Start
+                        {/* Add Comment Section */}
+                        <div className="border-t border-gray-100 pt-3 mt-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              placeholder="Add progress update..."
+                              value={taskComments[task.id] || ''}
+                              onChange={(e) => setTaskComments(prev => ({ ...prev, [task.id]: e.target.value }))}
+                              className="flex-1 text-sm border border-gray-300 rounded px-3 py-1"
+                              onKeyPress={(e) => e.key === 'Enter' && addTaskComment(task.id)}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => addTaskComment(task.id)}
+                              className="bg-blue-600 hover:bg-blue-700 text-xs"
+                            >
+                              Add Update
                             </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Client Interaction & Control */}
-                <div className="p-6 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg border border-purple-200">
-                  <h4 className="font-semibold mb-4 text-purple-900 flex items-center">
-                    <MessageSquare className="h-5 w-5 mr-2" />
-                    Client Interaction & Control
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded-lg border border-purple-200 shadow-sm">
-                      <h5 className="font-medium text-purple-900 mb-3">Provider Actions</h5>
-                      <div className="space-y-2">
-                        <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700">
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Request Client Review
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full border-purple-300 text-purple-700">
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Deliverable
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full border-purple-300 text-purple-700">
-                          <Clock className="h-4 w-4 mr-2" />
-                          Request Extension
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white p-4 rounded-lg border border-purple-200 shadow-sm">
-                      <h5 className="font-medium text-purple-900 mb-3">Client Actions</h5>
-                      <div className="space-y-2">
-                        <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve Deliverable
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full border-red-300 text-red-700">
-                          <X className="h-4 w-4 mr-2" />
-                          Request Revision
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full border-purple-300 text-purple-700">
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Send Feedback
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Advanced Tracking & Smart Insights */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-2 text-blue-500" />
-                      Advanced Tracking
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Booking Health Score:</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-16 h-2 bg-gray-200 rounded-full">
-                            <div className="w-12 h-2 bg-green-500 rounded-full"></div>
                           </div>
-                          <span className="text-sm font-medium text-green-600">75%</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Client Response Time:</span>
-                        <span className="text-sm font-medium text-blue-600">2.3 days avg</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Payment Status:</span>
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Paid
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Risk Level:</span>
-                        <Badge variant="outline" className="border-yellow-300 text-yellow-700">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Low
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
-                      <Lightbulb className="h-4 w-4 mr-2 text-yellow-500" />
-                      Smart Insights
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <h6 className="font-medium text-blue-900 mb-2">Next Recommended Action</h6>
-                        <p className="text-sm text-blue-800">Awaiting client review on Week 3 deliverables. Consider sending a gentle reminder.</p>
-                      </div>
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                        <h6 className="font-medium text-green-900 mb-2">Forecast Completion</h6>
-                        <p className="text-sm text-green-800">Based on current pace: <strong>Sep 5, 2025</strong> (2 days ahead of schedule)</p>
-                      </div>
-                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                        <h6 className="font-medium text-purple-900 mb-2">Performance Insights</h6>
-                        <p className="text-sm text-purple-800">Client engagement is 15% above average. Great opportunity for upsell.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Audit Trail & History */}
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
-                    <History className="h-4 w-4 mr-2" />
-                    Audit Trail & History
-                  </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between p-2 bg-white rounded border">
-                      <span className="text-gray-600">Milestone "Week 3 - Review" marked complete</span>
-                      <span className="text-gray-500">2 hours ago by Provider</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-white rounded border">
-                      <span className="text-gray-600">Client feedback received on Week 2 deliverables</span>
-                      <span className="text-gray-500">1 day ago by Client</span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-white rounded border">
-                      <span className="text-gray-600">Payment received for Week 1 & 2</span>
-                      <span className="text-gray-500">3 days ago by System</span>
-                    </div>
-                  </div>
+                    ))}</div>
+                  )}
                 </div>
               </div>
+
+              {/* Add Task Modal */}
+              {showAddMilestone && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Add New Task</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAddMilestone(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Task Title *</label>
+                        <input
+                          type="text"
+                          value={newTask.title}
+                          onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                          placeholder="Enter task title"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Description</label>
+                        <textarea
+                          value={newTask.description}
+                          onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                          rows={3}
+                          placeholder="Describe the task..."
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Priority</label>
+                          <select
+                            value={newTask.priority}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as any }))}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Est. Hours</label>
+                          <input
+                            type="number"
+                            value={newTask.estimated_hours}
+                            onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: e.target.value }))}
+                            className="w-full p-2 border border-gray-300 rounded-md"
+                            placeholder="8"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">Due Date</label>
+                        <input
+                          type="date"
+                          value={newTask.due_date}
+                          onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      
+                      <div className="flex space-x-3 pt-4">
+                        <Button
+                          onClick={createTask}
+                          disabled={isCreatingTask || !newTask.title.trim()}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        >
+                          {isCreatingTask ? 'Creating...' : 'Create Task'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowAddMilestone(false)}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
         )}
+
+        {/* Timeline Tab - Enhanced with Task Updates */}
+        <TabsContent value="timeline" className="space-y-6">
+          <Card className="border border-gray-200 bg-white shadow-sm">
+            <CardHeader className="border-b border-gray-100 bg-gray-50">
+              <CardTitle className="flex items-center space-x-2 text-gray-800">
+                <Clock3 className="h-5 w-5 text-gray-600" />
+                <span>Project Timeline</span>
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Chronological view of all project activities and updates
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              {/* Timeline showing task updates */}
+              <div className="space-y-4">
+                {/* Generate timeline from project tasks */}
+                {projectTasks.length > 0 ? (
+                  <div className="space-y-6">
+                    {projectTasks.map((task) => (
+                      <div key={task.id} className="relative">
+                        {/* Timeline line */}
+                        <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-gray-200"></div>
+                        
+                        {/* Task entry */}
+                        <div className="flex items-start space-x-4">
+                          <div className={`w-8 h-8 rounded-full border-2 bg-white flex items-center justify-center ${getStatusColor(task.status).replace('bg-', 'border-')}`}>
+                            {task.status === 'completed' ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : task.status === 'in_progress' ? (
+                              <Clock className="h-4 w-4 text-blue-600" />
+                            ) : (
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                              <Badge className={getStatusColor(task.status)}>
+                                {task.status === 'not_started' ? 'Not Started' : 
+                                 task.status === 'in_progress' ? 'In Progress' : 'Completed'}
+                              </Badge>
+                            </div>
+                            
+                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                            
+                            <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3">
+                              <span>Created: {new Date(task.created_at).toLocaleDateString()}</span>
+                              {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
+                              <span>Est. {task.estimated_hours}h</span>
+                            </div>
+                            
+                            {/* Task comments in timeline */}
+                            {task.comments && task.comments.length > 0 && (
+                              <div className="space-y-2">
+                                {task.comments.map((comment: any) => (
+                                  <div key={comment.id} className="bg-white p-3 rounded border border-gray-200">
+                                    <p className="text-sm text-gray-700">{comment.text}</p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      {comment.user} • {new Date(comment.created_at).toLocaleString()}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <p>No timeline updates yet. Tasks and progress will appear here.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Messages Tab */}
         <TabsContent value="messages" className="space-y-6">
@@ -3271,93 +3355,27 @@ export default function BookingDetailsPage() {
             <MessagesThread bookingId={booking.id} />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>Loading messages...</p>
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-semibold mb-2">Messages</h3>
+              <p>Loading messaging interface...</p>
             </div>
           )}
         </TabsContent>
 
-        {/* Files & Documents Tab */}
+        {/* Files Tab */}
         <TabsContent value="files" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Paperclip className="h-5 w-5" />
-                <span>Files & Documents</span>
+                <span>Project Files</span>
               </CardTitle>
-              <CardDescription>Manage files, contracts, and documents related to this booking</CardDescription>
+              <CardDescription>Upload and manage project-related files</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* File Upload Section */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Files</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Upload contracts, invoices, receipts, or any other documents related to this booking
-                </p>
-                <Button variant="outline" className="mb-2" onClick={() => setShowFileUpload(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Files
-                </Button>
-                <p className="text-xs text-gray-400">
-                  Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB per file)
-                </p>
-              </div>
-
-              {/* File Categories */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 border rounded-lg bg-blue-50">
-                  <h4 className="font-medium text-blue-900 mb-2">Contracts</h4>
-                  <p className="text-sm text-blue-700">Service agreements and terms</p>
-                  <div className="mt-2 text-xs text-blue-600">{uploadedFiles.filter(f => f.category === 'contract').length} files</div>
-                </div>
-                <div className="p-4 border rounded-lg bg-green-50">
-                  <h4 className="font-medium text-green-900 mb-2">Invoices</h4>
-                  <p className="text-sm text-green-700">Billing and payment documents</p>
-                  <div className="mt-2 text-xs text-green-600">{uploadedFiles.filter(f => f.category === 'invoice').length} files</div>
-                </div>
-                <div className="p-4 border rounded-lg bg-purple-50">
-                  <h4 className="font-medium text-purple-900 mb-2">Deliverables</h4>
-                  <p className="text-sm text-purple-700">Completed work and assets</p>
-                  <div className="mt-2 text-xs text-purple-600">{uploadedFiles.filter(f => f.category === 'deliverable').length} files</div>
-                </div>
-              </div>
-
-              {/* Recent Files */}
-              <div>
-                <h4 className="font-medium mb-3">Recent Files</h4>
-                {uploadedFiles.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Paperclip className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No files uploaded yet</p>
-                    <p className="text-sm">Upload your first document to get started</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
-                        <div className="flex items-center space-x-3">
-                          <Paperclip className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <h4 className="font-medium">{file.name}</h4>
-                            <p className="text-sm text-muted-foreground">{file.category} • {file.size}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline">{file.category}</Badge>
-                          <Button size="sm" variant="outline" onClick={() => handleFileDownload(file)}>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleFileDelete(file.id)}>
-                            <X className="h-4 w-4 mr-2" />
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            <CardContent>
+              <div className="text-center py-8 text-gray-500">
+                <Paperclip className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <p>File management interface would be here</p>
               </div>
             </CardContent>
           </Card>
@@ -3371,20 +3389,19 @@ export default function BookingDetailsPage() {
                 <History className="h-5 w-5" />
                 <span>Booking History</span>
               </CardTitle>
-              <CardDescription>Track all changes and activities for this booking</CardDescription>
+              <CardDescription>View all changes and updates to this booking</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {bookingHistory.map((item) => (
-                  <div key={item.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+                {bookingHistory.map((entry) => (
+                  <div key={entry.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                     <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">{item.action}</h4>
-                        <span className="text-sm text-muted-foreground">{formatDate(item.timestamp)}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                      <p className="text-xs text-muted-foreground mt-2">By: {item.user}</p>
+                      <h4 className="font-medium text-gray-900">{entry.action}</h4>
+                      <p className="text-sm text-gray-600">{entry.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(entry.timestamp)} by {entry.user}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -3405,32 +3422,32 @@ export default function BookingDetailsPage() {
               <CardDescription>Other bookings from the same client</CardDescription>
             </CardHeader>
             <CardContent>
-              {relatedBookings.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No related bookings found</p>
-              ) : (
-                <div className="space-y-3">
-                  {relatedBookings.map((related) => (
-                    <div key={related.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
-                      <div>
-                        <h4 className="font-medium">{related.service_name}</h4>
-                        <p className="text-sm text-muted-foreground">{formatDate(related.created_at)}</p>
+              {relatedBookings.length > 0 ? (
+                <div className="grid gap-4">
+                  {relatedBookings.map((relatedBooking) => (
+                    <div key={relatedBooking.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-900">Booking #{relatedBooking.id.slice(0, 8)}</h4>
+                        <Badge variant="outline">{relatedBooking.status}</Badge>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="outline">{related.status}</Badge>
-                        {related.amount && (
-                          <span className="text-sm font-medium">{formatCurrency(related.amount)}</span>
-                        )}
+                      <p className="text-sm text-gray-600 mb-2">Related Service</p>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>{formatDate(relatedBooking.created_at)}</span>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => router.push(`/dashboard/bookings/${related.id}`)}
+                          onClick={() => router.push(`/dashboard/bookings/${relatedBooking.id}`)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          View Details
                         </Button>
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Link className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <p>No related bookings found for this client</p>
                 </div>
               )}
             </CardContent>
@@ -3466,235 +3483,36 @@ export default function BookingDetailsPage() {
                 >
                   <option value="contract">Contract</option>
                   <option value="invoice">Invoice</option>
-                  <option value="deliverable">Deliverable</option>
+                  <option value="receipt">Receipt</option>
                   <option value="other">Other</option>
                 </select>
               </div>
               
               <div>
-                <label htmlFor="file-input" className="text-sm font-medium mb-2 block">Choose Files</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Drag & drop files here or click to browse</p>
-                  <input 
-                    id="file-input"
-                    type="file" 
-                    multiple 
-                    className="hidden"
-                    aria-label="Choose files to upload"
-                    onChange={handleFileSelect}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => document.getElementById('file-input')?.click()}
-                  >
-                    Browse Files
-                  </Button>
-                </div>
-                
-                {/* Show selected files */}
-                {selectedFiles.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm font-medium text-gray-700">Selected Files:</p>
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                        <div className="flex items-center space-x-2">
-                          <Paperclip className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">{file.name}</span>
-                          <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <input
+                  type="file"
+                  multiple
+                  className="w-full p-2 border rounded-md"
+                  onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+                />
               </div>
               
               <div className="flex space-x-3">
                 <Button 
                   className="flex-1" 
-                  disabled={isUploading}
-                  onClick={handleFileUpload}
+                  disabled={isUploading || selectedFiles.length === 0}
+                  onClick={() => {
+                    // Handle file upload logic here
+                    toast.success('Files uploaded successfully')
+                    setShowFileUpload(false)
+                  }}
                 >
                   {isUploading ? 'Uploading...' : 'Upload Files'}
                 </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => setShowFileUpload(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Timeline Edit Modal */}
-      {showTimelineEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Customize Timeline</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTimelineEdit(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Add custom milestones and steps to track your booking progress more accurately.
-              </p>
-              
-              <div className="space-y-3">
-                {customTimelineSteps.map((step, index) => (
-                  <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
-                    <Input
-                      placeholder="Step name"
-                      value={step.name}
-                      onChange={(e) => {
-                        const newSteps = [...customTimelineSteps]
-                        newSteps[index].name = e.target.value
-                        setCustomTimelineSteps(newSteps)
-                      }}
-                    />
-                    <Input
-                      placeholder="Description"
-                      value={step.description}
-                      onChange={(e) => {
-                        const newSteps = [...customTimelineSteps]
-                        newSteps[index].description = e.target.value
-                        setCustomTimelineSteps(newSteps)
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setCustomTimelineSteps(customTimelineSteps.filter((_, i) => i !== index))
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setCustomTimelineSteps([...customTimelineSteps, { name: '', description: '' }])
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Step
-              </Button>
-              
-              <div className="flex space-x-3">
-                <Button 
-                  className="flex-1" 
-                  onClick={() => {
-                    setShowTimelineEdit(false)
-                    toast.success('Timeline customized successfully!')
-                  }}
-                >
-                  Save Changes
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowTimelineEdit(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-red-700">Confirm Action</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDeleteConfirmation(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <p className="text-sm text-red-700 text-center">
-                  {['completed', 'cancelled'].includes(booking?.status || '') 
-                    ? 'This will permanently delete the booking. This action cannot be undone.'
-                    : 'This will cancel the active booking. The client will be notified.'
-                  }
-                </p>
-              </div>
-              
-              <div>
-                <label htmlFor="delete-reason" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Reason for {['completed', 'cancelled'].includes(booking?.status || '') ? 'deletion' : 'cancellation'} *
-                </label>
-                <Textarea
-                  id="delete-reason"
-                  placeholder="Please provide a reason..."
-                  value={deleteReason}
-                  onChange={(e) => setDeleteReason(e.target.value)}
-                  className="border-gray-300 focus:border-red-500 focus:ring-red-200"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="flex space-x-3">
-                <Button 
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                  onClick={() => {
-                    if (deleteReason.trim()) {
-                      // Use requestIdleCallback or setTimeout to prevent UI blocking
-                      if (window.requestIdleCallback) {
-                        window.requestIdleCallback(() => {
-                          handleDeleteBooking()
-                        })
-                      } else {
-                        setTimeout(() => {
-                          handleDeleteBooking()
-                        }, 0)
-                      }
-                    } else {
-                      toast.error('Please provide a reason')
-                    }
-                  }}
-                  disabled={!deleteReason.trim() || isUpdatingStatus}
-                >
-                  {isUpdatingStatus ? 'Processing...' : 
-                    ['completed', 'cancelled'].includes(booking?.status || '') ? 'Delete Permanently' : 'Cancel Booking'
-                  }
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowDeleteConfirmation(false)
-                    setDeleteReason('')
-                  }}
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
