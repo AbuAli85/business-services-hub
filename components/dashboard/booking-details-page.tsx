@@ -347,16 +347,30 @@ export default function BookingDetailsPage() {
   const loadSuggestions = async () => {
     try {
       setLoadingSuggestions(true)
+      console.log('🔍 Loading suggestions...')
       const res = await authenticatedGet(`/api/service-suggestions?status=&limit=50`)
+      console.log('📡 Suggestions response:', {
+        status: res.status,
+        ok: res.ok,
+        url: res.url,
+        headers: Object.fromEntries(res.headers.entries())
+      })
+      
       if (!res.ok) {
-        console.error('Failed to load suggestions:', res.status, await res.text())
+        const errorText = await res.text()
+        console.error('Failed to load suggestions:', res.status, errorText)
+        // Don't fail silently - set empty array to prevent repeated calls
+        setSuggestions([])
         return
       }
       const data = await res.json()
+      console.log('✅ Suggestions loaded:', data)
       const filtered = (data.suggestions || []).filter((s: any) => s.original_booking_id === bookingId)
       setSuggestions(filtered)
     } catch (error) {
       console.error('Error loading suggestions:', error)
+      // Set empty array to prevent repeated API calls
+      setSuggestions([])
     } finally {
       setLoadingSuggestions(false)
     }

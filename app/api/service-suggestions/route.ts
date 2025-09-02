@@ -211,14 +211,21 @@ export async function GET(request: NextRequest) {
       .limit(limit)
 
     // Get user profile to determine role  
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, role, full_name, email')
       .eq('id', user.id)
       .single()
 
-    if (!profile) {
-      return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
+    if (profileError || !profile) {
+      console.error('Profile lookup error:', profileError)
+      console.error('User ID:', user.id)
+      console.error('User email:', user.email)
+      return NextResponse.json({ 
+        error: 'User profile not found',
+        details: profileError?.message || 'Profile does not exist',
+        userId: user.id
+      }, { status: 404 })
     }
 
     console.log('User making request:', { 

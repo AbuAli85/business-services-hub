@@ -15,6 +15,17 @@ export async function authenticatedFetch(
     throw new Error('No active session found. Please sign in.')
   }
 
+  // Ensure we're using relative URLs for local development
+  const finalEndpoint = endpoint.startsWith('http') ? endpoint : endpoint
+  
+  console.log('🔍 API Request Debug:', {
+    originalEndpoint: endpoint,
+    finalEndpoint,
+    currentDomain: typeof window !== 'undefined' ? window.location.origin : 'server-side',
+    sessionExists: !!session,
+    accessTokenExists: !!session.access_token
+  })
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${session.access_token}`,
@@ -27,7 +38,7 @@ export async function authenticatedFetch(
     credentials: 'include',
   }
 
-  return fetch(endpoint, fetchOptions)
+  return fetch(finalEndpoint, fetchOptions)
 }
 
 /**
