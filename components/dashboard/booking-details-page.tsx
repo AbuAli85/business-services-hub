@@ -73,7 +73,8 @@ import {
   ChevronDown,
   Copy,
   Trash2,
-  Send
+  Send,
+  Bell
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
@@ -228,6 +229,23 @@ export default function BookingDetailsPage() {
   const [showGanttView, setShowGanttView] = useState(false)
   const [timeTracking, setTimeTracking] = useState<{ [key: string]: { start: Date | null, total: number } }>({})
   const [showTaskTemplates, setShowTaskTemplates] = useState(false)
+  
+  // Smart Tracking & Notifications State
+  const [notificationSettings, setNotificationSettings] = useState({
+    email: true,
+    whatsapp: true,
+    push: true,
+    reports: true
+  })
+  const [pendingApprovals, setPendingApprovals] = useState<any[]>([])
+  const [approvalRequests, setApprovalRequests] = useState<any[]>([])
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false)
+  const [trackingData, setTrackingData] = useState({
+    lastUpdate: new Date().toISOString(),
+    totalUpdates: 0,
+    clientEngagement: 0,
+    providerActivity: 0
+  })
   // Suggestions state
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
@@ -675,6 +693,115 @@ export default function BookingDetailsPage() {
       toast.success('Task duplicated successfully')
     } catch (error) {
       toast.error('Failed to duplicate task')
+    }
+  }
+
+  // Smart Tracking & Notification Functions
+  const sendNotification = async (type: 'email' | 'whatsapp' | 'push', message: string, recipient: 'client' | 'provider') => {
+    try {
+      // Simulate notification sending
+      console.log(`Sending ${type} notification to ${recipient}: ${message}`)
+      
+      if (notificationSettings[type]) {
+        // In real implementation, this would call your notification service
+        toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} notification sent to ${recipient}`)
+        
+        // Update tracking data
+        setTrackingData(prev => ({
+          ...prev,
+          totalUpdates: prev.totalUpdates + 1,
+          lastUpdate: new Date().toISOString(),
+          [recipient === 'client' ? 'clientEngagement' : 'providerActivity']: prev[recipient === 'client' ? 'clientEngagement' : 'providerActivity'] + 1
+        }))
+      }
+    } catch (error) {
+      toast.error(`Failed to send ${type} notification`)
+    }
+  }
+
+  const requestApproval = async (taskId: string, type: 'milestone' | 'completion' | 'change') => {
+    try {
+      const task = projectTasks.find(t => t.id === taskId)
+      if (!task) return
+
+      const approvalRequest = {
+        id: Date.now().toString(),
+        taskId,
+        taskTitle: task.title,
+        type,
+        requestedBy: 'provider',
+        requestedAt: new Date().toISOString(),
+        status: 'pending',
+        message: `Please review and approve ${type} for: ${task.title}`
+      }
+
+      setApprovalRequests(prev => [approvalRequest, ...prev])
+      
+      // Send notification to client
+      await sendNotification('email', 
+        `New approval request: ${task.title} (${type})`, 
+        'client'
+      )
+      
+      toast.success('Approval request sent to client')
+    } catch (error) {
+      toast.error('Failed to send approval request')
+    }
+  }
+
+  const handleApproval = async (requestId: string, approved: boolean, notes?: string) => {
+    try {
+      setApprovalRequests(prev => prev.map(req => 
+        req.id === requestId 
+          ? { ...req, status: approved ? 'approved' : 'rejected', responseNotes: notes, respondedAt: new Date().toISOString() }
+          : req
+      ))
+      
+      const request = approvalRequests.find(r => r.id === requestId)
+      if (request) {
+        // Send notification to provider
+        await sendNotification('email', 
+          `Approval ${approved ? 'granted' : 'denied'} for: ${request.taskTitle}`, 
+          'provider'
+        )
+      }
+      
+      toast.success(`Request ${approved ? 'approved' : 'rejected'} successfully`)
+    } catch (error) {
+      toast.error('Failed to process approval')
+    }
+  }
+
+  const generateProgressReport = async () => {
+    try {
+      const report = {
+        id: Date.now().toString(),
+        generatedAt: new Date().toISOString(),
+        projectProgress: Math.round((filteredTasks.filter(t => t.status === 'completed').length / Math.max(filteredTasks.length, 1)) * 100),
+        completedTasks: filteredTasks.filter(t => t.status === 'completed').length,
+        inProgressTasks: filteredTasks.filter(t => t.status === 'in_progress').length,
+        pendingTasks: filteredTasks.filter(t => t.status === 'not_started').length,
+        totalHours: filteredTasks.reduce((sum, task) => sum + parseFloat(task.actual_hours || '0'), 0),
+        estimatedHours: filteredTasks.reduce((sum, task) => sum + parseFloat(task.estimated_hours || '0'), 0),
+        pendingApprovals: approvalRequests.filter(r => r.status === 'pending').length
+      }
+
+      // Send report via email and WhatsApp
+      await sendNotification('email', 
+        `Weekly Progress Report - ${report.projectProgress}% Complete`, 
+        userRole === 'provider' ? 'client' : 'provider'
+      )
+      
+      if (notificationSettings.whatsapp) {
+        await sendNotification('whatsapp', 
+          `📊 Project Update: ${report.projectProgress}% complete. ${report.completedTasks} tasks done, ${report.inProgressTasks} in progress.`, 
+          userRole === 'provider' ? 'client' : 'provider'
+        )
+      }
+      
+      toast.success('Progress report generated and sent!')
+    } catch (error) {
+      toast.error('Failed to generate progress report')
     }
   }
 
@@ -3413,43 +3540,121 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Progress Tab - Provider Only */}
-        {userRole === 'provider' && (
-          <TabsContent value="progress" className="space-y-6">
+        {/* Progress Tab - Role-Based Access */}
+        <TabsContent value="progress" className="space-y-6">
           <Card className="border border-gray-200 bg-white shadow-sm">
             <CardHeader className="border-b border-gray-100 bg-gray-50">
               <CardTitle className="flex items-center justify-between text-gray-800">
                 <div className="flex items-center space-x-2">
                   <TrendingUp className="h-5 w-5 text-gray-600" />
-                  <span>Advanced Project Management</span>
+                  <span>{userRole === 'provider' ? 'Advanced Project Management' : 'Project Progress Tracking'}</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => setShowTaskTemplates(true)}
-                    className="border-gray-300"
-                  >
-                    <Layout className="h-4 w-4 mr-2" />
-                    Templates
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={() => setShowAddMilestone(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                </div>
+                {userRole === 'provider' ? (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setShowTaskTemplates(true)}
+                      className="border-gray-300"
+                    >
+                      <Layout className="h-4 w-4 mr-2" />
+                      Templates
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setShowAddMilestone(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Task
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      <Eye className="h-3 w-3 mr-1" />
+                      Tracking Mode
+                    </Badge>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setActiveTab('messages')}
+                      className="border-blue-300 text-blue-600"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Request Update
+                    </Button>
+                  </div>
+                )}
               </CardTitle>
               <CardDescription className="text-gray-600">
-                Comprehensive project management with tasks, milestones, time tracking, and client communication
+                {userRole === 'provider' 
+                  ? 'Comprehensive project management with tasks, milestones, time tracking, and client communication'
+                  : 'Track project progress, provide feedback, and stay updated on all project activities'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               {/* Enhanced Project Dashboard */}
               <div className="space-y-6">
+                {/* Smart Tracking Dashboard */}
+                {userRole === 'client' && (
+                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-blue-900 flex items-center">
+                        <Bell className="h-5 w-5 mr-2" />
+                        Smart Project Tracking
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={generateProgressReport}
+                          className="border-blue-300 text-blue-700"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Get Report
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setShowNotificationCenter(!showNotificationCenter)}
+                          className="border-blue-300 text-blue-700"
+                        >
+                          <Bell className="h-4 w-4 mr-1" />
+                          Settings
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                        <div className="text-lg font-bold text-blue-600">{trackingData.totalUpdates}</div>
+                        <div className="text-xs text-blue-700">Total Updates</div>
+                      </div>
+                      <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                        <div className="text-lg font-bold text-green-600">
+                          {approvalRequests.filter(r => r.status === 'pending').length}
+                        </div>
+                        <div className="text-xs text-green-700">Pending Approvals</div>
+                      </div>
+                      <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                        <div className="text-lg font-bold text-purple-600">
+                          {new Date(trackingData.lastUpdate).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-purple-700">Last Update</div>
+                      </div>
+                      <div className="text-center p-3 bg-white rounded-lg border border-blue-200">
+                        <div className="text-lg font-bold text-orange-600">
+                          {notificationSettings.email && notificationSettings.whatsapp ? 'All' : 
+                           notificationSettings.email || notificationSettings.whatsapp ? 'Partial' : 'None'}
+                        </div>
+                        <div className="text-xs text-orange-700">Notifications</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Project Overview with More Metrics */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                   <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
@@ -3645,72 +3850,142 @@ export default function BookingDetailsPage() {
                                 )}
                               </div>
                               
-                              {/* Task Controls */}
+                              {/* Role-Based Task Controls */}
                               <div className="flex items-center space-x-2 ml-4">
                                 <Badge className={getPriorityColor(task.priority)}>
                                   {task.priority}
                                 </Badge>
-                                <select
-                                  value={task.status}
-                                  onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                                  className={`text-xs px-2 py-1 border rounded ${getStatusColor(task.status)}`}
-                                >
-                                  <option value="not_started">Not Started</option>
-                                  <option value="in_progress">In Progress</option>
-                                  <option value="completed">Completed</option>
-                                  <option value="on_hold">On Hold</option>
-                                  <option value="cancelled">Cancelled</option>
-                                </select>
                                 
-                                {/* Task Actions */}
-                                <div className="flex items-center space-x-1">
-                                  {timeTracking[task.id]?.start ? (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => stopTimeTracking(task.id)}
-                                      className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
+                                {userRole === 'provider' ? (
+                                  // Provider Controls: Full Management
+                                  <>
+                                    <select
+                                      value={task.status}
+                                      onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                                      className={`text-xs px-2 py-1 border rounded ${getStatusColor(task.status)}`}
                                     >
-                                      <Pause className="h-3 w-3" />
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => startTimeTracking(task.id)}
-                                      className="h-8 w-8 p-0 border-green-300 text-green-600 hover:bg-green-50"
-                                    >
-                                      <Play className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                  
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => toggleTaskDetails(task.id)}
-                                    className="h-8 w-8 p-0 border-gray-300"
-                                  >
-                                    {showTaskDetails[task.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                  </Button>
-                                  
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => duplicateTask(task.id)}
-                                    className="h-8 w-8 p-0 border-gray-300"
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                  
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => deleteTask(task.id)}
-                                    className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
+                                      <option value="not_started">Not Started</option>
+                                      <option value="in_progress">In Progress</option>
+                                      <option value="completed">Completed</option>
+                                      <option value="on_hold">On Hold</option>
+                                      <option value="cancelled">Cancelled</option>
+                                    </select>
+                                    
+                                    {/* Provider Actions */}
+                                    <div className="flex items-center space-x-1">
+                                      {timeTracking[task.id]?.start ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => stopTimeTracking(task.id)}
+                                          className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
+                                          title="Stop Time Tracking"
+                                        >
+                                          <Pause className="h-3 w-3" />
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => startTimeTracking(task.id)}
+                                          className="h-8 w-8 p-0 border-green-300 text-green-600 hover:bg-green-50"
+                                          title="Start Time Tracking"
+                                        >
+                                          <Play className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                      
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => requestApproval(task.id, 'completion')}
+                                        className="h-8 w-8 p-0 border-blue-300 text-blue-600 hover:bg-blue-50"
+                                        title="Request Client Approval"
+                                      >
+                                        <CheckCircle className="h-3 w-3" />
+                                      </Button>
+                                      
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => toggleTaskDetails(task.id)}
+                                        className="h-8 w-8 p-0 border-gray-300"
+                                        title="Toggle Details"
+                                      >
+                                        {showTaskDetails[task.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                      </Button>
+                                      
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => duplicateTask(task.id)}
+                                        className="h-8 w-8 p-0 border-gray-300"
+                                        title="Duplicate Task"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                      
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => deleteTask(task.id)}
+                                        className="h-8 w-8 p-0 border-red-300 text-red-600 hover:bg-red-50"
+                                        title="Delete Task"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  // Client Controls: View-Only with Approval Actions
+                                  <>
+                                    <Badge className={getStatusColor(task.status)}>
+                                      {task.status === 'not_started' ? 'Not Started' : 
+                                       task.status === 'in_progress' ? 'In Progress' : 
+                                       task.status === 'completed' ? 'Completed' :
+                                       task.status === 'on_hold' ? 'On Hold' : 'Cancelled'}
+                                    </Badge>
+                                    
+                                    {/* Client Actions */}
+                                    <div className="flex items-center space-x-1">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => toggleTaskDetails(task.id)}
+                                        className="h-8 w-8 p-0 border-blue-300 text-blue-600 hover:bg-blue-50"
+                                        title="View Details"
+                                      >
+                                        <Eye className="h-3 w-3" />
+                                      </Button>
+                                      
+                                      {/* Show approval button if there's a pending request for this task */}
+                                      {approvalRequests.find(req => req.taskId === task.id && req.status === 'pending') && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            const request = approvalRequests.find(req => req.taskId === task.id && req.status === 'pending')
+                                            if (request) handleApproval(request.id, true)
+                                          }}
+                                          className="h-8 w-8 p-0 border-green-300 text-green-600 hover:bg-green-50"
+                                          title="Approve Task"
+                                        >
+                                          <CheckCircle className="h-3 w-3" />
+                                        </Button>
+                                      )}
+                                      
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => setActiveTab('messages')}
+                                        className="h-8 w-8 p-0 border-orange-300 text-orange-600 hover:bg-orange-50"
+                                        title="Ask Question"
+                                      >
+                                        <MessageSquare className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3979,10 +4254,153 @@ export default function BookingDetailsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Notification Center Modal */}
+              {showNotificationCenter && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-semibold">Notification Settings</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowNotificationCenter(false)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 className="font-semibold text-blue-900 mb-3">Smart Tracking Options</h4>
+                        
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Mail className="h-4 w-4 text-gray-600" />
+                              <span className="text-sm font-medium">Email Notifications</span>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={notificationSettings.email}
+                                onChange={(e) => setNotificationSettings(prev => ({ ...prev, email: e.target.checked }))}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <MessageSquare className="h-4 w-4 text-gray-600" />
+                              <span className="text-sm font-medium">WhatsApp Updates</span>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={notificationSettings.whatsapp}
+                                onChange={(e) => setNotificationSettings(prev => ({ ...prev, whatsapp: e.target.checked }))}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Bell className="h-4 w-4 text-gray-600" />
+                              <span className="text-sm font-medium">Push Notifications</span>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={notificationSettings.push}
+                                onChange={(e) => setNotificationSettings(prev => ({ ...prev, push: e.target.checked }))}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <FileText className="h-4 w-4 text-gray-600" />
+                              <span className="text-sm font-medium">Weekly Reports</span>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={notificationSettings.reports}
+                                onChange={(e) => setNotificationSettings(prev => ({ ...prev, reports: e.target.checked }))}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Pending Approvals */}
+                      {approvalRequests.filter(r => r.status === 'pending').length > 0 && (
+                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                          <h4 className="font-semibold text-green-900 mb-3">Pending Approvals</h4>
+                          <div className="space-y-2">
+                            {approvalRequests.filter(r => r.status === 'pending').map((request) => (
+                              <div key={request.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                                <div>
+                                  <p className="text-sm font-medium">{request.taskTitle}</p>
+                                  <p className="text-xs text-gray-500">{request.type} approval</p>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApproval(request.id, true)}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1"
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleApproval(request.id, false)}
+                                    className="text-xs px-2 py-1"
+                                  >
+                                    Decline
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex space-x-3 pt-4 border-t border-gray-200">
+                        <Button
+                          onClick={() => {
+                            toast.success('Notification settings saved!')
+                            setShowNotificationCenter(false)
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                        >
+                          Save Settings
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowNotificationCenter(false)}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-        )}
 
         {/* Timeline Tab - Enhanced with Task Updates */}
         <TabsContent value="timeline" className="space-y-6">
