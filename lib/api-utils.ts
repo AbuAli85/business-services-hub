@@ -1,58 +1,71 @@
-/**
- * API utility functions to ensure all API calls use relative paths
- * This prevents issues with hardcoded domain URLs in production
- */
+import { getSupabaseClient } from './supabase'
 
 /**
- * Ensures an API endpoint uses a relative path
- * @param endpoint - The API endpoint (e.g., '/api/bookings' or 'api/bookings')
- * @returns The endpoint with a leading slash
+ * Helper function to make authenticated API calls to Next.js API routes
+ * This ensures that the Supabase access token is included in the request headers
  */
-export function getApiEndpoint(endpoint: string): string {
-  // Ensure endpoint starts with / for relative paths
-  return endpoint.startsWith('/') ? endpoint : `/${endpoint}`
-}
-
-/**
- * Creates a fetch request with proper headers and relative path
- * @param endpoint - The API endpoint
- * @param options - Fetch options
- * @returns Fetch promise
- */
-export function apiRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
-  const url = getApiEndpoint(endpoint)
+export async function authenticatedFetch(
+  endpoint: string, 
+  options: RequestInit = {}
+): Promise<Response> {
+  const supabase = await getSupabaseClient()
+  const { data: { session } } = await supabase.auth.getSession()
   
-  // Ensure we're using relative paths
-  if (url.startsWith('http')) {
-    console.warn('⚠️ API call using absolute URL detected:', url)
-    // Convert to relative path
-    const relativePath = new URL(url).pathname
-    return fetch(relativePath, options)
+  if (!session) {
+    throw new Error('No active session found. Please sign in.')
   }
-  
-  return fetch(url, options)
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session.access_token}`,
+    ...options.headers,
+  }
+
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+    credentials: 'include',
+  }
+
+  return fetch(endpoint, fetchOptions)
 }
 
 /**
- * Common API endpoints that should always use relative paths
+ * Wrapper for GET requests with authentication
  */
-export const API_ENDPOINTS = {
-  BOOKINGS: '/api/bookings',
-  SERVICES: '/api/services',
-  MESSAGES: '/api/messages',
-  PAYMENTS: '/api/payments/create-intent',
-  TRACKING: '/api/tracking',
-  REPORTS: '/api/reports',
-  WEBHOOKS: '/api/webhooks',
-  AUTH: '/api/auth/profile-creation'
-} as const
+export async function authenticatedGet(endpoint: string): Promise<Response> {
+  return authenticatedFetch(endpoint, { method: 'GET' })
+}
 
 /**
- * Type-safe API endpoint getter
+ * Wrapper for POST requests with authentication
  */
-export function getApiUrl(endpoint: keyof typeof API_ENDPOINTS): string {
-  const baseUrl = API_ENDPOINTS[endpoint]
-  // Add cache-busting version parameter to prevent stale API calls
-  const version = Date.now()
-  return `${baseUrl}?v=${version}`
+export async function authenticatedPost(
+  endpoint: string, 
+  body: any
+): Promise<Response> {
+  return authenticatedFetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Wrapper for PATCH requests with authentication
+ */
+export async function authenticatedPatch(
+  endpoint: string, 
+  body: any
+): Promise<Response> {
+  return authenticatedFetch(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Wrapper for DELETE requests with authentication
+ */
+export async function authenticatedDelete(endpoint: string): Promise<Response> {
+  return authenticatedFetch(endpoint, { method: 'DELETE' })
 }

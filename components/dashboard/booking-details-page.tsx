@@ -49,6 +49,7 @@ import {
   Play
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
 import toast from 'react-hot-toast'
 import { MessagesThread } from '@/components/dashboard/messages-thread'
 
@@ -268,11 +269,16 @@ export default function BookingDetailsPage() {
   const loadSuggestions = async () => {
     try {
       setLoadingSuggestions(true)
-      const res = await fetch(`/api/service-suggestions?status=&limit=50`, { cache: 'no-store' })
-      if (!res.ok) return
+      const res = await authenticatedGet(`/api/service-suggestions?status=&limit=50`)
+      if (!res.ok) {
+        console.error('Failed to load suggestions:', res.status, await res.text())
+        return
+      }
       const data = await res.json()
       const filtered = (data.suggestions || []).filter((s: any) => s.original_booking_id === bookingId)
       setSuggestions(filtered)
+    } catch (error) {
+      console.error('Error loading suggestions:', error)
     } finally {
       setLoadingSuggestions(false)
     }
@@ -289,12 +295,7 @@ export default function BookingDetailsPage() {
         suggestion_reason: newSuggestion.reason,
         priority: newSuggestion.priority
       }
-      const res = await fetch('/api/service-suggestions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
-      })
+      const res = await authenticatedPost('/api/service-suggestions', body)
       const payload = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(payload?.error || 'Failed to create suggestion')
       toast.success('Suggestion sent to client')
@@ -309,12 +310,7 @@ export default function BookingDetailsPage() {
 
   const respondSuggestion = async (id: string, status: 'accepted' | 'declined' | 'viewed', notes?: string) => {
     try {
-      const res = await fetch(`/api/service-suggestions?id=${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status, response_notes: notes || '' })
-      })
+      const res = await authenticatedPatch(`/api/service-suggestions?id=${id}`, { status, response_notes: notes || '' })
       const payload = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(payload?.error || 'Failed to update suggestion')
       toast.success(status === 'accepted' ? 'Suggestion accepted' : status === 'declined' ? 'Suggestion declined' : 'Viewed')
