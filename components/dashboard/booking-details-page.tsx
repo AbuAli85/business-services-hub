@@ -2013,13 +2013,13 @@ export default function BookingDetailsPage() {
           })
           
           // Send status update notification
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
+          const { data: { user: currentUser } } = await supabase.auth.getUser()
+          if (currentUser) {
             notificationService.notifyStatusUpdate({
               bookingId: booking.id,
               oldStatus: booking.status,
               newStatus: 'completed',
-              updatedBy: user.user_metadata?.full_name || 'User',
+              updatedBy: currentUser.user_metadata?.full_name || 'User',
               reason: 'Project completed (100% progress)'
             })
           }
@@ -2036,13 +2036,13 @@ export default function BookingDetailsPage() {
           })
           
           // Send status update notification
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
+          const { data: { user: currentUser2 } } = await supabase.auth.getUser()
+          if (currentUser2) {
             notificationService.notifyStatusUpdate({
               bookingId: booking.id,
               oldStatus: booking.status,
               newStatus: 'in_progress',
-              updatedBy: user.user_metadata?.full_name || 'User',
+              updatedBy: currentUser2.user_metadata?.full_name || 'User',
               reason: 'Project started (progress > 0%)'
             })
           }
@@ -2062,7 +2062,6 @@ export default function BookingDetailsPage() {
       setShowProgressUpdate(false)
 
       // Send progress update notification
-      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         notificationService.notifyProgressUpdate({
           bookingId: booking.id,
