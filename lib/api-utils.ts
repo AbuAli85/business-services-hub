@@ -15,8 +15,13 @@ export async function authenticatedFetch(
     throw new Error('No active session found. Please sign in.')
   }
 
-  // Ensure we're using relative URLs for local development
-  const finalEndpoint = endpoint.startsWith('http') ? endpoint : endpoint
+  // Force relative URLs regardless of current domain
+  let finalEndpoint = endpoint
+  if (endpoint.startsWith('http')) {
+    // Extract just the path from absolute URLs
+    const url = new URL(endpoint)
+    finalEndpoint = url.pathname + url.search
+  }
   
   console.log('🔍 API Request Debug:', {
     originalEndpoint: endpoint,
