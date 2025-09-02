@@ -164,6 +164,24 @@ export default function EnhancedMessagesThread({
             testChannel.unsubscribe()
           }
         })
+        
+        // Test a simple postgres_changes subscription
+        const testTableChannel = supabase.channel('test-table-changes')
+        testTableChannel
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'booking_messages'
+          }, (payload) => {
+            console.log('🧪 Test table change received:', payload)
+          })
+          .subscribe((status) => {
+            console.log('🧪 Test table channel status:', status)
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Table change subscription working!')
+              setTimeout(() => testTableChannel.unsubscribe(), 5000)
+            }
+          })
       } catch (error) {
         console.error('❌ Real-time test failed:', error)
       }
