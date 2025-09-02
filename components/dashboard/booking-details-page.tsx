@@ -347,6 +347,14 @@ export default function BookingDetailsPage() {
   const loadSuggestions = async () => {
     try {
       setLoadingSuggestions(true)
+      
+      // Skip suggestions loading if not on localhost to prevent 404 errors
+      if (typeof window !== 'undefined' && !window.location.origin.includes('localhost')) {
+        console.log('⚠️ Skipping suggestions loading - not on localhost development server')
+        setSuggestions([])
+        return
+      }
+      
       console.log('🔍 Loading suggestions...')
       const res = await authenticatedGet(`/api/service-suggestions?status=&limit=50`)
       console.log('📡 Suggestions response:', {
