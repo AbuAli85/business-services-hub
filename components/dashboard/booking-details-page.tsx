@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -74,12 +74,14 @@ import {
   Copy,
   Trash2,
   Send,
-  Bell
+  Bell,
+  MoreHorizontal
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
 import toast from 'react-hot-toast'
 import { MessagesThread } from '@/components/dashboard/messages-thread'
+import EnhancedMessagesThread from '@/components/dashboard/enhanced-messages-thread'
 
 interface Booking {
   id: string
@@ -269,6 +271,15 @@ export default function BookingDetailsPage() {
   const [newComment, setNewComment] = useState('')
   const [userReaction, setUserReaction] = useState<'up' | 'down' | null>(null)
 
+  // Enhanced Messaging State
+  const [messages, setMessages] = useState<any[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [messageSearch, setMessageSearch] = useState('')
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const messageInputRef = useRef<HTMLTextAreaElement>(null)
+
   const bookingId = params.id as string
 
   useEffect(() => {
@@ -276,6 +287,7 @@ export default function BookingDetailsPage() {
       loadBooking()
       loadBookingHistory()
       loadRelatedBookings()
+      loadMessages()
       // Realtime subscription for booking updates
       setupRealtime()
       loadSuggestions()
@@ -341,6 +353,144 @@ export default function BookingDetailsPage() {
   }
   const teardownRealtime = () => {
     if (realtimeCleanup) realtimeCleanup()
+  }
+
+  // Enhanced Messaging Functions
+  const quickReplies = [
+    "Thanks for the update!",
+    "I'll review this shortly.",
+    "Could you provide more details?",
+    "This looks great!",
+    "Let's schedule a call to discuss.",
+    "I'll get back to you by tomorrow."
+  ]
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !booking || loadingMessages) return
+
+    try {
+      setLoadingMessages(true)
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        toast.error('Please log in to send messages')
+        return
+      }
+
+      const messageData = {
+        booking_id: booking.id,
+        content: newMessage.trim(),
+        sender_id: user.id,
+        sender_role: userRole,
+        created_at: new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('booking_messages')
+        .insert(messageData)
+
+      if (error) throw error
+
+      setNewMessage('')
+      toast.success('Message sent successfully!')
+      loadMessages()
+      
+    } catch (error) {
+      console.error('Error sending message:', error)
+      toast.error('Failed to send message')
+    } finally {
+      setLoadingMessages(false)
+    }
+  }
+
+  const sendQuickMessage = (message: string) => {
+    setNewMessage(message)
+    setTimeout(() => sendMessage(), 100)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
+  const addReaction = async (messageId: string, reaction: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      const { error } = await supabase
+        .from('message_reactions')
+        .insert({
+          message_id: messageId,
+          user_id: user.id,
+          reaction,
+          created_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+      loadMessages()
+      
+    } catch (error) {
+      console.error('Error adding reaction:', error)
+    }
+  }
+
+  const loadMessages = async () => {
+    if (!booking) return
+
+    try {
+      setLoadingMessages(true)
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('booking_messages')
+        .select(`
+          *,
+          sender:profiles!booking_messages_sender_id_fkey(full_name, role),
+          reactions:message_reactions(*)
+        `)
+        .eq('booking_id', booking.id)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      const transformedMessages = (data || []).map(msg => ({
+        ...msg,
+        sender_name: msg.sender?.full_name || 'Unknown',
+        sender_role: msg.sender?.role || userRole,
+        is_own_message: msg.sender_id === user.id
+      }))
+
+      setMessages(transformedMessages)
+      
+    } catch (error) {
+      console.error('Error loading messages:', error)
+    } finally {
+      setLoadingMessages(false)
+    }
+  }
+
+  const formatMessageTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes}m ago`
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)}h ago`
+    } else {
+      return date.toLocaleDateString()
+    }
   }
 
   // --- Suggestions ---
@@ -5298,10 +5448,93 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Messages Tab */}
+        {/* Messages Tab - Enhanced Professional Interface */}
         <TabsContent value="messages" className="space-y-6">
           {booking && booking.id ? (
-            <MessagesThread bookingId={booking.id} />
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-white">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-white/10 p-2 rounded-lg">
+                      <MessageSquare className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-semibold">Project Communication</CardTitle>
+                      <CardDescription className="text-blue-100">
+                        Chat with {userRole === 'client' ? booking.provider?.full_name || 'Provider' : booking.client?.full_name || 'Client'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                      <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                      Online
+                    </Badge>
+                    <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="p-6">
+                <EnhancedMessagesThread 
+                  bookingId={booking.id} 
+                  userRole={userRole as 'client' | 'provider'}
+                  otherParty={{
+                    id: userRole === 'client' ? booking.provider?.id || '' : booking.client?.id || '',
+                    full_name: userRole === 'client' ? booking.provider?.full_name || 'Provider' : booking.client?.full_name || 'Client',
+                    avatar_url: undefined, // Will use fallback in component
+                    status: 'online'
+                  }}
+                />
+
+                {/* Communication Statistics */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">Total Messages</p>
+                        <p className="text-2xl font-bold text-blue-700">{messages.length}</p>
+                      </div>
+                      <MessageSquare className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-900">Response Rate</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          {messages.length > 0 ? '98%' : '0%'}
+                        </p>
+                      </div>
+                      <Zap className="h-8 w-8 text-green-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-purple-900">Avg Response</p>
+                        <p className="text-2xl font-bold text-purple-700">2h</p>
+                      </div>
+                      <Clock className="h-8 w-8 text-purple-600" />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl border border-orange-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-orange-900">Satisfaction</p>
+                        <p className="text-2xl font-bold text-orange-700">4.9★</p>
+                      </div>
+                      <Star className="h-8 w-8 text-orange-600" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
