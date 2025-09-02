@@ -20,10 +20,25 @@ const UpdateSuggestionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
     const supabase = await getSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!user) {
+    // Set the auth token for this request
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: ''
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    
+    if (userError || !user) {
+      console.error('Authentication error:', userError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -156,10 +171,25 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Get authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
     const supabase = await getSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!user) {
+    // Set the auth token for this request
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: ''
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    
+    if (userError || !user) {
+      console.error('Authentication error:', userError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -286,10 +316,25 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Get authorization header
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
     const supabase = await getSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!user) {
+    // Set the auth token for this request
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: ''
+    })
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    
+    if (userError || !user) {
+      console.error('Authentication error:', userError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
