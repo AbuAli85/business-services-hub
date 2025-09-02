@@ -530,7 +530,10 @@ export default function EnhancedMessagesThread({
     }, 3000) // Poll every 3 seconds
     
     setPollingInterval(interval)
-    toast.info('Using message polling (refresh every 3s)', { duration: 3000 })
+    toast('Using message polling (refresh every 3s)', { 
+      duration: 3000,
+      icon: '🔄'
+    })
   }
 
   const clearPolling = () => {
