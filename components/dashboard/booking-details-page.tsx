@@ -1665,43 +1665,57 @@ export default function BookingDetailsPage() {
               {/* Quick Actions */}
               <div className="space-y-3">
                 <label className="text-sm font-semibold text-blue-900 block">Quick Actions</label>
-                <div className="space-y-2">
-                  <Button
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    variant="default"
-                    onClick={handleMarkComplete}
-                    disabled={isUpdatingStatus || booking.status === 'completed'}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
-                  </Button>
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                    variant="default"
-                    onClick={() => setActiveTab('messages')}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Send Message
-                  </Button>
-                  <Button
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                    variant="default"
-                    onClick={handleExportBooking}
-                    disabled={isExporting}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    {isExporting ? 'Exporting...' : 'Export Report'}
-                  </Button>
-                  <Button
-                    className="w-full bg-red-600 hover:bg-red-700 text-white"
-                    variant="default"
-                    onClick={() => setShowDeleteConfirmation(true)}
-                    disabled={isUpdatingStatus}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Delete/Cancel
-                  </Button>
-                </div>
+                {userRole === 'provider' || userRole === 'admin' ? (
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      variant="default"
+                      onClick={handleMarkComplete}
+                      disabled={isUpdatingStatus || booking.status === 'completed'}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {isUpdatingStatus ? 'Updating...' : 'Mark Complete'}
+                    </Button>
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      variant="default"
+                      onClick={() => setActiveTab('messages')}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Send Message
+                    </Button>
+                    <Button
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      variant="default"
+                      onClick={handleExportBooking}
+                      disabled={isExporting}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      {isExporting ? 'Exporting...' : 'Export Report'}
+                    </Button>
+                    <Button
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                      variant="default"
+                      onClick={() => setShowDeleteConfirmation(true)}
+                      disabled={isUpdatingStatus}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Delete/Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <Button className="w-full" variant="outline" disabled>
+                      <CheckCircle className="h-4 w-4 mr-2" /> Mark Complete (provider only)
+                    </Button>
+                    <Button className="w-full" variant="outline" onClick={() => setActiveTab('messages')}>
+                      <MessageSquare className="h-4 w-4 mr-2" /> Message Provider
+                    </Button>
+                    <Button className="w-full" variant="outline" onClick={handleExportBooking} disabled={isExporting}>
+                      <Download className="h-4 w-4 mr-2" /> {isExporting ? 'Exporting...' : 'Export Summary'}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
