@@ -341,8 +341,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
   }
 
   const filteredMessages = messages.filter(msg =>
-    msg.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    msg.sender_name.toLowerCase().includes(searchQuery.toLowerCase())
+    (msg.content || '').toLowerCase().includes((searchQuery || '').toLowerCase()) ||
+    (msg.sender_name || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   )
 
   const formatMessageTime = (dateString: string) => {

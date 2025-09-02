@@ -321,7 +321,7 @@ export default function SmartFileManager({
   const getFileIcon = (file: FileItem) => {
     if (file.type === 'folder') return <Folder className="h-8 w-8 text-blue-500" />
     
-    const mimeType = file.mime_type.toLowerCase()
+    const mimeType = (file.mime_type || '').toLowerCase()
     if (mimeType.startsWith('image/')) return <FileImage className="h-8 w-8 text-green-500" />
     if (mimeType.startsWith('video/')) return <FileVideo className="h-8 w-8 text-purple-500" />
     if (mimeType.startsWith('audio/')) return <FileAudio className="h-8 w-8 text-orange-500" />
@@ -341,7 +341,7 @@ export default function SmartFileManager({
   }
 
   const filteredFiles = files.filter(file => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (file.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())
     const matchesType = filterType === 'all' || 
       (filterType === 'images' && file.mime_type.startsWith('image/')) ||
       (filterType === 'documents' && (file.mime_type.includes('pdf') || file.mime_type.includes('document') || file.mime_type.includes('text'))) ||
