@@ -1632,8 +1632,8 @@ export default function BookingDetailsPage() {
                   aria-label="Change booking status"
                   className="w-full p-3 border-2 border-blue-300 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   value={booking.status}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  disabled={isUpdatingStatus}
+                  onChange={(e) => (userRole === 'provider' || userRole === 'admin') ? handleStatusChange(e.target.value) : undefined}
+                  disabled={isUpdatingStatus || !(userRole === 'provider' || userRole === 'admin')}
                 >
                   {statusOptions.map(option => (
                     <option key={option.value} value={option.value} disabled={option.disabled}>
@@ -1875,8 +1875,8 @@ export default function BookingDetailsPage() {
 
             <div className="flex space-x-3 pt-4">
               <Button
-                onClick={handleUpdateProgress}
-                disabled={isUpdatingProgress}
+                onClick={() => (userRole === 'provider' || userRole === 'admin') ? handleUpdateProgress() : undefined}
+                disabled={isUpdatingProgress || !(userRole === 'provider' || userRole === 'admin')}
                 className="bg-green-600 hover:bg-green-700"
               >
                 {isUpdatingProgress ? 'Updating...' : 'Update Progress'}
