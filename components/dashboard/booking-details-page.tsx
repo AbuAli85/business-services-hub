@@ -170,6 +170,10 @@ export default function BookingDetailsPage() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [creatingSuggestion, setCreatingSuggestion] = useState(false)
   const [newSuggestion, setNewSuggestion] = useState<{ service_id: string; reason: string; priority: 'low' | 'medium' | 'high' | 'urgent' }>({ service_id: '', reason: '', priority: 'medium' })
+  // Timeline comments/reactions
+  const [timelineComments, setTimelineComments] = useState<any[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [userReaction, setUserReaction] = useState<'up' | 'down' | null>(null)
 
   const bookingId = params.id as string
 
@@ -181,6 +185,7 @@ export default function BookingDetailsPage() {
       // Realtime subscription for booking updates
       setupRealtime()
       loadSuggestions()
+      loadTimelineComments()
     }
     return teardownRealtime
   }, [bookingId])
@@ -216,6 +221,22 @@ export default function BookingDetailsPage() {
           filter: `booking_id=eq.${bookingId}`
         }, () => {
           if (activeTab === 'files') loadBooking()
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'booking_timeline_comments',
+          filter: `booking_id=eq.${bookingId}`
+        }, () => {
+          if (activeTab === 'timeline') loadTimelineComments()
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'booking_timeline_reactions',
+          filter: `booking_id=eq.${bookingId}`
+        }, () => {
+          if (activeTab === 'timeline') loadTimelineComments()
         })
         .subscribe()
       realtimeCleanup = () => {
@@ -285,6 +306,46 @@ export default function BookingDetailsPage() {
     } catch (e: any) {
       toast.error(e?.message || 'Failed to update suggestion')
     }
+  }
+
+  // --- Timeline comments & reactions ---
+  const loadTimelineComments = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase
+        .from('booking_timeline_comments')
+        .select('id, booking_id, user_id, comment, created_at, reaction')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+      if (!error) setTimelineComments(data || [])
+    } catch {}
+  }
+
+  const addTimelineComment = async () => {
+    if (!newComment.trim()) return
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_timeline_comments')
+        .insert({ booking_id: bookingId, comment: newComment })
+      if (error) throw error
+      setNewComment('')
+      loadTimelineComments()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to add comment')
+    }
+  }
+
+  const setReaction = async (reaction: 'up' | 'down') => {
+    try {
+      setUserReaction(reaction)
+      const supabase = await getSupabaseClient()
+      // Upsert user reaction
+      await supabase
+        .from('booking_timeline_reactions')
+        .upsert({ booking_id: bookingId, reaction })
+      loadTimelineComments()
+    } catch {}
   }
 
   const loadBooking = async () => {
