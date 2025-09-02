@@ -315,11 +315,20 @@ export default function BookingDetailsPage() {
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
-          table: 'messages',
+          table: 'booking_messages',
           filter: `booking_id=eq.${bookingId}`
-        }, () => {
-          // Ideally add incremental append; for now refresh the tab
-          if (activeTab === 'messages') loadBooking()
+        }, (payload) => {
+          console.log('📨 Real-time message update in booking-details:', payload)
+          // Reload messages immediately for any message changes
+          loadMessages()
+          
+          // Show toast notification for new messages
+          if (payload.eventType === 'INSERT' && payload.new) {
+            toast.success('💬 New message received!', { 
+              duration: 3000,
+              icon: '💬'
+            })
+          }
         })
         .on('postgres_changes', {
           event: '*',

@@ -90,9 +90,11 @@ export default function EnhancedMessagesThread({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [selectedPriority, setSelectedPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal')
   const [isTyping, setIsTyping] = useState(false)
+  const [typingUsers, setTypingUsers] = useState<string[]>([])
   const [lastSeen, setLastSeen] = useState<string>('')
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Message templates for different scenarios
   const messageTemplates = {
@@ -134,6 +136,17 @@ export default function EnhancedMessagesThread({
     }
     return () => cleanupRealtime()
   }, [bookingId])
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          toast.success('🔔 Browser notifications enabled!', { duration: 3000 })
+        }
+      })
+    }
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
@@ -262,6 +275,61 @@ export default function EnhancedMessagesThread({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
+    } else {
+      // Send typing indicator
+      handleTyping()
+    }
+  }
+
+  const handleTyping = async () => {
+    try {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+
+      // Send typing start signal
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      // Only send typing notification if not already typing
+      if (!isTyping) {
+        setIsTyping(true)
+        
+        // Send typing event via realtime
+        if (realtimeChannel) {
+          realtimeChannel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: {
+              user_id: user.id,
+              user_name: user.user_metadata?.full_name || 'User',
+              typing: true,
+              booking_id: bookingId
+            }
+          })
+        }
+      }
+
+      // Clear typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false)
+        if (realtimeChannel) {
+          realtimeChannel.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: {
+              user_id: user.id,
+              typing: false,
+              booking_id: bookingId
+            }
+          })
+        }
+      }, 2000)
+
+    } catch (error) {
+      console.error('Error handling typing:', error)
     }
   }
 
@@ -313,12 +381,153 @@ export default function EnhancedMessagesThread({
     }
   }
 
-  const setupRealtime = () => {
-    // TODO: Implement real-time subscriptions
+  const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+
+  const setupRealtime = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Create a channel for real-time updates
+      const channel = supabase
+        .channel(`booking-messages-${bookingId}`)
+        .on('postgres_changes', 
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'booking_messages',
+            filter: `booking_id=eq.${bookingId}`
+          },
+          async (payload) => {
+            console.log('📨 New message received:', payload.new)
+            await handleNewMessage(payload.new as any)
+          }
+        )
+        .on('postgres_changes',
+          {
+            event: 'UPDATE', 
+            schema: 'public',
+            table: 'booking_messages',
+            filter: `booking_id=eq.${bookingId}`
+          },
+          async (payload) => {
+            console.log('📝 Message updated:', payload.new)
+            await handleMessageUpdate(payload.new as any)
+          }
+        )
+        .on('broadcast', { event: 'typing' }, (payload) => {
+          console.log('⌨️ Typing event received:', payload)
+          handleTypingEvent(payload.payload)
+        })
+        .subscribe((status) => {
+          console.log('🔔 Real-time subscription status:', status)
+          if (status === 'SUBSCRIBED') {
+            toast.success('Real-time messaging connected!', { duration: 2000 })
+          }
+        })
+
+      setRealtimeChannel(channel)
+    } catch (error) {
+      console.error('❌ Failed to setup real-time:', error)
+      toast.error('Real-time messaging failed to connect')
+    }
   }
 
   const cleanupRealtime = () => {
-    // TODO: Cleanup real-time subscriptions
+    if (realtimeChannel) {
+      console.log('🧹 Cleaning up real-time subscription')
+      realtimeChannel.unsubscribe()
+      setRealtimeChannel(null)
+    }
+  }
+
+  const handleNewMessage = async (newMessage: any) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      // Fetch sender details for the new message
+      const { data: senderData } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .eq('id', newMessage.sender_id)
+        .single()
+
+      const sender = senderData || {}
+      const transformedMessage = {
+        ...newMessage,
+        sender_name: sender.full_name || 'Unknown User',
+        sender_role: sender.role || userRole,
+        is_own_message: newMessage.sender_id === user.id,
+        message_type: newMessage.message_type || 'text',
+        priority: newMessage.priority || 'normal',
+        reactions: [],
+        attachments: []
+      }
+
+      // Add to messages state
+      setMessages(prev => [...prev, transformedMessage])
+      
+      // Show notification for messages from others
+      if (!transformedMessage.is_own_message) {
+        toast.success(`💬 New message from ${transformedMessage.sender_name}`, {
+          duration: 4000,
+          icon: '💬'
+        })
+        
+        // Play notification sound (optional)
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(`New message from ${transformedMessage.sender_name}`, {
+            body: transformedMessage.content.substring(0, 100) + (transformedMessage.content.length > 100 ? '...' : ''),
+            icon: '/favicon.ico'
+          })
+        }
+      }
+      
+      // Auto-scroll to new message
+      setTimeout(scrollToBottom, 100)
+      
+    } catch (error) {
+      console.error('❌ Error handling new message:', error)
+    }
+  }
+
+  const handleMessageUpdate = async (updatedMessage: any) => {
+    try {
+      // Update existing message in state
+      setMessages(prev => prev.map(msg => 
+        msg.id === updatedMessage.id 
+          ? { ...msg, ...updatedMessage, updated_at: new Date().toISOString() }
+          : msg
+      ))
+    } catch (error) {
+      console.error('❌ Error handling message update:', error)
+    }
+  }
+
+  const handleTypingEvent = async (payload: any) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user || payload.user_id === user.id) return // Ignore own typing events
+
+      if (payload.typing) {
+        // Add user to typing list
+        setTypingUsers(prev => {
+          if (!prev.includes(payload.user_name)) {
+            return [...prev, payload.user_name]
+          }
+          return prev
+        })
+      } else {
+        // Remove user from typing list
+        setTypingUsers(prev => prev.filter(name => name !== payload.user_name))
+      }
+    } catch (error) {
+      console.error('❌ Error handling typing event:', error)
+    }
   }
 
   const formatMessageTime = (dateString: string) => {
@@ -531,6 +740,24 @@ export default function EnhancedMessagesThread({
               </div>
             ))
           )}
+          
+          {/* Typing Indicator */}
+          {typingUsers.length > 0 && (
+            <div className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-500 animate-pulse">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+              <span>
+                {typingUsers.length === 1 
+                  ? `${typingUsers[0]} is typing...`
+                  : `${typingUsers.slice(0, -1).join(', ')} and ${typingUsers[typingUsers.length - 1]} are typing...`
+                }
+              </span>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
