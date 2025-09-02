@@ -450,26 +450,43 @@ export default function BookingDetailsPage() {
       
       if (!user) return
 
-      const { data, error } = await supabase
-        .from('booking_messages')
-        .select(`
-          *,
-          sender:profiles!booking_messages_sender_id_fkey(full_name, role),
-          reactions:message_reactions(*)
-        `)
-        .eq('booking_id', booking.id)
-        .order('created_at', { ascending: true })
+          const { data, error } = await supabase
+      .from('booking_messages')
+      .select(`
+        *,
+        reactions:message_reactions(*)
+      `)
+      .eq('booking_id', booking.id)
+      .order('created_at', { ascending: true })
 
-      if (error) throw error
+    if (error) throw error
 
-      const transformedMessages = (data || []).map(msg => ({
+    // Get unique sender IDs to fetch sender details
+    const senderIds = Array.from(new Set((data || []).map(msg => msg.sender_id)))
+    
+    // Fetch sender details from profiles table
+    const { data: sendersData } = await supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .in('id', senderIds)
+    
+    // Create a lookup map for sender details
+    const sendersMap = (sendersData || []).reduce((acc, sender) => {
+      acc[sender.id] = sender
+      return acc
+    }, {} as Record<string, any>)
+
+    const transformedMessages = (data || []).map(msg => {
+      const sender = sendersMap[msg.sender_id] || {}
+      return {
         ...msg,
-        sender_name: msg.sender?.full_name || 'Unknown',
-        sender_role: msg.sender?.role || userRole,
+        sender_name: sender.full_name || 'Unknown',
+        sender_role: sender.role || userRole,
         is_own_message: msg.sender_id === user.id
-      }))
+      }
+    })
 
-      setMessages(transformedMessages)
+    setMessages(transformedMessages as any)
       
     } catch (error) {
       console.error('Error loading messages:', error)
