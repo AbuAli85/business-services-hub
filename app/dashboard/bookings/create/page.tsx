@@ -304,15 +304,31 @@ export default function CreateBookingPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Package className="h-5 w-5" />
-                <span>Available Services</span>
+                <span>{selectedService ? 'Selected Service' : 'Available Services'}</span>
               </CardTitle>
               <CardDescription>
-                Choose from our available services
+                {selectedService ? 'Selected service for booking' : 'Choose from our available services'}
               </CardDescription>
+              {selectedService && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedService(null)
+                      setSelectedPackage(null)
+                      setFormData(prev => ({ ...prev, service_id: '', package_id: '' }))
+                    }}
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  >
+                    Change Service
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {services.map((service) => (
+                {(selectedService ? [selectedService] : services).map((service) => (
                   <div
                     key={service.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-all ${
