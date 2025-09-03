@@ -6,6 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number, currency: string = 'OMR'): string {
+  if (currency === 'OMR') {
+    return `OMR ${amount.toFixed(2)}`
+  }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,

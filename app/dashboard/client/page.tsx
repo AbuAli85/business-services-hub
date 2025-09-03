@@ -17,7 +17,7 @@ import {
   Eye,
   Search,
   CheckCircle,
-  DollarSign,
+  TrendingUp,
   MapPin,
   ArrowRight,
   Target
@@ -620,13 +620,13 @@ export default function ClientDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Investment</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats?.totalSpent || 0)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats?.totalSpent || 0, 'OMR')}</div>
             <p className="text-xs text-muted-foreground">
-              +{formatCurrency(stats?.monthlySpent || 0)} this month
+              +{formatCurrency(stats?.monthlySpent || 0, 'OMR')} this month
             </p>
           </CardContent>
         </Card>
@@ -817,7 +817,7 @@ export default function ClientDashboard() {
                         {booking.provider_company && (
                           <span className="text-gray-500">({booking.provider_company})</span>
                         )}
-                        <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
+                        <span className="font-medium">{formatCurrency(booking.amount, 'OMR')}</span>
                       </div>
                     </div>
                     <Button
@@ -874,7 +874,7 @@ export default function ClientDashboard() {
                       </div>
                       <div className="flex items-center space-x-4 text-xs text-gray-600">
                         <span>by {suggestion.provider.full_name}</span>
-                        <span className="font-medium">{formatCurrency(suggestion.suggested_service.base_price, suggestion.suggested_service.currency)}</span>
+                        <span className="font-medium">{formatCurrency(suggestion.suggested_service.base_price, 'OMR')}</span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1 line-clamp-2">{suggestion.suggestion_reason}</p>
                     </div>

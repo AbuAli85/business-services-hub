@@ -997,11 +997,12 @@ export default function SettingsPage() {
 
               <div>
                 <Label htmlFor="currency">Currency</Label>
-                <Select defaultValue="USD">
+                <Select defaultValue="OMR">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="OMR">OMR (ر.ع.)</SelectItem>
                     <SelectItem value="USD">USD ($)</SelectItem>
                     <SelectItem value="EUR">EUR (€)</SelectItem>
                     <SelectItem value="GBP">GBP (£)</SelectItem>
