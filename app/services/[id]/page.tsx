@@ -110,8 +110,10 @@ export default function ServiceDetail() {
             Back
           </Button>
           <div className="hidden sm:flex gap-2">
-            <Button onClick={() => router.push('/services')}>Browse All Services</Button>
-            <Button variant="secondary" onClick={() => service && router.push(`/dashboard/services/${service.id}`)}>View in Dashboard</Button>
+            <Button onClick={() => router.push('/dashboard/services')}>Browse All Services</Button>
+            {isServiceOwner && (
+              <Button variant="secondary" onClick={() => service && router.push(`/dashboard/services/${service.id}`)}>View in Dashboard</Button>
+            )}
           </div>
         </div>
 
@@ -435,16 +437,16 @@ export default function ServiceDetail() {
               <div className="lg:col-span-1">
                 <div className="sticky top-20 space-y-4">
                   {!isServiceOwner && (
-                  <Card className="border-0 shadow-lg">
+                  <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-purple-600 text-white">
                     <CardHeader>
                       <CardTitle>Book This Service</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
                         <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Select Package (optional)</label>
+                          <label className="block text-sm font-medium text-white/90 mb-1">Select Package (optional)</label>
                           <select
-                            className="w-full rounded-md border px-3 py-2"
+                            className="w-full rounded-md border px-3 py-2 text-gray-900"
                             value={selectedPackageId}
                             onChange={(e) => setSelectedPackageId(e.target.value)}
                           >
@@ -458,7 +460,7 @@ export default function ServiceDetail() {
                         </div>
                       )}
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date & Time</label>
+                        <label className="block text-sm font-medium text-white/90 mb-1">Scheduled Date & Time</label>
                         <Input
                           type="datetime-local"
                           value={scheduledDate}
@@ -466,13 +468,13 @@ export default function ServiceDetail() {
                         />
                       </div>
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                        <label className="block text-sm font-medium text-white/90 mb-1">Notes (optional)</label>
                         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the provider should know?" />
                       </div>
                       <div className="flex flex-wrap gap-3">
-                        <Button onClick={() => router.push('/services')}>Browse All Services</Button>
+                        <Button variant="secondary" onClick={() => router.push('/dashboard/services')} className="bg-white/20 border-white/30 text-white hover:bg-white/30">Browse All Services</Button>
                         <Button
-                          variant="secondary"
+                          className="bg-white text-gray-900 hover:bg-gray-100"
                           onClick={async () => {
                             if (!service?.id) return
                             if (!isAuthenticated) {
@@ -524,10 +526,10 @@ export default function ServiceDetail() {
                           disabled={isBooking}
                         >
                           {isBooking ? 'Booking…' : (isAuthenticated ? 'Book Now' : 'Sign in to Book')}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                   )}
                 </div>
               </div>

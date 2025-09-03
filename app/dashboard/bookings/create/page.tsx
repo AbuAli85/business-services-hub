@@ -27,7 +27,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -80,6 +80,7 @@ export default function CreateBookingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [formData, setFormData] = useState<BookingForm>({
     service_id: '',
@@ -157,6 +158,21 @@ export default function CreateBookingPage() {
       )
 
       setServices(enrichedServices || [])
+
+      // Preselect service from query parameter if available
+      const serviceParam = searchParams?.get('service')
+      if (serviceParam && (enrichedServices || []).length > 0) {
+        const svc = (enrichedServices as any).find((s: Service) => s.id === serviceParam)
+        if (svc) {
+          setSelectedService(svc)
+          setFormData(prev => ({ ...prev, service_id: svc.id }))
+          const firstPkg = (svc.packages || [])[0]
+          if (firstPkg) {
+            setSelectedPackage(firstPkg)
+            setFormData(prev => ({ ...prev, package_id: firstPkg.id }))
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching services:', error)
       toast.error('Failed to load services')

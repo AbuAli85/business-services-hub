@@ -31,17 +31,20 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface ProviderProfile {
   id: string
   full_name: string
-  email: string
+  email?: string
   phone: string
   country: string
   role: string
   is_verified: boolean
   created_at: string
   updated_at: string
+  avatar_url?: string
+  bio?: string
 }
 
 interface Company {
@@ -97,6 +100,8 @@ export default function ProfilePage() {
     country: ''
   })
   const router = useRouter()
+  const [recentBookings, setRecentBookings] = useState<any[]>([])
+  const [profileCompletion, setProfileCompletion] = useState<number>(0)
 
   useEffect(() => {
     fetchProfileData()
@@ -133,6 +138,10 @@ export default function ProfilePage() {
           phone: profileData.phone || '',
           country: profileData.country || ''
         })
+        // compute completion percentage (non-blocking)
+        const fields = [profileData.full_name, profileData.phone, profileData.country, profileData.avatar_url, profileData.bio]
+        const filled = fields.filter(Boolean).length
+        setProfileCompletion(Math.round((filled / fields.length) * 100))
       }
 
       // Fetch company data
@@ -160,6 +169,33 @@ export default function ProfilePage() {
 
         if (servicesData) {
           setServices(servicesData)
+        }
+      } else if (role === 'client') {
+        // Recent bookings for clients
+        const supabaseBookings = await getSupabaseClient()
+        const { data: bookings } = await supabaseBookings
+          .from('bookings')
+          .select('id, status, created_at, service_id')
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (bookings && bookings.length > 0) {
+          // Fetch service titles
+          const serviceIds = bookings.map((b: any) => b.service_id).filter(Boolean)
+          if (serviceIds.length > 0) {
+            const { data: svc } = await supabaseBookings
+              .from('services')
+              .select('id, title')
+              .in('id', serviceIds)
+            const idToTitle: Record<string, string> = {}
+            ;(svc || []).forEach((s: any) => { idToTitle[s.id] = s.title })
+            setRecentBookings(bookings.map((b: any) => ({ ...b, service_title: idToTitle[b.service_id] || 'Service' })))
+          } else {
+            setRecentBookings(bookings)
+          }
+        } else {
+          setRecentBookings([])
         }
       }
 
@@ -299,7 +335,11 @@ export default function ProfilePage() {
       {/* Enhanced Header */}
       <div className="bg-gradient-to-r from-rose-600 to-pink-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+              {(profile?.full_name || userEmail || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div>
             <h1 className="text-4xl font-bold mb-2">
               {userRole === 'provider' ? 'Provider Profile' : 'Client Profile'}
             </h1>
@@ -324,6 +364,7 @@ export default function ProfilePage() {
                 <Calendar className="h-4 w-4 mr-1" />
                 <span>Member since {formatDate(profile?.created_at || '')}</span>
               </div>
+            </div>
             </div>
           </div>
           <div className="flex flex-col gap-3">
@@ -352,6 +393,18 @@ export default function ProfilePage() {
                 <Award className="h-4 w-4 mr-2" />
                 View Portfolio
               </Button>
+            )}
+            {userRole === 'client' && (
+              <div className="flex gap-2">
+                <Button variant="secondary" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => router.push('/dashboard/bookings')}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  My Bookings
+                </Button>
+                <Button variant="secondary" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => router.push('/dashboard/settings')}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Settings
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -530,14 +583,12 @@ export default function ProfilePage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Last Activity</CardTitle>
+                <CardTitle className="text-sm font-medium">Profile Completion</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {profile?.updated_at ? formatDate(profile.updated_at) : 'N/A'}
-                </div>
-                <p className="text-xs text-muted-foreground">Profile last updated</p>
+                <div className="text-2xl font-bold">{profileCompletion}%</div>
+                <p className="text-xs text-muted-foreground">Complete your profile for better matches</p>
               </CardContent>
             </Card>
 
@@ -554,6 +605,33 @@ export default function ProfilePage() {
           </>
         )}
       </div>
+
+      {/* Recent Bookings for Clients */}
+      {userRole === 'client' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Bookings</CardTitle>
+            <CardDescription>Your latest activity and service requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentBookings.length === 0 ? (
+              <div className="text-sm text-gray-500">No recent bookings yet. Explore services to get started.</div>
+            ) : (
+              <div className="divide-y">
+                {recentBookings.map((b) => (
+                  <div key={b.id} className="py-3 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">{b.service_title || 'Service'}</div>
+                      <div className="text-xs text-gray-500">{formatDate(b.created_at)}</div>
+                    </div>
+                    <Badge className={getStatusColor(b.status)}>{b.status}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Profile Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
