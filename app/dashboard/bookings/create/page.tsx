@@ -223,6 +223,8 @@ export default function CreateBookingPage() {
         title: selectedPackage ? `${selectedService.title} - ${selectedPackage.name}` : selectedService.title,
         scheduled_date: formData.scheduled_date.toISOString(),
         scheduled_time: formData.scheduled_time,
+        start_time: formData.scheduled_date.toISOString(), // Use scheduled_date as start_time
+        end_time: new Date(formData.scheduled_date.getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add 2 hours for end_time
         location: formData.location,
         notes: formData.notes,
         special_requirements: formData.special_requirements,

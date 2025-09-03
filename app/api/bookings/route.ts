@@ -211,6 +211,8 @@ export async function POST(request: NextRequest) {
         provider_id: service.provider_id,
         title: service.title || 'Service Booking',
         scheduled_date,
+        start_time: scheduled_date, // Use scheduled_date as start_time
+        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add 2 hours for end_time
         notes,
         status: 'pending',
         approval_status: 'pending',
