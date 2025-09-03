@@ -213,7 +213,9 @@ export default function ServicesPage() {
       } else if (userRole === 'client') {
         // Clients should only see approved services, not pending ones
         console.log('Filtering services for client - showing only approved services')
-        query = query.eq('approval_status', 'approved')
+        query = query
+          .eq('approval_status', 'approved')
+          .eq('status', 'active')
       }
       // Admins can see all services (no additional filter needed)
 
@@ -1312,7 +1314,8 @@ export default function ServicesPage() {
                     {userRole === 'client' && service.status === 'active' && (
                       <Button
                         className="flex-1 h-12 btn-primary-gradient rounded-xl font-medium relative overflow-hidden group"
-                        onClick={() => handleServiceAction(service.id, 'book')}
+                        onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
+                        onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
                       >
                         <div className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
                         <div className="relative flex items-center justify-center">
