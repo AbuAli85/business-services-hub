@@ -638,15 +638,15 @@ export default function ServicesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="group hover-lift card-elevated border-0 bg-gradient-to-br from-blue-50 to-blue-100">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-blue-800">Total Services</CardTitle>
+              <CardTitle className="text-sm font-semibold text-blue-800">Active Services</CardTitle>
               <div className="p-2 bg-blue-500 rounded-xl group-hover:scale-110 transition-transform duration-200 shadow-soft">
                 <Package className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-900 mb-1">{stats?.totalServices || 0}</div>
+              <div className="text-3xl font-bold text-blue-900 mb-1">{stats?.activeServices || 0}</div>
               <p className="text-xs text-blue-700 font-medium">
-                {stats?.activeServices || 0} active services
+                {stats?.totalServices || 0} total services
               </p>
               <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
                                   <div 
