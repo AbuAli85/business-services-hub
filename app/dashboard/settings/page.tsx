@@ -92,6 +92,35 @@ export default function SettingsPage() {
   const router = useRouter()
   const [profileColumns, setProfileColumns] = useState<string[]>([])
 
+  // Utility function to save settings to localStorage
+  const saveToLocalStorage = (key: string, data: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        user_id: user?.id,
+        ...data,
+        updated_at: new Date().toISOString()
+      }))
+    } catch (error) {
+      console.error(`Error saving to localStorage (${key}):`, error)
+    }
+  }
+
+  // Utility function to load settings from localStorage
+  const loadFromLocalStorage = (key: string, userId: string) => {
+    try {
+      const data = localStorage.getItem(key)
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (parsed.user_id === userId) {
+          return parsed
+        }
+      }
+    } catch (error) {
+      console.error(`Error loading from localStorage (${key}):`, error)
+    }
+    return null
+  }
+
   useEffect(() => {
     checkUserAndLoadData()
   }, [])
@@ -108,6 +137,7 @@ export default function SettingsPage() {
 
       setUser(user)
       await loadUserProfile(user.id)
+      // Load settings with fallback to localStorage
       await loadNotificationSettings(user.id)
       await loadSecuritySettings(user.id)
     } catch (error) {
@@ -154,7 +184,35 @@ export default function SettingsPage() {
 
   const loadNotificationSettings = async (userId: string) => {
     try {
+      // Check if user_notifications table exists by trying a simple query
       const supabase = await getSupabaseClient()
+      
+      // Try to check if table exists first
+      const { error: tableCheckError } = await supabase
+        .from('user_notifications')
+        .select('id')
+        .limit(1)
+
+      if (tableCheckError) {
+        // Table doesn't exist - try to load from localStorage
+        console.log('Notification settings table not available, checking localStorage')
+        const localSettings = loadFromLocalStorage('user_notifications', userId)
+        if (localSettings) {
+          setNotifications({
+            email_notifications: localSettings.email_notifications ?? true,
+            push_notifications: localSettings.push_notifications ?? true,
+            sms_notifications: localSettings.sms_notifications ?? false,
+            booking_updates: localSettings.booking_updates ?? true,
+            payment_notifications: localSettings.payment_notifications ?? true,
+            marketing_emails: localSettings.marketing_emails ?? false,
+            weekly_reports: localSettings.weekly_reports ?? true
+          })
+          console.log('Loaded notification settings from localStorage')
+        }
+        return
+      }
+
+      // Table exists, try to load user settings
       const { data, error } = await supabase
         .from('user_notifications')
         .select('*')
@@ -162,11 +220,9 @@ export default function SettingsPage() {
         .single()
 
       if (error) {
-        // Handle missing table or no rows - use default settings
-        if (error.code === 'PGRST116' || error.code === 'PGRST114' || error.code === '42P01' || 
-            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
-          console.log('Notification settings table not found, using default settings')
-          // Keep default notification settings
+        if (error.code === 'PGRST116') {
+          // No rows found - use default settings
+          console.log('No notification settings found, using defaults')
           return
         }
         console.error('Error loading notification settings:', error)
@@ -186,12 +242,38 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error loading notification settings:', error)
+      // Keep default settings on any error
     }
   }
 
   const loadSecuritySettings = async (userId: string) => {
     try {
+      // Check if user_security table exists by trying a simple query
       const supabase = await getSupabaseClient()
+      
+      // Try to check if table exists first
+      const { error: tableCheckError } = await supabase
+        .from('user_security')
+        .select('id')
+        .limit(1)
+
+      if (tableCheckError) {
+        // Table doesn't exist - try to load from localStorage
+        console.log('Security settings table not available, checking localStorage')
+        const localSettings = loadFromLocalStorage('user_security', userId)
+        if (localSettings) {
+          setSecurity({
+            two_factor_enabled: localSettings.two_factor_enabled ?? false,
+            session_timeout: localSettings.session_timeout ?? 30,
+            login_notifications: localSettings.login_notifications ?? true,
+            password_change_required: localSettings.password_change_required ?? false
+          })
+          console.log('Loaded security settings from localStorage')
+        }
+        return
+      }
+
+      // Table exists, try to load user settings
       const { data, error } = await supabase
         .from('user_security')
         .select('*')
@@ -199,11 +281,9 @@ export default function SettingsPage() {
         .single()
 
       if (error) {
-        // Handle missing table or no rows - use default settings
-        if (error.code === 'PGRST116' || error.code === 'PGRST114' || error.code === '42P01' || 
-            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
-          console.log('Security settings table not found, using default settings')
-          // Keep default security settings
+        if (error.code === 'PGRST116') {
+          // No rows found - use default settings
+          console.log('No security settings found, using defaults')
           return
         }
         console.error('Error loading security settings:', error)
@@ -293,6 +373,21 @@ export default function SettingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // First check if table exists
+      const { error: tableCheckError } = await supabase
+        .from('user_notifications')
+        .select('id')
+        .limit(1)
+
+      if (tableCheckError) {
+        // Table doesn't exist - save to localStorage as fallback
+        saveToLocalStorage('user_notifications', notifications)
+        toast.info('Notification settings saved locally (database table not available)')
+        setSaving(false)
+        return
+      }
+
+      // Table exists, try to save
       const { error } = await supabase
         .from('user_notifications')
         .upsert({
@@ -302,15 +397,8 @@ export default function SettingsPage() {
         })
 
       if (error) {
-        // Handle missing table or other database errors
-        if (error.code === 'PGRST114' || error.code === '42P01' || 
-            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
-          console.log('Notification settings table not available, settings saved locally')
-          toast.info('Notification settings saved locally (database table not available)')
-        } else {
-          console.error('Error updating notification settings:', error)
-          toast.error('Failed to update notification settings')
-        }
+        console.error('Error updating notification settings:', error)
+        toast.error('Failed to update notification settings')
       } else {
         toast.success('Notification settings updated')
       }
@@ -327,6 +415,21 @@ export default function SettingsPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // First check if table exists
+      const { error: tableCheckError } = await supabase
+        .from('user_security')
+        .select('id')
+        .limit(1)
+
+      if (tableCheckError) {
+        // Table doesn't exist - save to localStorage as fallback
+        saveToLocalStorage('user_security', security)
+        toast.info('Security settings saved locally (database table not available)')
+        setSaving(false)
+        return
+      }
+
+      // Table exists, try to save
       const { error } = await supabase
         .from('user_security')
         .upsert({
@@ -336,15 +439,8 @@ export default function SettingsPage() {
         })
 
       if (error) {
-        // Handle missing table or other database errors
-        if (error.code === 'PGRST114' || error.code === '42P01' || 
-            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
-          console.log('Security settings table not available, settings saved locally')
-          toast.info('Security settings saved locally (database table not available)')
-        } else {
-          console.error('Error updating security settings:', error)
-          toast.error('Failed to update security settings')
-        }
+        console.error('Error updating security settings:', error)
+        toast.error('Failed to update security settings')
       } else {
         toast.success('Security settings updated')
       }
