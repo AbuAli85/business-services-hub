@@ -211,12 +211,74 @@ export default function EnhancedBookingDetails() {
   const [messageType, setMessageType] = useState<'text' | 'voice' | 'video'>('text')
   const [realtimeUpdates, setRealtimeUpdates] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     if (bookingId) {
       loadBookingData()
       initializeCommunicationChannels()
       generateSmartSuggestions()
+    }
+  }, [bookingId])
+
+  // Realtime: listen for booking updates and notifications
+  useEffect(() => {
+    let channel: any
+    let notifChannel: any
+    ;(async () => {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !bookingId) return
+
+      // Listen to changes on this booking
+      channel = supabase
+        .channel(`booking-${bookingId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'bookings', filter: `id=eq.${bookingId}` },
+          payload => {
+            // Soft merge new fields and refresh metrics
+            setBooking(prev => prev ? { ...prev, ...(payload.new as any) } : prev)
+            toast.success('Booking updated in real-time')
+          }
+        )
+        .subscribe()
+
+      // Listen to notifications for current user
+      notifChannel = supabase
+        .channel(`notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          payload => {
+            const note = payload.new as any
+            setNotifications(prev => [note, ...prev])
+            setUnreadCount(c => c + 1)
+            toast.custom(t => (
+              <div className="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black/5 border p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <Bell className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="ml-3 w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900">{note.title || 'Notification'}</p>
+                    <p className="mt-1 text-sm text-gray-600">{note.message}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          }
+        )
+        .subscribe()
+    })()
+
+    return () => {
+      // Cleanup channels
+      ;(async () => {
+        const supabase = await getSupabaseClient()
+        if (channel) await supabase.removeChannel(channel)
+        if (notifChannel) await supabase.removeChannel(notifChannel)
+      })()
     }
   }, [bookingId])
 
@@ -515,6 +577,17 @@ export default function EnhancedBookingDetails() {
       
       // Add to activity log
       addActivityLog(`Status changed to ${newStatus}`)
+
+      // Notify the other party (in-app notification)
+      const recipientId = user.id === booking.client.id ? booking.provider.id : booking.client.id
+      await supabase.from('notifications').insert({
+        user_id: recipientId,
+        type: 'booking',
+        title: 'Booking status updated',
+        message: `Booking #${booking.id.slice(0,8)} is now ${newStatus.replace('_',' ')}`,
+        data: { booking_id: booking.id, status: newStatus },
+        created_at: new Date().toISOString()
+      })
       
     } catch (error) {
       console.error('Error updating status:', error)
@@ -634,6 +707,7 @@ export default function EnhancedBookingDetails() {
 
   const isClient = user?.id === booking.client.id
   const isProvider = user?.id === booking.provider.id
+  const canEdit = isProvider && booking.status !== 'completed'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -676,8 +750,10 @@ export default function EnhancedBookingDetails() {
             <div className="flex items-center space-x-3">
               <Button
                 variant="outline"
-                onClick={() => setShowQuickActions(!showQuickActions)}
+                onClick={() => canEdit && setShowQuickActions(!showQuickActions)}
                 className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                disabled={!canEdit}
+                title={!canEdit ? 'Only providers can perform quick actions' : undefined}
               >
                 <Zap className="h-4 w-4 mr-2" />
                 Quick Actions
@@ -1026,11 +1102,11 @@ export default function EnhancedBookingDetails() {
                       )}
 
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button variant="outline" size="sm" className="flex-1" disabled={!canEdit} title={!canEdit ? 'Only providers can edit details' : undefined}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Details
                         </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button variant="outline" size="sm" className="flex-1" disabled={!canEdit} title={!canEdit ? 'Only providers can reschedule' : undefined}>
                           <Calendar className="h-4 w-4 mr-2" />
                           Reschedule
                         </Button>
@@ -1050,7 +1126,7 @@ export default function EnhancedBookingDetails() {
                       {/* Status Update */}
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <label className="text-sm font-medium text-gray-700 mb-2 block">Update Status</label>
-                        <Select defaultValue={booking.status} onValueChange={handleStatusUpdate}>
+                        <Select defaultValue={booking.status} onValueChange={handleStatusUpdate} disabled={!canEdit}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -1067,19 +1143,19 @@ export default function EnhancedBookingDetails() {
 
                       {/* Communication Actions */}
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50">
+                        <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50" disabled={!canEdit} title={!canEdit ? 'Only providers can call from dashboard' : undefined}>
                           <Phone className="h-4 w-4 mr-2" />
                           Call
                         </Button>
-                        <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                        <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50" disabled={!canEdit} title={!canEdit ? 'Only providers can start video from dashboard' : undefined}>
                           <Video className="h-4 w-4 mr-2" />
                           Video
                         </Button>
-                        <Button variant="outline" size="sm" className="border-purple-200 text-purple-700 hover:bg-purple-50">
+                        <Button variant="outline" size="sm" className="border-purple-200 text-purple-700 hover:bg-purple-50" disabled={!canEdit} title={!canEdit ? 'Only providers can share from dashboard' : undefined}>
                           <Share2 className="h-4 w-4 mr-2" />
                           Share
                         </Button>
-                        <Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50">
+                        <Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50" disabled={!canEdit} title={!canEdit ? 'Only providers can send notifications' : undefined}>
                           <Bell className="h-4 w-4 mr-2" />
                           Notify
                         </Button>
@@ -1092,7 +1168,7 @@ export default function EnhancedBookingDetails() {
                           <Progress value={booking.progress_percentage} className="flex-1" />
                           <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
                         </div>
-                        <Button size="sm" variant="outline" className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50">
+                        <Button size="sm" variant="outline" className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" disabled={!canEdit} title={!canEdit ? 'Only providers can update progress' : undefined}>
                           <TrendingUp className="h-4 w-4 mr-2" />
                           Update Progress
                         </Button>
