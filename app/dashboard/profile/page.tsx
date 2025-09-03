@@ -105,6 +105,7 @@ export default function ProfilePage() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
+  const [success, setSuccess] = useState<string>('')
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({
     full_name: '',
@@ -136,11 +137,17 @@ export default function ProfilePage() {
       setUserRole(role)
 
       // Fetch profile data
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileError)
+        setError('Failed to load profile data. Please try again.')
+        return
+      }
 
       if (profileData) {
         setProfile(profileData)
@@ -155,19 +162,42 @@ export default function ProfilePage() {
         const requiredFilled = requiredFields.filter(Boolean).length
         const optionalFilled = optionalFields.filter(Boolean).length
         const completion = Math.round(((requiredFilled / requiredFields.length) * 0.7 + (optionalFilled / optionalFields.length) * 0.3) * 100)
-        setProfileCompletion(completion)
+        setProfileCompletion(Math.min(completion, 100)) // Ensure it doesn't exceed 100%
+      } else {
+        // Handle case where no profile exists - create a basic one
+        console.log('No profile found, creating basic profile data')
+        const basicProfile = {
+          id: user.id,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email,
+          phone: '',
+          country: '',
+          role: role,
+          is_verified: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        setProfile(basicProfile)
+        setEditForm({
+          full_name: basicProfile.full_name,
+          phone: '',
+          country: ''
+        })
+        setProfileCompletion(33) // Basic completion with just name
       }
 
       // Fetch company data
       if (profileData?.company_id) {
         const supabaseClient = await getSupabaseClient()
-        const { data: companyData } = await supabaseClient
+        const { data: companyData, error: companyError } = await supabaseClient
           .from('companies')
           .select('*')
           .eq('id', profileData.company_id)
           .single()
           
-        if (companyData) {
+        if (companyError && companyError.code !== 'PGRST116') {
+          console.error('Error fetching company data:', companyError)
+        } else if (companyData) {
           setCompany(companyData)
         }
       }
@@ -175,13 +205,15 @@ export default function ProfilePage() {
       // Fetch services only for providers
       if (role === 'provider') {
         const supabaseServices = await getSupabaseClient()
-        const { data: servicesData } = await supabaseServices
+        const { data: servicesData, error: servicesError } = await supabaseServices
           .from('services')
           .select('*')
           .eq('provider_id', user.id)
           .order('created_at', { ascending: false })
 
-        if (servicesData) {
+        if (servicesError) {
+          console.error('Error fetching services:', servicesError)
+        } else if (servicesData) {
           setServices(servicesData)
         }
       }
@@ -203,15 +235,18 @@ export default function ProfilePage() {
       
       if (role === 'provider') {
         // Provider stats
-        const { count: servicesCount } = await supabase
+        const { count: servicesCount, error: servicesError } = await supabase
           .from('services')
           .select('*', { count: 'exact', head: true })
           .eq('provider_id', userId)
 
-        const { count: bookingsCount } = await supabase
+        const { count: bookingsCount, error: bookingsError } = await supabase
           .from('bookings')
           .select('*', { count: 'exact', head: true })
           .eq('provider_id', userId)
+
+        if (servicesError) console.error('Error fetching services count:', servicesError)
+        if (bookingsError) console.error('Error fetching bookings count:', bookingsError)
 
         setStats({
           totalServices: servicesCount || 0,
@@ -223,10 +258,12 @@ export default function ProfilePage() {
         })
       } else {
         // Client stats
-        const { count: bookingsCount } = await supabase
+        const { count: bookingsCount, error: bookingsError } = await supabase
           .from('bookings')
           .select('*', { count: 'exact', head: true })
           .eq('client_id', userId)
+
+        if (bookingsError) console.error('Error fetching client bookings count:', bookingsError)
 
         setStats({
           totalServices: 0, // Clients don't have services
@@ -239,6 +276,15 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Error calculating stats:', error)
+      // Set default stats on error
+      setStats({
+        totalServices: 0,
+        totalBookings: 0,
+        totalEarnings: 0,
+        averageRating: 0,
+        completionRate: 0,
+        responseTime: '0h'
+      })
     }
   }
 
@@ -247,7 +293,9 @@ export default function ProfilePage() {
       if (!profile) return
 
       const supabase = await getSupabaseClient()
-      const { error } = await supabase
+      
+      // Try to update first, if that fails, try to insert
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           full_name: editForm.full_name,
@@ -257,9 +305,27 @@ export default function ProfilePage() {
         })
         .eq('id', profile.id)
 
-      if (error) {
-        console.error('Error updating profile:', error)
-        return
+      if (updateError) {
+        // If update fails, try to insert a new profile
+        console.log('Update failed, trying to create new profile:', updateError)
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: profile.id,
+            full_name: editForm.full_name,
+            phone: editForm.phone,
+            country: editForm.country,
+            role: userRole,
+            is_verified: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError)
+          setError('Failed to save profile. Please try again.')
+          return
+        }
       }
 
       // Update local state
@@ -270,9 +336,22 @@ export default function ProfilePage() {
         country: editForm.country
       } : null)
 
+      // Recalculate completion
+      const requiredFields = [editForm.full_name, editForm.phone, editForm.country]
+      const optionalFields = [profile.avatar_url, profile.bio]
+      const requiredFilled = requiredFields.filter(Boolean).length
+      const optionalFilled = optionalFields.filter(Boolean).length
+      const completion = Math.round(((requiredFilled / requiredFields.length) * 0.7 + (optionalFilled / optionalFields.length) * 0.3) * 100)
+      setProfileCompletion(Math.min(completion, 100))
+
+      setSuccess('Profile updated successfully!')
       setEditing(false)
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000)
     } catch (error) {
       console.error('Error saving profile:', error)
+      setError('Failed to save profile. Please try again.')
     }
   }
 
@@ -313,7 +392,10 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading your profile...</p>
+        </div>
       </div>
     )
   }
@@ -384,6 +466,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">
                   <Target className="h-4 w-4" />
                   <span>{profileCompletion}% Complete</span>
+                  {profileCompletion >= 90 && <Sparkles className="h-3 w-3 text-yellow-300" />}
                 </div>
               </div>
             </div>
@@ -431,6 +514,14 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <p className="text-green-800 font-medium">{success}</p>
+        </div>
+      )}
 
       {/* Premium Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -522,8 +613,17 @@ export default function ProfilePage() {
                 <div className="text-3xl font-bold text-green-600 mb-1">{stats.totalBookings}</div>
                 <p className="text-xs text-green-600/70 font-medium">Service requests made</p>
                 <div className="mt-3 w-full bg-green-200 rounded-full h-1.5">
-                  <div className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full" style={{width: `${Math.min((stats.totalBookings / 20) * 100, 100)}%`}}></div>
+                  <div 
+                    className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full transition-all duration-700 ease-out" 
+                    style={{width: `${Math.min((stats.totalBookings / 20) * 100, 100)}%`}}
+                  ></div>
                 </div>
+                {stats.totalBookings > 0 && (
+                  <div className="mt-2 flex items-center space-x-1">
+                    <Trophy className="h-3 w-3 text-green-500" />
+                    <span className="text-xs text-green-600/70 font-medium">Active Client</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -712,10 +812,13 @@ export default function ProfilePage() {
               <CardContent className="relative">
                 <div className="text-3xl font-bold text-amber-600 mb-1">{profileCompletion}%</div>
                 <p className="text-xs text-amber-600/70 font-medium">
-                  {profileCompletion < 70 ? 'Complete your profile for better matches' : 'Profile looks great!'}
+                  {profileCompletion < 70 ? 'Complete your profile for better matches' : profileCompletion < 90 ? 'Almost perfect!' : 'Profile looks great!'}
                 </p>
                 <div className="mt-3 w-full bg-amber-200 rounded-full h-1.5">
-                  <div className="bg-gradient-to-r from-amber-500 to-amber-600 h-1.5 rounded-full" style={{width: `${profileCompletion}%`}}></div>
+                  <div 
+                    className="bg-gradient-to-r from-amber-500 to-amber-600 h-1.5 rounded-full transition-all duration-500 ease-out" 
+                    style={{width: `${profileCompletion}%`}}
+                  ></div>
                 </div>
                 {profileCompletion < 70 && (
                   <Button 

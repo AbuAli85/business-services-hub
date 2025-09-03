@@ -162,11 +162,15 @@ export default function SettingsPage() {
         .single()
 
       if (error) {
-        // Ignore if table does not exist or no rows
-        if (error.code === 'PGRST116' || error.code === 'PGRST114' || (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
+        // Handle missing table or no rows - use default settings
+        if (error.code === 'PGRST116' || error.code === 'PGRST114' || error.code === '42P01' || 
+            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
+          console.log('Notification settings table not found, using default settings')
+          // Keep default notification settings
           return
         }
-        throw error
+        console.error('Error loading notification settings:', error)
+        return
       }
 
       if (data) {
@@ -195,11 +199,15 @@ export default function SettingsPage() {
         .single()
 
       if (error) {
-        // Ignore if table missing or no rows
-        if (error.code === 'PGRST116' || error.code === 'PGRST114' || (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
+        // Handle missing table or no rows - use default settings
+        if (error.code === 'PGRST116' || error.code === 'PGRST114' || error.code === '42P01' || 
+            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
+          console.log('Security settings table not found, using default settings')
+          // Keep default security settings
           return
         }
-        throw error
+        console.error('Error loading security settings:', error)
+        return
       }
 
       if (data) {
@@ -212,6 +220,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error loading security settings:', error)
+      // Keep default security settings on any error
     }
   }
 
@@ -293,15 +302,18 @@ export default function SettingsPage() {
         })
 
       if (error) {
-        // Ignore if table missing in current environment
-        if (error.code === 'PGRST114' || (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
-          toast.info('Notification preferences not available in this environment')
+        // Handle missing table or other database errors
+        if (error.code === 'PGRST114' || error.code === '42P01' || 
+            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
+          console.log('Notification settings table not available, settings saved locally')
+          toast.info('Notification settings saved locally (database table not available)')
         } else {
-          throw error
+          console.error('Error updating notification settings:', error)
+          toast.error('Failed to update notification settings')
         }
+      } else {
+        toast.success('Notification settings updated')
       }
-
-      toast.success('Notification settings updated')
     } catch (error) {
       console.error('Error updating notifications:', error)
       toast.error('Failed to update notification settings')
@@ -324,14 +336,18 @@ export default function SettingsPage() {
         })
 
       if (error) {
-        if (error.code === 'PGRST114' || (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
-          toast.info('Security settings are not available in this environment')
+        // Handle missing table or other database errors
+        if (error.code === 'PGRST114' || error.code === '42P01' || 
+            (typeof error.message === 'string' && error.message.toLowerCase().includes('does not exist'))) {
+          console.log('Security settings table not available, settings saved locally')
+          toast.info('Security settings saved locally (database table not available)')
         } else {
-          throw error
+          console.error('Error updating security settings:', error)
+          toast.error('Failed to update security settings')
         }
+      } else {
+        toast.success('Security settings updated')
       }
-
-      toast.success('Security settings updated')
     } catch (error) {
       console.error('Error updating security:', error)
       toast.error('Failed to update security settings')
