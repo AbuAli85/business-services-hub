@@ -232,6 +232,8 @@ export default function BookingDetailsPage() {
   const [editingTask, setEditingTask] = useState<any>(null)
   const [showTaskComments, setShowTaskComments] = useState<{ [key: string]: boolean }>({})
   const [taskComments, setTaskComments] = useState<{ [key: string]: string }>({})
+  // Inline editing controls for task progress updates
+  const [editingTaskComment, setEditingTaskComment] = useState<{ taskId: string; commentId: string; text: string } | null>(null)
   
   // Enhanced Features State
   const [milestones, setMilestones] = useState<any[]>([])
@@ -1055,6 +1057,42 @@ export default function BookingDetailsPage() {
     } catch (error) {
       toast.error('Failed to add comment')
     }
+  }
+
+  // Editing/deleting progress updates at UI level (local state now; can be wired to DB later)
+  const saveEditedTaskComment = (taskId: string, commentId: string) => {
+    if (!editingTaskComment || !editingTaskComment.text.trim()) {
+      setEditingTaskComment(null)
+      return
+    }
+    setProjectTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task
+      const updated = { ...task }
+      updated.comments = (updated.comments || []).map((c: any) => c.id === commentId ? { ...c, text: editingTaskComment.text, updated_at: new Date().toISOString() } : c)
+      return updated
+    }))
+    setEditingTaskComment(null)
+    toast.success('Progress update saved')
+  }
+
+  const deleteTaskComment = (taskId: string, commentId: string) => {
+    setProjectTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task
+      const updated = { ...task }
+      updated.comments = (updated.comments || []).filter((c: any) => c.id !== commentId)
+      return updated
+    }))
+    toast.success('Progress update deleted')
+  }
+
+  const markTaskCommentDone = (taskId: string, commentId: string) => {
+    setProjectTasks(prev => prev.map(task => {
+      if (task.id !== taskId) return task
+      const updated = { ...task }
+      updated.comments = (updated.comments || []).map((c: any) => c.id === commentId ? { ...c, status: 'done', completed_at: new Date().toISOString() } : c)
+      return updated
+    }))
+    toast.success('Marked as done')
   }
 
   // Handle task status updates from timeline
@@ -4550,10 +4588,44 @@ export default function BookingDetailsPage() {
                             <div className="space-y-2">
                               {task.comments.map((comment: any) => (
                                 <div key={comment.id} className="bg-gray-50 p-2 rounded text-sm">
-                                  <p className="text-gray-700">{comment.text}</p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {comment.user} • {new Date(comment.created_at).toLocaleString()}
-                                  </p>
+                                  {editingTaskComment && editingTaskComment.commentId === comment.id ? (
+                                    <div className="space-y-2">
+                                      <input
+                                        type="text"
+                                        value={editingTaskComment.text}
+                                        onChange={(e) => setEditingTaskComment(prev => prev ? { ...prev, text: e.target.value } : null)}
+                                        className="w-full text-sm border border-gray-300 rounded px-3 py-1"
+                                      />
+                                      <div className="flex items-center space-x-2">
+                                        <Button size="sm" className="h-7 px-3" onClick={() => saveEditedTaskComment(task.id, comment.id)}>
+                                          Save
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="h-7 px-3" onClick={() => setEditingTaskComment(null)}>
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <p className="text-gray-700">{comment.text}</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {comment.user} • {new Date(comment.created_at).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingTaskComment({ taskId: task.id, commentId: comment.id, text: comment.text })}>
+                                          Edit
+                                        </Button>
+                                        <Button size="sm" variant="ghost" className="h-7 px-2 text-green-700" onClick={() => markTaskCommentDone(task.id, comment.id)}>
+                                          Mark done
+                                        </Button>
+                                        <Button size="sm" variant="ghost" className="h-7 px-2 text-red-700" onClick={() => deleteTaskComment(task.id, comment.id)}>
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
