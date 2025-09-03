@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,7 +28,20 @@ import {
   Award,
   Shield,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Crown,
+  Sparkles,
+  Target,
+  Zap,
+  Trophy,
+  Gem,
+
+  Lock,
+  Unlock,
+  Eye,
+  Settings,
+  Bell,
+  Heart
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -99,7 +112,6 @@ export default function ProfilePage() {
     country: ''
   })
   const router = useRouter()
-  const [recentBookings, setRecentBookings] = useState<any[]>([])
   const [profileCompletion, setProfileCompletion] = useState<number>(0)
 
   useEffect(() => {
@@ -171,41 +183,6 @@ export default function ProfilePage() {
 
         if (servicesData) {
           setServices(servicesData)
-        }
-      } else if (role === 'client') {
-        // Recent bookings for clients
-        const supabaseBookings = await getSupabaseClient()
-        const { data: bookings } = await supabaseBookings
-          .from('bookings')
-          .select('id, status, created_at, service_id, title, amount, currency')
-          .eq('client_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5)
-
-        if (bookings && bookings.length > 0) {
-          // Fetch service titles
-          const serviceIds = bookings.map((b: any) => b.service_id).filter(Boolean)
-          if (serviceIds.length > 0) {
-            const { data: svc } = await supabaseBookings
-              .from('services')
-              .select('id, title')
-              .in('id', serviceIds)
-            const idToTitle: Record<string, string> = {}
-            ;(svc || []).forEach((s: any) => { idToTitle[s.id] = s.title })
-            setRecentBookings(bookings.map((b: any) => ({ 
-              ...b, 
-              service_title: idToTitle[b.service_id] || b.title || 'Service',
-              display_title: b.title || idToTitle[b.service_id] || 'Service'
-            })))
-          } else {
-            setRecentBookings(bookings.map((b: any) => ({ 
-              ...b, 
-              service_title: b.title || 'Service',
-              display_title: b.title || 'Service'
-            })))
-          }
-        } else {
-          setRecentBookings([])
         }
       }
 
@@ -354,46 +331,69 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Header */}
-      <div className="bg-gradient-to-r from-rose-600 to-pink-600 rounded-xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-              {(profile?.full_name || userEmail || 'U').charAt(0).toUpperCase()}
-            </div>
-            <div>
-            <h1 className="text-4xl font-bold mb-2">
-              {userRole === 'provider' ? 'Provider Profile' : 'Client Profile'}
-            </h1>
-            <p className="text-rose-100 text-lg mb-4">
-              {userRole === 'provider' 
-                ? 'Manage your profile, company information, and services'
-                : 'Manage your profile and track your activity'
-              }
-            </p>
-            <div className="flex items-center space-x-6 text-sm">
-              <div className="flex items-center">
-                <User className="h-4 w-4 mr-1" />
-                <span>Role: {userRole}</span>
+      {/* Premium Header */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-2xl p-8 text-white shadow-2xl">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%239C92AC%22%20fill-opacity%3D%220.1%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2230%22%20r%3D%222%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
+        
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-start gap-6">
+            {/* Premium Avatar */}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-3xl font-bold shadow-xl">
+                {(profile?.full_name || userEmail || 'U').charAt(0).toUpperCase()}
               </div>
               {profile?.is_verified && (
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  <span>Verified Account</span>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Crown className="h-4 w-4 text-white" />
                 </div>
               )}
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-1" />
-                <span>Member since {formatDate(profile?.created_at || '')}</span>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+                  {userRole === 'provider' ? 'Provider Profile' : 'Client Profile'}
+                </h1>
+                {profile?.is_verified && (
+                  <div className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-yellow-400/20 to-yellow-500/20 rounded-full border border-yellow-400/30">
+                    <Sparkles className="h-4 w-4 text-yellow-400" />
+                    <span className="text-sm font-medium text-yellow-200">Verified</span>
+                  </div>
+                )}
+              </div>
+              
+              <p className="text-purple-100 text-xl font-medium">
+                {userRole === 'provider' 
+                  ? 'Professional service provider dashboard'
+                  : 'Premium client experience center'
+                }
+              </p>
+              
+              <div className="flex items-center space-x-8 text-sm">
+                <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">
+                  <User className="h-4 w-4" />
+                  <span className="capitalize font-medium">{userRole}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">
+                  <Calendar className="h-4 w-4" />
+                  <span>Member since {formatDate(profile?.created_at || '')}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">
+                  <Target className="h-4 w-4" />
+                  <span>{profileCompletion}% Complete</span>
+                </div>
               </div>
             </div>
-            </div>
           </div>
+          
           <div className="flex flex-col gap-3">
             <Button 
               onClick={() => setEditing(!editing)}
               variant="secondary"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
             >
               {editing ? (
                 <>
@@ -407,217 +407,321 @@ export default function ProfilePage() {
                 </>
               )}
             </Button>
+            
             {userRole === 'provider' && (
               <Button 
                 variant="secondary"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30 text-white hover:from-purple-500/30 hover:to-pink-500/30 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
               >
                 <Award className="h-4 w-4 mr-2" />
                 View Portfolio
               </Button>
             )}
+            
             {userRole === 'client' && (
-              <div className="flex gap-2">
-                <Button variant="secondary" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => router.push('/dashboard/bookings')}>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  My Bookings
-                </Button>
-                <Button variant="secondary" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => router.push('/dashboard/settings')}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
-              </div>
+              <Button 
+                variant="secondary" 
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105" 
+                onClick={() => router.push('/dashboard/settings')}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Profile Stats */}
+      {/* Premium Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {userRole === 'provider' ? (
           <>
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Services</CardTitle>
-                <Building2 className="h-4 w-4 text-blue-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-blue-700">Total Services</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                  <Building2 className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{stats.totalServices}</div>
-                <p className="text-xs text-muted-foreground">Active service offerings</p>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-blue-600 mb-1">{stats.totalServices}</div>
+                <p className="text-xs text-blue-600/70 font-medium">Active service offerings</p>
+                <div className="mt-3 w-full bg-blue-200 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-1.5 rounded-full" style={{width: `${Math.min((stats.totalServices / 10) * 100, 100)}%`}}></div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-                <Calendar className="h-4 w-4 text-green-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-green-700">Total Bookings</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.totalBookings}</div>
-                <p className="text-xs text-muted-foreground">Completed projects</p>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-green-600 mb-1">{stats.totalBookings}</div>
+                <p className="text-xs text-green-600/70 font-medium">Completed projects</p>
+                <div className="mt-3 w-full bg-green-200 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full" style={{width: `${Math.min((stats.totalBookings / 50) * 100, 100)}%`}}></div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-purple-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-                <DollarSign className="h-4 w-4 text-purple-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-purple-700">Total Earnings</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-purple-600 mb-1">
                   {formatCurrency(stats.totalEarnings, 'OMR')}
                 </div>
-                <p className="text-xs text-muted-foreground">From completed work</p>
+                <p className="text-xs text-purple-600/70 font-medium">From completed work</p>
+                <div className="mt-3 w-full bg-purple-200 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 h-1.5 rounded-full" style={{width: `${Math.min((stats.totalEarnings / 10000) * 100, 100)}%`}}></div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-orange-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Rating</CardTitle>
-                <Star className="h-4 w-4 text-orange-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-orange-700">Rating</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg">
+                  <Star className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{stats.averageRating}</div>
-                <p className="text-xs text-muted-foreground">Average client rating</p>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-orange-600 mb-1">{stats.averageRating}</div>
+                <p className="text-xs text-orange-600/70 font-medium">Average client rating</p>
+                <div className="mt-3 flex space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star key={star} className={`h-3 w-3 ${star <= stats.averageRating ? 'text-orange-500 fill-current' : 'text-orange-200'}`} />
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </>
         ) : (
           <>
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-                <Calendar className="h-4 w-4 text-green-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-green-700">Total Bookings</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.totalBookings}</div>
-                <p className="text-xs text-muted-foreground">Service requests made</p>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-green-600 mb-1">{stats.totalBookings}</div>
+                <p className="text-xs text-green-600/70 font-medium">Service requests made</p>
+                <div className="mt-3 w-full bg-green-200 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full" style={{width: `${Math.min((stats.totalBookings / 20) * 100, 100)}%`}}></div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
-                <AlertCircle className="h-4 w-4 text-blue-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-blue-700">Active Requests</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                  <Zap className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-blue-600 mb-1">
                   {stats.totalBookings > 0 ? Math.floor(stats.totalBookings * 0.3) : 0}
                 </div>
-                <p className="text-xs text-muted-foreground">Currently in progress</p>
+                <p className="text-xs text-blue-600/70 font-medium">Currently in progress</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-3 bg-white/50 border-blue-300 text-blue-700 hover:bg-blue-50"
+                  onClick={() => router.push('/dashboard/bookings')}
+                >
+                  View All Bookings
+                </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-emerald-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-emerald-700">Completed</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg">
+                  <Trophy className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-emerald-600 mb-1">
                   {stats.totalBookings > 0 ? Math.floor(stats.totalBookings * 0.7) : 0}
                 </div>
-                <p className="text-xs text-muted-foreground">Successfully completed</p>
+                <p className="text-xs text-emerald-600/70 font-medium">Successfully completed</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-3 bg-white/50 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  onClick={() => router.push('/dashboard/bookings')}
+                >
+                  View All Bookings
+                </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-purple-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Member Since</CardTitle>
-                <Calendar className="h-4 w-4 text-purple-500" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-purple-700">Member Since</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                  <Gem className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-purple-600 mb-1">
                   {profile?.created_at ? new Date(profile.created_at).getFullYear() : 'N/A'}
                 </div>
-                <p className="text-xs text-muted-foreground">Years of membership</p>
+                <p className="text-xs text-purple-600/70 font-medium">Years of membership</p>
+                <div className="mt-3 flex items-center space-x-1">
+                  <Heart className="h-3 w-3 text-purple-500" />
+                  <span className="text-xs text-purple-600/70 font-medium">Loyal Member</span>
+                </div>
               </CardContent>
             </Card>
           </>
         )}
       </div>
 
-      {/* Additional Stats */}
+      {/* Premium Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {userRole === 'provider' ? (
           <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.completionRate}%</div>
-                <p className="text-xs text-muted-foreground">Projects completed on time</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.responseTime}</div>
-                <p className="text-xs text-muted-foreground">Average response time</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Verification</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  {profile?.is_verified ? (
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                  ) : (
-                    <AlertCircle className="h-6 w-6 text-yellow-500" />
-                  )}
-                  <span className="text-sm font-medium">
-                    {profile?.is_verified ? 'Verified' : 'Pending Verification'}
-                  </span>
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-500/10 to-slate-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-slate-700">Completion Rate</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl shadow-lg">
+                  <CheckCircle className="h-5 w-5 text-white" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {profile?.is_verified ? 'Account verified' : 'Verification in progress'}
-                </p>
+              </CardHeader>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-slate-600 mb-1">{stats.completionRate}%</div>
+                <p className="text-xs text-slate-600/70 font-medium">Projects completed on time</p>
+                <div className="mt-3 w-full bg-slate-200 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-slate-500 to-slate-600 h-1.5 rounded-full" style={{width: `${stats.completionRate}%`}}></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-indigo-50 to-indigo-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-indigo-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-indigo-700">Response Time</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-indigo-600 mb-1">{stats.responseTime}</div>
+                <p className="text-xs text-indigo-600/70 font-medium">Average response time</p>
+                <div className="mt-3 flex items-center space-x-1">
+                  <Zap className="h-3 w-3 text-indigo-500" />
+                  <span className="text-xs text-indigo-600/70 font-medium">Fast Response</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-emerald-700">Verification</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent className="relative">
+                <div className="flex items-center space-x-3 mb-2">
+                  {profile?.is_verified ? (
+                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full">
+                      <CheckCircle className="h-5 w-5 text-white" />
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full">
+                      <AlertCircle className="h-5 w-5 text-white" />
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-700">
+                      {profile?.is_verified ? 'Verified' : 'Pending Verification'}
+                    </div>
+                    <div className="text-xs text-emerald-600/70">
+                      {profile?.is_verified ? 'Account verified' : 'Verification in progress'}
+                    </div>
+                  </div>
+                </div>
+                {profile?.is_verified && (
+                  <div className="flex items-center space-x-1">
+                    <div className="h-3 w-3 bg-emerald-500 rounded-full" />
+                    <span className="text-xs text-emerald-600/70 font-medium">Trusted Provider</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
         ) : (
           <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Account Status</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-emerald-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-emerald-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-emerald-700">Account Status</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                  <div>
-                    <div className="text-sm font-medium">Active</div>
-                    <div className="text-xs text-muted-foreground">Account in good standing</div>
+              <CardContent className="relative">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full">
+                    <CheckCircle className="h-5 w-5 text-white" />
                   </div>
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-700">Active</div>
+                    <div className="text-xs text-emerald-600/70">Account in good standing</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center space-x-1">
+                  <Lock className="h-3 w-3 text-emerald-500" />
+                  <span className="text-xs text-emerald-600/70 font-medium">Secure Account</span>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Profile Completion</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-amber-50 to-amber-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-amber-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-amber-700">Profile Completion</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg">
+                  <Target className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{profileCompletion}%</div>
-                <p className="text-xs text-muted-foreground">
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-amber-600 mb-1">{profileCompletion}%</div>
+                <p className="text-xs text-amber-600/70 font-medium">
                   {profileCompletion < 70 ? 'Complete your profile for better matches' : 'Profile looks great!'}
                 </p>
+                <div className="mt-3 w-full bg-amber-200 rounded-full h-1.5">
+                  <div className="bg-gradient-to-r from-amber-500 to-amber-600 h-1.5 rounded-full" style={{width: `${profileCompletion}%`}}></div>
+                </div>
                 {profileCompletion < 70 && (
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="mt-2"
+                    className="mt-3 bg-white/50 border-amber-300 text-amber-700 hover:bg-amber-50"
                     onClick={() => setEditing(true)}
                   >
                     Complete Profile
@@ -626,106 +730,83 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Preferences</CardTitle>
-                <User className="h-4 w-4 text-muted-foreground" />
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-rose-50 to-rose-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-rose-600/10"></div>
+              <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-semibold text-rose-700">Preferences</CardTitle>
+                <div className="p-2 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl shadow-lg">
+                  <Heart className="h-5 w-5 text-white" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">3</div>
-                <p className="text-xs text-muted-foreground">Saved preferences</p>
+              <CardContent className="relative">
+                <div className="text-3xl font-bold text-rose-600 mb-1">3</div>
+                <p className="text-xs text-rose-600/70 font-medium">Saved preferences</p>
+                <div className="mt-3 flex items-center space-x-1">
+                  <Bell className="h-3 w-3 text-rose-500" />
+                  <span className="text-xs text-rose-600/70 font-medium">Personalized</span>
+                </div>
               </CardContent>
             </Card>
           </>
         )}
       </div>
 
-      {/* Recent Bookings for Clients */}
-      {userRole === 'client' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Bookings</CardTitle>
-            <CardDescription>Your latest activity and service requests</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentBookings.length === 0 ? (
-              <div className="text-sm text-gray-500">No recent bookings yet. Explore services to get started.</div>
-            ) : (
-              <div className="divide-y">
-                {recentBookings.map((b) => (
-                  <div key={b.id} className="py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{b.display_title || b.service_title || 'Service'}</div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {formatDate(b.created_at)} • {b.amount ? formatCurrency(b.amount, b.currency || 'OMR') : 'Price TBD'}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Badge className={getStatusColor(b.status)}>
-                        {b.status.replace('_', ' ')}
-                      </Badge>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/bookings/${b.id}`)}
-                      >
-                        View
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Profile Information */}
+
+      {/* Premium Profile Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
+        <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-slate-50 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
+          <CardHeader className="relative">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                <User className="h-6 w-6 text-white" />
+              </div>
               Personal Information
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base">
               Your basic profile details and contact information
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="relative space-y-6">
             {editing ? (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Full Name</Label>
-                  <Input
-                    id="full_name"
-                    value={editForm.full_name}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
-                  />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="full_name" className="text-sm font-semibold">Full Name</Label>
+                    <Input
+                      id="full_name"
+                      value={editForm.full_name}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
+                      className="border-2 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-semibold">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                      className="border-2 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country" className="text-sm font-semibold">Country</Label>
+                    <Input
+                      id="country"
+                      value={editForm.country}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, country: e.target.value }))}
+                      className="border-2 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    value={editForm.country}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, country: e.target.value }))}
-                  />
-                </div>
-                <div className="flex space-x-2">
-                  <Button onClick={handleSaveProfile}>
+                <div className="flex space-x-3">
+                  <Button onClick={handleSaveProfile} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg">
                     <Save className="h-4 w-4 mr-2" />
                     Save Changes
                   </Button>
-                  <Button variant="outline" onClick={handleCancelEdit}>
+                  <Button variant="outline" onClick={handleCancelEdit} className="border-2 hover:bg-gray-50">
                     <X className="h-4 w-4 mr-2" />
                     Cancel
                   </Button>
@@ -733,33 +814,66 @@ export default function ProfilePage() {
               </>
             ) : (
               <>
-                <div className="flex items-center space-x-3">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold text-xl">
-                      {profile?.full_name?.charAt(0).toUpperCase()}
-                    </span>
+                <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                  <div className="relative">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <span className="text-white font-bold text-2xl">
+                        {profile?.full_name?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    {profile?.is_verified && (
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center">
+                        <Crown className="h-3 w-3 text-white" />
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{profile?.full_name}</h3>
-                    <p className="text-sm text-gray-500 capitalize">{profile?.role}</p>
+                    <h3 className="text-xl font-bold text-gray-900">{profile?.full_name}</h3>
+                    <p className="text-sm text-gray-600 capitalize font-medium">{profile?.role}</p>
+                    {profile?.is_verified && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Sparkles className="h-3 w-3 text-yellow-500" />
+                        <span className="text-xs text-yellow-600 font-medium">Verified Account</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{userEmail}</span>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-4 p-3 bg-white rounded-lg border border-gray-100 hover:border-blue-200 transition-colors">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Mail className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{userEmail}</p>
+                      <p className="text-xs text-gray-500">Email Address</p>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{profile?.phone || 'Not provided'}</span>
+                  <div className="flex items-center space-x-4 p-3 bg-white rounded-lg border border-gray-100 hover:border-blue-200 transition-colors">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Phone className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{profile?.phone || 'Not provided'}</p>
+                      <p className="text-xs text-gray-500">Phone Number</p>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{profile?.country || 'Not specified'}</span>
+                  <div className="flex items-center space-x-4 p-3 bg-white rounded-lg border border-gray-100 hover:border-blue-200 transition-colors">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <MapPin className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{profile?.country || 'Not specified'}</p>
+                      <p className="text-xs text-gray-500">Location</p>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">Member since {formatDate(profile?.created_at || '')}</span>
+                  <div className="flex items-center space-x-4 p-3 bg-white rounded-lg border border-gray-100 hover:border-blue-200 transition-colors">
+                    <div className="p-2 bg-orange-100 rounded-lg">
+                      <Calendar className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Member since {formatDate(profile?.created_at || '')}</p>
+                      <p className="text-xs text-gray-500">Join Date</p>
+                    </div>
                   </div>
                 </div>
               </>
@@ -769,59 +883,84 @@ export default function ProfilePage() {
 
         {/* Company Information - Only for Providers */}
         {userRole === 'provider' && (
-          <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Company Information
-            </CardTitle>
-            <CardDescription>
-              Your business details and company information
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {company ? (
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                    {company.logo_url ? (
-                      <img src={company.logo_url} alt="Company Logo" className="w-12 h-12 object-cover rounded" />
-                    ) : (
-                      <Building2 className="h-8 w-8 text-gray-400" />
-                    )}
+          <Card className="group relative overflow-hidden bg-gradient-to-br from-white to-slate-50 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5"></div>
+            <CardHeader className="relative">
+              <CardTitle className="flex items-center gap-3 text-xl font-bold">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                  <Building2 className="h-6 w-6 text-white" />
+                </div>
+                Company Information
+              </CardTitle>
+              <CardDescription className="text-base">
+                Your business details and company information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative">
+              {company ? (
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      {company?.logo_url ? (
+                        <img src={company.logo_url} alt="Company Logo" className="w-12 h-12 object-cover rounded-xl" />
+                      ) : (
+                        <Building2 className="h-10 w-10 text-white" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">{company?.name}</h3>
+                      <p className="text-sm text-gray-600 font-medium">Registered Company</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className="h-3 w-3 bg-purple-500 rounded-full" />
+                        <span className="text-xs text-purple-600 font-medium">Verified Business</span>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">{company.name}</h3>
-                    <p className="text-sm text-gray-500">Registered Company</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-purple-200 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-700">CR Number</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{company?.cr_number || 'Not provided'}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-purple-200 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-700">VAT Number</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{company?.vat_number || 'Not provided'}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:border-purple-200 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <Calendar className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-700">Established</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{formatDate(company?.created_at || '')}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">CR Number:</span>
-                    <span className="text-sm text-gray-600">{company.cr_number || 'Not provided'}</span>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <Building2 className="h-12 w-12 text-purple-400" />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">VAT Number:</span>
-                    <span className="text-sm text-gray-600">{company.vat_number || 'Not provided'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Established:</span>
-                    <span className="text-sm text-gray-600">{formatDate(company.created_at)}</span>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Company Information</h3>
+                  <p className="text-gray-500 mb-6">Add your company details to build trust with clients</p>
+                  <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Company
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500 mb-4">No company information available</p>
-                <Button variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Company
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
 
@@ -867,10 +1006,10 @@ export default function ProfilePage() {
                       <h4 className="font-medium text-gray-900">{service.title}</h4>
                       <p className="text-sm text-gray-500 line-clamp-2">{service.description}</p>
                       <div className="flex items-center space-x-2 mt-2">
-                        <Badge variant="secondary">{service.category}</Badge>
-                        <Badge className={getStatusColor(service.status)}>
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">{service.category}</span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(service.status)}`}>
                           {service.status}
-                        </Badge>
+                        </span>
                       </div>
                     </div>
                   </div>
