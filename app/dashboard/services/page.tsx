@@ -604,7 +604,7 @@ export default function ServicesPage() {
                     <p className="text-gray-600 mt-2 text-lg">
                       {userRole === 'provider' 
                         ? 'Manage and monitor your service offerings with professional tools' 
-                        : `Discover and book premium services from verified professionals ${userRole === 'client' ? '(all services are pre-approved)' : ''}`
+                        : `Discover and book premium active services from verified professionals ${userRole === 'client' ? '(all services are pre-approved)' : ''}`
                       }
                     </p>
                   </div>
@@ -667,7 +667,7 @@ export default function ServicesPage() {
             <CardContent>
               <div className="text-3xl font-bold text-green-900 mb-1">{stats?.totalBookings || 0}</div>
               <p className="text-xs text-green-700 font-medium">
-                {userRole === 'provider' ? 'For your services' : 'Across all services'}
+                {userRole === 'provider' ? 'For your services' : 'Across active services'}
               </p>
               <div className="mt-3 w-full bg-green-200 rounded-full h-2">
                 <div 
@@ -688,7 +688,7 @@ export default function ServicesPage() {
             <CardContent>
               <div className="text-3xl font-bold text-purple-900 mb-1">{formatCurrency(stats?.totalRevenue || 0)}</div>
               <p className="text-xs text-purple-700 font-medium">
-                {userRole === 'provider' ? 'From your services' : 'From all services'}
+                {userRole === 'provider' ? 'From your services' : 'From active services'}
               </p>
               <div className="mt-3 w-full bg-purple-200 rounded-full h-2">
                 <div 
@@ -709,7 +709,7 @@ export default function ServicesPage() {
             <CardContent>
               <div className="text-3xl font-bold text-amber-900 mb-1">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
               <p className="text-xs text-amber-700 font-medium">
-                {userRole === 'provider' ? 'For your services' : 'Across all services'}
+                {userRole === 'provider' ? 'For your services' : 'Across active services'}
               </p>
               <div className="mt-3 w-full bg-amber-200 rounded-full h-2">
                 <div 
@@ -954,7 +954,7 @@ export default function ServicesPage() {
                   <Target className="h-4 w-4 text-blue-600" />
                 </div>
                 <span className="text-sm text-gray-600 font-medium">
-                  {services.length} {userRole === 'provider' ? 'of your services' : 'services'} found
+                  {services.length} {userRole === 'provider' ? 'of your active services' : 'active services'} found
                 </span>
                 {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all' || priceRange.min || priceRange.max || ratingFilter !== 'all') && (
                   <Badge className="bg-blue-100 text-blue-800">

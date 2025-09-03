@@ -216,7 +216,7 @@ export default function InvoicesPage() {
         query = query.eq('provider_id', user.id)
       }
 
-      const { data: invoicesData, error } = await query
+      let { data: invoicesData, error } = await query
       if (error) throw error
 
       // If no invoices exist, generate them from bookings
