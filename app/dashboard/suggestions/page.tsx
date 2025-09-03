@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { 
   Package, 
   Clock, 
@@ -16,7 +20,9 @@ import {
   Eye,
   Star,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Plus,
+  Search
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -65,10 +71,27 @@ export default function ServiceSuggestionsPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [respondingTo, setRespondingTo] = useState<string | null>(null)
   const [showMockData, setShowMockData] = useState(false)
+  
+  // New suggestion creation state
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [clients, setClients] = useState<any[]>([])
+  const [providers, setProviders] = useState<any[]>([])
+  const [services, setServices] = useState<any[]>([])
+  const [newSuggestion, setNewSuggestion] = useState({
+    client_id: '',
+    provider_id: '',
+    suggested_service_id: '',
+    suggestion_reason: '',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent'
+  })
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     checkAuth()
     loadSuggestions()
+    loadClients()
+    loadProviders()
+    loadServices()
   }, [])
 
   async function checkAuth() {
@@ -78,6 +101,14 @@ export default function ServiceSuggestionsPage() {
       
       if (error || !user) {
         router.push('/auth/sign-in')
+        return
+      }
+
+      // Check if user is an admin
+      const userRole = user.user_metadata?.role
+      if (userRole !== 'admin') {
+        console.log('User is not an admin, redirecting to dashboard')
+        router.push('/dashboard')
         return
       }
 
@@ -126,6 +157,66 @@ export default function ServiceSuggestionsPage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadClients() {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: clients, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, company_name')
+        .eq('role', 'client')
+        .order('full_name')
+
+      if (error) {
+        console.error('Error loading clients:', error)
+        return
+      }
+
+      setClients(clients || [])
+    } catch (error) {
+      console.error('Error loading clients:', error)
+    }
+  }
+
+  async function loadProviders() {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: providers, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, company_name')
+        .eq('role', 'provider')
+        .order('full_name')
+
+      if (error) {
+        console.error('Error loading providers:', error)
+        return
+      }
+
+      setProviders(providers || [])
+    } catch (error) {
+      console.error('Error loading providers:', error)
+    }
+  }
+
+  async function loadServices() {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: services, error } = await supabase
+        .from('services')
+        .select('id, title, description, base_price, currency, category, provider_id')
+        .eq('approval_status', 'approved')
+        .order('title')
+
+      if (error) {
+        console.error('Error loading services:', error)
+        return
+      }
+
+      setServices(services || [])
+    } catch (error) {
+      console.error('Error loading services:', error)
     }
   }
   
@@ -252,6 +343,62 @@ export default function ServiceSuggestionsPage() {
     } finally {
       setRespondingTo(null)
     }
+  }
+
+  const handleCreateSuggestion = async () => {
+    try {
+      setCreating(true)
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No authentication token available')
+      }
+
+      // Validate required fields
+      if (!newSuggestion.client_id || !newSuggestion.provider_id || !newSuggestion.suggested_service_id || !newSuggestion.suggestion_reason) {
+        toast.error('Please fill in all required fields')
+        return
+      }
+
+      const response = await fetch('/api/service-suggestions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newSuggestion)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create suggestion')
+      }
+
+      toast.success('Suggestion created successfully')
+      setShowCreateDialog(false)
+      setNewSuggestion({
+        client_id: '',
+        provider_id: '',
+        suggested_service_id: '',
+        suggestion_reason: '',
+        priority: 'medium'
+      })
+      
+      // Reload suggestions
+      loadSuggestions()
+    } catch (error) {
+      console.error('Error creating suggestion:', error)
+      toast.error(`Failed to create suggestion: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const getFilteredServices = () => {
+    if (!newSuggestion.provider_id) return services
+    return services.filter(service => service.provider_id === newSuggestion.provider_id)
   }
 
   const handleMarkAsViewed = async (suggestionId: string) => {
@@ -417,6 +564,115 @@ export default function ServiceSuggestionsPage() {
               </p>
             </div>
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
+              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Suggestion
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create New Service Suggestion</DialogTitle>
+                    <DialogDescription>
+                      Create a personalized service suggestion for a client from any provider.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Client</label>
+                        <Select 
+                          value={newSuggestion.client_id} 
+                          onValueChange={(value) => setNewSuggestion(prev => ({ ...prev, client_id: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a client" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.full_name} ({client.email})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Provider</label>
+                        <Select 
+                          value={newSuggestion.provider_id} 
+                          onValueChange={(value) => setNewSuggestion(prev => ({ ...prev, provider_id: value, suggested_service_id: '' }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {providers.map((provider) => (
+                              <SelectItem key={provider.id} value={provider.id}>
+                                {provider.full_name} ({provider.company_name || 'Independent'})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Service</label>
+                      <Select 
+                        value={newSuggestion.suggested_service_id} 
+                        onValueChange={(value) => setNewSuggestion(prev => ({ ...prev, suggested_service_id: value }))}
+                        disabled={!newSuggestion.provider_id}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a service" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getFilteredServices().map((service) => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.title} - {service.base_price} {service.currency}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Priority</label>
+                      <Select 
+                        value={newSuggestion.priority} 
+                        onValueChange={(value: 'low' | 'medium' | 'high' | 'urgent') => setNewSuggestion(prev => ({ ...prev, priority: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Suggestion Reason</label>
+                      <Textarea
+                        placeholder="Explain why this service would be beneficial for the client..."
+                        value={newSuggestion.suggestion_reason}
+                        onChange={(e) => setNewSuggestion(prev => ({ ...prev, suggestion_reason: e.target.value }))}
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateSuggestion} disabled={creating}>
+                      {creating ? 'Creating...' : 'Create Suggestion'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Button 
                 variant="outline"
                 onClick={() => setShowMockData(!showMockData)}
@@ -432,13 +688,6 @@ export default function ServiceSuggestionsPage() {
               >
                 <Package className="h-4 w-4 mr-2" />
                 Browse All Services
-              </Button>
-              <Button 
-                onClick={() => router.push('/dashboard/messages')}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Contact Providers
               </Button>
             </div>
           </div>

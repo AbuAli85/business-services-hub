@@ -225,6 +225,44 @@ export class RealtimeManager {
     }
   }
 
+  // Subscribe to service suggestions for a specific user
+  async subscribeToServiceSuggestions(userId: string, callback: (update: any) => void) {
+    await this.initialize()
+    
+    const channelKey = `suggestions:${userId}`
+    
+    if (this.subscriptions.has(channelKey)) {
+      this.subscriptions.get(channelKey).unsubscribe()
+    }
+
+    try {
+      const subscription = this.supabase
+        .channel(channelKey)
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'service_suggestions',
+            filter: `client_id = '${userId}' OR provider_id = '${userId}'`
+          },
+          (payload: any) => {
+            callback({
+              eventType: payload.eventType,
+              new: payload.new,
+              old: payload.old
+            })
+          }
+        )
+        .subscribe()
+
+      this.subscriptions.set(channelKey, subscription)
+      return subscription
+    } catch (error) {
+      console.error('Failed to subscribe to service suggestions:', error)
+      throw error
+    }
+  }
+
   // Add event listener for a specific event type
   addEventListener(eventType: string, callback: Function) {
     if (!this.listeners.has(eventType)) {

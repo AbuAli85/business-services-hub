@@ -206,6 +206,7 @@ export default function DashboardLayout({
     if (user.role === 'admin') {
       baseItems.splice(1, 0, 
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
+        { name: 'Suggestions', href: '/dashboard/suggestions', icon: Package },
         { name: 'Users', href: '/dashboard/admin/users', icon: Users },
         { name: 'Permissions', href: '/dashboard/admin/permissions', icon: Settings },
         { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
@@ -228,7 +229,6 @@ export default function DashboardLayout({
     if (user.role === 'client') {
       baseItems.splice(1, 0, 
         { name: 'Services', href: '/dashboard/services', icon: Briefcase },
-        { name: 'Suggestions', href: '/dashboard/suggestions', icon: Package },
         { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
       )
     }

@@ -37,6 +37,28 @@ interface ClientStats {
   favoriteProviders: number
 }
 
+interface ServiceSuggestion {
+  id: string
+  suggested_service: {
+    id: string
+    title: string
+    description: string
+    base_price: number
+    currency: string
+    category: string
+  }
+  provider: {
+    id: string
+    full_name: string
+    email: string
+    avatar_url?: string
+  }
+  suggestion_reason: string
+  priority: string
+  status: string
+  created_at: string
+}
+
 interface RecentBooking {
   id: string
   service_title: string
@@ -63,9 +85,11 @@ export default function ClientDashboard() {
   const [stats, setStats] = useState<ClientStats | null>(null)
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([])
   const [upcomingBookings, setUpcomingBookings] = useState<UpcomingBooking[]>([])
+  const [serviceSuggestions, setServiceSuggestions] = useState<ServiceSuggestion[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -98,6 +122,18 @@ export default function ClientDashboard() {
           }
         })
         subscriptionKeys.push(`bookings:${user.id}`)
+
+        // Subscribe to real-time service suggestions
+        const suggestionsSubscription = await realtimeManager.subscribeToServiceSuggestions(user.id, (update) => {
+          if (update.eventType === 'INSERT') {
+            // New suggestion - refresh data
+            fetchServiceSuggestions(user.id)
+          } else if (update.eventType === 'UPDATE') {
+            // Suggestion updated - refresh data
+            fetchServiceSuggestions(user.id)
+          }
+        })
+        subscriptionKeys.push(`suggestions:${user.id}`)
 
         // Subscribe to real-time message updates
         const messageSubscription = await realtimeManager.subscribeToMessages(user.id, (update) => {
@@ -154,12 +190,16 @@ export default function ClientDashboard() {
       setUser(user)
       setUserRole(userRole)
       
+      // Fetch user profile for name display
+      await fetchUserProfile(user.id)
+      
       // Fetch data with error handling
       try {
         await Promise.all([
           fetchClientStats(user.id),
           fetchRecentBookings(user.id),
-          fetchUpcomingBookings(user.id)
+          fetchUpcomingBookings(user.id),
+          fetchServiceSuggestions(user.id)
         ])
       } catch (fetchError) {
         console.error('Error fetching user data:', fetchError)
@@ -467,6 +507,56 @@ export default function ClientDashboard() {
     }
   }
 
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching user profile:', error)
+        return
+      }
+
+      setUserProfile(profile)
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
+
+  const fetchServiceSuggestions = async (userId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.error('No access token available')
+        return
+      }
+
+      const response = await fetch('/api/service-suggestions?type=received&status=pending&limit=5', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        console.error('Failed to fetch service suggestions:', response.statusText)
+        return
+      }
+
+      const data = await response.json()
+      setServiceSuggestions(data.suggestions || [])
+    } catch (error) {
+      console.error('Error fetching service suggestions:', error)
+      setServiceSuggestions([])
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const config = {
       pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
@@ -479,6 +569,18 @@ export default function ClientDashboard() {
     
     const statusConfig = config[status as keyof typeof config] || config.pending
     return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+  }
+
+  const getPriorityBadge = (priority: string) => {
+    const config = {
+      low: { color: 'bg-gray-100 text-gray-800', label: 'Low' },
+      medium: { color: 'bg-blue-100 text-blue-800', label: 'Medium' },
+      high: { color: 'bg-orange-100 text-orange-800', label: 'High' },
+      urgent: { color: 'bg-red-100 text-red-800', label: 'Urgent' }
+    }
+    
+    const priorityConfig = config[priority as keyof typeof config] || config.medium
+    return <Badge className={priorityConfig.color}>{priorityConfig.label}</Badge>
   }
 
   if (loading) {
@@ -498,7 +600,9 @@ export default function ClientDashboard() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Client Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back! Here's your booking overview</p>
+          <p className="text-gray-600 mt-2">
+            Welcome back{userProfile?.full_name ? `, ${userProfile.full_name}` : ''}! Here's your booking overview
+          </p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => router.push('/services')}>
@@ -569,17 +673,20 @@ export default function ClientDashboard() {
 
       {/* Upcoming Bookings & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upcoming Bookings */}
+        {/* Active Bookings */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Upcoming Bookings</CardTitle>
-            <CardDescription>Your scheduled services</CardDescription>
+            <CardTitle className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+              <span>Active Bookings</span>
+            </CardTitle>
+            <CardDescription>Your services currently in progress</CardDescription>
           </CardHeader>
           <CardContent>
             {upcomingBookings.length === 0 ? (
               <div className="text-center py-6">
-                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No upcoming bookings</p>
+                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No active bookings</p>
                 <Button 
                   variant="outline" 
                   className="mt-4"
@@ -734,130 +841,77 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Favorite Services */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Favorite Services</CardTitle>
-            <CardDescription>Services you've saved</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Favorite services section removed as per edit hint */}
-            <div className="text-center py-6">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No favorite services yet</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => router.push('/services')}
-              >
-                Discover Services
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Spending Overview & Goals */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Spending Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Spending Overview</CardTitle>
-            <CardDescription>Your spending patterns</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Monthly Budget</span>
-                <span className="text-sm text-gray-600">
-                  {formatCurrency(stats?.monthlySpent || 0)} / {formatCurrency(1000)}
-                </span>
-              </div>
-              <Progress 
-                value={stats?.monthlySpent ? Math.min((stats.monthlySpent / 1000) * 100, 100) : 0} 
-                className="h-2" 
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {stats?.monthlySpent ? Math.max(0, 1000 - stats.monthlySpent) : 1000} remaining this month
-              </p>
-            </div>
-            
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Total Spending</span>
-                <span className="text-sm text-gray-600">
-                  {formatCurrency(stats?.totalSpent || 0)}
-                </span>
-              </div>
-              <div className="h-2 bg-gray-200 rounded-full">
-                <div 
-                  className="h-2 bg-blue-500 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${stats?.totalSpent ? Math.min((stats.totalSpent / 5000) * 100, 100) : 0}%` 
-                  }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {stats?.totalSpent ? Math.max(0, 5000 - stats.totalSpent) : 5000} to next milestone
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Goals & Achievements */}
+        {/* Suggested Services */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Target className="h-5 w-5" />
-              <span>Goals & Achievements</span>
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Suggested Services</span>
             </CardTitle>
+            <CardDescription>Services recommended by providers</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {stats?.totalBookings && stats.totalBookings >= 5 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>5+ services booked</span>
+          <CardContent>
+            {serviceSuggestions.length === 0 ? (
+              <div className="text-center py-6">
+                <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No service suggestions yet</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => router.push('/services')}
+                >
+                  Browse Services
+                </Button>
               </div>
-            )}
-            {stats?.totalSpent && stats.totalSpent >= 500 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>First $500 spent</span>
-              </div>
-            )}
-            {stats?.averageRating && stats.averageRating >= 4.0 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>4.0+ average rating</span>
-              </div>
-            )}
-            {stats?.favoriteProviders && stats.favoriteProviders >= 3 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>3+ favorite providers</span>
-              </div>
-            )}
-            {(!stats?.totalBookings || stats.totalBookings < 5) && (
-              <div className="text-sm text-gray-500">
-                Book more services to unlock achievements!
+            ) : (
+              <div className="space-y-4">
+                {serviceSuggestions.map((suggestion) => (
+                  <div key={suggestion.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50 border-green-200">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="font-medium text-sm">{suggestion.suggested_service.title}</h4>
+                        {getPriorityBadge(suggestion.priority)}
+                      </div>
+                      <div className="flex items-center space-x-4 text-xs text-gray-600">
+                        <span>by {suggestion.provider.full_name}</span>
+                        <span className="font-medium">{formatCurrency(suggestion.suggested_service.base_price, suggestion.suggested_service.currency)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{suggestion.suggestion_reason}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/services/${suggestion.suggested_service.id}`)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => router.push('/services')}
+                >
+                  Browse All Services
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Service Discovery */}
+      {/* Quick Service Discovery */}
       <Card>
         <CardHeader>
-          <CardTitle>Discover New Services</CardTitle>
-          <CardDescription>Find the perfect service for your needs</CardDescription>
+          <CardTitle>Quick Service Discovery</CardTitle>
+          <CardDescription>Find services that match your needs</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="text-center p-6 border rounded-lg">
-              <Package className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Browse Categories</h3>
-              <p className="text-gray-600 mb-4">Explore services by category and find what you need</p>
+              <Search className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+              <h3 className="font-semibold text-lg mb-2">Browse Services</h3>
+              <p className="text-gray-600 mb-4">Explore all available services</p>
               <Button 
                 variant="outline" 
                 onClick={() => router.push('/services')}
@@ -867,26 +921,14 @@ export default function ClientDashboard() {
             </div>
             
             <div className="text-center p-6 border rounded-lg">
-              <Search className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Search & Filter</h3>
-              <p className="text-gray-600 mb-4">Use advanced search to find specific services</p>
+              <Target className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="font-semibold text-lg mb-2">Contact Providers</h3>
+              <p className="text-gray-600 mb-4">Get personalized recommendations from providers</p>
               <Button 
                 variant="outline" 
-                onClick={() => router.push('/services?search=')}
+                onClick={() => router.push('/dashboard/messages')}
               >
-                Search Services
-              </Button>
-            </div>
-            
-            <div className="text-center p-6 border rounded-lg">
-              <Package className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Top Rated</h3>
-              <p className="text-gray-600 mb-4">Discover highly-rated services from top providers</p>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/services?sort=rating')}
-              >
-                View Top Rated
+                Contact Providers
               </Button>
             </div>
           </div>

@@ -162,8 +162,8 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    if (profile.role !== 'provider') {
-      return NextResponse.json({ error: 'Only providers can create service suggestions' }, { status: 403 })
+    if (profile.role !== 'provider' && profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Only providers and admins can create service suggestions' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Service not found' }, { status: 404 })
     }
 
-    if (service.provider_id !== user.id) {
+    if (profile.role === 'provider' && service.provider_id !== user.id) {
       return NextResponse.json({ error: 'You can only suggest your own services' }, { status: 403 })
     }
 
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest) {
     const { data: suggestion, error: suggestionError } = await supabase
       .from('service_suggestions')
       .insert({
-        provider_id: user.id,
+        provider_id: profile.role === 'admin' ? service.provider_id : user.id,
         client_id,
         suggested_service_id,
         original_booking_id,
@@ -261,11 +261,11 @@ export async function POST(request: NextRequest) {
       user_id: client_id,
       type: 'service_suggestion',
       title: 'New Service Suggestion',
-      message: `${(profile as any).full_name || 'A provider'} suggested "${service.title}" for you`,
+      message: `${profile.role === 'admin' ? 'Admin' : (profile as any).full_name || 'A provider'} suggested "${service.title}" for you`,
       metadata: { 
         suggestion_id: suggestion.id,
         service_id: suggested_service_id,
-        provider_id: user.id
+        provider_id: profile.role === 'admin' ? service.provider_id : user.id
       },
       priority: priority === 'urgent' ? 'high' : 'medium'
     })
