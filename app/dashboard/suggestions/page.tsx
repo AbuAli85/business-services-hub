@@ -91,7 +91,19 @@ export default function ServiceSuggestionsPage() {
   async function loadSuggestions() {
     try {
       setLoading(true)
-      const response = await fetch('/api/service-suggestions?type=received')
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No authentication token available')
+      }
+      
+      const response = await fetch('/api/service-suggestions?type=received', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -201,9 +213,17 @@ export default function ServiceSuggestionsPage() {
   const handleSuggestionResponse = async (suggestionId: string, status: 'accepted' | 'declined', notes?: string) => {
     try {
       setRespondingTo(suggestionId)
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No authentication token available')
+      }
+      
       const response = await fetch(`/api/service-suggestions?id=${suggestionId}`, {
         method: 'PATCH',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -236,9 +256,17 @@ export default function ServiceSuggestionsPage() {
 
   const handleMarkAsViewed = async (suggestionId: string) => {
     try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No authentication token available')
+      }
+      
       const response = await fetch(`/api/service-suggestions?id=${suggestionId}`, {
         method: 'PATCH',
         headers: {
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
