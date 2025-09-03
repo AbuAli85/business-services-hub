@@ -216,7 +216,7 @@ export default function CreateBookingPage() {
       const supabase = await getSupabaseClient()
       
       // Prepare booking data based on whether service has packages or not
-      const bookingData = {
+      const bookingData: any = {
         service_id: selectedService.id,
         provider_id: selectedService.provider.id,
         client_id: user.id,
