@@ -1429,6 +1429,15 @@ export default function BookingDetailsPage() {
       }
 
       setBooking(transformedBooking)
+      // Auto-seed default tasks for known categories if empty
+      try {
+        if ((!projectTasks || projectTasks.length === 0) && transformedBooking?.service?.category) {
+          const defaults = getDefaultTasksForCategory(transformedBooking.service.category)
+          if (defaults.length > 0) {
+            setProjectTasks(defaults)
+          }
+        }
+      } catch {}
       setEditedNotes(transformedBooking.notes || '')
       setLoading(false)
     } catch (error) {
@@ -5845,4 +5854,78 @@ export default function BookingDetailsPage() {
       )}
     </div>
   )
+}
+
+// Build default logical tasks based on service category
+const getDefaultTasksForCategory = (categoryRaw: string): any[] => {
+  const category = (categoryRaw || '').toLowerCase()
+  const makeTask = (title: string, description: string, priority: 'low'|'medium'|'high'|'critical' = 'medium') => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title,
+    description,
+    status: 'not_started',
+    priority,
+    category: inferCategoryFromTitle(title),
+    comments: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  })
+
+  if (category.includes('seo')) {
+    return [
+      makeTask('Project Setup & SEO Audit', 'Initial setup, access verification, full audit', 'high'),
+      makeTask('Keyword Research & Strategy Development', 'Keyword mapping, targeting plan', 'high'),
+      makeTask('On-Page SEO Optimization', 'Meta, headings, internal links, images'),
+      makeTask('Content Development & Blogging', 'Editorial calendar, first posts'),
+      makeTask('Technical SEO Implementation', 'Crawl/index fixes, sitemaps, schema'),
+      makeTask('Link Building & Off-Page SEO', 'Prospecting and outreach'),
+      makeTask('Tracking & Reporting Setup', 'GA4, GSC, conversions, dashboards'),
+      makeTask('Review, Analysis & Optimization', 'Monthly review and iterations')
+    ]
+  }
+
+  if (category.includes('social') || category.includes('smm')) {
+    return [
+      makeTask('Account Audit & Access Setup', 'Audit profiles, brand guidelines, roles'),
+      makeTask('Content Calendar Planning', 'Themes, frequency, assets'),
+      makeTask('Asset Production', 'Designs, copy, video shortform'),
+      makeTask('Scheduling & Publishing', 'Scheduler and UTM tagging'),
+      makeTask('Community Management', 'Replies, moderation, engagement'),
+      makeTask('Paid Promotion (Optional)', 'Boost and paid campaigns'),
+      makeTask('Reporting & Insights', 'Monthly KPI report and learnings')
+    ]
+  }
+
+  if (category.includes('web') || category.includes('website') || category.includes('development')) {
+    return [
+      makeTask('Project Setup & Requirements Gathering', 'Kickoff, requirements, success criteria', 'high'),
+      makeTask('Design & Wireframes', 'Low/high-fidelity mockups'),
+      makeTask('Frontend Implementation', 'Responsive UI components'),
+      makeTask('Backend/API Integration', 'Endpoints, auth, models'),
+      makeTask('QA & Bug Fixing', 'Cross-browser/device tests'),
+      makeTask('Content Entry & SEO Basics', 'Copy, images, basic SEO'),
+      makeTask('Deployment & Handover', 'Production deploy, docs, training')
+    ]
+  }
+
+  if (category.includes('marketing')) {
+    return [
+      makeTask('Discovery & Strategy', 'Persona, channels, goals'),
+      makeTask('Campaign & Asset Plan', 'Calendar and asset list'),
+      makeTask('Execution (Organic & Paid)', 'Rollout across channels'),
+      makeTask('Analytics & Tracking', 'Dashboards and attribution'),
+      makeTask('Optimization & Reporting', 'Weekly optimization and monthly report')
+    ]
+  }
+
+  return []
+}
+
+const inferCategoryFromTitle = (title: string): string => {
+  const t = title.toLowerCase()
+  if (t.includes('design')) return 'design'
+  if (t.includes('dev') || t.includes('frontend') || t.includes('backend')) return 'development'
+  if (t.includes('testing') || t.includes('qa')) return 'testing'
+  if (t.includes('review') || t.includes('report')) return 'review'
+  return 'documentation'
 }
