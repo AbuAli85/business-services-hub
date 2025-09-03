@@ -170,6 +170,9 @@ export default function CreateBookingPage() {
           if (firstPkg) {
             setSelectedPackage(firstPkg)
             setFormData(prev => ({ ...prev, package_id: firstPkg.id }))
+          } else {
+            // For services without packages, clear package_id to indicate direct booking
+            setFormData(prev => ({ ...prev, package_id: '' }))
           }
         }
       }
@@ -194,8 +197,17 @@ export default function CreateBookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedService || !selectedPackage || !formData.scheduled_date) {
+    if (!selectedService || !formData.scheduled_date) {
       toast.error('Please fill in all required fields')
+      return
+    }
+
+    // For services without packages, we'll create a direct booking
+    if (!selectedPackage && (!selectedService.packages || selectedService.packages.length === 0)) {
+      // This is a service without packages - we'll handle it differently
+      console.log('Creating direct booking for service without packages')
+    } else if (!selectedPackage) {
+      toast.error('Please select a package')
       return
     }
 
@@ -203,24 +215,35 @@ export default function CreateBookingPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Prepare booking data based on whether service has packages or not
+      const bookingData = {
+        service_id: selectedService.id,
+        provider_id: selectedService.provider.id,
+        client_id: user.id,
+        scheduled_date: formData.scheduled_date.toISOString(),
+        scheduled_time: formData.scheduled_time,
+        location: formData.location,
+        notes: formData.notes,
+        special_requirements: formData.special_requirements,
+        budget_range: formData.budget_range,
+        urgency: formData.urgency,
+        status: 'pending',
+        currency: selectedService.currency
+      }
+
+      // Add package-specific data if package exists
+      if (selectedPackage) {
+        bookingData.package_id = selectedPackage.id
+        bookingData.amount = selectedPackage.price
+      } else {
+        // For services without packages, use base price and add a note
+        bookingData.amount = selectedService.base_price
+        bookingData.notes = (bookingData.notes || '') + '\n\n[Direct booking - no package selected. Provider will contact to discuss specific requirements and pricing.]'
+      }
+
       const { data: booking, error } = await supabase
         .from('bookings')
-        .insert({
-          service_id: selectedService.id,
-          provider_id: selectedService.provider.id,
-          client_id: user.id,
-          package_id: selectedPackage.id,
-          scheduled_date: formData.scheduled_date.toISOString(),
-          scheduled_time: formData.scheduled_time,
-          location: formData.location,
-          notes: formData.notes,
-          special_requirements: formData.special_requirements,
-          budget_range: formData.budget_range,
-          urgency: formData.urgency,
-          status: 'pending',
-          amount: selectedPackage.price,
-          currency: selectedService.currency
-        })
+        .insert(bookingData)
         .select()
         .single()
 
@@ -353,12 +376,16 @@ export default function CreateBookingPage() {
                   <span>Service Packages</span>
                 </CardTitle>
                 <CardDescription>
-                  Choose a package that fits your needs
+                  {selectedService.packages && selectedService.packages.length > 0 
+                    ? "Choose a package that fits your needs"
+                    : "This service uses direct booking - no packages available"
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedService.packages.map((pkg) => (
+                {selectedService.packages && selectedService.packages.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedService.packages.map((pkg) => (
                     <div
                       key={pkg.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-all ${
@@ -403,12 +430,32 @@ export default function CreateBookingPage() {
                     </div>
                   ))}
                 </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full">
+                      <Package className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Direct Booking Available</h3>
+                    <p className="text-gray-600 mb-4">
+                      This service doesn't have predefined packages. You can book directly and the provider will contact you to discuss your specific requirements.
+                    </p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 text-blue-800 mb-2">
+                        <AlertCircle className="h-5 w-5" />
+                        <span className="font-medium">Base Price: {formatCurrency(selectedService.base_price, selectedService.currency)}</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        Final pricing will be determined based on your specific requirements and project scope.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Booking Form */}
-          {selectedService && selectedPackage && (
+          {selectedService && (selectedPackage || (!selectedService.packages || selectedService.packages.length === 0)) && (
             <Card>
               <CardHeader>
                 <CardTitle>Booking Details</CardTitle>
@@ -617,6 +664,34 @@ export default function CreateBookingPage() {
                     <span className="text-gray-600">Revisions:</span>
                     <span className="font-medium">{selectedPackage.revisions}</span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Direct Booking Info for Services Without Packages */}
+          {selectedService && !selectedPackage && (!selectedService.packages || selectedService.packages.length === 0) && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="text-blue-800">Direct Booking</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2 text-blue-700">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">This service uses direct booking</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Base Price:</span>
+                    <span className="font-medium">{formatCurrency(selectedService.base_price, selectedService.currency)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Booking Type:</span>
+                    <span className="font-medium">Custom Quote</span>
+                  </div>
+                </div>
+                <div className="text-xs text-blue-600 bg-blue-100 p-3 rounded-lg">
+                  <strong>Note:</strong> The provider will contact you to discuss specific requirements and final pricing based on your needs.
                 </div>
               </CardContent>
             </Card>
