@@ -1,4 +1,13 @@
--- Fix invoices RLS policies to allow clients to generate invoices from their bookings
+console.log('🔧 RLS Policy Fix - Copy and paste this SQL into Supabase Dashboard:')
+console.log('')
+console.log('📋 Go to: https://supabase.com/dashboard/project/reootcngcptfogfozlmz/sql')
+console.log('')
+console.log('📝 Copy and paste this ENTIRE SQL block:')
+console.log('')
+console.log('='.repeat(80))
+console.log('')
+
+const sql = `-- Fix invoices RLS policies to allow clients to generate invoices from their bookings
 -- Date: January 2025
 -- Description: Update RLS policies to allow clients to create invoices from their own bookings
 -- IMPORTANT: This version includes service_role bypass for proper service key functionality
@@ -55,4 +64,19 @@ CREATE POLICY "Users can update own invoices" ON invoices
     );
 
 -- Add comment for documentation
-COMMENT ON POLICY "Users can create invoices" ON invoices IS 'Allows service key to bypass RLS, clients to generate invoices from their bookings, providers to create invoices for their services, and admins to create any invoice';
+COMMENT ON POLICY "Users can create invoices" ON invoices IS 'Allows service key to bypass RLS, clients to generate invoices from their bookings, providers to create invoices for their services, and admins to create any invoice';`
+
+console.log(sql)
+console.log('')
+console.log('='.repeat(80))
+console.log('')
+console.log('📋 Steps to apply:')
+console.log('1. Go to the Supabase dashboard URL above')
+console.log('2. Click "New Query"')
+console.log('3. Copy and paste the entire SQL block above')
+console.log('4. Click "Run"')
+console.log('5. Come back here and run: node test-invoice-creation.js')
+console.log('')
+console.log('🎯 Expected result after running the SQL:')
+console.log('✅ SUCCESS! Invoice created: [invoice-id]')
+console.log('🎉 RLS policies have been updated successfully!')
