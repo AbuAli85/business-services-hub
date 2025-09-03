@@ -474,55 +474,20 @@ export default function ServiceDetail() {
                           className="bg-gray-100 text-gray-900 hover:bg-gray-200"
                           onClick={async () => {
                             if (!service?.id) return
-                            if (!isAuthenticated) {
-                              alert('Please sign in to book a service.')
-                              router.push('/auth/sign-in')
-                              return
-                            }
+                            // If not signed in, route to sign-in first
                             try {
-                              setIsBooking(true)
-                              const iso = scheduledDate
-                                ? new Date(scheduledDate).toISOString()
-                                : new Date(Date.now() + 60 * 60 * 1000).toISOString()
-                              // Attach Supabase access token to Authorization header for server validation
-                              let authHeader: Record<string, string> = {}
-                              try {
-                                const supabase = await getSupabaseClient()
-                                const { data: { session } } = await supabase.auth.getSession()
-                                if (session?.access_token) {
-                                  authHeader = { Authorization: `Bearer ${session.access_token}` }
-                                }
-                              } catch {}
-
-                              const res = await fetch('/api/bookings', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', ...authHeader },
-                                credentials: 'include',
-                                body: JSON.stringify({
-                                  service_id: service.id,
-                                  scheduled_date: iso,
-                                  notes: notes || undefined,
-                                  service_package_id: selectedPackageId || undefined
-                                })
-                              })
-                              const body = await res.json().catch(() => ({}))
-                              if (res.status === 401) {
-                                alert('Please sign in to book a service.')
+                              const supabase = await getSupabaseClient()
+                              const { data: { user } } = await supabase.auth.getUser()
+                              if (!user) {
                                 router.push('/auth/sign-in')
                                 return
                               }
-                              if (!res.ok) throw new Error(body?.error || 'Booking failed')
-                              alert('Booking created successfully.')
-                              router.push('/dashboard/bookings')
-                            } catch (e: any) {
-                              alert(e?.message || 'Failed to create booking')
-                            } finally {
-                              setIsBooking(false)
-                            }
+                            } catch {}
+                            // Go to booking confirmation/create flow with the service preselected
+                            router.push(`/dashboard/bookings/create?service=${service.id}`)
                           }}
-                          disabled={isBooking}
                         >
-                          {isBooking ? 'Booking…' : (isAuthenticated ? 'Book Now' : 'Sign in to Book')}
+                          {isAuthenticated ? 'Book Now' : 'Sign in to Book'}
                         </Button>
                       </div>
                     </CardContent>
