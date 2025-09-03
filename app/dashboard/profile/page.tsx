@@ -138,9 +138,12 @@ export default function ProfilePage() {
           country: profileData.country || ''
         })
         // compute completion percentage (non-blocking)
-        const fields = [profileData.full_name, profileData.phone, profileData.country, profileData.avatar_url, profileData.bio]
-        const filled = fields.filter(Boolean).length
-        setProfileCompletion(Math.round((filled / fields.length) * 100))
+        const requiredFields = [profileData.full_name, profileData.phone, profileData.country]
+        const optionalFields = [profileData.avatar_url, profileData.bio]
+        const requiredFilled = requiredFields.filter(Boolean).length
+        const optionalFilled = optionalFields.filter(Boolean).length
+        const completion = Math.round(((requiredFilled / requiredFields.length) * 0.7 + (optionalFilled / optionalFields.length) * 0.3) * 100)
+        setProfileCompletion(completion)
       }
 
       // Fetch company data
@@ -174,7 +177,7 @@ export default function ProfilePage() {
         const supabaseBookings = await getSupabaseClient()
         const { data: bookings } = await supabaseBookings
           .from('bookings')
-          .select('id, status, created_at, service_id')
+          .select('id, status, created_at, service_id, title, amount, currency')
           .eq('client_id', user.id)
           .order('created_at', { ascending: false })
           .limit(5)
@@ -189,9 +192,17 @@ export default function ProfilePage() {
               .in('id', serviceIds)
             const idToTitle: Record<string, string> = {}
             ;(svc || []).forEach((s: any) => { idToTitle[s.id] = s.title })
-            setRecentBookings(bookings.map((b: any) => ({ ...b, service_title: idToTitle[b.service_id] || 'Service' })))
+            setRecentBookings(bookings.map((b: any) => ({ 
+              ...b, 
+              service_title: idToTitle[b.service_id] || b.title || 'Service',
+              display_title: b.title || idToTitle[b.service_id] || 'Service'
+            })))
           } else {
-            setRecentBookings(bookings)
+            setRecentBookings(bookings.map((b: any) => ({ 
+              ...b, 
+              service_title: b.title || 'Service',
+              display_title: b.title || 'Service'
+            })))
           }
         } else {
           setRecentBookings([])
@@ -299,6 +310,18 @@ export default function ProfilePage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800'
+      case 'in_progress':
+        return 'bg-purple-100 text-purple-800'
+      case 'completed':
+        return 'bg-green-100 text-green-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      case 'on_hold':
+        return 'bg-gray-100 text-gray-800'
       case 'active':
         return 'bg-green-100 text-green-800'
       case 'draft':
@@ -587,7 +610,19 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{profileCompletion}%</div>
-                <p className="text-xs text-muted-foreground">Complete your profile for better matches</p>
+                <p className="text-xs text-muted-foreground">
+                  {profileCompletion < 70 ? 'Complete your profile for better matches' : 'Profile looks great!'}
+                </p>
+                {profileCompletion < 70 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => setEditing(true)}
+                  >
+                    Complete Profile
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -618,12 +653,25 @@ export default function ProfilePage() {
             ) : (
               <div className="divide-y">
                 {recentBookings.map((b) => (
-                  <div key={b.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-900">{b.service_title || 'Service'}</div>
-                      <div className="text-xs text-gray-500">{formatDate(b.created_at)}</div>
+                  <div key={b.id} className="py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{b.display_title || b.service_title || 'Service'}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {formatDate(b.created_at)} • {b.amount ? formatCurrency(b.amount, b.currency || 'OMR') : 'Price TBD'}
+                      </div>
                     </div>
-                    <Badge className={getStatusColor(b.status)}>{b.status}</Badge>
+                    <div className="flex items-center space-x-3">
+                      <Badge className={getStatusColor(b.status)}>
+                        {b.status.replace('_', ' ')}
+                      </Badge>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/bookings/${b.id}`)}
+                      >
+                        View
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

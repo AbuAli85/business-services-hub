@@ -101,6 +101,7 @@ interface UploadProgress {
 interface SmartFileManagerProps {
   bookingId: string
   userRole: 'client' | 'provider'
+  recipientEmail?: string
   allowedTypes?: string[]
   maxFileSize?: number // in MB
   maxFiles?: number
@@ -109,6 +110,7 @@ interface SmartFileManagerProps {
 export default function SmartFileManager({
   bookingId,
   userRole,
+  recipientEmail,
   allowedTypes = ['image/*', 'application/pdf', '.doc', '.docx', '.txt'],
   maxFileSize = 10,
   maxFiles = 20
@@ -308,6 +310,20 @@ export default function SmartFileManager({
     }, 3000)
     
     toast.success(`${uploadFiles.length} file(s) uploaded successfully`)
+
+    // Fire-and-forget email notification to the other party
+    if (recipientEmail) {
+      fetch('/api/notifications/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: recipientEmail,
+          subject: `New files uploaded for booking ${bookingId.slice(0,8)}`,
+          text: `New files were uploaded to your booking ${bookingId}.`,
+          html: `<p>New files were uploaded to your booking <strong>${bookingId}</strong>.</p>`
+        })
+      }).catch(() => {})
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {

@@ -290,6 +290,26 @@ export async function POST(request: NextRequest) {
     }
     
     await supabase.from('notifications').insert(notificationData)
+
+    // Send email notification (best-effort)
+    try {
+      const recipientEmail = isProvider ?
+        (await supabase.from('profiles').select('email').eq('id', booking.client_id).single()).data?.email :
+        (await supabase.from('profiles').select('email').eq('id', booking.provider_id).single()).data?.email
+
+      if (recipientEmail) {
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/notifications/email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: recipientEmail,
+            subject: `Milestone update for booking ${booking_id.slice(0,8)}`,
+            text: `Your booking status is now ${status}. ${milestone ? 'Milestone: ' + milestone : ''}`,
+            html: `<p>Your booking status is now <strong>${status}</strong>.</p>${milestone ? `<p>Milestone: <strong>${milestone}</strong></p>` : ''}`
+          })
+        })
+      }
+    } catch {}
     
     return NextResponse.json({ 
       success: true,
