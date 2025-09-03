@@ -219,8 +219,8 @@ export default function ServicesPage() {
       }
       // Admins can see all services (no additional filter needed)
 
-      // Apply filters
-      if (statusFilter !== 'all') {
+      // Apply filters (but not status filter for clients since we already filtered for active)
+      if (statusFilter !== 'all' && userRole !== 'client') {
         query = query.eq('status', statusFilter)
       }
       
@@ -805,18 +805,20 @@ export default function ServicesPage() {
 
             {/* Standard Filters */}
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-gray-50 rounded-2xl shadow-soft">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-12 input-enhanced focus-ring-primary">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className={`grid grid-cols-1 gap-4 p-6 bg-gray-50 rounded-2xl shadow-soft ${userRole === 'client' ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+                {userRole !== 'client' && (
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-12 input-enhanced focus-ring-primary">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
 
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="h-12 input-enhanced focus-ring-primary">
@@ -1314,7 +1316,6 @@ export default function ServicesPage() {
                     {userRole === 'client' && service.status === 'active' && (
                       <Button
                         className="flex-1 h-12 btn-primary-gradient rounded-xl font-medium relative overflow-hidden group"
-                        onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
                         onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
                       >
                         <div className="absolute inset-0 bg-white/20 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
