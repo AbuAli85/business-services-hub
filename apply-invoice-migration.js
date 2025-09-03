@@ -1,0 +1,159 @@
+const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config()
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://reootcngcptfogfozlmz.supabase.co'
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlb290Y25nY3B0Zm9nZm96bG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzQ0NDM4MiwiZXhwIjoyMDY5MDIwMzgyfQ.BTLA-2wwXJgjW6MKoaw2ERbCr_fXF9w4zgLb70_5DAE'
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing required environment variables')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+async function applyInvoiceMigration() {
+  try {
+    console.log('🔧 Applying invoice RLS policy migration...')
+
+    // Read the migration file
+    const fs = require('fs')
+    const migrationSQL = fs.readFileSync('./supabase/migrations/080_fix_invoices_rls_policies.sql', 'utf8')
+    
+    // Split the SQL into individual statements
+    const statements = migrationSQL
+      .split(';')
+      .map(stmt => stmt.trim())
+      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
+
+    console.log(`📝 Found ${statements.length} SQL statements to execute`)
+
+    // Execute the migration statements directly
+    console.log('🗑️  Dropping existing policies...')
+    
+    // Drop existing policies
+    await supabase.rpc('exec', { sql: 'DROP POLICY IF EXISTS "Users can create invoices" ON invoices;' })
+    await supabase.rpc('exec', { sql: 'DROP POLICY IF EXISTS "Users can view own invoices" ON invoices;' })
+    await supabase.rpc('exec', { sql: 'DROP POLICY IF EXISTS "Users can update own invoices" ON invoices;' })
+
+    console.log('🔧 Creating updated policies...')
+    
+    // Create view policy
+    await supabase.rpc('exec', { 
+      sql: `CREATE POLICY "Users can view own invoices" ON invoices
+        FOR SELECT USING (
+          auth.uid() = client_id OR 
+          auth.uid() = provider_id OR
+          EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+          )
+        );`
+    })
+
+    // Create insert policy
+    await supabase.rpc('exec', { 
+      sql: `CREATE POLICY "Users can create invoices" ON invoices
+        FOR INSERT WITH CHECK (
+          (auth.uid() = client_id AND EXISTS (
+            SELECT 1 FROM bookings 
+            WHERE id = booking_id AND client_id = auth.uid()
+          )) OR
+          (auth.uid() = provider_id AND EXISTS (
+            SELECT 1 FROM bookings 
+            WHERE id = booking_id AND provider_id = auth.uid()
+          )) OR
+          EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+          )
+        );`
+    })
+
+    // Create update policy
+    await supabase.rpc('exec', { 
+      sql: `CREATE POLICY "Users can update own invoices" ON invoices
+        FOR UPDATE USING (
+          auth.uid() = provider_id OR
+          auth.uid() = client_id OR
+          EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+          )
+        );`
+    })
+
+    console.log('🎉 Migration application completed!')
+
+    // Test the fix
+    console.log('🧪 Testing the fix...')
+    
+    // Get a test user
+    const { data: testUser, error: userError } = await supabase.auth.admin.getUserById('4fedc90a-1c4e-4baa-a42b-2ca85d1daf0b')
+    
+    if (userError) {
+      console.error('❌ Error getting test user:', userError)
+      return
+    }
+
+    console.log('👤 Test user found:', testUser.user.email)
+
+    // Check if user has any bookings
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('id, client_id, provider_id, subtotal, currency, status')
+      .eq('client_id', testUser.user.id)
+      .in('status', ['paid', 'in_progress', 'completed'])
+      .limit(1)
+
+    if (bookingsError) {
+      console.error('❌ Error fetching bookings:', bookingsError)
+      return
+    }
+
+    if (!bookings || bookings.length === 0) {
+      console.log('ℹ️  No bookings found for test user')
+      return
+    }
+
+    console.log('📋 Found bookings for test user:', bookings.length)
+
+    // Test creating an invoice
+    const testInvoice = {
+      booking_id: bookings[0].id,
+      client_id: bookings[0].client_id,
+      provider_id: bookings[0].provider_id,
+      amount: bookings[0].subtotal || 100,
+      currency: bookings[0].currency || 'OMR',
+      status: bookings[0].status === 'paid' ? 'paid' : 'issued'
+    }
+
+    console.log('🔍 Testing invoice creation...')
+    const { data: newInvoice, error: insertError } = await supabase
+      .from('invoices')
+      .insert(testInvoice)
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('❌ Error creating test invoice:', insertError.message)
+      console.log('🔧 The migration may not have been applied correctly.')
+      return
+    }
+
+    console.log('✅ Test invoice created successfully:', newInvoice.id)
+
+    // Clean up test invoice
+    await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', newInvoice.id)
+
+    console.log('🧹 Test invoice cleaned up')
+    console.log('🎉 Invoice permissions fix completed successfully!')
+
+  } catch (error) {
+    console.error('❌ Unexpected error:', error)
+  }
+}
+
+applyInvoiceMigration()

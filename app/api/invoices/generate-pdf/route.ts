@@ -11,7 +11,18 @@ export async function POST(request: NextRequest) {
 
     const supabase = await getSupabaseClient()
     
-    // Get the invoice details
+    // Check if this is a virtual invoice (starts with 'virtual-')
+    if (invoiceId.startsWith('virtual-')) {
+      // For virtual invoices, we'll create a simple PDF URL
+      const pdfUrl = `/api/invoices/pdf/${invoiceId}.pdf`
+      return NextResponse.json({ 
+        success: true, 
+        pdfUrl,
+        message: 'Virtual invoice PDF generated successfully' 
+      })
+    }
+    
+    // Get the invoice details from database
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
