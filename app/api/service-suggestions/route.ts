@@ -1,6 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+
+// Helper function to create a profile using service role
+async function createUserProfile(user: any) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase configuration')
+  }
+  
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+  
+  const { data: profile, error } = await supabaseAdmin
+    .from('profiles')
+    .insert({
+      id: user.id,
+      email: user.email || '',
+      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      role: user.user_metadata?.role || 'client',
+      avatar_url: user.user_metadata?.avatar_url || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select('id, role, full_name, email')
+    .single()
+  
+  if (error) {
+    throw new Error(`Failed to create profile: ${error.message}`)
+  }
+  
+  return profile
+}
 
 // Validation schema for service suggestion creation
 const CreateSuggestionSchema = z.object({
@@ -43,13 +81,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user profile to check role
-    const { data: profile } = await supabase
+    let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!profile || profile.role !== 'provider') {
+    // If profile doesn't exist, create one
+    if (profileError && profileError.code === 'PGRST116') {
+      console.log('Profile not found, creating one for user:', user.id)
+      
+      try {
+        profile = await createUserProfile(user)
+        console.log('Created new profile:', profile)
+      } catch (createError) {
+        console.error('Error creating profile:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create user profile',
+          details: createError instanceof Error ? createError.message : 'Unknown error',
+          userId: user.id
+        }, { status: 500 })
+      }
+    } else if (profileError || !profile) {
+      console.error('Profile lookup error:', profileError)
+      return NextResponse.json({ 
+        error: 'User profile not found',
+        details: profileError?.message || 'Profile does not exist',
+        userId: user.id
+      }, { status: 404 })
+    }
+
+    if (profile.role !== 'provider') {
       return NextResponse.json({ error: 'Only providers can create service suggestions' }, { status: 403 })
     }
 
@@ -211,13 +273,28 @@ export async function GET(request: NextRequest) {
       .limit(limit)
 
     // Get user profile to determine role  
-    const { data: profile, error: profileError } = await supabase
+    let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, role, full_name, email')
       .eq('id', user.id)
       .single()
 
-    if (profileError || !profile) {
+    // If profile doesn't exist, create one
+    if (profileError && profileError.code === 'PGRST116') {
+      console.log('Profile not found, creating one for user:', user.id)
+      
+      try {
+        profile = await createUserProfile(user)
+        console.log('Created new profile:', profile)
+      } catch (createError) {
+        console.error('Error creating profile:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create user profile',
+          details: createError instanceof Error ? createError.message : 'Unknown error',
+          userId: user.id
+        }, { status: 500 })
+      }
+    } else if (profileError || !profile) {
       console.error('Profile lookup error:', profileError)
       console.error('User ID:', user.id)
       console.error('User email:', user.email)
