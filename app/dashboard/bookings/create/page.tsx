@@ -220,6 +220,7 @@ export default function CreateBookingPage() {
         service_id: selectedService.id,
         provider_id: selectedService.provider.id,
         client_id: user.id,
+        title: selectedPackage ? `${selectedService.title} - ${selectedPackage.name}` : selectedService.title,
         scheduled_date: formData.scheduled_date.toISOString(),
         scheduled_time: formData.scheduled_time,
         location: formData.location,

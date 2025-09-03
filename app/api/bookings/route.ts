@@ -209,6 +209,7 @@ export async function POST(request: NextRequest) {
         service_id,
         client_id: user.id,
         provider_id: service.provider_id,
+        title: service.title || 'Service Booking',
         scheduled_date,
         notes,
         status: 'pending',
@@ -219,9 +220,6 @@ export async function POST(request: NextRequest) {
         payment_status: 'pending',
         estimated_duration,
         location,
-        title: `Booking for ${service.title}`, // Add required title field
-        start_time: scheduled_date, // Add required start_time field
-        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add required end_time field (2 hours later)
         total_price: amount, // Add required total_price field (matches existing schema)
         subtotal: amount, // Add required subtotal field for total_amount generation
         total_amount: amount // Add required total_amount field (for webhook trigger)
