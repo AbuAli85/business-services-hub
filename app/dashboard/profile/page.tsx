@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -78,6 +79,7 @@ export default function ProfilePage() {
   const [company, setCompany] = useState<Company | null>(null)
   const [services, setServices] = useState<Service[]>([])
   const [userRole, setUserRole] = useState<string>('')
+  const [userEmail, setUserEmail] = useState<string>('')
   const [stats, setStats] = useState<ProfileStats>({
     totalServices: 0,
     totalBookings: 0,
@@ -87,12 +89,14 @@ export default function ProfilePage() {
     responseTime: '0h'
   })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState({
     full_name: '',
     phone: '',
     country: ''
   })
+  const router = useRouter()
 
   useEffect(() => {
     fetchProfileData()
@@ -100,9 +104,16 @@ export default function ProfilePage() {
 
   const fetchProfileData = async () => {
     try {
+      setLoading(true)
+      setError('')
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        router.push('/auth/sign-in')
+        return
+      }
+
+      setUserEmail(user.email ?? '')
 
       // Get user role from metadata
       const role = user.user_metadata?.role || 'client'
@@ -155,9 +166,10 @@ export default function ProfilePage() {
       // Calculate stats based on role
       await calculateStats(user.id, role)
 
-      setLoading(false)
     } catch (error) {
       console.error('Error fetching profile data:', error)
+      setError('Failed to load your profile. Please try again.')
+    } finally {
       setLoading(false)
     }
   }
@@ -267,6 +279,17 @@ export default function ProfilePage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 font-medium mb-2">{error}</p>
+          <Button onClick={fetchProfileData} variant="outline">Retry</Button>
+        </div>
       </div>
     )
   }
@@ -599,7 +622,7 @@ export default function ProfilePage() {
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm">{profile?.email}</span>
+                    <span className="text-sm">{userEmail}</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Phone className="h-4 w-4 text-gray-400" />

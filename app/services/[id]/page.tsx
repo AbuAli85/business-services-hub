@@ -42,6 +42,8 @@ export default function ServiceDetail() {
   const [isBooking, setIsBooking] = useState<boolean>(false)
   const [isSaved, setIsSaved] = useState<boolean>(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
+  const [hasBooking, setHasBooking] = useState<boolean>(false)
+  const [isServiceOwner, setIsServiceOwner] = useState<boolean>(false)
 
   useEffect(() => {
     const load = async () => {
@@ -54,6 +56,27 @@ export default function ServiceDetail() {
           const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           setIsAuthenticated(!!user)
+          // If logged in, check if user already has a booking for this service (as client or provider)
+          if (user) {
+            try {
+              const { data: existingBooking, error: bookingErr } = await supabase
+                .from('bookings')
+                .select('id')
+                .eq('service_id', serviceId)
+                .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+                .limit(1)
+                .maybeSingle()
+              if (!bookingErr && existingBooking) {
+                setHasBooking(true)
+              } else {
+                setHasBooking(false)
+              }
+            } catch {
+              setHasBooking(false)
+            }
+          } else {
+            setHasBooking(false)
+          }
         } catch {}
         const res = await fetch(`/api/services/${serviceId}`, { cache: 'no-store' })
         if (!res.ok) {
@@ -62,6 +85,13 @@ export default function ServiceDetail() {
         }
         const data = await res.json()
         setService(data?.service ?? null)
+        // determine ownership if possible
+        try {
+          const supabase2 = await getSupabaseClient()
+          const { data: { user: u2 } } = await supabase2.auth.getUser()
+          if (u2 && data?.service?.provider_id) setIsServiceOwner(data.service.provider_id === u2.id)
+          else setIsServiceOwner(false)
+        } catch { setIsServiceOwner(false) }
       } catch (e: any) {
         setError(e?.message || 'Failed to load service')
       } finally {
@@ -163,24 +193,7 @@ export default function ServiceDetail() {
               </div>
         </div>
 
-            {service.provider && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-                    <UserIcon className="h-5 w-5" />
-                    <span>Provider</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-                  <div className="text-gray-800">
-                    <div className="font-medium">{service.provider.full_name || 'Service Provider'}</div>
-                    {service.provider.company_name && (
-                      <div className="text-gray-600">{service.provider.company_name}</div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Duplicate simple Provider card removed to avoid showing twice */}
 
             {/* Main + sticky sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -278,7 +291,8 @@ export default function ServiceDetail() {
                   </Card>
                 )}
 
-                {/* Common Client Widgets */}
+                {/* Booking-only widgets */}
+                {hasBooking && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="border-0 shadow-sm">
                     <CardHeader>
@@ -363,9 +377,10 @@ export default function ServiceDetail() {
                     </CardContent>
                   </Card>
                 </div>
+                )}
 
                 {/* Category-Specific Widgets */}
-                {service.category?.toLowerCase().includes('seo') && (
+                {hasBooking && service.category?.toLowerCase().includes('seo') && (
                   <Card className="border-0 shadow-sm">
                     <CardHeader>
                       <CardTitle>SEO Insights</CardTitle>
@@ -393,7 +408,7 @@ export default function ServiceDetail() {
                   </Card>
                 )}
 
-                {service.category?.toLowerCase().includes('social') && (
+                {hasBooking && service.category?.toLowerCase().includes('social') && (
                   <Card className="border-0 shadow-sm">
                     <CardHeader>
                       <CardTitle>Social Media Calendar</CardTitle>
@@ -404,7 +419,7 @@ export default function ServiceDetail() {
                   </Card>
                 )}
 
-                {service.category?.toLowerCase().includes('web') && (
+                {hasBooking && service.category?.toLowerCase().includes('web') && (
                   <Card className="border-0 shadow-sm">
                     <CardHeader>
                       <CardTitle>Development Timeline</CardTitle>
@@ -416,9 +431,10 @@ export default function ServiceDetail() {
                 )}
               </div>
 
-              {/* Sticky booking sidebar */}
+              {/* Sticky booking sidebar (hidden for provider/owner) */}
               <div className="lg:col-span-1">
                 <div className="sticky top-20 space-y-4">
+                  {!isServiceOwner && (
                   <Card className="border-0 shadow-lg">
                     <CardHeader>
                       <CardTitle>Book This Service</CardTitle>
@@ -512,6 +528,7 @@ export default function ServiceDetail() {
             </div>
           </CardContent>
         </Card>
+                  )}
                 </div>
               </div>
             </div>
