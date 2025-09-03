@@ -19,6 +19,19 @@ async function createUserProfile(user: any) {
     }
   })
   
+  // First check if profile already exists
+  const { data: existingProfile, error: checkError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role, full_name, email')
+    .eq('id', user.id)
+    .single()
+  
+  if (existingProfile) {
+    console.log('Profile already exists, returning existing profile:', existingProfile)
+    return existingProfile
+  }
+  
+  // Only create if it doesn't exist
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
     .insert({
@@ -34,6 +47,19 @@ async function createUserProfile(user: any) {
     .single()
   
   if (error) {
+    // If it's a duplicate key error, try to fetch the existing profile
+    if (error.code === '23505') {
+      console.log('Profile already exists (duplicate key), fetching existing profile')
+      const { data: existingProfile, error: fetchError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role, full_name, email')
+        .eq('id', user.id)
+        .single()
+      
+      if (existingProfile) {
+        return existingProfile
+      }
+    }
     throw new Error(`Failed to create profile: ${error.message}`)
   }
   
@@ -93,14 +119,39 @@ export async function POST(request: NextRequest) {
       
       try {
         profile = await createUserProfile(user)
-        console.log('Created new profile:', profile)
+        console.log('Profile ready:', profile)
       } catch (createError) {
         console.error('Error creating profile:', createError)
-        return NextResponse.json({ 
-          error: 'Failed to create user profile',
-          details: createError instanceof Error ? createError.message : 'Unknown error',
-          userId: user.id
-        }, { status: 500 })
+        // If it's a duplicate key error, try to fetch the existing profile
+        if (createError instanceof Error && createError.message.includes('duplicate key')) {
+          console.log('Attempting to fetch existing profile after duplicate key error')
+          try {
+            const { data: existingProfile, error: fetchError } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', user.id)
+              .single()
+            
+            if (existingProfile) {
+              profile = existingProfile
+              console.log('Successfully fetched existing profile:', profile)
+            } else {
+              throw new Error('Could not fetch existing profile')
+            }
+          } catch (fetchError) {
+            return NextResponse.json({ 
+              error: 'Failed to create or fetch user profile',
+              details: createError instanceof Error ? createError.message : 'Unknown error',
+              userId: user.id
+            }, { status: 500 })
+          }
+        } else {
+          return NextResponse.json({ 
+            error: 'Failed to create user profile',
+            details: createError instanceof Error ? createError.message : 'Unknown error',
+            userId: user.id
+          }, { status: 500 })
+        }
       }
     } else if (profileError || !profile) {
       console.error('Profile lookup error:', profileError)
@@ -285,14 +336,39 @@ export async function GET(request: NextRequest) {
       
       try {
         profile = await createUserProfile(user)
-        console.log('Created new profile:', profile)
+        console.log('Profile ready:', profile)
       } catch (createError) {
         console.error('Error creating profile:', createError)
-        return NextResponse.json({ 
-          error: 'Failed to create user profile',
-          details: createError instanceof Error ? createError.message : 'Unknown error',
-          userId: user.id
-        }, { status: 500 })
+        // If it's a duplicate key error, try to fetch the existing profile
+        if (createError instanceof Error && createError.message.includes('duplicate key')) {
+          console.log('Attempting to fetch existing profile after duplicate key error')
+          try {
+            const { data: existingProfile, error: fetchError } = await supabase
+              .from('profiles')
+              .select('id, role, full_name, email')
+              .eq('id', user.id)
+              .single()
+            
+            if (existingProfile) {
+              profile = existingProfile
+              console.log('Successfully fetched existing profile:', profile)
+            } else {
+              throw new Error('Could not fetch existing profile')
+            }
+          } catch (fetchError) {
+            return NextResponse.json({ 
+              error: 'Failed to create or fetch user profile',
+              details: createError instanceof Error ? createError.message : 'Unknown error',
+              userId: user.id
+            }, { status: 500 })
+          }
+        } else {
+          return NextResponse.json({ 
+            error: 'Failed to create user profile',
+            details: createError instanceof Error ? createError.message : 'Unknown error',
+            userId: user.id
+          }, { status: 500 })
+        }
       }
     } else if (profileError || !profile) {
       console.error('Profile lookup error:', profileError)
