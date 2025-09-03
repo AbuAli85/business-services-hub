@@ -646,7 +646,7 @@ export default function ServicesPage() {
             <CardContent>
               <div className="text-3xl font-bold text-blue-900 mb-1">{stats?.activeServices || 0}</div>
               <p className="text-xs text-blue-700 font-medium">
-                {stats?.totalServices || 0} total services
+                Available for booking
               </p>
               <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
                                   <div 
