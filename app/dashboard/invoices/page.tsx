@@ -132,6 +132,69 @@ export default function InvoicesPage() {
     setStats({ total, paid, pending, totalAmount })
   }
 
+  const generateInvoicesFromBookings = async (userId: string, userRole: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Get bookings that need invoices
+      let bookingsQuery = supabase
+        .from('bookings')
+        .select(`
+          id, 
+          client_id, 
+          provider_id, 
+          subtotal, 
+          currency, 
+          status,
+          created_at
+        `)
+        .in('status', ['paid', 'in_progress', 'completed'])
+
+      if (userRole === 'client') {
+        bookingsQuery = bookingsQuery.eq('client_id', userId)
+      } else if (userRole === 'provider') {
+        bookingsQuery = bookingsQuery.eq('provider_id', userId)
+      }
+
+      const { data: bookings, error: bookingsError } = await bookingsQuery
+      if (bookingsError) throw bookingsError
+
+      if (!bookings || bookings.length === 0) return
+
+      // Check which bookings already have invoices
+      const { data: existingInvoices } = await supabase
+        .from('invoices')
+        .select('booking_id')
+        .in('booking_id', bookings.map(b => b.id))
+
+      const existingBookingIds = new Set(existingInvoices?.map(inv => inv.booking_id) || [])
+      
+      // Generate invoices for bookings that don't have them
+      const invoicesToCreate = bookings
+        .filter(booking => !existingBookingIds.has(booking.id))
+        .map(booking => ({
+          booking_id: booking.id,
+          client_id: booking.client_id,
+          provider_id: booking.provider_id,
+          amount: booking.subtotal || 0,
+          currency: booking.currency || 'OMR',
+          status: booking.status === 'paid' ? 'paid' : 'issued',
+          created_at: new Date().toISOString()
+        }))
+
+      if (invoicesToCreate.length > 0) {
+        const { error: insertError } = await supabase
+          .from('invoices')
+          .insert(invoicesToCreate)
+
+        if (insertError) throw insertError
+        console.log(`Generated ${invoicesToCreate.length} invoices from bookings`)
+      }
+    } catch (error) {
+      console.error('Error generating invoices from bookings:', error)
+    }
+  }
+
   const fetchInvoices = async () => {
     try {
       const supabase = await getSupabaseClient()
@@ -141,6 +204,7 @@ export default function InvoicesPage() {
       const userRole = user.user_metadata?.role || 'client'
       setRole(userRole)
 
+      // First, try to fetch existing invoices
       let query = supabase
         .from('invoices')
         .select('id, booking_id, client_id, provider_id, amount, currency, status, created_at, pdf_url')
@@ -154,6 +218,14 @@ export default function InvoicesPage() {
 
       const { data: invoicesData, error } = await query
       if (error) throw error
+
+      // If no invoices exist, generate them from bookings
+      if (!invoicesData || invoicesData.length === 0) {
+        await generateInvoicesFromBookings(user.id, userRole)
+        // Fetch again after generating
+        const { data: newInvoicesData } = await query
+        invoicesData = newInvoicesData
+      }
       
       // Fetch related data separately to avoid complex joins
       const enrichedInvoices = await Promise.all(
@@ -269,15 +341,33 @@ export default function InvoicesPage() {
             }
           </p>
         </div>
-        <Button 
-          onClick={fetchInvoices} 
-          variant="outline" 
-          className="flex items-center gap-2"
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            onClick={async () => {
+              const supabase = await getSupabaseClient()
+              const { data: { user } } = await supabase.auth.getUser()
+              if (user) {
+                const userRole = user.user_metadata?.role || 'client'
+                await generateInvoicesFromBookings(user.id, userRole)
+                await fetchInvoices()
+              }
+            }}
+            className="flex items-center gap-2"
+            disabled={loading}
+          >
+            <FileText className="h-4 w-4" />
+            Generate Invoices
+          </Button>
+          <Button 
+            onClick={fetchInvoices} 
+            variant="outline" 
+            className="flex items-center gap-2"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -415,15 +505,29 @@ export default function InvoicesPage() {
               </h3>
               <p className="text-gray-500 mb-4">
                 {invoices.length === 0 
-                  ? 'Invoices will appear here after successful payments.'
+                  ? 'Invoices will be automatically generated from your bookings. Click "Generate Invoices" to create them now.'
                   : 'Try adjusting your search criteria or filters.'
                 }
               </p>
               {invoices.length === 0 && (
-                <Button variant="outline" onClick={fetchInvoices}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
+                <div className="flex gap-3 justify-center">
+                  <Button variant="outline" onClick={fetchInvoices}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                  <Button onClick={async () => {
+                    const supabase = await getSupabaseClient()
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (user) {
+                      const userRole = user.user_metadata?.role || 'client'
+                      await generateInvoicesFromBookings(user.id, userRole)
+                      await fetchInvoices()
+                    }
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Generate Invoices
+                  </Button>
+                </div>
               )}
             </div>
           ) : (
@@ -485,9 +589,27 @@ export default function InvoicesPage() {
                             </a>
                           </Button>
                         ) : (
-                          <Button variant="outline" size="sm" disabled>
-                            <Clock className="h-4 w-4 mr-2" />
-                            Pending
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={async () => {
+                              // Generate PDF for this invoice
+                              try {
+                                const response = await fetch('/api/invoices/generate-pdf', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ invoiceId: invoice.id })
+                                })
+                                if (response.ok) {
+                                  await fetchInvoices() // Refresh to get updated PDF URL
+                                }
+                              } catch (error) {
+                                console.error('Error generating PDF:', error)
+                              }
+                            }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Generate PDF
                           </Button>
                         )}
                         
