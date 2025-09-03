@@ -747,44 +747,57 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
+        {/* Notifications & Updates */}
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              <span>Notifications & Updates</span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/bookings/create')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Book New Service
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/services')}
-            >
-              <Search className="h-4 w-4 mr-2" />
-              Browse Services
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/messages')}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              View Messages
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/bookings')}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              My Bookings
-            </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm font-medium">New Service Suggestions</span>
+                </div>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  {serviceSuggestions.length}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium">Active Bookings</span>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  {stats?.activeBookings || 0}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span className="text-sm font-medium">Messages</span>
+                </div>
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                  New
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="pt-2 border-t">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => router.push('/dashboard/messages')}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                View All Messages
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
