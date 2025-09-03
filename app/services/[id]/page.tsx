@@ -111,9 +111,6 @@ export default function ServiceDetail() {
           </Button>
           <div className="hidden sm:flex gap-2">
             <Button onClick={() => router.push('/dashboard/services')}>Browse All Services</Button>
-            {isServiceOwner && (
-              <Button variant="secondary" onClick={() => service && router.push(`/dashboard/services/${service.id}`)}>View in Dashboard</Button>
-            )}
           </div>
         </div>
 
@@ -437,7 +434,7 @@ export default function ServiceDetail() {
               <div className="lg:col-span-1">
                 <div className="sticky top-20 space-y-4">
                   {!isServiceOwner && (
-                  <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+                  <Card className="border-0 shadow-lg bg-gradient-to-br from-gray-700 to-gray-900 text-white">
                     <CardHeader>
                       <CardTitle>Book This Service</CardTitle>
                     </CardHeader>
@@ -446,7 +443,7 @@ export default function ServiceDetail() {
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-white/90 mb-1">Select Package (optional)</label>
                           <select
-                            className="w-full rounded-md border px-3 py-2 text-gray-900"
+                            className="w-full rounded-md border border-white/20 bg-white/90 px-3 py-2 text-gray-900"
                             value={selectedPackageId}
                             onChange={(e) => setSelectedPackageId(e.target.value)}
                           >
@@ -469,12 +466,12 @@ export default function ServiceDetail() {
                       </div>
                       <div className="mb-4">
                         <label className="block text-sm font-medium text-white/90 mb-1">Notes (optional)</label>
-                        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the provider should know?" />
+                        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the provider should know?" className="bg-white/90 text-gray-900" />
                       </div>
                       <div className="flex flex-wrap gap-3">
-                        <Button variant="secondary" onClick={() => router.push('/dashboard/services')} className="bg-white/20 border-white/30 text-white hover:bg-white/30">Browse All Services</Button>
+                        <Button variant="secondary" onClick={() => router.push('/dashboard/services')} className="bg-white/10 border-white/30 text-white hover:bg-white/20">Browse All Services</Button>
                         <Button
-                          className="bg-white text-gray-900 hover:bg-gray-100"
+                          className="bg-gray-100 text-gray-900 hover:bg-gray-200"
                           onClick={async () => {
                             if (!service?.id) return
                             if (!isAuthenticated) {
