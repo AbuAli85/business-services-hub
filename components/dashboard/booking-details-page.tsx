@@ -20,6 +20,7 @@ import {
   MessageSquare,
   CheckCircle,
   AlertTriangle,
+  Brain,
   Phone,
   Mail,
   MapPin,
@@ -253,7 +254,6 @@ export default function BookingDetailsPage() {
     reports: true
   })
   const [approvalRequests, setApprovalRequests] = useState<any[]>([])
-  const [showNotificationCenter, setShowNotificationCenter] = useState(false)
   const [trackingData, setTrackingData] = useState({
     lastUpdate: new Date().toISOString(),
     totalUpdates: 0,
@@ -308,6 +308,11 @@ export default function BookingDetailsPage() {
   const [showSharedCommentModal, setShowSharedCommentModal] = useState(false)
   const [selectedTaskForSharedComment, setSelectedTaskForSharedComment] = useState<any>(null)
 
+  // Notification System State
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+
   const bookingId = params.id as string
 
   useEffect(() => {
@@ -317,6 +322,7 @@ export default function BookingDetailsPage() {
       loadRelatedBookings()
       loadMessages()
       loadTasks()
+      loadNotifications()
       // Realtime subscription for booking updates
       setupRealtime()
       loadSuggestions()
@@ -2714,6 +2720,162 @@ export default function BookingDetailsPage() {
     return completedSteps / steps.length
   }
 
+  // Smart Features: Overdue Detection & Analytics
+  const getOverdueTasks = () => {
+    if (!tasks) return []
+    const now = new Date()
+    return tasks.filter(task => {
+      if (!task.due_date || task.status === 'completed' || task.status === 'cancelled') return false
+      return new Date(task.due_date) < now
+    })
+  }
+
+  const getUpcomingDeadlines = () => {
+    if (!tasks) return []
+    const now = new Date()
+    const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000))
+    
+    return tasks.filter(task => {
+      if (!task.due_date || task.status === 'completed' || task.status === 'cancelled') return false
+      const dueDate = new Date(task.due_date)
+      return dueDate > now && dueDate <= threeDaysFromNow
+    })
+  }
+
+  const getTaskStats = () => {
+    if (!tasks) return { total: 0, completed: 0, inProgress: 0, pending: 0, overdue: 0 }
+    
+    const overdue = getOverdueTasks().length
+    const completed = tasks.filter(t => t.status === 'completed').length
+    const inProgress = tasks.filter(t => t.status === 'in_progress').length
+    const pending = tasks.filter(t => t.status === 'pending' || t.status === 'not_started').length
+    
+    return {
+      total: tasks.length,
+      completed,
+      inProgress,
+      pending,
+      overdue
+    }
+  }
+
+  const getSmartProgress = () => {
+    if (!tasks || tasks.length === 0) return 0
+
+    // Calculate weighted progress considering dependencies
+    const totalWeight = tasks.reduce((sum, task) => sum + (task.weight || 1), 0)
+    let completedWeight = 0
+
+    tasks.forEach(task => {
+      if (task.status === 'completed') {
+        completedWeight += (task.weight || 1)
+      } else if (task.status === 'in_progress') {
+        // Partial credit for in-progress tasks
+        completedWeight += (task.weight || 1) * 0.5
+      }
+    })
+
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0
+  }
+
+  // Notification System Functions
+  const loadNotifications = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase
+        .from('booking_notifications')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      
+      if (error) throw error
+      setNotifications(data || [])
+      setUnreadCount(data?.filter(n => !n.read).length || 0)
+    } catch (error) {
+      console.error('Error loading notifications:', error)
+    }
+  }
+
+  const createNotification = async (type: string, title: string, message: string, data?: any) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_notifications')
+        .insert({
+          booking_id: bookingId,
+          type,
+          title,
+          message,
+          data: data || {},
+          read: false
+        })
+      
+      if (error) throw error
+      
+      // Refresh notifications
+      loadNotifications()
+    } catch (error) {
+      console.error('Error creating notification:', error)
+    }
+  }
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_notifications')
+        .update({ read: true })
+        .eq('id', notificationId)
+      
+      if (error) throw error
+      loadNotifications()
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_notifications')
+        .update({ read: true })
+        .eq('booking_id', bookingId)
+        .eq('read', false)
+      
+      if (error) throw error
+      loadNotifications()
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+    }
+  }
+
+  // Smart Notifications based on task changes
+  const checkForOverdueNotifications = () => {
+    const overdueTasks = getOverdueTasks()
+    if (overdueTasks.length > 0) {
+      createNotification(
+        'overdue',
+        'Overdue Tasks Alert',
+        `You have ${overdueTasks.length} overdue task(s) that need attention.`,
+        { overdueCount: overdueTasks.length, tasks: overdueTasks }
+      )
+    }
+  }
+
+  const checkForUpcomingDeadlines = () => {
+    const upcomingTasks = getUpcomingDeadlines()
+    if (upcomingTasks.length > 0) {
+      createNotification(
+        'deadline',
+        'Upcoming Deadlines',
+        `You have ${upcomingTasks.length} task(s) due within 3 days.`,
+        { upcomingCount: upcomingTasks.length, tasks: upcomingTasks }
+      )
+    }
+  }
+
   const getEstimatedCompletion = () => {
     if (!booking || !booking.estimated_duration) return 'N/A'
     const estimatedDate = new Date(booking.created_at)
@@ -4644,9 +4806,28 @@ export default function BookingDetailsPage() {
                 <div className="flex items-center space-x-2">
                   <TrendingUp className="h-5 w-5 text-gray-600" />
                   <span>{userRole === 'provider' ? 'Advanced Project Management' : 'Project Progress Tracking'}</span>
+                  {/* Smart Analytics Badge */}
+                  <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                    <Brain className="h-3 w-3 mr-1" />
+                    Smart Analytics
+                  </Badge>
                 </div>
                 {userRole === 'provider' ? (
                   <div className="flex items-center space-x-2">
+                    {/* Notification Bell */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowNotificationCenter(true)}
+                      className="relative border-gray-300"
+                    >
+                      <Bell className="h-4 w-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Button>
                     <Button 
                       size="sm" 
                       variant="outline"
@@ -4691,6 +4872,102 @@ export default function BookingDetailsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
+              {/* Smart Analytics Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                {/* Task Statistics */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-700">Total Tasks</p>
+                      <p className="text-2xl font-bold text-blue-900">{getTaskStats().total}</p>
+                    </div>
+                    <CheckSquare className="h-8 w-8 text-blue-600" />
+                  </div>
+                </div>
+
+                {/* Completed Tasks */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-700">Completed</p>
+                      <p className="text-2xl font-bold text-green-900">{getTaskStats().completed}</p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  </div>
+                </div>
+
+                {/* Overdue Tasks */}
+                <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-red-700">Overdue</p>
+                      <p className="text-2xl font-bold text-red-900">{getTaskStats().overdue}</p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-red-600" />
+                  </div>
+                </div>
+
+                {/* Smart Progress */}
+                <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-700">Smart Progress</p>
+                      <p className="text-2xl font-bold text-purple-900">{getSmartProgress()}%</p>
+                    </div>
+                    <Brain className="h-8 w-8 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Overdue & Upcoming Alerts */}
+              {(getOverdueTasks().length > 0 || getUpcomingDeadlines().length > 0) && (
+                <div className="mb-6 space-y-3">
+                  {/* Overdue Tasks Alert */}
+                  {getOverdueTasks().length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <h4 className="font-semibold text-red-800">Overdue Tasks ({getOverdueTasks().length})</h4>
+                      </div>
+                      <div className="space-y-1">
+                        {getOverdueTasks().slice(0, 3).map((task, index) => (
+                          <div key={index} className="text-sm text-red-700">
+                            • {task.title} - Due {new Date(task.due_date).toLocaleDateString()}
+                          </div>
+                        ))}
+                        {getOverdueTasks().length > 3 && (
+                          <div className="text-sm text-red-600 font-medium">
+                            +{getOverdueTasks().length - 3} more overdue tasks
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upcoming Deadlines Alert */}
+                  {getUpcomingDeadlines().length > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Clock className="h-5 w-5 text-yellow-600" />
+                        <h4 className="font-semibold text-yellow-800">Upcoming Deadlines ({getUpcomingDeadlines().length})</h4>
+                      </div>
+                      <div className="space-y-1">
+                        {getUpcomingDeadlines().slice(0, 3).map((task, index) => (
+                          <div key={index} className="text-sm text-yellow-700">
+                            • {task.title} - Due {new Date(task.due_date).toLocaleDateString()}
+                          </div>
+                        ))}
+                        {getUpcomingDeadlines().length > 3 && (
+                          <div className="text-sm text-yellow-600 font-medium">
+                            +{getUpcomingDeadlines().length - 3} more upcoming deadlines
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Enhanced Project Dashboard */}
               <div className="space-y-6">
                 {/* Standard Milestones (provider only quick-add) */}
@@ -7032,6 +7309,85 @@ export default function BookingDetailsPage() {
                   Cancel
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Center Modal */}
+      {showNotificationCenter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Bell className="h-5 w-5 mr-2" />
+                  Notifications ({notifications.length})
+                </h3>
+                <div className="flex items-center space-x-2">
+                  {unreadCount > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={markAllNotificationsAsRead}
+                      className="text-xs"
+                    >
+                      Mark All Read
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowNotificationCenter(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  <Bell className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p>No notifications yet</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 hover:bg-gray-50 cursor-pointer ${
+                        !notification.read ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                      }`}
+                      onClick={() => markNotificationAsRead(notification.id)}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className={`w-2 h-2 rounded-full mt-2 ${
+                          notification.type === 'overdue' ? 'bg-red-500' :
+                          notification.type === 'deadline' ? 'bg-yellow-500' :
+                          notification.type === 'completed' ? 'bg-green-500' :
+                          'bg-blue-500'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {notification.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {new Date(notification.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
