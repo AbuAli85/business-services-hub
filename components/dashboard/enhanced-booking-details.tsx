@@ -109,6 +109,8 @@ import SmartFileManager from './smart-file-manager'
 import { EnhancedProgressTimeline } from './enhanced-progress-timeline'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
+import { ProgressTabs } from './progress-tabs'
+import { SmartFeatures } from './smart-features'
 
 interface EnhancedBooking {
   id: string
@@ -1321,32 +1323,18 @@ export default function EnhancedBookingDetails() {
 
               {/* Progress Tab */}
               <TabsContent value="progress" className="space-y-6">
-                <EnhancedProgressTimeline
+                <ProgressTabs
                   bookingId={bookingId}
                   userRole={isClient ? 'client' : 'provider'}
-                  onExport={handleExport}
                 />
               </TabsContent>
 
               {/* Timeline Tab */}
-              <TabsContent value="timeline">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Activity className="h-5 w-5 text-blue-600" />
-                      <span>Project Timeline</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      {/* Timeline items would go here */}
-                      <div className="text-center py-8 text-gray-500">
-                        <Activity className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p>Timeline view coming soon</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <TabsContent value="timeline" className="space-y-6">
+                <SmartFeatures
+                  bookingId={bookingId}
+                  userRole={isClient ? 'client' : 'provider'}
+                />
               </TabsContent>
 
               {/* Messages Tab */}
