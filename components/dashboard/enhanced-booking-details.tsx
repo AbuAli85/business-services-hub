@@ -542,11 +542,21 @@ export default function EnhancedBookingDetails() {
         return
       }
       
+      // Ensure we have valid UUIDs
+      const milestoneIds = milestones
+        .map(m => m.id)
+        .filter(id => id && typeof id === 'string')
+      
+      if (milestoneIds.length === 0) {
+        setOverdueCount(0)
+        return
+      }
+      
       // Get overdue count for tasks in these milestones
       const { data, error } = await supabase
         .from('tasks')
         .select('id')
-        .in('milestone_id', milestones.map(m => m.id))
+        .in('milestone_id', milestoneIds)
         .eq('is_overdue', true)
 
       if (error) throw error
