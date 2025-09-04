@@ -3469,7 +3469,7 @@ export default function BookingDetailsPage() {
             </>
           )}
 
-          {/* Enhanced Analytics & Insights */}
+          {/* Analytics & Insights (simplified) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -3479,52 +3479,27 @@ export default function BookingDetailsPage() {
               <CardDescription>Performance metrics and insights for this booking</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Days Active */}
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
                     {getDaysSinceCreation()}
                   </div>
                   <div className="text-sm text-muted-foreground">Days Active</div>
                 </div>
+                {/* Next Milestone */}
                 <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    {getStatusEfficiency()}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Efficiency Score</div>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {getClientSatisfaction()}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Client Satisfaction</div>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {getRevenueImpact()}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Revenue Impact</div>
-                </div>
-              </div>
-              
-              {/* Additional Insights */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-3 border rounded-lg bg-blue-50">
-                  <div className="text-lg font-semibold text-blue-700">
-                    {getBookingHealth()}
-                  </div>
-                  <div className="text-sm text-blue-600">Booking Health</div>
-                </div>
-                <div className="text-center p-3 border rounded-lg bg-green-50">
                   <div className="text-lg font-semibold text-green-700">
                     {getNextMilestone()}
                   </div>
-                  <div className="text-sm text-green-600">Next Milestone</div>
+                  <div className="text-sm text-muted-foreground">Next Milestone</div>
                 </div>
-                <div className="text-center p-3 border rounded-lg bg-purple-50">
-                  <div className="text-lg font-semibold text-purple-700">
-                    {getTimelineProgress() * 100}%
+                {/* Progress */}
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-purple-700">
+                    {Math.round(getTimelineProgress() * 100)}%
                   </div>
-                  <div className="text-sm text-purple-600">Progress</div>
+                  <div className="text-sm text-muted-foreground">Progress</div>
                 </div>
               </div>
             </CardContent>
