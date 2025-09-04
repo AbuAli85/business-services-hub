@@ -124,7 +124,7 @@ export default function InvoicesPage() {
   const calculateStats = (invoices: InvoiceRecord[]) => {
     const total = invoices.length
     const paid = invoices.filter(inv => inv.status === 'paid').length
-    const pending = invoices.filter(inv => inv.status === 'issued' || inv.status === 'draft').length
+    const pending = invoices.filter(inv => inv.status === 'issued').length
     const totalAmount = invoices
       .filter(inv => inv.status === 'paid')
       .reduce((sum, inv) => sum + (inv.amount || 0), 0)
@@ -246,21 +246,26 @@ export default function InvoicesPage() {
         invoicesData = newInvoicesData
       }
 
-      // Add virtual invoices from localStorage if they exist
-      try {
-        const virtualInvoices = localStorage.getItem('virtual_invoices')
-        if (virtualInvoices) {
-          const parsedVirtualInvoices = JSON.parse(virtualInvoices)
-          // Filter virtual invoices for this user
-          const userVirtualInvoices = parsedVirtualInvoices.filter((invoice: any) => 
-            invoice.client_id === user.id || invoice.provider_id === user.id
-          )
-          if (userVirtualInvoices.length > 0) {
-            invoicesData = [...(invoicesData || []), ...userVirtualInvoices]
+      // Client view should only show provider-issued or paid invoices from DB (no drafts/virtuals)
+      if (userRole === 'client') {
+        invoicesData = (invoicesData || []).filter((inv: any) => inv.status === 'issued' || inv.status === 'paid')
+      } else {
+        // Add virtual invoices from localStorage if they exist (useful for providers while permissions are finalized)
+        try {
+          const virtualInvoices = localStorage.getItem('virtual_invoices')
+          if (virtualInvoices) {
+            const parsedVirtualInvoices = JSON.parse(virtualInvoices)
+            // Filter virtual invoices for this user
+            const userVirtualInvoices = parsedVirtualInvoices.filter((invoice: any) => 
+              invoice.client_id === user.id || invoice.provider_id === user.id
+            )
+            if (userVirtualInvoices.length > 0) {
+              invoicesData = [...(invoicesData || []), ...userVirtualInvoices]
+            }
           }
+        } catch (error) {
+          console.warn('Error loading virtual invoices:', error)
         }
-      } catch (error) {
-        console.warn('Error loading virtual invoices:', error)
       }
       
       // Fetch related data separately to avoid complex joins
@@ -372,28 +377,30 @@ export default function InvoicesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Invoices & Receipts</h1>
           <p className="text-gray-600 mt-2">
             {role === 'client' 
-              ? 'Track your payments and download receipts' 
+              ? 'View invoices issued by providers and download receipts'
               : 'Manage invoices and track payments from clients'
             }
           </p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            onClick={async () => {
-              const supabase = await getSupabaseClient()
-              const { data: { user } } = await supabase.auth.getUser()
-              if (user) {
-                const userRole = user.user_metadata?.role || 'client'
-                await generateInvoicesFromBookings(user.id, userRole)
-                await fetchInvoices()
-              }
-            }}
-            className="flex items-center gap-2"
-            disabled={loading}
-          >
-            <FileText className="h-4 w-4" />
-            Generate Invoices
-          </Button>
+          {role !== 'client' && (
+            <Button 
+              onClick={async () => {
+                const supabase = await getSupabaseClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                  const userRole = user.user_metadata?.role || 'client'
+                  await generateInvoicesFromBookings(user.id, userRole)
+                  await fetchInvoices()
+                }
+              }}
+              className="flex items-center gap-2"
+              disabled={loading}
+            >
+              <FileText className="h-4 w-4" />
+              Generate Invoices
+            </Button>
+          )}
           <Button 
             onClick={fetchInvoices} 
             variant="outline" 
@@ -470,7 +477,7 @@ export default function InvoicesPage() {
               </CardTitle>
               <CardDescription>
                 {role === 'client' 
-                  ? 'View and download your payment receipts' 
+                  ? 'Issued invoices from providers. Download receipts when available.' 
                   : 'Manage invoices and track client payments'
                 }
               </CardDescription>
@@ -487,7 +494,7 @@ export default function InvoicesPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search invoices by service, client, or invoice ID..."
+                  placeholder={role === 'client' ? 'Search by service or invoice ID...' : 'Search invoices by service, client, or invoice ID...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -503,8 +510,8 @@ export default function InvoicesPage() {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="issued">Issued</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="void">Void</SelectItem>
+                  {role !== 'client' && <SelectItem value="draft">Draft</SelectItem>}
+                  {role !== 'client' && <SelectItem value="void">Void</SelectItem>}
                 </SelectContent>
               </Select>
               
@@ -541,11 +548,13 @@ export default function InvoicesPage() {
               </h3>
               <p className="text-gray-500 mb-4">
                 {invoices.length === 0 
-                  ? 'Invoices will be automatically generated from your bookings. Click "Generate Invoices" to create them now.'
+                  ? (role === 'client' 
+                    ? 'You will see invoices here once a provider issues them for your bookings.'
+                    : 'Invoices will be automatically generated from your bookings. Click "Generate Invoices" to create them now.')
                   : 'Try adjusting your search criteria or filters.'
                 }
               </p>
-              {invoices.length === 0 && (
+              {invoices.length === 0 && role !== 'client' && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <div className="flex items-start">
                     <div className="flex-shrink-0">
@@ -571,6 +580,7 @@ export default function InvoicesPage() {
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
                   </Button>
+                  {role !== 'client' && (
                   <Button onClick={async () => {
                     const supabase = await getSupabaseClient()
                     const { data: { user } } = await supabase.auth.getUser()
@@ -583,6 +593,7 @@ export default function InvoicesPage() {
                     <FileText className="h-4 w-4 mr-2" />
                     Generate Invoices
                   </Button>
+                  )}
                 </div>
               )}
             </div>
