@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { 
   ArrowLeft,
+  ArrowUp,
   Calendar,
   Clock,
   User,
@@ -294,6 +295,18 @@ export default function BookingDetailsPage() {
   const [showTemplates, setShowTemplates] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Enhanced Task Management State
+  const [showInternalNotesModal, setShowInternalNotesModal] = useState(false)
+  const [selectedTaskForNotes, setSelectedTaskForNotes] = useState<any>(null)
+  const [internalNotes, setInternalNotes] = useState('')
+  const [showPromoteActionModal, setShowPromoteActionModal] = useState(false)
+  const [selectedCommentForAction, setSelectedCommentForAction] = useState<any>(null)
+  const [actionDueDate, setActionDueDate] = useState('')
+  const [actionAssignee, setActionAssignee] = useState('')
+  const [newSharedComment, setNewSharedComment] = useState('')
+  const [showSharedCommentModal, setShowSharedCommentModal] = useState(false)
+  const [selectedTaskForSharedComment, setSelectedTaskForSharedComment] = useState<any>(null)
 
   const bookingId = params.id as string
 
@@ -1005,6 +1018,115 @@ export default function BookingDetailsPage() {
       case 'cancelled': return 'text-red-600 bg-red-50'
       default: return 'text-gray-600 bg-gray-50'
     }
+  }
+
+  // Shared comments and action items helpers (persist via RPCs)
+  const addSharedComment = async (taskId: string, text: string) => {
+    if (!text.trim()) return
+    try {
+      const supabase = await getSupabaseClient()
+      const comment = {
+        id: `${Date.now()}`,
+        user_id: user?.id || null,
+        text,
+        created_at: new Date().toISOString(),
+        is_action: false
+      }
+      const { error } = await supabase.rpc('booking_tasks_append_shared_comment', {
+        p_task_id: taskId,
+        p_comment: comment
+      })
+      if (error) throw error
+      toast.success('Comment added')
+      loadTasks()
+    } catch (error) {
+      console.error('Error adding shared comment:', error)
+      toast.error('Failed to add comment')
+    }
+  }
+
+  const promoteCommentToAction = async (taskId: string, comment: any, dueDate?: string, assignee?: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const action = {
+        id: `${Date.now()}`,
+        title: comment?.text?.slice(0, 80) || 'Action item',
+        source_comment_id: comment?.id || null,
+        assignee: assignee || 'provider',
+        due_date: dueDate || null,
+        status: 'open',
+        created_at: new Date().toISOString()
+      }
+      const { error } = await supabase.rpc('booking_tasks_append_action_item', {
+        p_task_id: taskId,
+        p_action: action
+      })
+      if (error) throw error
+      toast.success('Promoted to action')
+      loadTasks()
+    } catch (error) {
+      console.error('Error promoting to action:', error)
+      toast.error('Failed to promote to action')
+    }
+  }
+
+  const saveInternalNotes = async (taskId: string, notes: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_tasks')
+        .update({ internal_notes: notes })
+        .eq('id', taskId)
+      if (error) throw error
+      toast.success('Notes saved')
+      loadTasks()
+    } catch (error) {
+      console.error('Error saving notes:', error)
+      toast.error('Failed to save notes')
+    }
+  }
+
+  // Enhanced Task Management Handlers
+  const handleInternalNotes = (task: any) => {
+    setSelectedTaskForNotes(task)
+    setInternalNotes(task.internal_notes || '')
+    setShowInternalNotesModal(true)
+  }
+
+  const submitInternalNotes = async () => {
+    if (!selectedTaskForNotes) return
+    await saveInternalNotes(selectedTaskForNotes.id, internalNotes)
+    setShowInternalNotesModal(false)
+    setInternalNotes('')
+  }
+
+  const handlePromoteToAction = (comment: any, task: any) => {
+    setSelectedCommentForAction(comment)
+    setSelectedTaskForNotes(task)
+    setActionDueDate('')
+    setActionAssignee('provider')
+    setShowPromoteActionModal(true)
+  }
+
+  const submitPromoteToAction = async () => {
+    if (!selectedCommentForAction || !selectedTaskForNotes) return
+    await promoteCommentToAction(selectedTaskForNotes.id, selectedCommentForAction, actionDueDate, actionAssignee)
+    setShowPromoteActionModal(false)
+    setSelectedCommentForAction(null)
+    setSelectedTaskForNotes(null)
+  }
+
+  const handleSharedComment = (task: any) => {
+    setSelectedTaskForSharedComment(task)
+    setNewSharedComment('')
+    setShowSharedCommentModal(true)
+  }
+
+  const submitSharedComment = async () => {
+    if (!selectedTaskForSharedComment || !newSharedComment.trim()) return
+    await addSharedComment(selectedTaskForSharedComment.id, newSharedComment)
+    setShowSharedCommentModal(false)
+    setNewSharedComment('')
   }
 
   // Client Interaction Functions
@@ -2573,10 +2695,17 @@ export default function BookingDetailsPage() {
   const getTimelineProgress = () => {
     if (!booking) return 0
 
-    // Use task-based progress if tasks exist, otherwise fall back to status-based
+    // Weighted task-based progress if tasks exist
     if (tasks && tasks.length > 0) {
-      const completedTasks = tasks.filter(task => task.status === 'completed').length
-      return completedTasks / tasks.length
+      let totalWeight = 0
+      let completedWeight = 0
+      for (const task of tasks) {
+        const w = typeof task.weight === 'number' ? task.weight : (parseFloat(task?.weight || '1') || 1)
+        totalWeight += Math.max(0, w)
+        if (task.status === 'completed') completedWeight += Math.max(0, w)
+      }
+      if (totalWeight === 0) return 0
+      return completedWeight / totalWeight
     }
 
     // Fallback to status-based progress
@@ -4045,21 +4174,30 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Timeline Tab */}
+        {/* Timeline Tab - Client-Focused Read-Only View */}
         <TabsContent value="timeline" className="space-y-6">
-          <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-blue-900">
-                <Clock3 className="h-6 w-6" />
-                <span>Enhanced Project Timeline</span>
-                <Badge variant="default" className="bg-blue-600 text-white ml-2">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Smart
-                </Badge>
-              </CardTitle>
-              <CardDescription className="text-blue-700">
-                Comprehensive project tracking with intelligent insights, progress monitoring, and detailed milestone analysis
-              </CardDescription>
+          {/* Progress Overview Card */}
+          <Card className="border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+            <CardHeader className="border-b border-blue-100 bg-gradient-to-r from-blue-100 to-indigo-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-gray-800 text-lg">Project Progress Overview</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Track project progress, provide feedback, and stay updated on all project activities
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline" className="text-xs">
+                    <Eye className="h-3 w-3 mr-1" />
+                    {userRole === 'provider' ? 'Management Mode' : 'Tracking Mode'}
+                  </Badge>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -5046,8 +5184,119 @@ export default function BookingDetailsPage() {
                           </div>
                         )}
 
-                        {/* Add Comment Section */}
-                        <div className="border-t border-gray-100 pt-3 mt-3">
+                        {/* Enhanced Task Management Section */}
+                        <div className="border-t border-gray-100 pt-3 mt-3 space-y-4">
+                          {/* Internal Notes (Provider Only) */}
+                          {userRole === 'provider' && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <h6 className="text-sm font-medium text-amber-800 flex items-center">
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  Internal Notes
+                                </h6>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleInternalNotes(task)}
+                                  className="h-7 px-2 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                                >
+                                  {task.internal_notes ? 'Edit' : 'Add'} Notes
+                                </Button>
+                              </div>
+                              {task.internal_notes && (
+                                <p className="text-xs text-amber-700 bg-white p-2 rounded border">
+                                  {task.internal_notes}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Shared Comments */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <h6 className="text-sm font-medium text-blue-800 flex items-center">
+                                <MessageSquare className="h-4 w-4 mr-1" />
+                                Shared Comments
+                              </h6>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSharedComment(task)}
+                                className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-100"
+                              >
+                                Add Comment
+                              </Button>
+                            </div>
+                            
+                            {/* Display Shared Comments */}
+                            {task.shared_comments && task.shared_comments.length > 0 ? (
+                              <div className="space-y-2">
+                                {task.shared_comments.map((comment: any, index: number) => (
+                                  <div key={comment.id || index} className="bg-white p-2 rounded border text-sm">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1">
+                                        <p className="text-gray-700">{comment.text}</p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          {comment.user_id ? 'User' : 'System'} • {new Date(comment.created_at).toLocaleString()}
+                                        </p>
+                                      </div>
+                                      {userRole === 'provider' && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handlePromoteToAction(comment, task)}
+                                          className="h-6 px-2 text-xs border-green-300 text-green-700 hover:bg-green-100"
+                                          title="Promote to Action Item"
+                                        >
+                                          <ChevronUp className="h-3 w-3 mr-1" />
+                                          Action
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-blue-600 italic">No shared comments yet</p>
+                            )}
+                          </div>
+
+                          {/* Action Items */}
+                          {task.action_items && task.action_items.length > 0 && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <h6 className="text-sm font-medium text-green-800 flex items-center mb-2">
+                                <CheckSquare className="h-4 w-4 mr-1" />
+                                Action Items ({task.action_items.length})
+                              </h6>
+                              <div className="space-y-2">
+                                {task.action_items.map((action: any, index: number) => (
+                                  <div key={action.id || index} className="bg-white p-2 rounded border text-sm">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1">
+                                        <p className="text-gray-700 font-medium">{action.title}</p>
+                                        {action.due_date && (
+                                          <p className="text-xs text-gray-500">
+                                            Due: {new Date(action.due_date).toLocaleDateString()}
+                                          </p>
+                                        )}
+                                        <p className="text-xs text-gray-500">
+                                          Assignee: {action.assignee} • Status: {action.status}
+                                        </p>
+                                      </div>
+                                      <Badge 
+                                        className={action.status === 'open' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}
+                                        variant="outline"
+                                      >
+                                        {action.status}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Add Comment Section */}
                           <div className="flex items-center space-x-2">
                             <input
                               type="text"
@@ -6599,6 +6848,188 @@ export default function BookingDetailsPage() {
                 >
                   <X className="h-4 w-4 mr-2" />
                   Request Changes
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Internal Notes Modal */}
+      {showInternalNotesModal && selectedTaskForNotes && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Internal Notes</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowInternalNotesModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="internal-notes" className="text-sm font-medium mb-2 block">
+                  Notes for {selectedTaskForNotes.title}
+                </label>
+                <textarea
+                  id="internal-notes"
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  className="w-full p-3 border rounded-md h-32"
+                  placeholder="Add internal notes (only visible to providers)..."
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={submitInternalNotes}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  Save Notes
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowInternalNotesModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Promote to Action Modal */}
+      {showPromoteActionModal && selectedCommentForAction && selectedTaskForNotes && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Promote to Action Item</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPromoteActionModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-700 mb-2">Original Comment:</p>
+                <p className="text-sm font-medium">{selectedCommentForAction.text}</p>
+              </div>
+              
+              <div>
+                <label htmlFor="action-title" className="text-sm font-medium mb-2 block">
+                  Action Title
+                </label>
+                <input
+                  id="action-title"
+                  type="text"
+                  value={selectedCommentForAction.text?.slice(0, 80) || 'Action item'}
+                  className="w-full p-3 border rounded-md"
+                  placeholder="Action item title..."
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="action-assignee" className="text-sm font-medium mb-2 block">
+                  Assignee
+                </label>
+                <select
+                  id="action-assignee"
+                  value={actionAssignee}
+                  onChange={(e) => setActionAssignee(e.target.value)}
+                  className="w-full p-3 border rounded-md"
+                >
+                  <option value="provider">Provider</option>
+                  <option value="client">Client</option>
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="action-due-date" className="text-sm font-medium mb-2 block">
+                  Due Date (Optional)
+                </label>
+                <input
+                  id="action-due-date"
+                  type="date"
+                  value={actionDueDate}
+                  onChange={(e) => setActionDueDate(e.target.value)}
+                  className="w-full p-3 border rounded-md"
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={submitPromoteToAction}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <ChevronUp className="h-4 w-4 mr-2" />
+                  Create Action
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPromoteActionModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shared Comment Modal */}
+      {showSharedCommentModal && selectedTaskForSharedComment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Add Shared Comment</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSharedCommentModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="shared-comment" className="text-sm font-medium mb-2 block">
+                  Comment for {selectedTaskForSharedComment.title}
+                </label>
+                <textarea
+                  id="shared-comment"
+                  value={newSharedComment}
+                  onChange={(e) => setNewSharedComment(e.target.value)}
+                  className="w-full p-3 border rounded-md h-24"
+                  placeholder="Add a comment that both provider and client can see..."
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={submitSharedComment}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Add Comment
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowSharedCommentModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
                 </Button>
               </div>
             </div>
