@@ -1065,6 +1065,52 @@ export default function BookingDetailsPage() {
 
   const getTasksForStep = (stepStatus: string) => {
     if (stepStatus === 'in_progress') {
+      console.log('getTasksForStep - tasks:', tasks)
+      // If no tasks loaded from database, show sample tasks for demonstration
+      if (tasks.length === 0) {
+        console.log('No tasks loaded, showing sample tasks')
+        return [
+          {
+            id: 'sample-1',
+            title: 'Initial Project Setup',
+            description: 'Set up development environment and project structure',
+            status: 'in_progress',
+            priority: 'high',
+            created_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+            assigned_user: { full_name: 'Provider Team' },
+            requires_approval: true,
+            completed_subtasks: 2,
+            total_subtasks: 5
+          },
+          {
+            id: 'sample-2',
+            title: 'Design Mockups',
+            description: 'Create initial design mockups and wireframes for client review',
+            status: 'pending',
+            priority: 'medium',
+            created_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+            assigned_user: { full_name: 'Design Team' },
+            requires_approval: true,
+            completed_subtasks: 0,
+            total_subtasks: 3
+          },
+          {
+            id: 'sample-3',
+            title: 'Database Configuration',
+            description: 'Configure database schema and initial data setup',
+            status: 'in_progress',
+            priority: 'high',
+            created_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            assigned_user: { full_name: 'Backend Team' },
+            requires_approval: false,
+            completed_subtasks: 1,
+            total_subtasks: 4
+          }
+        ]
+      }
       return tasks.filter(task => task.status === 'in_progress' || task.status === 'pending')
     }
     return []
@@ -4147,7 +4193,7 @@ export default function BookingDetailsPage() {
                               </div>
 
                               {/* Task Details Dropdown */}
-                              {getTasksForStep(step.status).length > 0 && (
+                              {(getTasksForStep(step.status).length > 0 || userRole === 'provider') && (
                                 <div className="bg-gray-50 rounded-lg border border-gray-200">
                                   <div className="p-3 border-b border-gray-200">
                                     <div className="flex items-center justify-between">
@@ -4167,7 +4213,26 @@ export default function BookingDetailsPage() {
                                   </div>
                                   
                                   <div className="divide-y divide-gray-200">
-                                    {getTasksForStep(step.status).map((task) => (
+                                    {getTasksForStep(step.status).length === 0 ? (
+                                      <div className="p-4 text-center text-gray-500">
+                                        <CheckSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                        <p>No active tasks yet</p>
+                                        {userRole === 'provider' && (
+                                          <div className="mt-3">
+                                            <p className="text-sm mb-3">Add tasks to track progress</p>
+                                            <Button 
+                                              size="sm" 
+                                              onClick={() => setShowTaskModal(true)}
+                                              className="bg-blue-600 hover:bg-blue-700"
+                                            >
+                                              <Plus className="h-4 w-4 mr-2" />
+                                              Add First Task
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      getTasksForStep(step.status).map((task) => (
                                       <div key={task.id} className="p-3">
                                         <div className="flex items-start justify-between">
                                           <div className="flex-1">
@@ -4241,7 +4306,8 @@ export default function BookingDetailsPage() {
                                           </div>
                                         </div>
                                       </div>
-                                    ))}
+                                      ))
+                                    )}
                                   </div>
                                 </div>
                               )}
