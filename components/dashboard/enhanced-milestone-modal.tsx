@@ -166,10 +166,10 @@ export function EnhancedMilestoneModal({
         booking_id: bookingId,
         title,
         description,
-        due_date: dueDate ? new Date(dueDate).toISOString() : null,
-        priority,
+        due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
+        priority: priority as 'low' | 'medium' | 'high' | 'urgent',
         weight,
-        assigned_to: assignedTo || null,
+        assigned_to: assignedTo || undefined,
         tags,
         estimated_hours: estimatedHours,
         notes,
@@ -177,9 +177,17 @@ export function EnhancedMilestoneModal({
       }
 
       if (editingMilestone) {
-        await ProgressTrackingService.updateMilestone(editingMilestone.id, milestoneData)
+        await ProgressTrackingService.updateMilestone(editingMilestone.id, {
+          ...milestoneData,
+          status: editingMilestone.status,
+          progress_percentage: editingMilestone.progress_percentage
+        })
       } else {
-        const milestone = await ProgressTrackingService.createMilestone(milestoneData)
+        const milestone = await ProgressTrackingService.createMilestone({
+          ...milestoneData,
+          status: 'pending',
+          progress_percentage: 0
+        })
         
         // Create tasks from templates
         for (const templateId of selectedTemplates) {
@@ -190,9 +198,13 @@ export function EnhancedMilestoneModal({
               title: template.title,
               description: template.description,
               estimated_hours: template.estimated_hours,
-              priority: template.priority,
+              priority: template.priority as 'low' | 'medium' | 'high' | 'urgent',
               tags: template.tags,
-              created_by: user.id
+              created_by: user.id,
+              status: 'pending',
+              progress_percentage: 0,
+              steps: [],
+              approval_status: 'pending'
             })
           }
         }
@@ -204,8 +216,13 @@ export function EnhancedMilestoneModal({
             title: task.title,
             description: task.description,
             estimated_hours: task.estimated_hours,
-            priority: task.priority,
-            created_by: user.id
+            priority: task.priority as 'low' | 'medium' | 'high' | 'urgent',
+            created_by: user.id,
+            status: 'pending',
+            progress_percentage: 0,
+            steps: [],
+            approval_status: 'pending',
+            tags: []
           })
         }
       }
@@ -334,6 +351,8 @@ export function EnhancedMilestoneModal({
                         value={dueDate}
                         onChange={(e) => setDueDate(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Select due date"
+                        title="Due date"
                       />
                       <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
                     </div>
@@ -362,6 +381,7 @@ export function EnhancedMilestoneModal({
                       value={priority}
                       onChange={(e) => setPriority(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      aria-label="Priority"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -379,6 +399,8 @@ export function EnhancedMilestoneModal({
                       min="0.1"
                       step="0.1"
                       value={weight}
+                      title="Weight"
+                      placeholder="Enter weight"
                       onChange={(e) => setWeight(parseFloat(e.target.value))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -393,6 +415,8 @@ export function EnhancedMilestoneModal({
                       min="0"
                       step="0.5"
                       value={estimatedHours}
+                      title="Estimated Hours"
+                      placeholder="Enter estimated hours"
                       onChange={(e) => setEstimatedHours(parseFloat(e.target.value))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
