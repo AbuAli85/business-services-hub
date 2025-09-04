@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, Clock, CheckCircle, AlertCircle, Play, Pause, Square } from 'lucide-react'
+import { EnhancedMilestoneModal } from './enhanced-milestone-modal'
 import { ProgressTrackingService, Milestone, Task, TimeEntry, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
 import { getSupabaseClient } from '@/lib/supabase'
 
@@ -270,21 +271,22 @@ export function MilestoneManagement({ bookingId, userRole }: MilestoneManagement
       </div>
 
       {/* Create Milestone Modal */}
-      {showCreateMilestone && (
-        <CreateMilestoneModal
-          onClose={() => setShowCreateMilestone(false)}
-          onSubmit={handleCreateMilestone}
-        />
-      )}
-
-      {/* Edit Milestone Modal */}
-      {editingMilestone && (
-        <EditMilestoneModal
-          milestone={editingMilestone}
-          onClose={() => setEditingMilestone(null)}
-          onSubmit={(updates) => handleUpdateMilestone(editingMilestone.id, updates)}
-        />
-      )}
+      {/* Enhanced Milestone Modal */}
+      <EnhancedMilestoneModal
+        isOpen={showCreateMilestone || !!editingMilestone}
+        onClose={() => {
+          setShowCreateMilestone(false)
+          setEditingMilestone(null)
+        }}
+        onSuccess={() => {
+          loadMilestones()
+          setShowCreateMilestone(false)
+          setEditingMilestone(null)
+        }}
+        bookingId={bookingId}
+        editingMilestone={editingMilestone}
+        userRole={userRole}
+      />
     </div>
   )
 }

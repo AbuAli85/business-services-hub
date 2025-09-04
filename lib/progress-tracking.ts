@@ -22,6 +22,11 @@ export interface Milestone {
   created_by?: string
   is_overdue: boolean
   overdue_since?: string
+  estimated_hours?: number
+  actual_hours?: number
+  tags?: string[]
+  notes?: string
+  assigned_to?: string
   tasks?: Task[]
 }
 

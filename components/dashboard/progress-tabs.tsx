@@ -7,6 +7,8 @@ import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'
 import { ProgressFallback } from './progress-fallback'
+import { EnhancedProgressCharts } from './enhanced-progress-charts'
+import { BulkOperations } from './bulk-operations'
 
 interface ProgressTabsProps {
   bookingId: string
@@ -46,7 +48,9 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const tabs = [
     { id: 'list', label: 'List View', icon: List },
     { id: 'kanban', label: 'Kanban View', icon: Kanban },
-    { id: 'timeline', label: 'Timeline View', icon: Calendar }
+    { id: 'timeline', label: 'Timeline View', icon: Calendar },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'bulk', label: 'Bulk Operations', icon: Clock }
   ]
 
   if (loading) {
@@ -143,6 +147,22 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
         {activeTab === 'timeline' && (
           <TimelineView milestones={milestones} userRole={userRole} onUpdate={loadData} />
+        )}
+
+        {activeTab === 'analytics' && (
+          <EnhancedProgressCharts
+            bookingId={bookingId}
+            milestones={milestones}
+            bookingProgress={bookingProgress}
+          />
+        )}
+
+        {activeTab === 'bulk' && (
+          <BulkOperations
+            milestones={milestones}
+            onUpdate={loadData}
+            userRole={userRole}
+          />
         )}
       </div>
 
