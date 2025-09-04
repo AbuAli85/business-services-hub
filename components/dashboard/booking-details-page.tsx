@@ -227,7 +227,6 @@ export default function BookingDetailsPage() {
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const [editingTask, setEditingTask] = useState<any>(null)
   const [showTaskComments, setShowTaskComments] = useState<{ [key: string]: boolean }>({})
-  const [taskComments, setTaskComments] = useState<{ [key: string]: string }>({})
   // Inline editing controls for task progress updates
   const [editingTaskComment, setEditingTaskComment] = useState<{ taskId: string; commentId: string; text: string } | null>(null)
   
@@ -252,7 +251,6 @@ export default function BookingDetailsPage() {
     push: true,
     reports: true
   })
-  const [pendingApprovals, setPendingApprovals] = useState<any[]>([])
   const [approvalRequests, setApprovalRequests] = useState<any[]>([])
   const [showNotificationCenter, setShowNotificationCenter] = useState(false)
   const [trackingData, setTrackingData] = useState({
@@ -275,6 +273,15 @@ export default function BookingDetailsPage() {
   const [tasks, setTasks] = useState<any[]>([])
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [isUpdatingTask, setIsUpdatingTask] = useState(false)
+  
+  // Client Interaction State
+  const [expandedTasks, setExpandedTasks] = useState<{ [key: string]: boolean }>({})
+  const [taskComments, setTaskComments] = useState<{ [key: string]: string }>({})
+  const [showTaskCommentModal, setShowTaskCommentModal] = useState(false)
+  const [selectedTaskForComment, setSelectedTaskForComment] = useState<any>(null)
+  const [pendingApprovals, setPendingApprovals] = useState<any[]>([])
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [selectedTaskForApproval, setSelectedTaskForApproval] = useState<any>(null)
 
   // Enhanced Messaging State
   const [messages, setMessages] = useState<any[]>([])
@@ -995,6 +1002,72 @@ export default function BookingDetailsPage() {
       case 'cancelled': return 'text-red-600 bg-red-50'
       default: return 'text-gray-600 bg-gray-50'
     }
+  }
+
+  // Client Interaction Functions
+  const toggleTaskExpansion = (taskId: string) => {
+    setExpandedTasks(prev => ({
+      ...prev,
+      [taskId]: !prev[taskId]
+    }))
+  }
+
+  const handleTaskComment = (task: any) => {
+    setSelectedTaskForComment(task)
+    setShowTaskCommentModal(true)
+  }
+
+  const submitTaskComment = async () => {
+    if (!selectedTaskForComment || !taskComments[selectedTaskForComment.id]?.trim()) return
+
+    try {
+      // Here you would typically send the comment to your backend
+      toast.success('Comment submitted successfully!')
+      setTaskComments((prev: any) => ({
+        ...prev,
+        [selectedTaskForComment.id]: ''
+      }))
+      setShowTaskCommentModal(false)
+      setSelectedTaskForComment(null)
+    } catch (error) {
+      toast.error('Failed to submit comment')
+    }
+  }
+
+  const handleTaskApproval = (task: any) => {
+    setSelectedTaskForApproval(task)
+    setShowApprovalModal(true)
+  }
+
+  const submitTaskApproval = async (approved: boolean, notes?: string) => {
+    if (!selectedTaskForApproval) return
+
+    try {
+      // Here you would typically send the approval to your backend
+      const approval = {
+        id: Date.now().toString(),
+        taskId: selectedTaskForApproval.id,
+        taskTitle: selectedTaskForApproval.title,
+        approved,
+        notes,
+        timestamp: new Date().toISOString(),
+        clientName: user?.full_name || 'Client'
+      }
+      
+      setPendingApprovals((prev: any) => [approval, ...prev])
+      toast.success(`Task ${approved ? 'approved' : 'rejected'} successfully!`)
+      setShowApprovalModal(false)
+      setSelectedTaskForApproval(null)
+    } catch (error) {
+      toast.error('Failed to submit approval')
+    }
+  }
+
+  const getTasksForStep = (stepStatus: string) => {
+    if (stepStatus === 'in_progress') {
+      return tasks.filter(task => task.status === 'in_progress' || task.status === 'pending')
+    }
+    return []
   }
 
   const duplicateTask = async (taskId: string) => {
@@ -4048,27 +4121,168 @@ export default function BookingDetailsPage() {
                             )}
                           </div>
 
-                          {/* Smart Insights for Each Step */}
+                          {/* Enhanced In Progress Section with Task Details */}
                           {step.status === 'in_progress' && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Lightbulb className="h-4 w-4 text-blue-600" />
-                                <span className="text-sm font-medium text-blue-900">Smart Insights</span>
+                            <div className="mt-4 space-y-4">
+                              {/* Smart Insights */}
+                              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Lightbulb className="h-4 w-4 text-blue-600" />
+                                  <span className="text-sm font-medium text-blue-900">Smart Insights</span>
+                                </div>
+                                <div className="space-y-2 text-xs text-blue-800">
+                                  <div className="flex items-center justify-between">
+                                    <span>Estimated completion:</span>
+                                    <span className="font-medium">{getEstimatedCompletion()}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>Time remaining:</span>
+                                    <span className="font-medium">{getTimeToDeadline()}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span>Progress efficiency:</span>
+                                    <span className="font-medium">{getStatusEfficiency()}</span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="space-y-2 text-xs text-blue-800">
-                                <div className="flex items-center justify-between">
-                                  <span>Estimated completion:</span>
-                                  <span className="font-medium">{getEstimatedCompletion()}</span>
+
+                              {/* Task Details Dropdown */}
+                              {getTasksForStep(step.status).length > 0 && (
+                                <div className="bg-gray-50 rounded-lg border border-gray-200">
+                                  <div className="p-3 border-b border-gray-200">
+                                    <div className="flex items-center justify-between">
+                                      <h5 className="font-medium text-gray-900 flex items-center">
+                                        <CheckSquare className="h-4 w-4 mr-2 text-blue-600" />
+                                        Active Tasks ({getTasksForStep(step.status).length})
+                                      </h5>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => toggleTaskExpansion('in_progress')}
+                                        className="text-xs"
+                                      >
+                                        {expandedTasks['in_progress'] ? 'Collapse' : 'Expand'} All
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="divide-y divide-gray-200">
+                                    {getTasksForStep(step.status).map((task) => (
+                                      <div key={task.id} className="p-3">
+                                        <div className="flex items-start justify-between">
+                                          <div className="flex-1">
+                                            <div className="flex items-center space-x-2 mb-2">
+                                              <h6 className="font-medium text-gray-900">{task.title}</h6>
+                                              <Badge className={getPriorityColor(task.priority)}>
+                                                {task.priority}
+                                              </Badge>
+                                              <Badge className={getStatusColor(task.status)}>
+                                                {task.status}
+                                              </Badge>
+                                            </div>
+                                            
+                                            {task.description && (
+                                              <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                            )}
+                                            
+                                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                              <span>Created: {formatDate(task.created_at)}</span>
+                                              {task.due_date && (
+                                                <span>Due: {formatDate(task.due_date)}</span>
+                                              )}
+                                              {task.assigned_user && (
+                                                <span>Assigned to: {task.assigned_user.full_name}</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Client Actions */}
+                                          {userRole !== 'provider' && (
+                                            <div className="flex items-center space-x-2 ml-4">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleTaskComment(task)}
+                                                className="text-blue-600 hover:text-blue-700"
+                                              >
+                                                <MessageSquare className="h-3 w-3 mr-1" />
+                                                Comment
+                                              </Button>
+                                              
+                                              {/* Show approval button for tasks that need client approval */}
+                                              {task.requires_approval && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="outline"
+                                                  onClick={() => handleTaskApproval(task)}
+                                                  className="text-green-600 hover:text-green-700"
+                                                >
+                                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                                  Review
+                                                </Button>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Task Progress Bar */}
+                                        <div className="mt-2">
+                                          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                            <span>Progress</span>
+                                            <span>{Math.round((task.completed_subtasks || 0) / (task.total_subtasks || 1) * 100)}%</span>
+                                          </div>
+                                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div 
+                                              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                                              style={{ 
+                                                width: `${Math.round((task.completed_subtasks || 0) / (task.total_subtasks || 1) * 100)}%` 
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span>Time remaining:</span>
-                                  <span className="font-medium">{getTimeToDeadline()}</span>
+                              )}
+
+                              {/* Client Approval Center */}
+                              {userRole !== 'provider' && pendingApprovals.length > 0 && (
+                                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                  <div className="flex items-center space-x-2 mb-3">
+                                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                    <h5 className="font-medium text-yellow-900">Pending Your Approval</h5>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {pendingApprovals.slice(0, 3).map((approval) => (
+                                      <div key={approval.id} className="flex items-center justify-between p-2 bg-white rounded border border-yellow-200">
+                                        <div>
+                                          <div className="font-medium text-sm">{approval.taskTitle}</div>
+                                          <div className="text-xs text-gray-500">
+                                            {formatDate(approval.timestamp)}
+                                          </div>
+                                        </div>
+                                        <div className="flex space-x-2">
+                                          <Button
+                                            size="sm"
+                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                            onClick={() => submitTaskApproval(true)}
+                                          >
+                                            Approve
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => submitTaskApproval(false, 'Please revise')}
+                                          >
+                                            Request Changes
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span>Progress efficiency:</span>
-                                  <span className="font-medium">{getStatusEfficiency()}</span>
-                                </div>
-                              </div>
+                              )}
                             </div>
                           )}
 
@@ -6138,6 +6352,131 @@ export default function BookingDetailsPage() {
                   className="flex-1"
                 >
                   Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Comment Modal */}
+      {showTaskCommentModal && selectedTaskForComment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Add Comment</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowTaskCommentModal(false)
+                  setSelectedTaskForComment(null)
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900">{selectedTaskForComment.title}</h4>
+                <p className="text-sm text-gray-600 mt-1">{selectedTaskForComment.description}</p>
+              </div>
+              
+              <div>
+                <label htmlFor="task-comment" className="text-sm font-medium mb-2 block">Your Comment</label>
+                <textarea
+                  id="task-comment"
+                  value={taskComments[selectedTaskForComment.id] || ''}
+                  onChange={(e) => setTaskComments((prev: any) => ({
+                    ...prev,
+                    [selectedTaskForComment.id]: e.target.value
+                  }))}
+                  className="w-full p-3 border rounded-md h-24"
+                  placeholder="Add your comment or feedback..."
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  className="flex-1" 
+                  onClick={submitTaskComment}
+                  disabled={!taskComments[selectedTaskForComment.id]?.trim()}
+                >
+                  Submit Comment
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowTaskCommentModal(false)
+                    setSelectedTaskForComment(null)
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Approval Modal */}
+      {showApprovalModal && selectedTaskForApproval && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Review Task</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowApprovalModal(false)
+                  setSelectedTaskForApproval(null)
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900">{selectedTaskForApproval.title}</h4>
+                <p className="text-sm text-gray-600 mt-1">{selectedTaskForApproval.description}</p>
+                <div className="mt-2 flex items-center space-x-2">
+                  <Badge className={getPriorityColor(selectedTaskForApproval.priority)}>
+                    {selectedTaskForApproval.priority}
+                  </Badge>
+                  <Badge className={getStatusColor(selectedTaskForApproval.status)}>
+                    {selectedTaskForApproval.status}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="approval-notes" className="text-sm font-medium mb-2 block">Notes (Optional)</label>
+                <textarea
+                  id="approval-notes"
+                  className="w-full p-3 border rounded-md h-20"
+                  placeholder="Add any notes or feedback..."
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  className="flex-1 bg-green-600 hover:bg-green-700" 
+                  onClick={() => submitTaskApproval(true)}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => submitTaskApproval(false, 'Please revise')}
+                  className="flex-1"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Request Changes
                 </Button>
               </div>
             </div>
