@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 
 function generateInvoiceHTML(invoice: any) {
+  const logoUrl = invoice.providers?.company_logo_url || invoice.providers?.logo_url
+  const brandBlock = logoUrl
+    ? `<img src="${logoUrl}" alt="Logo" style="height:40px;object-fit:contain;"/>`
+    : `<div style="font-size:18px;font-weight:700;color:#2563EB;">${invoice.providers?.company_name || 'BusinessHub Provider'}</div>`
+
   return `
     <!DOCTYPE html>
     <html>
@@ -9,7 +14,7 @@ function generateInvoiceHTML(invoice: any) {
       <title>Invoice ${invoice.id}</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
-        .header { text-align: center; margin-bottom: 30px; }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px; }
         .invoice-details { margin-bottom: 30px; }
         .client-details, .provider-details { margin-bottom: 20px; }
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
@@ -24,14 +29,18 @@ function generateInvoiceHTML(invoice: any) {
       </style>
     </head>
     <body>
-      <div class="virtual-notice">
-        <strong>Virtual Invoice:</strong> This invoice was generated from your booking data. It will be saved to the database once permissions are updated.
-      </div>
+      ${invoice.id?.startsWith('virtual-') ? `<div class="virtual-notice"><strong>Virtual Invoice:</strong> This invoice was generated from your booking data. It will be saved to the database once permissions are updated.</div>` : ''}
       
       <div class="header">
-        <h1>INVOICE</h1>
-        <p>Invoice #${invoice.id}</p>
-        <p>Date: ${new Date(invoice.created_at).toLocaleDateString()}</p>
+        <div>
+          <h1 style="margin:0">INVOICE</h1>
+          <p style="margin:4px 0 0 0">Invoice #${invoice.id}</p>
+          <p style="margin:4px 0 0 0">Date: ${new Date(invoice.created_at).toLocaleDateString()}</p>
+        </div>
+        <div style="text-align:right">
+          ${brandBlock}
+          ${invoice.providers?.company_name ? `<div style="margin-top:6px;color:#6B7280">${invoice.providers.company_name}</div>` : ''}
+        </div>
       </div>
 
       <div class="invoice-details">

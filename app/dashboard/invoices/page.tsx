@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
+import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { 
   Download, 
@@ -47,6 +48,13 @@ interface InvoiceRecord {
   serviceTitle?: string
   clientName?: string
   providerName?: string
+  clientEmail?: string
+  providerEmail?: string
+  clientPhone?: string
+  providerPhone?: string
+  providerCompany?: string
+  dueDate?: string
+  isOverdue?: boolean
 }
 
 export default function InvoicesPage() {
@@ -64,6 +72,9 @@ export default function InvoicesPage() {
     pending: 0,
     totalAmount: 0
   })
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null)
 
   useEffect(() => {
     fetchInvoices()
@@ -89,6 +100,18 @@ export default function InvoicesPage() {
     // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(invoice => invoice.status === statusFilter)
+    }
+
+    // Apply date range filter (created_at)
+    if (startDate) {
+      const start = new Date(startDate)
+      filtered = filtered.filter(inv => new Date(inv.created_at) >= start)
+    }
+    if (endDate) {
+      const end = new Date(endDate)
+      // include end date entire day
+      end.setHours(23,59,59,999)
+      filtered = filtered.filter(inv => new Date(inv.created_at) <= end)
     }
 
     // Apply sorting
@@ -119,6 +142,40 @@ export default function InvoicesPage() {
     })
 
     setFilteredInvoices(filtered)
+  }
+
+  const formatInvoiceNumber = (invoice: InvoiceRecord) => {
+    // Prefer a stable, readable number based on date and id
+    const datePart = formatDate(invoice.created_at).replaceAll('/', '')
+    const idPart = invoice.id.replace('virtual-', '').slice(0, 6).toUpperCase()
+    return `INV-${datePart}-${idPart}`
+  }
+
+  const csvRows = useMemo(() => {
+    const header = ['Invoice No', 'Status', 'Date', 'Service', 'Amount', 'Currency', 'Client', 'Provider', 'Invoice ID']
+    const rows = filteredInvoices.map(inv => [
+      formatInvoiceNumber(inv),
+      inv.status,
+      formatDate(inv.created_at),
+      inv.serviceTitle || 'Service',
+      String(inv.amount || 0),
+      inv.currency || 'OMR',
+      inv.clientName || '',
+      inv.providerName || '',
+      inv.id
+    ])
+    return [header, ...rows]
+  }, [filteredInvoices])
+
+  const downloadCsv = () => {
+    const csv = csvRows.map(r => r.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'invoices.csv'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const calculateStats = (invoices: InvoiceRecord[]) => {
@@ -302,11 +359,22 @@ export default function InvoicesPage() {
               .eq('id', invoice.provider_id)
               .single()
             
+            // compute due date (14 days after created_at) and overdue flag
+            const dueDate = new Date(invoice.created_at)
+            dueDate.setDate(dueDate.getDate() + 14)
+
             return {
               ...invoice,
               serviceTitle,
               clientName: client?.full_name || 'Unknown Client',
-              providerName: provider?.full_name || 'Unknown Provider'
+              providerName: provider?.full_name || 'Unknown Provider',
+              clientEmail: (client as any)?.email,
+              providerEmail: (provider as any)?.email,
+              clientPhone: (client as any)?.phone,
+              providerPhone: (provider as any)?.phone,
+              providerCompany: (provider as any)?.company_name,
+              dueDate: dueDate.toISOString(),
+              isOverdue: (invoice.status !== 'paid') && (Date.now() > dueDate.getTime())
             }
           } catch (error) {
             console.error('Error enriching invoice:', error)
@@ -489,7 +557,7 @@ export default function InvoicesPage() {
         </CardHeader>
         <CardContent>
           {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col xl:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -501,7 +569,7 @@ export default function InvoicesPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center flex-wrap">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Status" />
@@ -533,6 +601,17 @@ export default function InvoicesPage() {
                 className="px-3"
               >
                 {sortOrder === 'asc' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
+                <span className="text-gray-400">to</span>
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
+              </div>
+
+              <Button variant="outline" size="sm" onClick={downloadCsv}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
               </Button>
             </div>
           </div>
@@ -642,8 +721,18 @@ export default function InvoicesPage() {
                           </div>
                         </div>
                         
-                        <div className="mt-3 text-xs text-gray-500">
-                          Invoice ID: {invoice.id}
+                        <div className="mt-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-xs text-gray-500">
+                          <div>
+                            Invoice No: {formatInvoiceNumber(invoice)} • ID: {invoice.id}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {invoice.isOverdue && (
+                              <span className="px-2 py-1 rounded bg-red-100 text-red-700 border border-red-200">Overdue</span>
+                            )}
+                            {invoice.dueDate && (
+                              <span>Due: {formatDate(invoice.dueDate)}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -680,6 +769,11 @@ export default function InvoicesPage() {
                           </Button>
                         )}
                         
+                        <Button variant="outline" size="sm" onClick={() => setSelectedInvoice(invoice)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Details
+                        </Button>
+
                         {invoice.pdf_url && (
                           <Button asChild size="sm">
                             <a href={invoice.pdf_url} download>
@@ -697,6 +791,86 @@ export default function InvoicesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Details Drawer/Modal */}
+      {selectedInvoice && (
+        <Dialog open={!!selectedInvoice} onOpenChange={(open: boolean) => !open && setSelectedInvoice(null)}>
+          <DialogContent className="max-w-3xl w-full">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold">Invoice {formatInvoiceNumber(selectedInvoice)}</h3>
+                  <p className="text-sm text-gray-500">Created {formatDate(selectedInvoice.created_at)} • {selectedInvoice.status.toUpperCase()}</p>
+                </div>
+                {selectedInvoice.providerCompany && (
+                  <div className="text-right text-sm text-gray-600">
+                    <div className="font-medium">{selectedInvoice.providerCompany}</div>
+                    <div>{selectedInvoice.providerName}</div>
+                    {selectedInvoice.providerEmail && <div>{selectedInvoice.providerEmail}</div>}
+                  </div>
+                )}
+              </div>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-700 mb-2">Billed To</div>
+                  <div className="text-gray-900">{selectedInvoice.clientName}</div>
+                  {selectedInvoice.clientEmail && <div className="text-gray-600 text-sm">{selectedInvoice.clientEmail}</div>}
+                  {selectedInvoice.clientPhone && <div className="text-gray-600 text-sm">{selectedInvoice.clientPhone}</div>}
+                </div>
+                <div className="rounded-lg border p-4">
+                  <div className="text-sm font-medium text-gray-700 mb-2">Issued By</div>
+                  <div className="text-gray-900">{selectedInvoice.providerCompany || selectedInvoice.providerName}</div>
+                  {selectedInvoice.providerEmail && <div className="text-gray-600 text-sm">{selectedInvoice.providerEmail}</div>}
+                  {selectedInvoice.providerPhone && <div className="text-gray-600 text-sm">{selectedInvoice.providerPhone}</div>}
+                </div>
+              </div>
+              <div className="rounded-lg border">
+                <div className="p-4 border-b font-medium">Line Items</div>
+                <div className="p-4 text-sm">
+                  {/* For now we have one line derived from the service */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{selectedInvoice.serviceTitle || 'Service'}</div>
+                      <div className="text-gray-500">Booking {selectedInvoice.booking_id.slice(0,8)}</div>
+                    </div>
+                    <div className="font-semibold">{formatCurrency(selectedInvoice.amount || 0, selectedInvoice.currency || 'OMR')}</div>
+                  </div>
+                </div>
+                <div className="p-4 border-t flex items-center justify-between text-sm">
+                  <div className="text-gray-500">Due {selectedInvoice.dueDate ? formatDate(selectedInvoice.dueDate) : '—'}</div>
+                  <div className="text-gray-900 font-semibold">Total: {formatCurrency(selectedInvoice.amount || 0, selectedInvoice.currency || 'OMR')}</div>
+                </div>
+              </div>
+              {selectedInvoice.isOverdue && role === 'provider' && (
+                <div className="flex items-center justify-between rounded-lg border p-4 bg-red-50 border-red-200">
+                  <div className="text-sm text-red-700">This invoice is overdue. Consider sending a reminder.</div>
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      try {
+                        if (!selectedInvoice?.clientEmail) return
+                        await fetch('/api/notifications/email', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            to: selectedInvoice.clientEmail,
+                            subject: `Payment reminder for invoice ${formatInvoiceNumber(selectedInvoice)}`,
+                            text: `Dear ${selectedInvoice.clientName},\n\nThis is a friendly reminder that invoice ${formatInvoiceNumber(selectedInvoice)} for ${formatCurrency(selectedInvoice.amount || 0, selectedInvoice.currency || 'OMR')} is overdue.\n\nThank you.`,
+                          })
+                        })
+                      } catch {}
+                    }}
+                  >
+                    Send Reminder
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
