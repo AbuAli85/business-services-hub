@@ -79,7 +79,6 @@ import {
   ChevronDown,
   Copy,
   Send,
-  Bell,
   MoreHorizontal
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -1298,35 +1297,6 @@ export default function BookingDetailsPage() {
     }
   }
 
-  const requestApproval = async (taskId: string, type: 'milestone' | 'completion' | 'change') => {
-    try {
-      const task = projectTasks.find(t => t.id === taskId)
-      if (!task) return
-
-      const approvalRequest = {
-        id: Date.now().toString(),
-        taskId,
-        taskTitle: task.title,
-        type,
-        requestedBy: 'provider',
-        requestedAt: new Date().toISOString(),
-        status: 'pending',
-        message: `Please review and approve ${type} for: ${task.title}`
-      }
-
-      setApprovalRequests(prev => [approvalRequest, ...prev])
-      
-      // Send notification to client
-      await sendNotification('email', 
-        `New approval request: ${task.title} (${type})`, 
-        'client'
-      )
-      
-      toast.success('Approval request sent to client')
-    } catch (error) {
-      toast.error('Failed to send approval request')
-    }
-  }
 
   const handleApproval = async (requestId: string, approved: boolean, notes?: string) => {
     try {
@@ -5549,7 +5519,7 @@ export default function BookingDetailsPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => requestApproval(task.id, 'completion')}
+                                        onClick={() => requestApproval(task.id)}
                                         className="h-8 w-8 p-0 border-blue-300 text-blue-600 hover:bg-blue-50"
                                         title="Request Client Approval"
                                       >
