@@ -57,6 +57,9 @@ import {
   RotateCw,
   Maximize2,
   Minimize2,
+  CheckSquare,
+  Check,
+  Trash2,
   Layout,
   Grid,
   List,
@@ -72,7 +75,6 @@ import {
   ChevronUp,
   ChevronDown,
   Copy,
-  Trash2,
   Send,
   Bell,
   MoreHorizontal
@@ -218,17 +220,9 @@ export default function BookingDetailsPage() {
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    status: 'not_started' as 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-    estimated_hours: '',
-    actual_hours: '',
-    start_date: '',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     due_date: '',
-    category: 'development' as 'development' | 'design' | 'testing' | 'documentation' | 'meeting' | 'review',
-    assigned_to: '',
-    dependencies: [] as string[],
-    tags: [] as string[],
-    attachments: [] as any[]
+    assigned_to: ''
   })
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const [editingTask, setEditingTask] = useState<any>(null)
@@ -277,6 +271,11 @@ export default function BookingDetailsPage() {
   const [newComment, setNewComment] = useState('')
   const [userReaction, setUserReaction] = useState<'up' | 'down' | null>(null)
 
+  // Task Management State
+  const [tasks, setTasks] = useState<any[]>([])
+  const [showTaskModal, setShowTaskModal] = useState(false)
+  const [isUpdatingTask, setIsUpdatingTask] = useState(false)
+
   // Enhanced Messaging State
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState('')
@@ -294,6 +293,7 @@ export default function BookingDetailsPage() {
       loadBookingHistory()
       loadRelatedBookings()
       loadMessages()
+      loadTasks()
       // Realtime subscription for booking updates
       setupRealtime()
       loadSuggestions()
@@ -359,6 +359,23 @@ export default function BookingDetailsPage() {
           filter: `booking_id=eq.${bookingId}`
         }, () => {
           if (activeTab === 'timeline') loadTimelineComments()
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'booking_tasks',
+          filter: `booking_id=eq.${bookingId}`
+        }, (payload) => {
+          console.log('📋 Real-time task update:', payload)
+          loadTasks()
+          
+          // Show toast notification for new tasks
+          if (payload.eventType === 'INSERT' && payload.new) {
+            toast.success('📋 New task added!', { 
+              duration: 3000,
+              icon: '📋'
+            })
+          }
         })
         .subscribe()
       realtimeCleanup = () => {
@@ -524,6 +541,35 @@ export default function BookingDetailsPage() {
       return date.toLocaleDateString()
     }
   }
+
+  // --- Task Management ---
+  const loadTasks = async () => {
+    if (!booking) return
+
+    try {
+      setLoadingTasks(true)
+      const supabase = await getSupabaseClient()
+      
+      const { data, error } = await supabase
+        .from('booking_tasks')
+        .select(`
+          *,
+          assigned_user:profiles!assigned_to(id, full_name, role)
+        `)
+        .eq('booking_id', booking.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setTasks(data || [])
+      
+    } catch (error) {
+      console.error('Error loading tasks:', error)
+      // Don't show error toast for tasks as it's not critical
+    } finally {
+      setLoadingTasks(false)
+    }
+  }
+
 
   // --- Suggestions ---
   const loadSuggestions = async () => {
@@ -768,42 +814,43 @@ export default function BookingDetailsPage() {
   }
 
   const createTask = async () => {
-    if (!newTask.title.trim()) {
+    if (!newTask.title.trim() || !booking) {
       toast.error('Task title is required')
       return
     }
     
     try {
       setIsCreatingTask(true)
-      const task = {
-        id: Date.now().toString(),
-        ...newTask,
-        actual_hours: '0',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        comments: [],
-        attachments: []
-      }
+      const supabase = await getSupabaseClient()
       
-      setProjectTasks(prev => [task, ...prev])
+      const { error } = await supabase
+        .from('booking_tasks')
+        .insert({
+          booking_id: booking.id,
+          title: newTask.title.trim(),
+          description: newTask.description.trim() || null,
+          priority: newTask.priority,
+          due_date: newTask.due_date || null,
+          assigned_to: newTask.assigned_to || null
+        })
+
+      if (error) throw error
+
       setNewTask({
         title: '',
         description: '',
-        status: 'not_started',
         priority: 'medium',
-        estimated_hours: '',
-        actual_hours: '',
-        start_date: '',
         due_date: '',
-        category: 'development',
-        assigned_to: '',
-        dependencies: [],
-        tags: [],
-        attachments: []
+        assigned_to: ''
       })
       setShowAddMilestone(false)
+      setShowTaskModal(false)
       toast.success('Task created successfully')
+      
+      // Reload tasks
+      loadTasks()
     } catch (error) {
+      console.error('Error creating task:', error)
       toast.error('Failed to create task')
     } finally {
       setIsCreatingTask(false)
@@ -884,10 +931,69 @@ export default function BookingDetailsPage() {
     if (!confirm('Are you sure you want to delete this task?')) return
     
     try {
-      setProjectTasks(prev => prev.filter(task => task.id !== taskId))
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('booking_tasks')
+        .delete()
+        .eq('id', taskId)
+
+      if (error) throw error
+      
       toast.success('Task deleted successfully')
+      
+      // Reload tasks
+      loadTasks()
     } catch (error) {
+      console.error('Error deleting task:', error)
       toast.error('Failed to delete task')
+    }
+  }
+
+  const updateTaskStatus = async (taskId: string, status: string) => {
+    try {
+      setIsUpdatingTask(true)
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('booking_tasks')
+        .update({ 
+          status,
+          completed_at: status === 'completed' ? new Date().toISOString() : null
+        })
+        .eq('id', taskId)
+
+      if (error) throw error
+      
+      toast.success(`Task marked as ${status}`)
+      
+      // Reload tasks
+      loadTasks()
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    } finally {
+      setIsUpdatingTask(false)
+    }
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'text-red-600 bg-red-50'
+      case 'high': return 'text-orange-600 bg-orange-50'
+      case 'medium': return 'text-blue-600 bg-blue-50'
+      case 'low': return 'text-gray-600 bg-gray-50'
+      default: return 'text-gray-600 bg-gray-50'
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'text-green-600 bg-green-50'
+      case 'in_progress': return 'text-blue-600 bg-blue-50'
+      case 'pending': return 'text-yellow-600 bg-yellow-50'
+      case 'cancelled': return 'text-red-600 bg-red-50'
+      default: return 'text-gray-600 bg-gray-50'
     }
   }
 
@@ -1023,18 +1129,6 @@ export default function BookingDetailsPage() {
     }
   }
 
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
-    try {
-      setProjectTasks(prev => prev.map(task => 
-        task.id === taskId 
-          ? { ...task, status: newStatus, updated_at: new Date().toISOString() }
-          : task
-      ))
-      toast.success('Task status updated')
-    } catch (error) {
-      toast.error('Failed to update task status')
-    }
-  }
 
   const addTaskComment = async (taskId: string) => {
     const comment = taskComments[taskId]?.trim()
@@ -1188,25 +1282,7 @@ export default function BookingDetailsPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'on_hold': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200'
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200'
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'low': return 'bg-gray-100 text-gray-800 border-gray-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -2361,6 +2437,13 @@ export default function BookingDetailsPage() {
   const getTimelineProgress = () => {
     if (!booking) return 0
 
+    // Use task-based progress if tasks exist, otherwise fall back to status-based
+    if (tasks && tasks.length > 0) {
+      const completedTasks = tasks.filter(task => task.status === 'completed').length
+      return completedTasks / tasks.length
+    }
+
+    // Fallback to status-based progress
     const steps = getTimelineSteps()
     const completedSteps = steps.filter(step => step.completed).length
     return completedSteps / steps.length
@@ -3130,11 +3213,12 @@ export default function BookingDetailsPage() {
 
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className={`grid w-full ${userRole === 'provider' ? 'grid-cols-7' : 'grid-cols-6'}`}>
+        <TabsList className={`grid w-full ${userRole === 'provider' ? 'grid-cols-8' : 'grid-cols-7'}`}>
           <TabsTrigger value="overview">{userRole === 'provider' ? 'Client Details' : 'Service Details'}</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="files">Files</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
           {userRole === 'provider' && <TabsTrigger value="progress">Progress</TabsTrigger>}
           <TabsTrigger value="history">History</TabsTrigger>
           {userRole === 'provider' && <TabsTrigger value="related">Related</TabsTrigger>}
@@ -3505,51 +3589,6 @@ export default function BookingDetailsPage() {
             </CardContent>
           </Card>
 
-          {/* Enhanced Booking Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5" />
-                <span>Booking Information</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Status</label>
-                  <div className="mt-1">{getStatusBadge(booking.status)}</div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Priority</label>
-                  <div className="mt-1">{getPriorityBadge(booking.priority)}</div>
-                </div>
-              </div>
-              {booking.scheduled_date && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Scheduled Date</label>
-                  <p className="text-sm">{formatDate(booking.scheduled_date)}</p>
-                </div>
-              )}
-              {booking.amount && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Amount</label>
-                  <p className="text-lg font-semibold flex items-center space-x-1">
-                    <DollarSign className="h-4 w-4" />
-                    <span>{formatCurrency(booking.amount || 0, booking.currency || 'OMR')}</span>
-                  </p>
-                </div>
-              )}
-              {booking.location && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Location</label>
-                  <p className="text-sm flex items-center space-x-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{booking.location}</span>
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Enhanced Smart Actions & AI Insights - Role-Based */}
           <Card className="border border-gray-200 bg-white shadow-sm">
@@ -4179,7 +4218,7 @@ export default function BookingDetailsPage() {
                     </Button>
                     <Button 
                       size="sm" 
-                      onClick={() => setShowAddMilestone(true)}
+                      onClick={() => setShowTaskModal(true)}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -4693,7 +4732,7 @@ export default function BookingDetailsPage() {
               </div>
 
               {/* Professional Task Creation Modal */}
-              {showAddMilestone && (
+              {false && showAddMilestone && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden">
                     {/* Modal Header */}
@@ -4775,7 +4814,7 @@ export default function BookingDetailsPage() {
                             <div>
                               <label className="text-sm font-semibold text-gray-700 mb-2 block">Category</label>
                               <select
-                                value={newTask.category}
+                                value="development"
                                 onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value as any }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                                 aria-label="Select task category"
@@ -4809,7 +4848,7 @@ export default function BookingDetailsPage() {
                             <div>
                               <label className="text-sm font-semibold text-gray-700 mb-2 block">Task Status</label>
                               <select
-                                value={newTask.status}
+                                value="not_started"
                                 onChange={(e) => setNewTask(prev => ({ ...prev, status: e.target.value as any }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                                 aria-label="Select task status"
@@ -4840,7 +4879,7 @@ export default function BookingDetailsPage() {
                               <div className="relative">
                                 <input
                                   type="number"
-                                  value={newTask.estimated_hours}
+                                  value=""
                                   onChange={(e) => setNewTask(prev => ({ ...prev, estimated_hours: e.target.value }))}
                                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all pl-8"
                                   placeholder="8.5"
@@ -4860,7 +4899,7 @@ export default function BookingDetailsPage() {
                               <label className="text-sm font-semibold text-gray-700 mb-2 block">Start Date</label>
                               <input
                                 type="date"
-                                value={newTask.start_date || ''}
+                                value=""
                                 onChange={(e) => setNewTask(prev => ({ ...prev, start_date: e.target.value }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                                 min={new Date().toISOString().split('T')[0]}
@@ -4876,7 +4915,7 @@ export default function BookingDetailsPage() {
                                 value={newTask.due_date}
                                 onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                                min={newTask.start_date || new Date().toISOString().split('T')[0]}
+                                min={new Date().toISOString().split('T')[0]}
                                 aria-label="Task due date"
                                 title="Select task due date"
                               />
@@ -4914,7 +4953,7 @@ export default function BookingDetailsPage() {
                               </label>
                               <select
                                 multiple
-                                value={newTask.dependencies}
+                                value={[]}
                                 onChange={(e) => {
                                   const selected = Array.from(e.target.selectedOptions, option => option.value)
                                   setNewTask(prev => ({ ...prev, dependencies: selected }))
@@ -4940,7 +4979,7 @@ export default function BookingDetailsPage() {
                               </label>
                               <input
                                 type="text"
-                                value={(newTask.tags || []).join(', ')}
+                                value=""
                                 onChange={(e) => setNewTask(prev => ({ ...prev, tags: e.target.value.split(',').map(tag => tag && tag.trim()).filter(tag => tag) }))}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                                 placeholder="frontend, api, database, responsive"
@@ -4951,9 +4990,7 @@ export default function BookingDetailsPage() {
                                     key={tag}
                                     type="button"
                                     onClick={() => {
-                                      if (!newTask.tags.includes(tag)) {
-                                        setNewTask(prev => ({ ...prev, tags: [...prev.tags, tag] }))
-                                      }
+                                      // Tag functionality disabled for simplified task system
                                     }}
                                     className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
                                   >
@@ -5606,7 +5643,7 @@ export default function BookingDetailsPage() {
                     </p>
                     {userRole === 'provider' && (
                       <Button
-                        onClick={() => setShowAddMilestone(true)}
+                        onClick={() => setShowTaskModal(true)}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -5731,6 +5768,122 @@ export default function BookingDetailsPage() {
                 <Paperclip className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                 <p>File management interface would be here</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tasks Tab */}
+        <TabsContent value="tasks" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center space-x-2">
+                    <CheckSquare className="h-5 w-5" />
+                    <span>Project Tasks</span>
+                  </CardTitle>
+                  <CardDescription>Manage and track project tasks</CardDescription>
+                </div>
+                {userRole === 'provider' && (
+                  <Button 
+                    onClick={() => setShowTaskModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingTasks ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-500 mt-2">Loading tasks...</p>
+                </div>
+              ) : tasks.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <CheckSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <p>No tasks yet</p>
+                  {userRole === 'provider' && (
+                    <p className="text-sm">Click "Add Task" to create your first task</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tasks.map((task) => (
+                    <div key={task.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <Badge className={getPriorityColor(task.priority)}>
+                              {task.priority}
+                            </Badge>
+                            <Badge className={getStatusColor(task.status)}>
+                              {task.status}
+                            </Badge>
+                          </div>
+                          
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                          )}
+                          
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span>Created: {formatDate(task.created_at)}</span>
+                            {task.due_date && (
+                              <span>Due: {formatDate(task.due_date)}</span>
+                            )}
+                            {task.assigned_user && (
+                              <span>Assigned to: {task.assigned_user.full_name}</span>
+                            )}
+                            {task.completed_at && (
+                              <span>Completed: {formatDate(task.completed_at)}</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {userRole === 'provider' && (
+                          <div className="flex items-center space-x-2 ml-4">
+                            {task.status !== 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateTaskStatus(task.id, 'completed')}
+                                disabled={isUpdatingTask}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Complete
+                              </Button>
+                            )}
+                            {task.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateTaskStatus(task.id, 'in_progress')}
+                                disabled={isUpdatingTask}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Play className="h-4 w-4 mr-1" />
+                                Start
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deleteTask(task.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -5868,6 +6021,113 @@ export default function BookingDetailsPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => setShowFileUpload(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Creation Modal */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Create New Task</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowTaskModal(false)
+                  setNewTask({
+                    title: '',
+                    description: '',
+                    priority: 'medium',
+                    due_date: '',
+                    assigned_to: ''
+                  })
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="task-title" className="text-sm font-medium mb-2 block">Task Title *</label>
+                <input
+                  id="task-title"
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  className="w-full p-2 border rounded-md"
+                  placeholder="Enter task title"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="task-description" className="text-sm font-medium mb-2 block">Description</label>
+                <textarea
+                  id="task-description"
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                  className="w-full p-2 border rounded-md h-20"
+                  placeholder="Enter task description"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="task-priority" className="text-sm font-medium mb-2 block">Priority</label>
+                  <select
+                    id="task-priority"
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({...newTask, priority: e.target.value as any})}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="task-due-date" className="text-sm font-medium mb-2 block">Due Date</label>
+                  <input
+                    id="task-due-date"
+                    type="datetime-local"
+                    value={newTask.due_date}
+                    onChange={(e) => setNewTask({...newTask, due_date: e.target.value})}
+                    className="w-full p-2 border rounded-md"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  className="flex-1" 
+                  disabled={isCreatingTask || !newTask.title.trim()}
+                  onClick={createTask}
+                >
+                  {isCreatingTask ? 'Creating...' : 'Create Task'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowTaskModal(false)
+                    setNewTask({
+                      title: '',
+                      description: '',
+                      priority: 'medium',
+                      due_date: '',
+                      assigned_to: ''
+                    })
+                  }}
                   className="flex-1"
                 >
                   Cancel
