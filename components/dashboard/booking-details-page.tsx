@@ -81,6 +81,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { authenticatedGet, authenticatedPost, authenticatedPatch } from '@/lib/api-utils'
 import { notificationService } from '@/lib/notifications'
 import { deadlineMonitor } from '@/lib/deadline-monitor'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { MessagesThread } from '@/components/dashboard/messages-thread'
 import EnhancedMessagesThread from '@/components/dashboard/enhanced-messages-thread'
@@ -105,6 +106,7 @@ interface Booking {
   milestone_notes?: string
   estimated_completion_date?: string
   actual_start_date?: string
+  actual_completion_date?: string
   quality_score?: number
   service: {
     id: string
@@ -1301,51 +1303,74 @@ export default function BookingDetailsPage() {
         .maybeSingle()
       setUserRole((profile?.role as any) || null)
       
-      // Load booking details based on user role
+      // Load booking with related data using proper joins
       let bookingData: any = null
       let error: any = null
 
-      if (profile?.role === 'provider') {
-        const { data, error: providerError } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('id', bookingId)
-          .eq('provider_id', user.id)
-          .maybeSingle()
+      // Try to fetch booking with all related data in one query
+      const { data: bookingWithRelations, error: relationError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service:services(
+            id, title, description, category, base_price, currency, estimated_duration
+          ),
+          client:profiles!client_id(
+            id, full_name, email, phone, company_name, avatar_url
+          ),
+          provider:profiles!provider_id(
+            id, full_name, email, phone, company_name, avatar_url
+          )
+        `)
+        .eq('id', bookingId)
+        .single()
+
+      if (relationError) {
+        console.warn('Error with relations query, falling back to basic query:', relationError)
         
-        bookingData = data
-        error = providerError
-      } else if (profile?.role === 'client') {
-        const { data, error: clientError } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('id', bookingId)
-          .eq('client_id', user.id)
-          .maybeSingle()
-        
-        bookingData = data
-        error = clientError
-      } else {
-        // Fallback: check if user is either client or provider for this booking
-        // Use separate queries and check if either returns results
-        const [clientBooking, providerBooking] = await Promise.all([
-          supabase
-            .from('bookings')
-            .select('*')
-            .eq('id', bookingId)
-            .eq('client_id', user.id)
-            .maybeSingle(),
-          supabase
+        // Fallback to basic query if relations fail
+        if (profile?.role === 'provider') {
+          const { data, error: providerError } = await supabase
             .from('bookings')
             .select('*')
             .eq('id', bookingId)
             .eq('provider_id', user.id)
             .maybeSingle()
-        ])
-        
-        // Use whichever booking was found
-        bookingData = clientBooking.data || providerBooking.data
-        error = clientBooking.error || providerBooking.error
+          
+          bookingData = data
+          error = providerError
+        } else if (profile?.role === 'client') {
+          const { data, error: clientError } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .eq('client_id', user.id)
+            .maybeSingle()
+          
+          bookingData = data
+          error = clientError
+        } else {
+          // Fallback: check if user is either client or provider for this booking
+          const [clientBooking, providerBooking] = await Promise.all([
+            supabase
+              .from('bookings')
+              .select('*')
+              .eq('id', bookingId)
+              .eq('client_id', user.id)
+              .maybeSingle(),
+            supabase
+              .from('bookings')
+              .select('*')
+              .eq('id', bookingId)
+              .eq('provider_id', user.id)
+              .maybeSingle()
+          ])
+          
+          bookingData = clientBooking.data || providerBooking.data
+          error = clientBooking.error || providerBooking.error
+        }
+      } else {
+        bookingData = bookingWithRelations
       }
 
       if (error) {
@@ -1360,17 +1385,19 @@ export default function BookingDetailsPage() {
         return
       }
 
-      // Load related data separately to avoid relationship conflicts
-      let serviceData: any = null
-      let clientData: any = null
+      // If we got relations data, use it; otherwise load separately
+      let serviceData = bookingData?.service || null
+      let clientData = bookingData?.client || null
+      let providerData = bookingData?.provider || null
 
-      if (bookingData.service_id) {
+      // If relations didn't work, load data separately
+      if (!serviceData && bookingData?.service_id) {
         try {
           const { data, error: serviceError } = await supabase
             .from('services')
-            .select('id, title, description, category')
+            .select('id, title, description, category, base_price, currency, estimated_duration')
             .eq('id', bookingData.service_id)
-            .maybeSingle() // Use maybeSingle instead of single to handle no rows
+            .maybeSingle()
           
           if (!serviceError && data) {
             serviceData = data
@@ -1380,19 +1407,35 @@ export default function BookingDetailsPage() {
         }
       }
 
-      if (bookingData.client_id) {
+      if (!clientData && bookingData?.client_id) {
         try {
           const { data, error: clientError } = await supabase
             .from('profiles')
-            .select('id, full_name, email, phone, company_name')
+            .select('id, full_name, email, phone, company_name, avatar_url')
             .eq('id', bookingData.client_id)
-            .maybeSingle() // Use maybeSingle instead of single to handle no rows
+            .maybeSingle()
           
           if (!clientError && data) {
             clientData = data
           }
         } catch (clientError) {
           console.warn('Could not load client data:', clientError)
+        }
+      }
+
+      if (!providerData && bookingData?.provider_id) {
+        try {
+          const { data, error: providerError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, phone, company_name, avatar_url')
+            .eq('id', bookingData.provider_id)
+            .maybeSingle()
+          
+          if (!providerError && data) {
+            providerData = data
+          }
+        } catch (providerError) {
+          console.warn('Could not load provider data:', providerError)
         }
       }
 
@@ -1403,19 +1446,25 @@ export default function BookingDetailsPage() {
         priority: bookingData.priority || 'normal',
         created_at: bookingData.created_at,
         updated_at: bookingData.updated_at,
-        scheduled_date: bookingData.scheduled_date,
+        scheduled_date: bookingData.estimated_start_date || bookingData.scheduled_date,
         scheduled_time: bookingData.scheduled_time,
-        notes: bookingData.notes,
-        amount: bookingData.amount,
-        currency: bookingData.currency,
-        estimated_duration: bookingData.estimated_duration,
+        notes: bookingData.notes || bookingData.requirements,
+        amount: bookingData.subtotal || bookingData.total_amount || bookingData.amount || 0,
+        currency: bookingData.currency || 'OMR',
+        estimated_duration: bookingData.estimated_duration || serviceData?.estimated_duration,
         location: bookingData.location,
-        payment_status: bookingData.payment_status,
+        payment_status: bookingData.payment_status || 'pending',
         rating: bookingData.rating,
         review: bookingData.review,
+        progress_percentage: bookingData.progress_percentage || 0,
+        milestone_notes: bookingData.milestone_notes,
+        quality_score: bookingData.quality_score,
+        estimated_completion_date: bookingData.estimated_completion_date,
+        actual_start_date: bookingData.actual_start_date,
+        actual_completion_date: bookingData.actual_completion_date,
         service: {
           id: serviceData?.id || '',
-          name: serviceData?.title || 'Unknown Service',
+          name: serviceData?.title || bookingData?.title || 'Unknown Service',
           description: serviceData?.description,
           category: serviceData?.category
         },
@@ -1425,6 +1474,13 @@ export default function BookingDetailsPage() {
           email: clientData?.email || '',
           phone: clientData?.phone,
           company_name: clientData?.company_name
+        },
+        provider: {
+          id: providerData?.id || '',
+          full_name: providerData?.full_name || 'Unknown Provider',
+          email: providerData?.email || '',
+          phone: providerData?.phone,
+          company_name: providerData?.company_name
         }
       }
 
@@ -2268,12 +2324,6 @@ export default function BookingDetailsPage() {
     })
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'OMR'
-    }).format(amount)
-  }
 
   const getTimelineSteps = (): TimelineStep[] => {
     if (!booking) return []
@@ -2367,7 +2417,7 @@ export default function BookingDetailsPage() {
 
   const getRevenueImpact = () => {
     if (!booking || booking.amount === undefined) return 'N/A'
-    return formatCurrency(booking.amount)
+    return formatCurrency(booking.amount || 0, booking.currency || 'OMR')
   }
 
   const getBookingHealth = () => {
@@ -3182,7 +3232,7 @@ export default function BookingDetailsPage() {
                       <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
                         <div className="text-center p-3 bg-gray-50 rounded-lg">
                           <div className="text-sm font-medium text-gray-600 mb-1">Project Value</div>
-                          <div className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0)}</div>
+                          <div className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0, booking.currency || 'OMR')}</div>
                         </div>
                         <div className="text-center p-3 bg-gray-50 rounded-lg">
                           <div className="text-sm font-medium text-gray-600 mb-1">Duration</div>
@@ -3248,7 +3298,7 @@ export default function BookingDetailsPage() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center py-2 border-b border-gray-100">
                         <span className="text-sm font-medium text-gray-600">Project Value</span>
-                        <span className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0)}</span>
+                        <span className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0, booking.currency || 'OMR')}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-gray-100">
                         <span className="text-sm font-medium text-gray-600">Payment Status</span>
@@ -3307,7 +3357,7 @@ export default function BookingDetailsPage() {
                         </div>
                         <div className="text-center p-3 bg-gray-50 rounded-lg">
                           <div className="text-sm font-medium text-gray-600 mb-1">Total Cost</div>
-                          <div className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0)}</div>
+                          <div className="text-lg font-semibold text-gray-900">{formatCurrency(booking.amount || 0, booking.currency || 'OMR')}</div>
                         </div>
                       </div>
                     </div>
@@ -3398,7 +3448,7 @@ export default function BookingDetailsPage() {
                     <div className="space-y-3 text-sm">
                       <div>
                         <div className="text-teal-600 font-medium">Total Amount</div>
-                        <div className="text-lg font-bold text-teal-900">{formatCurrency(booking.amount || 0)}</div>
+                        <div className="text-lg font-bold text-teal-900">{formatCurrency(booking.amount || 0, booking.currency || 'OMR')}</div>
                       </div>
                       <div>
                         <div className="text-teal-600 font-medium">Payment Status</div>
@@ -3510,7 +3560,7 @@ export default function BookingDetailsPage() {
                   <label className="text-sm font-medium text-muted-foreground">Amount</label>
                   <p className="text-lg font-semibold flex items-center space-x-1">
                     <DollarSign className="h-4 w-4" />
-                    <span>{formatCurrency(booking.amount)}</span>
+                    <span>{formatCurrency(booking.amount || 0, booking.currency || 'OMR')}</span>
                   </p>
                 </div>
               )}
