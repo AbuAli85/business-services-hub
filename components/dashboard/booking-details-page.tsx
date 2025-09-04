@@ -3927,7 +3927,8 @@ export default function BookingDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {/* Smart Progress Overview */}
+                {/* Smart Progress Overview (providers only) */}
+                {userRole === 'provider' && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center p-4 bg-white rounded-lg border border-blue-200">
                     <div className="text-2xl font-bold text-blue-600">
@@ -3963,6 +3964,7 @@ export default function BookingDetailsPage() {
                     <div className="mt-2 text-xs text-orange-600">Action Required</div>
                   </div>
                 </div>
+                )}
 
                 {/* Enhanced Timeline Steps with Progress Lines */}
                 <div className="relative">
@@ -4070,8 +4072,8 @@ export default function BookingDetailsPage() {
                             </div>
                           )}
 
-                          {/* Step Actions */}
-                          {step.status === 'in_progress' && (
+                          {/* Step Actions (providers only) */}
+                          {userRole === 'provider' && step.status === 'in_progress' && (
                             <div className="mt-3 flex space-x-2">
                               <Button 
                                 size="sm" 
@@ -4094,8 +4096,8 @@ export default function BookingDetailsPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Enhanced Time Tracking Dashboard */}
+                {/* Enhanced Time Tracking Dashboard (providers only) */}
+                {userRole === 'provider' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                     <h4 className="font-semibold mb-3 text-gray-900 flex items-center">
@@ -4151,8 +4153,10 @@ export default function BookingDetailsPage() {
                     </div>
                   </div>
                 </div>
+                )}
 
-                {/* Smart Timeline Actions */}
+                {/* Smart Timeline Actions (providers only) */}
+                {userRole === 'provider' && (
                 <div className="p-4 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
                   <h4 className="font-semibold mb-3 text-blue-900 flex items-center">
                     <Zap className="h-5 w-5 mr-2" />
@@ -4191,6 +4195,7 @@ export default function BookingDetailsPage() {
                     </Button>
                   </div>
                 </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -5335,7 +5340,8 @@ export default function BookingDetailsPage() {
           </Card>
         </TabsContent>
 
-        {/* Enhanced Professional Timeline Tab */}
+        {/* Enhanced Professional Timeline Tab (providers only) */}
+        {userRole === 'provider' && (
         <TabsContent value="timeline" className="space-y-6">
           {/* Progress Overview Card */}
           <Card className="border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
@@ -5656,6 +5662,7 @@ export default function BookingDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        )}
 
         {/* Messages Tab - Enhanced Professional Interface */}
         <TabsContent value="messages" className="space-y-6">
