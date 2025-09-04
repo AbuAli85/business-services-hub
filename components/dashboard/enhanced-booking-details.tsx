@@ -106,6 +106,9 @@ import toast from 'react-hot-toast'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import SmartCommunicationCenter from './smart-communication-center'
 import SmartFileManager from './smart-file-manager'
+import EnhancedProgressTimeline from './enhanced-progress-timeline'
+import NotificationBell from '@/components/ui/notification-bell'
+import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 
 interface EnhancedBooking {
   id: string
@@ -212,12 +215,14 @@ export default function EnhancedBookingDetails() {
   const [realtimeUpdates, setRealtimeUpdates] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [overdueCount, setOverdueCount] = useState(0)
 
   useEffect(() => {
     if (bookingId) {
       loadBookingData()
       initializeCommunicationChannels()
       generateSmartSuggestions()
+      loadOverdueCount()
     }
   }, [bookingId])
 
@@ -519,6 +524,105 @@ export default function EnhancedBookingDetails() {
     setSmartSuggestions(suggestions)
   }
 
+  const loadOverdueCount = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Update overdue status first
+      await supabase.rpc('update_overdue_tasks')
+      
+      // Get overdue count for this booking
+      const { data, error } = await supabase
+        .from('booking_tasks')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .eq('is_overdue', true)
+
+      if (error) throw error
+      setOverdueCount(data?.length || 0)
+    } catch (error) {
+      console.error('Error loading overdue count:', error)
+    }
+  }
+
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    if (!booking) return
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Load tasks and milestones
+      const [tasksResult, milestonesResult] = await Promise.all([
+        supabase.from('booking_tasks').select('*').eq('booking_id', bookingId),
+        supabase.from('booking_milestones').select('*').eq('booking_id', bookingId)
+      ])
+
+      if (tasksResult.error) throw tasksResult.error
+      if (milestonesResult.error) throw milestonesResult.error
+
+      const tasks = tasksResult.data || []
+      const milestones = milestonesResult.data || []
+
+      // Calculate stats
+      const totalTasks = tasks.length
+      const completedTasks = tasks.filter(t => t.status === 'completed').length
+      const overdueTasks = tasks.filter(t => t.is_overdue).length
+      const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+      const exportData: ExportData = {
+        booking: {
+          id: booking.id,
+          title: booking.service.title,
+          status: booking.status,
+          created_at: booking.created_at,
+          amount: booking.amount,
+          currency: booking.currency,
+          client: booking.client,
+          provider: booking.provider
+        },
+        tasks: tasks.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          due_date: task.due_date,
+          completed_at: task.completed_at,
+          is_overdue: task.is_overdue,
+          weight: task.weight
+        })),
+        milestones: milestones.map(milestone => ({
+          id: milestone.id,
+          title: milestone.title,
+          description: milestone.description,
+          status: milestone.status,
+          due_date: milestone.due_date,
+          created_at: milestone.created_at
+        })),
+        stats: {
+          totalTasks,
+          completedTasks,
+          overdueTasks,
+          overallProgress
+        }
+      }
+
+      // Generate and download file
+      if (format === 'pdf') {
+        const pdfBlob = await generatePDF(exportData)
+        downloadFile(pdfBlob, `booking-${booking.id.slice(0, 8)}-progress.pdf`)
+      } else {
+        const excelBlob = generateExcel(exportData)
+        downloadFile(excelBlob, `booking-${booking.id.slice(0, 8)}-progress.xlsx`)
+      }
+
+      toast.success(`${format.toUpperCase()} exported successfully`)
+    } catch (error) {
+      console.error('Error exporting:', error)
+      toast.error('Failed to export file')
+    }
+  }
+
   const getStatusIcon = (status: string) => {
     const icons = {
       pending: <Clock className="h-4 w-4" />,
@@ -763,6 +867,19 @@ export default function EnhancedBookingDetails() {
             
             {/* Smart Action Buttons */}
             <div className="flex items-center space-x-3">
+              {/* Notification Bell */}
+              {user && (
+                <NotificationBell userId={user.id} />
+              )}
+              
+              {/* Overdue Count Badge */}
+              {overdueCount > 0 && (
+                <Badge variant="destructive" className="px-3 py-1">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {overdueCount} Overdue
+                </Badge>
+              )}
+              
               <Button
                 variant="outline"
                 onClick={() => canEdit && setShowQuickActions(!showQuickActions)}
@@ -980,10 +1097,19 @@ export default function EnhancedBookingDetails() {
           {/* Main Content Area */}
           <div className="xl:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-6">
+              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-7">
                 <TabsTrigger value="overview" className="text-xs sm:text-sm">
                   <Eye className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="progress" className="text-xs sm:text-sm">
+                  <BarChart3 className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Progress</span>
+                  {overdueCount > 0 && (
+                    <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                      {overdueCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="timeline" className="text-xs sm:text-sm">
                   <Activity className="h-4 w-4 mr-1" />
@@ -1002,7 +1128,7 @@ export default function EnhancedBookingDetails() {
                   <span className="hidden sm:inline">Payment</span>
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="text-xs sm:text-sm hidden lg:flex">
-                  <BarChart3 className="h-4 w-4 mr-1" />
+                  <TrendingUp className="h-4 w-4 mr-1" />
                   Analytics
                 </TabsTrigger>
               </TabsList>
@@ -1191,6 +1317,15 @@ export default function EnhancedBookingDetails() {
                     </CardContent>
                   </Card>
                 </div>
+              </TabsContent>
+
+              {/* Progress Tab */}
+              <TabsContent value="progress" className="space-y-6">
+                <EnhancedProgressTimeline
+                  bookingId={bookingId}
+                  userRole={isClient ? 'client' : 'provider'}
+                  onExport={handleExport}
+                />
               </TabsContent>
 
               {/* Timeline Tab */}
