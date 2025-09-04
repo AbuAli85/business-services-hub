@@ -1139,6 +1139,20 @@ export default function BookingDetailsPage() {
     }
   }
 
+  // Quick helper to prefill the task modal for a milestone
+  const openTaskForMilestone = (milestoneName: string) => {
+    try {
+      setNewTask(prev => ({
+        ...(prev as any),
+        title: prev?.title ? prev.title : `${milestoneName} - `,
+        description: prev?.description || `Task for milestone: ${milestoneName}`
+      }))
+    } catch (_) {
+      // no-op safeguard
+    }
+    setShowTaskModal(true)
+  }
+
   // Smart Tracking & Notification Functions
   const sendNotification = async (type: 'email' | 'whatsapp' | 'push', message: string, recipient: 'client' | 'provider') => {
     try {
@@ -1524,45 +1538,45 @@ export default function BookingDetailsPage() {
         console.warn('Error with relations query, falling back to basic query:', relationError)
         
         // Fallback to basic query if relations fail
-        if (profile?.role === 'provider') {
-          const { data, error: providerError } = await supabase
+      if (profile?.role === 'provider') {
+        const { data, error: providerError } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', bookingId)
+          .eq('provider_id', user.id)
+          .maybeSingle()
+        
+        bookingData = data
+        error = providerError
+      } else if (profile?.role === 'client') {
+        const { data, error: clientError } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', bookingId)
+          .eq('client_id', user.id)
+          .maybeSingle()
+        
+        bookingData = data
+        error = clientError
+      } else {
+        // Fallback: check if user is either client or provider for this booking
+        const [clientBooking, providerBooking] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('*')
+            .eq('id', bookingId)
+            .eq('client_id', user.id)
+            .maybeSingle(),
+          supabase
             .from('bookings')
             .select('*')
             .eq('id', bookingId)
             .eq('provider_id', user.id)
             .maybeSingle()
-          
-          bookingData = data
-          error = providerError
-        } else if (profile?.role === 'client') {
-          const { data, error: clientError } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('id', bookingId)
-            .eq('client_id', user.id)
-            .maybeSingle()
-          
-          bookingData = data
-          error = clientError
-        } else {
-          // Fallback: check if user is either client or provider for this booking
-          const [clientBooking, providerBooking] = await Promise.all([
-            supabase
-              .from('bookings')
-              .select('*')
-              .eq('id', bookingId)
-              .eq('client_id', user.id)
-              .maybeSingle(),
-            supabase
-              .from('bookings')
-              .select('*')
-              .eq('id', bookingId)
-              .eq('provider_id', user.id)
-              .maybeSingle()
-          ])
-          
-          bookingData = clientBooking.data || providerBooking.data
-          error = clientBooking.error || providerBooking.error
+        ])
+        
+        bookingData = clientBooking.data || providerBooking.data
+        error = clientBooking.error || providerBooking.error
         }
       } else {
         bookingData = bookingWithRelations
@@ -4172,24 +4186,24 @@ export default function BookingDetailsPage() {
                             <div className="mt-4 space-y-4">
                               {/* Smart Insights */}
                               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <Lightbulb className="h-4 w-4 text-blue-600" />
-                                  <span className="text-sm font-medium text-blue-900">Smart Insights</span>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <Lightbulb className="h-4 w-4 text-blue-600" />
+                                <span className="text-sm font-medium text-blue-900">Smart Insights</span>
+                              </div>
+                              <div className="space-y-2 text-xs text-blue-800">
+                                <div className="flex items-center justify-between">
+                                  <span>Estimated completion:</span>
+                                  <span className="font-medium">{getEstimatedCompletion()}</span>
                                 </div>
-                                <div className="space-y-2 text-xs text-blue-800">
-                                  <div className="flex items-center justify-between">
-                                    <span>Estimated completion:</span>
-                                    <span className="font-medium">{getEstimatedCompletion()}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Time remaining:</span>
-                                    <span className="font-medium">{getTimeToDeadline()}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span>Progress efficiency:</span>
-                                    <span className="font-medium">{getStatusEfficiency()}</span>
-                                  </div>
+                                <div className="flex items-center justify-between">
+                                  <span>Time remaining:</span>
+                                  <span className="font-medium">{getTimeToDeadline()}</span>
                                 </div>
+                                <div className="flex items-center justify-between">
+                                  <span>Progress efficiency:</span>
+                                  <span className="font-medium">{getStatusEfficiency()}</span>
+                                </div>
+                              </div>
                               </div>
 
                               {/* Task Details Dropdown */}
@@ -4228,8 +4242,8 @@ export default function BookingDetailsPage() {
                                               <Plus className="h-4 w-4 mr-2" />
                                               Add First Task
                                             </Button>
-                                          </div>
-                                        )}
+                            </div>
+                          )}
                                       </div>
                                     ) : (
                                       getTasksForStep(step.status).map((task) => (
@@ -4538,6 +4552,36 @@ export default function BookingDetailsPage() {
             <CardContent className="p-6">
               {/* Enhanced Project Dashboard */}
               <div className="space-y-6">
+                {/* Standard Milestones (provider only quick-add) */}
+                {userRole === 'provider' && (
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-gray-900 flex items-center">
+                        <Target className="h-5 w-5 mr-2" />
+                        Standard Milestones
+                      </h4>
+                      <span className="text-xs text-gray-500">Click to add a task for this milestone</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <button type="button" onClick={() => openTaskForMilestone('Project Setup & Requirements Gathering')} className="text-left p-3 bg-white border rounded hover:border-blue-300 hover:bg-blue-50 transition">
+                        <div className="font-medium text-gray-800">Project Setup & Requirements Gathering</div>
+                        <div className="text-xs text-gray-500 mt-1">Kickoff, requirements, scope, documentation</div>
+                      </button>
+                      <button type="button" onClick={() => openTaskForMilestone('Design & Development Phase')} className="text-left p-3 bg-white border rounded hover:border-blue-300 hover:bg-blue-50 transition">
+                        <div className="font-medium text-gray-800">Design & Development Phase</div>
+                        <div className="text-xs text-gray-500 mt-1">UI/UX, implementation, integrations</div>
+                      </button>
+                      <button type="button" onClick={() => openTaskForMilestone('Testing & Quality Assurance')} className="text-left p-3 bg-white border rounded hover:border-blue-300 hover:bg-blue-50 transition">
+                        <div className="font-medium text-gray-800">Testing & Quality Assurance</div>
+                        <div className="text-xs text-gray-500 mt-1">Unit, integration, fixes, polish</div>
+                      </button>
+                      <button type="button" onClick={() => openTaskForMilestone('Client Review & Feedback')} className="text-left p-3 bg-white border rounded hover:border-blue-300 hover:bg-blue-50 transition">
+                        <div className="font-medium text-gray-800">Client Review & Feedback</div>
+                        <div className="text-xs text-gray-500 mt-1">Demos, feedback, approvals</div>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* Smart Tracking Dashboard */}
                 {userRole === 'client' && (
                   <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
