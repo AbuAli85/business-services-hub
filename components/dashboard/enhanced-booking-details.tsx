@@ -529,11 +529,24 @@ export default function EnhancedBookingDetails() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Get overdue count for this booking using new tasks table
+      // First get milestone IDs for this booking
+      const { data: milestones, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('id')
+        .eq('booking_id', bookingId)
+      
+      if (milestonesError) throw milestonesError
+      
+      if (!milestones || milestones.length === 0) {
+        setOverdueCount(0)
+        return
+      }
+      
+      // Get overdue count for tasks in these milestones
       const { data, error } = await supabase
         .from('tasks')
         .select('id')
-        .eq('milestone_id', supabase.from('milestones').select('id').eq('booking_id', bookingId))
+        .in('milestone_id', milestones.map(m => m.id))
         .eq('is_overdue', true)
 
       if (error) throw error

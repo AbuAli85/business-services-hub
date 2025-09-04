@@ -1,70 +1,7 @@
--- Advanced Progress Tracking System
--- Date: January 2025
--- Description: Create comprehensive milestone and task system for advanced progress tracking
+-- Complete Advanced Progress Tracking Migration
+-- This script includes ALL missing components
 
--- 0. Ensure bookings table has required columns
-DO $$
-BEGIN
-    -- Add status column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' 
-        AND table_name = 'bookings' 
-        AND column_name = 'status'
-    ) THEN
-        ALTER TABLE public.bookings 
-        ADD COLUMN status TEXT DEFAULT 'pending';
-        
-        RAISE NOTICE 'Added status column to bookings table';
-    END IF;
-    
-    -- Add progress_percentage column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' 
-        AND table_name = 'bookings' 
-        AND column_name = 'progress_percentage'
-    ) THEN
-        ALTER TABLE public.bookings 
-        ADD COLUMN progress_percentage INTEGER DEFAULT 0;
-        
-        RAISE NOTICE 'Added progress_percentage column to bookings table';
-    END IF;
-    
-    -- Add title column if it doesn't exist
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' 
-        AND table_name = 'bookings' 
-        AND column_name = 'title'
-    ) THEN
-        ALTER TABLE public.bookings 
-        ADD COLUMN title TEXT DEFAULT 'Service Booking';
-        
-        RAISE NOTICE 'Added title column to bookings table';
-    END IF;
-END $$;
-
--- 1. Create milestones table
-CREATE TABLE IF NOT EXISTS public.milestones (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    description TEXT,
-    due_date TIMESTAMPTZ,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled', 'on_hold')),
-    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
-    progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
-    weight DECIMAL(5,2) DEFAULT 1.0 CHECK (weight > 0), -- Weight for overall progress calculation
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by UUID,
-    is_overdue BOOLEAN DEFAULT FALSE,
-    overdue_since TIMESTAMPTZ
-);
-
--- 2. Create tasks table (enhanced version of booking_tasks)
+-- 1. Create tasks table (if not exists)
 CREATE TABLE IF NOT EXISTS public.tasks (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     milestone_id UUID NOT NULL REFERENCES public.milestones(id) ON DELETE CASCADE,
@@ -91,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     approval_notes TEXT
 );
 
--- 3. Create time tracking table for detailed time logging
+-- 2. Create time_entries table (if not exists)
 CREATE TABLE IF NOT EXISTS public.time_entries (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
@@ -105,7 +42,7 @@ CREATE TABLE IF NOT EXISTS public.time_entries (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Create comments table for task discussions
+-- 3. Create task_comments table (if not exists)
 CREATE TABLE IF NOT EXISTS public.task_comments (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
@@ -116,12 +53,7 @@ CREATE TABLE IF NOT EXISTS public.task_comments (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_milestones_booking_id ON public.milestones(booking_id);
-CREATE INDEX IF NOT EXISTS idx_milestones_status ON public.milestones(status);
-CREATE INDEX IF NOT EXISTS idx_milestones_due_date ON public.milestones(due_date);
-CREATE INDEX IF NOT EXISTS idx_milestones_overdue ON public.milestones(is_overdue) WHERE is_overdue = TRUE;
-
+-- 4. Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_tasks_milestone_id ON public.tasks(milestone_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON public.tasks(due_date);
@@ -135,55 +67,12 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_active ON public.time_entries(is_act
 CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON public.task_comments(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_comments_user_id ON public.task_comments(user_id);
 
--- 6. Enable RLS for all tables
-ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
+-- 5. Enable RLS for all tables
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.time_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.task_comments ENABLE ROW LEVEL SECURITY;
 
--- 7. Create RLS policies for milestones
-DROP POLICY IF EXISTS "Users can view milestones for their bookings" ON public.milestones;
-DROP POLICY IF EXISTS "Users can create milestones for their bookings" ON public.milestones;
-DROP POLICY IF EXISTS "Users can update milestones for their bookings" ON public.milestones;
-DROP POLICY IF EXISTS "Users can delete milestones for their bookings" ON public.milestones;
-
-CREATE POLICY "Users can view milestones for their bookings" ON public.milestones
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = milestones.booking_id 
-      AND (b.client_id = auth.uid() OR b.provider_id = auth.uid())
-    )
-  );
-
-CREATE POLICY "Users can create milestones for their bookings" ON public.milestones
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = milestones.booking_id 
-      AND (b.client_id = auth.uid() OR b.provider_id = auth.uid())
-    )
-  );
-
-CREATE POLICY "Users can update milestones for their bookings" ON public.milestones
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = milestones.booking_id 
-      AND (b.client_id = auth.uid() OR b.provider_id = auth.uid())
-    )
-  );
-
-CREATE POLICY "Users can delete milestones for their bookings" ON public.milestones
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = milestones.booking_id 
-      AND (b.client_id = auth.uid() OR b.provider_id = auth.uid())
-    )
-  );
-
--- 8. Create RLS policies for tasks
+-- 6. Create RLS policies for tasks
 DROP POLICY IF EXISTS "Users can view tasks for their bookings" ON public.tasks;
 DROP POLICY IF EXISTS "Users can create tasks for their bookings" ON public.tasks;
 DROP POLICY IF EXISTS "Users can update tasks for their bookings" ON public.tasks;
@@ -229,7 +118,7 @@ CREATE POLICY "Users can delete tasks for their bookings" ON public.tasks
     )
   );
 
--- 9. Create RLS policies for time entries
+-- 7. Create RLS policies for time entries
 DROP POLICY IF EXISTS "Users can view time entries for their tasks" ON public.time_entries;
 DROP POLICY IF EXISTS "Users can create time entries for their tasks" ON public.time_entries;
 DROP POLICY IF EXISTS "Users can update time entries for their tasks" ON public.time_entries;
@@ -283,7 +172,7 @@ CREATE POLICY "Users can delete time entries for their tasks" ON public.time_ent
     )
   );
 
--- 10. Create RLS policies for task comments
+-- 8. Create RLS policies for task comments
 DROP POLICY IF EXISTS "Users can view comments for their tasks" ON public.task_comments;
 DROP POLICY IF EXISTS "Users can create comments for their tasks" ON public.task_comments;
 DROP POLICY IF EXISTS "Users can update comments for their tasks" ON public.task_comments;
@@ -336,7 +225,7 @@ CREATE POLICY "Users can delete comments for their tasks" ON public.task_comment
     )
   );
 
--- 11. Create functions for progress calculation
+-- 9. Create functions for progress calculation
 CREATE OR REPLACE FUNCTION calculate_milestone_progress(milestone_id UUID)
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -378,7 +267,7 @@ BEGIN
 END;
 $$;
 
--- 12. Create function to update overdue status
+-- 10. Create function to update overdue status
 CREATE OR REPLACE FUNCTION update_overdue_status()
 RETURNS void
 LANGUAGE plpgsql
@@ -405,7 +294,7 @@ BEGIN
 END;
 $$;
 
--- 13. Create function to update milestone progress when tasks change
+-- 11. Create function to update milestone progress when tasks change
 CREATE OR REPLACE FUNCTION update_milestone_progress()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -448,14 +337,7 @@ BEGIN
 END;
 $$;
 
--- 14. Create triggers for automatic progress updates
-DROP TRIGGER IF EXISTS trigger_update_milestone_progress ON public.tasks;
-CREATE TRIGGER trigger_update_milestone_progress
-    AFTER INSERT OR UPDATE OR DELETE ON public.tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION update_milestone_progress();
-
--- 15. Create function to update booking progress when milestones change
+-- 12. Create function to update booking progress when milestones change
 CREATE OR REPLACE FUNCTION update_booking_progress()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -487,20 +369,20 @@ BEGIN
 END;
 $$;
 
--- 16. Create trigger for booking progress updates
+-- 13. Create triggers for automatic progress updates
+DROP TRIGGER IF EXISTS trigger_update_milestone_progress ON public.tasks;
+CREATE TRIGGER trigger_update_milestone_progress
+    AFTER INSERT OR UPDATE OR DELETE ON public.tasks
+    FOR EACH ROW
+    EXECUTE FUNCTION update_milestone_progress();
+
 DROP TRIGGER IF EXISTS trigger_update_booking_progress ON public.milestones;
 CREATE TRIGGER trigger_update_booking_progress
     AFTER INSERT OR UPDATE OR DELETE ON public.milestones
     FOR EACH ROW
     EXECUTE FUNCTION update_booking_progress();
 
--- 17. Add comments to tables for documentation
-COMMENT ON TABLE public.milestones IS 'Project milestones for tracking major deliverables';
-COMMENT ON TABLE public.tasks IS 'Individual tasks within milestones for detailed progress tracking';
-COMMENT ON TABLE public.time_entries IS 'Time tracking entries for tasks with start/stop functionality';
-COMMENT ON TABLE public.task_comments IS 'Comments and discussions on tasks (internal and shared)';
-
--- 18. Create view for comprehensive progress data
+-- 14. Create view for comprehensive progress data
 CREATE OR REPLACE VIEW booking_progress_view AS
 SELECT 
     b.id as booking_id,
@@ -521,8 +403,17 @@ LEFT JOIN public.milestones m ON m.booking_id = b.id
 LEFT JOIN public.tasks t ON t.milestone_id = m.id
 GROUP BY b.id, b.title, b.status, b.progress_percentage, b.created_at, b.updated_at;
 
--- 19. Grant necessary permissions
+-- 15. Grant necessary permissions
 GRANT SELECT ON booking_progress_view TO authenticated;
 GRANT EXECUTE ON FUNCTION calculate_milestone_progress(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION calculate_booking_progress(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION update_overdue_status() TO authenticated;
+
+-- 16. Add comments to tables for documentation
+COMMENT ON TABLE public.tasks IS 'Individual tasks within milestones for detailed progress tracking';
+COMMENT ON TABLE public.time_entries IS 'Time tracking entries for tasks with start/stop functionality';
+COMMENT ON TABLE public.task_comments IS 'Comments and discussions on tasks (internal and shared)';
+
+-- 17. Verify completion
+SELECT 'Migration completed successfully!' as status;
+SELECT 'All tables, functions, and views have been created.' as message;
