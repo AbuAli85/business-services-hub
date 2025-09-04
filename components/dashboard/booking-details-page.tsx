@@ -287,6 +287,9 @@ export default function BookingDetailsPage() {
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [loadingMessages, setLoadingMessages] = useState(false)
+
+  // Views
+  const [showKanbanView, setShowKanbanView] = useState(false)
   const [messageSearch, setMessageSearch] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -4690,6 +4693,15 @@ export default function BookingDetailsPage() {
                     >
                       <BarChart3 className="h-4 w-4 mr-2" />
                       {showGanttView ? 'List View' : 'Timeline View'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={showKanbanView ? 'default' : 'outline'}
+                      onClick={() => setShowKanbanView(!showKanbanView)}
+                      className="border-gray-300"
+                    >
+                      <Layout className="h-4 w-4 mr-2" />
+                      {showKanbanView ? 'List View' : 'Kanban View'}
                     </Button>
                     
                     <div className="flex items-center space-x-2">

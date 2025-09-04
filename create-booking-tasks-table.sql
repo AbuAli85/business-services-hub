@@ -60,3 +60,27 @@ CREATE TRIGGER update_booking_tasks_updated_at
     BEFORE UPDATE ON booking_tasks 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Upgrades: weights, notes, shared comments, and dependencies
+ALTER TABLE booking_tasks ADD COLUMN IF NOT EXISTS weight NUMERIC DEFAULT 1 CHECK (weight >= 0);
+ALTER TABLE booking_tasks ADD COLUMN IF NOT EXISTS internal_notes TEXT;
+ALTER TABLE booking_tasks ADD COLUMN IF NOT EXISTS shared_comments JSONB DEFAULT '[]'::jsonb; -- [{id, user_id, text, created_at, is_action, action_due, action_assignee}]
+
+-- Dependencies table
+CREATE TABLE IF NOT EXISTS booking_task_dependencies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  task_id UUID NOT NULL REFERENCES booking_tasks(id) ON DELETE CASCADE,
+  depends_on_task_id UUID NOT NULL REFERENCES booking_tasks(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE booking_task_dependencies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS "participants can read task deps" ON booking_task_dependencies
+  FOR SELECT USING (
+    booking_id IN (SELECT id FROM bookings WHERE client_id = auth.uid() OR provider_id = auth.uid())
+  );
+CREATE POLICY IF NOT EXISTS "provider can write task deps" ON booking_task_dependencies
+  FOR ALL USING (
+    booking_id IN (SELECT id FROM bookings WHERE provider_id = auth.uid())
+  );
