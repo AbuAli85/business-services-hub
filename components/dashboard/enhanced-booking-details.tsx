@@ -106,7 +106,6 @@ import toast from 'react-hot-toast'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import SmartCommunicationCenter from './smart-communication-center'
 import SmartFileManager from './smart-file-manager'
-import { EnhancedProgressTimeline } from './enhanced-progress-timeline'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 import { ProgressTabs } from './progress-tabs'
@@ -530,20 +529,19 @@ export default function EnhancedBookingDetails() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Update overdue status first
-      await supabase.rpc('update_overdue_tasks')
-      
-      // Get overdue count for this booking
+      // Get overdue count for this booking using new tasks table
       const { data, error } = await supabase
-        .from('booking_tasks')
+        .from('tasks')
         .select('id')
-        .eq('booking_id', bookingId)
+        .eq('milestone_id', supabase.from('milestones').select('id').eq('booking_id', bookingId))
         .eq('is_overdue', true)
 
       if (error) throw error
       setOverdueCount(data?.length || 0)
     } catch (error) {
       console.error('Error loading overdue count:', error)
+      // Fallback to 0 if new tables don't exist yet
+      setOverdueCount(0)
     }
   }
 
@@ -553,22 +551,22 @@ export default function EnhancedBookingDetails() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Load tasks and milestones
-      const [tasksResult, milestonesResult] = await Promise.all([
-        supabase.from('booking_tasks').select('*').eq('booking_id', bookingId),
-        supabase.from('booking_milestones').select('*').eq('booking_id', bookingId)
-      ])
+      // Load milestones and their tasks using new tables
+      const { data: milestones, error: milestonesError } = await supabase
+        .from('milestones')
+        .select(`
+          *,
+          tasks (*)
+        `)
+        .eq('booking_id', bookingId)
 
-      if (tasksResult.error) throw tasksResult.error
-      if (milestonesResult.error) throw milestonesResult.error
+      if (milestonesError) throw milestonesError
 
-      const tasks = tasksResult.data || []
-      const milestones = milestonesResult.data || []
-
-      // Calculate stats
-      const totalTasks = tasks.length
-      const completedTasks = tasks.filter(t => t.status === 'completed').length
-      const overdueTasks = tasks.filter(t => t.is_overdue).length
+      // Flatten tasks from all milestones
+      const allTasks = milestones?.flatMap(m => m.tasks || []) || []
+      const totalTasks = allTasks.length
+      const completedTasks = allTasks.filter(t => t.status === 'completed').length
+      const overdueTasks = allTasks.filter(t => t.is_overdue).length
       const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
       const exportData: ExportData = {
@@ -582,7 +580,7 @@ export default function EnhancedBookingDetails() {
           client: booking.client,
           provider: booking.provider
         },
-        tasks: tasks.map(task => ({
+        tasks: allTasks.map(task => ({
           id: task.id,
           title: task.title,
           description: task.description,
@@ -591,16 +589,19 @@ export default function EnhancedBookingDetails() {
           due_date: task.due_date,
           completed_at: task.completed_at,
           is_overdue: task.is_overdue,
-          weight: task.weight
+          weight: 1, // Default weight for tasks
+          estimated_hours: task.estimated_hours,
+          actual_hours: task.actual_hours
         })),
-        milestones: milestones.map(milestone => ({
+        milestones: milestones?.map(milestone => ({
           id: milestone.id,
           title: milestone.title,
           description: milestone.description,
           status: milestone.status,
           due_date: milestone.due_date,
-          created_at: milestone.created_at
-        })),
+          created_at: milestone.created_at,
+          progress_percentage: milestone.progress_percentage
+        })) || [],
         stats: {
           totalTasks,
           completedTasks,

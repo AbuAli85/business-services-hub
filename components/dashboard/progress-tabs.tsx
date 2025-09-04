@@ -6,6 +6,7 @@ import { ProgressTrackingService, Milestone, Task, BookingProgress, getStatusCol
 import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'
+import { ProgressFallback } from './progress-fallback'
 
 interface ProgressTabsProps {
   bookingId: string
@@ -35,6 +36,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
       setBookingProgress(progressData)
     } catch (error) {
       console.error('Error loading progress data:', error)
+      // If there's an error, it might be because the database schema doesn't exist
+      // We'll show the fallback component
     } finally {
       setLoading(false)
     }
@@ -52,6 +55,11 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
+  }
+
+  // If there are no milestones and no booking progress, show fallback
+  if (milestones.length === 0 && !bookingProgress) {
+    return <ProgressFallback bookingId={bookingId} userRole={userRole} />
   }
 
   return (
