@@ -235,7 +235,7 @@ export async function generatePDF(data: ExportData): Promise<Blob> {
   })
 
   const pdfBytes = await pdfDoc.save()
-  return new Blob([pdfBytes.buffer], { type: 'application/pdf' })
+  return new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' })
 }
 
 export async function generateExcel(data: ExportData): Promise<Blob> {
