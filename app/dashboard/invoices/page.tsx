@@ -146,7 +146,7 @@ export default function InvoicesPage() {
 
   const formatInvoiceNumber = (invoice: InvoiceRecord) => {
     // Prefer a stable, readable number based on date and id
-    const datePart = formatDate(invoice.created_at).replaceAll('/', '')
+    const datePart = formatDate(invoice.created_at).replace(/\//g, '')
     const idPart = invoice.id.replace('virtual-', '').slice(0, 6).toUpperCase()
     return `INV-${datePart}-${idPart}`
   }
@@ -168,7 +168,9 @@ export default function InvoicesPage() {
   }, [filteredInvoices])
 
   const downloadCsv = () => {
-    const csv = csvRows.map(r => r.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n')
+    const csv = csvRows
+      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
