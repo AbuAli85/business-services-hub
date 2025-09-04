@@ -21,6 +21,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Brain,
+  Bell,
   Phone,
   Mail,
   MapPin,
@@ -233,7 +234,6 @@ export default function BookingDetailsPage() {
   const [editingTaskComment, setEditingTaskComment] = useState<{ taskId: string; commentId: string; text: string } | null>(null)
   
   // Enhanced Features State
-  const [milestones, setMilestones] = useState<any[]>([])
   const [taskTemplates, setTaskTemplates] = useState<any[]>([])
   const [showTaskDetails, setShowTaskDetails] = useState<{ [key: string]: boolean }>({})
   const [taskFilter, setTaskFilter] = useState({
@@ -290,7 +290,6 @@ export default function BookingDetailsPage() {
   const [loadingMessages, setLoadingMessages] = useState(false)
 
   // Views
-  const [showKanbanView, setShowKanbanView] = useState(false)
   const [messageSearch, setMessageSearch] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -313,6 +312,24 @@ export default function BookingDetailsPage() {
   const [showNotificationCenter, setShowNotificationCenter] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
+  // Phase 2: Milestone System State
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false)
+  const [newMilestone, setNewMilestone] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    status: 'pending'
+  })
+  const [expandedMilestones, setExpandedMilestones] = useState<{ [key: string]: boolean }>({})
+
+  // Phase 2: Time Tracking State
+  const [activeTimeTracking, setActiveTimeTracking] = useState<{ [key: string]: string }>({}) // taskId -> logId
+
+  // Phase 2: Kanban View State
+  const [showKanbanView, setShowKanbanView] = useState(false)
+  const [draggedTask, setDraggedTask] = useState<any>(null)
+
   const bookingId = params.id as string
 
   useEffect(() => {
@@ -323,6 +340,7 @@ export default function BookingDetailsPage() {
       loadMessages()
       loadTasks()
       loadNotifications()
+      loadMilestones()
       // Realtime subscription for booking updates
       setupRealtime()
       loadSuggestions()
@@ -921,33 +939,6 @@ export default function BookingDetailsPage() {
     }
   }
 
-  const startTimeTracking = (taskId: string) => {
-    setTimeTracking(prev => ({
-      ...prev,
-      [taskId]: {
-        start: new Date(),
-        total: prev[taskId]?.total || 0
-      }
-    }))
-    toast.success('Time tracking started')
-  }
-
-  const stopTimeTracking = (taskId: string) => {
-    setTimeTracking(prev => {
-      const current = prev[taskId]
-      if (!current?.start) return prev
-
-      const elapsed = (new Date().getTime() - current.start.getTime()) / (1000 * 60 * 60) // hours
-      return {
-        ...prev,
-        [taskId]: {
-          start: null,
-          total: current.total + elapsed
-        }
-      }
-    })
-    toast.success('Time tracking stopped')
-  }
 
   const toggleTaskDetails = (taskId: string) => {
     setShowTaskDetails(prev => ({
@@ -2873,6 +2864,212 @@ export default function BookingDetailsPage() {
         `You have ${upcomingTasks.length} task(s) due within 3 days.`,
         { upcomingCount: upcomingTasks.length, tasks: upcomingTasks }
       )
+    }
+  }
+
+  // Phase 2: Milestone Management Functions
+  const loadMilestones = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase
+        .from('booking_milestones')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: true })
+      
+      if (error) throw error
+      setMilestones(data || [])
+    } catch (error) {
+      console.error('Error loading milestones:', error)
+    }
+  }
+
+  const createMilestone = async () => {
+    if (!newMilestone.title.trim()) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_milestones')
+        .insert({
+          booking_id: bookingId,
+          title: newMilestone.title,
+          description: newMilestone.description,
+          due_date: newMilestone.due_date || null,
+          status: newMilestone.status
+        })
+      
+      if (error) throw error
+      toast.success('Milestone created')
+      setShowMilestoneModal(false)
+      setNewMilestone({ title: '', description: '', due_date: '', status: 'pending' })
+      loadMilestones()
+    } catch (error) {
+      console.error('Error creating milestone:', error)
+      toast.error('Failed to create milestone')
+    }
+  }
+
+  const updateMilestoneStatus = async (milestoneId: string, status: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_milestones')
+        .update({ status })
+        .eq('id', milestoneId)
+      
+      if (error) throw error
+      toast.success('Milestone updated')
+      loadMilestones()
+    } catch (error) {
+      console.error('Error updating milestone:', error)
+      toast.error('Failed to update milestone')
+    }
+  }
+
+  const getTasksForMilestone = (milestoneId: string) => {
+    return tasks.filter(task => task.milestone_id === milestoneId)
+  }
+
+  const toggleMilestoneExpansion = (milestoneId: string) => {
+    setExpandedMilestones(prev => ({
+      ...prev,
+      [milestoneId]: !prev[milestoneId]
+    }))
+  }
+
+  // Phase 2: Time Tracking Functions
+  const startTimeTracking = async (taskId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase.rpc('start_time_tracking', {
+        p_task_id: taskId
+      })
+      
+      if (error) throw error
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      
+      setActiveTimeTracking(prev => ({
+        ...prev,
+        [taskId]: data.log_id
+      }))
+      toast.success('Time tracking started')
+      loadTasks() // Refresh to show updated time logs
+    } catch (error) {
+      console.error('Error starting time tracking:', error)
+      toast.error('Failed to start time tracking')
+    }
+  }
+
+  const stopTimeTracking = async (taskId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase.rpc('stop_time_tracking', {
+        p_task_id: taskId
+      })
+      
+      if (error) throw error
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      
+      setActiveTimeTracking(prev => {
+        const newState = { ...prev }
+        delete newState[taskId]
+        return newState
+      })
+      
+      toast.success(`Time tracking stopped. Duration: ${Math.round(data.duration_minutes)} minutes`)
+      loadTasks() // Refresh to show updated actual hours
+    } catch (error) {
+      console.error('Error stopping time tracking:', error)
+      toast.error('Failed to stop time tracking')
+    }
+  }
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
+  }
+
+  // Phase 2: Approval Workflow Functions
+  const requestApproval = async (taskId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_tasks')
+        .update({ approval_status: 'requested' })
+        .eq('id', taskId)
+      
+      if (error) throw error
+      toast.success('Approval requested')
+      loadTasks()
+      
+      // Create notification for client
+      createNotification(
+        'approval',
+        'Approval Requested',
+        'A task is waiting for your approval.',
+        { taskId }
+      )
+    } catch (error) {
+      console.error('Error requesting approval:', error)
+      toast.error('Failed to request approval')
+    }
+  }
+
+  const approveTask = async (taskId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_tasks')
+        .update({ approval_status: 'approved' })
+        .eq('id', taskId)
+      
+      if (error) throw error
+      toast.success('Task approved')
+      loadTasks()
+    } catch (error) {
+      console.error('Error approving task:', error)
+      toast.error('Failed to approve task')
+    }
+  }
+
+  // Phase 2: Kanban Functions
+  const handleDragStart = (e: React.DragEvent, task: any) => {
+    setDraggedTask(task)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault()
+    if (!draggedTask) return
+
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('booking_tasks')
+        .update({ status: newStatus })
+        .eq('id', draggedTask.id)
+      
+      if (error) throw error
+      toast.success('Task status updated')
+      loadTasks()
+    } catch (error) {
+      console.error('Error updating task status:', error)
+      toast.error('Failed to update task status')
+    } finally {
+      setDraggedTask(null)
     }
   }
 
@@ -4814,6 +5011,28 @@ export default function BookingDetailsPage() {
                 </div>
                 {userRole === 'provider' ? (
                   <div className="flex items-center space-x-2">
+                    {/* View Toggle */}
+                    <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+                      <Button
+                        size="sm"
+                        variant={!showKanbanView ? "default" : "ghost"}
+                        onClick={() => setShowKanbanView(false)}
+                        className="h-8 px-3"
+                      >
+                        <List className="h-4 w-4 mr-1" />
+                        List
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={showKanbanView ? "default" : "ghost"}
+                        onClick={() => setShowKanbanView(true)}
+                        className="h-8 px-3"
+                      >
+                        <Layout className="h-4 w-4 mr-1" />
+                        Kanban
+                      </Button>
+                    </div>
+                    
                     {/* Notification Bell */}
                     <Button
                       size="sm"
@@ -4828,6 +5047,18 @@ export default function BookingDetailsPage() {
                         </span>
                       )}
                     </Button>
+                    
+                    {/* Milestone Button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowMilestoneModal(true)}
+                      className="border-gray-300"
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Milestone
+                    </Button>
+                    
                     <Button 
                       size="sm" 
                       variant="outline"
@@ -7388,6 +7619,83 @@ export default function BookingDetailsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Milestone Creation Modal */}
+      {showMilestoneModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Create New Milestone</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMilestoneModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="milestone-title" className="text-sm font-medium mb-2 block">
+                  Milestone Title *
+                </label>
+                <input
+                  id="milestone-title"
+                  type="text"
+                  value={newMilestone.title}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full p-3 border rounded-md"
+                  placeholder="e.g., Project Setup, Design Phase, Testing"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="milestone-description" className="text-sm font-medium mb-2 block">
+                  Description
+                </label>
+                <textarea
+                  id="milestone-description"
+                  value={newMilestone.description}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full p-3 border rounded-md h-24"
+                  placeholder="Describe what this milestone includes..."
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="milestone-due-date" className="text-sm font-medium mb-2 block">
+                  Due Date (Optional)
+                </label>
+                <input
+                  id="milestone-due-date"
+                  type="date"
+                  value={newMilestone.due_date}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, due_date: e.target.value }))}
+                  className="w-full p-3 border rounded-md"
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button 
+                  onClick={createMilestone}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Create Milestone
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowMilestoneModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         </div>
