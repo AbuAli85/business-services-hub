@@ -1,5 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
-import * as XLSX from 'xlsx'
+import * as ExcelJS from 'exceljs'
 
 export interface ExportData {
   booking: {
@@ -238,46 +238,46 @@ export async function generatePDF(data: ExportData): Promise<Blob> {
   return new Blob([pdfBytes], { type: 'application/pdf' })
 }
 
-export function generateExcel(data: ExportData): Blob {
+export async function generateExcel(data: ExportData): Promise<Blob> {
   // Create workbook
-  const workbook = XLSX.utils.book_new()
+  const workbook = new ExcelJS.Workbook()
 
   // Project Overview Sheet
-  const overviewData = [
-    ['Project Progress Report'],
-    [''],
-    ['Booking ID', data.booking.id],
-    ['Title', data.booking.title],
-    ['Status', data.booking.status.toUpperCase()],
-    ['Amount', `${data.booking.currency} ${data.booking.amount}`],
-    ['Created', new Date(data.booking.created_at).toLocaleDateString()],
-    ['Generated', new Date().toLocaleDateString()],
-    [''],
-    ['Client Information'],
-    ['Name', data.booking.client.full_name],
-    ['Email', data.booking.client.email],
-    ['Company', data.booking.client.company_name || 'N/A'],
-    [''],
-    ['Provider Information'],
-    ['Name', data.booking.provider.full_name],
-    ['Email', data.booking.provider.email],
-    ['Company', data.booking.provider.company_name || 'N/A'],
-    [''],
-    ['Progress Statistics'],
-    ['Total Tasks', data.stats.totalTasks],
-    ['Completed Tasks', data.stats.completedTasks],
-    ['Overdue Tasks', data.stats.overdueTasks],
-    ['Overall Progress', `${data.stats.overallProgress}%`],
-  ]
-
-  const overviewSheet = XLSX.utils.aoa_to_sheet(overviewData)
-  XLSX.utils.book_append_sheet(workbook, overviewSheet, 'Overview')
+  const overviewSheet = workbook.addWorksheet('Overview')
+  
+  overviewSheet.addRow(['Project Progress Report'])
+  overviewSheet.addRow([''])
+  overviewSheet.addRow(['Booking ID', data.booking.id])
+  overviewSheet.addRow(['Title', data.booking.title])
+  overviewSheet.addRow(['Status', data.booking.status.toUpperCase()])
+  overviewSheet.addRow(['Amount', `${data.booking.currency} ${data.booking.amount}`])
+  overviewSheet.addRow(['Created', new Date(data.booking.created_at).toLocaleDateString()])
+  overviewSheet.addRow(['Generated', new Date().toLocaleDateString()])
+  overviewSheet.addRow([''])
+  overviewSheet.addRow(['Client Information'])
+  overviewSheet.addRow(['Name', data.booking.client.full_name])
+  overviewSheet.addRow(['Email', data.booking.client.email])
+  overviewSheet.addRow(['Company', data.booking.client.company_name || 'N/A'])
+  overviewSheet.addRow([''])
+  overviewSheet.addRow(['Provider Information'])
+  overviewSheet.addRow(['Name', data.booking.provider.full_name])
+  overviewSheet.addRow(['Email', data.booking.provider.email])
+  overviewSheet.addRow(['Company', data.booking.provider.company_name || 'N/A'])
+  overviewSheet.addRow([''])
+  overviewSheet.addRow(['Progress Statistics'])
+  overviewSheet.addRow(['Total Tasks', data.stats.totalTasks])
+  overviewSheet.addRow(['Completed Tasks', data.stats.completedTasks])
+  overviewSheet.addRow(['Overdue Tasks', data.stats.overdueTasks])
+  overviewSheet.addRow(['Overall Progress', `${data.stats.overallProgress}%`])
 
   // Tasks Sheet
   if (data.tasks.length > 0) {
-    const tasksData = [
-      ['Task ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Completed At', 'Overdue', 'Weight'],
-      ...data.tasks.map(task => [
+    const tasksSheet = workbook.addWorksheet('Tasks')
+    
+    tasksSheet.addRow(['Task ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Completed At', 'Overdue', 'Weight'])
+    
+    data.tasks.forEach(task => {
+      tasksSheet.addRow([
         task.id,
         task.title,
         task.description || '',
@@ -288,17 +288,17 @@ export function generateExcel(data: ExportData): Blob {
         task.is_overdue ? 'YES' : 'NO',
         task.weight
       ])
-    ]
-
-    const tasksSheet = XLSX.utils.aoa_to_sheet(tasksData)
-    XLSX.utils.book_append_sheet(workbook, tasksSheet, 'Tasks')
+    })
   }
 
   // Milestones Sheet
   if (data.milestones.length > 0) {
-    const milestonesData = [
-      ['Milestone ID', 'Title', 'Description', 'Status', 'Due Date', 'Created At'],
-      ...data.milestones.map(milestone => [
+    const milestonesSheet = workbook.addWorksheet('Milestones')
+    
+    milestonesSheet.addRow(['Milestone ID', 'Title', 'Description', 'Status', 'Due Date', 'Created At'])
+    
+    data.milestones.forEach(milestone => {
+      milestonesSheet.addRow([
         milestone.id,
         milestone.title,
         milestone.description || '',
@@ -306,44 +306,38 @@ export function generateExcel(data: ExportData): Blob {
         milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : '',
         new Date(milestone.created_at).toLocaleDateString()
       ])
-    ]
-
-    const milestonesSheet = XLSX.utils.aoa_to_sheet(milestonesData)
-    XLSX.utils.book_append_sheet(workbook, milestonesSheet, 'Milestones')
+    })
   }
 
   // Summary Sheet
-  const summaryData = [
-    ['PROJECT SUMMARY'],
-    [''],
-    ['Metric', 'Value'],
-    ['Total Tasks', data.stats.totalTasks],
-    ['Completed Tasks', data.stats.completedTasks],
-    ['Pending Tasks', data.stats.totalTasks - data.stats.completedTasks],
-    ['Overdue Tasks', data.stats.overdueTasks],
-    ['Completion Rate', `${data.stats.overallProgress}%`],
-    [''],
-    ['TASK BREAKDOWN BY STATUS'],
-    ['Status', 'Count'],
-    ['Pending', data.tasks.filter(t => t.status === 'pending').length],
-    ['In Progress', data.tasks.filter(t => t.status === 'in_progress').length],
-    ['Completed', data.tasks.filter(t => t.status === 'completed').length],
-    ['Cancelled', data.tasks.filter(t => t.status === 'cancelled').length],
-    [''],
-    ['TASK BREAKDOWN BY PRIORITY'],
-    ['Priority', 'Count'],
-    ['Low', data.tasks.filter(t => t.priority === 'low').length],
-    ['Medium', data.tasks.filter(t => t.priority === 'medium').length],
-    ['High', data.tasks.filter(t => t.priority === 'high').length],
-    ['Urgent', data.tasks.filter(t => t.priority === 'urgent').length],
-  ]
-
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
+  const summarySheet = workbook.addWorksheet('Summary')
+  
+  summarySheet.addRow(['PROJECT SUMMARY'])
+  summarySheet.addRow([''])
+  summarySheet.addRow(['Metric', 'Value'])
+  summarySheet.addRow(['Total Tasks', data.stats.totalTasks])
+  summarySheet.addRow(['Completed Tasks', data.stats.completedTasks])
+  summarySheet.addRow(['Pending Tasks', data.stats.totalTasks - data.stats.completedTasks])
+  summarySheet.addRow(['Overdue Tasks', data.stats.overdueTasks])
+  summarySheet.addRow(['Completion Rate', `${data.stats.overallProgress}%`])
+  summarySheet.addRow([''])
+  summarySheet.addRow(['TASK BREAKDOWN BY STATUS'])
+  summarySheet.addRow(['Status', 'Count'])
+  summarySheet.addRow(['Pending', data.tasks.filter(t => t.status === 'pending').length])
+  summarySheet.addRow(['In Progress', data.tasks.filter(t => t.status === 'in_progress').length])
+  summarySheet.addRow(['Completed', data.tasks.filter(t => t.status === 'completed').length])
+  summarySheet.addRow(['Cancelled', data.tasks.filter(t => t.status === 'cancelled').length])
+  summarySheet.addRow([''])
+  summarySheet.addRow(['TASK BREAKDOWN BY PRIORITY'])
+  summarySheet.addRow(['Priority', 'Count'])
+  summarySheet.addRow(['Low', data.tasks.filter(t => t.priority === 'low').length])
+  summarySheet.addRow(['Medium', data.tasks.filter(t => t.priority === 'medium').length])
+  summarySheet.addRow(['High', data.tasks.filter(t => t.priority === 'high').length])
+  summarySheet.addRow(['Urgent', data.tasks.filter(t => t.priority === 'urgent').length])
 
   // Generate Excel file
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-  return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const buffer = await workbook.xlsx.writeBuffer()
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 }
 
 export function downloadFile(blob: Blob, filename: string) {

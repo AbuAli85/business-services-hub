@@ -106,8 +106,8 @@ import toast from 'react-hot-toast'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import SmartCommunicationCenter from './smart-communication-center'
 import SmartFileManager from './smart-file-manager'
-import EnhancedProgressTimeline from './enhanced-progress-timeline'
-import NotificationBell from '@/components/ui/notification-bell'
+import { EnhancedProgressTimeline } from './enhanced-progress-timeline'
+import { NotificationBell } from '@/components/ui/notification-bell'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 
 interface EnhancedBooking {
@@ -612,7 +612,7 @@ export default function EnhancedBookingDetails() {
         const pdfBlob = await generatePDF(exportData)
         downloadFile(pdfBlob, `booking-${booking.id.slice(0, 8)}-progress.pdf`)
       } else {
-        const excelBlob = generateExcel(exportData)
+        const excelBlob = await generateExcel(exportData)
         downloadFile(excelBlob, `booking-${booking.id.slice(0, 8)}-progress.xlsx`)
       }
 

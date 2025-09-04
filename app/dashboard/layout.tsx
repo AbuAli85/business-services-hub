@@ -360,7 +360,7 @@ export default function DashboardLayout({
             
             <div className="flex items-center space-x-4">
               {/* Notification Bell */}
-              <NotificationBell />
+              <NotificationBell userId={user.id} />
               
               
               

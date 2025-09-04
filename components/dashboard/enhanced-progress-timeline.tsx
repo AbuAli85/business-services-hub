@@ -60,7 +60,7 @@ interface ProgressTimelineProps {
   onExport?: (format: 'pdf' | 'excel') => void
 }
 
-export default function EnhancedProgressTimeline({ 
+export function EnhancedProgressTimeline({ 
   bookingId, 
   userRole, 
   onExport 
@@ -565,3 +565,5 @@ export default function EnhancedProgressTimeline({
     </div>
   )
 }
+
+export default EnhancedProgressTimeline

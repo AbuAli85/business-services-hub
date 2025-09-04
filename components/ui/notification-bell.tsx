@@ -28,7 +28,7 @@ interface NotificationBellProps {
   className?: string
 }
 
-export default function NotificationBell({ userId, className = '' }: NotificationBellProps) {
+export function NotificationBell({ userId, className = '' }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
@@ -90,6 +90,8 @@ export default function NotificationBell({ userId, className = '' }: Notificatio
                   <button
                     onClick={() => toast.dismiss(t.id)}
                     className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
+                    aria-label="Close notification"
+                    title="Close notification"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -319,3 +321,5 @@ export default function NotificationBell({ userId, className = '' }: Notificatio
     </div>
   )
 }
+
+export default NotificationBell
