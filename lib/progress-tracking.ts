@@ -151,7 +151,7 @@ export class ProgressTrackingService {
     try {
       const supabase = await getSupabaseClient()
       
-      // Test basic table access
+      // Test basic table access with minimal query
       const { error: basicError } = await supabase
         .from('time_entries')
         .select('id')
@@ -163,21 +163,7 @@ export class ProgressTrackingService {
         return false
       }
       
-      // Test the specific query pattern that causes 406 errors
-      const { error: filterError } = await supabase
-        .from('time_entries')
-        .select('id, task_id, user_id, description, start_time, end_time, duration_minutes, is_active, created_at, updated_at')
-        .eq('user_id', '00000000-0000-0000-0000-000000000000')
-        .eq('is_active', true)
-        .limit(1)
-      
-      if (filterError) {
-        console.warn('time_entries table filtered query failed:', filterError.message)
-        this.timeEntriesAccessible = false
-        return false
-      }
-      
-      // If both tests pass, mark as accessible
+      // If basic access works, mark as accessible
       this.timeEntriesAccessible = true
       return true
     } catch (error) {
@@ -194,6 +180,13 @@ export class ProgressTrackingService {
     }
     
     try {
+      // First check if time_entries table is generally accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
+      if (!isAccessible) {
+        this.userTimeEntriesAccess.set(userId, false)
+        return false
+      }
+      
       const supabase = await getSupabaseClient()
       
       // Test if user can query time_entries with their own user_id
@@ -201,7 +194,6 @@ export class ProgressTrackingService {
         .from('time_entries')
         .select('id')
         .eq('user_id', userId)
-        .eq('is_active', true)
         .limit(1)
       
       if (userError) {
@@ -551,7 +543,7 @@ export class ProgressTrackingService {
       
       const supabase = await getSupabaseClient()
       
-      // Now try the actual query
+      // Now try the actual query with error handling
       const { data, error } = await supabase
         .from('time_entries')
         .select('id, task_id, user_id, description, start_time, end_time, duration_minutes, is_active, created_at, updated_at')
@@ -562,6 +554,12 @@ export class ProgressTrackingService {
       if (error) {
         if (error.code === 'PGRST116') {
           // No rows found - this is normal
+          return null
+        }
+        // If we get a 406 error, mark user as unable to access time_entries
+        if (error.message?.includes('406') || error.message?.includes('Not Acceptable')) {
+          console.warn(`User ${userId} got 406 error, marking as unable to access time_entries`)
+          this.userTimeEntriesAccess.set(userId, false)
           return null
         }
         console.warn('Error fetching active time entry:', error)
@@ -764,6 +762,16 @@ export class ProgressTrackingService {
     const supabase = await getSupabaseClient()
     const { error } = await supabase.rpc('update_overdue_status')
     if (error) throw error
+  }
+
+  // Utility methods for cache management
+  static clearTimeEntriesCache(): void {
+    this.timeEntriesAccessible = null
+    this.userTimeEntriesAccess.clear()
+  }
+
+  static async isTimeTrackingAvailable(): Promise<boolean> {
+    return await this.isTimeEntriesAccessible()
   }
 }
 
