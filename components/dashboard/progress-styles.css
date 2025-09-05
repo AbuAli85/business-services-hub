@@ -41,3 +41,8 @@
 .timeline-connector-1 { left: 25%; width: 25%; }
 .timeline-connector-2 { left: 50%; width: 25%; }
 .timeline-connector-3 { left: 75%; width: 25%; }
+
+/* Monthly progress milestone progress bars */
+.milestone-progress-bar {
+  transition: width 0.3s ease-in-out;
+}
