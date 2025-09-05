@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import './progress-styles.css'
-import { Checkbox, Filter, MoreHorizontal, Edit, Trash2, Clock, AlertCircle } from 'lucide-react'
+import { Filter, MoreHorizontal, Edit, Trash2, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Milestone, Task } from '@/types/progress'
 import { isTaskOverdue } from '@/lib/progress-calculations'
 
