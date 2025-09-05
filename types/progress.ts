@@ -21,6 +21,9 @@ export interface Task {
   due_date?: string
   editable: boolean
   milestone_id?: string
+  estimated_hours?: number
+  actual_hours?: number
+  priority?: string
   created_at?: string
   updated_at?: string
 }

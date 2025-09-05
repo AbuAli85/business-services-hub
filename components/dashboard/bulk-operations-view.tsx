@@ -35,7 +35,7 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
   // Filter tasks based on status, priority, and search term
   const filteredTasks = allTasks.filter(task => {
     const statusMatch = statusFilter === 'all' || task.status === statusFilter
-    const priorityMatch = priorityFilter === 'all' || 'normal' === priorityFilter // Assuming normal priority for now
+    const priorityMatch = priorityFilter === 'all' || (task.priority || 'normal') === priorityFilter
     const searchMatch = searchTerm === '' || 
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.milestone_title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -260,8 +260,8 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
                       </Badge>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <Badge className={`text-xs ${getPriorityColor('normal')}`}>
-                        normal
+                      <Badge className={`text-xs ${getPriorityColor(task.priority || 'normal')}`}>
+                        {task.priority || 'normal'}
                       </Badge>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
@@ -296,7 +296,9 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">0h / 0h</div>
+                      <div className="text-sm text-gray-900">
+                        {(task.actual_hours || 0).toFixed(1)}h / {(task.estimated_hours || 0).toFixed(1)}h
+                      </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1">
