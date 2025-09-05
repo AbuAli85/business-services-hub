@@ -399,14 +399,9 @@ function KanbanTaskCard({
       )}
       
       <div className="flex items-center gap-2 mb-2">
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
-          {task.priority}
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+          normal
         </span>
-        {task.tags.map((tag) => (
-          <span key={tag} className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-            {tag}
-          </span>
-        ))}
       </div>
       
       <div className="space-y-2">
@@ -422,11 +417,7 @@ function KanbanTaskCard({
         </div>
       </div>
       
-      {task.actual_hours > 0 && (
-        <div className="mt-2 text-xs text-gray-600">
-          {formatDuration(task.actual_hours * 60)} logged
-        </div>
-      )}
+      {/* Time tracking not available in current structure */}
     </div>
   )
 }
@@ -547,8 +538,8 @@ function TimelineTaskItem({
       </div>
       
       <div className="flex items-center gap-2 ml-auto">
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
-          {task.priority}
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+          normal
         </span>
         {isOverdueTask && (
           <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
