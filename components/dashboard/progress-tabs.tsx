@@ -2,7 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle } from 'lucide-react'
-import { ProgressTrackingService, Milestone, Task, BookingProgress, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
+import { ProgressTrackingService, BookingProgress, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
+
+interface Milestone {
+  id: string
+  title: string
+  description: string
+  progress_percentage: number
+  status: string
+  due_date?: string
+  weight: number
+  order_index: number
+  editable: boolean
+  tasks: Task[]
+  created_at?: string
+  updated_at?: string
+}
+
+interface Task {
+  id: string
+  title: string
+  status: string
+  progress_percentage: number
+  due_date?: string
+  editable: boolean
+}
 import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'

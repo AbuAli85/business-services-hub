@@ -44,8 +44,8 @@ interface MilestoneCardProps {
     order_index: number
     editable: boolean
     tasks: Task[]
-    created_at: string
-    updated_at: string
+    created_at?: string
+    updated_at?: string
   }
   userRole: 'provider' | 'client'
   isExpanded: boolean
@@ -291,7 +291,7 @@ export function MilestoneCard({
           {userRole === 'provider' && (
             <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
               <div className="text-sm text-gray-500">
-                Last updated: {format(parseISO(milestone.updated_at), 'MMM dd, yyyy HH:mm')}
+                Last updated: {milestone.updated_at ? format(parseISO(milestone.updated_at), 'MMM dd, yyyy HH:mm') : 'Unknown'}
               </div>
               <div className="flex items-center space-x-2">
                 <Button

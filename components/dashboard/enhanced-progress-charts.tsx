@@ -2,7 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import { BarChart3, TrendingUp, Clock, Target, AlertCircle, CheckCircle } from 'lucide-react'
-import { ProgressTrackingService, BookingProgress, Milestone } from '@/lib/progress-tracking'
+import { ProgressTrackingService, BookingProgress } from '@/lib/progress-tracking'
+
+interface Milestone {
+  id: string
+  title: string
+  description: string
+  progress_percentage: number
+  status: string
+  due_date?: string
+  weight: number
+  order_index: number
+  editable: boolean
+  tasks: Task[]
+  created_at?: string
+  updated_at?: string
+}
+
+interface Task {
+  id: string
+  title: string
+  status: string
+  progress_percentage: number
+  due_date?: string
+  editable: boolean
+}
 
 interface EnhancedProgressChartsProps {
   bookingId: string
@@ -28,10 +52,10 @@ export function EnhancedProgressCharts({ bookingId, milestones, bookingProgress 
         progress: milestone.progress_percentage || 0,
         status: milestone.status,
         dueDate: milestone.due_date,
-        isOverdue: milestone.is_overdue,
+        isOverdue: milestone.due_date ? new Date(milestone.due_date) < new Date() && milestone.status !== 'completed' : false,
         weight: milestone.weight || 1,
-        estimatedHours: milestone.estimated_hours || 0,
-        actualHours: milestone.actual_hours || 0
+        estimatedHours: 0,
+        actualHours: 0
       }))
 
       // Calculate task distribution
@@ -49,8 +73,8 @@ export function EnhancedProgressCharts({ bookingId, milestones, bookingProgress 
       const timeData = milestones.reduce((acc, milestone) => {
         if (milestone.tasks) {
           milestone.tasks.forEach(task => {
-            acc.estimated += task.estimated_hours || 0
-            acc.actual += task.actual_hours || 0
+            acc.estimated += 0 // No estimated hours in our current structure
+            acc.actual += 0 // No actual hours in our current structure
           })
         }
         return acc

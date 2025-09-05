@@ -185,67 +185,26 @@ export function MonthlyProgressTracking({
     }
   }
 
-  const updateStep = async (milestoneId: string, stepIndex: number, updatedStep: Step) => {
+  const updateStep = async (milestoneId: string, stepIndex: number, updatedTask: Task) => {
     try {
       const supabase = await getSupabaseClient()
       
-      // Get current milestone data with better error handling
-      const { data: currentMilestone, error: fetchError } = await supabase
-        .from('booking_progress')
-        .select('*')
-        .eq('id', milestoneId)
-      
-      if (fetchError) {
-        console.error('Error fetching milestone:', fetchError)
-        
-        // Check if it's a table not found error
-        if (fetchError.message.includes('relation "public.booking_progress" does not exist') || 
-            fetchError.message.includes('permission denied') ||
-            fetchError.code === 'PGRST116') {
-          console.warn('booking_progress table not available, using fallback')
-          toast.error('Progress tracking table not available. Please contact support.')
-          return
-        }
-        
-        throw new Error(`Failed to fetch milestone: ${fetchError.message}`)
-      }
-      
-      if (!currentMilestone || currentMilestone.length === 0) {
-        throw new Error('Milestone not found')
-      }
-      
-      if (currentMilestone.length > 1) {
-        console.warn('Multiple milestones found with same ID, using first one')
-      }
-      
-      const milestone = currentMilestone[0]
-      
-      // Update the steps array
-      const updatedSteps = [...milestone.steps]
-      updatedSteps[stepIndex] = updatedStep
-      
-      // Calculate new progress
-      const completedSteps = updatedSteps.filter(step => step.status === 'completed').length
-      const newProgress = Math.round((completedSteps / updatedSteps.length) * 100)
-      
-      // Update the milestone
-      const { error: updateError } = await supabase
-        .from('booking_progress')
-        .update({
-          steps: updatedSteps,
-          progress: newProgress,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', milestoneId)
+      // Update the task using the RPC function
+      const { error: updateError } = await supabase.rpc('update_task', {
+        task_uuid_param: updatedTask.id,
+        task_title: updatedTask.title,
+        task_status: updatedTask.status,
+        task_due_date: updatedTask.due_date
+      })
       
       if (updateError) {
         throw new Error(updateError.message)
       }
       
-      // Try to trigger progress sync by calling the database function (if available)
+      // Try to trigger progress sync by calling the database function
       try {
         const { error: syncError } = await supabase.rpc('calculate_booking_progress', {
-          booking_id: bookingId
+          booking_uuid_param: bookingId
         })
         
         if (syncError) {
@@ -259,11 +218,11 @@ export function MonthlyProgressTracking({
       
       // Reload data to get updated progress
       await loadProgressData()
-      toast.success('Step updated successfully')
+      toast.success('Task updated successfully')
       
     } catch (error) {
-      console.error('Error updating step:', error)
-      toast.error('Failed to update step')
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
     }
   }
 
