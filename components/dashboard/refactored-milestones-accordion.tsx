@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight, Plus, Edit, Trash2, MessageSquare, CheckCircle, Circle, Clock, AlertCircle } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Edit, Trash2, MessageSquare, CheckCircle, Circle, Clock, AlertCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -48,6 +48,21 @@ export function RefactoredMilestonesAccordion({
       setExpandedMilestones(new Set([currentMilestone.id]))
     }
   }, [currentMilestone])
+
+  // Ensure proper phase ordering: Phase 1 → Phase 2 → Phase 3 → Phase 4
+  const phaseOrder = ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4']
+  const properlyOrderedMilestones = sortedMilestones.sort((a, b) => {
+    const aPhaseIndex = phaseOrder.findIndex(phase => a.title.includes(phase))
+    const bPhaseIndex = phaseOrder.findIndex(phase => b.title.includes(phase))
+    
+    // If both have phase numbers, sort by phase order
+    if (aPhaseIndex !== -1 && bPhaseIndex !== -1) {
+      return aPhaseIndex - bPhaseIndex
+    }
+    
+    // Fallback to order_index
+    return a.order_index - b.order_index
+  })
 
   const toggleMilestone = (milestoneId: string) => {
     const newExpanded = new Set(expandedMilestones)
@@ -115,43 +130,103 @@ export function RefactoredMilestonesAccordion({
     }
   }
 
-  const handleTaskToggle = (milestoneId: string, taskId: string, completed: boolean) => {
+  const handleTaskToggle = async (milestoneId: string, taskId: string, completed: boolean) => {
     const updates = {
       status: completed ? 'completed' : 'pending',
-      progress_percentage: completed ? 100 : 0
+      progress_percentage: completed ? 100 : 0,
+      updated_at: new Date().toISOString()
     }
-    onTaskUpdate(milestoneId, taskId, updates)
+    
+    try {
+      // Update the task
+      onTaskUpdate(milestoneId, taskId, updates)
+      
+      // Update milestone progress based on task completion
+      const milestone = milestones.find(m => m.id === milestoneId)
+      if (milestone && milestone.tasks) {
+        const completedTasks = milestone.tasks.filter(t => 
+          t.id === taskId ? completed : t.status === 'completed'
+        ).length
+        const totalTasks = milestone.tasks.length
+        const newMilestoneProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+        
+        onMilestoneUpdate(milestoneId, { 
+          progress_percentage: newMilestoneProgress,
+          updated_at: new Date().toISOString()
+        })
+      }
+    } catch (error) {
+      console.error('Failed to update task:', error)
+    }
   }
 
-  const handleAddTask = (milestoneId: string) => {
+  const handleAddTask = async (milestoneId: string) => {
     if (newTaskTitle.trim()) {
-      onAddTask(milestoneId, {
+      const newTask = {
         title: newTaskTitle,
         status: 'pending',
         progress_percentage: 0,
-        editable: true
-      })
-      setNewTaskTitle('')
+        editable: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
+      try {
+        onAddTask(milestoneId, newTask)
+        setNewTaskTitle('')
+        setEditingTask(null)
+      } catch (error) {
+        console.error('Failed to add task:', error)
+      }
     }
   }
 
-  const handleAddComment = (milestoneId: string) => {
+  const handleAddComment = async (milestoneId: string) => {
     if (newComment.trim()) {
-      onAddComment(milestoneId, newComment)
-      setNewComment('')
+      try {
+        // In a real implementation, this would save to Supabase
+        const comment = {
+          id: `comment_${Date.now()}`,
+          milestone_id: milestoneId,
+          content: newComment,
+          author: userRole,
+          created_at: new Date().toISOString()
+        }
+        
+        onAddComment(milestoneId, newComment)
+        setNewComment('')
+        
+        // Update milestone timestamp
+        onMilestoneUpdate(milestoneId, { 
+          updated_at: new Date().toISOString()
+        })
+      } catch (error) {
+        console.error('Failed to add comment:', error)
+      }
     }
   }
 
-  const handleRequestChanges = (milestoneId: string) => {
+  const handleRequestChanges = async (milestoneId: string) => {
     if (changeRequest.trim()) {
-      onRequestChanges(milestoneId, changeRequest)
-      setChangeRequest('')
+      try {
+        // In a real implementation, this would save to Supabase
+        onRequestChanges(milestoneId, changeRequest)
+        setChangeRequest('')
+        
+        // Update milestone status and timestamp
+        onMilestoneUpdate(milestoneId, { 
+          status: 'pending_changes',
+          updated_at: new Date().toISOString()
+        })
+      } catch (error) {
+        console.error('Failed to request changes:', error)
+      }
     }
   }
 
   return (
     <div className="space-y-4">
-      {sortedMilestones.map((milestone) => {
+      {properlyOrderedMilestones.map((milestone) => {
         const isExpanded = expandedMilestones.has(milestone.id)
         const color = getMilestoneColor(milestone.title)
         const icon = getMilestoneIcon(milestone.title)
@@ -340,11 +415,73 @@ export function RefactoredMilestonesAccordion({
                   <div className="border-t border-gray-200 pt-4">
                     <h4 className="font-medium text-gray-900 mb-3">Comments & Actions</h4>
                     
+                    {/* Client Actions */}
+                    {userRole === 'client' && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageSquare className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">Client Actions</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'approved' })}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve Milestone
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'rejected' })}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject Milestone
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Provider Actions */}
+                    {userRole === 'provider' && (
+                      <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Edit className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-medium text-purple-900">Provider Actions</span>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'in_progress' })}
+                          >
+                            Mark In Progress
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'completed' })}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Mark Complete
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'on_hold' })}
+                          >
+                            Put On Hold
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Add Comment */}
                     <div className="space-y-2">
                       <Textarea
-                        placeholder={userRole === 'client' ? 'Add a comment or feedback...' : 'Add a comment...'}
-                        value={userRole === 'client' ? newComment : newComment}
+                        placeholder={userRole === 'client' ? 'Add a comment or feedback...' : 'Add a comment or response...'}
+                        value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
                         className="min-h-[80px]"
                       />
@@ -397,6 +534,17 @@ export function RefactoredMilestonesAccordion({
                         </div>
                       </div>
                     )}
+
+                    {/* Comments History */}
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">Comments History</h5>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {/* Mock comments - in real implementation, these would come from Supabase */}
+                        <div className="text-xs text-gray-500 italic">
+                          No comments yet. Be the first to comment!
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
