@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react'
 import { Clock, Calendar, CheckCircle, AlertCircle, Target, TrendingUp, LogIn, Info } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Milestone, BookingProgress } from '@/types/progress'
 import { getEstimatedCompletionDate, isMilestoneOverdue } from '@/lib/progress-calculations'
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 interface MainProgressHeaderProps {
   bookingProgress: BookingProgress | null
   milestones: Milestone[]
   userRole: 'provider' | 'client'
+  loading?: boolean
   onLogHours?: () => void
   onSendUpdate?: () => void
   onScheduleFollowUp?: () => void
@@ -22,6 +23,7 @@ export function MainProgressHeader({
   bookingProgress,
   milestones,
   userRole,
+  loading = false,
   onLogHours,
   onSendUpdate,
   onScheduleFollowUp,
@@ -30,6 +32,9 @@ export function MainProgressHeader({
   const [estimatedCompletion, setEstimatedCompletion] = useState<Date | null>(null)
   const [overdueCount, setOverdueCount] = useState(0)
   const [upcomingDeadlines, setUpcomingDeadlines] = useState(0)
+  const [totalHours, setTotalHours] = useState(0)
+  const [completedTasks, setCompletedTasks] = useState(0)
+  const [totalTasks, setTotalTasks] = useState(0)
 
   useEffect(() => {
     if (milestones.length > 0) {
@@ -44,17 +49,37 @@ export function MainProgressHeader({
         return daysUntilDue >= 0 && daysUntilDue <= 7
       }).length
       
+      // Calculate real task data
+      const allTasks = milestones.flatMap(m => m.tasks || [])
+      const completed = allTasks.filter(t => t.status === 'completed').length
+      const total = allTasks.length
+      
+      // Calculate real hours from tasks
+      const hours = allTasks.reduce((sum, task) => {
+        return sum + (task.actual_hours || 0)
+      }, 0)
+      
       setOverdueCount(overdue)
       setUpcomingDeadlines(upcoming)
+      setCompletedTasks(completed)
+      setTotalTasks(total)
+      setTotalHours(hours)
     }
   }, [milestones])
 
-  if (!bookingProgress) {
+  if (loading || !bookingProgress) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+          </div>
+          <div className="h-10 bg-gray-200 rounded w-1/4"></div>
         </div>
       </div>
     )
@@ -74,13 +99,13 @@ export function MainProgressHeader({
         </div>
 
         {/* 2x2 Stats Grid */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
         {/* Top-left: Circular Progress */}
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-              <div className="relative w-32 h-32 mb-3">
-                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-3">
+                <svg className="w-24 h-24 sm:w-32 sm:h-32 transform -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
@@ -119,7 +144,10 @@ export function MainProgressHeader({
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Project completion based on milestone progress</p>
+            <p>Overall project completion based on milestone progress</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {completedMilestones} of {totalMilestones} milestones completed
+            </p>
           </TooltipContent>
         </Tooltip>
 
@@ -136,6 +164,9 @@ export function MainProgressHeader({
           </TooltipTrigger>
           <TooltipContent>
             <p>Milestones that have been finished and approved</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {completedMilestones} completed out of {totalMilestones} total
+            </p>
           </TooltipContent>
         </Tooltip>
 
@@ -152,6 +183,9 @@ export function MainProgressHeader({
           </TooltipTrigger>
           <TooltipContent>
             <p>Milestones still in progress or pending</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {remainingMilestones} remaining out of {totalMilestones} total
+            </p>
           </TooltipContent>
         </Tooltip>
 
@@ -161,19 +195,22 @@ export function MainProgressHeader({
             <div className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
               <div className="text-center">
                 <Clock className="h-12 w-12 text-purple-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-purple-600">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
+                <div className="text-3xl font-bold text-purple-600">{totalHours.toFixed(1)}h</div>
                 <div className="text-sm text-purple-700">Hours Logged</div>
               </div>
             </div>
           </TooltipTrigger>
           <TooltipContent>
             <p>Total time spent on this project</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {completedTasks} of {totalTasks} tasks completed
+            </p>
           </TooltipContent>
         </Tooltip>
       </div>
 
       {/* Action Buttons Row */}
-      <div className="flex flex-wrap gap-3 justify-center">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
         {onLogHours && (
           <Button 
             onClick={onLogHours}

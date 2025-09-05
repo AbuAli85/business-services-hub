@@ -37,6 +37,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [schemaAvailable, setSchemaAvailable] = useState<boolean | null>(null)
 
   const { 
@@ -119,7 +120,10 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
             status,
             progress_percentage,
             due_date,
-            editable
+            editable,
+            estimated_hours,
+            actual_hours,
+            priority
           )
         `)
         .eq('booking_id', bookingId)
@@ -166,7 +170,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
       })
     } catch (error) {
       console.error('Error loading progress data:', error)
-      // If there's an error, we'll show the fallback component
+      setError(error instanceof Error ? error.message : 'Failed to load progress data')
     } finally {
       setLoading(false)
     }
@@ -181,7 +185,44 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   if (schemaAvailable === null) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking database schema...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If there's an error loading data
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError(null)
+              loadData()
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // If loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading progress data...</p>
+        </div>
       </div>
     )
   }
@@ -280,7 +321,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   }
 
   return (
-    <div className="flex gap-6">
+    <div className="flex flex-col lg:flex-row gap-6">
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         {/* Main Progress Header */}
@@ -288,6 +329,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           bookingProgress={bookingProgress}
           milestones={milestones}
           userRole={userRole}
+          loading={loading}
           onLogHours={handleLogHours}
           onSendUpdate={handleSendUpdate}
           onScheduleFollowUp={handleScheduleFollowUp}
@@ -296,14 +338,14 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-8 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as ViewType)}
-                  className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  className={`flex items-center gap-1 sm:gap-2 py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -369,6 +411,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
             <AnalyticsView
               bookingProgress={bookingProgress}
               milestones={milestones}
+              loading={loading}
             />
           )}
 

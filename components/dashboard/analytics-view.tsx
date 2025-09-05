@@ -7,9 +7,26 @@ import { Milestone, BookingProgress } from '@/types/progress'
 interface AnalyticsViewProps {
   bookingProgress: BookingProgress | null
   milestones: Milestone[]
+  loading?: boolean
 }
 
-export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProps) {
+export function AnalyticsView({ bookingProgress, milestones, loading = false }: AnalyticsViewProps) {
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+          </div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
+  }
+
   if (!bookingProgress) return null
 
   // Sort milestones by order_index
@@ -27,10 +44,14 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
     }).length || 0), 0
   )
 
-  // Calculate efficiency
-  const efficiency = bookingProgress.total_estimated_hours > 0 
-    ? (bookingProgress.total_actual_hours / bookingProgress.total_estimated_hours) * 100 
-    : 0
+  // Calculate real efficiency from tasks
+  const estimatedHours = sortedMilestones.reduce((sum, m) => 
+    sum + (m.tasks?.reduce((taskSum, task) => taskSum + (task.estimated_hours || 0), 0) || 0), 0
+  )
+  const actualHours = sortedMilestones.reduce((sum, m) => 
+    sum + (m.tasks?.reduce((taskSum, task) => taskSum + (task.actual_hours || 0), 0) || 0), 0
+  )
+  const efficiency = estimatedHours > 0 ? (actualHours / estimatedHours) * 100 : 0
 
   const weeklyProgress = [
     { week: 1, progress: 0 },
@@ -94,9 +115,9 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
             <h3 className="text-sm font-medium text-gray-600">Hours Logged</h3>
             <Clock className="h-4 w-4 text-purple-600" />
           </div>
-          <div className="text-2xl font-bold text-gray-900">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
-          {bookingProgress.total_estimated_hours > 0 && (
-            <div className="text-sm text-gray-500">of {bookingProgress.total_estimated_hours.toFixed(1)}h estimated</div>
+          <div className="text-2xl font-bold text-gray-900">{actualHours.toFixed(1)}h</div>
+          {estimatedHours > 0 && (
+            <div className="text-sm text-gray-500">of {estimatedHours.toFixed(1)}h estimated</div>
           )}
         </div>
 
@@ -108,6 +129,17 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
           <div className="text-2xl font-bold text-gray-900">{overdueTasks}</div>
           <div className="text-sm text-gray-500">needs attention</div>
         </div>
+
+        {efficiency > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-600">Efficiency</h3>
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{efficiency.toFixed(1)}%</div>
+            <div className="text-sm text-gray-500">actual vs estimated hours</div>
+          </div>
+        )}
       </div>
 
       {/* Milestone Progress */}
