@@ -183,8 +183,11 @@ export function SmartSuggestionsSidebar({
           <h3 className="font-semibold text-gray-900">Smart Suggestions</h3>
         </div>
         <div className="text-center py-8">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-          <p className="text-sm text-gray-600">All caught up! No suggestions at the moment.</p>
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="h-8 w-8 text-green-500" />
+          </div>
+          <p className="text-sm text-gray-600 font-medium">All caught up!</p>
+          <p className="text-xs text-gray-500 mt-1">No suggestions at the moment</p>
         </div>
       </div>
     )

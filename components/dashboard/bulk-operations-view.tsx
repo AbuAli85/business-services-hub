@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import './progress-styles.css'
-import { Filter, MoreHorizontal, Edit, Trash2, Clock, AlertCircle } from 'lucide-react'
+import { Filter, MoreHorizontal, Edit, Trash2, Clock, AlertCircle, Download, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Milestone, Task } from '@/types/progress'
 import { isTaskOverdue } from '@/lib/progress-calculations'
 
@@ -21,6 +22,9 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [editingTask, setEditingTask] = useState<string | null>(null)
+  const [editingStatus, setEditingStatus] = useState<string>('')
+  const [editingPriority, setEditingPriority] = useState<string>('')
 
   // Sort milestones by order_index and get all tasks
   const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
@@ -81,6 +85,68 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleEditTask = (taskId: string, status: string, priority: string) => {
+    setEditingTask(taskId)
+    setEditingStatus(status)
+    setEditingPriority(priority)
+  }
+
+  const handleSaveEdit = async (taskId: string) => {
+    setIsLoading(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      console.log(`Updating task ${taskId}:`, { status: editingStatus, priority: editingPriority })
+      
+      // Call the parent update function
+      onUpdate()
+      
+      setEditingTask(null)
+      setEditingStatus('')
+      setEditingPriority('')
+    } catch (error) {
+      console.error('Task update failed:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTask(null)
+    setEditingStatus('')
+    setEditingPriority('')
+  }
+
+  const handleExportCSV = () => {
+    const selectedTasksData = filteredTasks.filter(task => selectedTasks.has(task.id))
+    
+    if (selectedTasksData.length === 0) {
+      alert('Please select tasks to export')
+      return
+    }
+
+    const csvContent = [
+      ['Task Title', 'Milestone', 'Status', 'Priority', 'Progress %', 'Hours'],
+      ...selectedTasksData.map(task => [
+        task.title,
+        task.milestone_title,
+        task.status,
+        task.priority || 'normal',
+        task.progress_percentage,
+        `${task.actual_hours || 0}h / ${task.estimated_hours || 0}h`
+      ])
+    ].map(row => row.join(',')).join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tasks-export-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    window.URL.revokeObjectURL(url)
   }
 
   const getStatusColor = (status: string) => {
@@ -193,6 +259,16 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
               >
                 Delete
               </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleExportCSV}
+                disabled={isLoading}
+                className="flex items-center gap-1"
+              >
+                <Download className="h-3 w-3" />
+                Export CSV
+              </Button>
             </div>
           </div>
         )}
@@ -255,14 +331,41 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
                       <div className="text-sm text-gray-900">{task.milestone_title}</div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <Badge className={`text-xs ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ')}
-                      </Badge>
+                      {editingTask === task.id ? (
+                        <Select value={editingStatus} onValueChange={setEditingStatus}>
+                          <SelectTrigger className="w-24 h-6 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge className={`text-xs ${getStatusColor(task.status)}`}>
+                          {task.status.replace('_', ' ')}
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <Badge className={`text-xs ${getPriorityColor(task.priority || 'normal')}`}>
-                        {task.priority || 'normal'}
-                      </Badge>
+                      {editingTask === task.id ? (
+                        <Select value={editingPriority} onValueChange={setEditingPriority}>
+                          <SelectTrigger className="w-20 h-6 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge className={`text-xs ${getPriorityColor(task.priority || 'normal')}`}>
+                          {task.priority || 'normal'}
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
@@ -302,15 +405,41 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <MoreHorizontal className="h-3 w-3" />
-                        </Button>
+                        {editingTask === task.id ? (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleSaveEdit(task.id)}
+                              disabled={isLoading}
+                            >
+                              <Save className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => handleEditTask(task.id, task.status, task.priority || 'normal')}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost">
+                              <MoreHorizontal className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

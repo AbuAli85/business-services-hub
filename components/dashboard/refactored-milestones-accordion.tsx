@@ -77,6 +77,24 @@ export function RefactoredMilestonesAccordion({
     return 'gray'
   }
 
+  const getRelativeTime = (dateString: string) => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${diffInHours} hours ago`
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `${diffInDays} days ago`
+    
+    const diffInWeeks = Math.floor(diffInDays / 7)
+    if (diffInWeeks < 4) return `${diffInWeeks} weeks ago`
+    
+    const diffInMonths = Math.floor(diffInDays / 30)
+    return `${diffInMonths} months ago`
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200'
@@ -179,7 +197,7 @@ export function RefactoredMilestonesAccordion({
                     <p className="text-sm text-gray-600 line-clamp-1">{milestone.description}</p>
                     {milestone.updated_at && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Last updated: {new Date(milestone.updated_at).toLocaleString()}
+                        Last updated: {getRelativeTime(milestone.updated_at)}
                       </p>
                     )}
                   </div>

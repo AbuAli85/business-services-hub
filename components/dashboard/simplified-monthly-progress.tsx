@@ -1,7 +1,9 @@
 'use client'
 
-import { CheckCircle, Clock, AlertCircle, Calendar } from 'lucide-react'
+import { useState } from 'react'
+import { CheckCircle, Clock, AlertCircle, Calendar, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Milestone } from '@/types/progress'
 import { isMilestoneOverdue } from '@/lib/progress-calculations'
 
@@ -11,6 +13,8 @@ interface SimplifiedMonthlyProgressProps {
 }
 
 export function SimplifiedMonthlyProgress({ milestones, userRole }: SimplifiedMonthlyProgressProps) {
+  const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact')
+  
   // Sort milestones by order_index
   const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
   const completedMilestones = sortedMilestones.filter(m => m.status === 'completed')
@@ -74,8 +78,17 @@ export function SimplifiedMonthlyProgress({ milestones, userRole }: SimplifiedMo
 
       {/* Milestones Summary Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Milestones Summary</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewMode(viewMode === 'compact' ? 'detailed' : 'compact')}
+            className="flex items-center gap-2"
+          >
+            {viewMode === 'compact' ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
+            {viewMode === 'compact' ? 'Detailed View' : 'Compact View'}
+          </Button>
         </div>
         
         <div className="divide-y divide-gray-200">

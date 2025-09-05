@@ -95,7 +95,9 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
             <Clock className="h-4 w-4 text-purple-600" />
           </div>
           <div className="text-2xl font-bold text-gray-900">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
-          <div className="text-sm text-gray-500">of {bookingProgress.total_estimated_hours.toFixed(1)}h estimated</div>
+          {bookingProgress.total_estimated_hours > 0 && (
+            <div className="text-sm text-gray-500">of {bookingProgress.total_estimated_hours.toFixed(1)}h estimated</div>
+          )}
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -143,36 +145,75 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Distribution</h3>
-          <div className="space-y-3">
+          <div className="flex items-center justify-center">
+            <div className="relative w-32 h-32">
+              <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+                {/* Completed tasks */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 40 * (completedTasks / totalTasks)} ${2 * Math.PI * 40}`}
+                  strokeDashoffset="0"
+                  className="text-green-500"
+                />
+                {/* Pending tasks */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 40 * (pendingTasks / totalTasks)} ${2 * Math.PI * 40}`}
+                  strokeDashoffset={`-${2 * Math.PI * 40 * (completedTasks / totalTasks)}`}
+                  className="text-yellow-500"
+                />
+                {/* Overdue tasks */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 40 * (overdueTasks / totalTasks)} ${2 * Math.PI * 40}`}
+                  strokeDashoffset={`-${2 * Math.PI * 40 * ((completedTasks + pendingTasks) / totalTasks)}`}
+                  className="text-red-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-gray-900">{totalTasks}</div>
+                  <div className="text-xs text-gray-600">Total</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Completed</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{completedTasks} tasks</span>
-                <span className="text-xs text-green-600">▲ +5%</span>
-              </div>
+              <span className="text-sm font-semibold text-gray-900">{completedTasks}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Pending</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{pendingTasks} tasks</span>
-                <span className="text-xs text-yellow-600">▼ -3%</span>
-              </div>
+              <span className="text-sm font-semibold text-gray-900">{pendingTasks}</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Overdue</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{overdueTasks} tasks</span>
-                <span className="text-xs text-red-600">▲ +2%</span>
-              </div>
+              <span className="text-sm font-semibold text-gray-900">{overdueTasks}</span>
             </div>
           </div>
         </div>
@@ -188,12 +229,14 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
               <span className="text-sm text-gray-600">Actual Hours</span>
               <span className="text-sm font-semibold text-gray-900">{bookingProgress.total_actual_hours.toFixed(1)}h</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Efficiency</span>
-              <span className={`text-sm font-semibold ${efficiency > 100 ? 'text-red-600' : efficiency > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
-                {efficiency.toFixed(1)}%
-              </span>
-            </div>
+            {efficiency > 0 && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Efficiency</span>
+                <span className={`text-sm font-semibold ${efficiency > 100 ? 'text-red-600' : efficiency > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
+                  {efficiency.toFixed(1)}%
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Trend</span>
               <span className="text-xs text-green-600">▲ +12% vs last week</span>
