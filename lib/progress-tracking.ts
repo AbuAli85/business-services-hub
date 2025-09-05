@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { getSupabaseClient } from './supabase'
 
 // Types for progress tracking
 export interface Milestone {
@@ -144,6 +139,7 @@ export function calculateBookingProgress(milestones: Milestone[]): number {
 export class ProgressTrackingService {
   // Milestone operations
   static async getMilestones(bookingId: string): Promise<Milestone[]> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('milestones')
       .select(`
@@ -162,6 +158,7 @@ export class ProgressTrackingService {
   }
 
   static async createMilestone(milestone: Omit<Milestone, 'id' | 'created_at' | 'updated_at' | 'is_overdue'>): Promise<Milestone> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('milestones')
       .insert(milestone)
@@ -173,6 +170,7 @@ export class ProgressTrackingService {
   }
 
   static async updateMilestone(id: string, updates: Partial<Milestone>): Promise<Milestone> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('milestones')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -185,6 +183,7 @@ export class ProgressTrackingService {
   }
 
   static async deleteMilestone(id: string): Promise<void> {
+    const supabase = await getSupabaseClient()
     const { error } = await supabase
       .from('milestones')
       .delete()
@@ -195,6 +194,7 @@ export class ProgressTrackingService {
 
   // Task operations
   static async getTasks(milestoneId: string): Promise<Task[]> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('tasks')
       .select(`
@@ -210,6 +210,7 @@ export class ProgressTrackingService {
   }
 
   static async createTask(task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>): Promise<Task> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -224,6 +225,7 @@ export class ProgressTrackingService {
   }
 
   static async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('tasks')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -236,6 +238,7 @@ export class ProgressTrackingService {
   }
 
   static async deleteTask(id: string): Promise<void> {
+    const supabase = await getSupabaseClient()
     const { error } = await supabase
       .from('tasks')
       .delete()
@@ -249,6 +252,7 @@ export class ProgressTrackingService {
     // Stop any active time entries for this user
     await this.stopAllActiveTimeEntries(userId)
     
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('time_entries')
       .insert({
@@ -266,6 +270,7 @@ export class ProgressTrackingService {
   }
 
   static async stopTimeTracking(entryId: string): Promise<TimeEntry> {
+    const supabase = await getSupabaseClient()
     const endTime = new Date().toISOString()
     
     // Get the entry to calculate duration
@@ -279,7 +284,7 @@ export class ProgressTrackingService {
     
     const startTime = new Date(entry.start_time)
     const duration = Math.round((new Date(endTime).getTime() - startTime.getTime()) / (1000 * 60)) // minutes
-    
+
     const { data, error } = await supabase
       .from('time_entries')
       .update({
@@ -301,6 +306,7 @@ export class ProgressTrackingService {
   }
 
   static async stopAllActiveTimeEntries(userId: string): Promise<void> {
+    const supabase = await getSupabaseClient()
     const { data: activeEntries, error: fetchError } = await supabase
       .from('time_entries')
       .select('id, task_id, start_time')
@@ -315,6 +321,7 @@ export class ProgressTrackingService {
   }
 
   static async getActiveTimeEntry(userId: string): Promise<TimeEntry | null> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('time_entries')
       .select('*')
@@ -327,6 +334,7 @@ export class ProgressTrackingService {
   }
 
   static async updateTaskActualHours(taskId: string): Promise<void> {
+    const supabase = await getSupabaseClient()
     const { data: timeEntries, error: fetchError } = await supabase
       .from('time_entries')
       .select('duration_minutes')
@@ -337,7 +345,7 @@ export class ProgressTrackingService {
     
     const totalMinutes = timeEntries?.reduce((sum, entry) => sum + (entry.duration_minutes || 0), 0) || 0
     const totalHours = totalMinutes / 60
-    
+
     const { error } = await supabase
       .from('tasks')
       .update({ actual_hours: totalHours })
@@ -349,6 +357,7 @@ export class ProgressTrackingService {
   // Get time entries for a specific booking through the relationship chain
   static async getTimeEntriesByBookingId(bookingId: string): Promise<TimeEntry[]> {
     try {
+      const supabase = await getSupabaseClient()
       // First, get all task IDs for this booking through milestones
       const { data: milestones, error: milestonesError } = await supabase
         .from('milestones')
@@ -400,6 +409,7 @@ export class ProgressTrackingService {
 
   // Comment operations
   static async addTaskComment(taskId: string, userId: string, comment: string, isInternal: boolean = false): Promise<TaskComment> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('task_comments')
       .insert({
@@ -416,6 +426,7 @@ export class ProgressTrackingService {
   }
 
   static async getTaskComments(taskId: string): Promise<TaskComment[]> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('task_comments')
       .select('*')
@@ -428,6 +439,7 @@ export class ProgressTrackingService {
 
   // Approval operations
   static async approveTask(taskId: string, approvedBy: string, notes?: string): Promise<Task> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('tasks')
       .update({
@@ -446,6 +458,7 @@ export class ProgressTrackingService {
   }
 
   static async rejectTask(taskId: string, rejectedBy: string, notes?: string): Promise<Task> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('tasks')
       .update({
@@ -465,6 +478,7 @@ export class ProgressTrackingService {
 
   // Progress operations
   static async getBookingProgress(bookingId: string): Promise<BookingProgress | null> {
+    const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('booking_progress_view')
       .select('*')
@@ -476,6 +490,7 @@ export class ProgressTrackingService {
   }
 
   static async updateOverdueStatus(): Promise<void> {
+    const supabase = await getSupabaseClient()
     const { error } = await supabase.rpc('update_overdue_status')
     if (error) throw error
   }

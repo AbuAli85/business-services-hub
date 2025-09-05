@@ -86,6 +86,20 @@ export function MonthlyProgressTracking({
       ])
       
       if (progressResult.error) {
+        console.error('Error loading progress data:', progressResult.error)
+        
+        // Check if it's a table not found error
+        if (progressResult.error.message.includes('relation "public.booking_progress" does not exist') || 
+            progressResult.error.message.includes('permission denied') ||
+            progressResult.error.code === 'PGRST116') {
+          console.warn('booking_progress table not available, using fallback')
+          setMilestones([])
+          setOverallProgress(0)
+          setOverdueCount(0)
+          setError('Progress tracking table not available. Please contact support.')
+          return
+        }
+        
         throw new Error(progressResult.error.message)
       }
       
@@ -143,19 +157,39 @@ export function MonthlyProgressTracking({
     try {
       const supabase = await getSupabaseClient()
       
-      // Get current milestone data
+      // Get current milestone data with better error handling
       const { data: currentMilestone, error: fetchError } = await supabase
         .from('booking_progress')
         .select('*')
         .eq('id', milestoneId)
-        .single()
       
       if (fetchError) {
-        throw new Error(fetchError.message)
+        console.error('Error fetching milestone:', fetchError)
+        
+        // Check if it's a table not found error
+        if (fetchError.message.includes('relation "public.booking_progress" does not exist') || 
+            fetchError.message.includes('permission denied') ||
+            fetchError.code === 'PGRST116') {
+          console.warn('booking_progress table not available, using fallback')
+          toast.error('Progress tracking table not available. Please contact support.')
+          return
+        }
+        
+        throw new Error(`Failed to fetch milestone: ${fetchError.message}`)
       }
       
+      if (!currentMilestone || currentMilestone.length === 0) {
+        throw new Error('Milestone not found')
+      }
+      
+      if (currentMilestone.length > 1) {
+        console.warn('Multiple milestones found with same ID, using first one')
+      }
+      
+      const milestone = currentMilestone[0]
+      
       // Update the steps array
-      const updatedSteps = [...currentMilestone.steps]
+      const updatedSteps = [...milestone.steps]
       updatedSteps[stepIndex] = updatedStep
       
       // Calculate new progress

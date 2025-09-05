@@ -658,16 +658,26 @@ export default function EnhancedBookingDetails() {
         .from('tasks')
         .select('milestone_id')
         .eq('id', taskId)
-        .single()
       
       if (taskFetchError) {
-        throw new Error(taskFetchError.message)
+        console.error('Error fetching task data:', taskFetchError)
+        throw new Error(`Failed to fetch task: ${taskFetchError.message}`)
       }
+      
+      if (!taskData || taskData.length === 0) {
+        throw new Error('Task not found')
+      }
+      
+      if (taskData.length > 1) {
+        console.warn('Multiple tasks found with same ID, using first one')
+      }
+      
+      const task = taskData[0]
       
       // Try to call update_milestone_progress RPC function (if available)
       try {
         const { error: progressError } = await supabase.rpc('update_milestone_progress', {
-          milestone_uuid: taskData.milestone_id
+          milestone_uuid: task.milestone_id
         })
         
         if (progressError) {
