@@ -65,61 +65,43 @@ export function MainProgressHeader({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      {/* Header with Title and Alerts */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{bookingProgress.booking_title}</h1>
-          <p className="text-gray-600">Project Progress Tracking</p>
-        </div>
-        
-        {/* Alert Badges */}
-        <div className="flex items-center gap-2">
-          {overdueCount > 0 && (
-            <Badge variant="destructive" className="flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
-              {overdueCount} overdue
-            </Badge>
-          )}
-          {upcomingDeadlines > 0 && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {upcomingDeadlines} due soon
-            </Badge>
-          )}
-        </div>
+      {/* Header with Title */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{bookingProgress.booking_title}</h1>
+        <p className="text-gray-600">Project Progress Tracking</p>
       </div>
 
       {/* Main Progress Circle and Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Circular Progress */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Circular Progress - Larger */}
         <div className="flex flex-col items-center">
-          <div className="relative w-32 h-32 mb-4">
-            <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+          <div className="relative w-40 h-40 mb-4">
+            <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
                 cy="50"
-                r="40"
+                r="45"
                 stroke="currentColor"
-                strokeWidth="8"
+                strokeWidth="6"
                 fill="none"
                 className="text-gray-200"
               />
               <circle
                 cx="50"
                 cy="50"
-                r="40"
+                r="45"
                 stroke="currentColor"
-                strokeWidth="8"
+                strokeWidth="6"
                 fill="none"
-                strokeDasharray={`${2 * Math.PI * 40}`}
-                strokeDashoffset={`${2 * Math.PI * 40 * (1 - bookingProgress.booking_progress / 100)}`}
+                strokeDasharray={`${2 * Math.PI * 45}`}
+                strokeDashoffset={`${2 * Math.PI * 45 * (1 - bookingProgress.booking_progress / 100)}`}
                 className="text-blue-600 transition-all duration-500"
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900">{bookingProgress.booking_progress}%</div>
+                <div className="text-4xl font-bold text-gray-900">{bookingProgress.booking_progress}%</div>
                 <div className="text-sm text-gray-600">Complete</div>
               </div>
             </div>
@@ -132,84 +114,78 @@ export function MainProgressHeader({
           </div>
         </div>
 
-        {/* Milestone Stats */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600">{completedMilestones}</div>
-              <div className="text-sm text-green-700">Completed</div>
-            </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600">{remainingMilestones}</div>
-              <div className="text-sm text-blue-700">Remaining</div>
-            </div>
-          </div>
-          
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <Clock className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-            <div className="text-lg font-semibold text-purple-600">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
-            <div className="text-sm text-purple-700">Hours Logged</div>
-          </div>
+        {/* Milestone Stats Cards */}
+        <div className="text-center p-4 bg-green-50 rounded-lg">
+          <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-green-600">{completedMilestones}</div>
+          <div className="text-sm text-green-700">Completed</div>
         </div>
 
-        {/* Estimated Completion & Actions */}
-        <div className="space-y-4">
-          {estimatedCompletion && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="h-5 w-5 text-gray-600" />
-                <span className="font-medium text-gray-900">Estimated Completion</span>
-              </div>
-              <div className="text-lg font-semibold text-gray-900">
-                {estimatedCompletion.toLocaleDateString()}
-              </div>
-              <div className="text-sm text-gray-600">
-                {Math.ceil((estimatedCompletion.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining
-              </div>
-            </div>
-          )}
+        <div className="text-center p-4 bg-blue-50 rounded-lg">
+          <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-blue-600">{remainingMilestones}</div>
+          <div className="text-sm text-blue-700">Remaining</div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2">
-            {onLogHours && (
-              <Button 
-                onClick={onLogHours}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <LogIn className="h-4 w-4 mr-2" />
-                Log Hours
-              </Button>
-            )}
-            {onSendUpdate && (
-              <Button 
-                onClick={onSendUpdate}
-                variant="outline"
-                className="w-full"
-              >
-                Send Progress Update
-              </Button>
-            )}
-            {onScheduleFollowUp && (
-              <Button 
-                onClick={onScheduleFollowUp}
-                variant="outline"
-                className="w-full"
-              >
-                Schedule Follow-up
-              </Button>
-            )}
-            {onSendPaymentReminder && (
-              <Button 
-                onClick={onSendPaymentReminder}
-                variant="outline"
-                className="w-full"
-              >
-                Send Payment Reminder
-              </Button>
-            )}
+        <div className="text-center p-4 bg-purple-50 rounded-lg">
+          <Clock className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+          <div className="text-2xl font-bold text-purple-600">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
+          <div className="text-sm text-purple-700">Hours Logged</div>
+        </div>
+      </div>
+
+      {/* Estimated Completion & Action Buttons */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {estimatedCompletion && (
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="h-5 w-5 text-gray-600" />
+              <span className="font-medium text-gray-900">Estimated Completion</span>
+            </div>
+            <div className="text-lg font-semibold text-gray-900">
+              {estimatedCompletion.toLocaleDateString()}
+            </div>
+            <div className="text-sm text-gray-600">
+              {Math.ceil((estimatedCompletion.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining
+            </div>
           </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          {onLogHours && (
+            <Button 
+              onClick={onLogHours}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              Log Hours
+            </Button>
+          )}
+          {onSendUpdate && (
+            <Button 
+              onClick={onSendUpdate}
+              variant="outline"
+            >
+              Send Progress Update
+            </Button>
+          )}
+          {onScheduleFollowUp && (
+            <Button 
+              onClick={onScheduleFollowUp}
+              variant="outline"
+            >
+              Schedule Follow-up
+            </Button>
+          )}
+          {onSendPaymentReminder && (
+            <Button 
+              onClick={onSendPaymentReminder}
+              variant="outline"
+            >
+              Send Payment Reminder
+            </Button>
+          )}
         </div>
       </div>
     </div>

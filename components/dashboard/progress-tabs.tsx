@@ -20,6 +20,9 @@ import { RefactoredMilestonesAccordion } from './refactored-milestones-accordion
 import { SimplifiedMonthlyProgress } from './simplified-monthly-progress'
 import { ProgressSummaryFooter } from './progress-summary-footer'
 import { TimelineStepper } from './timeline-stepper'
+import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
+import { AnalyticsView } from './analytics-view'
+import { BulkOperationsView } from './bulk-operations-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
 
 interface ProgressTabsProps {
@@ -277,99 +280,109 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Main Progress Header */}
-      <MainProgressHeader
-        bookingProgress={bookingProgress}
-        milestones={milestones}
-        userRole={userRole}
-        onLogHours={handleLogHours}
+    <div className="flex gap-6">
+      {/* Main Content */}
+      <div className="flex-1 space-y-6">
+        {/* Main Progress Header */}
+        <MainProgressHeader
+          bookingProgress={bookingProgress}
+          milestones={milestones}
+          userRole={userRole}
+          onLogHours={handleLogHours}
+          onSendUpdate={handleSendUpdate}
+          onScheduleFollowUp={handleScheduleFollowUp}
+          onSendPaymentReminder={handleSendPaymentReminder}
+        />
+
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as ViewType)}
+                  className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="mt-6">
+          {activeTab === 'overview' && (
+            <RefactoredMilestonesAccordion
+              milestones={milestones}
+              userRole={userRole}
+              onMilestoneUpdate={handleMilestoneUpdate}
+              onTaskUpdate={handleTaskUpdate}
+              onAddTask={handleAddTask}
+              onDeleteTask={handleDeleteTask}
+              onAddComment={handleAddComment}
+              onRequestChanges={handleRequestChanges}
+            />
+          )}
+
+          {activeTab === 'monthly' && (
+            <SimplifiedMonthlyProgress 
+              milestones={milestones} 
+              userRole={userRole} 
+            />
+          )}
+
+          {activeTab === 'timeline' && (
+            <TimelineStepper 
+              milestones={milestones} 
+              userRole={userRole} 
+              onMilestoneClick={(milestoneId) => {
+                // Handle milestone click - could open details modal or navigate
+                console.log('Milestone clicked:', milestoneId)
+              }}
+            />
+          )}
+
+          {activeTab === 'analytics' && (
+            <AnalyticsView
+              bookingProgress={bookingProgress}
+              milestones={milestones}
+            />
+          )}
+
+          {activeTab === 'bulk' && (
+            <BulkOperationsView
+              milestones={milestones}
+              onUpdate={loadData}
+              userRole={userRole}
+            />
+          )}
+        </div>
+
+        {/* Summary Footer */}
+        <ProgressSummaryFooter 
+          bookingProgress={bookingProgress}
+          milestones={milestones}
+        />
+
+        {/* Global Time Tracking Status */}
+        <GlobalTimeTrackingStatus />
+      </div>
+
+      {/* Smart Suggestions Sidebar */}
+      <SmartSuggestionsSidebar
         onSendUpdate={handleSendUpdate}
         onScheduleFollowUp={handleScheduleFollowUp}
         onSendPaymentReminder={handleSendPaymentReminder}
+        onDismissSuggestion={handleDismissSuggestion}
       />
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as ViewType)}
-                className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="mt-6">
-        {activeTab === 'overview' && (
-          <RefactoredMilestonesAccordion
-            milestones={milestones}
-            userRole={userRole}
-            onMilestoneUpdate={handleMilestoneUpdate}
-            onTaskUpdate={handleTaskUpdate}
-            onAddTask={handleAddTask}
-            onDeleteTask={handleDeleteTask}
-            onAddComment={handleAddComment}
-            onRequestChanges={handleRequestChanges}
-          />
-        )}
-
-        {activeTab === 'monthly' && (
-          <SimplifiedMonthlyProgress 
-            milestones={milestones} 
-            userRole={userRole} 
-          />
-        )}
-
-        {activeTab === 'timeline' && (
-          <TimelineStepper 
-            milestones={milestones} 
-            userRole={userRole} 
-            onMilestoneClick={(milestoneId) => {
-              // Handle milestone click - could open details modal or navigate
-              console.log('Milestone clicked:', milestoneId)
-            }}
-          />
-        )}
-
-        {activeTab === 'analytics' && (
-          <EnhancedProgressCharts
-            bookingId={bookingId}
-            milestones={milestones}
-            bookingProgress={bookingProgress}
-          />
-        )}
-
-        {activeTab === 'bulk' && (
-          <BulkOperations
-            milestones={milestones}
-            onUpdate={loadData}
-            userRole={userRole}
-          />
-        )}
-      </div>
-
-      {/* Summary Footer */}
-      <ProgressSummaryFooter 
-        bookingProgress={bookingProgress}
-        milestones={milestones}
-      />
-
-      {/* Global Time Tracking Status */}
-      <GlobalTimeTrackingStatus />
     </div>
   )
 }
