@@ -138,8 +138,7 @@ export function EnhancedProgressTracking({ bookingId, userRole }: EnhancedProgre
           *,
           tasks (
             *,
-            task_comments (*),
-            time_entries (*)
+            task_comments (*)
           )
         `)
         .eq('booking_id', bookingId)

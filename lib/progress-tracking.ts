@@ -229,8 +229,7 @@ export class ProgressTrackingService {
         *,
         tasks (
           *,
-          task_comments (*),
-          time_entries (*)
+          task_comments (*)
         )
       `)
       .eq('booking_id', bookingId)
@@ -282,8 +281,7 @@ export class ProgressTrackingService {
       .from('tasks')
       .select(`
         *,
-        task_comments (*),
-        time_entries (*)
+        task_comments (*)
       `)
       .eq('milestone_id', milestoneId)
       .order('created_at', { ascending: true })
