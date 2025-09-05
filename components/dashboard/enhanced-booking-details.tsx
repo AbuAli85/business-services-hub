@@ -1300,17 +1300,7 @@ export default function EnhancedBookingDetails() {
             </CardContent>
           </Card>
 
-          {/* Milestone Summary with Tasks Checklist */}
-          {/* Service-Based Milestone Management */}
-          <ServiceMilestoneManager
-            bookingId={bookingId}
-            serviceTypeId={booking.service_type_id}
-            canEdit={canEdit}
-            onMilestoneUpdate={() => {
-              loadMilestoneData()
-              loadBookingData()
-            }}
-          />
+          {/* Milestones moved to Progress tab */}
         </div>
 
         {/* Main Content Layout */}

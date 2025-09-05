@@ -36,6 +36,7 @@ import { EnhancedProgressTracking } from './enhanced-progress-tracking'
 import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
 import { MonthlyProgressTracking } from './monthly-progress-tracking'
+import ServiceMilestoneManager from './service-milestone-manager'
 
 interface ProgressTabsProps {
   bookingId: string
@@ -237,6 +238,17 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           </div>
         </div>
       )}
+
+      {/* Milestone Management */}
+      <ServiceMilestoneManager
+        bookingId={bookingId}
+        serviceTypeId={undefined} // We'll get this from the booking data
+        canEdit={userRole === 'provider'}
+        onMilestoneUpdate={() => {
+          // Reload data when milestones are updated
+          loadData()
+        }}
+      />
 
       {/* Tabs */}
       <div className="border-b border-gray-200">

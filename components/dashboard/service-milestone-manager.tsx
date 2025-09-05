@@ -85,9 +85,20 @@ export default function ServiceMilestoneManager({
 
   useEffect(() => {
     if (bookingId) {
-      // Reset dialog states
+      // Reset all dialog states to false/closed
       setIsAddingTask(false)
+      setIsAddingMilestone(false)
       setEditingMilestone(null)
+      setEditingTask(null)
+      setIsDialogOpen(false)
+      setNewTaskTitle('')
+      setSelectedMilestoneId('')
+      setNewMilestone({
+        title: '',
+        description: '',
+        due_date: '',
+        weight: 1
+      })
       loadServiceAndMilestones()
     }
   }, [bookingId])
