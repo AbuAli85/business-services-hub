@@ -148,14 +148,38 @@ export class ProgressTrackingService {
     
     try {
       const supabase = await getSupabaseClient()
-      const { error } = await supabase
+      
+      // Test basic table access
+      const { error: basicError } = await supabase
         .from('time_entries')
         .select('id')
         .limit(1)
       
-      this.timeEntriesAccessible = !error
-      return this.timeEntriesAccessible
+      if (basicError) {
+        console.warn('time_entries table basic access failed:', basicError.message)
+        this.timeEntriesAccessible = false
+        return false
+      }
+      
+      // Test the specific query pattern that causes 406 errors
+      const { error: filterError } = await supabase
+        .from('time_entries')
+        .select('id, task_id, user_id, description, start_time, end_time, duration_minutes, is_active, created_at, updated_at')
+        .eq('user_id', 'test-user-id')
+        .eq('is_active', true)
+        .limit(1)
+      
+      if (filterError) {
+        console.warn('time_entries table filtered query failed:', filterError.message)
+        this.timeEntriesAccessible = false
+        return false
+      }
+      
+      // If both tests pass, mark as accessible
+      this.timeEntriesAccessible = true
+      return true
     } catch (error) {
+      console.warn('time_entries table access test failed:', error)
       this.timeEntriesAccessible = false
       return false
     }
@@ -493,6 +517,19 @@ export class ProgressTrackingService {
       }
       
       const supabase = await getSupabaseClient()
+      
+      // Try a simple query first to test if we can query with filters
+      const { error: testError } = await supabase
+        .from('time_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .limit(1)
+      
+      if (testError) {
+        console.warn('time_entries query with filters not allowed:', testError.message)
+        return null
+      }
       
       // Now try the actual query
       const { data, error } = await supabase
