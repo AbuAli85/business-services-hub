@@ -36,7 +36,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
       const response = await fetch('/api/check-schema', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table: 'milestones' })
+        body: JSON.stringify({ table: 'booking_progress' })
       })
       setSchemaAvailable(response.ok)
       if (response.ok) {
@@ -56,24 +56,37 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [milestonesData, progressData] = await Promise.all([
-        ProgressTrackingService.getMilestones(bookingId),
-        ProgressTrackingService.getBookingProgress(bookingId)
-      ])
-      setMilestones(milestonesData)
-      setBookingProgress(progressData)
+      // Load data from the new booking_progress table
+      const response = await fetch(`/api/progress/${bookingId}`)
+      if (response.ok) {
+        const progressData = await response.json()
+        setMilestones(progressData || [])
+        // Calculate overall progress from milestones
+        const totalProgress = progressData?.length > 0 
+          ? Math.round(progressData.reduce((sum: number, m: any) => sum + m.progress, 0) / progressData.length)
+          : 0
+        setBookingProgress({
+          booking_progress: totalProgress,
+          completed_milestones: progressData?.filter((m: any) => m.progress >= 100).length || 0,
+          total_milestones: progressData?.length || 0,
+          completed_tasks: 0,
+          total_tasks: 0,
+          total_estimated_hours: 0,
+          total_actual_hours: 0,
+          overdue_tasks: 0
+        })
+      }
     } catch (error) {
       console.error('Error loading progress data:', error)
-      // If there's an error, it might be because the database schema doesn't exist
-      // We'll show the fallback component
+      // If there's an error, we'll show the fallback component
     } finally {
       setLoading(false)
     }
   }
 
-  // If schema is not available, show enhanced progress tracking with sample data
+  // If schema is not available, show monthly progress tracking
   if (schemaAvailable === false) {
-    return <EnhancedProgressTracking bookingId={bookingId} userRole={userRole} />
+    return <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
   }
 
   // If still checking schema availability
@@ -102,9 +115,9 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     )
   }
 
-  // If there are no milestones and no booking progress, show fallback
+  // If there are no milestones and no booking progress, show monthly progress tracking
   if (milestones.length === 0 && !bookingProgress) {
-    return <ProgressFallback bookingId={bookingId} userRole={userRole} />
+    return <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
   }
 
   return (
