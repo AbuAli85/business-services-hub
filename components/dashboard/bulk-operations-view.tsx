@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import '../progress-styles.css'
+import './progress-styles.css'
 import { Checkbox, Filter, MoreHorizontal, Edit, Trash2, Clock, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
