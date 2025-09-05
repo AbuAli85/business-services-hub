@@ -7,6 +7,7 @@ import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'
 import { ProgressFallback } from './progress-fallback'
+import { SimpleProgressTracking } from './simple-progress-tracking'
 import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
 
@@ -22,10 +23,33 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
   const [loading, setLoading] = useState(true)
+  const [schemaAvailable, setSchemaAvailable] = useState<boolean | null>(null)
 
   useEffect(() => {
-    loadData()
-  }, [bookingId])
+    checkSchemaAvailability()
+  }, [])
+
+  const checkSchemaAvailability = async () => {
+    try {
+      const response = await fetch('/api/check-schema', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'milestones' })
+      })
+      setSchemaAvailable(response.ok)
+      if (response.ok) {
+        loadData()
+      }
+    } catch (error) {
+      setSchemaAvailable(false)
+    }
+  }
+
+  useEffect(() => {
+    if (schemaAvailable === true) {
+      loadData()
+    }
+  }, [bookingId, schemaAvailable])
 
   const loadData = async () => {
     try {
@@ -43,6 +67,20 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // If schema is not available, show simple progress tracking
+  if (schemaAvailable === false) {
+    return <SimpleProgressTracking bookingId={bookingId} userRole={userRole} />
+  }
+
+  // If still checking schema availability
+  if (schemaAvailable === null) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   const tabs = [
