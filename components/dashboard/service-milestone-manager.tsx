@@ -76,6 +76,9 @@ export default function ServiceMilestoneManager({
 
   useEffect(() => {
     if (bookingId) {
+      // Reset dialog states
+      setIsAddingTask(false)
+      setEditingMilestone(null)
       loadServiceAndMilestones()
     }
   }, [bookingId])
@@ -83,6 +86,18 @@ export default function ServiceMilestoneManager({
   const loadServiceAndMilestones = async () => {
     try {
       const supabase = await getSupabaseClient()
+      
+      // Check if service_types table exists first
+      const { data: tableCheck, error: tableError } = await supabase
+        .from('service_types')
+        .select('id')
+        .limit(1)
+      
+      if (tableError) {
+        console.warn('Service types table not available yet:', tableError.message)
+        setLoading(false)
+        return
+      }
       
       // Load service type information
       if (serviceTypeId) {
@@ -273,6 +288,24 @@ export default function ServiceMilestoneManager({
     )
   }
 
+  // Show message if database tables aren't ready yet
+  if (milestones.length === 0 && !service) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Setting Up Progress Tracking</h3>
+          <p className="text-gray-500 mb-4">
+            The flexible milestone system is being configured. This will be ready shortly.
+          </p>
+          <p className="text-sm text-gray-400">
+            Milestones will be automatically generated based on the service type once setup is complete.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Service Information */}
@@ -334,7 +367,7 @@ export default function ServiceMilestoneManager({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h5 className="text-sm font-medium text-gray-700">Tasks</h5>
-                  {canEdit && (
+                  {canEdit && milestones.length > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -394,32 +427,34 @@ export default function ServiceMilestoneManager({
         )}
       </div>
 
-      {/* Add Task Dialog */}
-      <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Task</DialogTitle>
-            <DialogDescription>
-              Add a new task to track progress
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Task title"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-            />
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsAddingTask(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => handleAddTask(milestones[0]?.id || '')}>
-                Add Task
-              </Button>
+      {/* Add Task Dialog - Only show if there are milestones */}
+      {milestones.length > 0 && (
+        <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Task</DialogTitle>
+              <DialogDescription>
+                Add a new task to track progress
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="Task title"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsAddingTask(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => handleAddTask(milestones[0]?.id || '')}>
+                  Add Task
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Edit Milestone Dialog */}
       <Dialog open={!!editingMilestone} onOpenChange={() => setEditingMilestone(null)}>

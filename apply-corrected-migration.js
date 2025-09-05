@@ -1,3 +1,24 @@
+const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing Supabase environment variables')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function applyCorrectedMigration() {
+  console.log('🔧 APPLYING CORRECTED FLEXIBLE MILESTONE MIGRATION\n')
+  console.log('=' * 50)
+
+  console.log('\n📋 CORRECTED SQL MIGRATION:')
+  console.log('-'.repeat(30))
+  
+  const correctedSQL = `
 -- Migration: Flexible Milestone System (Corrected)
 -- This migration refactors the progress tracking system to support flexible milestones per service type
 -- Uses service_types table to avoid conflict with existing services table
@@ -380,3 +401,26 @@ COMMENT ON COLUMN tasks.editable IS 'Whether this task can be edited by provider
 COMMENT ON FUNCTION generate_milestones_from_templates(UUID) IS 'Generates milestones for a booking based on service type templates';
 COMMENT ON FUNCTION calculate_booking_progress(UUID) IS 'Calculates weighted progress across all milestones for a booking';
 COMMENT ON FUNCTION update_milestone_progress(UUID) IS 'Updates milestone progress based on task completion';
+  `
+
+  console.log('✅ CORRECTED SQL MIGRATION:')
+  console.log('📋 Manual step: Run this in Supabase SQL Editor:')
+  console.log(correctedSQL)
+
+  console.log('\n' + '='.repeat(50))
+  console.log('🎯 MIGRATION READY')
+  console.log('='.repeat(50))
+  
+  console.log('\n🔧 KEY FIXES:')
+  console.log('✅ Added unique constraints before data insertion')
+  console.log('✅ Fixed ON CONFLICT clauses to work with constraints')
+  console.log('✅ Used service_types instead of services to avoid conflicts')
+  console.log('✅ Updated all references to use service_type_id')
+  
+  console.log('\n📋 NEXT STEPS:')
+  console.log('1. Copy the SQL above and run it in Supabase SQL Editor')
+  console.log('2. Test with: node test-flexible-milestone-system.js')
+  console.log('3. The flexible milestone system will be fully functional!')
+}
+
+applyCorrectedMigration()
