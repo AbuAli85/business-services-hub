@@ -1,60 +1,70 @@
 const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
 
-const supabaseUrl = 'https://reootcngcptfogfozlmz.supabase.co'
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlb290Y25nY3B0Zm9nZm96bG16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzQ0NDM4MiwiZXhwIjoyMDY5MDIwMzgyfQ.BTLA-2wwXJgjW6MKoaw2ERbCr_fXF9w4zgLb70_5DAE'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing Supabase environment variables')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function testSimpleInsert() {
-  try {
-    console.log('🧪 Testing simple insert with minimal data...')
-    
-    // Try with minimal required fields
-    const minimalInvoice = {
-      booking_id: '00000000-0000-0000-0000-000000000000', // dummy UUID
-      client_id: '00000000-0000-0000-0000-000000000000', // dummy UUID  
-      provider_id: '00000000-0000-0000-0000-000000000000', // dummy UUID
-      amount: 1,
-      currency: 'OMR',
-      status: 'issued'
-    }
+  console.log('🧪 TESTING SIMPLE INSERT\n')
+  console.log('='.repeat(40))
 
-    console.log('📋 Attempting insert with minimal data...')
-    const { data: result, error } = await supabase
-      .from('invoices')
-      .insert(minimalInvoice)
+  try {
+    // Get a booking ID
+    const { data: bookings } = await supabase
+      .from('bookings')
+      .select('id, title')
+      .limit(1)
+    
+    if (!bookings || bookings.length === 0) {
+      console.log('❌ No bookings found')
+      return
+    }
+    
+    const bookingId = bookings[0].id
+    console.log(`📋 Testing with booking: ${bookings[0].title} (${bookingId})`)
+    
+    // Try to insert a milestone
+    console.log('\n🔄 Attempting to insert milestone...')
+    
+    const { data, error } = await supabase
+      .from('milestones')
+      .insert({
+        booking_id: bookingId,
+        title: 'Test Milestone',
+        description: 'Test milestone for permission check',
+        status: 'pending',
+        progress_percentage: 0,
+        weight: 1.0,
+        editable: true
+      })
       .select()
       .single()
-
+    
     if (error) {
-      console.log('❌ Minimal insert failed:', error.message)
-      console.log('🔧 Full error:', error)
-      
-      // Try to get more details about the table structure
-      console.log('\n📋 Checking if we can get table info...')
-      const { data: tableInfo, error: infoError } = await supabase
-        .from('information_schema.columns')
-        .select('column_name, data_type, is_nullable')
-        .eq('table_name', 'invoices')
-        .eq('table_schema', 'public')
-
-      if (infoError) {
-        console.log('❌ Cannot get table info:', infoError.message)
-      } else {
-        console.log('📊 Table structure:')
-        console.log(JSON.stringify(tableInfo, null, 2))
-      }
+      console.log(`❌ Insert failed: ${error.message}`)
+      console.log(`   Error code: ${error.code}`)
+      console.log(`   Error details: ${error.details}`)
+      console.log(`   Error hint: ${error.hint}`)
     } else {
-      console.log('✅ Minimal insert SUCCESS!')
-      console.log('📊 Result:', result)
+      console.log(`✅ Insert successful! Milestone ID: ${data.id}`)
       
       // Clean up
-      await supabase.from('invoices').delete().eq('id', result.id)
-      console.log('🧹 Test invoice cleaned up')
+      await supabase
+        .from('milestones')
+        .delete()
+        .eq('id', data.id)
+      console.log('✅ Test milestone cleaned up')
     }
-
+    
   } catch (error) {
-    console.error('❌ Unexpected error:', error)
+    console.error('❌ Test failed:', error)
   }
 }
 

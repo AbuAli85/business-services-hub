@@ -166,42 +166,14 @@ export default function ServiceMilestoneManager({
     try {
       const supabase = await getSupabaseClient()
 
-      const { error: taskError } = await supabase
-        .from('tasks')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId)
+      // Use the RPC function to update task status - this automatically updates progress
+      const { error } = await supabase.rpc('update_task', {
+        task_id: taskId,
+        status: newStatus
+      })
 
-      if (taskError) {
-        throw new Error(taskError.message)
-      }
-
-      // Update milestone progress
-      const task = milestones
-        .flatMap(m => m.tasks)
-        .find(t => t.id === taskId)
-      
-      if (task) {
-        const milestone = milestones.find(m => m.tasks.some(t => t.id === taskId))
-        if (milestone) {
-          try {
-            await supabase.rpc('update_milestone_progress', {
-              milestone_uuid: milestone.id
-            })
-          } catch (rpcError) {
-            console.warn('RPC function update_milestone_progress not available:', rpcError)
-          }
-
-          try {
-            await supabase.rpc('calculate_booking_progress', {
-              booking_id: bookingId
-            })
-          } catch (rpcError) {
-            console.warn('RPC function calculate_booking_progress not available:', rpcError)
-          }
-        }
+      if (error) {
+        throw new Error(error.message)
       }
 
       await loadServiceAndMilestones()

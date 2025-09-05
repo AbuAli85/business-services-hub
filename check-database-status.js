@@ -1,51 +1,131 @@
-// Check Database Status
-// This will show us what's actually working in your database
+const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
 
-console.log('🔍 Checking Database Status...\n')
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Since we can't access the database directly from here,
-// let me show you what to check manually:
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing Supabase environment variables')
+  process.exit(1)
+}
 
-console.log('📋 Manual Database Checks to Run in Supabase SQL Editor:\n')
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-console.log('1. Check if webhook tables exist:')
-console.log('   SELECT table_name FROM information_schema.tables WHERE table_name LIKE \'webhook%\';')
-console.log('')
+async function checkDatabaseStatus() {
+  console.log('🔍 CHECKING DATABASE STATUS\n')
+  console.log('='.repeat(50))
 
-console.log('2. Check webhook configurations:')
-console.log('   SELECT * FROM webhook_configs;')
-console.log('')
+  try {
+    // Test 1: Check if we can read from milestones table
+    console.log('📋 1. TESTING MILESTONES TABLE ACCESS')
+    console.log('-'.repeat(40))
+    
+    const { data: milestones, error: milestonesError } = await supabase
+      .from('milestones')
+      .select('id, title')
+      .limit(1)
+    
+    if (milestonesError) {
+      console.log(`❌ Milestones table access: ${milestonesError.message}`)
+      console.log('   → RLS policies need to be applied')
+    } else {
+      console.log(`✅ Milestones table access: OK (${milestones.length} records)`)
+    }
 
-console.log('3. Check webhook logs (should be empty initially):')
-console.log('   SELECT * FROM webhook_logs ORDER BY called_at DESC LIMIT 5;')
-console.log('')
+    // Test 2: Check if we can read from tasks table
+    console.log('\n📋 2. TESTING TASKS TABLE ACCESS')
+    console.log('-'.repeat(40))
+    
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('id, title')
+      .limit(1)
+    
+    if (tasksError) {
+      console.log(`❌ Tasks table access: ${tasksError.message}`)
+      console.log('   → RLS policies need to be applied')
+    } else {
+      console.log(`✅ Tasks table access: OK (${tasks.length} records)`)
+    }
 
-console.log('4. Test webhook function:')
-console.log('   SELECT test_webhook(\'booking-created\');')
-console.log('')
+    // Test 3: Try to insert a test milestone
+    console.log('\n📋 3. TESTING MILESTONE INSERT PERMISSION')
+    console.log('-'.repeat(40))
+    
+    const testBookingId = '595a9720-c590-4ab0-8ee4-f11a99d8e372' // From your output
+    
+    const { data: insertResult, error: insertError } = await supabase
+      .from('milestones')
+      .insert({
+        booking_id: testBookingId,
+        title: 'Test Milestone',
+        description: 'Test milestone for permission check',
+        status: 'pending',
+        progress_percentage: 0,
+        weight: 1.0,
+        editable: true
+      })
+      .select()
+      .single()
+    
+    if (insertError) {
+      console.log(`❌ Milestone insert permission: ${insertError.message}`)
+      console.log('   → RLS policies need to be applied')
+    } else {
+      console.log(`✅ Milestone insert permission: OK`)
+      
+      // Clean up test data
+      await supabase
+        .from('milestones')
+        .delete()
+        .eq('id', insertResult.id)
+      console.log('   → Test milestone cleaned up')
+    }
 
-console.log('5. Check webhook statistics:')
-console.log('   SELECT * FROM get_webhook_stats();')
-console.log('')
+    // Test 4: Check RPC functions
+    console.log('\n📋 4. TESTING RPC FUNCTIONS')
+    console.log('-'.repeat(40))
+    
+    const rpcFunctions = [
+      'update_task',
+      'update_milestone_progress', 
+      'calculate_booking_progress'
+    ]
+    
+    for (const funcName of rpcFunctions) {
+      try {
+        const { data, error } = await supabase.rpc(funcName, {})
+        if (error && error.code === 'PGRST202') {
+          console.log(`❌ ${funcName}: Function not found`)
+        } else {
+          console.log(`✅ ${funcName}: Available`)
+        }
+      } catch (err) {
+        console.log(`❌ ${funcName}: ${err.message}`)
+      }
+    }
 
-console.log('6. Check if triggers exist:')
-console.log('   SELECT trigger_name, event_manipulation, event_object_table FROM information_schema.triggers WHERE trigger_name LIKE \'%webhook%\';')
-console.log('')
+    console.log('\n' + '='.repeat(50))
+    console.log('🎯 DIAGNOSIS COMPLETE')
+    console.log('='.repeat(50))
+    
+    if (milestonesError || tasksError || insertError) {
+      console.log('❌ ISSUE: RLS policies need to be applied')
+      console.log('📋 SOLUTION:')
+      console.log('1. Go to Supabase Dashboard → SQL Editor')
+      console.log('2. Run the RLS policies SQL I provided earlier')
+      console.log('3. Run the RPC functions SQL')
+      console.log('4. Then run: node create-sample-milestones.js')
+    } else {
+      console.log('✅ DATABASE IS READY!')
+      console.log('📋 NEXT STEPS:')
+      console.log('1. Run: node create-sample-milestones.js')
+      console.log('2. Test the progress tracking in the UI')
+    }
 
-console.log('🎯 Expected Results:')
-console.log('   - Tables: webhook_configs, webhook_logs')
-console.log('   - Configs: 2 webhook URLs (your Make.com URLs)')
-console.log('   - Logs: Initially empty, will fill as webhooks are triggered')
-console.log('   - Functions: test_webhook and get_webhook_stats should work')
-console.log('   - Triggers: service_webhook_trigger, booking_webhook_trigger')
-console.log('')
+  } catch (error) {
+    console.error('❌ Check failed:', error)
+  }
+}
 
-console.log('🚀 To test the complete system:')
-console.log('   1. Run the checks above in Supabase SQL Editor')
-console.log('   2. Create a test service in your app')
-console.log('   3. Check webhook_logs table for new entries')
-console.log('   4. Verify the triggers are working automatically')
-console.log('')
-
-console.log('💡 The 401 errors we saw earlier are normal - the webhook system')
-console.log('   works at the database level, not via REST API calls.')
+checkDatabaseStatus()
