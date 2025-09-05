@@ -237,7 +237,8 @@ export function RefactoredMilestonesAccordion({
 
         return (
           <div 
-            key={milestone.id} 
+            key={milestone.id}
+            id={`milestone-${milestone.id}`}
             className={`bg-white border rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ${
               isCurrent ? `border-${color}-300 bg-${color}-50` : `border-${color}-200`
             }`}

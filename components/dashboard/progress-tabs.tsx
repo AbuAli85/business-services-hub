@@ -347,6 +347,21 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
                 // Handle milestone click - could open details modal or navigate
                 console.log('Milestone clicked:', milestoneId)
               }}
+              onScrollToMilestone={(milestoneId) => {
+                // Scroll to the milestone in the accordion
+                const element = document.getElementById(`milestone-${milestoneId}`)
+                if (element) {
+                  element.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                  })
+                  // Add a highlight effect
+                  element.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50')
+                  setTimeout(() => {
+                    element.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50')
+                  }, 2000)
+                }
+              }}
             />
           )}
 

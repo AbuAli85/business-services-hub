@@ -10,6 +10,7 @@ interface TimelineStepperProps {
   milestones: Milestone[]
   userRole: 'provider' | 'client'
   onMilestoneClick?: (milestoneId: string) => void
+  onScrollToMilestone?: (milestoneId: string) => void
 }
 
 const timelineSteps = [
@@ -22,7 +23,8 @@ const timelineSteps = [
 export function TimelineStepper({
   milestones,
   userRole,
-  onMilestoneClick
+  onMilestoneClick,
+  onScrollToMilestone
 }: TimelineStepperProps) {
   const [currentStep, setCurrentStep] = useState('started')
   const [stepProgress, setStepProgress] = useState(0)
@@ -103,7 +105,7 @@ export function TimelineStepper({
 
       {/* Timeline Steps */}
       <div className="relative">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-2">
           {timelineSteps.map((step, index) => {
             const Icon = step.icon
             const isActive = currentStep === step.id
@@ -116,7 +118,7 @@ export function TimelineStepper({
                   milestones.every(m => m.status === 'completed')
 
             return (
-              <div key={step.id} className="flex flex-col items-center">
+              <div key={step.id} className="flex flex-col items-center flex-1">
                 <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${getStepColor(step.id, isActive, isCompleted)}`}>
                   <Icon className="h-6 w-6" />
                 </div>
@@ -130,16 +132,38 @@ export function TimelineStepper({
           })}
         </div>
 
-        {/* Progress Line */}
-        <div className="absolute top-6 left-6 right-6 h-0.5 bg-gray-200 -z-10">
-          <div 
-            className={`h-full bg-blue-600 timeline-progress-line ${
-              stepProgress >= 100 ? 'timeline-progress-100' :
-              stepProgress >= 75 ? 'timeline-progress-75' :
-              stepProgress >= 50 ? 'timeline-progress-50' :
-              stepProgress >= 25 ? 'timeline-progress-25' : 'timeline-progress-0'
-            }`}
-          />
+        {/* Colored Progress Connectors */}
+        <div className="absolute top-6 left-6 right-6 h-0.5 -z-10">
+          {timelineSteps.map((step, index) => {
+            if (index === timelineSteps.length - 1) return null
+            
+            const isCompleted = step.id === 'started' ? 
+              milestones.some(m => m.status !== 'pending') :
+              step.id === 'in_progress' ?
+                milestones.some(m => m.status === 'in_progress') :
+                step.id === 'review' ?
+                  milestones.some(m => m.status === 'on_hold' || m.status === 'review') :
+                  milestones.every(m => m.status === 'completed')
+
+            const nextStep = timelineSteps[index + 1]
+            const nextIsCompleted = nextStep.id === 'started' ? 
+              milestones.some(m => m.status !== 'pending') :
+              nextStep.id === 'in_progress' ?
+                milestones.some(m => m.status === 'in_progress') :
+                nextStep.id === 'review' ?
+                  milestones.some(m => m.status === 'on_hold' || m.status === 'review') :
+                  milestones.every(m => m.status === 'completed')
+
+            const connectorColor = isCompleted ? 'bg-green-500' : 'bg-gray-300'
+            const connectorWidth = isCompleted ? 'w-full' : 'w-1/2'
+
+            return (
+              <div
+                key={`connector-${index}`}
+                className={`absolute h-0.5 ${connectorColor} ${connectorWidth} timeline-connector-${index}`}
+              />
+            )
+          })}
         </div>
       </div>
 
@@ -168,17 +192,23 @@ export function TimelineStepper({
                   return (
                     <div 
                       key={milestone.id}
-                      className={`p-4 border border-${color}-200 rounded-lg cursor-pointer hover:shadow-md transition-shadow bg-${color}-50`}
-                      onClick={() => onMilestoneClick?.(milestone.id)}
+                      className={`p-4 border border-${color}-200 rounded-lg cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 bg-${color}-50 group`}
+                      onClick={() => {
+                        onMilestoneClick?.(milestone.id)
+                        onScrollToMilestone?.(milestone.id)
+                      }}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="text-2xl">{icon}</span>
+                        <span className="text-2xl group-hover:scale-110 transition-transform duration-200">{icon}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
-                            <h5 className="font-medium text-gray-900 truncate">{milestone.title}</h5>
+                            <h5 className="font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors duration-200">{milestone.title}</h5>
                             {isOverdueMilestone && (
                               <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
                             )}
+                            <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <div className="text-xs text-blue-600 font-medium">Click to view details</div>
+                            </div>
                           </div>
                           
                           <p className="text-sm text-gray-600 line-clamp-2 mb-3">{milestone.description}</p>

@@ -35,3 +35,9 @@
 .timeline-progress-50 { width: 50%; }
 .timeline-progress-75 { width: 75%; }
 .timeline-progress-100 { width: 100%; }
+
+/* Timeline connector positioning */
+.timeline-connector-0 { left: 0%; width: 25%; }
+.timeline-connector-1 { left: 25%; width: 25%; }
+.timeline-connector-2 { left: 50%; width: 25%; }
+.timeline-connector-3 { left: 75%; width: 25%; }
