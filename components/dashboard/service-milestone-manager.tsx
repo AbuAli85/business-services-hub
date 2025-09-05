@@ -570,10 +570,11 @@ export default function ServiceMilestoneManager({
       </div>
 
       {/* Add Milestone Dialog - Only render when needed */}
-      <Dialog open={isAddingMilestone} onOpenChange={(open: boolean) => {
-        console.log('Add Milestone Dialog onOpenChange:', open)
-        setIsAddingMilestone(open)
-      }}>
+      {isAddingMilestone && (
+        <Dialog open={isAddingMilestone} onOpenChange={(open: boolean) => {
+          console.log('Add Milestone Dialog onOpenChange:', open)
+          setIsAddingMilestone(open)
+        }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -709,6 +710,7 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Add Task Dialog - Only show if there are milestones */}
       {milestones.length > 0 && (
@@ -814,10 +816,11 @@ export default function ServiceMilestoneManager({
       )}
 
       {/* Edit Milestone Dialog */}
-      <Dialog open={!!editingMilestone} onOpenChange={(open: boolean) => {
-        console.log('Edit Milestone Dialog onOpenChange:', open)
-        if (!open) setEditingMilestone(null)
-      }}>
+      {editingMilestone && (
+        <Dialog open={!!editingMilestone} onOpenChange={(open: boolean) => {
+          console.log('Edit Milestone Dialog onOpenChange:', open)
+          if (!open) setEditingMilestone(null)
+        }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -954,12 +957,14 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Edit Task Dialog */}
-      <Dialog open={!!editingTask} onOpenChange={(open: boolean) => {
-        console.log('Edit Task Dialog onOpenChange:', open)
-        if (!open) setEditingTask(null)
-      }}>
+      {editingTask && (
+        <Dialog open={!!editingTask} onOpenChange={(open: boolean) => {
+          console.log('Edit Task Dialog onOpenChange:', open)
+          if (!open) setEditingTask(null)
+        }}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -1098,6 +1103,7 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   )
 }
