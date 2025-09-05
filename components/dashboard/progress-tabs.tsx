@@ -8,6 +8,7 @@ import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'
 import { ProgressFallback } from './progress-fallback'
 import { SimpleProgressTracking } from './simple-progress-tracking'
+import { EnhancedProgressTracking } from './enhanced-progress-tracking'
 import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
 
@@ -69,9 +70,9 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     }
   }
 
-  // If schema is not available, show simple progress tracking
+  // If schema is not available, show enhanced progress tracking with sample data
   if (schemaAvailable === false) {
-    return <SimpleProgressTracking bookingId={bookingId} userRole={userRole} />
+    return <EnhancedProgressTracking bookingId={bookingId} userRole={userRole} />
   }
 
   // If still checking schema availability
@@ -171,11 +172,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
       <div className="mt-6">
         {activeTab === 'list' && (
           <div className="space-y-6">
-            {userRole === 'provider' ? (
-              <MilestoneManagement bookingId={bookingId} userRole={userRole} />
-            ) : (
-              <ClientProgressView bookingId={bookingId} />
-            )}
+            <EnhancedProgressTracking bookingId={bookingId} userRole={userRole} />
           </div>
         )}
 
