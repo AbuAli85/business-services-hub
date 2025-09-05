@@ -5,6 +5,24 @@
 -- Drop existing table if it exists (for clean migration)
 DROP TABLE IF EXISTS public.booking_progress CASCADE;
 
+-- Add project_progress column to bookings table if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'bookings' 
+        AND column_name = 'project_progress'
+    ) THEN
+        ALTER TABLE public.bookings 
+        ADD COLUMN project_progress INTEGER DEFAULT 0 CHECK (project_progress >= 0 AND project_progress <= 100);
+        
+        RAISE NOTICE 'Added project_progress column to bookings table';
+    ELSE
+        RAISE NOTICE 'project_progress column already exists in bookings table';
+    END IF;
+END $$;
+
 -- Create booking_progress table
 CREATE TABLE public.booking_progress (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -52,7 +70,7 @@ CREATE TRIGGER trigger_update_booking_progress_updated_at
 DROP FUNCTION IF EXISTS calculate_booking_progress(uuid);
 DROP FUNCTION IF EXISTS calculate_booking_progress(UUID);
 
--- Create function to calculate overall booking progress
+-- Create function to calculate overall booking progress and sync with bookings table
 CREATE OR REPLACE FUNCTION calculate_booking_progress(booking_uuid UUID)
 RETURNS INTEGER AS $$
 DECLARE
@@ -69,8 +87,14 @@ BEGIN
     
     -- Return 0 if no milestones exist
     IF milestone_count = 0 THEN
-        RETURN 0;
+        total_progress := 0;
     END IF;
+    
+    -- Update the bookings table with the calculated progress
+    UPDATE public.bookings 
+    SET project_progress = total_progress,
+        updated_at = NOW()
+    WHERE id = booking_uuid;
     
     RETURN total_progress;
 END;
@@ -136,9 +160,10 @@ DECLARE
     total_steps INTEGER;
     completed_steps INTEGER;
     new_progress INTEGER;
+    booking_uuid UUID;
 BEGIN
-    -- Get the steps data for this milestone
-    SELECT steps INTO step_data
+    -- Get the steps data and booking_id for this milestone
+    SELECT steps, booking_id INTO step_data, booking_uuid
     FROM public.booking_progress
     WHERE id = milestone_uuid;
     
@@ -161,6 +186,9 @@ BEGIN
     UPDATE public.booking_progress
     SET progress = new_progress
     WHERE id = milestone_uuid;
+    
+    -- Recalculate and sync overall booking progress
+    PERFORM calculate_booking_progress(booking_uuid);
 END;
 $$ LANGUAGE plpgsql;
 

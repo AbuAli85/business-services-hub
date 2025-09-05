@@ -70,27 +70,38 @@ export function MonthlyProgressTracking({
       setError(null)
       
       const supabase = await getSupabaseClient()
-      const { data, error } = await supabase
-        .from('booking_progress')
-        .select('*')
-        .eq('booking_id', bookingId)
-        .order('week_number', { ascending: true })
       
-      if (error) {
-        throw new Error(error.message)
+      // Load both progress data and booking data
+      const [progressResult, bookingResult] = await Promise.all([
+        supabase
+          .from('booking_progress')
+          .select('*')
+          .eq('booking_id', bookingId)
+          .order('week_number', { ascending: true }),
+        supabase
+          .from('bookings')
+          .select('project_progress')
+          .eq('id', bookingId)
+          .single()
+      ])
+      
+      if (progressResult.error) {
+        throw new Error(progressResult.error.message)
       }
       
-      setMilestones(data || [])
+      if (bookingResult.error) {
+        throw new Error(bookingResult.error.message)
+      }
       
-      // Calculate overall progress
-      const totalProgress = data?.length > 0 
-        ? Math.round(data.reduce((sum, m) => sum + m.progress, 0) / data.length)
-        : 0
-      setOverallProgress(totalProgress)
+      setMilestones(progressResult.data || [])
+      
+      // Use synced project_progress from bookings table
+      const syncedProgress = bookingResult.data?.project_progress || 0
+      setOverallProgress(syncedProgress)
       
       // Calculate overdue milestones
       const currentWeek = Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))
-      const overdue = data?.filter((m: Milestone) => 
+      const overdue = progressResult.data?.filter((m: Milestone) => 
         m.week_number < currentWeek && m.progress < 100
       ).length || 0
       setOverdueCount(overdue)
@@ -163,6 +174,16 @@ export function MonthlyProgressTracking({
       
       if (updateError) {
         throw new Error(updateError.message)
+      }
+      
+      // Trigger progress sync by calling the database function
+      const { error: syncError } = await supabase.rpc('calculate_booking_progress', {
+        booking_uuid: bookingId
+      })
+      
+      if (syncError) {
+        console.warn('Progress sync failed:', syncError)
+        // Don't fail the operation if sync fails
       }
       
       // Reload data to get updated progress

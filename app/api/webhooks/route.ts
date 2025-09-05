@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client only when needed (not at build time)
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables not configured')
-  }
-  
-  return createClient(supabaseUrl, supabaseKey)
-}
+import { getSupabaseAdminClient } from '@/lib/supabase'
 
 // Basic UUID validator to guard against Postgres 22P02 errors
 function isValidUuid(value: unknown): value is string {
@@ -119,7 +107,7 @@ export async function POST(request: NextRequest) {
 async function handleTrackingUpdated(data: any) {
   try {
     const { booking_id, status, tracking_info } = data
-    const supabase = await getSupabaseClient()
+    const supabase = await getSupabaseAdminClient()
     
     // Update booking status
     const { error } = await supabase
@@ -171,7 +159,7 @@ async function handleBookingCreated(data: any) {
     if (!isValidUuid(service_id)) return badRequest('Invalid service_id (UUID expected)')
     if (data.provider_id && !isValidUuid(data.provider_id)) return badRequest('Invalid provider_id (UUID expected)')
 
-    const supabase = await getSupabaseClient()
+    const supabase = await getSupabaseAdminClient()
 
     // Create new booking with all required fields
     const { data: booking, error } = await supabase
@@ -223,7 +211,7 @@ async function handleNewServiceCreated(data: any) {
     const { service_id, provider_id, service_name } = data
     if (!isValidUuid(service_id)) return badRequest('Invalid service_id (UUID expected)', { received: service_id })
     if (provider_id && !isValidUuid(provider_id)) return badRequest('Invalid provider_id (UUID expected)', { received: provider_id })
-    const supabase = await getSupabaseClient()
+    const supabase = await getSupabaseAdminClient()
 
     // Update service status to pending approval
     const { error } = await supabase
@@ -263,7 +251,7 @@ async function handlePaymentSucceeded(data: any) {
   try {
     const { booking_id, amount, payment_method } = data
     if (!isValidUuid(booking_id)) return badRequest('Invalid booking_id (UUID expected)')
-    const supabase = await getSupabaseClient()
+    const supabase = await getSupabaseAdminClient()
 
     // Update booking status to paid
     const { error } = await supabase
@@ -308,7 +296,7 @@ async function handleWeeklyReport() {
     // Get weekly booking data
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    const supabase = await getSupabaseClient()
+    const supabase = await getSupabaseAdminClient()
 
     const { data: bookings, error } = await supabase
       .from('bookings')

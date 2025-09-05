@@ -223,6 +223,12 @@ export default function EnhancedBookingDetails() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [showProgressModal, setShowProgressModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [milestoneStats, setMilestoneStats] = useState({
+    completed: 0,
+    total: 0,
+    overdue: 0
+  })
 
   useEffect(() => {
     if (bookingId) {
@@ -230,6 +236,7 @@ export default function EnhancedBookingDetails() {
       initializeCommunicationChannels()
       generateSmartSuggestions()
       loadOverdueCount()
+      loadMilestoneData()
     }
   }, [bookingId])
 
@@ -392,7 +399,7 @@ export default function EnhancedBookingDetails() {
         payment_method: bookingData.payment_method || '',
         
         // Progress tracking
-        progress_percentage: bookingData.progress_percentage || 0,
+        progress_percentage: bookingData.project_progress || bookingData.progress_percentage || 0,
         estimated_completion: bookingData.estimated_completion || '',
         actual_completion: bookingData.actual_completion || '',
         
@@ -571,6 +578,42 @@ export default function EnhancedBookingDetails() {
       console.error('Error loading overdue count:', error)
       // Fallback to 0 if new tables don't exist yet
       setOverdueCount(0)
+    }
+  }
+
+  const loadMilestoneData = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Load booking progress milestones
+      const { data: progressData, error: progressError } = await supabase
+        .from('booking_progress')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('week_number', { ascending: true })
+      
+      if (progressError) {
+        console.warn('Error loading booking progress:', progressError)
+        // Fallback to empty data
+        setMilestones([])
+        setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
+        return
+      }
+      
+      setMilestones(progressData || [])
+      
+      // Calculate milestone stats
+      const total = progressData?.length || 0
+      const completed = progressData?.filter(m => m.progress >= 100).length || 0
+      const currentWeek = Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))
+      const overdue = progressData?.filter(m => m.week_number < currentWeek && m.progress < 100).length || 0
+      
+      setMilestoneStats({ completed, total, overdue })
+      
+    } catch (error) {
+      console.error('Error loading milestone data:', error)
+      setMilestones([])
+      setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
     }
   }
 
@@ -1153,6 +1196,56 @@ export default function EnhancedBookingDetails() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Milestone Summary */}
+          {milestoneStats.total > 0 && (
+            <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Monthly Progress Overview</h3>
+                    <p className="text-gray-600 text-sm">
+                      {milestoneStats.completed}/{milestoneStats.total} milestones completed ({booking.progress_percentage}%)
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center space-x-2">
+                      {milestoneStats.overdue > 0 && (
+                        <Badge variant="destructive" className="flex items-center space-x-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span>{milestoneStats.overdue} Overdue</span>
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-green-600 border-green-300">
+                        {milestoneStats.completed} Complete
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {milestones.slice(0, 4).map((milestone, index) => (
+                    <div key={milestone.id} className="flex items-center space-x-2 p-2 rounded-lg bg-white/50">
+                      <div className={`w-3 h-3 rounded-full ${
+                        milestone.progress >= 100 ? 'bg-green-500' : 
+                        milestone.progress > 0 ? 'bg-yellow-500' : 'bg-gray-300'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {milestone.milestone_name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {milestone.progress}% complete
+                        </p>
+                      </div>
+                      {milestone.week_number < Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000)) && milestone.progress < 100 && (
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Main Content Layout */}
@@ -1601,6 +1694,33 @@ export default function EnhancedBookingDetails() {
                           Update Progress
                         </Button>
                       </div>
+
+                      {/* Export Progress */}
+                      {milestoneStats.total > 0 && (
+                        <div className="p-3 bg-green-50 rounded-lg">
+                          <label className="text-sm font-medium text-green-700 mb-2 block">Export Progress</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="border-green-200 text-green-700 hover:bg-green-50" 
+                              onClick={() => handleExport('pdf')}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              PDF
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="border-green-200 text-green-700 hover:bg-green-50" 
+                              onClick={() => handleExport('excel')}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Excel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

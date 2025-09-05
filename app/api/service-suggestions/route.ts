@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
 // Helper function to create a profile using service role
 async function createUserProfile(user: any) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase configuration')
-  }
-  
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
+  const supabaseAdmin = await getSupabaseAdminClient()
   
   // First check if profile already exists
   const { data: existingProfile, error: checkError } = await supabaseAdmin
