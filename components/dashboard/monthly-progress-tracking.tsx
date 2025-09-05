@@ -42,8 +42,8 @@ interface Milestone {
   order_index: number
   editable: boolean
   tasks: Task[]
-  created_at: string
-  updated_at: string
+  created_at?: string
+  updated_at?: string
 }
 
 interface Task {
@@ -284,7 +284,7 @@ export function MonthlyProgressTracking({
     toast('Comment feature coming soon')
   }
 
-  const completedMilestones = milestones.filter(m => m.progress >= 100).length
+  const completedMilestones = milestones.filter(m => m.progress_percentage >= 100).length
   const totalMilestones = milestones.length
 
   if (loading) {
