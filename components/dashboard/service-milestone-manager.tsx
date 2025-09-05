@@ -168,8 +168,8 @@ export default function ServiceMilestoneManager({
 
       // Use the RPC function to update task status - this automatically updates progress
       const { error } = await supabase.rpc('update_task', {
-        task_id: taskId,
-        status: newStatus
+        task_uuid_param: taskId,
+        task_status: newStatus
       })
 
       if (error) {
@@ -195,9 +195,9 @@ export default function ServiceMilestoneManager({
       const supabase = await getSupabaseClient()
 
       const { data, error } = await supabase.rpc('add_task', {
-        milestone_id: milestoneId,
-        title: newTaskTitle.trim(),
-        due_date: null
+        milestone_uuid_param: milestoneId,
+        task_title: newTaskTitle.trim(),
+        task_due_date: null
       })
 
       if (error) {
@@ -221,10 +221,10 @@ export default function ServiceMilestoneManager({
       const supabase = await getSupabaseClient()
 
       const { error } = await supabase.rpc('update_task', {
-        task_id: taskId,
-        title: updates.title,
-        status: updates.status,
-        due_date: updates.due_date
+        task_uuid_param: taskId,
+        task_title: updates.title,
+        task_status: updates.status,
+        task_due_date: updates.due_date
       })
 
       if (error) {
@@ -251,7 +251,7 @@ export default function ServiceMilestoneManager({
       const supabase = await getSupabaseClient()
 
       const { error } = await supabase.rpc('delete_task', {
-        task_id: taskId
+        task_uuid_param: taskId
       })
 
       if (error) {
@@ -273,11 +273,11 @@ export default function ServiceMilestoneManager({
       const supabase = await getSupabaseClient()
 
       const { data, error } = await supabase.rpc('add_milestone', {
-        booking_id: bookingId,
-        title: newMilestone.title.trim(),
-        description: newMilestone.description.trim(),
-        due_date: newMilestone.due_date || null,
-        weight: newMilestone.weight
+        booking_uuid_param: bookingId,
+        milestone_title: newMilestone.title.trim(),
+        milestone_description: newMilestone.description.trim(),
+        milestone_due_date: newMilestone.due_date || null,
+        milestone_weight: newMilestone.weight
       })
 
       if (error) {
@@ -301,11 +301,11 @@ export default function ServiceMilestoneManager({
       const supabase = await getSupabaseClient()
 
       const { error } = await supabase.rpc('update_milestone', {
-        milestone_id: milestoneId,
-        title: updates.title,
-        description: updates.description,
-        due_date: updates.due_date,
-        status: updates.status
+        milestone_uuid_param: milestoneId,
+        milestone_title: updates.title,
+        milestone_description: updates.description,
+        milestone_due_date: updates.due_date,
+        milestone_status: updates.status
       })
 
       if (error) {
@@ -332,7 +332,7 @@ export default function ServiceMilestoneManager({
       const supabase = await getSupabaseClient()
 
       const { error } = await supabase.rpc('delete_milestone', {
-        milestone_id: milestoneId
+        milestone_uuid_param: milestoneId
       })
 
       if (error) {

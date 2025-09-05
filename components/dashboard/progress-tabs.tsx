@@ -33,12 +33,12 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
   const checkSchemaAvailability = async () => {
     try {
-      // Check if booking_progress table exists by trying to query it
+      // Check if milestones table exists by trying to query it
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
       
       const { error } = await supabase
-        .from('booking_progress')
+        .from('milestones')
         .select('id')
         .limit(1)
       
@@ -62,34 +62,68 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const loadData = async () => {
     try {
       setLoading(true)
-      // Load data directly from Supabase
+      // Load data directly from Supabase using milestones table
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
       
-      const { data: progressData, error } = await supabase
-        .from('booking_progress')
-        .select('*')
+      // Load milestones with tasks
+      const { data: milestonesData, error: milestonesError } = await supabase
+        .from('milestones')
+        .select(`
+          id,
+          title,
+          description,
+          progress_percentage,
+          status,
+          due_date,
+          weight,
+          order_index,
+          editable,
+          tasks (
+            id,
+            title,
+            status,
+            progress_percentage,
+            due_date,
+            editable
+          )
+        `)
         .eq('booking_id', bookingId)
-        .order('week_number', { ascending: true })
+        .order('order_index', { ascending: true })
       
-      if (error) {
-        throw new Error(error.message)
+      if (milestonesError) {
+        throw new Error(milestonesError.message)
       }
       
-      setMilestones(progressData || [])
+      // Load booking data for overall progress
+      const { data: bookingData, error: bookingError } = await supabase
+        .from('bookings')
+        .select('id, title, project_progress, status')
+        .eq('id', bookingId)
+        .single()
+      
+      if (bookingError) {
+        console.warn('Error loading booking data:', bookingError)
+      }
+      
+      setMilestones(milestonesData || [])
+      
       // Calculate overall progress from milestones
-      const totalProgress = progressData?.length > 0 
-        ? Math.round(progressData.reduce((sum: number, m: any) => sum + m.progress, 0) / progressData.length)
-        : 0
+      const totalProgress = bookingData?.project_progress || 0
+      const completedMilestones = milestonesData?.filter(m => m.status === 'completed').length || 0
+      const totalTasks = milestonesData?.reduce((sum, m) => sum + (m.tasks?.length || 0), 0) || 0
+      const completedTasks = milestonesData?.reduce((sum, m) => 
+        sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0) || 0
+      
       setBookingProgress({
         booking_id: bookingId,
-        booking_title: 'Monthly Progress Tracking',
-        booking_status: 'in_progress',
+        booking_title: bookingData?.title || 'Project Progress',
+        booking_status: bookingData?.status || 'in_progress',
         booking_progress: totalProgress,
-        completed_milestones: progressData?.filter((m: any) => m.progress >= 100).length || 0,
-        total_milestones: progressData?.length || 0,
-        completed_tasks: 0,
-        total_tasks: 0,
+        completed_milestones: completedMilestones,
+        total_milestones: milestonesData?.length || 0,
+        completed_tasks: completedTasks,
+        total_tasks: totalTasks,
         total_estimated_hours: 0,
         total_actual_hours: 0,
         overdue_tasks: 0,

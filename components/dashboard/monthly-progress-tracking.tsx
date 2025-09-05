@@ -33,12 +33,26 @@ interface Step {
 
 interface Milestone {
   id: string
-  milestone_name: string
-  steps: Step[]
-  progress: number
-  week_number: number
+  title: string
+  description: string
+  progress_percentage: number
+  status: string
+  due_date?: string
+  weight: number
+  order_index: number
+  editable: boolean
+  tasks: Task[]
   created_at: string
   updated_at: string
+}
+
+interface Task {
+  id: string
+  title: string
+  status: string
+  progress_percentage: number
+  due_date?: string
+  editable: boolean
 }
 
 interface MonthlyProgressTrackingProps {
@@ -71,13 +85,31 @@ export function MonthlyProgressTracking({
       
       const supabase = await getSupabaseClient()
       
-      // Load both progress data and booking data
-      const [progressResult, bookingResult] = await Promise.all([
+      // Load both milestones data and booking data
+      const [milestonesResult, bookingResult] = await Promise.all([
         supabase
-          .from('booking_progress')
-          .select('*')
+          .from('milestones')
+          .select(`
+            id,
+            title,
+            description,
+            progress_percentage,
+            status,
+            due_date,
+            weight,
+            order_index,
+            editable,
+            tasks (
+              id,
+              title,
+              status,
+              progress_percentage,
+              due_date,
+              editable
+            )
+          `)
           .eq('booking_id', bookingId)
-          .order('week_number', { ascending: true }),
+          .order('order_index', { ascending: true }),
         supabase
           .from('bookings')
           .select('project_progress')
@@ -85,14 +117,14 @@ export function MonthlyProgressTracking({
           .single()
       ])
       
-      if (progressResult.error) {
-        console.error('Error loading progress data:', progressResult.error)
+      if (milestonesResult.error) {
+        console.error('Error loading milestones data:', milestonesResult.error)
         
         // Check if it's a table not found error
-        if (progressResult.error.message.includes('relation "public.booking_progress" does not exist') || 
-            progressResult.error.message.includes('permission denied') ||
-            progressResult.error.code === 'PGRST116') {
-          console.warn('booking_progress table not available, using fallback')
+        if (milestonesResult.error.message.includes('relation "public.milestones" does not exist') || 
+            milestonesResult.error.message.includes('permission denied') ||
+            milestonesResult.error.code === 'PGRST116') {
+          console.warn('milestones table not available, using fallback')
           setMilestones([])
           setOverallProgress(0)
           setOverdueCount(0)
@@ -100,23 +132,23 @@ export function MonthlyProgressTracking({
           return
         }
         
-        throw new Error(progressResult.error.message)
+        throw new Error(milestonesResult.error.message)
       }
       
       if (bookingResult.error) {
         throw new Error(bookingResult.error.message)
       }
       
-      setMilestones(progressResult.data || [])
+      setMilestones(milestonesResult.data || [])
       
       // Use synced project_progress from bookings table
       const syncedProgress = bookingResult.data?.project_progress || 0
       setOverallProgress(syncedProgress)
       
       // Calculate overdue milestones
-      const currentWeek = Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))
-      const overdue = progressResult.data?.filter((m: Milestone) => 
-        m.week_number < currentWeek && m.progress < 100
+      const currentDate = new Date()
+      const overdue = milestonesResult.data?.filter((m: any) => 
+        m.due_date && new Date(m.due_date) < currentDate && m.status !== 'completed'
       ).length || 0
       setOverdueCount(overdue)
       

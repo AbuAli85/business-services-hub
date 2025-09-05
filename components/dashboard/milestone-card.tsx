@@ -23,26 +23,34 @@ import {
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
-interface Step {
-  name: string
-  status: 'pending' | 'in_progress' | 'completed' | 'delayed'
-  tag?: string
+interface Task {
+  id: string
+  title: string
+  status: string
+  progress_percentage: number
+  due_date?: string
+  editable: boolean
 }
 
 interface MilestoneCardProps {
   milestone: {
     id: string
-    milestone_name: string
-    steps: Step[]
-    progress: number
-    week_number: number
+    title: string
+    description: string
+    progress_percentage: number
+    status: string
+    due_date?: string
+    weight: number
+    order_index: number
+    editable: boolean
+    tasks: Task[]
     created_at: string
     updated_at: string
   }
   userRole: 'provider' | 'client'
   isExpanded: boolean
   onToggleExpanded: () => void
-  onUpdateStep: (stepIndex: number, updatedStep: Step) => void
+  onUpdateStep: (stepIndex: number, updatedStep: Task) => void
   onAddComment?: (milestoneId: string) => void
   className?: string
 }
@@ -100,16 +108,16 @@ export function MilestoneCard({
     }
   }
 
-  const isOverdue = (weekNumber: number) => {
-    const currentWeek = Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))
-    return weekNumber < currentWeek && milestone.progress < 100
+  const isOverdue = (dueDate?: string) => {
+    if (!dueDate) return false
+    return new Date(dueDate) < new Date() && milestone.status !== 'completed'
   }
 
-  const handleStepStatusChange = (stepIndex: number, newStatus: Step['status']) => {
+  const handleStepStatusChange = (stepIndex: number, newStatus: string) => {
     if (userRole !== 'provider') return
     
     const updatedStep = {
-      ...milestone.steps[stepIndex],
+      ...milestone.tasks[stepIndex],
       status: newStatus
     }
     onUpdateStep(stepIndex, updatedStep)
@@ -121,9 +129,9 @@ export function MilestoneCard({
     setIsEditing(true)
   }
 
-  const completedSteps = milestone.steps.filter(step => step.status === 'completed').length
-  const totalSteps = milestone.steps.length
-  const overdue = isOverdue(milestone.week_number)
+  const completedSteps = milestone.tasks.filter(task => task.status === 'completed').length
+  const totalSteps = milestone.tasks.length
+  const overdue = isOverdue(milestone.due_date)
 
   return (
     <Card className={`border-0 shadow-lg transition-all duration-200 hover:shadow-xl ${className} ${
@@ -144,7 +152,7 @@ export function MilestoneCard({
             </button>
             <div>
               <CardTitle className="text-lg flex items-center space-x-2">
-                <span>{milestone.milestone_name}</span>
+                <span>{milestone.title}</span>
                 {overdue && (
                   <Badge variant="destructive" className="text-xs">
                     <AlertTriangle className="h-3 w-3 mr-1" />
@@ -154,10 +162,10 @@ export function MilestoneCard({
               </CardTitle>
               <div className="flex items-center space-x-2 mt-1">
                 <Badge className="text-xs bg-blue-100 text-blue-800">
-                  Week {milestone.week_number}
+                  {milestone.status.replace('_', ' ')}
                 </Badge>
                 <span className="text-sm text-gray-500">
-                  {completedSteps}/{totalSteps} steps completed
+                  {completedSteps}/{totalSteps} tasks completed
                 </span>
               </div>
             </div>
@@ -166,7 +174,7 @@ export function MilestoneCard({
           <div className="flex items-center space-x-2">
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-900">
-                {milestone.progress}%
+                {milestone.progress_percentage}%
               </div>
               <div className="text-xs text-gray-500">Progress</div>
             </div>
@@ -190,16 +198,16 @@ export function MilestoneCard({
         <div className="mt-4">
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>Progress</span>
-            <span>{milestone.progress}%</span>
+            <span>{milestone.progress_percentage}%</span>
           </div>
           <Progress 
-            value={milestone.progress} 
+            value={milestone.progress_percentage} 
             className="h-2"
             style={{
-              '--progress-background': milestone.progress >= 100 ? '#10b981' : 
-                                     milestone.progress >= 75 ? '#3b82f6' :
-                                     milestone.progress >= 50 ? '#f59e0b' :
-                                     milestone.progress >= 25 ? '#f97316' : '#ef4444'
+              '--progress-background': milestone.progress_percentage >= 100 ? '#10b981' : 
+                                     milestone.progress_percentage >= 75 ? '#3b82f6' :
+                                     milestone.progress_percentage >= 50 ? '#f59e0b' :
+                                     milestone.progress_percentage >= 25 ? '#f97316' : '#ef4444'
             } as React.CSSProperties}
           />
         </div>
@@ -208,13 +216,13 @@ export function MilestoneCard({
       {isExpanded && (
         <CardContent className="pt-0">
           <div className="space-y-3">
-            {milestone.steps.map((step, index) => (
+            {milestone.tasks.map((task, index) => (
               <div 
                 key={index}
                 className={`p-3 rounded-lg border transition-all duration-200 ${
-                  step.status === 'completed' ? 'bg-green-50 border-green-200' :
-                  step.status === 'in_progress' ? 'bg-blue-50 border-blue-200' :
-                  step.status === 'delayed' ? 'bg-red-50 border-red-200' :
+                  task.status === 'completed' ? 'bg-green-50 border-green-200' :
+                  task.status === 'in_progress' ? 'bg-blue-50 border-blue-200' :
+                  task.status === 'delayed' ? 'bg-red-50 border-red-200' :
                   'bg-gray-50 border-gray-200'
                 }`}
               >
@@ -222,7 +230,7 @@ export function MilestoneCard({
                   <div className="flex items-center space-x-3 flex-1">
                     {userRole === 'provider' ? (
                       <Checkbox
-                        checked={step.status === 'completed'}
+                        checked={task.status === 'completed'}
                         onCheckedChange={(checked) => {
                           handleStepStatusChange(index, checked ? 'completed' : 'pending')
                         }}
@@ -230,27 +238,27 @@ export function MilestoneCard({
                       />
                     ) : (
                       <div className="w-4 h-4 flex items-center justify-center">
-                        {getStepStatusIcon(step.status)}
+                        {getStepStatusIcon(task.status)}
                       </div>
                     )}
                     
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{step.name}</h4>
-                      {step.tag && (
+                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                      {task.due_date && (
                         <div className="flex items-center space-x-1 mt-1">
-                          <Tag className="h-3 w-3 text-gray-400" />
-                          <Badge className={`text-xs ${getTagColor(step.tag)}`}>
-                            {step.tag}
-                          </Badge>
+                          <Calendar className="h-3 w-3 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <Badge className={`text-xs ${getStepStatusColor(step.status)}`}>
-                      {getStepStatusIcon(step.status)}
-                      <span className="ml-1 capitalize">{step.status.replace('_', ' ')}</span>
+                    <Badge className={`text-xs ${getStepStatusColor(task.status)}`}>
+                      {getStepStatusIcon(task.status)}
+                      <span className="ml-1 capitalize">{task.status.replace('_', ' ')}</span>
                     </Badge>
                     
                     {userRole === 'provider' && (
