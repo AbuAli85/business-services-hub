@@ -69,19 +69,28 @@ export function MonthlyProgressTracking({
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`/api/progress/${bookingId}`)
-      const data = await response.json()
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('booking_progress')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('week_number', { ascending: true })
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load progress data')
+      if (error) {
+        throw new Error(error.message)
       }
       
-      setMilestones(data.milestones || [])
-      setOverallProgress(data.overall_progress || 0)
+      setMilestones(data || [])
+      
+      // Calculate overall progress
+      const totalProgress = data?.length > 0 
+        ? Math.round(data.reduce((sum, m) => sum + m.progress, 0) / data.length)
+        : 0
+      setOverallProgress(totalProgress)
       
       // Calculate overdue milestones
       const currentWeek = Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))
-      const overdue = data.milestones?.filter((m: Milestone) => 
+      const overdue = data?.filter((m: Milestone) => 
         m.week_number < currentWeek && m.progress < 100
       ).length || 0
       setOverdueCount(overdue)
@@ -99,22 +108,17 @@ export function MonthlyProgressTracking({
     try {
       setCreating(true)
       
-      const response = await fetch(`/api/progress/${bookingId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const supabase = getSupabaseClient()
+      const { error } = await supabase.rpc('create_default_milestones', {
+        booking_uuid: bookingId
       })
       
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create milestones')
+      if (error) {
+        throw new Error(error.message)
       }
       
-      setMilestones(data.milestones || [])
-      setOverallProgress(data.overall_progress || 0)
-      toast.success('Default milestones created successfully')
+      toast.success('Default milestones created successfully!')
+      await loadProgressData()
       
     } catch (error) {
       console.error('Error creating milestones:', error)
@@ -126,37 +130,43 @@ export function MonthlyProgressTracking({
 
   const updateStep = async (milestoneId: string, stepIndex: number, updatedStep: Step) => {
     try {
-      const response = await fetch(`/api/progress/${bookingId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          milestone_id: milestoneId,
-          step_index: stepIndex,
-          step: updatedStep
-        })
-      })
+      const supabase = getSupabaseClient()
       
-      const data = await response.json()
+      // Get current milestone data
+      const { data: currentMilestone, error: fetchError } = await supabase
+        .from('booking_progress')
+        .select('*')
+        .eq('id', milestoneId)
+        .single()
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update step')
+      if (fetchError) {
+        throw new Error(fetchError.message)
       }
       
-      // Update local state
-      setMilestones(prev => prev.map(milestone => 
-        milestone.id === milestoneId 
-          ? data.milestone
-          : milestone
-      ))
+      // Update the steps array
+      const updatedSteps = [...currentMilestone.steps]
+      updatedSteps[stepIndex] = updatedStep
       
-      // Update overall progress
-      const newOverallProgress = milestones.length > 0 
-        ? Math.round(milestones.reduce((sum, m) => sum + (m.id === milestoneId ? data.milestone.progress : m.progress), 0) / milestones.length)
-        : 0
-      setOverallProgress(newOverallProgress)
+      // Calculate new progress
+      const completedSteps = updatedSteps.filter(step => step.status === 'completed').length
+      const newProgress = Math.round((completedSteps / updatedSteps.length) * 100)
       
+      // Update the milestone
+      const { error: updateError } = await supabase
+        .from('booking_progress')
+        .update({
+          steps: updatedSteps,
+          progress: newProgress,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', milestoneId)
+      
+      if (updateError) {
+        throw new Error(updateError.message)
+      }
+      
+      // Reload data to get updated progress
+      await loadProgressData()
       toast.success('Step updated successfully')
       
     } catch (error) {
