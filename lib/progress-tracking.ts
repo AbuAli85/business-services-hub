@@ -139,6 +139,8 @@ export function calculateBookingProgress(milestones: Milestone[]): number {
 export class ProgressTrackingService {
   // Cache to track if time_entries table is accessible
   private static timeEntriesAccessible: boolean | null = null
+  // Cache to track if specific user can access time_entries
+  private static userTimeEntriesAccess: Map<string, boolean> = new Map()
   
   // Check if time_entries table is accessible (with caching)
   private static async isTimeEntriesAccessible(): Promise<boolean> {
@@ -181,6 +183,39 @@ export class ProgressTrackingService {
     } catch (error) {
       console.warn('time_entries table access test failed:', error)
       this.timeEntriesAccessible = false
+      return false
+    }
+  }
+  
+  // Check if specific user can access time_entries (with caching)
+  private static async canUserAccessTimeEntries(userId: string): Promise<boolean> {
+    if (this.userTimeEntriesAccess.has(userId)) {
+      return this.userTimeEntriesAccess.get(userId)!
+    }
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Test if user can query time_entries with their own user_id
+      const { error: userError } = await supabase
+        .from('time_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .limit(1)
+      
+      if (userError) {
+        console.warn(`User ${userId} cannot access time_entries:`, userError.message)
+        this.userTimeEntriesAccess.set(userId, false)
+        return false
+      }
+      
+      // User can access time_entries
+      this.userTimeEntriesAccess.set(userId, true)
+      return true
+    } catch (error) {
+      console.warn(`Error checking user ${userId} time_entries access:`, error)
+      this.userTimeEntriesAccess.set(userId, false)
       return false
     }
   }
@@ -508,28 +543,15 @@ export class ProgressTrackingService {
 
   static async getActiveTimeEntry(userId: string): Promise<TimeEntry | null> {
     try {
-      // Check if time_entries table is accessible
-      const isAccessible = await this.isTimeEntriesAccessible()
+      // Check if this specific user can access time_entries
+      const canAccess = await this.canUserAccessTimeEntries(userId)
       
-      if (!isAccessible) {
-        console.warn('time_entries table not accessible, returning null')
+      if (!canAccess) {
+        console.warn(`User ${userId} cannot access time_entries, returning null`)
         return null
       }
       
       const supabase = await getSupabaseClient()
-      
-      // Try a simple query first to test if we can query with filters
-      const { error: testError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .limit(1)
-      
-      if (testError) {
-        console.warn('time_entries query with filters not allowed:', testError.message)
-        return null
-      }
       
       // Now try the actual query
       const { data, error } = await supabase
