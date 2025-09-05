@@ -110,7 +110,6 @@ import { NotificationBell } from '@/components/ui/notification-bell'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 import { ProgressTabs } from './progress-tabs'
 import { SmartFeatures } from './smart-features'
-import ServiceMilestoneManager from './service-milestone-manager'
 
 interface EnhancedBooking {
   id: string

@@ -86,6 +86,7 @@ export default function ServiceMilestoneManager({
   useEffect(() => {
     if (bookingId) {
       // Reset all dialog states to false/closed
+      console.log('ServiceMilestoneManager: Resetting dialog states for bookingId:', bookingId)
       setIsAddingTask(false)
       setIsAddingMilestone(false)
       setEditingMilestone(null)
@@ -102,6 +103,17 @@ export default function ServiceMilestoneManager({
       loadServiceAndMilestones()
     }
   }, [bookingId])
+
+  // Debug logging for modal states
+  useEffect(() => {
+    console.log('ServiceMilestoneManager: Modal states changed:', {
+      isAddingMilestone,
+      isAddingTask,
+      editingMilestone: !!editingMilestone,
+      editingTask: !!editingTask,
+      bookingId
+    })
+  }, [isAddingMilestone, isAddingTask, editingMilestone, editingTask, bookingId])
 
   const loadServiceAndMilestones = async () => {
     try {
@@ -558,8 +570,7 @@ export default function ServiceMilestoneManager({
       </div>
 
       {/* Add Milestone Dialog - Only render when needed */}
-      {isAddingMilestone && (
-        <Dialog open={isAddingMilestone} onOpenChange={setIsAddingMilestone}>
+      <Dialog open={isAddingMilestone} onOpenChange={setIsAddingMilestone}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -695,10 +706,9 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
-      )}
 
-      {/* Add Task Dialog - Only show if there are milestones and isAddingTask is true */}
-      {milestones.length > 0 && isAddingTask && (
+      {/* Add Task Dialog - Only show if there are milestones */}
+      {milestones.length > 0 && (
         <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader className="space-y-3">
@@ -797,9 +807,8 @@ export default function ServiceMilestoneManager({
         </Dialog>
       )}
 
-      {/* Edit Milestone Dialog - Only render when editing */}
-      {editingMilestone && (
-        <Dialog open={!!editingMilestone} onOpenChange={() => setEditingMilestone(null)}>
+      {/* Edit Milestone Dialog */}
+      <Dialog open={!!editingMilestone} onOpenChange={() => setEditingMilestone(null)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -936,11 +945,9 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
-      )}
 
-      {/* Edit Task Dialog - Only render when editing */}
-      {editingTask && (
-        <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
+      {/* Edit Task Dialog */}
+      <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -1079,7 +1086,6 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
-      )}
     </div>
   )
 }
