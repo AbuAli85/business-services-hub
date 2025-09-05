@@ -141,7 +141,10 @@ export async function GET(
     const { user, authError } = await authenticateUser(request)
     
     if (authError || !user) {
-      const response = NextResponse.json({ error: 'Authentication failed', details: authError?.message }, { status: 401 })
+      const response = NextResponse.json({ 
+        error: 'Authentication failed', 
+        details: authError ? (authError as any)?.message || 'Unknown error' : 'No user found' 
+      }, { status: 401 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
@@ -199,7 +202,10 @@ export async function POST(
     const { user, authError } = await authenticateUser(request)
     
     if (authError || !user) {
-      const response = NextResponse.json({ error: 'Authentication failed', details: authError?.message }, { status: 401 })
+      const response = NextResponse.json({ 
+        error: 'Authentication failed', 
+        details: authError ? (authError as any)?.message || 'Unknown error' : 'No user found' 
+      }, { status: 401 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
@@ -336,7 +342,10 @@ export async function PUT(
     const { user, authError } = await authenticateUser(request)
     
     if (authError || !user) {
-      const response = NextResponse.json({ error: 'Authentication failed', details: authError?.message }, { status: 401 })
+      const response = NextResponse.json({ 
+        error: 'Authentication failed', 
+        details: authError ? (authError as any)?.message || 'Unknown error' : 'No user found' 
+      }, { status: 401 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
@@ -450,7 +459,10 @@ export async function DELETE(
     const { user, authError } = await authenticateUser(request)
     
     if (authError || !user) {
-      const response = NextResponse.json({ error: 'Authentication failed', details: authError?.message }, { status: 401 })
+      const response = NextResponse.json({ 
+        error: 'Authentication failed', 
+        details: authError ? (authError as any)?.message || 'Unknown error' : 'No user found' 
+      }, { status: 401 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }

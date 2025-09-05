@@ -179,7 +179,7 @@ export function MonthlyProgressTracking({
 
   const handleAddComment = (milestoneId: string) => {
     // This would open a comment modal or navigate to comments
-    toast.info('Comment feature coming soon')
+    toast('Comment feature coming soon')
   }
 
   const completedMilestones = milestones.filter(m => m.progress >= 100).length
