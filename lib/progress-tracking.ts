@@ -346,6 +346,58 @@ export class ProgressTrackingService {
     if (error) throw error
   }
 
+  // Get time entries for a specific booking through the relationship chain
+  static async getTimeEntriesByBookingId(bookingId: string): Promise<TimeEntry[]> {
+    try {
+      // First, get all task IDs for this booking through milestones
+      const { data: milestones, error: milestonesError } = await supabase
+        .from('milestones')
+        .select(`
+          id,
+          tasks(
+            id
+          )
+        `)
+        .eq('booking_id', bookingId)
+      
+      if (milestonesError) throw milestonesError
+      
+      // Extract all task IDs
+      const taskIds = milestones?.flatMap(milestone => 
+        milestone.tasks?.map((task: any) => task.id) || []
+      ) || []
+      
+      if (taskIds.length === 0) {
+        return []
+      }
+      
+      // Now get time entries for these tasks
+      const { data: timeEntries, error: timeEntriesError } = await supabase
+        .from('time_entries')
+        .select(`
+          id,
+          task_id,
+          user_id,
+          description,
+          start_time,
+          end_time,
+          duration_minutes,
+          is_active,
+          created_at,
+          updated_at
+        `)
+        .in('task_id', taskIds)
+        .order('created_at', { ascending: false })
+      
+      if (timeEntriesError) throw timeEntriesError
+      return timeEntries || []
+      
+    } catch (error) {
+      console.error('Error fetching time entries by booking ID:', error)
+      return []
+    }
+  }
+
   // Comment operations
   static async addTaskComment(taskId: string, userId: string, comment: string, isInternal: boolean = false): Promise<TaskComment> {
     const { data, error } = await supabase
