@@ -69,7 +69,7 @@ export function MonthlyProgressTracking({
       setLoading(true)
       setError(null)
       
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data, error } = await supabase
         .from('booking_progress')
         .select('*')
@@ -108,7 +108,7 @@ export function MonthlyProgressTracking({
     try {
       setCreating(true)
       
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { error } = await supabase.rpc('create_default_milestones', {
         booking_uuid: bookingId
       })
@@ -130,7 +130,7 @@ export function MonthlyProgressTracking({
 
   const updateStep = async (milestoneId: string, stepIndex: number, updatedStep: Step) => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       
       // Get current milestone data
       const { data: currentMilestone, error: fetchError } = await supabase
