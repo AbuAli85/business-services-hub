@@ -86,7 +86,6 @@ export default function ServiceMilestoneManager({
   useEffect(() => {
     if (bookingId) {
       // Reset all dialog states to false/closed
-      console.log('ServiceMilestoneManager: Resetting dialog states for bookingId:', bookingId)
       setIsAddingTask(false)
       setIsAddingMilestone(false)
       setEditingMilestone(null)
@@ -103,17 +102,6 @@ export default function ServiceMilestoneManager({
       loadServiceAndMilestones()
     }
   }, [bookingId])
-
-  // Debug logging for modal states
-  useEffect(() => {
-    console.log('ServiceMilestoneManager: Modal states changed:', {
-      isAddingMilestone,
-      isAddingTask,
-      editingMilestone: !!editingMilestone,
-      editingTask: !!editingTask,
-      bookingId
-    })
-  }, [isAddingMilestone, isAddingTask, editingMilestone, editingTask, bookingId])
 
   const loadServiceAndMilestones = async () => {
     try {
