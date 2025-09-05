@@ -557,8 +557,9 @@ export default function ServiceMilestoneManager({
         )}
       </div>
 
-      {/* Add Milestone Dialog */}
-      <Dialog open={isAddingMilestone} onOpenChange={setIsAddingMilestone}>
+      {/* Add Milestone Dialog - Only render when needed */}
+      {isAddingMilestone && (
+        <Dialog open={isAddingMilestone} onOpenChange={setIsAddingMilestone}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -694,9 +695,10 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
-      {/* Add Task Dialog - Only show if there are milestones */}
-      {milestones.length > 0 && (
+      {/* Add Task Dialog - Only show if there are milestones and isAddingTask is true */}
+      {milestones.length > 0 && isAddingTask && (
         <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader className="space-y-3">
@@ -795,8 +797,9 @@ export default function ServiceMilestoneManager({
         </Dialog>
       )}
 
-      {/* Edit Milestone Dialog */}
-      <Dialog open={!!editingMilestone} onOpenChange={() => setEditingMilestone(null)}>
+      {/* Edit Milestone Dialog - Only render when editing */}
+      {editingMilestone && (
+        <Dialog open={!!editingMilestone} onOpenChange={() => setEditingMilestone(null)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -933,9 +936,11 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
-      {/* Edit Task Dialog */}
-      <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
+      {/* Edit Task Dialog - Only render when editing */}
+      {editingTask && (
+        <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader className="space-y-3">
             <div className="flex items-center space-x-3">
@@ -1074,6 +1079,7 @@ export default function ServiceMilestoneManager({
           </div>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   )
 }
