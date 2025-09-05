@@ -86,6 +86,7 @@ export default function ServiceMilestoneManager({
   useEffect(() => {
     if (bookingId) {
       // Reset all dialog states to false/closed
+      console.log('ServiceMilestoneManager: Resetting dialog states for bookingId:', bookingId)
       setIsAddingTask(false)
       setIsAddingMilestone(false)
       setEditingMilestone(null)
@@ -102,6 +103,18 @@ export default function ServiceMilestoneManager({
       loadServiceAndMilestones()
     }
   }, [bookingId])
+
+  // Debug logging for modal states
+  useEffect(() => {
+    console.log('ServiceMilestoneManager: Modal states:', {
+      isAddingMilestone,
+      isAddingTask,
+      editingMilestone: !!editingMilestone,
+      editingTask: !!editingTask,
+      milestonesLength: milestones.length,
+      bookingId
+    })
+  }, [isAddingMilestone, isAddingTask, editingMilestone, editingTask, milestones.length, bookingId])
 
   const loadServiceAndMilestones = async () => {
     try {
@@ -699,7 +712,10 @@ export default function ServiceMilestoneManager({
 
       {/* Add Task Dialog - Only show if there are milestones and isAddingTask is true */}
       {milestones.length > 0 && isAddingTask && (
-        <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
+        <Dialog open={isAddingTask} onOpenChange={(open: boolean) => {
+          console.log('Add Task Dialog onOpenChange:', open, 'milestones.length:', milestones.length, 'isAddingTask:', isAddingTask)
+          setIsAddingTask(open)
+        }}>
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader className="space-y-3">
               <div className="flex items-center space-x-3">
