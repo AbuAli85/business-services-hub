@@ -11,16 +11,17 @@ import { SimpleProgressTracking } from './simple-progress-tracking'
 import { EnhancedProgressTracking } from './enhanced-progress-tracking'
 import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
+import { MonthlyProgressTracking } from './monthly-progress-tracking'
 
 interface ProgressTabsProps {
   bookingId: string
   userRole: 'provider' | 'client'
 }
 
-type ViewType = 'list' | 'kanban' | 'timeline' | 'analytics' | 'bulk'
+type ViewType = 'monthly' | 'list' | 'kanban' | 'timeline' | 'analytics' | 'bulk'
 
 export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
-  const [activeTab, setActiveTab] = useState<ViewType>('list')
+  const [activeTab, setActiveTab] = useState<ViewType>('monthly')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,6 +86,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   }
 
   const tabs = [
+    { id: 'monthly', label: 'Monthly Progress', icon: Calendar },
     { id: 'list', label: 'List View', icon: List },
     { id: 'kanban', label: 'Kanban View', icon: Kanban },
     { id: 'timeline', label: 'Timeline View', icon: Calendar },
@@ -170,6 +172,10 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
       {/* Tab Content */}
       <div className="mt-6">
+        {activeTab === 'monthly' && (
+          <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
+        )}
+
         {activeTab === 'list' && (
           <div className="space-y-6">
             <EnhancedProgressTracking bookingId={bookingId} userRole={userRole} />

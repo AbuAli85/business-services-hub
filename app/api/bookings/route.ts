@@ -301,6 +301,23 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', service_id)
 
+    // Create default monthly progress milestones for the booking
+    try {
+      const { error: milestoneError } = await supabase.rpc('create_default_milestones', {
+        booking_uuid: booking.id
+      })
+      
+      if (milestoneError) {
+        console.warn('⚠️ Failed to create default milestones:', milestoneError)
+        // Don't fail the booking creation if milestone creation fails
+      } else {
+        console.log('✅ Default milestones created for booking:', booking.id)
+      }
+    } catch (milestoneError) {
+      console.warn('⚠️ Error creating milestones:', milestoneError)
+      // Don't fail the booking creation if milestone creation fails
+    }
+
     const response = NextResponse.json({ 
       success: true,
       booking,
