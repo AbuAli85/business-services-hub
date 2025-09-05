@@ -33,13 +33,19 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
   const checkSchemaAvailability = async () => {
     try {
-      const response = await fetch('/api/check-schema', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table: 'booking_progress' })
-      })
-      setSchemaAvailable(response.ok)
-      if (response.ok) {
+      // Check if booking_progress table exists by trying to query it
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('booking_progress')
+        .select('id')
+        .limit(1)
+      
+      if (error) {
+        setSchemaAvailable(false)
+      } else {
+        setSchemaAvailable(true)
         loadData()
       }
     } catch (error) {
@@ -56,31 +62,40 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const loadData = async () => {
     try {
       setLoading(true)
-      // Load data from the new booking_progress table
-      const response = await fetch(`/api/progress/${bookingId}`)
-      if (response.ok) {
-        const progressData = await response.json()
-        setMilestones(progressData || [])
-        // Calculate overall progress from milestones
-        const totalProgress = progressData?.length > 0 
-          ? Math.round(progressData.reduce((sum: number, m: any) => sum + m.progress, 0) / progressData.length)
-          : 0
-        setBookingProgress({
-          booking_id: bookingId,
-          booking_title: 'Monthly Progress Tracking',
-          booking_status: 'in_progress',
-          booking_progress: totalProgress,
-          completed_milestones: progressData?.filter((m: any) => m.progress >= 100).length || 0,
-          total_milestones: progressData?.length || 0,
-          completed_tasks: 0,
-          total_tasks: 0,
-          total_estimated_hours: 0,
-          total_actual_hours: 0,
-          overdue_tasks: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+      // Load data directly from Supabase
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabase = await getSupabaseClient()
+      
+      const { data: progressData, error } = await supabase
+        .from('booking_progress')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('week_number', { ascending: true })
+      
+      if (error) {
+        throw new Error(error.message)
       }
+      
+      setMilestones(progressData || [])
+      // Calculate overall progress from milestones
+      const totalProgress = progressData?.length > 0 
+        ? Math.round(progressData.reduce((sum: number, m: any) => sum + m.progress, 0) / progressData.length)
+        : 0
+      setBookingProgress({
+        booking_id: bookingId,
+        booking_title: 'Monthly Progress Tracking',
+        booking_status: 'in_progress',
+        booking_progress: totalProgress,
+        completed_milestones: progressData?.filter((m: any) => m.progress >= 100).length || 0,
+        total_milestones: progressData?.length || 0,
+        completed_tasks: 0,
+        total_tasks: 0,
+        total_estimated_hours: 0,
+        total_actual_hours: 0,
+        overdue_tasks: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
     } catch (error) {
       console.error('Error loading progress data:', error)
       // If there's an error, we'll show the fallback component
