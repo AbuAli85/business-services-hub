@@ -570,7 +570,7 @@ export default function ServiceMilestoneManager({
       </div>
 
       {/* Add Milestone Dialog - Only render when needed */}
-      <Dialog open={isAddingMilestone} onOpenChange={(open) => {
+      <Dialog open={isAddingMilestone} onOpenChange={(open: boolean) => {
         console.log('Add Milestone Dialog onOpenChange:', open)
         setIsAddingMilestone(open)
       }}>
@@ -712,7 +712,7 @@ export default function ServiceMilestoneManager({
 
       {/* Add Task Dialog - Only show if there are milestones */}
       {milestones.length > 0 && (
-        <Dialog open={isAddingTask} onOpenChange={(open) => {
+        <Dialog open={isAddingTask} onOpenChange={(open: boolean) => {
           console.log('Add Task Dialog onOpenChange:', open)
           setIsAddingTask(open)
         }}>
@@ -814,7 +814,7 @@ export default function ServiceMilestoneManager({
       )}
 
       {/* Edit Milestone Dialog */}
-      <Dialog open={!!editingMilestone} onOpenChange={(open) => {
+      <Dialog open={!!editingMilestone} onOpenChange={(open: boolean) => {
         console.log('Edit Milestone Dialog onOpenChange:', open)
         if (!open) setEditingMilestone(null)
       }}>
@@ -956,7 +956,7 @@ export default function ServiceMilestoneManager({
       </Dialog>
 
       {/* Edit Task Dialog */}
-      <Dialog open={!!editingTask} onOpenChange={(open) => {
+      <Dialog open={!!editingTask} onOpenChange={(open: boolean) => {
         console.log('Edit Task Dialog onOpenChange:', open)
         if (!open) setEditingTask(null)
       }}>
