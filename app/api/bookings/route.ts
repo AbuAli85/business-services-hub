@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', service_id)
 
-    // Generate milestones from service templates for the booking
+    // Generate milestones from service type templates for the booking
     try {
       const { error: milestoneError } = await supabase.rpc('generate_milestones_from_templates', {
         booking_uuid: booking.id

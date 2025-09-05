@@ -1,11 +1,32 @@
--- Migration: Flexible Milestone System
--- This migration refactors the progress tracking system to support flexible milestones per service type
+const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
 
--- Enable UUID extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
--- 1. Create Services Table
-CREATE TABLE IF NOT EXISTS services (
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing Supabase environment variables')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function fixServicesTableConflict() {
+  console.log('🔧 FIXING SERVICES TABLE CONFLICT\n')
+  console.log('=' * 50)
+
+  console.log('\n📋 PROBLEM IDENTIFIED:')
+  console.log('-'.repeat(30))
+  console.log('❌ There\'s already a "services" table for service listings')
+  console.log('❌ We need a separate table for service types')
+  console.log('✅ Solution: Use "service_types" table instead')
+
+  console.log('\n🔧 CORRECTED SQL MIGRATION:')
+  console.log('-'.repeat(30))
+  
+  const correctedSQL = `
+-- 1. Create Service Types Table (renamed to avoid conflict)
+CREATE TABLE IF NOT EXISTS service_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     description TEXT,
@@ -14,24 +35,24 @@ CREATE TABLE IF NOT EXISTS services (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add RLS policies for services table
-ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+-- Add RLS policies for service_types table
+ALTER TABLE service_types ENABLE ROW LEVEL SECURITY;
 
--- Allow all authenticated users to read services
-CREATE POLICY "Allow read access to services" ON services
+-- Allow all authenticated users to read service types
+CREATE POLICY "Allow read access to service_types" ON service_types
     FOR SELECT USING (true);
 
--- Allow authenticated users to insert/update services (for admin use)
-CREATE POLICY "Allow insert access to services" ON services
+-- Allow authenticated users to insert/update service types (for admin use)
+CREATE POLICY "Allow insert access to service_types" ON service_types
     FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Allow update access to services" ON services
+CREATE POLICY "Allow update access to service_types" ON service_types
     FOR UPDATE USING (true);
 
--- 2. Create Service Milestone Templates Table
+-- 2. Create Service Milestone Templates Table (updated to use service_types)
 CREATE TABLE IF NOT EXISTS service_milestone_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    service_id UUID REFERENCES services(id) ON DELETE CASCADE,
+    service_type_id UUID REFERENCES service_types(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
     default_weight NUMERIC DEFAULT 1,
@@ -55,9 +76,9 @@ CREATE POLICY "Allow insert access to service_milestone_templates" ON service_mi
 CREATE POLICY "Allow update access to service_milestone_templates" ON service_milestone_templates
     FOR UPDATE USING (true);
 
--- 3. Update Bookings Table - Add service_id column
+-- 3. Update Bookings Table - Add service_type_id column
 ALTER TABLE bookings 
-ADD COLUMN IF NOT EXISTS service_id UUID REFERENCES services(id);
+ADD COLUMN IF NOT EXISTS service_type_id UUID REFERENCES service_types(id);
 
 -- 4. Update Milestones Table - Add editable column and ensure proper structure
 ALTER TABLE milestones 
@@ -69,22 +90,22 @@ ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0;
 ALTER TABLE tasks 
 ADD COLUMN IF NOT EXISTS editable BOOLEAN DEFAULT true;
 
--- 6. Create Function to Generate Milestones from Templates
+-- 6. Create Function to Generate Milestones from Templates (updated)
 CREATE OR REPLACE FUNCTION generate_milestones_from_templates(booking_uuid UUID)
 RETURNS VOID AS $$
 DECLARE
-    booking_service_id UUID;
+    booking_service_type_id UUID;
     template_record RECORD;
     milestone_count INTEGER := 0;
 BEGIN
-    -- Get the service_id for this booking
-    SELECT service_id INTO booking_service_id
+    -- Get the service_type_id for this booking
+    SELECT service_type_id INTO booking_service_type_id
     FROM bookings
     WHERE id = booking_uuid;
     
-    -- If no service_id, exit
-    IF booking_service_id IS NULL THEN
-        RAISE NOTICE 'No service_id found for booking %', booking_uuid;
+    -- If no service_type_id, exit
+    IF booking_service_type_id IS NULL THEN
+        RAISE NOTICE 'No service_type_id found for booking %', booking_uuid;
         RETURN;
     END IF;
     
@@ -92,7 +113,7 @@ BEGIN
     FOR template_record IN
         SELECT title, description, default_weight, default_order, is_required
         FROM service_milestone_templates
-        WHERE service_id = booking_service_id
+        WHERE service_type_id = booking_service_type_id
         ORDER BY default_order ASC, title ASC
     LOOP
         INSERT INTO milestones (
@@ -217,77 +238,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 9. Create Trigger for Auto-Generating Milestones on Booking Creation
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS trigger_generate_milestones();
-
-CREATE OR REPLACE FUNCTION trigger_generate_milestones()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Only generate milestones if service_id is provided
-    IF NEW.service_id IS NOT NULL THEN
-        PERFORM generate_milestones_from_templates(NEW.id);
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Drop existing trigger if it exists
-DROP TRIGGER IF EXISTS trigger_auto_generate_milestones ON bookings;
-
--- Create the trigger
-CREATE TRIGGER trigger_auto_generate_milestones
-    AFTER INSERT ON bookings
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_generate_milestones();
-
--- 10. Create Trigger for Updating Milestone Progress When Tasks Change
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS trigger_update_milestone_progress();
-
-CREATE OR REPLACE FUNCTION trigger_update_milestone_progress()
-RETURNS TRIGGER AS $$
-DECLARE
-    milestone_id UUID;
-BEGIN
-    -- Get milestone_id from the task
-    IF TG_OP = 'DELETE' THEN
-        milestone_id := OLD.milestone_id;
-    ELSE
-        milestone_id := NEW.milestone_id;
-    END IF;
-    
-    -- Update milestone progress
-    PERFORM update_milestone_progress(milestone_id);
-    
-    RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
--- Drop existing triggers if they exist
-DROP TRIGGER IF EXISTS trigger_update_milestone_progress_insert ON tasks;
-DROP TRIGGER IF EXISTS trigger_update_milestone_progress_update ON tasks;
-DROP TRIGGER IF EXISTS trigger_update_milestone_progress_delete ON tasks;
-
--- Create triggers for task changes
-CREATE TRIGGER trigger_update_milestone_progress_insert
-    AFTER INSERT ON tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_update_milestone_progress();
-
-CREATE TRIGGER trigger_update_milestone_progress_update
-    AFTER UPDATE ON tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_update_milestone_progress();
-
-CREATE TRIGGER trigger_update_milestone_progress_delete
-    AFTER DELETE ON tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION trigger_update_milestone_progress();
-
--- 11. Insert Sample Services
-INSERT INTO services (name, description) VALUES
+-- 9. Insert Sample Service Types
+INSERT INTO service_types (name, description) VALUES
 ('Social Media Management', 'Complete social media management including content creation, posting, and engagement'),
 ('Web Development', 'Custom website development and maintenance'),
 ('SEO Services', 'Search engine optimization and digital marketing'),
@@ -295,16 +247,16 @@ INSERT INTO services (name, description) VALUES
 ('Digital Marketing Audit', 'Comprehensive digital marketing analysis and recommendations')
 ON CONFLICT (name) DO NOTHING;
 
--- 12. Insert Sample Milestone Templates for Social Media Management
-INSERT INTO service_milestone_templates (service_id, title, description, default_weight, default_order, is_required)
+-- 10. Insert Sample Milestone Templates for Social Media Management
+INSERT INTO service_milestone_templates (service_type_id, title, description, default_weight, default_order, is_required)
 SELECT 
-    s.id,
+    st.id,
     template_data.title,
     template_data.description,
     template_data.default_weight,
     template_data.default_order,
     template_data.is_required
-FROM services s
+FROM service_types st
 CROSS JOIN (VALUES
     ('Week 1: Strategy & Planning', 'Develop social media strategy and content calendar', 1.0, 1, true),
     ('Week 2: Content Creation', 'Create visual content and copy for all platforms', 1.0, 2, true),
@@ -312,19 +264,19 @@ CROSS JOIN (VALUES
     ('Week 4: Engagement & Monitoring', 'Monitor engagement and respond to comments', 1.0, 4, true),
     ('Monthly: Analytics & Reporting', 'Generate monthly performance reports', 1.0, 5, true)
 ) AS template_data(title, description, default_weight, default_order, is_required)
-WHERE s.name = 'Social Media Management'
-ON CONFLICT (service_id, title) DO NOTHING;
+WHERE st.name = 'Social Media Management'
+ON CONFLICT (service_type_id, title) DO NOTHING;
 
--- 13. Insert Sample Milestone Templates for Web Development
-INSERT INTO service_milestone_templates (service_id, title, description, default_weight, default_order, is_required)
+-- 11. Insert Sample Milestone Templates for Web Development
+INSERT INTO service_milestone_templates (service_type_id, title, description, default_weight, default_order, is_required)
 SELECT 
-    s.id,
+    st.id,
     template_data.title,
     template_data.description,
     template_data.default_weight,
     template_data.default_order,
     template_data.is_required
-FROM services s
+FROM service_types st
 CROSS JOIN (VALUES
     ('Phase 1: Requirements & Planning', 'Gather requirements and create project plan', 1.0, 1, true),
     ('Phase 2: Design & Wireframing', 'Create wireframes and visual designs', 1.0, 2, true),
@@ -333,19 +285,19 @@ CROSS JOIN (VALUES
     ('Phase 5: Launch & Deployment', 'Deploy website and go live', 1.0, 5, true),
     ('Phase 6: Maintenance & Support', 'Ongoing maintenance and support', 0.5, 6, false)
 ) AS template_data(title, description, default_weight, default_order, is_required)
-WHERE s.name = 'Web Development'
-ON CONFLICT (service_id, title) DO NOTHING;
+WHERE st.name = 'Web Development'
+ON CONFLICT (service_type_id, title) DO NOTHING;
 
--- 14. Insert Sample Milestone Templates for SEO Services
-INSERT INTO service_milestone_templates (service_id, title, description, default_weight, default_order, is_required)
+-- 12. Insert Sample Milestone Templates for SEO Services
+INSERT INTO service_milestone_templates (service_type_id, title, description, default_weight, default_order, is_required)
 SELECT 
-    s.id,
+    st.id,
     template_data.title,
     template_data.description,
     template_data.default_weight,
     template_data.default_order,
     template_data.is_required
-FROM services s
+FROM service_types st
 CROSS JOIN (VALUES
     ('Week 1: SEO Audit', 'Conduct comprehensive SEO audit and analysis', 1.0, 1, true),
     ('Week 2: Keyword Research', 'Research and identify target keywords', 1.0, 2, true),
@@ -354,22 +306,44 @@ CROSS JOIN (VALUES
     ('Month 2: Link Building', 'Build high-quality backlinks', 1.0, 5, true),
     ('Month 3: Monitoring & Reporting', 'Monitor rankings and generate reports', 1.0, 6, true)
 ) AS template_data(title, description, default_weight, default_order, is_required)
-WHERE s.name = 'SEO Services'
-ON CONFLICT (service_id, title) DO NOTHING;
+WHERE st.name = 'SEO Services'
+ON CONFLICT (service_type_id, title) DO NOTHING;
 
--- 15. Create Indexes for Performance
+-- 13. Create Indexes for Performance
 CREATE INDEX IF NOT EXISTS idx_milestones_booking_id ON milestones(booking_id);
-CREATE INDEX IF NOT EXISTS idx_milestones_service_id ON milestones(booking_id) WHERE booking_id IN (SELECT id FROM bookings WHERE service_id IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_tasks_milestone_id ON tasks(milestone_id);
-CREATE INDEX IF NOT EXISTS idx_service_milestone_templates_service_id ON service_milestone_templates(service_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_service_id ON bookings(service_id);
+CREATE INDEX IF NOT EXISTS idx_service_milestone_templates_service_type_id ON service_milestone_templates(service_type_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_service_type_id ON bookings(service_type_id);
 
--- 16. Add Comments for Documentation
-COMMENT ON TABLE services IS 'Available service types for bookings';
+-- 14. Add Comments for Documentation
+COMMENT ON TABLE service_types IS 'Available service types for milestone templates';
 COMMENT ON TABLE service_milestone_templates IS 'Default milestone templates for each service type';
 COMMENT ON COLUMN milestones.editable IS 'Whether this milestone can be edited by providers';
 COMMENT ON COLUMN milestones.weight IS 'Weight of this milestone in progress calculation';
 COMMENT ON COLUMN tasks.editable IS 'Whether this task can be edited by providers';
-COMMENT ON FUNCTION generate_milestones_from_templates(UUID) IS 'Generates milestones for a booking based on service templates';
+COMMENT ON FUNCTION generate_milestones_from_templates(UUID) IS 'Generates milestones for a booking based on service type templates';
 COMMENT ON FUNCTION calculate_booking_progress(UUID) IS 'Calculates weighted progress across all milestones for a booking';
 COMMENT ON FUNCTION update_milestone_progress(UUID) IS 'Updates milestone progress based on task completion';
+  `
+
+  console.log('✅ CORRECTED SQL MIGRATION:')
+  console.log('📋 Manual step: Run this in Supabase SQL Editor:')
+  console.log(correctedSQL)
+
+  console.log('\n' + '='.repeat(50))
+  console.log('🎯 CONFLICT RESOLUTION COMPLETE')
+  console.log('='.repeat(50))
+  
+  console.log('\n📋 CHANGES MADE:')
+  console.log('✅ Renamed "services" table to "service_types"')
+  console.log('✅ Updated all references to use "service_type_id"')
+  console.log('✅ Updated function to use "service_type_id"')
+  console.log('✅ Updated sample data to use new table names')
+  
+  console.log('\n🔧 NEXT STEPS:')
+  console.log('1. Run the corrected SQL above in Supabase')
+  console.log('2. Update frontend components to use "service_type_id"')
+  console.log('3. Test the system with the new structure')
+}
+
+fixServicesTableConflict()

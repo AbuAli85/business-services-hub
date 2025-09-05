@@ -1,10 +1,20 @@
--- Migration: Flexible Milestone System
--- This migration refactors the progress tracking system to support flexible milestones per service type
+# Flexible Milestone System Migration Guide
 
+## 🚀 **Migration Overview**
+
+This guide will help you set up the new flexible milestone system that supports different milestone templates per service type.
+
+---
+
+## 📋 **Step-by-Step Migration**
+
+### **Step 1: Create Services Table**
+
+```sql
 -- Enable UUID extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Create Services Table
+-- Create Services Table
 CREATE TABLE IF NOT EXISTS services (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
@@ -27,8 +37,12 @@ CREATE POLICY "Allow insert access to services" ON services
 
 CREATE POLICY "Allow update access to services" ON services
     FOR UPDATE USING (true);
+```
 
--- 2. Create Service Milestone Templates Table
+### **Step 2: Create Service Milestone Templates Table**
+
+```sql
+-- Create Service Milestone Templates Table
 CREATE TABLE IF NOT EXISTS service_milestone_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     service_id UUID REFERENCES services(id) ON DELETE CASCADE,
@@ -54,22 +68,30 @@ CREATE POLICY "Allow insert access to service_milestone_templates" ON service_mi
 
 CREATE POLICY "Allow update access to service_milestone_templates" ON service_milestone_templates
     FOR UPDATE USING (true);
+```
 
--- 3. Update Bookings Table - Add service_id column
+### **Step 3: Update Existing Tables**
+
+```sql
+-- Update Bookings Table - Add service_id column
 ALTER TABLE bookings 
 ADD COLUMN IF NOT EXISTS service_id UUID REFERENCES services(id);
 
--- 4. Update Milestones Table - Add editable column and ensure proper structure
+-- Update Milestones Table - Add new columns
 ALTER TABLE milestones 
 ADD COLUMN IF NOT EXISTS editable BOOLEAN DEFAULT true,
 ADD COLUMN IF NOT EXISTS weight NUMERIC DEFAULT 1,
 ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0;
 
--- 5. Update Tasks Table - Add editable column
+-- Update Tasks Table - Add editable column
 ALTER TABLE tasks 
 ADD COLUMN IF NOT EXISTS editable BOOLEAN DEFAULT true;
+```
 
--- 6. Create Function to Generate Milestones from Templates
+### **Step 4: Create Functions**
+
+```sql
+-- Create function to generate milestones from templates
 CREATE OR REPLACE FUNCTION generate_milestones_from_templates(booking_uuid UUID)
 RETURNS VOID AS $$
 DECLARE
@@ -126,11 +148,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 7. Update calculate_booking_progress function to use progress_percentage
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS calculate_booking_progress(uuid);
-DROP FUNCTION IF EXISTS calculate_booking_progress(UUID);
-
+-- Update calculate_booking_progress function to use progress_percentage
 CREATE OR REPLACE FUNCTION calculate_booking_progress(booking_id UUID)
 RETURNS INTEGER AS $$
 DECLARE
@@ -173,11 +191,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 8. Update update_milestone_progress function to use progress_percentage
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS update_milestone_progress(uuid);
-DROP FUNCTION IF EXISTS update_milestone_progress(UUID);
-
+-- Update update_milestone_progress function to use progress_percentage
 CREATE OR REPLACE FUNCTION update_milestone_progress(milestone_uuid UUID)
 RETURNS VOID AS $$
 DECLARE
@@ -216,11 +230,12 @@ BEGIN
     PERFORM calculate_booking_progress(booking_uuid);
 END;
 $$ LANGUAGE plpgsql;
+```
 
--- 9. Create Trigger for Auto-Generating Milestones on Booking Creation
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS trigger_generate_milestones();
+### **Step 5: Create Triggers**
 
+```sql
+-- Create trigger for auto-generating milestones on booking creation
 CREATE OR REPLACE FUNCTION trigger_generate_milestones()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -242,10 +257,7 @@ CREATE TRIGGER trigger_auto_generate_milestones
     FOR EACH ROW
     EXECUTE FUNCTION trigger_generate_milestones();
 
--- 10. Create Trigger for Updating Milestone Progress When Tasks Change
--- Drop existing function if it exists
-DROP FUNCTION IF EXISTS trigger_update_milestone_progress();
-
+-- Create trigger for updating milestone progress when tasks change
 CREATE OR REPLACE FUNCTION trigger_update_milestone_progress()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -285,8 +297,12 @@ CREATE TRIGGER trigger_update_milestone_progress_delete
     AFTER DELETE ON tasks
     FOR EACH ROW
     EXECUTE FUNCTION trigger_update_milestone_progress();
+```
 
--- 11. Insert Sample Services
+### **Step 6: Insert Sample Data**
+
+```sql
+-- Insert Sample Services
 INSERT INTO services (name, description) VALUES
 ('Social Media Management', 'Complete social media management including content creation, posting, and engagement'),
 ('Web Development', 'Custom website development and maintenance'),
@@ -295,7 +311,7 @@ INSERT INTO services (name, description) VALUES
 ('Digital Marketing Audit', 'Comprehensive digital marketing analysis and recommendations')
 ON CONFLICT (name) DO NOTHING;
 
--- 12. Insert Sample Milestone Templates for Social Media Management
+-- Insert Sample Milestone Templates for Social Media Management
 INSERT INTO service_milestone_templates (service_id, title, description, default_weight, default_order, is_required)
 SELECT 
     s.id,
@@ -315,7 +331,7 @@ CROSS JOIN (VALUES
 WHERE s.name = 'Social Media Management'
 ON CONFLICT (service_id, title) DO NOTHING;
 
--- 13. Insert Sample Milestone Templates for Web Development
+-- Insert Sample Milestone Templates for Web Development
 INSERT INTO service_milestone_templates (service_id, title, description, default_weight, default_order, is_required)
 SELECT 
     s.id,
@@ -336,7 +352,7 @@ CROSS JOIN (VALUES
 WHERE s.name = 'Web Development'
 ON CONFLICT (service_id, title) DO NOTHING;
 
--- 14. Insert Sample Milestone Templates for SEO Services
+-- Insert Sample Milestone Templates for SEO Services
 INSERT INTO service_milestone_templates (service_id, title, description, default_weight, default_order, is_required)
 SELECT 
     s.id,
@@ -356,20 +372,57 @@ CROSS JOIN (VALUES
 ) AS template_data(title, description, default_weight, default_order, is_required)
 WHERE s.name = 'SEO Services'
 ON CONFLICT (service_id, title) DO NOTHING;
+```
 
--- 15. Create Indexes for Performance
+### **Step 7: Create Indexes for Performance**
+
+```sql
+-- Create Indexes for Performance
 CREATE INDEX IF NOT EXISTS idx_milestones_booking_id ON milestones(booking_id);
 CREATE INDEX IF NOT EXISTS idx_milestones_service_id ON milestones(booking_id) WHERE booking_id IN (SELECT id FROM bookings WHERE service_id IS NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_tasks_milestone_id ON tasks(milestone_id);
 CREATE INDEX IF NOT EXISTS idx_service_milestone_templates_service_id ON service_milestone_templates(service_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_service_id ON bookings(service_id);
+```
 
--- 16. Add Comments for Documentation
-COMMENT ON TABLE services IS 'Available service types for bookings';
-COMMENT ON TABLE service_milestone_templates IS 'Default milestone templates for each service type';
-COMMENT ON COLUMN milestones.editable IS 'Whether this milestone can be edited by providers';
-COMMENT ON COLUMN milestones.weight IS 'Weight of this milestone in progress calculation';
-COMMENT ON COLUMN tasks.editable IS 'Whether this task can be edited by providers';
-COMMENT ON FUNCTION generate_milestones_from_templates(UUID) IS 'Generates milestones for a booking based on service templates';
-COMMENT ON FUNCTION calculate_booking_progress(UUID) IS 'Calculates weighted progress across all milestones for a booking';
-COMMENT ON FUNCTION update_milestone_progress(UUID) IS 'Updates milestone progress based on task completion';
+---
+
+## 🧪 **Testing the Migration**
+
+After running all the SQL statements, test the migration with:
+
+```bash
+node test-flexible-milestone-system.js
+```
+
+---
+
+## 🎯 **What This Migration Accomplishes**
+
+1. **Flexible Service Types**: Different milestone templates for each service type
+2. **Automatic Milestone Generation**: Milestones are created automatically when bookings are made
+3. **Weighted Progress Calculation**: Milestones can have different weights in progress calculation
+4. **Editable Milestones & Tasks**: Providers can edit milestones and tasks as needed
+5. **Real-time Progress Updates**: Progress updates automatically when tasks are completed
+6. **Service-based Organization**: Milestones are organized by service type
+
+---
+
+## 🔧 **Troubleshooting**
+
+If you encounter any issues:
+
+1. **Check Table Existence**: Verify all tables were created successfully
+2. **Check Functions**: Ensure all functions are created without errors
+3. **Check Triggers**: Verify triggers are attached to the correct tables
+4. **Check Sample Data**: Confirm sample services and templates were inserted
+5. **Test Functions**: Run the test script to verify everything works
+
+---
+
+## 📞 **Support**
+
+If you need help with the migration, check:
+- Supabase logs for any SQL errors
+- Database schema to ensure all tables exist
+- Function definitions in the Supabase dashboard

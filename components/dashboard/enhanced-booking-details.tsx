@@ -1303,7 +1303,7 @@ export default function EnhancedBookingDetails() {
           {/* Service-Based Milestone Management */}
           <ServiceMilestoneManager
             bookingId={bookingId}
-            serviceId={booking.service?.id}
+            serviceTypeId={booking.service_type_id}
             canEdit={canEdit}
             onMilestoneUpdate={() => {
               loadMilestoneData()

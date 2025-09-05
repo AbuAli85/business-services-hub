@@ -55,14 +55,14 @@ interface Task {
 
 interface ServiceMilestoneManagerProps {
   bookingId: string
-  serviceId?: string
+  serviceTypeId?: string
   canEdit: boolean
   onMilestoneUpdate?: () => void
 }
 
 export default function ServiceMilestoneManager({ 
   bookingId, 
-  serviceId, 
+  serviceTypeId, 
   canEdit, 
   onMilestoneUpdate 
 }: ServiceMilestoneManagerProps) {
@@ -84,12 +84,12 @@ export default function ServiceMilestoneManager({
     try {
       const supabase = await getSupabaseClient()
       
-      // Load service information
-      if (serviceId) {
+      // Load service type information
+      if (serviceTypeId) {
         const { data: serviceData, error: serviceError } = await supabase
-          .from('services')
+          .from('service_types')
           .select('id, name, description')
-          .eq('id', serviceId)
+          .eq('id', serviceTypeId)
           .single()
         
         if (serviceError) {
