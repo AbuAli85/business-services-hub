@@ -171,7 +171,7 @@ export function SmartSuggestionsSidebar({
   }
 
   const handleDismiss = (suggestionId: string) => {
-    setDismissedSuggestions(prev => new Set([...prev, suggestionId]))
+    setDismissedSuggestions(prev => new Set(Array.from(prev).concat(suggestionId)))
     onDismissSuggestion?.(suggestionId)
   }
 
