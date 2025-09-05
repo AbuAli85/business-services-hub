@@ -110,6 +110,7 @@ import { NotificationBell } from '@/components/ui/notification-bell'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 import { ProgressTabs } from './progress-tabs'
 import { SmartFeatures } from './smart-features'
+import ServiceMilestoneManager from './service-milestone-manager'
 
 interface EnhancedBooking {
   id: string
@@ -1299,91 +1300,16 @@ export default function EnhancedBookingDetails() {
           </Card>
 
           {/* Milestone Summary with Tasks Checklist */}
-          {milestoneStats.total > 0 && (
-            <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Project Milestones & Tasks</h3>
-                    <p className="text-gray-600 text-sm">
-                      {milestoneStats.completed}/{milestoneStats.total} milestones completed ({booking.progress_percentage}%)
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center space-x-2">
-                      {milestoneStats.overdue > 0 && (
-                        <Badge variant="destructive" className="flex items-center space-x-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          <span>{milestoneStats.overdue} Overdue</span>
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-green-600 border-green-300">
-                        {milestoneStats.completed} Complete
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Milestones with Tasks Checklist */}
-                <div className="space-y-4">
-                  {milestones.map((milestone, index) => (
-                    <div key={milestone.id} className="border border-gray-200 rounded-lg p-4 bg-white/70">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-4 h-4 rounded-full ${
-                            milestone.status === 'completed' ? 'bg-green-500' : 
-                            milestone.status === 'in_progress' ? 'bg-yellow-500' : 'bg-gray-300'
-                          }`} />
-                          <div>
-                            <h4 className="font-medium text-gray-900">{milestone.title}</h4>
-                            <p className="text-sm text-gray-500">
-                              {milestone.progress_percentage}% complete • {milestone.status}
-                            </p>
-                          </div>
-                        </div>
-                        {milestone.due_date && new Date(milestone.due_date) < new Date() && milestone.status !== 'completed' && (
-                          <AlertTriangle className="h-4 w-4 text-red-500" />
-                        )}
-                      </div>
-                      
-                      {/* Tasks Checklist */}
-                      {milestone.tasks && milestone.tasks.length > 0 && (
-                        <div className="ml-7 space-y-2">
-                          <h5 className="text-sm font-medium text-gray-700 mb-2">Tasks:</h5>
-                          <div className="space-y-1">
-                            {milestone.tasks.map((task: any) => (
-                              <div key={task.id} className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  checked={task.status === 'completed'}
-                                  onChange={(e) => onStepToggle(
-                                    task.id, 
-                                    e.target.checked ? 'completed' : 'pending'
-                                  )}
-                                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                                  disabled={!canEdit}
-                                />
-                                <span className={`text-sm ${
-                                  task.status === 'completed' 
-                                    ? 'line-through text-gray-500' 
-                                    : 'text-gray-700'
-                                }`}>
-                                  {task.title}
-                                </span>
-                                {task.status === 'completed' && (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Service-Based Milestone Management */}
+          <ServiceMilestoneManager
+            bookingId={bookingId}
+            serviceId={booking.service?.id}
+            canEdit={canEdit}
+            onMilestoneUpdate={() => {
+              loadMilestoneData()
+              loadBookingData()
+            }}
+          />
         </div>
 
         {/* Main Content Layout */}

@@ -301,20 +301,20 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', service_id)
 
-    // Create default monthly progress milestones for the booking
+    // Generate milestones from service templates for the booking
     try {
-      const { error: milestoneError } = await supabase.rpc('create_default_milestones', {
+      const { error: milestoneError } = await supabase.rpc('generate_milestones_from_templates', {
         booking_uuid: booking.id
       })
       
       if (milestoneError) {
-        console.warn('⚠️ Failed to create default milestones:', milestoneError)
+        console.warn('⚠️ Failed to generate milestones from templates:', milestoneError)
         // Don't fail the booking creation if milestone creation fails
       } else {
-        console.log('✅ Default milestones created for booking:', booking.id)
+        console.log('✅ Service-based milestones generated for booking:', booking.id)
       }
     } catch (milestoneError) {
-      console.warn('⚠️ Error creating milestones:', milestoneError)
+      console.warn('⚠️ Error generating milestones from templates:', milestoneError)
       // Don't fail the booking creation if milestone creation fails
     }
 
