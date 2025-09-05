@@ -378,6 +378,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
       {/* Smart Suggestions Sidebar */}
       <SmartSuggestionsSidebar
+        bookingProgress={bookingProgress}
+        milestones={milestones}
         onSendUpdate={handleSendUpdate}
         onScheduleFollowUp={handleScheduleFollowUp}
         onSendPaymentReminder={handleSendPaymentReminder}

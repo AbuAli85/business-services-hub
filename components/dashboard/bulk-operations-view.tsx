@@ -19,9 +19,12 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Get all tasks from all milestones
-  const allTasks = milestones.flatMap(milestone => 
+  // Sort milestones by order_index and get all tasks
+  const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
+  const allTasks = sortedMilestones.flatMap(milestone => 
     (milestone.tasks || []).map(task => ({
       ...task,
       milestone_title: milestone.title,
@@ -29,11 +32,14 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
     }))
   )
 
-  // Filter tasks based on status and priority
+  // Filter tasks based on status, priority, and search term
   const filteredTasks = allTasks.filter(task => {
     const statusMatch = statusFilter === 'all' || task.status === statusFilter
     const priorityMatch = priorityFilter === 'all' || 'normal' === priorityFilter // Assuming normal priority for now
-    return statusMatch && priorityMatch
+    const searchMatch = searchTerm === '' || 
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.milestone_title.toLowerCase().includes(searchTerm.toLowerCase())
+    return statusMatch && priorityMatch && searchMatch
   })
 
   const handleSelectAll = () => {
@@ -52,6 +58,29 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
       newSelected.add(taskId)
     }
     setSelectedTasks(newSelected)
+  }
+
+  const handleBulkAction = async (action: string) => {
+    if (selectedTasks.size === 0) return
+    
+    setIsLoading(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Here you would make actual API calls based on the action
+      console.log(`Performing ${action} on ${selectedTasks.size} tasks:`, Array.from(selectedTasks))
+      
+      // Call the parent update function
+      onUpdate()
+      
+      // Clear selection after action
+      setSelectedTasks(new Set())
+    } catch (error) {
+      console.error('Bulk action failed:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -86,13 +115,18 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
             <span className="text-sm text-gray-600">
               Select All ({selectedTasks.size}/{filteredTasks.length})
             </span>
-            <Button variant="ghost" size="sm">
-              <Filter className="h-4 w-4 mr-1" />
-              Filter
-            </Button>
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Search Box */}
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+            />
+            
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -127,16 +161,36 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
               {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
             </span>
             <div className="flex items-center gap-2 ml-auto">
-              <Button size="sm" variant="outline">
-                Mark Complete
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleBulkAction('mark_complete')}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Mark Complete'}
               </Button>
-              <Button size="sm" variant="outline">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleBulkAction('change_priority')}
+                disabled={isLoading}
+              >
                 Change Priority
               </Button>
-              <Button size="sm" variant="outline">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleBulkAction('assign')}
+                disabled={isLoading}
+              >
                 Assign
               </Button>
-              <Button size="sm" variant="destructive">
+              <Button 
+                size="sm" 
+                variant="destructive"
+                onClick={() => handleBulkAction('delete')}
+                disabled={isLoading}
+              >
                 Delete
               </Button>
             </div>

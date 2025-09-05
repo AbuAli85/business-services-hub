@@ -71,16 +71,16 @@ export function MainProgressHeader({
         <p className="text-gray-600">Project Progress Tracking</p>
       </div>
 
-      {/* Main Progress Circle and Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Circular Progress - Larger */}
-        <div className="flex flex-col items-center">
-          <div className="relative w-40 h-40 mb-4">
-            <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 100 100">
+      {/* 2x2 Stats Grid */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Top-left: Circular Progress */}
+        <div className="flex flex-col items-center p-4 bg-blue-50 rounded-lg">
+          <div className="relative w-32 h-32 mb-3">
+            <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
                 cy="50"
-                r="45"
+                r="40"
                 stroke="currentColor"
                 strokeWidth="6"
                 fill="none"
@@ -89,105 +89,113 @@ export function MainProgressHeader({
               <circle
                 cx="50"
                 cy="50"
-                r="45"
+                r="40"
                 stroke="currentColor"
                 strokeWidth="6"
                 fill="none"
-                strokeDasharray={`${2 * Math.PI * 45}`}
-                strokeDashoffset={`${2 * Math.PI * 45 * (1 - bookingProgress.booking_progress / 100)}`}
+                strokeDasharray={`${2 * Math.PI * 40}`}
+                strokeDashoffset={`${2 * Math.PI * 40 * (1 - bookingProgress.booking_progress / 100)}`}
                 className="text-blue-600 transition-all duration-500"
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-4xl font-bold text-gray-900">{bookingProgress.booking_progress}%</div>
-                <div className="text-sm text-gray-600">Complete</div>
+                <div className="text-3xl font-bold text-gray-900">{bookingProgress.booking_progress}%</div>
+                <div className="text-xs text-gray-600">Complete</div>
               </div>
             </div>
           </div>
           <div className="text-center">
-            <div className="text-sm text-gray-600 mb-1">Overall Progress</div>
-            <div className="text-xs text-gray-500">
+            <div className="text-sm font-medium text-gray-900">Overall Progress</div>
+            <div className="text-xs text-gray-600">
               {completedMilestones} of {totalMilestones} milestones
             </div>
           </div>
         </div>
 
-        {/* Milestone Stats Cards */}
-        <div className="text-center p-4 bg-green-50 rounded-lg">
-          <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-green-600">{completedMilestones}</div>
-          <div className="text-sm text-green-700">Completed</div>
-        </div>
-
-        <div className="text-center p-4 bg-blue-50 rounded-lg">
-          <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-blue-600">{remainingMilestones}</div>
-          <div className="text-sm text-blue-700">Remaining</div>
-        </div>
-
-        <div className="text-center p-4 bg-purple-50 rounded-lg">
-          <Clock className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-purple-600">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
-          <div className="text-sm text-purple-700">Hours Logged</div>
-        </div>
-      </div>
-
-      {/* Estimated Completion & Action Buttons */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {estimatedCompletion && (
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="h-5 w-5 text-gray-600" />
-              <span className="font-medium text-gray-900">Estimated Completion</span>
-            </div>
-            <div className="text-lg font-semibold text-gray-900">
-              {estimatedCompletion.toLocaleDateString()}
-            </div>
-            <div className="text-sm text-gray-600">
-              {Math.ceil((estimatedCompletion.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining
-            </div>
+        {/* Top-right: Completed Milestones */}
+        <div className="flex items-center justify-center p-4 bg-green-50 rounded-lg">
+          <div className="text-center">
+            <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
+            <div className="text-3xl font-bold text-green-600">{completedMilestones}</div>
+            <div className="text-sm text-green-700">Completed Milestones</div>
           </div>
-        )}
+        </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2">
-          {onLogHours && (
-            <Button 
-              onClick={onLogHours}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              Log Hours
-            </Button>
-          )}
-          {onSendUpdate && (
-            <Button 
-              onClick={onSendUpdate}
-              variant="outline"
-            >
-              Send Progress Update
-            </Button>
-          )}
-          {onScheduleFollowUp && (
-            <Button 
-              onClick={onScheduleFollowUp}
-              variant="outline"
-            >
-              Schedule Follow-up
-            </Button>
-          )}
-          {onSendPaymentReminder && (
-            <Button 
-              onClick={onSendPaymentReminder}
-              variant="outline"
-            >
-              Send Payment Reminder
-            </Button>
-          )}
+        {/* Bottom-left: Remaining Milestones */}
+        <div className="flex items-center justify-center p-4 bg-orange-50 rounded-lg">
+          <div className="text-center">
+            <Target className="h-12 w-12 text-orange-600 mx-auto mb-2" />
+            <div className="text-3xl font-bold text-orange-600">{remainingMilestones}</div>
+            <div className="text-sm text-orange-700">Remaining Milestones</div>
+          </div>
+        </div>
+
+        {/* Bottom-right: Hours Logged */}
+        <div className="flex items-center justify-center p-4 bg-purple-50 rounded-lg">
+          <div className="text-center">
+            <Clock className="h-12 w-12 text-purple-600 mx-auto mb-2" />
+            <div className="text-3xl font-bold text-purple-600">{bookingProgress.total_actual_hours.toFixed(1)}h</div>
+            <div className="text-sm text-purple-700">Hours Logged</div>
+          </div>
         </div>
       </div>
+
+      {/* Action Buttons Row */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        {onLogHours && (
+          <Button 
+            onClick={onLogHours}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+          >
+            <LogIn className="h-4 w-4 mr-2" />
+            Log Hours
+          </Button>
+        )}
+        {onSendUpdate && (
+          <Button 
+            onClick={onSendUpdate}
+            variant="outline"
+            className="px-6 py-2"
+          >
+            Send Progress Update
+          </Button>
+        )}
+        {onScheduleFollowUp && (
+          <Button 
+            onClick={onScheduleFollowUp}
+            variant="outline"
+            className="px-6 py-2"
+          >
+            Schedule Follow-up
+          </Button>
+        )}
+        {onSendPaymentReminder && (
+          <Button 
+            onClick={onSendPaymentReminder}
+            variant="outline"
+            className="px-6 py-2"
+          >
+            Send Payment Reminder
+          </Button>
+        )}
+      </div>
+
+      {/* Estimated Completion */}
+      {estimatedCompletion && (
+        <div className="mt-4 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
+            <Calendar className="h-4 w-4 text-gray-600" />
+            <span className="text-sm text-gray-700">
+              Estimated completion: <span className="font-semibold">{estimatedCompletion.toLocaleDateString()}</span>
+              <span className="ml-2 text-gray-500">
+                ({Math.ceil((estimatedCompletion.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining)
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

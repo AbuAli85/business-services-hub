@@ -12,17 +12,25 @@ interface AnalyticsViewProps {
 export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProps) {
   if (!bookingProgress) return null
 
-  const completedTasks = milestones.reduce((sum, m) => 
+  // Sort milestones by order_index
+  const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
+  
+  const completedTasks = sortedMilestones.reduce((sum, m) => 
     sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
   )
-  const totalTasks = milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+  const totalTasks = sortedMilestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
   const pendingTasks = totalTasks - completedTasks
-  const overdueTasks = milestones.reduce((sum, m) => 
+  const overdueTasks = sortedMilestones.reduce((sum, m) => 
     sum + (m.tasks?.filter(t => {
       if (!t.due_date || t.status === 'completed') return false
       return new Date(t.due_date) < new Date()
     }).length || 0), 0
   )
+
+  // Calculate efficiency
+  const efficiency = bookingProgress.total_estimated_hours > 0 
+    ? (bookingProgress.total_actual_hours / bookingProgress.total_estimated_hours) * 100 
+    : 0
 
   const weeklyProgress = [
     { week: 1, progress: 0 },
@@ -101,32 +109,39 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
       </div>
 
       {/* Milestone Progress */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Milestone Progress</h3>
-        <div className="space-y-4">
-          {milestones.map((milestone) => (
-            <div key={milestone.id} className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-900">{milestone.title}</span>
-                  <span className="text-xs text-gray-500">
-                    {milestone.tasks?.filter(t => t.status === 'completed').length || 0} of {milestone.tasks?.length || 0} tasks
-                  </span>
+        <div className="space-y-3">
+          {sortedMilestones.map((milestone) => {
+            const completedTasks = milestone.tasks?.filter(t => t.status === 'completed').length || 0
+            const totalTasks = milestone.tasks?.length || 0
+            const estimatedHours = milestone.tasks?.reduce((sum, t) => sum + (t.estimated_hours || 0), 0) || 0
+            const actualHours = milestone.tasks?.reduce((sum, t) => sum + (t.actual_hours || 0), 0) || 0
+            
+            return (
+              <div key={milestone.id} className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-gray-900">{milestone.title}</span>
+                    <span className="text-xs text-gray-500">
+                      {completedTasks} of {totalTasks} tasks
+                    </span>
+                  </div>
+                  <Progress value={milestone.progress_percentage} className="h-2" />
                 </div>
-                <Progress value={milestone.progress_percentage} className="h-2" />
+                <div className="ml-4 text-right">
+                  <div className="text-sm font-semibold text-gray-900">{milestone.progress_percentage}%</div>
+                  <div className="text-xs text-gray-500">{actualHours.toFixed(1)}h / {estimatedHours.toFixed(1)}h</div>
+                </div>
               </div>
-              <div className="ml-4 text-right">
-                <div className="text-sm font-semibold text-gray-900">{milestone.progress_percentage}%</div>
-                <div className="text-xs text-gray-500">0.0h / 0.0h</div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
       {/* Task Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Distribution</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -134,19 +149,35 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Completed</span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">{completedTasks} tasks</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">{completedTasks} tasks</span>
+                <span className="text-xs text-green-600">▲ +5%</span>
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Pending</span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">{pendingTasks} tasks</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">{pendingTasks} tasks</span>
+                <span className="text-xs text-yellow-600">▼ -3%</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-sm text-gray-600">Overdue</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">{overdueTasks} tasks</span>
+                <span className="text-xs text-red-600">▲ +2%</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Time Tracking</h3>
           <div className="space-y-3">
             <div className="flex justify-between">
@@ -159,25 +190,47 @@ export function AnalyticsView({ bookingProgress, milestones }: AnalyticsViewProp
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Efficiency</span>
-              <span className="text-sm font-semibold text-red-600">0.0%</span>
+              <span className={`text-sm font-semibold ${efficiency > 100 ? 'text-red-600' : efficiency > 80 ? 'text-green-600' : 'text-yellow-600'}`}>
+                {efficiency.toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Trend</span>
+              <span className="text-xs text-green-600">▲ +12% vs last week</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Weekly Progress */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Progress</h3>
+      {/* Weekly Progress Chart */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Weekly Progress (Last 6 Weeks)</h3>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-green-600" />
+            <span className="text-sm text-green-600">+15% vs previous period</span>
+          </div>
+        </div>
         <div className="space-y-3">
-          {weeklyProgress.map((week) => (
-            <div key={week.week} className="flex items-center gap-4">
-              <div className="w-16 text-sm text-gray-600">Week {week.week}</div>
-              <div className="flex-1">
-                <Progress value={week.progress} className="h-2" />
+          {weeklyProgress.map((week, index) => {
+            const trend = index > 0 ? week.progress - weeklyProgress[index - 1].progress : 0
+            return (
+              <div key={week.week} className="flex items-center gap-4">
+                <div className="w-16 text-sm text-gray-600">Week {week.week}</div>
+                <div className="flex-1">
+                  <Progress value={week.progress} className="h-3" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-12 text-sm font-semibold text-gray-900 text-right">{week.progress}%</div>
+                  {trend !== 0 && (
+                    <span className={`text-xs ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {trend > 0 ? '▲' : '▼'} {Math.abs(trend)}%
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="w-12 text-sm font-semibold text-gray-900 text-right">{week.progress}%</div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

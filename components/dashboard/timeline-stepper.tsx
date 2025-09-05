@@ -27,18 +27,21 @@ export function TimelineStepper({
   const [currentStep, setCurrentStep] = useState('started')
   const [stepProgress, setStepProgress] = useState(0)
 
+  // Sort milestones by order_index
+  const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
+
   useEffect(() => {
     calculateCurrentStep()
-  }, [milestones])
+  }, [sortedMilestones])
 
   const calculateCurrentStep = () => {
-    if (!milestones.length) return
+    if (!sortedMilestones.length) return
 
-    const completedMilestones = milestones.filter(m => m.status === 'completed')
-    const inProgressMilestones = milestones.filter(m => m.status === 'in_progress')
-    const pendingMilestones = milestones.filter(m => m.status === 'pending')
+    const completedMilestones = sortedMilestones.filter(m => m.status === 'completed')
+    const inProgressMilestones = sortedMilestones.filter(m => m.status === 'in_progress')
+    const pendingMilestones = sortedMilestones.filter(m => m.status === 'pending')
 
-    if (completedMilestones.length === milestones.length) {
+    if (completedMilestones.length === sortedMilestones.length) {
       setCurrentStep('complete')
       setStepProgress(100)
     } else if (inProgressMilestones.length > 0) {
@@ -143,7 +146,7 @@ export function TimelineStepper({
       {/* Milestones by Status */}
       <div className="mt-8 space-y-6">
         {timelineSteps.map((step) => {
-          const stepMilestones = milestones.filter(m => getMilestoneStatus(m) === step.id)
+          const stepMilestones = sortedMilestones.filter(m => getMilestoneStatus(m) === step.id)
           
           if (stepMilestones.length === 0) return null
 
@@ -214,19 +217,19 @@ export function TimelineStepper({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold text-green-600">
-              {milestones.filter(m => m.status === 'completed').length}
+              {sortedMilestones.filter(m => m.status === 'completed').length}
             </div>
             <div className="text-sm text-gray-600">Completed</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-blue-600">
-              {milestones.filter(m => m.status === 'in_progress').length}
+              {sortedMilestones.filter(m => m.status === 'in_progress').length}
             </div>
             <div className="text-sm text-gray-600">In Progress</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-gray-600">
-              {milestones.filter(m => m.status === 'pending').length}
+              {sortedMilestones.filter(m => m.status === 'pending').length}
             </div>
             <div className="text-sm text-gray-600">Pending</div>
           </div>

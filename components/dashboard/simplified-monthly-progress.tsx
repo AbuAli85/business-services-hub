@@ -11,9 +11,11 @@ interface SimplifiedMonthlyProgressProps {
 }
 
 export function SimplifiedMonthlyProgress({ milestones, userRole }: SimplifiedMonthlyProgressProps) {
-  const completedMilestones = milestones.filter(m => m.status === 'completed')
-  const pendingMilestones = milestones.filter(m => m.status === 'pending' || m.status === 'in_progress')
-  const overdueMilestones = milestones.filter(m => isMilestoneOverdue(m))
+  // Sort milestones by order_index
+  const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
+  const completedMilestones = sortedMilestones.filter(m => m.status === 'completed')
+  const pendingMilestones = sortedMilestones.filter(m => m.status === 'pending' || m.status === 'in_progress')
+  const overdueMilestones = sortedMilestones.filter(m => isMilestoneOverdue(m))
 
   const getMilestoneIcon = (title: string) => {
     const lowerTitle = title.toLowerCase()
@@ -77,7 +79,7 @@ export function SimplifiedMonthlyProgress({ milestones, userRole }: SimplifiedMo
         </div>
         
         <div className="divide-y divide-gray-200">
-          {milestones.map((milestone) => {
+          {sortedMilestones.map((milestone) => {
             const icon = getMilestoneIcon(milestone.title)
             const isOverdue = isMilestoneOverdue(milestone)
             

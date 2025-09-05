@@ -38,8 +38,9 @@ export function RefactoredMilestonesAccordion({
   const [newComment, setNewComment] = useState('')
   const [changeRequest, setChangeRequest] = useState('')
 
-  // Find current milestone (first non-completed milestone)
-  const currentMilestone = milestones.find(m => m.status !== 'completed') || milestones[0]
+  // Sort milestones by order_index and find current milestone (first non-completed milestone)
+  const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
+  const currentMilestone = sortedMilestones.find(m => m.status !== 'completed') || sortedMilestones[0]
 
   useEffect(() => {
     // Only expand the current milestone by default
@@ -132,7 +133,7 @@ export function RefactoredMilestonesAccordion({
 
   return (
     <div className="space-y-4">
-      {milestones.map((milestone) => {
+      {sortedMilestones.map((milestone) => {
         const isExpanded = expandedMilestones.has(milestone.id)
         const color = getMilestoneColor(milestone.title)
         const icon = getMilestoneIcon(milestone.title)
@@ -176,6 +177,11 @@ export function RefactoredMilestonesAccordion({
                       )}
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-1">{milestone.description}</p>
+                    {milestone.updated_at && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Last updated: {new Date(milestone.updated_at).toLocaleString()}
+                      </p>
+                    )}
                   </div>
                 </div>
                 
