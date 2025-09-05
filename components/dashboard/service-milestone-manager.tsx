@@ -73,6 +73,7 @@ export default function ServiceMilestoneManager({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string>('')
   const [isAddingMilestone, setIsAddingMilestone] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [newMilestone, setNewMilestone] = useState({
@@ -547,52 +548,138 @@ export default function ServiceMilestoneManager({
 
       {/* Add Milestone Dialog */}
       <Dialog open={isAddingMilestone} onOpenChange={setIsAddingMilestone}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Milestone</DialogTitle>
-            <DialogDescription>
-              Create a new milestone to track progress
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Milestone title"
-              value={newMilestone.title}
-              onChange={(e) => setNewMilestone(prev => ({ ...prev, title: e.target.value }))}
-            />
-            <Textarea
-              placeholder="Description (optional)"
-              value={newMilestone.description}
-              onChange={(e) => setNewMilestone(prev => ({ ...prev, description: e.target.value }))}
-            />
-            <div className="grid grid-cols-2 gap-4">
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Target className="h-5 w-5 text-blue-600" />
+              </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Due Date</label>
+                <DialogTitle className="text-xl font-semibold text-gray-900">Add New Milestone</DialogTitle>
+                <DialogDescription className="text-sm text-gray-500 mt-1">
+                  Create a new milestone to track project progress
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Milestone Title */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 flex items-center">
+                <Target className="h-4 w-4 mr-2 text-gray-500" />
+                Milestone Title *
+              </label>
+              <Input
+                placeholder="Enter milestone title (e.g., Phase 1: Planning)"
+                value={newMilestone.title}
+                onChange={(e) => setNewMilestone(prev => ({ ...prev, title: e.target.value }))}
+                className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              {!newMilestone.title && (
+                <p className="text-xs text-red-500">Title is required</p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 flex items-center">
+                <Settings className="h-4 w-4 mr-2 text-gray-500" />
+                Description
+              </label>
+              <Textarea
+                placeholder="Describe what this milestone involves (optional)"
+                value={newMilestone.description}
+                onChange={(e) => setNewMilestone(prev => ({ ...prev, description: e.target.value }))}
+                className="min-h-[80px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
+            {/* Due Date and Weight */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                  Due Date
+                </label>
                 <Input
                   type="datetime-local"
                   value={newMilestone.due_date}
                   onChange={(e) => setNewMilestone(prev => ({ ...prev, due_date: e.target.value }))}
+                  className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Weight</label>
-                <Input
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={newMilestone.weight}
-                  onChange={(e) => setNewMilestone(prev => ({ ...prev, weight: parseFloat(e.target.value) || 1 }))}
-                />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <Target className="h-4 w-4 mr-2 text-gray-500" />
+                  Weight
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min="0.1"
+                    max="10"
+                    step="0.1"
+                    value={newMilestone.weight}
+                    onChange={(e) => setNewMilestone(prev => ({ ...prev, weight: parseFloat(e.target.value) || 1 }))}
+                    className="h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-8"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-gray-500 text-sm">x</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">Higher weight = more important milestone</p>
               </div>
             </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsAddingMilestone(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddMilestone}>
-                Add Milestone
-              </Button>
-            </div>
+
+            {/* Preview */}
+            {newMilestone.title && (
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Preview</h4>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Target className="h-4 w-4 text-gray-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="font-medium text-gray-900">{newMilestone.title}</h5>
+                    {newMilestone.description && (
+                      <p className="text-sm text-gray-600 mt-1">{newMilestone.description}</p>
+                    )}
+                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                      {newMilestone.due_date && (
+                        <span className="flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {new Date(newMilestone.due_date).toLocaleDateString()}
+                        </span>
+                      )}
+                      <span className="flex items-center">
+                        <Target className="h-3 w-3 mr-1" />
+                        Weight: {newMilestone.weight}x
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAddingMilestone(false)}
+              className="px-6"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddMilestone}
+              disabled={!newMilestone.title.trim()}
+              className="px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Milestone
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -600,27 +687,98 @@ export default function ServiceMilestoneManager({
       {/* Add Task Dialog - Only show if there are milestones */}
       {milestones.length > 0 && (
         <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Task</DialogTitle>
-              <DialogDescription>
-                Add a new task to track progress
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Input
-                placeholder="Task title"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-              />
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsAddingTask(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => handleAddTask(milestones[0]?.id || '')}>
-                  Add Task
-                </Button>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-semibold text-gray-900">Add New Task</DialogTitle>
+                  <DialogDescription className="text-sm text-gray-500 mt-1">
+                    Add a new task to track progress
+                  </DialogDescription>
+                </div>
               </div>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Task Title */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-2 text-gray-500" />
+                  Task Title *
+                </label>
+                <Input
+                  placeholder="Enter task title (e.g., Review requirements)"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="h-11 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                />
+                {!newTaskTitle && (
+                  <p className="text-xs text-red-500">Task title is required</p>
+                )}
+              </div>
+
+              {/* Milestone Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <Target className="h-4 w-4 mr-2 text-gray-500" />
+                  Add to Milestone
+                </label>
+                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                  <SelectTrigger className="h-11 border-gray-300 focus:border-green-500 focus:ring-green-500">
+                    <SelectValue placeholder="Select a milestone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {milestones.map((milestone) => (
+                      <SelectItem key={milestone.id} value={milestone.id}>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span>{milestone.title}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Preview */}
+              {newTaskTitle && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Preview</h4>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 border-2 border-gray-300 rounded flex items-center justify-center">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-gray-900">{newTaskTitle}</h5>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Will be added to: {milestones.find(m => m.id === selectedMilestoneId)?.title || 'Selected milestone'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsAddingTask(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleAddTask(selectedMilestoneId || milestones[0]?.id || '')}
+                disabled={!newTaskTitle.trim()}
+                className="px-6 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -628,66 +786,186 @@ export default function ServiceMilestoneManager({
 
       {/* Edit Milestone Dialog */}
       <Dialog open={!!editingMilestone} onOpenChange={() => setEditingMilestone(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Milestone</DialogTitle>
-            <DialogDescription>
-              Update milestone details
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Edit className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold text-gray-900">Edit Milestone</DialogTitle>
+                <DialogDescription className="text-sm text-gray-500 mt-1">
+                  Update milestone details and settings
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
+          
           {editingMilestone && (
-            <div className="space-y-4">
-              <Input
-                placeholder="Milestone title"
-                value={editingMilestone.title}
-                onChange={(e) => setEditingMilestone({
-                  ...editingMilestone,
-                  title: e.target.value
-                })}
-              />
-              <Textarea
-                placeholder="Description"
-                value={editingMilestone.description || ''}
-                onChange={(e) => setEditingMilestone({
-                  ...editingMilestone,
-                  description: e.target.value
-                })}
-              />
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setEditingMilestone(null)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => handleMilestoneEdit(editingMilestone.id, editingMilestone)}>
-                  Save Changes
-                </Button>
+            <div className="space-y-6 py-4">
+              {/* Milestone Title */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <Target className="h-4 w-4 mr-2 text-gray-500" />
+                  Milestone Title *
+                </label>
+                <Input
+                  placeholder="Enter milestone title"
+                  value={editingMilestone.title}
+                  onChange={(e) => setEditingMilestone({
+                    ...editingMilestone,
+                    title: e.target.value
+                  })}
+                  className="h-11 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <Settings className="h-4 w-4 mr-2 text-gray-500" />
+                  Description
+                </label>
+                <Textarea
+                  placeholder="Describe what this milestone involves"
+                  value={editingMilestone.description || ''}
+                  onChange={(e) => setEditingMilestone({
+                    ...editingMilestone,
+                    description: e.target.value
+                  })}
+                  className="min-h-[80px] border-gray-300 focus:border-orange-500 focus:ring-orange-500 resize-none"
+                />
+              </div>
+
+              {/* Due Date and Weight */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                    Due Date
+                  </label>
+                  <Input
+                    type="datetime-local"
+                    value={editingMilestone.due_date || ''}
+                    onChange={(e) => setEditingMilestone({
+                      ...editingMilestone,
+                      due_date: e.target.value
+                    })}
+                    className="h-11 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center">
+                    <Target className="h-4 w-4 mr-2 text-gray-500" />
+                    Weight
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0.1"
+                      max="10"
+                      step="0.1"
+                      value={editingMilestone.weight}
+                      onChange={(e) => setEditingMilestone({
+                        ...editingMilestone,
+                        weight: parseFloat(e.target.value) || 1
+                      })}
+                      className="h-11 border-gray-300 focus:border-orange-500 focus:ring-orange-500 pr-8"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <span className="text-gray-500 text-sm">x</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Progress */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Current Progress</h4>
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <Target className="h-4 w-4 text-gray-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-900">{editingMilestone.progress_percentage}% Complete</span>
+                      <span className="text-xs text-gray-500">{editingMilestone.tasks?.length || 0} tasks</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${editingMilestone.progress_percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <Button 
+              variant="outline" 
+              onClick={() => setEditingMilestone(null)}
+              className="px-6"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => editingMilestone && handleMilestoneEdit(editingMilestone.id, editingMilestone)}
+              className="px-6 bg-orange-600 hover:bg-orange-700"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Edit Task Dialog */}
       <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>
-              Update task details
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Edit className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold text-gray-900">Edit Task</DialogTitle>
+                <DialogDescription className="text-sm text-gray-500 mt-1">
+                  Update task details and status
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
+          
           {editingTask && (
-            <div className="space-y-4">
-              <Input
-                placeholder="Task title"
-                value={editingTask.title}
-                onChange={(e) => setEditingTask(prev => prev ? {
-                  ...prev,
-                  title: e.target.value
-                } : null)}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Status</label>
+            <div className="space-y-6 py-4">
+              {/* Task Title */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-2 text-gray-500" />
+                  Task Title *
+                </label>
+                <Input
+                  placeholder="Enter task title"
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask(prev => prev ? {
+                    ...prev,
+                    title: e.target.value
+                  } : null)}
+                  className="h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* Status and Due Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center">
+                    <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                    Status
+                  </label>
                   <Select
                     value={editingTask.status}
                     onValueChange={(value) => setEditingTask(prev => prev ? {
@@ -695,18 +973,36 @@ export default function ServiceMilestoneManager({
                       status: value
                     } : null)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                          <span>Pending</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="in_progress">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span>In Progress</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="completed">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span>Completed</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Due Date</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700 flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                    Due Date
+                  </label>
                   <Input
                     type="datetime-local"
                     value={editingTask.due_date || ''}
@@ -714,19 +1010,57 @@ export default function ServiceMilestoneManager({
                       ...prev,
                       due_date: e.target.value
                     } : null)}
+                    className="h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setEditingTask(null)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => handleUpdateTask(editingTask.id, editingTask)}>
-                  Save Changes
-                </Button>
+
+              {/* Current Status Preview */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Current Status</h4>
+                <div className="flex items-center space-x-3">
+                  <div className={`w-6 h-6 rounded flex items-center justify-center ${
+                    editingTask.status === 'completed' ? 'bg-green-100' :
+                    editingTask.status === 'in_progress' ? 'bg-blue-100' : 'bg-yellow-100'
+                  }`}>
+                    {editingTask.status === 'completed' ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : editingTask.status === 'in_progress' ? (
+                      <Clock className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="font-medium text-gray-900 capitalize">{editingTask.status.replace('_', ' ')}</h5>
+                    {editingTask.due_date && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Due: {new Date(editingTask.due_date).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <Button 
+              variant="outline" 
+              onClick={() => setEditingTask(null)}
+              className="px-6"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => editingTask && handleUpdateTask(editingTask.id, editingTask)}
+              className="px-6 bg-purple-600 hover:bg-purple-700"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
