@@ -276,12 +276,12 @@ export function MilestoneCard({
               </div>
             ))}
             
-            {milestone.steps.length === 0 && (
+            {milestone.tasks.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No steps defined for this milestone</p>
+                <p>No tasks defined for this milestone</p>
                 {userRole === 'provider' && (
-                  <p className="text-sm">Add steps to track progress</p>
+                  <p className="text-sm">Add tasks to track progress</p>
                 )}
               </div>
             )}
