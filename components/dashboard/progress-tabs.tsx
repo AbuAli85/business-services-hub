@@ -15,7 +15,7 @@ interface ProgressTabsProps {
   userRole: 'provider' | 'client'
 }
 
-type ViewType = 'list' | 'kanban' | 'timeline'
+type ViewType = 'list' | 'kanban' | 'timeline' | 'analytics' | 'bulk'
 
 export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const [activeTab, setActiveTab] = useState<ViewType>('list')
