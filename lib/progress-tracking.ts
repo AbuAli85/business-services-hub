@@ -137,6 +137,30 @@ export function calculateBookingProgress(milestones: Milestone[]): number {
 
 // Database operations
 export class ProgressTrackingService {
+  // Cache to track if time_entries table is accessible
+  private static timeEntriesAccessible: boolean | null = null
+  
+  // Check if time_entries table is accessible (with caching)
+  private static async isTimeEntriesAccessible(): Promise<boolean> {
+    if (this.timeEntriesAccessible !== null) {
+      return this.timeEntriesAccessible
+    }
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('time_entries')
+        .select('id')
+        .limit(1)
+      
+      this.timeEntriesAccessible = !error
+      return this.timeEntriesAccessible
+    } catch (error) {
+      this.timeEntriesAccessible = false
+      return false
+    }
+  }
+  
   // Milestone operations
   static async getMilestones(bookingId: string): Promise<Milestone[]> {
     const supabase = await getSupabaseClient()
@@ -252,17 +276,12 @@ export class ProgressTrackingService {
     // Stop any active time entries for this user
     await this.stopAllActiveTimeEntries(userId)
     
-    const supabase = await getSupabaseClient()
-    
     try {
-      // First, check if we can access the time_entries table at all
-      const { error: accessError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .limit(1)
+      // Check if time_entries table is accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
       
-      if (accessError) {
-        console.warn('time_entries table not accessible:', accessError.message)
+      if (!isAccessible) {
+        console.warn('time_entries table not accessible, returning mock entry')
         // Return a mock entry if the table is not accessible
         return {
           id: 'mock-' + Date.now(),
@@ -277,6 +296,8 @@ export class ProgressTrackingService {
           updated_at: new Date().toISOString()
         }
       }
+      
+      const supabase = await getSupabaseClient()
       
       const { data, error } = await supabase
         .from('time_entries')
@@ -311,34 +332,30 @@ export class ProgressTrackingService {
     } catch (error) {
       console.warn('Error in startTimeTracking:', error)
       // Return a mock entry if there's any error
-              return {
-          id: 'mock-' + Date.now(),
-          task_id: taskId,
-          user_id: userId,
-          description,
-          start_time: new Date().toISOString(),
-          end_time: undefined,
-          duration_minutes: undefined,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+      return {
+        id: 'mock-' + Date.now(),
+        task_id: taskId,
+        user_id: userId,
+        description,
+        start_time: new Date().toISOString(),
+        end_time: undefined,
+        duration_minutes: undefined,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
     }
   }
 
   static async stopTimeTracking(entryId: string): Promise<TimeEntry> {
-    const supabase = await getSupabaseClient()
     const endTime = new Date().toISOString()
     
     try {
-      // First, check if we can access the time_entries table at all
-      const { error: accessError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .limit(1)
+      // Check if time_entries table is accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
       
-      if (accessError) {
-        console.warn('time_entries table not accessible:', accessError.message)
+      if (!isAccessible) {
+        console.warn('time_entries table not accessible, returning mock stopped entry')
         // Return a mock stopped entry
         return {
           id: entryId,
@@ -353,6 +370,8 @@ export class ProgressTrackingService {
           updated_at: endTime
         }
       }
+      
+      const supabase = await getSupabaseClient()
       
       // Get the entry to calculate duration
       const { data: entry, error: fetchError } = await supabase
@@ -433,19 +452,16 @@ export class ProgressTrackingService {
   }
 
   static async stopAllActiveTimeEntries(userId: string): Promise<void> {
-    const supabase = await getSupabaseClient()
-    
     try {
-      // First, check if we can access the time_entries table at all
-      const { error: accessError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .limit(1)
+      // Check if time_entries table is accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
       
-      if (accessError) {
-        console.warn('time_entries table not accessible:', accessError.message)
+      if (!isAccessible) {
+        console.warn('time_entries table not accessible, skipping stopAllActiveTimeEntries')
         return
       }
+      
+      const supabase = await getSupabaseClient()
       
       const { data: activeEntries, error: fetchError } = await supabase
         .from('time_entries')
@@ -468,22 +484,20 @@ export class ProgressTrackingService {
 
   static async getActiveTimeEntry(userId: string): Promise<TimeEntry | null> {
     try {
-      const supabase = await getSupabaseClient()
+      // Check if time_entries table is accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
       
-      // First, check if we can access the time_entries table at all
-      const { error: accessError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .limit(1)
-      
-      if (accessError) {
-        console.warn('time_entries table not accessible:', accessError.message)
+      if (!isAccessible) {
+        console.warn('time_entries table not accessible, returning null')
         return null
       }
       
+      const supabase = await getSupabaseClient()
+      
+      // Now try the actual query
       const { data, error } = await supabase
         .from('time_entries')
-        .select('*')
+        .select('id, task_id, user_id, description, start_time, end_time, duration_minutes, is_active, created_at, updated_at')
         .eq('user_id', userId)
         .eq('is_active', true)
         .single()
@@ -506,18 +520,15 @@ export class ProgressTrackingService {
 
   static async updateTaskActualHours(taskId: string): Promise<void> {
     try {
-      const supabase = await getSupabaseClient()
+      // Check if time_entries table is accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
       
-      // First, check if we can access the time_entries table at all
-      const { error: accessError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .limit(1)
-      
-      if (accessError) {
-        console.warn('time_entries table not accessible:', accessError.message)
+      if (!isAccessible) {
+        console.warn('time_entries table not accessible, skipping updateTaskActualHours')
         return
       }
+      
+      const supabase = await getSupabaseClient()
       
       const { data: timeEntries, error: fetchError } = await supabase
         .from('time_entries')
@@ -549,6 +560,14 @@ export class ProgressTrackingService {
   // Get time entries for a specific booking through the relationship chain
   static async getTimeEntriesByBookingId(bookingId: string): Promise<TimeEntry[]> {
     try {
+      // Check if time_entries table is accessible
+      const isAccessible = await this.isTimeEntriesAccessible()
+      
+      if (!isAccessible) {
+        console.warn('time_entries table not accessible, returning empty array')
+        return []
+      }
+      
       const supabase = await getSupabaseClient()
       // First, get all task IDs for this booking through milestones
       const { data: milestones, error: milestonesError } = await supabase
@@ -569,17 +588,6 @@ export class ProgressTrackingService {
       ) || []
       
       if (taskIds.length === 0) {
-        return []
-      }
-      
-      // First, check if we can access the time_entries table at all
-      const { error: accessError } = await supabase
-        .from('time_entries')
-        .select('id')
-        .limit(1)
-      
-      if (accessError) {
-        console.warn('time_entries table not accessible:', accessError.message)
         return []
       }
       
