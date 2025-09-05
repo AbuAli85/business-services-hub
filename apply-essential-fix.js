@@ -13,7 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function applyEssentialFix() {
   console.log('🔧 APPLYING ESSENTIAL FIX FOR CONSOLE ERRORS\n')
-  console.log('=' * 50)
+  console.log('='.repeat(50))
 
   console.log('\n📋 IMMEDIATE FIX NEEDED:')
   console.log('-'.repeat(30))
@@ -22,7 +22,7 @@ async function applyEssentialFix() {
   console.log('✅ Solution: Create missing tables and columns')
 
   console.log('\n🚀 ESSENTIAL SQL TO RUN IN SUPABASE:')
-  console.log('=' * 50)
+  console.log('='.repeat(50))
 
   const essentialSQL = `
 -- ESSENTIAL FIX: Create missing tables and columns

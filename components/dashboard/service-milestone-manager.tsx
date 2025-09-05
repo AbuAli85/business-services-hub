@@ -73,6 +73,14 @@ export default function ServiceMilestoneManager({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [isAddingMilestone, setIsAddingMilestone] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [newMilestone, setNewMilestone] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    weight: 1
+  })
 
   useEffect(() => {
     if (bookingId) {
@@ -214,27 +222,14 @@ export default function ServiceMilestoneManager({
     try {
       const supabase = await getSupabaseClient()
 
-      const { error: taskError } = await supabase
-        .from('tasks')
-        .insert({
-          milestone_id: milestoneId,
-          title: newTaskTitle.trim(),
-          status: 'pending',
-          progress_percentage: 0,
-          editable: true
-        })
+      const { data, error } = await supabase.rpc('add_task', {
+        milestone_id: milestoneId,
+        title: newTaskTitle.trim(),
+        due_date: null
+      })
 
-      if (taskError) {
-        throw new Error(taskError.message)
-      }
-
-      // Update milestone progress
-      try {
-        await supabase.rpc('update_milestone_progress', {
-          milestone_uuid: milestoneId
-        })
-      } catch (rpcError) {
-        console.warn('RPC function update_milestone_progress not available:', rpcError)
+      if (error) {
+        throw new Error(error.message)
       }
 
       setNewTaskTitle('')
@@ -248,22 +243,101 @@ export default function ServiceMilestoneManager({
     }
   }
 
+  // Update task
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      const supabase = await getSupabaseClient()
+
+      const { error } = await supabase.rpc('update_task', {
+        task_id: taskId,
+        title: updates.title,
+        status: updates.status,
+        due_date: updates.due_date
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setEditingTask(null)
+      await loadServiceAndMilestones()
+      onMilestoneUpdate?.()
+      toast.success('Task updated successfully')
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    }
+  }
+
+  // Delete task
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) {
+      return
+    }
+
+    try {
+      const supabase = await getSupabaseClient()
+
+      const { error } = await supabase.rpc('delete_task', {
+        task_id: taskId
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      await loadServiceAndMilestones()
+      onMilestoneUpdate?.()
+      toast.success('Task deleted successfully')
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      toast.error('Failed to delete task')
+    }
+  }
+
+  // Add new milestone
+  const handleAddMilestone = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+
+      const { data, error } = await supabase.rpc('add_milestone', {
+        booking_id: bookingId,
+        title: newMilestone.title.trim(),
+        description: newMilestone.description.trim(),
+        due_date: newMilestone.due_date || null,
+        weight: newMilestone.weight
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setNewMilestone({ title: '', description: '', due_date: '', weight: 1 })
+      setIsAddingMilestone(false)
+      await loadServiceAndMilestones()
+      onMilestoneUpdate?.()
+      toast.success('Milestone added successfully')
+    } catch (error) {
+      console.error('Error adding milestone:', error)
+      toast.error('Failed to add milestone')
+    }
+  }
+
+  // Update milestone
   const handleMilestoneEdit = async (milestoneId: string, updates: Partial<Milestone>) => {
     try {
       const supabase = await getSupabaseClient()
 
-      const { error: milestoneError } = await supabase
-        .from('milestones')
-        .update({
-          title: updates.title,
-          description: updates.description,
-          due_date: updates.due_date,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', milestoneId)
+      const { error } = await supabase.rpc('update_milestone', {
+        milestone_id: milestoneId,
+        title: updates.title,
+        description: updates.description,
+        due_date: updates.due_date,
+        status: updates.status
+      })
 
-      if (milestoneError) {
-        throw new Error(milestoneError.message)
+      if (error) {
+        throw new Error(error.message)
       }
 
       setEditingMilestone(null)
@@ -273,6 +347,32 @@ export default function ServiceMilestoneManager({
     } catch (error) {
       console.error('Error updating milestone:', error)
       toast.error('Failed to update milestone')
+    }
+  }
+
+  // Delete milestone
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    if (!confirm('Are you sure you want to delete this milestone? This will also delete all associated tasks.')) {
+      return
+    }
+
+    try {
+      const supabase = await getSupabaseClient()
+
+      const { error } = await supabase.rpc('delete_milestone', {
+        milestone_id: milestoneId
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      await loadServiceAndMilestones()
+      onMilestoneUpdate?.()
+      toast.success('Milestone deleted successfully')
+    } catch (error) {
+      console.error('Error deleting milestone:', error)
+      toast.error('Failed to delete milestone')
     }
   }
 
@@ -327,6 +427,20 @@ export default function ServiceMilestoneManager({
 
       {/* Milestones */}
       <div className="space-y-4">
+        {/* Add Milestone Button */}
+        {canEdit && (
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-900">Milestones</h3>
+            <Button
+              onClick={() => setIsAddingMilestone(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Milestone
+            </Button>
+          </div>
+        )}
+        
         {milestones.map((milestone, index) => (
           <Card key={milestone.id} className="border border-gray-200">
             <CardHeader className="pb-3">
@@ -351,13 +465,23 @@ export default function ServiceMilestoneManager({
                     <AlertTriangle className="h-4 w-4 text-red-500" />
                   )}
                   {canEdit && milestone.editable && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingMilestone(milestone)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingMilestone(milestone)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteMilestone(milestone.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -399,9 +523,31 @@ export default function ServiceMilestoneManager({
                       }`}>
                         {task.title}
                       </span>
-                      {task.status === 'completed' && (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      )}
+                      <div className="flex items-center space-x-1">
+                        {task.status === 'completed' && (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                        {canEdit && task.editable && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingTask(task)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
                   
@@ -426,6 +572,58 @@ export default function ServiceMilestoneManager({
           </Card>
         )}
       </div>
+
+      {/* Add Milestone Dialog */}
+      <Dialog open={isAddingMilestone} onOpenChange={setIsAddingMilestone}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Milestone</DialogTitle>
+            <DialogDescription>
+              Create a new milestone to track progress
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Milestone title"
+              value={newMilestone.title}
+              onChange={(e) => setNewMilestone(prev => ({ ...prev, title: e.target.value }))}
+            />
+            <Textarea
+              placeholder="Description (optional)"
+              value={newMilestone.description}
+              onChange={(e) => setNewMilestone(prev => ({ ...prev, description: e.target.value }))}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Due Date</label>
+                <Input
+                  type="datetime-local"
+                  value={newMilestone.due_date}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, due_date: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Weight</label>
+                <Input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={newMilestone.weight}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, weight: parseFloat(e.target.value) || 1 }))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsAddingMilestone(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddMilestone}>
+                Add Milestone
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Task Dialog - Only show if there are milestones */}
       {milestones.length > 0 && (
@@ -488,6 +686,70 @@ export default function ServiceMilestoneManager({
                   Cancel
                 </Button>
                 <Button onClick={() => handleMilestoneEdit(editingMilestone.id, editingMilestone)}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update task details
+            </DialogDescription>
+          </DialogHeader>
+          {editingTask && (
+            <div className="space-y-4">
+              <Input
+                placeholder="Task title"
+                value={editingTask.title}
+                onChange={(e) => setEditingTask(prev => prev ? {
+                  ...prev,
+                  title: e.target.value
+                } : null)}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Status</label>
+                  <Select
+                    value={editingTask.status}
+                    onValueChange={(value) => setEditingTask(prev => prev ? {
+                      ...prev,
+                      status: value
+                    } : null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Due Date</label>
+                  <Input
+                    type="datetime-local"
+                    value={editingTask.due_date || ''}
+                    onChange={(e) => setEditingTask(prev => prev ? {
+                      ...prev,
+                      due_date: e.target.value
+                    } : null)}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEditingTask(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => handleUpdateTask(editingTask.id, editingTask)}>
                   Save Changes
                 </Button>
               </div>
