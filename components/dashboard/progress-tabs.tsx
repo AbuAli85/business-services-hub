@@ -66,6 +66,9 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           ? Math.round(progressData.reduce((sum: number, m: any) => sum + m.progress, 0) / progressData.length)
           : 0
         setBookingProgress({
+          booking_id: bookingId,
+          booking_title: 'Monthly Progress Tracking',
+          booking_status: 'in_progress',
           booking_progress: totalProgress,
           completed_milestones: progressData?.filter((m: any) => m.progress >= 100).length || 0,
           total_milestones: progressData?.length || 0,
@@ -73,7 +76,9 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           total_tasks: 0,
           total_estimated_hours: 0,
           total_actual_hours: 0,
-          overdue_tasks: 0
+          overdue_tasks: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
       }
     } catch (error) {
