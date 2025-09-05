@@ -697,8 +697,8 @@ export default function ServiceMilestoneManager({
       </Dialog>
       )}
 
-      {/* Add Task Dialog - Only show if there are milestones */}
-      {milestones.length > 0 && (
+      {/* Add Task Dialog - Only show if there are milestones and isAddingTask is true */}
+      {milestones.length > 0 && isAddingTask && (
         <Dialog open={isAddingTask} onOpenChange={setIsAddingTask}>
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader className="space-y-3">
