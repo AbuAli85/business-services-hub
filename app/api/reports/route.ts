@@ -12,6 +12,9 @@ const ReportQuerySchema = z.object({
   category: z.string().optional()
 })
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await getSupabaseClient()

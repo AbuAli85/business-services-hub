@@ -165,7 +165,7 @@ export class ProgressTrackingService {
       const { error: filterError } = await supabase
         .from('time_entries')
         .select('id, task_id, user_id, description, start_time, end_time, duration_minutes, is_active, created_at, updated_at')
-        .eq('user_id', 'test-user-id')
+        .eq('user_id', '00000000-0000-0000-0000-000000000000')
         .eq('is_active', true)
         .limit(1)
       
