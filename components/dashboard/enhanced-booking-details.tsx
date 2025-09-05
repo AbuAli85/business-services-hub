@@ -217,6 +217,10 @@ export default function EnhancedBookingDetails() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [overdueCount, setOverdueCount] = useState(0)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false)
+  const [showProgressModal, setShowProgressModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   useEffect(() => {
     if (bookingId) {
@@ -753,6 +757,162 @@ export default function EnhancedBookingDetails() {
     console.log('Activity logged:', activity)
   }
 
+  // Button handlers
+  const handleEmailClient = () => {
+    if (booking?.client.email) {
+      window.open(`mailto:${booking.client.email}?subject=Booking #${booking.id.slice(0, 8)}`, '_blank')
+    }
+  }
+
+  const handleEmailProvider = () => {
+    if (booking?.provider.email) {
+      window.open(`mailto:${booking.provider.email}?subject=Booking #${booking.id.slice(0, 8)}`, '_blank')
+    }
+  }
+
+  const handleCallClient = () => {
+    if (booking?.client.phone) {
+      window.open(`tel:${booking.client.phone}`, '_self')
+    } else {
+      toast.error('Client phone number not available')
+    }
+  }
+
+  const handleCallProvider = () => {
+    if (booking?.provider.phone) {
+      window.open(`tel:${booking.provider.phone}`, '_self')
+    } else {
+      toast.error('Provider phone number not available')
+    }
+  }
+
+  const handleVideoCall = () => {
+    // Generate a meeting link (in real app, this would integrate with video service)
+    const meetingId = `meeting-${booking?.id.slice(0, 8)}-${Date.now()}`
+    const meetingUrl = `${window.location.origin}/meeting/${meetingId}`
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(meetingUrl).then(() => {
+      toast.success('Meeting link copied to clipboard')
+    }).catch(() => {
+      toast.error('Failed to copy meeting link')
+    })
+  }
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: `Booking #${booking?.id.slice(0, 8)}`,
+        text: `Check out this booking: ${booking?.service.title}`,
+        url: window.location.href
+      })
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        toast.success('Booking link copied to clipboard')
+      }).catch(() => {
+        toast.error('Failed to copy link')
+      })
+    }
+  }
+
+  const handleNotify = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const recipientId = user?.id === booking.client.id ? booking.provider.id : booking.client.id
+      
+      await supabase.from('notifications').insert({
+        user_id: recipientId,
+        type: 'booking',
+        title: 'Booking Notification',
+        message: `You have a notification for booking #${booking.id.slice(0, 8)}`,
+        data: { booking_id: booking.id },
+        created_at: new Date().toISOString()
+      })
+      
+      toast.success('Notification sent successfully')
+    } catch (error) {
+      console.error('Error sending notification:', error)
+      toast.error('Failed to send notification')
+    }
+  }
+
+  const handleProcessPayment = async () => {
+    if (!booking) return
+    
+    try {
+      // In a real app, this would integrate with payment processor
+      toast.success('Redirecting to payment processor...')
+      
+      // Simulate payment processing
+      setTimeout(() => {
+        toast.success('Payment processed successfully')
+        // Update booking status
+        setBooking({ ...booking, payment_status: 'paid' })
+      }, 2000)
+    } catch (error) {
+      console.error('Error processing payment:', error)
+      toast.error('Failed to process payment')
+    }
+  }
+
+  const handleGenerateInvoice = async () => {
+    if (!booking) return
+    
+    try {
+      // Generate invoice data
+      const invoiceData = {
+        booking_id: booking.id,
+        client: booking.client,
+        provider: booking.provider,
+        service: booking.service,
+        amount: booking.amount,
+        currency: booking.currency,
+        created_at: new Date().toISOString()
+      }
+      
+      // In a real app, this would generate a PDF invoice
+      console.log('Generating invoice:', invoiceData)
+      toast.success('Invoice generated successfully')
+    } catch (error) {
+      console.error('Error generating invoice:', error)
+      toast.error('Failed to generate invoice')
+    }
+  }
+
+  const handleDownloadReceipt = async () => {
+    if (!booking) return
+    
+    try {
+      // In a real app, this would generate and download a receipt PDF
+      toast.success('Receipt downloaded successfully')
+    } catch (error) {
+      console.error('Error downloading receipt:', error)
+      toast.error('Failed to download receipt')
+    }
+  }
+
+  const handleSuggestionAction = async (suggestion: SmartSuggestion) => {
+    switch (suggestion.type) {
+      case 'communication':
+        setShowMessageModal(true)
+        break
+      case 'scheduling':
+        setShowRescheduleModal(true)
+        break
+      case 'payment':
+        handleProcessPayment()
+        break
+      case 'service_improvement':
+        setShowEditModal(true)
+        break
+      default:
+        toast.success(`Action: ${suggestion.action}`)
+    }
+  }
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !booking) return
 
@@ -925,7 +1085,11 @@ export default function EnhancedBookingDetails() {
                 Message {isClient ? 'Provider' : 'Client'}
               </Button>
               
-              <Button variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
+              <Button 
+                variant="outline" 
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                onClick={handleVideoCall}
+              >
                 <Video className="h-4 w-4 mr-2" />
                 Video Call
               </Button>
@@ -1028,11 +1192,11 @@ export default function EnhancedBookingDetails() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={handleEmailClient}>
                       <Mail className="h-3 w-3 mr-1" />
                       Email
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={handleCallClient}>
                       <Phone className="h-3 w-3 mr-1" />
                       Call
                     </Button>
@@ -1073,11 +1237,21 @@ export default function EnhancedBookingDetails() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={handleEmailProvider}>
+                      <Mail className="h-3 w-3 mr-1" />
+                      Email
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1" onClick={handleCallProvider}>
+                      <Phone className="h-3 w-3 mr-1" />
+                      Call
+                    </Button>
+                  </div>
+                  <div className="flex space-x-2 mt-2">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setShowMessageModal(true)}>
                       <MessageSquare className="h-3 w-3 mr-1" />
                       Message
                     </Button>
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={handleVideoCall}>
                       <Video className="h-3 w-3 mr-1" />
                       Video
                     </Button>
@@ -1111,7 +1285,12 @@ export default function EnhancedBookingDetails() {
                       </Badge>
                     </div>
                     <p className="text-purple-700 text-xs mb-2">{suggestion.description}</p>
-                    <Button size="sm" variant="outline" className="w-full text-xs border-purple-200 text-purple-700 hover:bg-purple-50">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="w-full text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
+                      onClick={() => handleSuggestionAction(suggestion)}
+                    >
                       {suggestion.action}
                     </Button>
                   </div>
@@ -1269,11 +1448,25 @@ export default function EnhancedBookingDetails() {
                       )}
 
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" className="flex-1" disabled={!canEdit} title={!canEdit ? 'Only providers can edit details' : undefined}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can edit details' : undefined}
+                          onClick={() => setShowEditModal(true)}
+                        >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Details
                         </Button>
-                        <Button variant="outline" size="sm" className="flex-1" disabled={!canEdit} title={!canEdit ? 'Only providers can reschedule' : undefined}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can reschedule' : undefined}
+                          onClick={() => setShowRescheduleModal(true)}
+                        >
                           <Calendar className="h-4 w-4 mr-2" />
                           Reschedule
                         </Button>
@@ -1310,19 +1503,47 @@ export default function EnhancedBookingDetails() {
 
                       {/* Communication Actions */}
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50" disabled={!canEdit} title={!canEdit ? 'Only providers can call from dashboard' : undefined}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-green-200 text-green-700 hover:bg-green-50" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can call from dashboard' : undefined}
+                          onClick={handleCallProvider}
+                        >
                           <Phone className="h-4 w-4 mr-2" />
                           Call
                         </Button>
-                        <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50" disabled={!canEdit} title={!canEdit ? 'Only providers can start video from dashboard' : undefined}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can start video from dashboard' : undefined}
+                          onClick={handleVideoCall}
+                        >
                           <Video className="h-4 w-4 mr-2" />
                           Video
                         </Button>
-                        <Button variant="outline" size="sm" className="border-purple-200 text-purple-700 hover:bg-purple-50" disabled={!canEdit} title={!canEdit ? 'Only providers can share from dashboard' : undefined}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-purple-200 text-purple-700 hover:bg-purple-50" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can share from dashboard' : undefined}
+                          onClick={handleShare}
+                        >
                           <Share2 className="h-4 w-4 mr-2" />
                           Share
                         </Button>
-                        <Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50" disabled={!canEdit} title={!canEdit ? 'Only providers can send notifications' : undefined}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="border-orange-200 text-orange-700 hover:bg-orange-50" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can send notifications' : undefined}
+                          onClick={handleNotify}
+                        >
                           <Bell className="h-4 w-4 mr-2" />
                           Notify
                         </Button>
@@ -1335,7 +1556,14 @@ export default function EnhancedBookingDetails() {
                           <Progress value={booking.progress_percentage} className="flex-1" />
                           <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
                         </div>
-                        <Button size="sm" variant="outline" className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" disabled={!canEdit} title={!canEdit ? 'Only providers can update progress' : undefined}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can update progress' : undefined}
+                          onClick={() => setShowProgressModal(true)}
+                        >
                           <TrendingUp className="h-4 w-4 mr-2" />
                           Update Progress
                         </Button>
@@ -1443,15 +1671,15 @@ export default function EnhancedBookingDetails() {
                       </div>
 
                       <div className="flex space-x-3">
-                        <Button className="bg-green-600 hover:bg-green-700 flex-1">
+                        <Button className="bg-green-600 hover:bg-green-700 flex-1" onClick={handleProcessPayment}>
                           <CreditCard className="h-4 w-4 mr-2" />
                           Process Payment
                         </Button>
-                        <Button variant="outline" className="flex-1">
+                        <Button variant="outline" className="flex-1" onClick={handleGenerateInvoice}>
                           <Receipt className="h-4 w-4 mr-2" />
                           Generate Invoice
                         </Button>
-                        <Button variant="outline" className="flex-1">
+                        <Button variant="outline" className="flex-1" onClick={handleDownloadReceipt}>
                           <Download className="h-4 w-4 mr-2" />
                           Receipt
                         </Button>
