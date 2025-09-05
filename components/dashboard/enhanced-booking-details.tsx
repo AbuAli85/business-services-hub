@@ -664,24 +664,34 @@ export default function EnhancedBookingDetails() {
         throw new Error(taskFetchError.message)
       }
       
-      // Call update_milestone_progress RPC function
-      const { error: progressError } = await supabase.rpc('update_milestone_progress', {
-        milestone_uuid: taskData.milestone_id
-      })
-      
-      if (progressError) {
-        console.warn('Error updating milestone progress:', progressError)
-        // Don't fail the operation if progress update fails
+      // Try to call update_milestone_progress RPC function (if available)
+      try {
+        const { error: progressError } = await supabase.rpc('update_milestone_progress', {
+          milestone_uuid: taskData.milestone_id
+        })
+        
+        if (progressError) {
+          console.warn('Error updating milestone progress:', progressError)
+          // Don't fail the operation if progress update fails
+        }
+      } catch (rpcError) {
+        console.warn('RPC function update_milestone_progress not available:', rpcError)
+        // Continue without failing
       }
       
-      // Refresh booking project_progress
-      const { error: bookingProgressError } = await supabase.rpc('calculate_booking_progress', {
-        booking_uuid: bookingId
-      })
-      
-      if (bookingProgressError) {
-        console.warn('Error updating booking progress:', bookingProgressError)
-        // Don't fail the operation if booking progress update fails
+      // Try to refresh booking project_progress (if RPC function is available)
+      try {
+        const { error: bookingProgressError } = await supabase.rpc('calculate_booking_progress', {
+          booking_id: bookingId
+        })
+        
+        if (bookingProgressError) {
+          console.warn('Error updating booking progress:', bookingProgressError)
+          // Don't fail the operation if booking progress update fails
+        }
+      } catch (rpcError) {
+        console.warn('RPC function calculate_booking_progress not available:', rpcError)
+        // Continue without failing - the UI will still update
       }
       
       // Reload milestone data to reflect changes

@@ -176,14 +176,19 @@ export function MonthlyProgressTracking({
         throw new Error(updateError.message)
       }
       
-      // Trigger progress sync by calling the database function
-      const { error: syncError } = await supabase.rpc('calculate_booking_progress', {
-        booking_uuid: bookingId
-      })
-      
-      if (syncError) {
-        console.warn('Progress sync failed:', syncError)
-        // Don't fail the operation if sync fails
+      // Try to trigger progress sync by calling the database function (if available)
+      try {
+        const { error: syncError } = await supabase.rpc('calculate_booking_progress', {
+          booking_id: bookingId
+        })
+        
+        if (syncError) {
+          console.warn('Progress sync failed:', syncError)
+          // Don't fail the operation if sync fails
+        }
+      } catch (rpcError) {
+        console.warn('RPC function calculate_booking_progress not available:', rpcError)
+        // Continue without failing - the UI will still update
       }
       
       // Reload data to get updated progress

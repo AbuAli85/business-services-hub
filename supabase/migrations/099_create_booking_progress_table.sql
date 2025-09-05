@@ -71,7 +71,7 @@ DROP FUNCTION IF EXISTS calculate_booking_progress(uuid);
 DROP FUNCTION IF EXISTS calculate_booking_progress(UUID);
 
 -- Create function to calculate overall booking progress and sync with bookings table
-CREATE OR REPLACE FUNCTION calculate_booking_progress(booking_uuid UUID)
+CREATE OR REPLACE FUNCTION calculate_booking_progress(booking_id UUID)
 RETURNS INTEGER AS $$
 DECLARE
     total_progress INTEGER;
@@ -83,7 +83,7 @@ BEGIN
         COUNT(*)
     INTO total_progress, milestone_count
     FROM public.booking_progress
-    WHERE booking_id = booking_uuid;
+    WHERE booking_id = calculate_booking_progress.booking_id;
     
     -- Return 0 if no milestones exist
     IF milestone_count = 0 THEN
@@ -94,7 +94,7 @@ BEGIN
     UPDATE public.bookings 
     SET project_progress = total_progress,
         updated_at = NOW()
-    WHERE id = booking_uuid;
+    WHERE id = calculate_booking_progress.booking_id;
     
     RETURN total_progress;
 END;
@@ -188,7 +188,7 @@ BEGIN
     WHERE id = milestone_uuid;
     
     -- Recalculate and sync overall booking progress
-    PERFORM calculate_booking_progress(booking_uuid);
+    PERFORM calculate_booking_progress(booking_id);
 END;
 $$ LANGUAGE plpgsql;
 
