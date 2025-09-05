@@ -1,32 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import './progress-styles.css'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle } from 'lucide-react'
-import { ProgressTrackingService, BookingProgress, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
-
-interface Milestone {
-  id: string
-  title: string
-  description: string
-  progress_percentage: number
-  status: string
-  due_date?: string
-  weight: number
-  order_index: number
-  editable: boolean
-  tasks: Task[]
-  created_at?: string
-  updated_at?: string
-}
-
-interface Task {
-  id: string
-  title: string
-  status: string
-  progress_percentage: number
-  due_date?: string
-  editable: boolean
-}
+import { ProgressTrackingService, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
+import { Milestone, Task, BookingProgress } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'
@@ -37,20 +15,47 @@ import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
 import { MonthlyProgressTracking } from './monthly-progress-tracking'
 import ServiceMilestoneManager from './service-milestone-manager'
+import { UnifiedProgressOverview } from './unified-progress-overview'
+import { MilestoneAccordionCards } from './milestone-accordion-cards'
+import { SmartSuggestionsAlertBar } from './smart-suggestions-alert-bar'
+import { TimelineStepper } from './timeline-stepper'
+import { useProgressUpdates } from '@/hooks/use-progress-updates'
 
 interface ProgressTabsProps {
   bookingId: string
   userRole: 'provider' | 'client'
 }
 
-type ViewType = 'monthly' | 'list' | 'kanban' | 'timeline' | 'analytics' | 'bulk'
+type ViewType = 'overview' | 'monthly' | 'list' | 'kanban' | 'timeline' | 'analytics' | 'bulk'
 
 export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
-  const [activeTab, setActiveTab] = useState<ViewType>('monthly')
+  const [activeTab, setActiveTab] = useState<ViewType>('overview')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [schemaAvailable, setSchemaAvailable] = useState<boolean | null>(null)
+
+  const { 
+    isUpdating, 
+    updateTaskProgress, 
+    updateMilestoneProgress, 
+    addTask, 
+    deleteTask 
+  } = useProgressUpdates({
+    bookingId,
+    onProgressUpdate: (updates) => {
+      // Update local state when progress changes
+      setMilestones(prev => prev.map(m => 
+        m.id === updates.milestoneId 
+          ? { ...m, progress_percentage: updates.milestoneProgress }
+          : m
+      ))
+      setBookingProgress(prev => prev ? {
+        ...prev,
+        booking_progress: updates.overallProgress
+      } : null)
+    }
+  })
 
   useEffect(() => {
     checkSchemaAvailability()
@@ -178,6 +183,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   }
 
   const tabs = [
+    { id: 'overview', label: 'Project Overview', icon: BarChart3 },
     { id: 'monthly', label: 'Monthly Progress', icon: Calendar },
     { id: 'list', label: 'List View', icon: List },
     { id: 'kanban', label: 'Kanban View', icon: Kanban },
@@ -199,55 +205,88 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     return <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
   }
 
+  const handleLogHours = () => {
+    // Implement log hours functionality
+    console.log('Log hours clicked')
+  }
+
+  const handleSendUpdate = () => {
+    // Implement send update functionality
+    console.log('Send update clicked')
+  }
+
+  const handleScheduleFollowUp = () => {
+    // Implement schedule follow-up functionality
+    console.log('Schedule follow-up clicked')
+  }
+
+  const handleSendPaymentReminder = () => {
+    // Implement send payment reminder functionality
+    console.log('Send payment reminder clicked')
+  }
+
+  const handleMilestoneUpdate = (milestoneId: string, updates: Partial<Milestone>) => {
+    // Implement milestone update functionality
+    console.log('Milestone update:', milestoneId, updates)
+    loadData()
+  }
+
+  const handleTaskUpdate = async (milestoneId: string, taskId: string, updates: Partial<Task>) => {
+    const result = await updateTaskProgress(milestoneId, taskId, updates)
+    if (result.success) {
+      // Progress will be updated automatically via the hook
+      console.log('Task updated successfully')
+    } else {
+      console.error('Failed to update task:', result.error)
+    }
+  }
+
+  const handleAddTask = async (milestoneId: string, task: Omit<Task, 'id'>) => {
+    const result = await addTask(milestoneId, task)
+    if (result.success) {
+      // Reload data to get the new task
+      loadData()
+      console.log('Task added successfully')
+    } else {
+      console.error('Failed to add task:', result.error)
+    }
+  }
+
+  const handleDeleteTask = async (milestoneId: string, taskId: string) => {
+    const result = await deleteTask(milestoneId, taskId)
+    if (result.success) {
+      // Progress will be updated automatically via the hook
+      console.log('Task deleted successfully')
+    } else {
+      console.error('Failed to delete task:', result.error)
+    }
+  }
+
+  const handleAddComment = (milestoneId: string, comment: string) => {
+    // Implement add comment functionality
+    console.log('Add comment:', milestoneId, comment)
+  }
+
+  const handleRequestChanges = (milestoneId: string, reason: string) => {
+    // Implement request changes functionality
+    console.log('Request changes:', milestoneId, reason)
+  }
+
+  const handleDismissSuggestion = (suggestionId: string) => {
+    // Implement dismiss suggestion functionality
+    console.log('Dismiss suggestion:', suggestionId)
+  }
+
   return (
     <div className="space-y-6">
-      {/* Progress Overview */}
-      {bookingProgress && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Project Overview</h2>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>{bookingProgress.total_actual_hours.toFixed(1)}h logged</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                <span>{bookingProgress.overdue_tasks} overdue</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{bookingProgress.booking_progress}%</div>
-              <div className="text-sm text-gray-600">Overall Progress</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{bookingProgress.completed_milestones}</div>
-              <div className="text-sm text-gray-600">of {bookingProgress.total_milestones} Milestones</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{bookingProgress.completed_tasks}</div>
-              <div className="text-sm text-gray-600">of {bookingProgress.total_tasks} Tasks</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{bookingProgress.total_estimated_hours.toFixed(1)}h</div>
-              <div className="text-sm text-gray-600">Estimated Hours</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Milestone Management */}
-      <ServiceMilestoneManager
+      {/* Smart Suggestions Alert Bar */}
+      <SmartSuggestionsAlertBar
         bookingId={bookingId}
-        serviceTypeId={undefined} // We'll get this from the booking data
-        canEdit={userRole === 'provider'}
-        onMilestoneUpdate={() => {
-          // Reload data when milestones are updated
-          loadData()
-        }}
+        userRole={userRole}
+        onSendUpdate={handleSendUpdate}
+        onScheduleFollowUp={handleScheduleFollowUp}
+        onSendPaymentReminder={handleSendPaymentReminder}
+        onDismissSuggestion={handleDismissSuggestion}
       />
 
       {/* Tabs */}
@@ -275,6 +314,30 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
       {/* Tab Content */}
       <div className="mt-6">
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <UnifiedProgressOverview
+              bookingProgress={bookingProgress}
+              milestones={milestones}
+              userRole={userRole}
+              onLogHours={handleLogHours}
+              onSendUpdate={handleSendUpdate}
+              onScheduleFollowUp={handleScheduleFollowUp}
+              onSendPaymentReminder={handleSendPaymentReminder}
+            />
+            <MilestoneAccordionCards
+              milestones={milestones}
+              userRole={userRole}
+              onMilestoneUpdate={handleMilestoneUpdate}
+              onTaskUpdate={handleTaskUpdate}
+              onAddTask={handleAddTask}
+              onDeleteTask={handleDeleteTask}
+              onAddComment={handleAddComment}
+              onRequestChanges={handleRequestChanges}
+            />
+          </div>
+        )}
+
         {activeTab === 'monthly' && (
           <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
         )}
@@ -290,7 +353,14 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         )}
 
         {activeTab === 'timeline' && (
-          <TimelineView milestones={milestones} userRole={userRole} onUpdate={loadData} />
+          <TimelineStepper 
+            milestones={milestones} 
+            userRole={userRole} 
+            onMilestoneClick={(milestoneId) => {
+              // Handle milestone click - could open details modal or navigate
+              console.log('Milestone clicked:', milestoneId)
+            }}
+          />
         )}
 
         {activeTab === 'analytics' && (
@@ -423,8 +493,28 @@ function KanbanTaskCard({
         </div>
         <div className="w-full bg-gray-200 rounded-full h-1.5">
           <div 
-            className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-            style={{ width: `${task.progress_percentage}%` }}
+            className={`bg-blue-600 h-1.5 rounded-full progress-bar ${
+              task.progress_percentage >= 100 ? 'progress-bar-100' :
+              task.progress_percentage >= 95 ? 'progress-bar-95' :
+              task.progress_percentage >= 90 ? 'progress-bar-90' :
+              task.progress_percentage >= 85 ? 'progress-bar-85' :
+              task.progress_percentage >= 80 ? 'progress-bar-80' :
+              task.progress_percentage >= 75 ? 'progress-bar-75' :
+              task.progress_percentage >= 70 ? 'progress-bar-70' :
+              task.progress_percentage >= 65 ? 'progress-bar-65' :
+              task.progress_percentage >= 60 ? 'progress-bar-60' :
+              task.progress_percentage >= 55 ? 'progress-bar-55' :
+              task.progress_percentage >= 50 ? 'progress-bar-50' :
+              task.progress_percentage >= 45 ? 'progress-bar-45' :
+              task.progress_percentage >= 40 ? 'progress-bar-40' :
+              task.progress_percentage >= 35 ? 'progress-bar-35' :
+              task.progress_percentage >= 30 ? 'progress-bar-30' :
+              task.progress_percentage >= 25 ? 'progress-bar-25' :
+              task.progress_percentage >= 20 ? 'progress-bar-20' :
+              task.progress_percentage >= 15 ? 'progress-bar-15' :
+              task.progress_percentage >= 10 ? 'progress-bar-10' :
+              task.progress_percentage >= 5 ? 'progress-bar-5' : 'progress-bar-0'
+            }`}
           ></div>
         </div>
       </div>
@@ -501,8 +591,28 @@ function TimelineView({
               
               <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                 <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${milestone.progress_percentage}%` }}
+                  className={`bg-blue-600 h-2 rounded-full progress-bar ${
+                    milestone.progress_percentage >= 100 ? 'progress-bar-100' :
+                    milestone.progress_percentage >= 95 ? 'progress-bar-95' :
+                    milestone.progress_percentage >= 90 ? 'progress-bar-90' :
+                    milestone.progress_percentage >= 85 ? 'progress-bar-85' :
+                    milestone.progress_percentage >= 80 ? 'progress-bar-80' :
+                    milestone.progress_percentage >= 75 ? 'progress-bar-75' :
+                    milestone.progress_percentage >= 70 ? 'progress-bar-70' :
+                    milestone.progress_percentage >= 65 ? 'progress-bar-65' :
+                    milestone.progress_percentage >= 60 ? 'progress-bar-60' :
+                    milestone.progress_percentage >= 55 ? 'progress-bar-55' :
+                    milestone.progress_percentage >= 50 ? 'progress-bar-50' :
+                    milestone.progress_percentage >= 45 ? 'progress-bar-45' :
+                    milestone.progress_percentage >= 40 ? 'progress-bar-40' :
+                    milestone.progress_percentage >= 35 ? 'progress-bar-35' :
+                    milestone.progress_percentage >= 30 ? 'progress-bar-30' :
+                    milestone.progress_percentage >= 25 ? 'progress-bar-25' :
+                    milestone.progress_percentage >= 20 ? 'progress-bar-20' :
+                    milestone.progress_percentage >= 15 ? 'progress-bar-15' :
+                    milestone.progress_percentage >= 10 ? 'progress-bar-10' :
+                    milestone.progress_percentage >= 5 ? 'progress-bar-5' : 'progress-bar-0'
+                  }`}
                 ></div>
               </div>
               
