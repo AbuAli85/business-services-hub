@@ -142,6 +142,7 @@ interface EnhancedBooking {
   attachments: any[]
   milestones: any[]
   issues: any[]
+  service_type_id?: string
   service: {
     id: string
     title: string
