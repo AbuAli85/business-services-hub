@@ -585,28 +585,47 @@ export default function EnhancedBookingDetails() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Load booking progress milestones
-      const { data: progressData, error: progressError } = await supabase
-        .from('booking_progress')
-        .select('*')
+      // Fetch milestones with tasks as requested
+      const { data: milestonesData, error: milestonesError } = await supabase
+        .from('milestones')
+        .select(`
+          id,
+          title,
+          description,
+          progress_percentage,
+          status,
+          due_date,
+          created_at,
+          updated_at,
+          tasks (
+            id,
+            title,
+            status,
+            progress_percentage,
+            due_date,
+            created_at
+          )
+        `)
         .eq('booking_id', bookingId)
-        .order('week_number', { ascending: true })
+        .order('created_at', { ascending: true })
       
-      if (progressError) {
-        console.warn('Error loading booking progress:', progressError)
+      if (milestonesError) {
+        console.warn('Error loading milestones:', milestonesError)
         // Fallback to empty data
         setMilestones([])
         setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
         return
       }
       
-      setMilestones(progressData || [])
+      setMilestones(milestonesData || [])
       
       // Calculate milestone stats
-      const total = progressData?.length || 0
-      const completed = progressData?.filter(m => m.progress >= 100).length || 0
-      const currentWeek = Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000))
-      const overdue = progressData?.filter(m => m.week_number < currentWeek && m.progress < 100).length || 0
+      const total = milestonesData?.length || 0
+      const completed = milestonesData?.filter(m => m.status === 'completed').length || 0
+      const overdue = milestonesData?.filter(m => {
+        if (!m.due_date) return false
+        return new Date(m.due_date) < new Date() && m.status !== 'completed'
+      }).length || 0
       
       setMilestoneStats({ completed, total, overdue })
       
@@ -614,6 +633,68 @@ export default function EnhancedBookingDetails() {
       console.error('Error loading milestone data:', error)
       setMilestones([])
       setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
+    }
+  }
+
+  const onStepToggle = async (taskId: string, newStatus: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Update task status
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+      
+      if (taskError) {
+        throw new Error(taskError.message)
+      }
+      
+      // Get the milestone ID for this task
+      const { data: taskData, error: taskFetchError } = await supabase
+        .from('tasks')
+        .select('milestone_id')
+        .eq('id', taskId)
+        .single()
+      
+      if (taskFetchError) {
+        throw new Error(taskFetchError.message)
+      }
+      
+      // Call update_milestone_progress RPC function
+      const { error: progressError } = await supabase.rpc('update_milestone_progress', {
+        milestone_uuid: taskData.milestone_id
+      })
+      
+      if (progressError) {
+        console.warn('Error updating milestone progress:', progressError)
+        // Don't fail the operation if progress update fails
+      }
+      
+      // Refresh booking project_progress
+      const { error: bookingProgressError } = await supabase.rpc('calculate_booking_progress', {
+        booking_uuid: bookingId
+      })
+      
+      if (bookingProgressError) {
+        console.warn('Error updating booking progress:', bookingProgressError)
+        // Don't fail the operation if booking progress update fails
+      }
+      
+      // Reload milestone data to reflect changes
+      await loadMilestoneData()
+      
+      // Reload booking data to get updated project_progress
+      await loadBookingData()
+      
+      toast.success('Task status updated successfully')
+      
+    } catch (error) {
+      console.error('Error updating task status:', error)
+      toast.error('Failed to update task status')
     }
   }
 
@@ -1197,13 +1278,13 @@ export default function EnhancedBookingDetails() {
             </CardContent>
           </Card>
 
-          {/* Milestone Summary */}
+          {/* Milestone Summary with Tasks Checklist */}
           {milestoneStats.total > 0 && (
             <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="font-semibold text-gray-900">Monthly Progress Overview</h3>
+                    <h3 className="font-semibold text-gray-900">Project Milestones & Tasks</h3>
                     <p className="text-gray-600 text-sm">
                       {milestoneStats.completed}/{milestoneStats.total} milestones completed ({booking.progress_percentage}%)
                     </p>
@@ -1222,23 +1303,60 @@ export default function EnhancedBookingDetails() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {milestones.slice(0, 4).map((milestone, index) => (
-                    <div key={milestone.id} className="flex items-center space-x-2 p-2 rounded-lg bg-white/50">
-                      <div className={`w-3 h-3 rounded-full ${
-                        milestone.progress >= 100 ? 'bg-green-500' : 
-                        milestone.progress > 0 ? 'bg-yellow-500' : 'bg-gray-300'
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {milestone.milestone_name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {milestone.progress}% complete
-                        </p>
+                
+                {/* Milestones with Tasks Checklist */}
+                <div className="space-y-4">
+                  {milestones.map((milestone, index) => (
+                    <div key={milestone.id} className="border border-gray-200 rounded-lg p-4 bg-white/70">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-4 h-4 rounded-full ${
+                            milestone.status === 'completed' ? 'bg-green-500' : 
+                            milestone.status === 'in_progress' ? 'bg-yellow-500' : 'bg-gray-300'
+                          }`} />
+                          <div>
+                            <h4 className="font-medium text-gray-900">{milestone.title}</h4>
+                            <p className="text-sm text-gray-500">
+                              {milestone.progress_percentage}% complete • {milestone.status}
+                            </p>
+                          </div>
+                        </div>
+                        {milestone.due_date && new Date(milestone.due_date) < new Date() && milestone.status !== 'completed' && (
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                        )}
                       </div>
-                      {milestone.week_number < Math.ceil((new Date().getTime() - new Date('2024-01-01').getTime()) / (7 * 24 * 60 * 60 * 1000)) && milestone.progress < 100 && (
-                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                      
+                      {/* Tasks Checklist */}
+                      {milestone.tasks && milestone.tasks.length > 0 && (
+                        <div className="ml-7 space-y-2">
+                          <h5 className="text-sm font-medium text-gray-700 mb-2">Tasks:</h5>
+                          <div className="space-y-1">
+                            {milestone.tasks.map((task: any) => (
+                              <div key={task.id} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  checked={task.status === 'completed'}
+                                  onChange={(e) => onStepToggle(
+                                    task.id, 
+                                    e.target.checked ? 'completed' : 'pending'
+                                  )}
+                                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                  disabled={!canEdit}
+                                />
+                                <span className={`text-sm ${
+                                  task.status === 'completed' 
+                                    ? 'line-through text-gray-500' 
+                                    : 'text-gray-700'
+                                }`}>
+                                  {task.title}
+                                </span>
+                                {task.status === 'completed' && (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
