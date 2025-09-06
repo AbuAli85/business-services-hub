@@ -164,7 +164,7 @@ export function ProgressTrackingSystem({
       setLoading(true)
       setError(null)
 
-      console.log('Loading progress data for booking:', bookingId)
+      // Loading progress data silently
 
       // Create 4 standard phases instead of loading all milestones
       let milestonesData: Milestone[] = []
@@ -258,9 +258,8 @@ export function ProgressTrackingSystem({
         ]
 
         // Try to load existing milestones and update the standard phases
-      try {
-        const rawMilestones = await ProgressTrackingService.getMilestones(bookingId)
-        console.log('Raw milestones from service:', rawMilestones)
+        try {
+          const rawMilestones = await ProgressTrackingService.getMilestones(bookingId)
         
           // Update standard phases with existing data if available
           milestonesData = standardPhases.map(phase => {
@@ -313,14 +312,14 @@ export function ProgressTrackingSystem({
             }
             return phase
           })
-      } catch (milestoneError) {
-          console.warn('Could not load existing milestones, using standard phases:', milestoneError)
+        } catch (milestoneError) {
+          // Using standard phases as fallback
           milestonesData = standardPhases
         }
         
-        console.log('Transformed milestones (4 phases):', milestonesData)
+        // Milestones loaded successfully
       } catch (error) {
-        console.error('Error creating standard phases:', error)
+        // Error creating standard phases, using empty array
         milestonesData = []
       }
 
@@ -328,9 +327,9 @@ export function ProgressTrackingSystem({
       let progressData = null
       try {
         progressData = await ProgressTrackingService.getBookingProgress(bookingId)
-        console.log('Loaded booking progress:', progressData)
+        // Booking progress loaded
       } catch (progressError) {
-        console.warn('Could not load booking progress, using fallback:', progressError)
+        // Using fallback progress data
         // Create a fallback progress object based on 4 phases
         const completedMilestones = milestonesData.filter(m => m.status === 'completed').length
         const completedTasks = milestonesData.reduce((sum, m) => 
@@ -376,9 +375,9 @@ export function ProgressTrackingSystem({
           created_at: entry.created_at || new Date().toISOString(),
           updated_at: entry.updated_at || new Date().toISOString()
         }))
-        console.log('Transformed time entries:', timeEntriesData)
+        // Time entries loaded
       } catch (timeError) {
-        console.warn('Could not load time entries:', timeError)
+        // Time entries not available
         timeEntriesData = []
       }
 
@@ -413,7 +412,7 @@ export function ProgressTrackingSystem({
       setBookingProgress(progressData)
       setTimeEntries(timeEntriesData)
     } catch (err) {
-      console.error('Error loading progress data:', err)
+      // Error loading progress data
       setError(err instanceof Error ? err.message : 'Failed to load progress data')
       toast.error('Failed to load progress data')
     } finally {
@@ -468,11 +467,11 @@ export function ProgressTrackingSystem({
     loadData()
   }, [loadData])
 
-  // Set up real-time updates every 30 seconds
+  // Set up real-time updates every 2 minutes (less frequent)
   useEffect(() => {
     const interval = setInterval(() => {
       loadData()
-    }, 30000) // Refresh every 30 seconds
+    }, 120000) // Refresh every 2 minutes
 
     return () => clearInterval(interval)
   }, [loadData])
@@ -512,7 +511,6 @@ export function ProgressTrackingSystem({
       await loadData() // Refresh data to ensure consistency
       toast.success('Task updated successfully')
     } catch (err) {
-      console.error('Error updating task:', err)
       toast.error('Failed to update task')
     }
   }, [loadData, milestones])
@@ -559,7 +557,6 @@ export function ProgressTrackingSystem({
       await loadData() // Refresh data to ensure consistency
       toast.success('Task created successfully')
     } catch (err) {
-      console.error('Error creating task:', err)
       toast.error('Failed to create task')
     }
   }, [loadData, milestones])
@@ -570,7 +567,6 @@ export function ProgressTrackingSystem({
       await loadData() // Refresh data
       toast.success('Task deleted successfully')
     } catch (err) {
-      console.error('Error deleting task:', err)
       toast.error('Failed to delete task')
     }
   }, [loadData])
@@ -602,7 +598,6 @@ export function ProgressTrackingSystem({
       await loadData() // Refresh data to ensure consistency
       toast.success('Milestone updated successfully')
     } catch (err) {
-      console.error('Error updating milestone:', err)
       toast.error('Failed to update milestone')
     }
   }, [loadData, milestones])
@@ -610,10 +605,9 @@ export function ProgressTrackingSystem({
   const handleCommentAdd = useCallback(async (milestoneId: string, comment: any) => {
     try {
       // TODO: Implement comment saving to database
-      console.log('Adding comment to milestone:', milestoneId, comment)
+      // Adding comment to milestone
       toast.success('Comment added successfully')
     } catch (error) {
-      console.error('Error adding comment:', error)
       toast.error('Failed to add comment')
     }
   }, [])
