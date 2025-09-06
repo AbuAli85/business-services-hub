@@ -340,7 +340,10 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
             sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
           )}
           overdueTasks={milestones.reduce((sum, m) => 
-            sum + (m.tasks?.filter(t => t.is_overdue).length || 0), 0
+            sum + (m.tasks?.filter(t => {
+              if (!t.due_date || t.status === 'completed' || t.status === 'cancelled') return false
+              return new Date(t.due_date) < new Date()
+            }).length || 0), 0
           )}
         />
 
