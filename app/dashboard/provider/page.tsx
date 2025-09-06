@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { CollapsibleSidebar } from '@/components/dashboard/collapsible-sidebar'
-import { Topbar } from '@/components/dashboard/topbar'
 import { ImprovedKPIGrid, ImprovedPerformanceMetrics } from '@/components/dashboard/improved-kpi-cards'
 import { EarningsChart } from '@/components/dashboard/earnings-chart'
 import { RecentBookings } from '@/components/dashboard/recent-bookings'
@@ -25,7 +23,6 @@ export default function ProviderDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   
   // Dashboard data
   const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
@@ -93,26 +90,10 @@ export default function ProviderDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden">
-        <CollapsibleSidebar 
-          collapsed={sidebarCollapsed} 
-          setCollapsed={setSidebarCollapsed} 
-        />
-        
-        <div className="flex flex-col flex-1">
-          <Topbar 
-            title="Provider Dashboard" 
-            subtitle="Loading your dashboard..." 
-          />
-          
-          <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-            <div className="flex items-center justify-center h-64">
-              <div className="flex items-center space-x-2">
-                <RefreshCw className="h-5 w-5 animate-spin" />
-                <span>Loading dashboard...</span>
-              </div>
-            </div>
-          </main>
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center space-x-2">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          <span>Loading dashboard...</span>
         </div>
       </div>
     )
@@ -120,84 +101,68 @@ export default function ProviderDashboard() {
 
   if (error || !stats) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden">
-        <CollapsibleSidebar 
-          collapsed={sidebarCollapsed} 
-          setCollapsed={setSidebarCollapsed} 
-        />
-        
-        <div className="flex flex-col flex-1">
-          <Topbar 
-            title="Provider Dashboard" 
-            subtitle="Error loading dashboard" 
-          />
-          
-          <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-            <Card>
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-                  <p className="text-gray-600 mb-4">{error || 'Failed to load dashboard data'}</p>
-                  <Button onClick={loadUserAndData} variant="outline">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Try Again
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </main>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+            <p className="text-gray-600 mb-4">{error || 'Failed to load dashboard data'}</p>
+            <Button onClick={loadUserAndData} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      {/* Sidebar */}
-      <CollapsibleSidebar 
-        collapsed={sidebarCollapsed} 
-        setCollapsed={setSidebarCollapsed} 
-      />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
+          <p className="text-gray-600">Welcome back! Here's what's happening with your business.</p>
+        </div>
+        <Button 
+          onClick={handleRefresh} 
+          disabled={refreshing}
+          variant="outline"
+          size="sm"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
 
-      {/* Main Content Area */}
-      <div className="flex flex-col flex-1">
-        {/* Topbar */}
-        <Topbar 
-          title="Provider Dashboard" 
-          subtitle="Welcome back! Here's what's happening with your business." 
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-        />
+      {/* Dashboard Content */}
+      <div className="space-y-6">
+        {/* KPI Grid */}
+        <section>
+          <ImprovedKPIGrid data={stats} />
+        </section>
 
-        {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-          {/* KPI Grid */}
-          <section className="mb-6">
-            <ImprovedKPIGrid data={stats} />
-          </section>
+        {/* Performance Metrics */}
+        <section>
+          <ImprovedPerformanceMetrics data={stats} />
+        </section>
 
-          {/* Performance Metrics */}
-          <section className="mb-6">
-            <ImprovedPerformanceMetrics data={stats} />
-          </section>
+        {/* Earnings Chart */}
+        <section>
+          <EarningsChart data={monthlyEarnings} />
+        </section>
 
-          {/* Earnings Chart */}
-          <section className="mb-6">
-            <EarningsChart data={monthlyEarnings} />
-          </section>
+        {/* Recent Bookings + Top Services */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RecentBookings bookings={recentBookings} />
+          <TopServices services={topServices} />
+        </section>
 
-          {/* Recent Bookings + Top Services */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <RecentBookings bookings={recentBookings} />
-            <TopServices services={topServices} />
-          </section>
-
-          {/* Monthly Goals & Achievements */}
-          <section className="mb-6">
-            <MonthlyGoals data={stats} />
-          </section>
-        </main>
+        {/* Monthly Goals & Achievements */}
+        <section>
+          <MonthlyGoals data={stats} />
+        </section>
       </div>
     </div>
   )
