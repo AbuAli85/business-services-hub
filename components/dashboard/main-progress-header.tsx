@@ -76,7 +76,7 @@ export function MainProgressHeader({
               )}
             </div>
             <TooltipProvider>
-              <Tooltip>
+              <Tooltip content="Overall project completion percentage">
                 <TooltipTrigger>
                   <div className="relative w-16 h-16">
                     <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
@@ -101,9 +101,6 @@ export function MainProgressHeader({
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Overall project completion percentage</p>
-                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -122,15 +119,12 @@ export function MainProgressHeader({
               </p>
             </div>
             <TooltipProvider>
-              <Tooltip>
+              <Tooltip content="Number of completed milestones">
                 <TooltipTrigger>
                   <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                     <CheckCircle className="h-6 w-6 text-green-600" />
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Number of completed milestones</p>
-                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -149,15 +143,12 @@ export function MainProgressHeader({
               </p>
             </div>
             <TooltipProvider>
-              <Tooltip>
+              <Tooltip content="Number of remaining milestones">
                 <TooltipTrigger>
                   <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                     <Clock className="h-6 w-6 text-orange-600" />
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Number of remaining milestones</p>
-                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
@@ -188,15 +179,12 @@ export function MainProgressHeader({
               </div>
             </div>
             <TooltipProvider>
-              <Tooltip>
+              <Tooltip content="Total hours logged vs estimated">
                 <TooltipTrigger>
                   <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                     <Timer className="h-6 w-6 text-purple-600" />
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Total hours logged vs estimated</p>
-                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
