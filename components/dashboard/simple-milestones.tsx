@@ -19,7 +19,8 @@ import {
   TrendingUp,
   Lock,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Play
 } from 'lucide-react'
 import { format, addMonths, isAfter, isBefore } from 'date-fns'
 
@@ -268,6 +269,17 @@ export function SimpleMilestones({
       }
       
       onMilestoneUpdate(editingMilestone, editingMilestoneData)
+      
+      // Auto-start next phase if current phase is completed
+      if (editingMilestoneData.status === 'completed' && currentMilestone) {
+        const nextPhase = milestones.find(m => m.phaseNumber === currentMilestone.phaseNumber + 1)
+        if (nextPhase && nextPhase.status === 'pending') {
+          setTimeout(() => {
+            onMilestoneUpdate(nextPhase.id, { status: 'in_progress' })
+          }, 1000) // Small delay to show completion first
+        }
+      }
+      
       setEditingMilestone(null)
       setEditingMilestoneData(null)
     }
@@ -280,10 +292,11 @@ export function SimpleMilestones({
 
   const canStartMilestone = (milestone: SimpleMilestone) => {
     if (milestone.status === 'completed') return true
+    if (milestone.status === 'in_progress') return true
     if (milestone.phaseNumber === 1) return true
     
     const previousPhase = milestones.find(m => m.phaseNumber === milestone.phaseNumber - 1)
-    return previousPhase ? previousPhase.status === 'completed' : true
+    return previousPhase ? previousPhase.status === 'completed' : false
   }
 
   const getProjectPeriodInfo = () => {
@@ -423,7 +436,17 @@ export function SimpleMilestones({
           const smartIndicator = getSmartIndicator(milestone)
           const completedTasks = milestone.tasks.filter(t => t.completed).length
           const totalTasks = milestone.tasks.length
-          const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+          
+          // Calculate progress based on status and tasks
+          let progress = 0
+          if (milestone.status === 'completed') {
+            progress = 100
+          } else if (milestone.status === 'in_progress') {
+            progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 25 // Default 25% for in-progress with no tasks
+          } else {
+            progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+          }
+          
           const canStart = canStartMilestone(milestone)
           const isLocked = !canStart && milestone.status === 'pending'
 
@@ -523,10 +546,25 @@ export function SimpleMilestones({
                 {/* Progress Bar */}
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-bold text-gray-700">Progress</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-bold text-gray-700">Progress</span>
+                      {milestone.status === 'completed' && (
+                        <div className="flex items-center space-x-1 text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="text-xs font-semibold">COMPLETED</span>
+                        </div>
+                      )}
+                      {milestone.status === 'in_progress' && (
+                        <div className="flex items-center space-x-1 text-blue-600">
+                          <Clock className="h-4 w-4" />
+                          <span className="text-xs font-semibold">IN PROGRESS</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-2xl font-bold text-gray-900">{Math.round(progress)}%</span>
                       <div className={`w-3 h-3 rounded-full ${
+                        milestone.status === 'completed' ? 'bg-green-500' :
                         progress >= 80 ? 'bg-green-500' :
                         progress >= 60 ? 'bg-blue-500' :
                         progress >= 40 ? 'bg-yellow-500' :
@@ -540,8 +578,10 @@ export function SimpleMilestones({
                       className="h-3 shadow-inner"
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-bold text-white drop-shadow-lg">
-                        {Math.round(progress)}% Complete
+                      <span className="text-sm font-bold text-white drop-shadow-lg">
+                        {milestone.status === 'completed' ? '🎉 COMPLETED!' : 
+                         milestone.status === 'in_progress' ? '🚀 IN PROGRESS' :
+                         `${Math.round(progress)}% Complete`}
                       </span>
                     </div>
                   </div>
@@ -555,14 +595,55 @@ export function SimpleMilestones({
                       <span>{format(new Date(milestone.startDate), 'MMM dd')} - {format(new Date(milestone.endDate), 'MMM dd, yyyy')}</span>
                     </div>
                   </div>
+                  
+                  {/* Quick Action Buttons */}
+                  {userRole === 'provider' && !isLocked && (
+                    <div className="mt-4 flex space-x-2">
+                      {milestone.status === 'pending' && (
+                        <Button
+                          onClick={() => onMilestoneUpdate(milestone.id, { status: 'in_progress' })}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm px-4 py-2"
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Phase
+                        </Button>
+                      )}
+                      {milestone.status === 'in_progress' && (
+                        <Button
+                          onClick={() => onMilestoneUpdate(milestone.id, { status: 'completed' })}
+                          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm px-4 py-2"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Complete Phase
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Tasks */}
+                {/* Enhanced Tasks Section */}
                 <div className="space-y-3">
-                  <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center space-x-2">
-                    <Target className="h-4 w-4" />
-                    <span>Tasks ({totalTasks})</span>
-                  </h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-gray-800 flex items-center space-x-2">
+                      <Target className="h-4 w-4" />
+                      <span>Tasks ({totalTasks})</span>
+                      {totalTasks > 0 && (
+                        <div className="flex items-center space-x-1 text-xs text-gray-600">
+                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                            {completedTasks} completed
+                          </span>
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {totalTasks - completedTasks} remaining
+                          </span>
+                        </div>
+                      )}
+                    </h4>
+                    {totalTasks === 0 && (
+                      <div className="text-xs text-gray-500 italic">
+                        No tasks yet - add some to track progress
+                      </div>
+                    )}
+                  </div>
                   {milestone.tasks.map((task) => (
                     <div key={task.id} className={`flex items-center space-x-4 p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
                       task.completed 
@@ -643,17 +724,22 @@ export function SimpleMilestones({
                     </div>
                   ))}
 
-                  {/* Add Task Button */}
+                  {/* Enhanced Add Task Button */}
                   {userRole === 'provider' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAddTask(milestone.id)}
-                      className="w-full mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 font-semibold"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Task
-                    </Button>
+                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-300 transition-all duration-200">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddTask(milestone.id)}
+                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold py-3"
+                      >
+                        <Plus className="h-5 w-5 mr-2" />
+                        Add New Task to {milestone.title}
+                      </Button>
+                      <p className="text-xs text-blue-600 text-center mt-2">
+                        Add tasks to track progress and break down this phase into manageable steps
+                      </p>
+                    </div>
                   )}
                 </div>
 
