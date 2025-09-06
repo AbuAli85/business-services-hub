@@ -24,7 +24,9 @@ import { SimpleMilestones } from './simple-milestones'
 import { SimpleTimeline } from './simple-timeline'
 import { TimelineView } from './timeline-view'
 import { AnalyticsView } from './analytics-view'
+import { ClientTimelineView } from './client-timeline-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
+import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 interface ProgressTrackingSystemProps {
@@ -845,13 +847,62 @@ export function ProgressTrackingSystem({
 
   const handleCommentAdd = useCallback(async (milestoneId: string, comment: any) => {
     try {
-      // TODO: Implement comment saving to database
-      // Adding comment to milestone
+      // Save comment to database
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('User not authenticated')
+
+      const { error } = await supabase
+        .from('milestone_comments')
+        .insert({
+          milestone_id: milestoneId,
+          content: typeof comment === 'string' ? comment : comment.content,
+          author_id: user.id,
+          created_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+
       toast.success('Comment added successfully')
+      await loadData()
     } catch (error) {
+      console.error('Error adding comment:', error)
       toast.error('Failed to add comment')
     }
-  }, [])
+  }, [loadData])
+
+  const handleActionRequest = useCallback(async (milestoneId: string, request: any) => {
+    try {
+      // Create action request in the database
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('User not authenticated')
+
+      const { error } = await supabase
+        .from('action_requests')
+        .insert({
+          booking_id: bookingId,
+          milestone_id: milestoneId,
+          type: request.type,
+          title: request.title,
+          description: request.description,
+          priority: request.priority,
+          status: 'pending',
+          requested_by: user.id,
+          created_at: new Date().toISOString()
+        })
+
+      if (error) throw error
+
+      toast.success('Action request submitted successfully')
+      await loadData()
+    } catch (error) {
+      console.error('Error submitting action request:', error)
+      toast.error('Failed to submit action request')
+    }
+  }, [bookingId, loadData])
 
   const handleProjectTypeChange = useCallback(async (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => {
     try {
@@ -1095,15 +1146,15 @@ export function ProgressTrackingSystem({
               <SimpleMilestones
                 milestones={transformToSimpleMilestones(milestones || [])}
                 userRole={userRole}
-                onTaskUpdate={async (taskId: string, updates: any) => {
+                onTaskUpdate={userRole === 'provider' ? (taskId: string, updates: any) => {
                   // Find the milestone containing this task
                   const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
                   if (milestone) {
-                    await handleTaskUpdate(taskId, updates)
+                    handleTaskUpdate(taskId, updates)
                   }
-                }}
-                onTaskAdd={async (milestoneId: string, taskData: any) => {
-                  await handleTaskCreate(milestoneId, {
+                } : () => {}}
+                onTaskAdd={userRole === 'provider' ? (milestoneId: string, taskData: any) => {
+                  handleTaskCreate(milestoneId, {
                     title: taskData.title,
                     description: taskData.description || '',
                     status: taskData.completed ? 'completed' : 'pending',
@@ -1116,30 +1167,41 @@ export function ProgressTrackingSystem({
                     tags: [],
                     progress_percentage: taskData.completed ? 100 : 0
                   })
-                }}
-                onTaskDelete={async (milestoneId: string, taskId: string) => {
-                  await handleTaskDelete(taskId)
-                }}
-                onMilestoneUpdate={async (milestoneId: string, updates: any) => {
-                  await handleMilestoneUpdate(milestoneId, {
+                } : () => {}}
+                onTaskDelete={userRole === 'provider' ? (milestoneId: string, taskId: string) => {
+                  handleTaskDelete(taskId)
+                } : () => {}}
+                onMilestoneUpdate={userRole === 'provider' ? (milestoneId: string, updates: any) => {
+                  handleMilestoneUpdate(milestoneId, {
                     title: updates.title,
                     description: updates.description,
                     status: updates.status,
                     due_date: updates.endDate,
                     progress_percentage: updates.progress_percentage || 0
                   })
-                }}
+                } : () => {}}
                 onCommentAdd={handleCommentAdd}
-                onProjectTypeChange={handleProjectTypeChange}
+                onProjectTypeChange={userRole === 'provider' ? handleProjectTypeChange : () => {}}
               />
             </TabsContent>
 
 
             <TabsContent value="timeline" className="space-y-6">
-              <SimpleTimeline
-                milestones={transformToSimpleMilestones(milestones || [])}
-                userRole={userRole}
-              />
+              {userRole === 'client' ? (
+                <ClientTimelineView
+                  bookingId={bookingId}
+                  milestones={milestones || []}
+                  comments={[]} // TODO: Load comments from database
+                  actionRequests={[]} // TODO: Load action requests from database
+                  onCommentAdd={handleCommentAdd}
+                  onActionRequest={handleActionRequest}
+                />
+              ) : (
+                <SimpleTimeline
+                  milestones={transformToSimpleMilestones(milestones || [])}
+                  userRole={userRole}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
