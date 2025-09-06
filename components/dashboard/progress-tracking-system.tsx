@@ -169,97 +169,334 @@ export function ProgressTrackingSystem({
       // Create 4 standard phases instead of loading all milestones
       let milestonesData: Milestone[] = []
       try {
-        // Create the 4 standard phases
+        // Create the 4 standard phases - ready to start
+        const now = new Date()
         const standardPhases = [
           {
             id: '550e8400-e29b-41d4-a716-446655440001',
             title: 'Planning & Setup',
-            description: 'Initial planning, requirements gathering, and project setup',
+            description: 'Initial planning, requirements gathering, and project setup. Define project scope, gather requirements, and create detailed project plan.',
             status: 'pending' as const,
             booking_id: bookingId,
-            priority: 'medium' as const,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            priority: 'high' as const,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            due_date: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 0,
             is_overdue: false,
-            estimated_hours: 0,
+            estimated_hours: 20,
             actual_hours: 0,
-            tags: [],
-            notes: '',
+            tags: ['planning', 'requirements', 'setup'],
+            notes: 'Ready to begin - Phase 1 of 4',
             order_index: 1,
             editable: true,
             weight: 1,
-            tasks: []
+            tasks: [
+              {
+                id: `task-${Date.now()}-1`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440001',
+                title: 'Project Requirements Gathering',
+                description: 'Collect and document all project requirements from stakeholders',
+                status: 'pending' as const,
+                priority: 'high' as const,
+                due_date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 8,
+                actual_hours: 0,
+                tags: ['requirements', 'stakeholders'],
+                steps: [
+                  { title: 'Schedule stakeholder meetings', completed: false, due_date: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Document functional requirements', completed: false, due_date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Document technical requirements', completed: false, due_date: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              },
+              {
+                id: `task-${Date.now()}-2`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440001',
+                title: 'Project Planning & Timeline',
+                description: 'Create detailed project plan with timeline and milestones',
+                status: 'pending' as const,
+                priority: 'high' as const,
+                due_date: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 12,
+                actual_hours: 0,
+                tags: ['planning', 'timeline'],
+                steps: [
+                  { title: 'Create project timeline', completed: false, due_date: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Define resource allocation', completed: false, due_date: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Set up project tracking tools', completed: false, due_date: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              }
+            ]
           },
           {
             id: '550e8400-e29b-41d4-a716-446655440002',
             title: 'Development',
-            description: 'Core development and implementation phase',
+            description: 'Core development and implementation phase. Build the main features and functionality according to specifications.',
             status: 'pending' as const,
             booking_id: bookingId,
-            priority: 'medium' as const,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            priority: 'high' as const,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            due_date: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 0,
             is_overdue: false,
-            estimated_hours: 0,
+            estimated_hours: 60,
             actual_hours: 0,
-            tags: [],
-            notes: '',
+            tags: ['development', 'implementation', 'coding'],
+            notes: 'Ready to begin after Planning & Setup completion',
             order_index: 2,
             editable: true,
             weight: 1,
-            tasks: []
+            tasks: [
+              {
+                id: `task-${Date.now()}-3`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440002',
+                title: 'Core Feature Development',
+                description: 'Develop the main features and functionality',
+                status: 'pending' as const,
+                priority: 'high' as const,
+                due_date: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 40,
+                actual_hours: 0,
+                tags: ['development', 'features'],
+                steps: [
+                  { title: 'Set up development environment', completed: false, due_date: new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Implement core features', completed: false, due_date: new Date(now.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Integrate components', completed: false, due_date: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              },
+              {
+                id: `task-${Date.now()}-4`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440002',
+                title: 'Database & Backend Setup',
+                description: 'Set up database schema and backend services',
+                status: 'pending' as const,
+                priority: 'medium' as const,
+                due_date: new Date(now.getTime() + 18 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 20,
+                actual_hours: 0,
+                tags: ['database', 'backend'],
+                steps: [
+                  { title: 'Design database schema', completed: false, due_date: new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Implement backend APIs', completed: false, due_date: new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Set up authentication', completed: false, due_date: new Date(now.getTime() + 18 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              }
+            ]
           },
           {
             id: '550e8400-e29b-41d4-a716-446655440003',
             title: 'Testing & Quality',
-            description: 'Testing, quality assurance, and bug fixes',
+            description: 'Comprehensive testing, quality assurance, and bug fixes. Ensure the product meets all requirements and standards.',
             status: 'pending' as const,
             booking_id: bookingId,
-            priority: 'medium' as const,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            due_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+            priority: 'high' as const,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            due_date: new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 0,
             is_overdue: false,
-            estimated_hours: 0,
+            estimated_hours: 30,
             actual_hours: 0,
-            tags: [],
-            notes: '',
+            tags: ['testing', 'quality', 'qa'],
+            notes: 'Ready to begin after Development completion',
             order_index: 3,
             editable: true,
             weight: 1,
-            tasks: []
+            tasks: [
+              {
+                id: `task-${Date.now()}-5`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440003',
+                title: 'Unit & Integration Testing',
+                description: 'Perform comprehensive unit and integration testing',
+                status: 'pending' as const,
+                priority: 'high' as const,
+                due_date: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 20,
+                actual_hours: 0,
+                tags: ['testing', 'unit', 'integration'],
+                steps: [
+                  { title: 'Write unit tests', completed: false, due_date: new Date(now.getTime() + 22 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Perform integration testing', completed: false, due_date: new Date(now.getTime() + 24 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Fix identified bugs', completed: false, due_date: new Date(now.getTime() + 25 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              },
+              {
+                id: `task-${Date.now()}-6`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440003',
+                title: 'User Acceptance Testing',
+                description: 'Conduct user acceptance testing with stakeholders',
+                status: 'pending' as const,
+                priority: 'medium' as const,
+                due_date: new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 10,
+                actual_hours: 0,
+                tags: ['testing', 'uat', 'stakeholders'],
+                steps: [
+                  { title: 'Prepare test scenarios', completed: false, due_date: new Date(now.getTime() + 26 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Conduct UAT sessions', completed: false, due_date: new Date(now.getTime() + 27 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Document feedback and fixes', completed: false, due_date: new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              }
+            ]
           },
           {
             id: '550e8400-e29b-41d4-a716-446655440004',
             title: 'Delivery & Launch',
-            description: 'Final delivery, deployment, and project launch',
+            description: 'Final delivery, deployment, and project launch. Deploy to production and ensure smooth launch.',
             status: 'pending' as const,
             booking_id: bookingId,
-            priority: 'medium' as const,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            due_date: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+            priority: 'high' as const,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            due_date: new Date(now.getTime() + 35 * 24 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 0,
             is_overdue: false,
-            estimated_hours: 0,
+            estimated_hours: 15,
             actual_hours: 0,
-            tags: [],
-            notes: '',
+            tags: ['delivery', 'deployment', 'launch'],
+            notes: 'Ready to begin after Testing & Quality completion',
             order_index: 4,
             editable: true,
             weight: 1,
-            tasks: []
+            tasks: [
+              {
+                id: `task-${Date.now()}-7`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440004',
+                title: 'Production Deployment',
+                description: 'Deploy the application to production environment',
+                status: 'pending' as const,
+                priority: 'high' as const,
+                due_date: new Date(now.getTime() + 32 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 8,
+                actual_hours: 0,
+                tags: ['deployment', 'production'],
+                steps: [
+                  { title: 'Prepare production environment', completed: false, due_date: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Deploy application', completed: false, due_date: new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Verify deployment', completed: false, due_date: new Date(now.getTime() + 32 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              },
+              {
+                id: `task-${Date.now()}-8`,
+                milestone_id: '550e8400-e29b-41d4-a716-446655440004',
+                title: 'Launch & Documentation',
+                description: 'Launch the project and provide final documentation',
+                status: 'pending' as const,
+                priority: 'medium' as const,
+                due_date: new Date(now.getTime() + 35 * 24 * 60 * 60 * 1000).toISOString(),
+                progress_percentage: 0,
+                estimated_hours: 7,
+                actual_hours: 0,
+                tags: ['launch', 'documentation'],
+                steps: [
+                  { title: 'Create user documentation', completed: false, due_date: new Date(now.getTime() + 33 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Train end users', completed: false, due_date: new Date(now.getTime() + 34 * 24 * 60 * 60 * 1000).toISOString() },
+                  { title: 'Project handover', completed: false, due_date: new Date(now.getTime() + 35 * 24 * 60 * 60 * 1000).toISOString() }
+                ],
+                completed_at: undefined,
+                created_at: now.toISOString(),
+                updated_at: now.toISOString(),
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as const,
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined
+              }
+            ]
           }
         ]
 
         // Try to load existing milestones and update the standard phases
-        try {
-          const rawMilestones = await ProgressTrackingService.getMilestones(bookingId)
+      try {
+        const rawMilestones = await ProgressTrackingService.getMilestones(bookingId)
         
           // Update standard phases with existing data if available
           milestonesData = standardPhases.map(phase => {
@@ -284,35 +521,35 @@ export function ProgressTrackingSystem({
                 order_index: existingMilestone.order_index || phase.order_index,
                 editable: existingMilestone.editable !== undefined ? existingMilestone.editable : true,
                 tasks: (existingMilestone.tasks || []).map(task => ({
-                  ...task,
+            ...task,
                   milestone_id: phase.id,
                   title: task.title,
-                  description: task.description || '',
+            description: task.description || '',
                   status: task.status || 'pending',
-                  priority: task.priority || 'medium',
+            priority: task.priority || 'medium',
                   due_date: task.due_date,
                   progress_percentage: task.progress_percentage || 0,
                   estimated_hours: task.estimated_hours || 1,
-                  actual_hours: task.actual_hours || 0,
-                  tags: task.tags || [],
-                  steps: task.steps || [],
-                  completed_at: task.completed_at || undefined,
-                  created_at: task.created_at || new Date().toISOString(),
-                  updated_at: task.updated_at || new Date().toISOString(),
-                  created_by: task.created_by || undefined,
-                  assigned_to: task.assigned_to || undefined,
-                  is_overdue: task.is_overdue || false,
-                  overdue_since: task.overdue_since || undefined,
-                  approval_status: task.approval_status || 'pending',
-                  approved_by: task.approved_by || undefined,
-                  approved_at: task.approved_at || undefined,
+            actual_hours: task.actual_hours || 0,
+            tags: task.tags || [],
+            steps: task.steps || [],
+            completed_at: task.completed_at || undefined,
+            created_at: task.created_at || new Date().toISOString(),
+            updated_at: task.updated_at || new Date().toISOString(),
+            created_by: task.created_by || undefined,
+            assigned_to: task.assigned_to || undefined,
+            is_overdue: task.is_overdue || false,
+            overdue_since: task.overdue_since || undefined,
+            approval_status: task.approval_status || 'pending',
+            approved_by: task.approved_by || undefined,
+            approved_at: task.approved_at || undefined,
                   approval_notes: task.approval_notes || undefined
                 }))
               }
             }
             return phase
           })
-        } catch (milestoneError) {
+      } catch (milestoneError) {
           // Using standard phases as fallback
           milestonesData = standardPhases
         }
@@ -336,6 +573,8 @@ export function ProgressTrackingSystem({
           sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
         )
         const totalTasks = milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+        const totalEstimatedHours = milestonesData.reduce((sum, m) => sum + (m.estimated_hours || 0), 0)
+        const totalActualHours = milestonesData.reduce((sum, m) => sum + (m.actual_hours || 0), 0)
         const overallProgress = Math.round((completedMilestones / 4) * 100) // Always calculate based on 4 phases
         
         progressData = {
@@ -347,8 +586,8 @@ export function ProgressTrackingSystem({
           total_milestones: 4, // Always 4 phases
           completed_tasks: completedTasks,
           total_tasks: totalTasks,
-          total_estimated_hours: 0,
-          total_actual_hours: 0,
+          total_estimated_hours: totalEstimatedHours,
+          total_actual_hours: totalActualHours,
           overdue_tasks: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -388,6 +627,8 @@ export function ProgressTrackingSystem({
           sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
         )
         const totalTasks = milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+        const totalEstimatedHours = milestonesData.reduce((sum, m) => sum + (m.estimated_hours || 0), 0)
+        const totalActualHours = milestonesData.reduce((sum, m) => sum + (m.actual_hours || 0), 0)
         const overallProgress = Math.round((completedMilestones / 4) * 100) // Always calculate based on 4 phases
         
         progressData = {
@@ -400,8 +641,8 @@ export function ProgressTrackingSystem({
           completed_tasks: completedTasks,
           total_tasks: totalTasks,
           booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
-          total_estimated_hours: progressData?.total_estimated_hours || 0,
-          total_actual_hours: progressData?.total_actual_hours || 0,
+          total_estimated_hours: totalEstimatedHours,
+          total_actual_hours: totalActualHours,
           overdue_tasks: progressData?.overdue_tasks || 0,
           created_at: progressData?.created_at || new Date().toISOString(),
           updated_at: progressData?.updated_at || new Date().toISOString()
