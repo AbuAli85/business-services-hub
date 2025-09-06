@@ -20,9 +20,6 @@ import {
 import { ProgressTrackingService, Milestone, Task, BookingProgress, TimeEntry } from '@/lib/progress-tracking'
 import { MainProgressHeader } from './main-progress-header'
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
-import { MilestonesAccordion } from './milestones-accordion'
-import { MonthlyProgressTab } from './monthly-progress-tab'
-import { TimelineView } from './timeline-view'
 import { AnalyticsView } from './analytics-view'
 import { BulkOperationsView } from './bulk-operations-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
@@ -77,11 +74,46 @@ export function ProgressTrackingSystem({
       setLoading(true)
       setError(null)
 
-      const [milestonesData, progressData, timeEntriesData] = await Promise.all([
-        ProgressTrackingService.getMilestones(bookingId),
-        ProgressTrackingService.getBookingProgress(bookingId),
-        ProgressTrackingService.getTimeEntriesByBookingId(bookingId)
-      ])
+      console.log('Loading progress data for booking:', bookingId)
+
+      // Load milestones first
+      const milestonesData = await ProgressTrackingService.getMilestones(bookingId)
+      console.log('Loaded milestones:', milestonesData)
+
+      // Try to load booking progress, but don't fail if it doesn't exist
+      let progressData = null
+      try {
+        progressData = await ProgressTrackingService.getBookingProgress(bookingId)
+        console.log('Loaded booking progress:', progressData)
+      } catch (progressError) {
+        console.warn('Could not load booking progress, using fallback:', progressError)
+        // Create a fallback progress object
+        progressData = {
+          booking_id: bookingId,
+          booking_title: 'Project Progress',
+          booking_status: 'in_progress',
+          booking_progress: 0,
+          completed_milestones: 0,
+          total_milestones: milestonesData.length,
+          completed_tasks: 0,
+          total_tasks: milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0),
+          total_estimated_hours: 0,
+          total_actual_hours: 0,
+          overdue_tasks: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }
+
+      // Try to load time entries, but don't fail if it doesn't work
+      let timeEntriesData: TimeEntry[] = []
+      try {
+        timeEntriesData = await ProgressTrackingService.getTimeEntriesByBookingId(bookingId)
+        console.log('Loaded time entries:', timeEntriesData)
+      } catch (timeError) {
+        console.warn('Could not load time entries:', timeError)
+        timeEntriesData = []
+      }
 
       setMilestones(milestonesData)
       setBookingProgress(progressData)
@@ -237,8 +269,10 @@ export function ProgressTrackingSystem({
     )
   }
 
-  return (
-    <div className={`space-y-6 ${className}`}>
+  // Add error boundary for render
+  try {
+    return (
+      <div className={`space-y-6 ${className}`}>
       {/* Header with refresh button */}
       <div className="flex items-center justify-between">
         <div>
@@ -256,17 +290,21 @@ export function ProgressTrackingSystem({
         </Button>
       </div>
 
-      {/* Main Progress Header */}
-      <MainProgressHeader
-        bookingProgress={bookingProgress}
-        completedMilestones={completedMilestones}
-        totalMilestones={totalMilestones}
-        completedTasks={completedTasks}
-        totalTasks={totalTasks}
-        totalEstimatedHours={totalEstimatedHours}
-        totalActualHours={totalActualHours}
-        overdueTasks={overdueTasks}
-      />
+        {/* Main Progress Header */}
+        <MainProgressHeader
+          bookingProgress={bookingProgress || {
+            booking_progress: 0,
+            booking_title: 'Project Progress',
+            booking_status: 'in_progress'
+          }}
+          completedMilestones={completedMilestones || 0}
+          totalMilestones={totalMilestones || 0}
+          completedTasks={completedTasks || 0}
+          totalTasks={totalTasks || 0}
+          totalEstimatedHours={totalEstimatedHours || 0}
+          totalActualHours={totalActualHours || 0}
+          overdueTasks={overdueTasks || 0}
+        />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Content */}
@@ -298,22 +336,22 @@ export function ProgressTrackingSystem({
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <MilestonesAccordion
-                milestones={milestones}
-                userRole={userRole}
-                onTaskUpdate={handleTaskUpdate}
-                onTaskCreate={handleTaskCreate}
-                onTaskDelete={handleTaskDelete}
-                onMilestoneUpdate={handleMilestoneUpdate}
-                onStartTimeTracking={handleStartTimeTracking}
-                onStopTimeTracking={handleStopTimeTracking}
-                timeEntries={timeEntries}
-              />
+            <MilestonesAccordion
+              milestones={milestones || []}
+              userRole={userRole}
+              onTaskUpdate={handleTaskUpdate}
+              onTaskCreate={handleTaskCreate}
+              onTaskDelete={handleTaskDelete}
+              onMilestoneUpdate={handleMilestoneUpdate}
+              onStartTimeTracking={handleStartTimeTracking}
+              onStopTimeTracking={handleStopTimeTracking}
+              timeEntries={timeEntries || []}
+            />
             </TabsContent>
 
             <TabsContent value="monthly" className="space-y-6">
               <MonthlyProgressTab
-                milestones={milestones}
+                milestones={milestones || []}
                 userRole={userRole}
                 onTaskUpdate={handleTaskUpdate}
                 onTaskCreate={handleTaskCreate}
@@ -324,7 +362,7 @@ export function ProgressTrackingSystem({
 
             <TabsContent value="timeline" className="space-y-6">
               <TimelineView
-                milestones={milestones}
+                milestones={milestones || []}
                 userRole={userRole}
                 onMilestoneClick={(milestoneId) => {
                   // Scroll to milestone in accordion
@@ -336,17 +374,17 @@ export function ProgressTrackingSystem({
 
             <TabsContent value="analytics" className="space-y-6">
               <AnalyticsView
-                milestones={milestones}
-                timeEntries={timeEntries}
-                totalEstimatedHours={totalEstimatedHours}
-                totalActualHours={totalActualHours}
+                milestones={milestones || []}
+                timeEntries={timeEntries || []}
+                totalEstimatedHours={totalEstimatedHours || 0}
+                totalActualHours={totalActualHours || 0}
               />
             </TabsContent>
 
             {userRole === 'provider' && (
               <TabsContent value="bulk" className="space-y-6">
                 <BulkOperationsView
-                  milestones={milestones}
+                  milestones={milestones || []}
                   onTaskUpdate={handleTaskUpdate}
                   onTaskDelete={handleTaskDelete}
                   onMilestoneUpdate={handleMilestoneUpdate}
@@ -359,9 +397,9 @@ export function ProgressTrackingSystem({
         {/* Smart Suggestions Sidebar */}
         <div className="lg:col-span-1">
           <SmartSuggestionsSidebar
-            milestones={milestones}
+            milestones={milestones || []}
             bookingProgress={bookingProgress}
-            timeEntries={timeEntries}
+            timeEntries={timeEntries || []}
             userRole={userRole}
             onRefresh={refreshData}
           />
@@ -369,4 +407,24 @@ export function ProgressTrackingSystem({
       </div>
     </div>
   )
+  } catch (renderError) {
+    console.error('Error rendering ProgressTrackingSystem:', renderError)
+    return (
+      <div className={`space-y-6 ${className}`}>
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Render Error</h3>
+              <p className="text-gray-600 mb-4">An error occurred while rendering the progress tracking system.</p>
+              <Button onClick={loadData} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 }
