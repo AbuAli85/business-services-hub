@@ -4,9 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
   Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { 
   DollarSign, 
@@ -87,13 +85,8 @@ function KPICard({
   if (tooltip) {
     return (
       <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {cardContent}
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{tooltip}</p>
-          </TooltipContent>
+        <Tooltip content={tooltip}>
+          {cardContent}
         </Tooltip>
       </TooltipProvider>
     )
