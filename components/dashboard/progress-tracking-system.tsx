@@ -20,7 +20,7 @@ import {
 import { ProgressTrackingService, Milestone, Task, BookingProgress, TimeEntry } from '@/lib/progress-tracking'
 import { MainProgressHeader } from './main-progress-header'
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
-import { ImprovedMilestonesDisplay } from './improved-milestones-display'
+import { SimpleMilestones } from './simple-milestones'
 import { TimelineView } from './timeline-view'
 import { AnalyticsView } from './analytics-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
@@ -46,6 +46,30 @@ export function ProgressTrackingSystem({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Transform milestones to simple format
+  const transformToSimpleMilestones = (milestones: Milestone[]) => {
+    return milestones.map((milestone, index) => ({
+      id: milestone.id,
+      title: milestone.title,
+      description: milestone.description,
+      startDate: milestone.created_at,
+      endDate: milestone.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: milestone.status as 'not_started' | 'in_progress' | 'completed',
+      color: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'][index % 5],
+      tasks: (milestone.tasks || []).map(task => ({
+        id: task.id,
+        title: task.title,
+        completed: task.status === 'completed',
+        dueDate: task.due_date,
+        isRecurring: false,
+        recurringType: 'monthly' as const,
+        priority: 'medium' as const,
+        estimatedHours: task.estimated_hours || 1,
+        actualHours: task.actual_hours || 0
+      }))
+    }))
+  }
 
   const { 
     isUpdating, 
@@ -444,17 +468,43 @@ export function ProgressTrackingSystem({
                 overdueTasks={overdueTasks || 0}
               />
               
-              {/* Improved Milestones Display */}
-              <ImprovedMilestonesDisplay
-                milestones={milestones || []}
+              {/* Simple Milestones Display */}
+              <SimpleMilestones
+                milestones={transformToSimpleMilestones(milestones || [])}
                 userRole={userRole}
-                onTaskUpdate={handleTaskUpdate}
-                onTaskCreate={handleTaskCreate}
-                onTaskDelete={handleTaskDelete}
-                onMilestoneUpdate={handleMilestoneUpdate}
-                onStartTimeTracking={handleStartTimeTracking}
-                onStopTimeTracking={handleStopTimeTracking}
-                timeEntries={timeEntries || []}
+                onTaskUpdate={async (taskId: string, updates: any) => {
+                  // Find the milestone containing this task
+                  const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
+                  if (milestone) {
+                    await handleTaskUpdate(taskId, updates)
+                  }
+                }}
+                onTaskAdd={async (milestoneId: string, taskData: any) => {
+                  await handleTaskCreate(milestoneId, {
+                    title: taskData.title,
+                    description: taskData.description || '',
+                    status: taskData.completed ? 'completed' : 'pending',
+                    due_date: taskData.dueDate,
+                    estimated_hours: taskData.estimatedHours || 1,
+                    priority: taskData.priority || 'medium',
+                    milestone_id: milestoneId,
+                    steps: [],
+                    approval_status: 'pending',
+                    tags: [],
+                    progress_percentage: taskData.completed ? 100 : 0
+                  })
+                }}
+                onTaskDelete={async (milestoneId: string, taskId: string) => {
+                  await handleTaskDelete(taskId)
+                }}
+                onMilestoneUpdate={async (milestoneId: string, updates: any) => {
+                  await handleMilestoneUpdate(milestoneId, {
+                    title: updates.title,
+                    description: updates.description,
+                    status: updates.status,
+                    due_date: updates.endDate
+                  })
+                }}
               />
             </TabsContent>
 
