@@ -20,7 +20,7 @@ import {
 import { ProgressTrackingService, Milestone, Task, BookingProgress, TimeEntry } from '@/lib/progress-tracking'
 import { MainProgressHeader } from './main-progress-header'
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
-import { MilestonesAccordion } from './milestones-accordion'
+import { ImprovedMilestonesDisplay } from './improved-milestones-display'
 import { MonthlyProgressTab } from './monthly-progress-tab'
 import { TimelineView } from './timeline-view'
 import { AnalyticsView } from './analytics-view'
@@ -492,7 +492,7 @@ export function ProgressTrackingSystem({
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-            <MilestonesAccordion
+            <ImprovedMilestonesDisplay
               milestones={milestones || []}
               userRole={userRole}
               onTaskUpdate={handleTaskUpdate}
