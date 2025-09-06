@@ -1132,10 +1132,20 @@ export default function EnhancedBookingDetails() {
         reason = prompt('Please provide a reason for declining this booking (optional):') || ''
       }
 
+      // Get authenticated Supabase client
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('No active session. Please sign in again.')
+      }
+
+      // Make authenticated request with proper headers
       const response = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           booking_id: booking.id,
