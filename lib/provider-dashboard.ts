@@ -178,9 +178,9 @@ export class ProviderDashboardService {
       total_amount: booking.total_amount || 0,
       currency: booking.currency || 'OMR',
       created_at: booking.created_at,
-      client_name: booking.clients?.full_name || 'Unknown Client',
-      client_email: booking.clients?.email || '',
-      service_title: booking.services?.title || 'Unknown Service',
+      client_name: (booking.clients as any)?.full_name || 'Unknown Client',
+      client_email: (booking.clients as any)?.email || '',
+      service_title: (booking.services as any)?.title || 'Unknown Service',
       milestone_count: 0, // Will be populated separately if needed
       completed_milestones: 0
     }))
