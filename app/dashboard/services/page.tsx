@@ -80,6 +80,10 @@ interface Service {
     company_name?: string
     avatar_url?: string
   }
+  company_id?: string
+  company_name?: string
+  company_logo_url?: string
+  company_industry?: string
 }
 
 interface ServiceStats {
@@ -196,7 +200,15 @@ export default function ServicesPage() {
       // Start with a simple query to check if the basic table structure works
       let query = supabase
         .from('services')
-        .select('*')
+        .select(`
+          *,
+          companies!services_company_id_fkey (
+            id,
+            name,
+            industry,
+            logo_url
+          )
+        `)
 
       // Role-based filtering: Providers only see their own services, clients see only approved services
       console.log('Current userRole:', userRole, 'User ID:', user?.id)
@@ -272,7 +284,11 @@ export default function ServicesPage() {
                   phone: '',
                   company_name: '',
                   avatar_url: ''
-                }
+                },
+                company_id: service.companies?.id,
+                company_name: service.companies?.name,
+                company_logo_url: service.companies?.logo_url,
+                company_industry: service.companies?.industry
               }
             }
 
@@ -285,7 +301,11 @@ export default function ServicesPage() {
                 phone: '',
                 company_name: '',
                 avatar_url: ''
-              }
+              },
+              company_id: service.companies?.id,
+              company_name: service.companies?.name,
+              company_logo_url: service.companies?.logo_url,
+              company_industry: service.companies?.industry
             }
           } catch (error) {
             console.warn(`Error enriching service ${service.id}:`, error)
@@ -298,7 +318,11 @@ export default function ServicesPage() {
                 phone: '',
                 company_name: '',
                 avatar_url: ''
-              }
+              },
+              company_id: service.companies?.id,
+              company_name: service.companies?.name,
+              company_logo_url: service.companies?.logo_url,
+              company_industry: service.companies?.industry
             }
           }
         })
@@ -1139,6 +1163,29 @@ export default function ServicesPage() {
                     <CardTitle className="text-xl line-clamp-2 group-hover:text-blue-600 transition-colors duration-200 font-bold">
                       {service.title}
                     </CardTitle>
+                    
+                    {/* Company Information */}
+                    {service.company_name && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2">
+                          {service.company_logo_url ? (
+                            <img 
+                              src={service.company_logo_url} 
+                              alt={`${service.company_name} logo`} 
+                              className="w-5 h-5 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                              {service.company_name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="font-medium text-gray-700">{service.company_name}</span>
+                          {service.company_industry && (
+                            <span className="text-gray-500">• {service.company_industry}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     
                     <CardDescription className="line-clamp-2 text-sm text-gray-600 leading-relaxed">
                       {service.description}
