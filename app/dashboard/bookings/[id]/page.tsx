@@ -24,9 +24,15 @@ interface Booking {
   title: string
   description: string
   status: string
-  start_date: string
-  end_date: string
-  total_amount: number
+  start_date?: string
+  end_date?: string
+  start_time?: string
+  end_time?: string
+  scheduled_start?: string
+  scheduled_end?: string
+  total_amount?: number
+  amount?: number
+  total_price?: number
   currency: string
   client_id: string
   provider_id: string
@@ -64,6 +70,18 @@ const formatDate = (dateString: string | null | undefined): string => {
     console.warn('Date formatting error:', error)
     return 'Invalid date'
   }
+}
+
+// Helper function to format currency
+const formatCurrency = (amount: number | null | undefined, currency: string = 'OMR'): string => {
+  if (amount === null || amount === undefined || amount === 0) {
+    return `0 ${currency}`
+  }
+  
+  return `${amount.toLocaleString('en-US', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+  })} ${currency}`
 }
 
 export default function BookingDetails() {
@@ -206,7 +224,7 @@ export default function BookingDetails() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Start Date</p>
                   <p className="text-sm text-gray-900">
-                    {formatDate(booking.start_date)}
+                    {formatDate(booking.start_time || booking.scheduled_start)}
                   </p>
                 </div>
               </div>
@@ -218,7 +236,7 @@ export default function BookingDetails() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">End Date</p>
                   <p className="text-sm text-gray-900">
-                    {formatDate(booking.end_date)}
+                    {formatDate(booking.end_time || booking.scheduled_end)}
                   </p>
                 </div>
               </div>
@@ -244,7 +262,7 @@ export default function BookingDetails() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Amount</p>
                   <p className="text-sm text-gray-900">
-                    {booking.total_amount} {booking.currency}
+                    {formatCurrency(booking.total_amount || booking.amount || booking.total_price, booking.currency)}
                   </p>
                 </div>
               </div>
