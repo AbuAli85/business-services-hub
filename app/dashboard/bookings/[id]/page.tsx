@@ -24,6 +24,7 @@ interface Booking {
   title: string
   description: string
   status: string
+  approval_status?: string
   start_date?: string
   end_date?: string
   start_time?: string
@@ -92,6 +93,7 @@ export default function BookingDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<'provider' | 'client'>('client')
+  const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
     loadBookingData()
@@ -150,6 +152,68 @@ export default function BookingDetails() {
     }
   }
 
+  const handleApprovalAction = async (action: 'approve' | 'decline') => {
+    if (!booking) return
+
+    try {
+      setIsUpdating(true)
+      
+      // Show confirmation dialog for decline
+      let reason = ''
+      if (action === 'decline') {
+        reason = prompt('Please provide a reason for declining this booking (optional):') || ''
+      }
+
+      // Get authenticated Supabase client
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('No active session. Please sign in again.')
+      }
+
+      // Make authenticated request with proper headers
+      const response = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          action: action,
+          reason: reason
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error(`API Error (${response.status}):`, errorData)
+        throw new Error(errorData.error || `Failed to ${action} booking (${response.status})`)
+      }
+
+      const result = await response.json()
+      console.log(`Booking ${action} result:`, result)
+      
+      // Update local state
+      setBooking({ 
+        ...booking, 
+        status: action === 'approve' ? 'approved' : 'declined',
+        approval_status: action === 'approve' ? 'approved' : 'rejected'
+      })
+
+      toast.success(`Booking ${action === 'approve' ? 'approved' : 'declined'} successfully`)
+      
+      // Refresh booking data
+      await loadBookingData()
+    } catch (error) {
+      console.error(`Error ${action}ing booking:`, error)
+      toast.error(`Failed to ${action} booking: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -202,11 +266,54 @@ export default function BookingDetails() {
             <div className="flex items-center space-x-4">
               <Badge 
                 variant={booking.status === 'completed' ? 'default' : 
-                        booking.status === 'in_progress' ? 'secondary' : 'outline'}
+                        booking.status === 'approved' ? 'secondary' :
+                        booking.status === 'in_progress' ? 'secondary' : 
+                        booking.status === 'declined' ? 'destructive' : 'outline'}
                 className="text-sm"
               >
                 {booking.status.replace('_', ' ')}
               </Badge>
+              
+              {/* Approval Actions for Providers */}
+              {userRole === 'provider' && booking.status === 'pending' && (
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={() => handleApprovalAction('approve')}
+                    disabled={isUpdating}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    size="sm"
+                  >
+                    {isUpdating ? 'Processing...' : 'Approve'}
+                  </Button>
+                  <Button
+                    onClick={() => handleApprovalAction('decline')}
+                    disabled={isUpdating}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    {isUpdating ? 'Processing...' : 'Decline'}
+                  </Button>
+                </div>
+              )}
+              
+              {/* Status message for clients */}
+              {userRole === 'client' && booking.status === 'pending' && (
+                <div className="text-sm text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full">
+                  ⏳ Awaiting provider approval
+                </div>
+              )}
+              
+              {userRole === 'client' && booking.status === 'approved' && (
+                <div className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                  ✅ Approved - Ready to start
+                </div>
+              )}
+              
+              {userRole === 'client' && booking.status === 'declined' && (
+                <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                  ❌ Declined by provider
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -277,11 +384,50 @@ export default function BookingDetails() {
           </CardContent>
         </Card>
 
-        {/* Progress Tracking System */}
-        <ProgressTrackingSystem
-          bookingId={bookingId}
-          userRole={userRole}
-        />
+        {/* Progress Tracking System - Only show if approved */}
+        {booking.status === 'approved' || booking.status === 'in_progress' || booking.status === 'completed' ? (
+          <ProgressTrackingSystem
+            bookingId={bookingId}
+            userRole={userRole}
+          />
+        ) : (
+          <Card className="mb-6">
+            <CardContent className="p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock className="h-8 w-8 text-yellow-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {booking.status === 'pending' ? 'Awaiting Approval' : 'Booking Not Approved'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {booking.status === 'pending' 
+                    ? 'This booking is pending provider approval. Progress tracking will be available once approved.'
+                    : 'This booking has been declined or is not approved. Progress tracking is not available.'
+                  }
+                </p>
+                {userRole === 'provider' && booking.status === 'pending' && (
+                  <div className="flex items-center justify-center space-x-3">
+                    <Button
+                      onClick={() => handleApprovalAction('approve')}
+                      disabled={isUpdating}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {isUpdating ? 'Processing...' : 'Approve Booking'}
+                    </Button>
+                    <Button
+                      onClick={() => handleApprovalAction('decline')}
+                      disabled={isUpdating}
+                      variant="outline"
+                    >
+                      {isUpdating ? 'Processing...' : 'Decline'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

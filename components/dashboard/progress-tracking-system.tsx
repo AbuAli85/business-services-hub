@@ -580,7 +580,7 @@ export function ProgressTrackingSystem({
         progressData = {
           booking_id: bookingId,
           booking_title: 'Project Progress',
-          booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
+          booking_status: 'pending', // Default to pending for new bookings
           booking_progress: overallProgress,
           completed_milestones: completedMilestones,
           total_milestones: 4, // Always 4 phases
@@ -640,7 +640,7 @@ export function ProgressTrackingSystem({
           total_milestones: 4, // Always 4 phases
           completed_tasks: completedTasks,
           total_tasks: totalTasks,
-          booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
+          booking_status: progressData?.booking_status || (overallProgress === 100 ? 'completed' : 'pending'),
           total_estimated_hours: totalEstimatedHours,
           total_actual_hours: totalActualHours,
           overdue_tasks: progressData?.overdue_tasks || 0,
