@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Milestone, BookingProgress } from '@/types/progress'
 import { getEstimatedCompletionDate, isMilestoneOverdue } from '@/lib/progress-calculations'
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { TooltipProvider, Tooltip } from '@/components/ui/tooltip'
 
 interface MainProgressHeaderProps {
   bookingProgress: BookingProgress | null
@@ -101,111 +101,107 @@ export function MainProgressHeader({
         {/* 2x2 Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
         {/* Top-left: Circular Progress */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-              <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-3">
-                <svg className="w-24 h-24 sm:w-32 sm:h-32 transform -rotate-90" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    stroke="currentColor"
-                    strokeWidth="6"
-                    fill="none"
-                    className="text-gray-200"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    stroke="currentColor"
-                    strokeWidth="6"
-                    fill="none"
-                    strokeDasharray={`${2 * Math.PI * 40}`}
-                    strokeDashoffset={`${2 * Math.PI * 40 * (1 - bookingProgress.booking_progress / 100)}`}
-                    className="text-blue-600 transition-all duration-500"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-gray-900">{bookingProgress.booking_progress}%</div>
-                    <div className="text-xs text-gray-600">Complete</div>
-                  </div>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm font-medium text-gray-900">Overall Progress</div>
-                <div className="text-xs text-gray-600">
-                  {completedMilestones} of {totalMilestones} milestones
-                </div>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
+        <Tooltip content={
+          <div>
             <p>Overall project completion based on milestone progress</p>
             <p className="text-xs text-gray-400 mt-1">
               {completedMilestones} of {totalMilestones} milestones completed
             </p>
-          </TooltipContent>
+          </div>
+        }>
+          <div className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 mb-3">
+              <svg className="w-24 h-24 sm:w-32 sm:h-32 transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  fill="none"
+                  className="text-gray-200"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 40}`}
+                  strokeDashoffset={`${2 * Math.PI * 40 * (1 - bookingProgress.booking_progress / 100)}`}
+                  className="text-blue-600 transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-gray-900">{bookingProgress.booking_progress}%</div>
+                  <div className="text-xs text-gray-600">Complete</div>
+                </div>
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm font-medium text-gray-900">Overall Progress</div>
+              <div className="text-xs text-gray-600">
+                {completedMilestones} of {totalMilestones} milestones
+              </div>
+            </div>
+          </div>
         </Tooltip>
 
         {/* Top-right: Completed Milestones */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
-              <div className="text-center">
-                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-green-600">{completedMilestones}</div>
-                <div className="text-sm text-green-700">Completed Milestones</div>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
+        <Tooltip content={
+          <div>
             <p>Milestones that have been finished and approved</p>
             <p className="text-xs text-gray-400 mt-1">
               {completedMilestones} completed out of {totalMilestones} total
             </p>
-          </TooltipContent>
+          </div>
+        }>
+          <div className="flex items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors cursor-pointer">
+            <div className="text-center">
+              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
+              <div className="text-3xl font-bold text-green-600">{completedMilestones}</div>
+              <div className="text-sm text-green-700">Completed Milestones</div>
+            </div>
+          </div>
         </Tooltip>
 
         {/* Bottom-left: Remaining Milestones */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center justify-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer">
-              <div className="text-center">
-                <Target className="h-12 w-12 text-orange-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-orange-600">{remainingMilestones}</div>
-                <div className="text-sm text-orange-700">Remaining Milestones</div>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
+        <Tooltip content={
+          <div>
             <p>Milestones still in progress or pending</p>
             <p className="text-xs text-gray-400 mt-1">
               {remainingMilestones} remaining out of {totalMilestones} total
             </p>
-          </TooltipContent>
+          </div>
+        }>
+          <div className="flex items-center justify-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer">
+            <div className="text-center">
+              <Target className="h-12 w-12 text-orange-600 mx-auto mb-2" />
+              <div className="text-3xl font-bold text-orange-600">{remainingMilestones}</div>
+              <div className="text-sm text-orange-700">Remaining Milestones</div>
+            </div>
+          </div>
         </Tooltip>
 
         {/* Bottom-right: Hours Logged */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
-              <div className="text-center">
-                <Clock className="h-12 w-12 text-purple-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-purple-600">{totalHours.toFixed(1)}h</div>
-                <div className="text-sm text-purple-700">Hours Logged</div>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
+        <Tooltip content={
+          <div>
             <p>Total time spent on this project</p>
             <p className="text-xs text-gray-400 mt-1">
               {completedTasks} of {totalTasks} tasks completed
             </p>
-          </TooltipContent>
+          </div>
+        }>
+          <div className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer">
+            <div className="text-center">
+              <Clock className="h-12 w-12 text-purple-600 mx-auto mb-2" />
+              <div className="text-3xl font-bold text-purple-600">{totalHours.toFixed(1)}h</div>
+              <div className="text-sm text-purple-700">Hours Logged</div>
+            </div>
+          </div>
         </Tooltip>
       </div>
 
