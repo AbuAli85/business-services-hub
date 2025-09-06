@@ -170,6 +170,14 @@ export default function ManageServicesPage() {
     setFilteredServices(filtered)
   }
 
+  const viewService = (serviceId: string) => {
+    router.push(`/dashboard/services/${serviceId}`)
+  }
+
+  const editService = (serviceId: string) => {
+    router.push(`/dashboard/services/${serviceId}/edit`)
+  }
+
   const deleteService = async (serviceId: string) => {
     if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
       return
@@ -441,11 +449,19 @@ export default function ManageServicesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => viewService(service.id)}
+                            >
                               <Eye className="h-4 w-4 mr-2" />
                               View
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => editService(service.id)}
+                            >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </Button>
