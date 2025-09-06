@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
-
 import { formatDate } from '@/lib/utils'
 import { 
   Building2, 
@@ -30,7 +30,23 @@ import {
   Shield,
   TrendingUp,
   Award,
-  Star
+  Star,
+  ArrowRight,
+  Settings,
+  Trash2,
+  Copy,
+  Eye,
+  MoreVertical,
+  Search,
+  Filter,
+  SortAsc,
+  ChevronDown,
+  Briefcase,
+  Crown,
+  Zap,
+  Target,
+  BarChart3,
+  Activity
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -53,10 +69,20 @@ interface Company {
   services_offered?: string
   created_at: string
   updated_at?: string
+  is_primary?: boolean
+  status?: 'active' | 'inactive' | 'pending'
   
   // Database field mappings
   registration_number?: string  // Maps to cr_number
   business_type?: string        // Maps to size
+}
+
+interface CompanyStats {
+  totalCompanies: number
+  activeCompanies: number
+  totalServices: number
+  totalBookings: number
+  totalRevenue: number
 }
 
 interface CompanyForm {
@@ -75,18 +101,24 @@ interface CompanyForm {
 }
 
 export default function CompanyPage() {
-  const [company, setCompany] = useState<Company | null>(null)
-  
-  // Debug: Log company state changes
-  useEffect(() => {
-    console.log('Company state changed:', company)
-  }, [company])
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [creating, setCreating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'pending'>('all')
+  const [stats, setStats] = useState<CompanyStats>({
+    totalCompanies: 0,
+    activeCompanies: 0,
+    totalServices: 0,
+    totalBookings: 0,
+    totalRevenue: 0
+  })
   const [form, setForm] = useState<CompanyForm>({
     name: '',
     description: '',
@@ -109,24 +141,24 @@ export default function CompanyPage() {
   
   // Sync form with company data when company changes
   useEffect(() => {
-    if (company && !editing && !creating) {
-      console.log('Syncing form with company data:', company)
+    if (currentCompany && !editing && !creating) {
+      console.log('Syncing form with company data:', currentCompany)
       setForm({
-        name: company.name || '',
-        description: company.description || '',
-        cr_number: company.registration_number || company.cr_number || '',
-        vat_number: company.vat_number || '',
-        address: typeof company.address === 'object' ? JSON.stringify(company.address) : company.address || '',
-        phone: company.phone || '',
-        email: company.email || '',
-        website: company.website || '',
-        industry: company.industry || '',
-        size: company.business_type || company.size || '',
-        founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
-        logo_url: company.logo_url || ''
+        name: currentCompany.name || '',
+        description: currentCompany.description || '',
+        cr_number: currentCompany.registration_number || currentCompany.cr_number || '',
+        vat_number: currentCompany.vat_number || '',
+        address: typeof currentCompany.address === 'object' ? JSON.stringify(currentCompany.address) : currentCompany.address || '',
+        phone: currentCompany.phone || '',
+        email: currentCompany.email || '',
+        website: currentCompany.website || '',
+        industry: currentCompany.industry || '',
+        size: currentCompany.business_type || currentCompany.size || '',
+        founded_year: typeof currentCompany.founded_year === 'number' ? currentCompany.founded_year : new Date().getFullYear(),
+        logo_url: currentCompany.logo_url || ''
       })
     }
-  }, [company, editing, creating])
+  }, [currentCompany, editing, creating])
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -219,7 +251,7 @@ export default function CompanyPage() {
         .from('companies')
         .select('id')
         .eq('email', email.trim())
-        .neq('id', company?.id || '')
+        .neq('id', currentCompany?.id || '')
         .single()
       
       if (error && error.code !== 'PGRST116') {
@@ -364,114 +396,187 @@ export default function CompanyPage() {
 
   useEffect(() => {
     console.log('CompanyPage useEffect triggered')
-    fetchCompanyData()
+    fetchCompaniesData()
   }, [])
 
-  const fetchCompanyData = async () => {
+  const fetchCompaniesData = async () => {
+    try {
+      setLoading(true)
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Fetch all companies owned by the user
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (companiesError) {
+        console.error('Error fetching companies:', companiesError)
+        setError('Failed to load companies')
+        return
+      }
+
+      if (companiesData && companiesData.length > 0) {
+        setCompanies(companiesData)
+        setCurrentCompany(companiesData[0]) // Set first company as current
+        
+        // Initialize form with first company data
+        const firstCompany = companiesData[0]
+        setForm({
+          name: firstCompany.name || '',
+          description: firstCompany.description || '',
+          cr_number: firstCompany.registration_number || firstCompany.cr_number || '',
+          vat_number: firstCompany.vat_number || '',
+          address: typeof firstCompany.address === 'object' ? JSON.stringify(firstCompany.address) : firstCompany.address || '',
+          phone: firstCompany.phone || '',
+          email: firstCompany.email || '',
+          website: firstCompany.website || '',
+          industry: firstCompany.industry || '',
+          size: firstCompany.business_type || firstCompany.size || '',
+          founded_year: typeof firstCompany.founded_year === 'number' ? firstCompany.founded_year : new Date().getFullYear(),
+          logo_url: firstCompany.logo_url || ''
+        })
+      } else {
+        setCompanies([])
+        setCurrentCompany(null)
+      }
+
+      // Fetch company statistics
+      await fetchCompanyStats(companiesData || [])
+
+    } catch (error) {
+      console.error('Error fetching companies data:', error)
+      setError('Failed to load companies data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCompanyStats = async (companies: Company[]) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Get services count for all companies
+      const companyIds = companies.map(c => c.id)
+      const { data: servicesData } = await supabase
+        .from('services')
+        .select('id, company_id')
+        .in('company_id', companyIds)
+
+      // Get bookings count for all companies
+      const { data: bookingsData } = await supabase
+        .from('bookings')
+        .select('id, total_amount')
+        .in('provider_id', companies.map(c => c.owner_id).filter(Boolean))
+
+      const totalServices = servicesData?.length || 0
+      const totalBookings = bookingsData?.length || 0
+      const totalRevenue = bookingsData?.reduce((sum, booking) => sum + (booking.total_amount || 0), 0) || 0
+
+      setStats({
+        totalCompanies: companies.length,
+        activeCompanies: companies.filter(c => c.status !== 'inactive').length,
+        totalServices,
+        totalBookings,
+        totalRevenue
+      })
+    } catch (error) {
+      console.error('Error fetching company stats:', error)
+    }
+  }
+
+  const switchToCompany = (company: Company) => {
+    setCurrentCompany(company)
+    setForm({
+      name: company.name || '',
+      description: company.description || '',
+      cr_number: company.registration_number || company.cr_number || '',
+      vat_number: company.vat_number || '',
+      address: typeof company.address === 'object' ? JSON.stringify(company.address) : company.address || '',
+      phone: company.phone || '',
+      email: company.email || '',
+      website: company.website || '',
+      industry: company.industry || '',
+      size: company.business_type || company.size || '',
+      founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
+      logo_url: company.logo_url || ''
+    })
+    setEditing(false)
+  }
+
+  const deleteCompany = async (companyId: string) => {
+    if (!confirm('Are you sure you want to delete this company? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyId)
+
+      if (error) {
+        toast.error('Failed to delete company')
+        return
+      }
+
+      toast.success('Company deleted successfully')
+      await fetchCompaniesData()
+    } catch (error) {
+      console.error('Error deleting company:', error)
+      toast.error('Failed to delete company')
+    }
+  }
+
+  const duplicateCompany = async (company: Company) => {
     try {
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      console.log('Fetching company data for user:', user.id)
-
-      // First, try to get company through profile.company_id
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('id', user.id)
+      const { data: newCompany, error } = await supabase
+        .from('companies')
+        .insert({
+          owner_id: user.id,
+          name: `${company.name} (Copy)`,
+          description: company.description,
+          cr_number: null, // Don't duplicate CR number
+          vat_number: null, // Don't duplicate VAT number
+          address: company.address,
+          phone: company.phone,
+          email: company.email,
+          website: company.website,
+          logo_url: company.logo_url,
+          industry: company.industry,
+          size: company.size,
+          founded_year: company.founded_year
+        })
+        .select()
         .single()
 
-      console.log('User profile:', profile)
-
-      let companyData = null
-
-      if (profile?.company_id) {
-        // Try to get company through profile.company_id
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('id', profile.company_id)
-          .single()
-
-        if (companyError) {
-          console.log('Error fetching company through profile.company_id:', companyError.message)
-        } else if (company) {
-          companyData = company
-          console.log('Company found through profile.company_id:', company.name)
-        }
+      if (error) {
+        toast.error('Failed to duplicate company')
+        return
       }
 
-      // If no company found through profile, try to find company where user is owner
-      if (!companyData) {
-        console.log('No company found through profile, checking if user owns a company...')
-        const { data: ownedCompany, error: ownedError } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('owner_id', user.id)
-          .single()
-
-        if (ownedError) {
-          console.log('Error fetching owned company:', ownedError.message)
-        } else if (ownedCompany) {
-          companyData = ownedCompany
-          console.log('Company found through owner_id:', ownedCompany.name)
-          
-          // Update profile with company_id for future reference
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ company_id: ownedCompany.id })
-            .eq('id', user.id)
-          
-          if (updateError) {
-            console.log('Warning: Could not update profile with company_id:', updateError.message)
-          } else {
-            console.log('Profile updated with company_id')
-          }
-        }
-      }
-
-      if (companyData) {
-        console.log('Company data fetched successfully:', companyData)
-        setCompany(companyData)
-        
-        // Initialize form with company data, mapping database fields to form fields
-        setForm({
-          name: companyData.name || '',
-          description: companyData.description || '',
-          cr_number: companyData.registration_number || companyData.cr_number || '',
-          vat_number: companyData.vat_number || '',
-          address: typeof companyData.address === 'object' ? JSON.stringify(companyData.address) : companyData.address || '',
-          phone: companyData.phone || '',
-          email: companyData.email || '',
-          website: companyData.website || '',
-          industry: companyData.industry || '',
-          size: companyData.business_type || companyData.size || '',
-          founded_year: typeof companyData.founded_year === 'number' ? companyData.founded_year : new Date().getFullYear(),
-          logo_url: companyData.logo_url || ''
-        })
-        
-        // Debug: Log what was set in the form
-        console.log('Form initialized with company data:')
-        console.log('  name:', companyData.name || '')
-        console.log('  description:', companyData.description || '')
-        console.log('  industry:', companyData.industry || '')
-        console.log('  size:', companyData.size || '')
-        console.log('  founded_year:', typeof companyData.founded_year === 'number' ? companyData.founded_year : new Date().getFullYear())
-        console.log('  logo_url:', companyData.logo_url || '')
-      } else {
-        console.log('No company found for user')
-        // Show option to create company
-        setShowCreateCompany(true)
-      }
+      toast.success('Company duplicated successfully')
+      await fetchCompaniesData()
     } catch (error) {
-      console.error('Error fetching company data:', error)
-      // Show option to create company if there's an error
-      setShowCreateCompany(true)
-    } finally {
-      setLoading(false)
+      console.error('Error duplicating company:', error)
+      toast.error('Failed to duplicate company')
     }
   }
+
+  const filteredCompanies = companies.filter(company => {
+    const matchesSearch = company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         company.industry?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesFilter = filterStatus === 'all' || company.status === filterStatus
+    return matchesSearch && matchesFilter
+  })
 
   const createCompany = async () => {
     try {
@@ -548,11 +653,11 @@ export default function CompanyPage() {
       }
 
       toast.success('Company created successfully!')
-      setCompany(company)
+      setCurrentCompany(company)
       setShowCreateCompany(false)
       
       // Refresh company data
-      await fetchCompanyData()
+      await fetchCompaniesData()
     } catch (error) {
       console.error('Error creating company:', error)
       toast.error('Failed to create company')
@@ -678,13 +783,17 @@ export default function CompanyPage() {
         setSuccess('Company created successfully!')
       }
 
-      setCompany(newCompany)
+      setCompanies(prev => [newCompany, ...prev])
+      setCurrentCompany(newCompany)
       setCreating(false)
       setEditing(false)
       
       // Clear file state
       setLogoFile(null)
       setLogoPreview(null)
+      
+      // Refresh data
+      await fetchCompaniesData()
     } catch (error) {
       console.error('Error creating company:', error)
       setError('An unexpected error occurred')
@@ -696,7 +805,7 @@ export default function CompanyPage() {
   const handleUpdateCompany = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!company) {
+    if (!currentCompany) {
       setError('No company data available')
       return
     }
@@ -737,34 +846,22 @@ export default function CompanyPage() {
       const { error } = await supabase
         .from('companies')
         .update(updateData)
-        .eq('id', company.id)
+        .eq('id', currentCompany.id)
 
       if (error) {
         setError(`Failed to update company: ${error.message}`)
         return
       }
 
-      setCompany(prev => {
-        const updatedCompany = prev ? { 
-          ...prev, 
-          ...updateData,
-          // Ensure all optional fields are undefined instead of null
-          description: updateData.description || undefined,
-          cr_number: updateData.cr_number || undefined,
-          vat_number: updateData.vat_number || undefined,
-          address: updateData.address || undefined,
-          phone: updateData.phone || undefined,
-          email: updateData.email || undefined,
-          website: updateData.website || undefined,
-          industry: updateData.industry || undefined,
-          size: updateData.size || undefined,
-          founded_year: updateData.founded_year || undefined,
-          logo_url: updateData.logo_url || undefined
-        } : null
-        
-        console.log('Updating company state:', updatedCompany)
-        return updatedCompany
-      })
+      // Update companies list
+      setCompanies(prev => prev.map(company => 
+        company.id === currentCompany.id 
+          ? { ...company, ...updateData }
+          : company
+      ))
+      
+      // Update current company
+      setCurrentCompany(prev => prev ? { ...prev, ...updateData } : null)
       setLogoFile(null)
       setLogoPreview(null)
       setEditing(false)
@@ -778,21 +875,21 @@ export default function CompanyPage() {
   }
 
   const handleCancel = () => {
-    if (company) {
+    if (currentCompany) {
       // Reset form to current company data
       setForm({
-        name: company.name || '',
-        description: company.description || '',
-        cr_number: company.registration_number || company.cr_number || '',
-        vat_number: company.vat_number || '',
-        address: typeof company.address === 'object' ? JSON.stringify(company.address) : company.address || '',
-        phone: company.phone || '',
-        email: company.email || '',
-        website: company.website || '',
-        industry: company.industry || '',
-        size: company.business_type || company.size || '',
-        founded_year: typeof company.founded_year === 'number' ? company.founded_year : new Date().getFullYear(),
-        logo_url: company.logo_url || ''
+        name: currentCompany.name || '',
+        description: currentCompany.description || '',
+        cr_number: currentCompany.registration_number || currentCompany.cr_number || '',
+        vat_number: currentCompany.vat_number || '',
+        address: typeof currentCompany.address === 'object' ? JSON.stringify(currentCompany.address) : currentCompany.address || '',
+        phone: currentCompany.phone || '',
+        email: currentCompany.email || '',
+        website: currentCompany.website || '',
+        industry: currentCompany.industry || '',
+        size: currentCompany.business_type || currentCompany.size || '',
+        founded_year: typeof currentCompany.founded_year === 'number' ? currentCompany.founded_year : new Date().getFullYear(),
+        logo_url: currentCompany.logo_url || ''
       })
     } else {
       // Reset form to default values
@@ -829,38 +926,54 @@ export default function CompanyPage() {
 
   return (
     <div className="space-y-8">
-      {/* Enhanced Header */}
+      {/* Professional Header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 p-8 text-white">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-              <Building2 className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Building2 className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold">Company Management</h1>
+                <p className="text-blue-100 text-lg mt-1">
+                  Manage your professional business portfolio
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold">Company Management</h1>
-              <p className="text-blue-100 text-lg mt-1">
-                Establish your professional business presence
-              </p>
-            </div>
-          </div>
-          
-          {!company && !creating && (
-            <div className="flex items-center space-x-4 mt-6">
+            
+            <div className="flex items-center space-x-3">
               <Button 
                 size="lg" 
                 onClick={() => setCreating(true)}
                 className="bg-white text-blue-600 hover:bg-blue-50 font-semibold px-6 py-3"
               >
                 <Plus className="h-5 w-5 mr-2" />
-                Launch Your Company
+                Add Company
               </Button>
-              <div className="text-blue-100 text-sm">
-                <Star className="h-4 w-4 inline mr-1" />
-                Join 500+ companies already established
-              </div>
             </div>
-          )}
+          </div>
+          
+          {/* Stats Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-2xl font-bold">{stats.totalCompanies}</div>
+              <div className="text-blue-100 text-sm">Total Companies</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-2xl font-bold">{stats.activeCompanies}</div>
+              <div className="text-blue-100 text-sm">Active</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-2xl font-bold">{stats.totalServices}</div>
+              <div className="text-blue-100 text-sm">Services</div>
+            </div>
+            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+              <div className="text-2xl font-bold">{stats.totalBookings}</div>
+              <div className="text-blue-100 text-sm">Bookings</div>
+            </div>
+          </div>
         </div>
         
         {/* Decorative Elements */}
@@ -868,7 +981,61 @@ export default function CompanyPage() {
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
       </div>
 
-      {!company && !creating ? (
+      {/* Search and Filter Controls */}
+      {companies.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-1 items-center space-x-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search companies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <div className="grid grid-cols-2 gap-1 h-4 w-4">
+                <div className="bg-current rounded-sm"></div>
+                <div className="bg-current rounded-sm"></div>
+                <div className="bg-current rounded-sm"></div>
+                <div className="bg-current rounded-sm"></div>
+              </div>
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <div className="flex flex-col space-y-1 h-4 w-4">
+                <div className="bg-current rounded-sm h-1"></div>
+                <div className="bg-current rounded-sm h-1"></div>
+                <div className="bg-current rounded-sm h-1"></div>
+              </div>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {companies.length === 0 && !creating && (
         /* Enhanced No Company State */
         <div className="max-w-4xl mx-auto">
           <Card className="border-0 shadow-xl bg-gradient-to-br from-gray-50 to-white">
@@ -917,7 +1084,182 @@ export default function CompanyPage() {
             </CardContent>
           </Card>
         </div>
-      ) : creating || editing ? (
+      )}
+
+      {companies.length > 0 && !creating && !editing && (
+        /* Companies Grid/List View */
+        <div className="space-y-6">
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCompanies.map((company) => (
+                <Card 
+                  key={company.id} 
+                  className={`border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer ${
+                    currentCompany?.id === company.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                  onClick={() => switchToCompany(company)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                          {company.logo_url ? (
+                            <img 
+                              src={company.logo_url} 
+                              alt={`${company.name} Logo`} 
+                              className="w-10 h-10 object-cover rounded-md"
+                            />
+                          ) : (
+                            company.name.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg text-gray-900">{company.name}</h3>
+                          <p className="text-sm text-gray-500">{company.industry || 'No industry'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            duplicateCompany(company)
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteCompany(company.id)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {company.description && (
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{company.description}</p>
+                    )}
+                    
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <Badge variant="secondary" className="text-xs">
+                        {company.size ? getCompanySizeLabel(company.size) : 'Size not specified'}
+                      </Badge>
+                      {company.founded_year && (
+                        <Badge variant="outline" className="text-xs">
+                          Est. {company.founded_year}
+                        </Badge>
+                      )}
+                      <Badge 
+                        variant={company.status === 'active' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {company.status || 'active'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>Created {formatDate(company.created_at)}</span>
+                      <div className="flex items-center space-x-1">
+                        <ArrowRight className="h-3 w-3" />
+                        <span>View Details</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredCompanies.map((company) => (
+                <Card 
+                  key={company.id} 
+                  className={`border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer ${
+                    currentCompany?.id === company.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                  onClick={() => switchToCompany(company)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                          {company.logo_url ? (
+                            <img 
+                              src={company.logo_url} 
+                              alt={`${company.name} Logo`} 
+                              className="w-10 h-10 object-cover rounded-md"
+                            />
+                          ) : (
+                            company.name.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg text-gray-900">{company.name}</h3>
+                          <p className="text-sm text-gray-500">{company.industry || 'No industry'}</p>
+                          {company.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-1">{company.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {company.size ? getCompanySizeLabel(company.size) : 'Size not specified'}
+                          </Badge>
+                          {company.founded_year && (
+                            <Badge variant="outline" className="text-xs">
+                              Est. {company.founded_year}
+                            </Badge>
+                          )}
+                          <Badge 
+                            variant={company.status === 'active' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {company.status || 'active'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              duplicateCompany(company)
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteCompany(company.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                          <ArrowRight className="h-4 w-4 text-gray-400" />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {creating || editing && (
         /* Enhanced Company Form */
         <div className="max-w-6xl mx-auto">
           <Card className="border-0 shadow-xl">
@@ -1424,7 +1766,9 @@ export default function CompanyPage() {
             </CardContent>
           </Card>
         </div>
-      ) : (
+      )}
+
+      {currentCompany && !creating && !editing && (
         /* Enhanced Company Display */
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Company Overview Card */}
@@ -1433,10 +1777,10 @@ export default function CompanyPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-6">
                   <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border-2 border-white/30">
-                    {company?.logo_url ? (
+                    {currentCompany?.logo_url ? (
                       <img 
-                        src={company.logo_url} 
-                        alt={`${company.name} Logo`} 
+                        src={currentCompany.logo_url} 
+                        alt={`${currentCompany.name} Logo`} 
                         className="w-20 h-20 object-cover rounded-xl"
                         onError={(e) => {
                           // Fallback to icon if image fails to load
@@ -1446,35 +1790,35 @@ export default function CompanyPage() {
                         }}
                       />
                     ) : null}
-                    <Building2 className={`h-12 w-12 text-white ${company?.logo_url ? 'hidden' : ''}`} />
+                    <Building2 className={`h-12 w-12 text-white ${currentCompany?.logo_url ? 'hidden' : ''}`} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold mb-2">{safeRenderValue(company?.name) || 'Company Name'}</h2>
-                    {company?.description && (
-                      <p className="text-blue-100 text-lg mb-4 max-w-2xl">{safeRenderValue(company.description)}</p>
+                    <h2 className="text-3xl font-bold mb-2">{safeRenderValue(currentCompany?.name) || 'Company Name'}</h2>
+                    {currentCompany?.description && (
+                      <p className="text-blue-100 text-lg mb-4 max-w-2xl">{safeRenderValue(currentCompany.description)}</p>
                     )}
                     <div className="flex flex-wrap gap-3">
-                      {company?.industry && safeRenderValue(company.industry) ? (
+                      {currentCompany?.industry && safeRenderValue(currentCompany.industry) ? (
                         <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                          {safeRenderValue(company.industry)}
+                          {safeRenderValue(currentCompany.industry)}
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="bg-white/10 text-white/70 border-white/20">
                           Industry not specified
                         </Badge>
                       )}
-                      {company?.size && safeRenderValue(company.size) ? (
+                      {currentCompany?.size && safeRenderValue(currentCompany.size) ? (
                         <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                          {getCompanySizeLabel(safeRenderValue(company.size))}
+                          {getCompanySizeLabel(safeRenderValue(currentCompany.size))}
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="bg-white/10 text-white/70 border-white/20">
                           Size not specified
                         </Badge>
                       )}
-                      {company?.founded_year && safeRenderValue(company.founded_year) ? (
+                      {currentCompany?.founded_year && safeRenderValue(currentCompany.founded_year) ? (
                         <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                          Est. {safeRenderValue(company.founded_year)}
+                          Est. {safeRenderValue(currentCompany.founded_year)}
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="bg-white/10 text-white/70 border-white/20">
@@ -1484,16 +1828,24 @@ export default function CompanyPage() {
                     </div>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setEditing(true)}
-                  className="border-white/30 text-white hover:bg-white/10"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-                
-
+                <div className="flex items-center space-x-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setEditing(true)}
+                    className="border-white/30 text-white hover:bg-white/10"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => duplicateCompany(currentCompany)}
+                    className="border-white/30 text-white hover:bg-white/10"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
@@ -1511,10 +1863,10 @@ export default function CompanyPage() {
               <CardContent className="p-6">
                 <div className="text-center">
                   <div className="w-32 h-32 bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-300 mx-auto mb-4 overflow-hidden">
-                    {company?.logo_url ? (
+                    {currentCompany?.logo_url ? (
                       <img 
-                        src={company.logo_url} 
-                        alt={`${company.name} Logo`} 
+                        src={currentCompany.logo_url} 
+                        alt={`${currentCompany.name} Logo`} 
                         className="w-28 h-28 object-cover rounded-xl"
                         onError={(e) => {
                           // Fallback to icon if image fails to load
@@ -1524,9 +1876,9 @@ export default function CompanyPage() {
                         }}
                       />
                     ) : null}
-                    <Upload className={`h-12 w-12 text-gray-400 ${company?.logo_url ? 'hidden' : ''}`} />
+                    <Upload className={`h-12 w-12 text-gray-400 ${currentCompany?.logo_url ? 'hidden' : ''}`} />
                   </div>
-                  {company?.logo_url ? (
+                  {currentCompany?.logo_url ? (
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-gray-900">Logo Active</p>
                       <p className="text-xs text-gray-500">Your company logo is displayed</p>
@@ -1571,19 +1923,19 @@ export default function CompanyPage() {
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm font-medium text-gray-700">CR Number</span>
                     <span className="text-sm text-gray-600 font-mono">
-                      {safeRenderValue(company?.cr_number) || 'Not provided'}
+                      {safeRenderValue(currentCompany?.cr_number) || 'Not provided'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm font-medium text-gray-700">VAT Number</span>
                     <span className="text-sm text-gray-600 font-mono">
-                      {safeRenderValue(company?.vat_number) || 'Not provided'}
+                      {safeRenderValue(currentCompany?.vat_number) || 'Not provided'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm font-medium text-gray-700">Established</span>
                     <span className="text-sm text-gray-600">
-                      {safeRenderValue(company?.founded_year) || 'Not specified'}
+                      {safeRenderValue(currentCompany?.founded_year) || 'Not specified'}
                     </span>
                   </div>
                 </div>
@@ -1603,31 +1955,31 @@ export default function CompanyPage() {
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <MapPin className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-600">
-                      {safeRenderValue(company?.address) || 'Address not provided'}
+                      {safeRenderValue(currentCompany?.address) || 'Address not provided'}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Phone className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-600">
-                      {safeRenderValue(company?.phone) || 'Phone not provided'}
+                      {safeRenderValue(currentCompany?.phone) || 'Phone not provided'}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <Mail className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-600">
-                      {safeRenderValue(company?.email) || 'Email not provided'}
+                      {safeRenderValue(currentCompany?.email) || 'Email not provided'}
                     </span>
                   </div>
-                  {company?.website && safeRenderValue(company.website) && (
+                  {currentCompany?.website && safeRenderValue(currentCompany.website) && (
                     <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                       <Globe className="h-4 w-4 text-gray-400" />
                       <a 
-                        href={safeRenderValue(company.website)} 
+                        href={safeRenderValue(currentCompany.website)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-sm text-blue-600 hover:underline font-medium"
                       >
-                        {safeRenderValue(company.website)}
+                        {safeRenderValue(currentCompany.website)}
                       </a>
                     </div>
                   )}
@@ -1651,8 +2003,8 @@ export default function CompanyPage() {
                     <Calendar className="h-8 w-8 text-blue-600" />
                   </div>
                   <div className="text-2xl font-bold text-blue-600">
-                    {company?.founded_year && safeRenderValue(company.founded_year) && !isNaN(parseInt(safeRenderValue(company.founded_year))) 
-                      ? new Date().getFullYear() - parseInt(safeRenderValue(company.founded_year)) 
+                    {currentCompany?.founded_year && safeRenderValue(currentCompany.founded_year) && !isNaN(parseInt(safeRenderValue(currentCompany.founded_year))) 
+                      ? new Date().getFullYear() - parseInt(safeRenderValue(currentCompany.founded_year)) 
                       : 'N/A'}
                   </div>
                   <p className="text-sm text-blue-700 font-medium">Years in Business</p>
@@ -1662,8 +2014,8 @@ export default function CompanyPage() {
                     <Users className="h-8 w-8 text-green-600" />
                   </div>
                   <div className="text-2xl font-bold text-green-600">
-                    {company?.size && safeRenderValue(company.size) 
-                      ? getCompanySizeLabel(safeRenderValue(company.size)) 
+                    {currentCompany?.size && safeRenderValue(currentCompany.size) 
+                      ? getCompanySizeLabel(safeRenderValue(currentCompany.size)) 
                       : 'Not specified'}
                   </div>
                   <p className="text-sm text-green-700 font-medium">Company Size</p>
@@ -1673,7 +2025,7 @@ export default function CompanyPage() {
                     <Award className="h-8 w-8 text-purple-600" />
                   </div>
                   <div className="text-2xl font-bold text-purple-600">
-                    {company?.created_at ? formatDate(company.created_at) : 'N/A'}
+                    {currentCompany?.created_at ? formatDate(currentCompany.created_at) : 'N/A'}
                   </div>
                   <p className="text-sm text-purple-700 font-medium">Added to Platform</p>
                 </div>
