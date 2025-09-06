@@ -42,7 +42,7 @@ export function ProgressTrackingSystem({
   userRole, 
   className = "" 
 }: ProgressTrackingSystemProps) {
-  const [activeView, setActiveView] = useState<ViewType>('overview')
+  const [activeView, setActiveView] = useState<ViewType>(userRole === 'client' ? 'timeline' : 'overview')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
@@ -1090,9 +1090,14 @@ export function ProgressTrackingSystem({
         {/* Header with refresh button */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Progress Tracking</h2>
-            <p className="text-gray-600">Monitor and manage project progress</p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {userRole === 'client' ? 'Project Timeline' : 'Progress Tracking'}
+            </h2>
+            <p className="text-gray-600">
+              {userRole === 'client' ? 'Review project progress and provide feedback' : 'Monitor and manage project progress'}
+            </p>
           </div>
+          {userRole !== 'client' && (
             <Button 
               onClick={refreshData} 
               disabled={refreshing}
@@ -1102,88 +1107,95 @@ export function ProgressTrackingSystem({
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
+          )}
         </div>
 
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className={`grid grid-cols-1 gap-6 ${userRole === 'client' ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}>
         {/* Main Content */}
-        <div className="lg:col-span-3">
+        <div className={userRole === 'client' ? 'lg:col-span-1' : 'lg:col-span-3'}>
           <Tabs value={activeView} onValueChange={(value) => setActiveView(value as ViewType)}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview" className="flex items-center space-x-2">
-                <Target className="h-4 w-4" />
-                <span>Overview</span>
-              </TabsTrigger>
+            <TabsList className={`grid w-full ${userRole === 'client' ? 'grid-cols-1' : 'grid-cols-3'}`}>
+              {userRole !== 'client' && (
+                <TabsTrigger value="overview" className="flex items-center space-x-2">
+                  <Target className="h-4 w-4" />
+                  <span>Overview</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="timeline" className="flex items-center space-x-2">
                 <Clock className="h-4 w-4" />
                 <span>Timeline</span>
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center space-x-2">
-                <BarChart3 className="h-4 w-4" />
-                <span>Analytics</span>
-              </TabsTrigger>
+              {userRole !== 'client' && (
+                <TabsTrigger value="analytics" className="flex items-center space-x-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Analytics</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6">
-              {/* Main Progress Header */}
-              <MainProgressHeader
-                bookingProgress={bookingProgress || {
-                  booking_progress: 0,
-                  booking_title: 'Project Progress',
-                  booking_status: 'in_progress'
-                }}
-                completedMilestones={completedMilestones || 0}
-                totalMilestones={totalMilestones || 0}
-                completedTasks={completedTasks || 0}
-                totalTasks={totalTasks || 0}
-                totalEstimatedHours={totalEstimatedHours || 0}
-                totalActualHours={totalActualHours || 0}
-                overdueTasks={overdueTasks || 0}
-              />
-              
-              {/* Simple Milestones Display */}
-              <SimpleMilestones
-                milestones={transformToSimpleMilestones(milestones || [])}
-                userRole={userRole}
-                onTaskUpdate={userRole === 'provider' ? (taskId: string, updates: any) => {
-                  // Find the milestone containing this task
-                  const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
-                  if (milestone) {
-                    handleTaskUpdate(taskId, updates)
-                  }
-                } : () => {}}
-                onTaskAdd={userRole === 'provider' ? (milestoneId: string, taskData: any) => {
-                  handleTaskCreate(milestoneId, {
-                    title: taskData.title,
-                    description: taskData.description || '',
-                    status: taskData.completed ? 'completed' : 'pending',
-                    due_date: taskData.dueDate,
-                    estimated_hours: taskData.estimatedHours || 1,
-                    priority: taskData.priority || 'medium',
-                    milestone_id: milestoneId,
-                    steps: [],
-                    approval_status: 'pending',
-                    tags: [],
-                    progress_percentage: taskData.completed ? 100 : 0
-                  })
-                } : () => {}}
-                onTaskDelete={userRole === 'provider' ? (milestoneId: string, taskId: string) => {
-                  handleTaskDelete(taskId)
-                } : () => {}}
-                onMilestoneUpdate={userRole === 'provider' ? (milestoneId: string, updates: any) => {
-                  handleMilestoneUpdate(milestoneId, {
-                    title: updates.title,
-                    description: updates.description,
-                    status: updates.status,
-                    due_date: updates.endDate,
-                    progress_percentage: updates.progress_percentage || 0
-                  })
-                } : () => {}}
-                onCommentAdd={handleCommentAdd}
-                onProjectTypeChange={userRole === 'provider' ? handleProjectTypeChange : () => {}}
-              />
-            </TabsContent>
+            {userRole !== 'client' && (
+              <TabsContent value="overview" className="space-y-6">
+                {/* Main Progress Header */}
+                <MainProgressHeader
+                  bookingProgress={bookingProgress || {
+                    booking_progress: 0,
+                    booking_title: 'Project Progress',
+                    booking_status: 'in_progress'
+                  }}
+                  completedMilestones={completedMilestones || 0}
+                  totalMilestones={totalMilestones || 0}
+                  completedTasks={completedTasks || 0}
+                  totalTasks={totalTasks || 0}
+                  totalEstimatedHours={totalEstimatedHours || 0}
+                  totalActualHours={totalActualHours || 0}
+                  overdueTasks={overdueTasks || 0}
+                />
+                
+                {/* Simple Milestones Display */}
+                <SimpleMilestones
+                  milestones={transformToSimpleMilestones(milestones || [])}
+                  userRole={userRole}
+                  onTaskUpdate={userRole === 'provider' ? (taskId: string, updates: any) => {
+                    // Find the milestone containing this task
+                    const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
+                    if (milestone) {
+                      handleTaskUpdate(taskId, updates)
+                    }
+                  } : () => {}}
+                  onTaskAdd={userRole === 'provider' ? (milestoneId: string, taskData: any) => {
+                    handleTaskCreate(milestoneId, {
+                      title: taskData.title,
+                      description: taskData.description || '',
+                      status: taskData.completed ? 'completed' : 'pending',
+                      due_date: taskData.dueDate,
+                      estimated_hours: taskData.estimatedHours || 1,
+                      priority: taskData.priority || 'medium',
+                      milestone_id: milestoneId,
+                      steps: [],
+                      approval_status: 'pending',
+                      tags: [],
+                      progress_percentage: taskData.completed ? 100 : 0
+                    })
+                  } : () => {}}
+                  onTaskDelete={userRole === 'provider' ? (milestoneId: string, taskId: string) => {
+                    handleTaskDelete(taskId)
+                  } : () => {}}
+                  onMilestoneUpdate={userRole === 'provider' ? (milestoneId: string, updates: any) => {
+                    handleMilestoneUpdate(milestoneId, {
+                      title: updates.title,
+                      description: updates.description,
+                      status: updates.status,
+                      due_date: updates.endDate,
+                      progress_percentage: updates.progress_percentage || 0
+                    })
+                  } : () => {}}
+                  onCommentAdd={handleCommentAdd}
+                  onProjectTypeChange={userRole === 'provider' ? handleProjectTypeChange : () => {}}
+                />
+              </TabsContent>
+            )}
 
 
             <TabsContent value="timeline" className="space-y-6">
@@ -1204,28 +1216,32 @@ export function ProgressTrackingSystem({
               )}
             </TabsContent>
 
-            <TabsContent value="analytics" className="space-y-6">
-              <AnalyticsView
-                milestones={milestones || []}
-                timeEntries={timeEntries || []}
-                totalEstimatedHours={totalEstimatedHours || 0}
-                totalActualHours={totalActualHours || 0}
-              />
-            </TabsContent>
+            {userRole !== 'client' && (
+              <TabsContent value="analytics" className="space-y-6">
+                <AnalyticsView
+                  milestones={milestones || []}
+                  timeEntries={timeEntries || []}
+                  totalEstimatedHours={totalEstimatedHours || 0}
+                  totalActualHours={totalActualHours || 0}
+                />
+              </TabsContent>
+            )}
 
           </Tabs>
         </div>
 
-        {/* Smart Suggestions Sidebar */}
-        <div className="lg:col-span-1">
-          <SmartSuggestionsSidebar
-            milestones={milestones || []}
-            bookingProgress={bookingProgress}
-            timeEntries={timeEntries || []}
-            userRole={userRole}
-            onRefresh={refreshData}
-          />
-        </div>
+        {/* Smart Suggestions Sidebar - Only for providers */}
+        {userRole !== 'client' && (
+          <div className="lg:col-span-1">
+            <SmartSuggestionsSidebar
+              milestones={milestones || []}
+              bookingProgress={bookingProgress}
+              timeEntries={timeEntries || []}
+              userRole={userRole}
+              onRefresh={refreshData}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
