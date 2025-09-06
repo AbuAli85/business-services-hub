@@ -171,19 +171,35 @@ export default function ManageServicesPage() {
   }
 
   const viewService = (serviceId: string) => {
-    router.push(`/dashboard/services/${serviceId}`)
+    console.log('🔍 View service clicked:', serviceId)
+    try {
+      router.push(`/dashboard/services/${serviceId}`)
+    } catch (error) {
+      console.error('❌ Error navigating to service detail:', error)
+      toast.error('Failed to open service details')
+    }
   }
 
   const editService = (serviceId: string) => {
-    router.push(`/dashboard/services/${serviceId}/edit`)
+    console.log('✏️ Edit service clicked:', serviceId)
+    try {
+      router.push(`/dashboard/services/${serviceId}/edit`)
+    } catch (error) {
+      console.error('❌ Error navigating to service edit:', error)
+      toast.error('Failed to open service editor')
+    }
   }
 
   const deleteService = async (serviceId: string) => {
+    console.log('🗑️ Delete service clicked:', serviceId)
+    
     if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+      console.log('❌ Delete cancelled by user')
       return
     }
 
     try {
+      console.log('🔄 Deleting service...')
       const supabase = await getSupabaseClient()
       
       const { error } = await supabase
@@ -191,13 +207,17 @@ export default function ManageServicesPage() {
         .delete()
         .eq('id', serviceId)
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Supabase delete error:', error)
+        throw error
+      }
 
+      console.log('✅ Service deleted successfully')
       toast.success('Service deleted successfully!')
       loadServices()
     } catch (error: any) {
-      console.error('Error deleting service:', error)
-      toast.error('Failed to delete service')
+      console.error('❌ Error deleting service:', error)
+      toast.error('Failed to delete service: ' + (error.message || 'Unknown error'))
     }
   }
 
@@ -452,7 +472,12 @@ export default function ManageServicesPage() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => viewService(service.id)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('🔍 View button clicked for service:', service.id)
+                                viewService(service.id)
+                              }}
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               View
@@ -460,7 +485,12 @@ export default function ManageServicesPage() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => editService(service.id)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('✏️ Edit button clicked for service:', service.id)
+                                editService(service.id)
+                              }}
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
@@ -469,7 +499,12 @@ export default function ManageServicesPage() {
                               size="sm" 
                               variant="outline"
                               className="text-red-600 hover:text-red-700"
-                              onClick={() => deleteService(service.id)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                console.log('🗑️ Delete button clicked for service:', service.id)
+                                deleteService(service.id)
+                              }}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete
