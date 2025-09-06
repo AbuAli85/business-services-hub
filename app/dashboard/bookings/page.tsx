@@ -637,11 +637,22 @@ export default function BookingsPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
+    if (!dateString) return 'Not set'
+    
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return 'Invalid date'
+      }
+      return date.toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    } catch (error) {
+      console.warn('Date formatting error:', error)
+      return 'Invalid date'
+    }
   }
 
   const formatCurrency = (amount: number, currency: string = 'OMR') => {

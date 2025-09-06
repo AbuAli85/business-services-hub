@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
-import { format } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -47,6 +47,22 @@ interface Booking {
     id: string
     title: string
     description: string
+  }
+}
+
+// Helper function to safely format dates
+const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'Not set'
+  
+  try {
+    const date = parseISO(dateString)
+    if (isValid(date)) {
+      return format(date, 'MMM dd, yyyy')
+    }
+    return 'Invalid date'
+  } catch (error) {
+    console.warn('Date formatting error:', error)
+    return 'Invalid date'
   }
 }
 
@@ -190,7 +206,7 @@ export default function BookingDetails() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Start Date</p>
                   <p className="text-sm text-gray-900">
-                    {format(new Date(booking.start_date), 'MMM dd, yyyy')}
+                    {formatDate(booking.start_date)}
                   </p>
                 </div>
               </div>
@@ -202,7 +218,7 @@ export default function BookingDetails() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">End Date</p>
                   <p className="text-sm text-gray-900">
-                    {format(new Date(booking.end_date), 'MMM dd, yyyy')}
+                    {formatDate(booking.end_date)}
                   </p>
                 </div>
               </div>
