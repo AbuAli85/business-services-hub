@@ -805,7 +805,8 @@ export default function EnhancedBookingDetails() {
       
     } catch (error) {
       console.error('❌ Error adding task:', error)
-      toast.error('Failed to add task: ' + (error.message || 'Unknown error'))
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error('Failed to add task: ' + errorMessage)
     }
   }
 
@@ -970,19 +971,19 @@ export default function EnhancedBookingDetails() {
           const { data: { session } } = await supabase.auth.getSession()
           
           if (session) {
-            fetch('/api/notifications/email', {
-              method: 'POST',
+        fetch('/api/notifications/email', {
+          method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
               },
-              body: JSON.stringify({
-                to: emailTo,
-                subject: `Booking ${booking.id.slice(0,8)} status: ${newStatus.replace('_',' ')}`,
-                text: `Hello,\n\nThe booking ${booking.id} is now ${newStatus}.\n\nThanks,\nBusiness Services Hub`,
-                html: `<p>Hello,</p><p>The booking <strong>${booking.id}</strong> is now <strong>${newStatus.replace('_',' ')}</strong>.</p><p>Thanks,<br/>Business Services Hub</p>`
-              })
-            }).catch(() => {})
+          body: JSON.stringify({
+            to: emailTo,
+            subject: `Booking ${booking.id.slice(0,8)} status: ${newStatus.replace('_',' ')}`,
+            text: `Hello,\n\nThe booking ${booking.id} is now ${newStatus}.\n\nThanks,\nBusiness Services Hub`,
+            html: `<p>Hello,</p><p>The booking <strong>${booking.id}</strong> is now <strong>${newStatus.replace('_',' ')}</strong>.</p><p>Thanks,<br/>Business Services Hub</p>`
+          })
+        }).catch(() => {})
           }
         } catch (emailError) {
           console.log('Email notification failed:', emailError)
@@ -1316,7 +1317,7 @@ export default function EnhancedBookingDetails() {
         } else if (suggestion.action === 'Send reminder') {
           handleSendPaymentReminder()
         } else {
-          toast.success(`Action: ${suggestion.action}`)
+        toast.success(`Action: ${suggestion.action}`)
         }
     }
   }
@@ -1659,29 +1660,29 @@ export default function EnhancedBookingDetails() {
 
           {/* Smart Progress Indicator - Only show for approved/in-progress bookings */}
           {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
-            <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Project Progress</h3>
-                    <p className="text-gray-600 text-sm">
-                      {booking.progress_percentage}% complete • Est. completion: {booking.estimated_completion || 'TBD'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-600">{booking.progress_percentage}%</div>
-                    <div className="text-sm text-gray-500">Progress</div>
-                  </div>
+          <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Project Progress</h3>
+                  <p className="text-gray-600 text-sm">
+                    {booking.progress_percentage}% complete • Est. completion: {booking.estimated_completion || 'TBD'}
+                  </p>
                 </div>
-                <Progress value={booking.progress_percentage} className="h-3 mb-2" />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Started</span>
-                  <span>In Progress</span>
-                  <span>Review</span>
-                  <span>Complete</span>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">{booking.progress_percentage}%</div>
+                  <div className="text-sm text-gray-500">Progress</div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <Progress value={booking.progress_percentage} className="h-3 mb-2" />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Started</span>
+                <span>In Progress</span>
+                <span>Review</span>
+                <span>Complete</span>
+              </div>
+            </CardContent>
+          </Card>
           )}
 
           {/* Pending Booking Status Card */}
@@ -2004,7 +2005,7 @@ export default function EnhancedBookingDetails() {
                           </p>
                         </div>
                         {booking.status === 'pending' ? (
-                          <Clock className="h-8 w-8 text-green-600" />
+                        <Clock className="h-8 w-8 text-green-600" />
                         ) : (
                           <Clock className="h-8 w-8 text-green-600" />
                         )}
@@ -2130,21 +2131,21 @@ export default function EnhancedBookingDetails() {
                     <CardContent className="space-y-3">
                       {/* Status Update - Only for approved bookings */}
                       {booking.status !== 'pending' && (
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Update Status</label>
-                          <Select defaultValue={booking.status} onValueChange={handleStatusUpdate} disabled={!canEdit}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">Update Status</label>
+                        <Select defaultValue={booking.status} onValueChange={handleStatusUpdate} disabled={!canEdit}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
                               <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="on_hold">On Hold</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="on_hold">On Hold</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       )}
 
                       {/* Pending Booking Actions */}
@@ -2225,24 +2226,24 @@ export default function EnhancedBookingDetails() {
 
                       {/* Progress Update - Only for approved bookings */}
                       {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <label className="text-sm font-medium text-blue-700 mb-2 block">Progress Update</label>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={booking.progress_percentage} className="flex-1" />
-                            <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" 
-                            disabled={!canEdit} 
-                            title={!canEdit ? 'Only providers can update progress' : undefined}
-                            onClick={() => setShowProgressModal(true)}
-                          >
-                            <TrendingUp className="h-4 w-4 mr-2" />
-                            Update Progress
-                          </Button>
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <label className="text-sm font-medium text-blue-700 mb-2 block">Progress Update</label>
+                        <div className="flex items-center space-x-2">
+                          <Progress value={booking.progress_percentage} className="flex-1" />
+                          <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
                         </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" 
+                          disabled={!canEdit} 
+                          title={!canEdit ? 'Only providers can update progress' : undefined}
+                          onClick={() => setShowProgressModal(true)}
+                        >
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Update Progress
+                        </Button>
+                      </div>
                       )}
 
                       {/* Export Progress - Only for approved bookings */}
@@ -2449,7 +2450,7 @@ export default function EnhancedBookingDetails() {
                         <p className="text-sm text-gray-600">
                           Message functionality will be available soon. For now, you can use the contact buttons above.
                         </p>
-                      </div>
+                </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -2468,7 +2469,7 @@ export default function EnhancedBookingDetails() {
                         <p className="text-sm text-gray-600">
                           File management functionality will be available soon.
                         </p>
-                      </div>
+                </div>
                     </div>
                   </CardContent>
                 </Card>
