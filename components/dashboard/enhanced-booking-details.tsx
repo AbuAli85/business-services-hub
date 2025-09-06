@@ -104,12 +104,7 @@ import {
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
-import SmartCommunicationCenter from './smart-communication-center'
-import SmartFileManager from './smart-file-manager'
-import { NotificationBell } from '@/components/ui/notification-bell'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
-import { ProgressTabs } from './progress-tabs'
-import { SmartFeatures } from './smart-features'
 
 interface EnhancedBooking {
   id: string
@@ -181,7 +176,7 @@ interface EnhancedBooking {
 }
 
 interface SmartSuggestion {
-  type: 'scheduling' | 'communication' | 'payment' | 'service_improvement'
+  type: 'scheduling' | 'communication' | 'payment' | 'service_improvement' | 'follow_up' | 'payment_reminder' | 'progress_update'
   title: string
   description: string
   action: string
@@ -224,7 +219,12 @@ export default function EnhancedBookingDetails() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [showProgressModal, setShowProgressModal] = useState(false)
+  const [tempProgress, setTempProgress] = useState(0)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskDescription, setNewTaskDescription] = useState('')
+  const [allTasks, setAllTasks] = useState<any[]>([])
   const [milestones, setMilestones] = useState<any[]>([])
   const [milestoneStats, setMilestoneStats] = useState({
     completed: 0,
@@ -241,6 +241,13 @@ export default function EnhancedBookingDetails() {
       loadMilestoneData()
     }
   }, [bookingId])
+
+  // Initialize tempProgress when progress modal opens
+  useEffect(() => {
+    if (showProgressModal && booking) {
+      setTempProgress(booking.progress_percentage || 0)
+    }
+  }, [showProgressModal, booking])
 
   // Realtime: listen for booking updates and notifications
   useEffect(() => {
@@ -513,23 +520,15 @@ export default function EnhancedBookingDetails() {
     // AI-powered suggestions based on booking status and patterns
     const suggestions: SmartSuggestion[] = [
       {
-        type: 'communication',
-        title: 'Send Progress Update',
-        description: 'Client hasn\'t received an update in 2 days',
-        action: 'Send update now',
-        priority: 'medium',
-        estimated_impact: 'Improved satisfaction'
-      },
-      {
-        type: 'scheduling',
+        type: 'follow_up',
         title: 'Schedule Follow-up',
-        description: 'Book next milestone review meeting',
+        description: '4 milestones due soon',
         action: 'Schedule meeting',
-        priority: 'high',
+        priority: 'medium',
         estimated_impact: 'Better project tracking'
       },
       {
-        type: 'payment',
+        type: 'payment_reminder',
         title: 'Payment Reminder',
         description: 'Invoice due in 3 days',
         action: 'Send reminder',
@@ -620,6 +619,10 @@ export default function EnhancedBookingDetails() {
       }
       
       setMilestones(milestonesData || [])
+      
+      // Flatten all tasks from milestones
+      const tasks = milestonesData?.flatMap(m => m.tasks || []) || []
+      setAllTasks(tasks)
       
       // Calculate milestone stats
       const total = milestonesData?.length || 0
@@ -717,6 +720,64 @@ export default function EnhancedBookingDetails() {
     } catch (error) {
       console.error('Error updating task status:', error)
       toast.error('Failed to update task status')
+    }
+  }
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim() || !bookingId) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Get the first milestone for this booking (or create a default one)
+      let milestoneId = milestones[0]?.id
+      
+      if (!milestoneId) {
+        // Create a default milestone if none exists
+        const { data: newMilestone, error: milestoneError } = await supabase
+          .from('milestones')
+          .insert({
+            booking_id: bookingId,
+            title: 'General Tasks',
+            description: 'General project tasks',
+            status: 'pending',
+            progress_percentage: 0
+          })
+          .select()
+          .single()
+        
+        if (milestoneError) throw milestoneError
+        milestoneId = newMilestone.id
+      }
+      
+      // Create the new task
+      const { data: newTask, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          milestone_id: milestoneId,
+          title: newTaskTitle.trim(),
+          description: newTaskDescription.trim() || null,
+          status: 'pending',
+          progress_percentage: 0
+        })
+        .select()
+        .single()
+      
+      if (taskError) throw taskError
+      
+      // Clear form
+      setNewTaskTitle('')
+      setNewTaskDescription('')
+      setShowAddTaskModal(false)
+      
+      // Reload data
+      await loadMilestoneData()
+      
+      toast.success('Task added successfully')
+      
+    } catch (error) {
+      console.error('Error adding task:', error)
+      toast.error('Failed to add task')
     }
   }
 
@@ -949,13 +1010,13 @@ export default function EnhancedBookingDetails() {
   }
 
   const handleVideoCall = () => {
-    // Generate a meeting link (in real app, this would integrate with video service)
-    const meetingId = `meeting-${booking?.id.slice(0, 8)}-${Date.now()}`
-    const meetingUrl = `${window.location.origin}/meeting/${meetingId}`
+    // Generate a Google Meet link for video calls
+    const meetingId = `booking-${booking?.id.slice(0, 8)}-${Date.now()}`
+    const meetingUrl = `https://meet.google.com/new?hs=193&pli=1&authuser=0`
     
     // Copy to clipboard
     navigator.clipboard.writeText(meetingUrl).then(() => {
-      toast.success('Meeting link copied to clipboard')
+      toast.success('Google Meet link copied to clipboard')
     }).catch(() => {
       toast.error('Failed to copy meeting link')
     })
@@ -967,6 +1028,13 @@ export default function EnhancedBookingDetails() {
         title: `Booking #${booking?.id.slice(0, 8)}`,
         text: `Check out this booking: ${booking?.service.title}`,
         url: window.location.href
+      }).catch(() => {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(() => {
+          toast.success('Booking link copied to clipboard')
+        }).catch(() => {
+          toast.error('Failed to copy link')
+        })
       })
     } else {
       // Fallback: copy to clipboard
@@ -998,6 +1066,135 @@ export default function EnhancedBookingDetails() {
     } catch (error) {
       console.error('Error sending notification:', error)
       toast.error('Failed to send notification')
+    }
+  }
+
+  // Provider Actions
+  const handleMarkInProgress = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'in_progress',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+      
+      if (error) throw error
+      
+      setBooking({ ...booking, status: 'in_progress' })
+      toast.success('Booking marked as in progress')
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+      toast.error('Failed to update booking status')
+    }
+  }
+
+  const handleMarkComplete = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'completed',
+          progress_percentage: 100,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+      
+      if (error) throw error
+      
+      setBooking({ ...booking, status: 'completed', progress_percentage: 100 })
+      toast.success('Booking marked as completed')
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+      toast.error('Failed to update booking status')
+    }
+  }
+
+  const handlePutOnHold = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'on_hold',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+      
+      if (error) throw error
+      
+      setBooking({ ...booking, status: 'on_hold' })
+      toast.success('Booking put on hold')
+    } catch (error) {
+      console.error('Error updating booking status:', error)
+      toast.error('Failed to update booking status')
+    }
+  }
+
+  // Progress Actions
+  const handleLogHours = () => {
+    toast.success('Time logging functionality will be available soon')
+  }
+
+  const handleSendProgressUpdate = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const recipientId = user?.id === booking.client.id ? booking.provider.id : booking.client.id
+      
+      await supabase.from('notifications').insert({
+        user_id: recipientId,
+        type: 'progress_update',
+        title: 'Progress Update',
+        message: `Progress update for booking #${booking.id.slice(0, 8)}: ${booking.progress_percentage || 0}% complete`,
+        data: { booking_id: booking.id, progress: booking.progress_percentage || 0 },
+        created_at: new Date().toISOString()
+      })
+      
+      toast.success('Progress update sent successfully')
+    } catch (error) {
+      console.error('Error sending progress update:', error)
+      toast.error('Failed to send progress update')
+    }
+  }
+
+  const handleScheduleFollowUp = () => {
+    toast.success('Scheduling functionality will be available soon')
+  }
+
+  const handleSendPaymentReminder = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const recipientId = user?.id === booking.client.id ? booking.provider.id : booking.client.id
+      
+      await supabase.from('notifications').insert({
+        user_id: recipientId,
+        type: 'payment_reminder',
+        title: 'Payment Reminder',
+        message: `Payment reminder for booking #${booking.id.slice(0, 8)}: ${booking.currency} ${booking.amount}`,
+        data: { booking_id: booking.id, amount: booking.amount, currency: booking.currency },
+        created_at: new Date().toISOString()
+      })
+      
+      toast.success('Payment reminder sent successfully')
+    } catch (error) {
+      console.error('Error sending payment reminder:', error)
+      toast.error('Failed to send payment reminder')
     }
   }
 
@@ -1068,16 +1265,31 @@ export default function EnhancedBookingDetails() {
         setShowMessageModal(true)
         break
       case 'scheduling':
-        setShowRescheduleModal(true)
+        handleScheduleFollowUp()
         break
       case 'payment':
-        handleProcessPayment()
+        handleSendPaymentReminder()
         break
       case 'service_improvement':
         setShowEditModal(true)
         break
+      case 'progress_update':
+        handleSendProgressUpdate()
+        break
+      case 'follow_up':
+        handleScheduleFollowUp()
+        break
+      case 'payment_reminder':
+        handleSendPaymentReminder()
+        break
       default:
-        toast.success(`Action: ${suggestion.action}`)
+        if (suggestion.action === 'Schedule meeting') {
+          handleScheduleFollowUp()
+        } else if (suggestion.action === 'Send reminder') {
+          handleSendPaymentReminder()
+        } else {
+          toast.success(`Action: ${suggestion.action}`)
+        }
     }
   }
 
@@ -1335,11 +1547,6 @@ export default function EnhancedBookingDetails() {
             
             {/* Smart Action Buttons */}
             <div className="flex items-center space-x-3">
-              {/* Notification Bell */}
-              {user && (
-                <NotificationBell userId={user.id} />
-              )}
-              
               {/* Overdue Count Badge */}
               {overdueCount > 0 && (
                 <Badge variant="destructive" className="px-3 py-1">
@@ -1615,6 +1822,48 @@ export default function EnhancedBookingDetails() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Provider Actions */}
+            {isProvider && (
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2">
+                    <Edit className="h-5 w-5 text-purple-600" />
+                    <span>Provider Actions</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleMarkInProgress}
+                      disabled={booking?.status === 'in_progress'}
+                      className="justify-start"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Mark In Progress
+                    </Button>
+                    <Button 
+                      onClick={handleMarkComplete}
+                      disabled={booking?.status === 'completed'}
+                      className="justify-start bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark Complete
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handlePutOnHold}
+                      disabled={booking?.status === 'on_hold'}
+                      className="justify-start"
+                    >
+                      <Pause className="h-4 w-4 mr-2" />
+                      Put On Hold
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Smart Suggestions */}
             <Card className="border-0 shadow-lg border-l-4 border-l-purple-500">
@@ -2001,56 +2250,200 @@ export default function EnhancedBookingDetails() {
 
               {/* Progress Tab */}
               <TabsContent value="progress" className="space-y-6">
-                <ProgressTabs
-                  bookingId={bookingId}
-                  userRole={isClient ? 'client' : 'provider'}
-                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Project Progress</CardTitle>
+                    <CardDescription>Track tasks and milestones completion</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {/* Overall Progress */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium">Overall Progress</span>
+                          <span className="text-sm text-gray-500">{booking?.progress_percentage || 0}%</span>
+                        </div>
+                        <Progress value={booking?.progress_percentage || 0} className="h-2" />
+                      </div>
+
+                      {/* Milestone Stats */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-blue-50 rounded-lg">
+                          <div className="text-2xl font-bold text-blue-600">{milestoneStats.completed}</div>
+                          <div className="text-sm text-blue-600">Completed</div>
+                        </div>
+                        <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                          <div className="text-2xl font-bold text-yellow-600">{milestoneStats.total - milestoneStats.completed}</div>
+                          <div className="text-sm text-yellow-600">Pending</div>
+                        </div>
+                        <div className="text-center p-4 bg-red-50 rounded-lg">
+                          <div className="text-2xl font-bold text-red-600">{milestoneStats.overdue}</div>
+                          <div className="text-sm text-red-600">Overdue</div>
+                        </div>
+                      </div>
+
+                      {/* Progress Actions */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button 
+                          onClick={handleLogHours}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          Log Hours
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleSendProgressUpdate}
+                        >
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          Send Progress Update
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleScheduleFollowUp}
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Schedule Follow-up
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleSendPaymentReminder}
+                        >
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          Send Payment Reminder
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Tasks Management */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Tasks</span>
+                      <Button 
+                        onClick={() => setShowAddTaskModal(true)}
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Task
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {allTasks.length > 0 ? (
+                        <div className="space-y-2">
+                          {allTasks.map((task) => (
+                            <div key={task.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                              <input
+                                type="checkbox"
+                                checked={task.status === 'completed'}
+                                onChange={(e) => onStepToggle(task.id, e.target.checked ? 'completed' : 'pending')}
+                                className="h-4 w-4 text-blue-600 rounded"
+                              />
+                              <div className="flex-1">
+                                <h4 className="font-medium">{task.title}</h4>
+                                {task.description && (
+                                  <p className="text-sm text-gray-500">{task.description}</p>
+                                )}
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                                    {task.status}
+                                  </Badge>
+                                  {task.due_date && (
+                                    <span className="text-xs text-gray-500">
+                                      Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No tasks yet. Add a task to get started.</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Timeline Tab */}
               <TabsContent value="timeline" className="space-y-6">
-                <SmartFeatures
-                  bookingId={bookingId}
-                  userRole={isClient ? 'client' : 'provider'}
-                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Project Timeline</CardTitle>
+                    <CardDescription>Track project milestones and progress</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {milestones.map((milestone, index) => (
+                        <div key={milestone.id} className="flex items-center space-x-4 p-4 border rounded-lg">
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium text-blue-600">{index + 1}</span>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium">{milestone.title}</h4>
+                            <p className="text-sm text-gray-500">{milestone.description}</p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Badge variant={milestone.status === 'completed' ? 'default' : 'secondary'}>
+                                {milestone.status}
+                              </Badge>
+                              {milestone.due_date && (
+                                <span className="text-xs text-gray-500">
+                                  Due: {format(new Date(milestone.due_date), 'MMM dd, yyyy')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Messages Tab */}
               <TabsContent value="messages">
-                <div className="h-[600px]">
-                  <SmartCommunicationCenter
-                    bookingId={booking.id}
-                    otherParty={{
-                      id: isClient ? booking.provider.id : booking.client.id,
-                      full_name: isClient ? booking.provider.full_name : booking.client.full_name,
-                      avatar_url: isClient ? booking.provider.avatar_url : booking.client.avatar_url,
-                      role: isClient ? 'provider' : 'client',
-                      status: isClient ? (booking.provider.availability_status === 'available' ? 'online' : booking.provider.availability_status || 'offline') : 'online',
-                      timezone: isClient ? undefined : booking.client.timezone,
-                      preferred_contact: isClient ? undefined : booking.client.preferred_contact,
-                      response_time: isClient ? booking.provider.response_time : undefined
-                    }}
-                    currentUser={{
-                      id: user.id,
-                      full_name: isClient ? booking.client.full_name : booking.provider.full_name,
-                      role: isClient ? 'client' : 'provider'
-                    }}
-                  />
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Messages</CardTitle>
+                    <CardDescription>Communicate with the {isClient ? 'provider' : 'client'}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-600">
+                          Message functionality will be available soon. For now, you can use the contact buttons above.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Files Tab */}
               <TabsContent value="files">
-                <div className="h-[600px] bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <SmartFileManager
-                    bookingId={booking.id}
-                    userRole={isClient ? 'client' : 'provider'}
-                    recipientEmail={isClient ? booking.provider.email : booking.client.email}
-                    allowedTypes={['image/*', 'application/pdf', '.doc', '.docx', '.txt', '.zip']}
-                    maxFileSize={25} // 25MB
-                    maxFiles={50}
-                  />
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Project Files</CardTitle>
+                    <CardDescription>Share and manage project files</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-600">
+                          File management functionality will be available soon.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Payment Tab */}
@@ -2151,13 +2544,13 @@ export default function EnhancedBookingDetails() {
                   type="range"
                   min="0"
                   max="100"
-                  value={booking?.progress_percentage || 0}
-                  onChange={(e) => setBooking({ ...booking!, progress_percentage: parseInt(e.target.value) })}
+                  value={tempProgress}
+                  onChange={(e) => setTempProgress(parseInt(e.target.value))}
                   className="w-full"
                 />
                 <div className="flex justify-between text-sm text-gray-500 mt-1">
                   <span>0%</span>
-                  <span className="font-medium">{booking?.progress_percentage || 0}%</span>
+                  <span className="font-medium">{tempProgress}%</span>
                   <span>100%</span>
                 </div>
               </div>
@@ -2166,7 +2559,10 @@ export default function EnhancedBookingDetails() {
               <Button variant="outline" onClick={() => setShowProgressModal(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => handleUpdateProgress(booking?.progress_percentage || 0)}>
+              <Button onClick={() => {
+                handleUpdateProgress(tempProgress)
+                setShowProgressModal(false)
+              }}>
                 Update Progress
               </Button>
             </div>
@@ -2253,6 +2649,59 @@ export default function EnhancedBookingDetails() {
                 toast.success('Booking rescheduled successfully')
               }}>
                 Reschedule
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Task Modal */}
+      {showAddTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Add Task</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Task Title
+                </label>
+                <Input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="Enter task title..."
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description (Optional)
+                </label>
+                <Textarea
+                  value={newTaskDescription}
+                  onChange={(e) => setNewTaskDescription(e.target.value)}
+                  placeholder="Enter task description..."
+                  className="w-full"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowAddTaskModal(false)
+                  setNewTaskTitle('')
+                  setNewTaskDescription('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddTask}
+                disabled={!newTaskTitle.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Add
               </Button>
             </div>
           </div>
