@@ -92,7 +92,7 @@ export function SimpleMilestones({
   // Standard 4 phases - never more, never less
   const standardPhases = [
     {
-      id: 'phase-1',
+      id: '550e8400-e29b-41d4-a716-446655440001', // Planning & Setup UUID
       title: 'Planning & Setup',
       description: 'Initial planning, requirements gathering, and project setup',
       purpose: 'Establish project foundation and clear requirements',
@@ -101,7 +101,7 @@ export function SimpleMilestones({
       color: '#3B82F6'
     },
     {
-      id: 'phase-2', 
+      id: '550e8400-e29b-41d4-a716-446655440002', // Development UUID
       title: 'Development',
       description: 'Core development work and implementation',
       purpose: 'Build and implement the main project features',
@@ -110,7 +110,7 @@ export function SimpleMilestones({
       color: '#10B981'
     },
     {
-      id: 'phase-3',
+      id: '550e8400-e29b-41d4-a716-446655440003', // Testing & Quality UUID
       title: 'Testing & Quality',
       description: 'Testing, quality assurance, and bug fixes',
       purpose: 'Ensure quality and fix any issues',
@@ -119,7 +119,7 @@ export function SimpleMilestones({
       color: '#F59E0B'
     },
     {
-      id: 'phase-4',
+      id: '550e8400-e29b-41d4-a716-446655440004', // Delivery & Launch UUID
       title: 'Delivery & Launch',
       description: 'Final delivery, deployment, and project launch',
       purpose: 'Deliver completed project to client',

@@ -51,16 +51,36 @@ export function ProgressTrackingSystem({
   // Transform milestones to simple format - Always exactly 4 phases
   const transformToSimpleMilestones = (milestones: Milestone[]) => {
     const standardPhases = [
-      { title: 'Planning & Setup', phaseNumber: 1, color: '#3B82F6' },
-      { title: 'Development', phaseNumber: 2, color: '#10B981' },
-      { title: 'Testing & Quality', phaseNumber: 3, color: '#F59E0B' },
-      { title: 'Delivery & Launch', phaseNumber: 4, color: '#8B5CF6' }
+      { 
+        id: '550e8400-e29b-41d4-a716-446655440001', // Planning & Setup UUID
+        title: 'Planning & Setup', 
+        phaseNumber: 1, 
+        color: '#3B82F6' 
+      },
+      { 
+        id: '550e8400-e29b-41d4-a716-446655440002', // Development UUID
+        title: 'Development', 
+        phaseNumber: 2, 
+        color: '#10B981' 
+      },
+      { 
+        id: '550e8400-e29b-41d4-a716-446655440003', // Testing & Quality UUID
+        title: 'Testing & Quality', 
+        phaseNumber: 3, 
+        color: '#F59E0B' 
+      },
+      { 
+        id: '550e8400-e29b-41d4-a716-446655440004', // Delivery & Launch UUID
+        title: 'Delivery & Launch', 
+        phaseNumber: 4, 
+        color: '#8B5CF6' 
+      }
     ]
 
     return standardPhases.map((phase, index) => {
       const milestone = milestones.find(m => m.title === phase.title) || milestones[index]
       return {
-        id: milestone?.id || `phase-${phase.phaseNumber}`,
+        id: milestone?.id || phase.id, // Use the standard phase UUID if no milestone found
         title: phase.title,
         description: milestone?.description || `${phase.title} phase`,
         purpose: milestone?.description || `Complete ${phase.title} phase`,
