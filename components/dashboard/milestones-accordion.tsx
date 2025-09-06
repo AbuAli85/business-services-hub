@@ -145,7 +145,7 @@ export function MilestonesAccordion({
       <Accordion 
         type="single" 
         collapsible 
-        value={Array.from(expandedMilestones)[0]}
+        value={Array.from(expandedMilestones)[0] || ""}
         onValueChange={handleAccordionChange}
         className="space-y-2"
       >
