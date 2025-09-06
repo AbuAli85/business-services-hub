@@ -166,57 +166,161 @@ export function ProgressTrackingSystem({
 
       console.log('Loading progress data for booking:', bookingId)
 
-      // Load milestones first
+      // Create 4 standard phases instead of loading all milestones
       let milestonesData: Milestone[] = []
+      try {
+        // Create the 4 standard phases
+        const standardPhases = [
+          {
+            id: '550e8400-e29b-41d4-a716-446655440001',
+            title: 'Planning & Setup',
+            description: 'Initial planning, requirements gathering, and project setup',
+            status: 'pending' as const,
+            booking_id: bookingId,
+            priority: 'medium' as const,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            progress_percentage: 0,
+            is_overdue: false,
+            estimated_hours: 0,
+            actual_hours: 0,
+            tags: [],
+            notes: '',
+            order_index: 1,
+            editable: true,
+            weight: 1,
+            tasks: []
+          },
+          {
+            id: '550e8400-e29b-41d4-a716-446655440002',
+            title: 'Development',
+            description: 'Core development and implementation phase',
+            status: 'pending' as const,
+            booking_id: bookingId,
+            priority: 'medium' as const,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            progress_percentage: 0,
+            is_overdue: false,
+            estimated_hours: 0,
+            actual_hours: 0,
+            tags: [],
+            notes: '',
+            order_index: 2,
+            editable: true,
+            weight: 1,
+            tasks: []
+          },
+          {
+            id: '550e8400-e29b-41d4-a716-446655440003',
+            title: 'Testing & Quality',
+            description: 'Testing, quality assurance, and bug fixes',
+            status: 'pending' as const,
+            booking_id: bookingId,
+            priority: 'medium' as const,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+            progress_percentage: 0,
+            is_overdue: false,
+            estimated_hours: 0,
+            actual_hours: 0,
+            tags: [],
+            notes: '',
+            order_index: 3,
+            editable: true,
+            weight: 1,
+            tasks: []
+          },
+          {
+            id: '550e8400-e29b-41d4-a716-446655440004',
+            title: 'Delivery & Launch',
+            description: 'Final delivery, deployment, and project launch',
+            status: 'pending' as const,
+            booking_id: bookingId,
+            priority: 'medium' as const,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            due_date: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+            progress_percentage: 0,
+            is_overdue: false,
+            estimated_hours: 0,
+            actual_hours: 0,
+            tags: [],
+            notes: '',
+            order_index: 4,
+            editable: true,
+            weight: 1,
+            tasks: []
+          }
+        ]
+
+        // Try to load existing milestones and update the standard phases
       try {
         const rawMilestones = await ProgressTrackingService.getMilestones(bookingId)
         console.log('Raw milestones from service:', rawMilestones)
         
-        // Transform milestones data to ensure all required properties exist
-        milestonesData = (rawMilestones || []).map(milestone => ({
-          ...milestone,
-          booking_id: milestone.booking_id || bookingId,
-          priority: milestone.priority || 'medium',
-          created_at: milestone.created_at || new Date().toISOString(),
-          updated_at: milestone.updated_at || new Date().toISOString(),
-          is_overdue: milestone.is_overdue || false,
-          estimated_hours: milestone.estimated_hours || 0,
-          actual_hours: milestone.actual_hours || 0,
-          tags: milestone.tags || [],
-          notes: milestone.notes || '',
-          assigned_to: milestone.assigned_to || undefined,
-          created_by: milestone.created_by || undefined,
-          completed_at: milestone.completed_at || undefined,
-          overdue_since: milestone.overdue_since || undefined,
-          order_index: milestone.order_index || 0,
-          editable: milestone.editable !== undefined ? milestone.editable : true,
-          tasks: (milestone.tasks || []).map(task => ({
-            ...task,
-            milestone_id: milestone.id,
-            description: task.description || '',
-            priority: task.priority || 'medium',
-            estimated_hours: task.estimated_hours || 0,
-            actual_hours: task.actual_hours || 0,
-            tags: task.tags || [],
-            steps: task.steps || [],
-            completed_at: task.completed_at || undefined,
-            created_at: task.created_at || new Date().toISOString(),
-            updated_at: task.updated_at || new Date().toISOString(),
-            created_by: task.created_by || undefined,
-            assigned_to: task.assigned_to || undefined,
-            is_overdue: task.is_overdue || false,
-            overdue_since: task.overdue_since || undefined,
-            approval_status: task.approval_status || 'pending',
-            approved_by: task.approved_by || undefined,
-            approved_at: task.approved_at || undefined,
-            approval_notes: task.approval_notes || undefined,
-            comments: task.comments || [],
-            time_entries: task.time_entries || []
-          }))
-        }))
-        console.log('Transformed milestones:', milestonesData)
+          // Update standard phases with existing data if available
+          milestonesData = standardPhases.map(phase => {
+            const existingMilestone = rawMilestones?.find(m => m.title === phase.title)
+            if (existingMilestone) {
+              return {
+                ...phase,
+                ...existingMilestone,
+                booking_id: bookingId,
+                priority: existingMilestone.priority || 'medium',
+                created_at: existingMilestone.created_at || phase.created_at,
+                updated_at: existingMilestone.updated_at || phase.updated_at,
+                is_overdue: existingMilestone.is_overdue || false,
+                estimated_hours: existingMilestone.estimated_hours || 0,
+                actual_hours: existingMilestone.actual_hours || 0,
+                tags: existingMilestone.tags || [],
+                notes: existingMilestone.notes || '',
+                assigned_to: existingMilestone.assigned_to || undefined,
+                created_by: existingMilestone.created_by || undefined,
+                completed_at: existingMilestone.completed_at || undefined,
+                overdue_since: existingMilestone.overdue_since || undefined,
+                order_index: existingMilestone.order_index || phase.order_index,
+                editable: existingMilestone.editable !== undefined ? existingMilestone.editable : true,
+                tasks: (existingMilestone.tasks || []).map(task => ({
+                  ...task,
+                  milestone_id: phase.id,
+                  title: task.title,
+                  description: task.description || '',
+                  status: task.status || 'pending',
+                  priority: task.priority || 'medium',
+                  due_date: task.due_date,
+                  progress_percentage: task.progress_percentage || 0,
+                  estimated_hours: task.estimated_hours || 1,
+                  actual_hours: task.actual_hours || 0,
+                  tags: task.tags || [],
+                  steps: task.steps || [],
+                  completed_at: task.completed_at || undefined,
+                  created_at: task.created_at || new Date().toISOString(),
+                  updated_at: task.updated_at || new Date().toISOString(),
+                  created_by: task.created_by || undefined,
+                  assigned_to: task.assigned_to || undefined,
+                  is_overdue: task.is_overdue || false,
+                  overdue_since: task.overdue_since || undefined,
+                  approval_status: task.approval_status || 'pending',
+                  approved_by: task.approved_by || undefined,
+                  approved_at: task.approved_at || undefined,
+                  approval_notes: task.approval_notes || undefined
+                }))
+              }
+            }
+            return phase
+          })
       } catch (milestoneError) {
-        console.error('Error loading milestones:', milestoneError)
+          console.warn('Could not load existing milestones, using standard phases:', milestoneError)
+          milestonesData = standardPhases
+        }
+        
+        console.log('Transformed milestones (4 phases):', milestonesData)
+      } catch (error) {
+        console.error('Error creating standard phases:', error)
         milestonesData = []
       }
 
@@ -227,14 +331,13 @@ export function ProgressTrackingSystem({
         console.log('Loaded booking progress:', progressData)
       } catch (progressError) {
         console.warn('Could not load booking progress, using fallback:', progressError)
-        // Create a fallback progress object based on real milestone data
+        // Create a fallback progress object based on 4 phases
         const completedMilestones = milestonesData.filter(m => m.status === 'completed').length
         const completedTasks = milestonesData.reduce((sum, m) => 
           sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
         )
         const totalTasks = milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
-        const overallProgress = milestonesData.length > 0 ? 
-          Math.round((completedMilestones / milestonesData.length) * 100) : 0
+        const overallProgress = Math.round((completedMilestones / 4) * 100) // Always calculate based on 4 phases
         
         progressData = {
           booking_id: bookingId,
@@ -242,7 +345,7 @@ export function ProgressTrackingSystem({
           booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
           booking_progress: overallProgress,
           completed_milestones: completedMilestones,
-          total_milestones: milestonesData.length,
+          total_milestones: 4, // Always 4 phases
           completed_tasks: completedTasks,
           total_tasks: totalTasks,
           total_estimated_hours: 0,
@@ -279,14 +382,14 @@ export function ProgressTrackingSystem({
         timeEntriesData = []
       }
 
-      // Update progress data with real calculations if we have milestone data
+      // Update progress data with real calculations for 4 phases
       if (milestonesData.length > 0) {
         const completedMilestones = milestonesData.filter(m => m.status === 'completed').length
         const completedTasks = milestonesData.reduce((sum, m) => 
           sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
         )
         const totalTasks = milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
-        const overallProgress = Math.round((completedMilestones / milestonesData.length) * 100)
+        const overallProgress = Math.round((completedMilestones / 4) * 100) // Always calculate based on 4 phases
         
         progressData = {
           ...progressData,
@@ -294,7 +397,7 @@ export function ProgressTrackingSystem({
           booking_title: progressData?.booking_title || 'Project Progress',
           booking_progress: overallProgress,
           completed_milestones: completedMilestones,
-          total_milestones: milestonesData.length,
+          total_milestones: 4, // Always 4 phases
           completed_tasks: completedTasks,
           total_tasks: totalTasks,
           booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
@@ -487,8 +590,7 @@ export function ProgressTrackingSystem({
         m.id === milestoneId ? { ...m, ...updates } : m
       )
       const completedMilestones = updatedMilestones.filter(m => m.status === 'completed').length
-      const overallProgress = updatedMilestones.length > 0 ? 
-        Math.round((completedMilestones / updatedMilestones.length) * 100) : 0
+      const overallProgress = Math.round((completedMilestones / 4) * 100) // Always calculate based on 4 phases
       
       setBookingProgress(prev => prev ? {
         ...prev,
@@ -705,15 +807,15 @@ export function ProgressTrackingSystem({
             <h2 className="text-2xl font-bold text-gray-900">Progress Tracking</h2>
             <p className="text-gray-600">Monitor and manage project progress</p>
           </div>
-          <Button 
-            onClick={refreshData} 
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+            <Button 
+              onClick={refreshData} 
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
         </div>
 
 
