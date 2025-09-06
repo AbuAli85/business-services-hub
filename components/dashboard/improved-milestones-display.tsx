@@ -131,6 +131,53 @@ export function ImprovedMilestonesDisplay({
         </div>
       </div>
 
+      {/* How It Works Explanation */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="p-6">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Target className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">How Project Phases Work</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">📋 What are Phases?</h4>
+                  <p>Each phase represents a major milestone in your project. They break down complex work into manageable chunks with clear deliverables.</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">🎯 Phase Status</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                      <span><strong>Pending:</strong> Not started yet</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span><strong>In Progress:</strong> Currently working on it</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span><strong>Completed:</strong> Finished successfully</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">📊 Progress Tracking</h4>
+                  <p>Each phase shows completion percentage, task count, and estimated vs actual hours. Click "View Details" to see individual tasks.</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-1">⏰ Time Management</h4>
+                  <p>Track time spent on each phase. Start/stop timers to log actual hours and compare with estimates for better planning.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Milestones Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {milestones.map((milestone, index) => {
@@ -190,14 +237,31 @@ export function ImprovedMilestonesDisplay({
                     value={milestone.progress_percentage} 
                     className={`h-3 mb-2 ${getProgressBarColor(milestone.progress_percentage)}`}
                   />
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{completedTasks} of {totalTasks} tasks completed</span>
-                    {milestone.due_date && (
+                  
+                  {/* Task and Time Info */}
+                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                    <div className="flex items-center space-x-1">
+                      <CheckCircle className="h-3 w-3" />
+                      <span>{completedTasks} of {totalTasks} tasks</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Timer className="h-3 w-3" />
                       <span>
-                        Due: {safeFormatDate(milestone.due_date, 'MMM dd, yyyy')}
+                        {milestone.estimated_hours || 0}h estimated
                       </span>
-                    )}
+                    </div>
                   </div>
+                  
+                  {/* Due Date */}
+                  {milestone.due_date && (
+                    <div className="mt-2 flex items-center space-x-1 text-xs">
+                      <Calendar className="h-3 w-3 text-gray-400" />
+                      <span className={overdue ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                        Due: {safeFormatDate(milestone.due_date, 'MMM dd, yyyy')}
+                        {overdue && ' (Overdue)'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -208,6 +272,7 @@ export function ImprovedMilestonesDisplay({
                       size="sm"
                       onClick={() => setExpandedMilestone(isExpanded ? null : milestone.id)}
                       className="text-xs"
+                      title={isExpanded ? 'Hide task details and time tracking' : 'View tasks, time tracking, and detailed progress'}
                     >
                       {isExpanded ? 'Hide Details' : 'View Details'}
                       <ChevronRight className={`h-3 w-3 ml-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
@@ -221,16 +286,17 @@ export function ImprovedMilestonesDisplay({
                           status: milestone.status === 'in_progress' ? 'completed' : 'in_progress' 
                         })}
                         className="text-xs"
+                        title={milestone.status === 'in_progress' ? 'Mark this phase as completed' : 'Start working on this phase'}
                       >
                         {milestone.status === 'in_progress' ? (
                           <>
                             <CheckCircle className="h-3 w-3 mr-1" />
-                            Complete
+                            Complete Phase
                           </>
                         ) : (
                           <>
                             <Play className="h-3 w-3 mr-1" />
-                            Start
+                            Start Phase
                           </>
                         )}
                       </Button>
