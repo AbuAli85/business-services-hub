@@ -362,6 +362,7 @@ export function SimpleMilestones({
                   onProjectTypeChange(newType)
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                aria-label="Select project type"
               >
                 <option value="one_time">One Time Project</option>
                 <option value="monthly">Monthly Recurring</option>
@@ -843,6 +844,7 @@ export function SimpleMilestones({
                                 task: { ...newTask.task, priority: e.target.value as 'low' | 'medium' | 'high' }
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              aria-label="Select task priority"
                             >
                               <option value="low">🟢 Low Priority</option>
                               <option value="medium">🟡 Medium Priority</option>
@@ -870,6 +872,7 @@ export function SimpleMilestones({
                                 task: { ...newTask.task, recurringType: e.target.value as 'monthly' | 'weekly' | 'daily' }
                               })}
                               className="px-2 py-1 border border-gray-300 rounded text-sm"
+                              aria-label="Select recurring frequency"
                             >
                               <option value="daily">Daily</option>
                               <option value="weekly">Weekly</option>
@@ -1036,6 +1039,7 @@ export function SimpleMilestones({
                             status: e.target.value as 'pending' | 'in_progress' | 'completed' 
                           } : null)}
                           className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          aria-label="Select milestone status"
                         >
                           <option value="pending">Not Started</option>
                           <option value="in_progress">In Progress</option>

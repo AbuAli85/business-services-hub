@@ -77,35 +77,61 @@ export function ProgressTrackingSystem({
       }
     ]
 
+    // If we have real milestones, use them; otherwise create placeholders
+    if (milestones.length > 0) {
+      return milestones.map((milestone, index) => {
+        const phase = standardPhases[index] || standardPhases[0]
+        return {
+          id: milestone.id,
+          title: milestone.title,
+          description: milestone.description || `${milestone.title} phase`,
+          purpose: milestone.description || `Complete ${milestone.title} phase`,
+          mainGoal: `Complete ${milestone.title} phase`,
+          startDate: milestone.created_at || new Date().toISOString(),
+          endDate: milestone.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          status: (milestone.status as 'pending' | 'in_progress' | 'completed') || 'pending',
+          color: phase.color,
+          phaseNumber: (index + 1) as 1 | 2 | 3 | 4,
+          estimatedHours: 0,
+          actualHours: 0,
+          clientComments: [],
+          isRecurring: false,
+          projectType: 'one_time' as const,
+          tasks: (milestone.tasks || []).map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            completed: task.status === 'completed',
+            dueDate: task.due_date,
+            isRecurring: false,
+            recurringType: 'monthly' as const,
+            priority: 'medium' as const,
+            estimatedHours: 1,
+            actualHours: task.actual_hours || 0
+          }))
+        }
+      })
+    }
+
+    // Create 4 standard phases if no real data exists
     return standardPhases.map((phase, index) => {
-      const milestone = milestones.find(m => m.title === phase.title) || milestones[index]
       return {
-        id: milestone?.id || phase.id, // Use the standard phase UUID if no milestone found
+        id: phase.id,
         title: phase.title,
-        description: milestone?.description || `${phase.title} phase`,
-        purpose: milestone?.description || `Complete ${phase.title} phase`,
+        description: `${phase.title} phase`,
+        purpose: `Complete ${phase.title} phase`,
         mainGoal: `Complete ${phase.title} phase`,
-        startDate: milestone?.created_at || new Date().toISOString(),
-        endDate: milestone?.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: (milestone?.status as 'pending' | 'in_progress' | 'completed') || 'pending',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'pending' as const,
         color: phase.color,
         phaseNumber: phase.phaseNumber as 1 | 2 | 3 | 4,
-        estimatedHours: 0, // estimated_hours column doesn't exist in database
+        estimatedHours: 0,
         actualHours: 0,
         clientComments: [],
-        isRecurring: false, // Will be set by project type
-        projectType: 'one_time' as const, // Will be set by project type
-        tasks: (milestone?.tasks || []).map(task => ({
-          id: task.id,
-          title: task.title,
-          completed: task.status === 'completed',
-          dueDate: task.due_date,
-          isRecurring: false,
-          recurringType: 'monthly' as const,
-          priority: 'medium' as const,
-          estimatedHours: 1, // estimated_hours column doesn't exist in database
-          actualHours: task.actual_hours || 0
-        }))
+        isRecurring: false,
+        projectType: 'one_time' as const,
+        tasks: []
       }
     })
   }
@@ -201,16 +227,24 @@ export function ProgressTrackingSystem({
         console.log('Loaded booking progress:', progressData)
       } catch (progressError) {
         console.warn('Could not load booking progress, using fallback:', progressError)
-        // Create a fallback progress object
+        // Create a fallback progress object based on real milestone data
+        const completedMilestones = milestonesData.filter(m => m.status === 'completed').length
+        const completedTasks = milestonesData.reduce((sum, m) => 
+          sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+        )
+        const totalTasks = milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+        const overallProgress = milestonesData.length > 0 ? 
+          Math.round((completedMilestones / milestonesData.length) * 100) : 0
+        
         progressData = {
           booking_id: bookingId,
           booking_title: 'Project Progress',
-          booking_status: 'in_progress',
-          booking_progress: 0,
-          completed_milestones: 0,
+          booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
+          booking_progress: overallProgress,
+          completed_milestones: completedMilestones,
           total_milestones: milestonesData.length,
-          completed_tasks: 0,
-          total_tasks: milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0),
+          completed_tasks: completedTasks,
+          total_tasks: totalTasks,
           total_estimated_hours: 0,
           total_actual_hours: 0,
           overdue_tasks: 0,
@@ -243,6 +277,33 @@ export function ProgressTrackingSystem({
       } catch (timeError) {
         console.warn('Could not load time entries:', timeError)
         timeEntriesData = []
+      }
+
+      // Update progress data with real calculations if we have milestone data
+      if (milestonesData.length > 0) {
+        const completedMilestones = milestonesData.filter(m => m.status === 'completed').length
+        const completedTasks = milestonesData.reduce((sum, m) => 
+          sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+        )
+        const totalTasks = milestonesData.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+        const overallProgress = Math.round((completedMilestones / milestonesData.length) * 100)
+        
+        progressData = {
+          ...progressData,
+          booking_id: bookingId,
+          booking_title: progressData?.booking_title || 'Project Progress',
+          booking_progress: overallProgress,
+          completed_milestones: completedMilestones,
+          total_milestones: milestonesData.length,
+          completed_tasks: completedTasks,
+          total_tasks: totalTasks,
+          booking_status: overallProgress === 100 ? 'completed' : 'in_progress',
+          total_estimated_hours: progressData?.total_estimated_hours || 0,
+          total_actual_hours: progressData?.total_actual_hours || 0,
+          overdue_tasks: progressData?.overdue_tasks || 0,
+          created_at: progressData?.created_at || new Date().toISOString(),
+          updated_at: progressData?.updated_at || new Date().toISOString()
+        }
       }
 
       setMilestones(milestonesData)
@@ -301,22 +362,57 @@ export function ProgressTrackingSystem({
 
   // Load data on mount and when bookingId changes
   useEffect(() => {
-    ensureStandardMilestones().then(() => {
+    loadData()
+  }, [loadData])
+
+  // Set up real-time updates every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
       loadData()
-    })
-  }, [ensureStandardMilestones, loadData])
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [loadData])
 
   // Handle task operations
   const handleTaskUpdate = useCallback(async (taskId: string, updates: Partial<Task>) => {
     try {
       await ProgressTrackingService.updateTask(taskId, updates)
-      await loadData() // Refresh data
+      
+      // Update local state immediately for better UX
+      setMilestones(prev => prev.map(milestone => ({
+        ...milestone,
+        tasks: milestone.tasks?.map(task => 
+          task.id === taskId ? { ...task, ...updates } : task
+        ) || []
+      })))
+      
+      // Recalculate progress
+      const updatedMilestones = milestones.map(milestone => ({
+        ...milestone,
+        tasks: milestone.tasks?.map(task => 
+          task.id === taskId ? { ...task, ...updates } : task
+        ) || []
+      }))
+      
+      const completedTasks = updatedMilestones.reduce((sum, m) => 
+        sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+      )
+      const totalTasks = updatedMilestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+      
+      setBookingProgress(prev => prev ? {
+        ...prev,
+        completed_tasks: completedTasks,
+        total_tasks: totalTasks
+      } : null)
+      
+      await loadData() // Refresh data to ensure consistency
       toast.success('Task updated successfully')
     } catch (err) {
       console.error('Error updating task:', err)
       toast.error('Failed to update task')
     }
-  }, [loadData])
+  }, [loadData, milestones])
 
   const handleTaskCreate = useCallback(async (milestoneId: string, taskData: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => {
     try {
@@ -330,13 +426,40 @@ export function ProgressTrackingSystem({
         is_overdue: false
       }
       await ProgressTrackingService.createTask(fullTaskData)
-      await loadData() // Refresh data
+      
+      // Update local state immediately for better UX
+      const newTask = { ...fullTaskData, id: `temp_${Date.now()}` } // Temporary ID for local state
+      setMilestones(prev => prev.map(milestone => 
+        milestone.id === milestoneId 
+          ? { ...milestone, tasks: [...(milestone.tasks || []), newTask] }
+          : milestone
+      ))
+      
+      // Recalculate progress
+      const updatedMilestones = milestones.map(milestone => 
+        milestone.id === milestoneId 
+          ? { ...milestone, tasks: [...(milestone.tasks || []), newTask] }
+          : milestone
+      )
+      
+      const completedTasks = updatedMilestones.reduce((sum, m) => 
+        sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+      )
+      const totalTasks = updatedMilestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
+      
+      setBookingProgress(prev => prev ? {
+        ...prev,
+        completed_tasks: completedTasks,
+        total_tasks: totalTasks
+      } : null)
+      
+      await loadData() // Refresh data to ensure consistency
       toast.success('Task created successfully')
     } catch (err) {
       console.error('Error creating task:', err)
       toast.error('Failed to create task')
     }
-  }, [loadData])
+  }, [loadData, milestones])
 
   const handleTaskDelete = useCallback(async (taskId: string) => {
     try {
@@ -353,13 +476,34 @@ export function ProgressTrackingSystem({
   const handleMilestoneUpdate = useCallback(async (milestoneId: string, updates: Partial<Milestone>) => {
     try {
       await ProgressTrackingService.updateMilestone(milestoneId, updates)
-      await loadData() // Refresh data
+      
+      // Update local state immediately for better UX
+      setMilestones(prev => prev.map(m => 
+        m.id === milestoneId ? { ...m, ...updates } : m
+      ))
+      
+      // Recalculate progress
+      const updatedMilestones = milestones.map(m => 
+        m.id === milestoneId ? { ...m, ...updates } : m
+      )
+      const completedMilestones = updatedMilestones.filter(m => m.status === 'completed').length
+      const overallProgress = updatedMilestones.length > 0 ? 
+        Math.round((completedMilestones / updatedMilestones.length) * 100) : 0
+      
+      setBookingProgress(prev => prev ? {
+        ...prev,
+        booking_progress: overallProgress,
+        completed_milestones: completedMilestones,
+        booking_status: overallProgress === 100 ? 'completed' : 'in_progress'
+      } : null)
+      
+      await loadData() // Refresh data to ensure consistency
       toast.success('Milestone updated successfully')
     } catch (err) {
       console.error('Error updating milestone:', err)
       toast.error('Failed to update milestone')
     }
-  }, [loadData])
+  }, [loadData, milestones])
 
   const handleCommentAdd = useCallback(async (milestoneId: string, comment: any) => {
     try {
