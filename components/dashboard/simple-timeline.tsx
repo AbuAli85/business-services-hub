@@ -36,7 +36,7 @@ interface SimpleMilestone {
   mainGoal?: string
   startDate: string
   endDate: string
-  status: 'not_started' | 'in_progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed'
   tasks: SimpleTask[]
   color: string
   phaseNumber: number
@@ -97,7 +97,7 @@ export function SimpleTimeline({ milestones, userRole }: SimpleTimelineProps) {
   }
 
   const isUpcoming = (milestone: SimpleMilestone) => {
-    return isAfter(new Date(milestone.startDate), new Date()) && milestone.status === 'not_started'
+    return isAfter(new Date(milestone.startDate), new Date()) && milestone.status === 'pending'
   }
 
   const isCurrent = (milestone: SimpleMilestone) => {

@@ -42,7 +42,7 @@ interface SimpleMilestone {
   mainGoal?: string
   startDate: string
   endDate: string
-  status: 'not_started' | 'in_progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed'
   tasks: SimpleTask[]
   color: string
   phaseNumber: 1 | 2 | 3 | 4  // Only 4 phases allowed
@@ -160,7 +160,7 @@ export function SimpleMilestones({
 
     // Smart indicators
     if (milestone.status === 'completed') return { type: 'success', message: 'Completed! 🎉', color: 'text-green-600' }
-    if (isAfter(now, endDate) && (milestone.status === 'not_started' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
+    if (isAfter(now, endDate) && (milestone.status === 'pending' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
     if (taskProgress > progress + 20) return { type: 'ahead', message: 'Ahead of schedule! 🚀', color: 'text-green-600' }
     if (taskProgress < progress - 20) return { type: 'behind', message: 'Behind schedule! 📈', color: 'text-orange-600' }
     if (taskProgress > 80) return { type: 'almost', message: 'Almost done! 💪', color: 'text-blue-600' }
@@ -226,7 +226,7 @@ export function SimpleMilestones({
       // Reset all phases to not_started for next month
       standardPhases.forEach(phase => {
         onMilestoneUpdate(phase.id, {
-          status: 'not_started',
+          status: 'pending',
           startDate: new Date().toISOString(),
           endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           tasks: [],
@@ -343,7 +343,7 @@ export function SimpleMilestones({
             id: phaseTemplate.id,
             startDate: new Date().toISOString(),
             endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'not_started' as const,
+            status: 'pending' as const,
             tasks: [],
             estimatedHours: 0,
             actualHours: 0,

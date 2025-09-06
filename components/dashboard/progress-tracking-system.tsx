@@ -87,10 +87,10 @@ export function ProgressTrackingSystem({
         mainGoal: `Complete ${phase.title} phase`,
         startDate: milestone?.created_at || new Date().toISOString(),
         endDate: milestone?.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: (milestone?.status as 'not_started' | 'in_progress' | 'completed') || 'not_started',
+        status: (milestone?.status as 'pending' | 'in_progress' | 'completed') || 'pending',
         color: phase.color,
         phaseNumber: phase.phaseNumber as 1 | 2 | 3 | 4,
-        estimatedHours: milestone?.estimated_hours || 0,
+        estimatedHours: 0, // estimated_hours column doesn't exist in database
         actualHours: 0,
         clientComments: [],
         isRecurring: false, // Will be set by project type
@@ -103,7 +103,7 @@ export function ProgressTrackingSystem({
           isRecurring: false,
           recurringType: 'monthly' as const,
           priority: 'medium' as const,
-          estimatedHours: task.estimated_hours || 1,
+          estimatedHours: 1, // estimated_hours column doesn't exist in database
           actualHours: task.actual_hours || 0
         }))
       }

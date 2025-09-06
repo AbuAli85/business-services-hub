@@ -13,19 +13,17 @@ INSERT INTO public.milestones (
   due_date,
   created_at,
   updated_at,
-  progress_percentage,
-  estimated_hours
+  progress_percentage
 ) VALUES
   (
     '550e8400-e29b-41d4-a716-446655440001', -- Planning & Setup UUID
     '8ccbb969-3639-4ff4-ae4d-722d9580db57', -- Use the existing booking ID
     'Planning & Setup',
     'Initial planning, requirements gathering, and project setup',
-    'not_started',
+    'pending',
     NOW() + INTERVAL '7 days',
     NOW(),
     NOW(),
-    0,
     0
   ),
   (
@@ -33,11 +31,10 @@ INSERT INTO public.milestones (
     '8ccbb969-3639-4ff4-ae4d-722d9580db57',
     'Development',
     'Core development work and implementation',
-    'not_started',
+    'pending',
     NOW() + INTERVAL '14 days',
     NOW(),
     NOW(),
-    0,
     0
   ),
   (
@@ -45,11 +42,10 @@ INSERT INTO public.milestones (
     '8ccbb969-3639-4ff4-ae4d-722d9580db57',
     'Testing & Quality',
     'Testing, quality assurance, and bug fixes',
-    'not_started',
+    'pending',
     NOW() + INTERVAL '21 days',
     NOW(),
     NOW(),
-    0,
     0
   ),
   (
@@ -57,11 +53,10 @@ INSERT INTO public.milestones (
     '8ccbb969-3639-4ff4-ae4d-722d9580db57',
     'Delivery & Launch',
     'Final delivery, deployment, and project launch',
-    'not_started',
+    'pending',
     NOW() + INTERVAL '28 days',
     NOW(),
     NOW(),
-    0,
     0
   )
 ON CONFLICT (id) DO UPDATE SET
