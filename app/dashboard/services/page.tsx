@@ -501,10 +501,15 @@ export default function ServicesPage() {
         
         if (providerServices && providerServices.length > 0) {
           const serviceIds = providerServices.map(s => s.id)
+          
+          // Get reviews through bookings since reviews are linked to bookings, not services directly
           const { data: reviews } = await supabase
             .from('reviews')
-            .select('rating')
-            .in('service_id', serviceIds)
+            .select(`
+              rating,
+              bookings!inner(service_id)
+            `)
+            .in('bookings.service_id', serviceIds)
           
           averageRating = reviews && reviews.length > 0
             ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
