@@ -1,40 +1,182 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { FixedSidebar } from '@/components/dashboard/fixed-sidebar'
+import { KPIGrid, PerformanceMetrics } from '@/components/dashboard/kpi-cards'
+import { EarningsChart } from '@/components/dashboard/earnings-chart'
+import { RecentBookings } from '@/components/dashboard/recent-bookings'
+import { TopServices } from '@/components/dashboard/top-services'
+import { MonthlyGoals } from '@/components/dashboard/monthly-goals'
+import { ProviderDashboardService, ProviderDashboardStats, RecentBooking, TopService, MonthlyEarnings } from '@/lib/provider-dashboard'
 import { getSupabaseClient } from '@/lib/supabase'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { 
+  RefreshCw, 
+  AlertCircle,
+  TrendingUp,
+  Calendar,
+  DollarSign
+} from 'lucide-react'
+import toast from 'react-hot-toast'
 
-export default function ProviderRedirect() {
+export default function ProviderDashboard() {
   const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  
+  // Dashboard data
+  const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([])
+  const [topServices, setTopServices] = useState<TopService[]>([])
+  const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
   useEffect(() => {
-    const redirectToPersonalDashboard = async () => {
-      try {
-        const supabase = await getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        if (user) {
-          // Redirect to personalized provider dashboard
-          router.replace(`/dashboard/provider/${user.id}`)
-        } else {
-          // Redirect to sign in if not authenticated
-          router.replace('/auth/sign-in')
-        }
-      } catch (error) {
-        console.error('Error redirecting to provider dashboard:', error)
-        // Fallback to sign in
-        router.replace('/auth/sign-in')
-      }
-    }
+    loadUserAndData()
+  }, [])
 
-    redirectToPersonalDashboard()
-  }, [router])
+  const loadUserAndData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const supabase = await getSupabaseClient()
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        router.push('/auth/sign-in')
+        return
+      }
+
+      setUserId(user.id)
+      await loadDashboardData(user.id)
+    } catch (err) {
+      console.error('Error loading user and data:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
+      toast.error('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadDashboardData = async (providerId: string) => {
+    try {
+      const data = await ProviderDashboardService.getAllDashboardData(providerId)
+      
+      setStats(data.stats)
+      setRecentBookings(data.recentBookings)
+      setTopServices(data.topServices)
+      setMonthlyEarnings(data.monthlyEarnings)
+    } catch (err) {
+      console.error('Error loading dashboard data:', err)
+      throw err
+    }
+  }
+
+  const handleRefresh = async () => {
+    if (!userId) return
+    
+    try {
+      setRefreshing(true)
+      await loadDashboardData(userId)
+      toast.success('Dashboard refreshed')
+    } catch (err) {
+      console.error('Error refreshing dashboard:', err)
+      toast.error('Failed to refresh dashboard')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <FixedSidebar />
+        <div className="ml-0 lg:ml-64 p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center space-x-2">
+              <RefreshCw className="h-5 w-5 animate-spin" />
+              <span>Loading dashboard...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <FixedSidebar />
+        <div className="ml-0 lg:ml-64 p-6">
+          <Card>
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+                <p className="text-gray-600 mb-4">{error || 'Failed to load dashboard data'}</p>
+                <Button onClick={loadUserAndData} variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Redirecting to your dashboard...</p>
+    <div className="min-h-screen bg-gray-50">
+      <FixedSidebar />
+      
+      {/* Main Content */}
+      <div className="ml-0 lg:ml-64 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
+            <p className="text-gray-600">Welcome back! Here's what's happening with your business.</p>
+          </div>
+          <Button 
+            onClick={handleRefresh} 
+            disabled={refreshing}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
+
+        {/* KPI Grid */}
+        <div className="mb-8">
+          <KPIGrid data={stats} />
+        </div>
+
+        {/* Performance Metrics */}
+        <div className="mb-8">
+          <PerformanceMetrics data={stats} />
+        </div>
+
+        {/* Earnings Chart */}
+        <div className="mb-8">
+          <EarningsChart data={monthlyEarnings} />
+        </div>
+
+        {/* Recent Bookings and Top Services */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+          <RecentBookings bookings={recentBookings} />
+          <TopServices services={topServices} />
+        </div>
+
+        {/* Monthly Goals & Achievements */}
+        <MonthlyGoals data={stats} />
       </div>
     </div>
   )
