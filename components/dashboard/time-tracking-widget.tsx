@@ -1,329 +1,239 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Play, Pause, Square, Clock, Timer } from 'lucide-react'
-import { ProgressTrackingService, TimeEntry, formatDuration } from '@/lib/progress-tracking'
-import { getSupabaseClient } from '@/lib/supabase'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { 
+  Play, 
+  Pause, 
+  Square, 
+  Timer, 
+  Clock,
+  Activity
+} from 'lucide-react'
+import { Milestone, TimeEntry } from '@/lib/progress-tracking'
+import { format, formatDistanceToNow } from 'date-fns'
 
 interface TimeTrackingWidgetProps {
-  taskId: string
-  taskTitle: string
-  onTimeUpdate?: () => void
+  milestone: Milestone
+  activeTimeEntry: TimeEntry | null
+  onStartTimeTracking: (taskId: string, description?: string) => Promise<void>
+  onStopTimeTracking: (entryId: string) => Promise<void>
 }
 
-export function TimeTrackingWidget({ taskId, taskTitle, onTimeUpdate }: TimeTrackingWidgetProps) {
-  const [user, setUser] = useState<any>(null)
-  const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+export function TimeTrackingWidget({
+  milestone,
+  activeTimeEntry,
+  onStartTimeTracking,
+  onStopTimeTracking
+}: TimeTrackingWidgetProps) {
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [isTracking, setIsTracking] = useState(false)
 
+  // Check if any task in this milestone is being tracked
+  const milestoneTasks = milestone.tasks || []
+  const activeTask = milestoneTasks.find(task => 
+    activeTimeEntry && activeTimeEntry.task_id === task.id
+  )
+
+  // Update elapsed time for active tracking
   useEffect(() => {
-    loadUser()
-  }, [])
+    let interval: NodeJS.Timeout
 
-  useEffect(() => {
-    if (user) {
-      loadActiveTimeEntry()
-    }
-  }, [taskId, user])
-
-  const loadUser = async () => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    } catch (error) {
-      console.error('Error loading user:', error)
-    }
-  }
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-
-    if (activeEntry && activeEntry.is_active) {
+    if (activeTimeEntry && activeTimeEntry.is_active) {
+      setIsTracking(true)
+      const startTime = new Date(activeTimeEntry.start_time)
+      
       interval = setInterval(() => {
-        const startTime = new Date(activeEntry.start_time).getTime()
-        const now = new Date().getTime()
-        setElapsedTime(Math.floor((now - startTime) / 1000))
+        const now = new Date()
+        const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000)
+        setElapsedTime(elapsed)
       }, 1000)
+    } else {
+      setIsTracking(false)
+      setElapsedTime(0)
     }
 
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [activeEntry])
+  }, [activeTimeEntry])
 
-  const loadActiveTimeEntry = async () => {
-    if (!user) return
-
-    try {
-      const entry = await ProgressTrackingService.getActiveTimeEntry(user.id)
-      setActiveEntry(entry)
-      
-      if (entry && entry.is_active) {
-        const startTime = new Date(entry.start_time).getTime()
-        const now = new Date().getTime()
-        setElapsedTime(Math.floor((now - startTime) / 1000))
-      }
-    } catch (error) {
-      console.error('Error loading active time entry:', error)
-    }
-  }
-
-  const handleStartTracking = async () => {
-    if (!user || isLoading) return
-
-    try {
-      setIsLoading(true)
-      const entry = await ProgressTrackingService.startTimeTracking(taskId, user.id, `Working on: ${taskTitle}`)
-      setActiveEntry(entry)
-      setElapsedTime(0)
-      onTimeUpdate?.()
-    } catch (error) {
-      console.error('Error starting time tracking:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleStopTracking = async () => {
-    if (!activeEntry || isLoading) return
-
-    try {
-      setIsLoading(true)
-      await ProgressTrackingService.stopTimeTracking(activeEntry.id)
-      setActiveEntry(null)
-      setElapsedTime(0)
-      onTimeUpdate?.()
-    } catch (error) {
-      console.error('Error stopping time tracking:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const formatElapsedTime = (seconds: number): string => {
+  // Format elapsed time
+  const formatElapsedTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     const secs = seconds % 60
 
     if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
 
-  const isTracking = activeEntry?.is_active && activeEntry.task_id === taskId
+  // Calculate total time for milestone
+  const totalMilestoneTime = milestoneTasks.reduce((sum, task) => {
+    return sum + (task.actual_hours || 0)
+  }, 0)
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {isTracking ? (
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            ) : (
-              <Clock className="h-4 w-4 text-gray-400" />
-            )}
-            <span className="text-sm font-medium text-gray-900">
-              {isTracking ? 'Tracking Time' : 'Time Tracking'}
-            </span>
-          </div>
-          
-          {isTracking && (
-            <div className="flex items-center gap-1 text-sm text-gray-600">
-              <Timer className="h-4 w-4" />
-              <span className="font-mono">{formatElapsedTime(elapsedTime)}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {!isTracking ? (
-            <button
-              onClick={handleStartTracking}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Play className="h-3 w-3" />
-              Start
-            </button>
-          ) : (
-            <button
-              onClick={handleStopTracking}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Pause className="h-3 w-3" />
-              Stop
-            </button>
-          )}
-        </div>
-      </div>
-
-      {isTracking && (
-        <div className="mt-3 pt-3 border-t border-gray-200">
-          <div className="text-xs text-gray-600">
-            <div className="flex items-center justify-between">
-              <span>Task: {taskTitle}</span>
-              <span>Started: {new Date(activeEntry.start_time).toLocaleTimeString()}</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Time Tracking Summary Component
-export function TimeTrackingSummary({ taskId }: { taskId: string }) {
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadTimeEntries()
-  }, [taskId])
-
-  const loadTimeEntries = async () => {
+  // Handle start tracking
+  const handleStartTracking = async (taskId: string) => {
     try {
-      setLoading(true)
-      // This would need to be implemented in the service
-      // const entries = await ProgressTrackingService.getTimeEntries(taskId)
-      // setTimeEntries(entries)
+      const task = milestoneTasks.find(t => t.id === taskId)
+      await onStartTimeTracking(taskId, `Working on ${task?.title}`)
     } catch (error) {
-      console.error('Error loading time entries:', error)
-    } finally {
-      setLoading(false)
+      console.error('Error starting time tracking:', error)
     }
   }
 
-  const totalMinutes = timeEntries.reduce((sum, entry) => sum + (entry.duration_minutes || 0), 0)
-  const totalHours = totalMinutes / 60
+  // Handle stop tracking
+  const handleStopTracking = async () => {
+    if (activeTimeEntry) {
+      try {
+        await onStopTimeTracking(activeTimeEntry.id)
+      } catch (error) {
+        console.error('Error stopping time tracking:', error)
+      }
+    }
+  }
 
-  if (loading) {
+  // Get available tasks for tracking
+  const availableTasks = milestoneTasks.filter(task => 
+    task.status !== 'completed' && task.status !== 'cancelled'
+  )
+
+  if (availableTasks.length === 0) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+            <Timer className="h-5 w-5" />
+            <span>Time Tracking</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-500">No active tasks to track</p>
+            <p className="text-sm text-gray-400">All tasks are completed or cancelled</p>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-900">Time Logged</span>
-        </div>
-        <span className="text-sm font-medium text-gray-900">
-          {formatDuration(totalMinutes)}
-        </span>
-      </div>
-      
-      {timeEntries.length > 0 && (
-        <div className="mt-2 space-y-1">
-          {timeEntries.slice(0, 3).map((entry) => (
-            <div key={entry.id} className="text-xs text-gray-600 flex items-center justify-between">
-              <span>{new Date(entry.start_time).toLocaleDateString()}</span>
-              <span>{formatDuration(entry.duration_minutes || 0)}</span>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+          <Timer className="h-5 w-5" />
+          <span>Time Tracking</span>
+          {isTracking && (
+            <Badge variant="destructive" className="animate-pulse">
+              <Activity className="h-3 w-3 mr-1" />
+              Tracking
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Current Tracking Status */}
+        {isTracking && activeTask && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-green-900">Currently Tracking</p>
+                <p className="text-sm text-green-700">{activeTask.title}</p>
+                <p className="text-xs text-green-600">
+                  Started {formatDistanceToNow(new Date(activeTimeEntry!.start_time), { addSuffix: true })}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-green-900">
+                  {formatElapsedTime(elapsedTime)}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleStopTracking}
+                  className="mt-2 text-red-600 hover:text-red-700"
+                >
+                  <Square className="h-4 w-4 mr-1" />
+                  Stop
+                </Button>
+              </div>
             </div>
-          ))}
-          {timeEntries.length > 3 && (
-            <div className="text-xs text-gray-500">
-              +{timeEntries.length - 3} more entries
+          </div>
+        )}
+
+        {/* Available Tasks */}
+        {!isTracking && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Start tracking time for:</p>
+            <div className="space-y-2">
+              {availableTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{task.title}</p>
+                    <p className="text-sm text-gray-500">
+                      {task.estimated_hours || 0}h estimated • {task.actual_hours || 0}h logged
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleStartTracking(task.id)}
+                    className="flex items-center space-x-1"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Start</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Milestone Summary */}
+        <div className="border-t pt-4">
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold text-gray-900">
+                {totalMilestoneTime.toFixed(1)}h
+              </p>
+              <p className="text-sm text-gray-500">Total Logged</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">
+                {milestone.estimated_hours || 0}h
+              </p>
+              <p className="text-sm text-gray-500">Estimated</p>
+            </div>
+          </div>
+          
+          {milestone.estimated_hours && milestone.estimated_hours > 0 && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span className="text-gray-600">Progress</span>
+                <span className="text-gray-900">
+                  {((totalMilestoneTime / milestone.estimated_hours) * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.min((totalMilestoneTime / milestone.estimated_hours) * 100, 100)}%`
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
-      )}
-    </div>
-  )
-}
-
-// Global Time Tracking Status Component
-export function GlobalTimeTrackingStatus() {
-  const [user, setUser] = useState<any>(null)
-  const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null)
-  const [elapsedTime, setElapsedTime] = useState(0)
-
-  useEffect(() => {
-    loadUser()
-  }, [])
-
-  useEffect(() => {
-    if (!user) return
-
-    loadActiveTimeEntry()
-
-    const interval = setInterval(() => {
-      if (activeEntry && activeEntry.is_active) {
-        const startTime = new Date(activeEntry.start_time).getTime()
-        const now = new Date().getTime()
-        setElapsedTime(Math.floor((now - startTime) / 1000))
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [user, activeEntry])
-
-  const loadUser = async () => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    } catch (error) {
-      console.error('Error loading user:', error)
-    }
-  }
-
-  const loadActiveTimeEntry = async () => {
-    if (!user) return
-
-    try {
-      const entry = await ProgressTrackingService.getActiveTimeEntry(user.id)
-      setActiveEntry(entry)
-      
-      if (entry && entry.is_active) {
-        const startTime = new Date(entry.start_time).getTime()
-        const now = new Date().getTime()
-        setElapsedTime(Math.floor((now - startTime) / 1000))
-      }
-    } catch (error) {
-      console.error('Error loading active time entry:', error)
-    }
-  }
-
-  const formatElapsedTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  if (!activeEntry || !activeEntry.is_active) {
-    return null
-  }
-
-  return (
-    <div className="fixed bottom-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50">
-      <div className="flex items-center gap-3">
-        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-        <div>
-          <div className="text-sm font-medium text-gray-900">Time Tracking Active</div>
-          <div className="text-xs text-gray-600">
-            {activeEntry.description || 'Working on task'}
-          </div>
-        </div>
-        <div className="text-sm font-mono text-gray-900">
-          {formatElapsedTime(elapsedTime)}
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

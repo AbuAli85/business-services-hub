@@ -1,51 +1,85 @@
 'use client'
 
-import { useState } from 'react'
-import './progress-styles.css'
-import { Filter, MoreHorizontal, Edit, Trash2, Clock, AlertCircle, Download, Save, X } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Milestone, Task } from '@/types/progress'
-import { isTaskOverdue } from '@/lib/progress-calculations'
+import { 
+  Search, 
+  Filter, 
+  Download, 
+  Trash2, 
+  CheckCircle, 
+  Clock,
+  AlertTriangle,
+  Edit,
+  MoreHorizontal,
+  SelectAll,
+  X
+} from 'lucide-react'
+import { Milestone, Task } from '@/lib/progress-tracking'
+import { format, isBefore } from 'date-fns'
+import toast from 'react-hot-toast'
 
 interface BulkOperationsViewProps {
   milestones: Milestone[]
-  userRole: 'provider' | 'client'
-  onUpdate: () => void
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>
+  onTaskDelete: (taskId: string) => Promise<void>
+  onMilestoneUpdate: (milestoneId: string, updates: Partial<Milestone>) => Promise<void>
 }
 
-export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOperationsViewProps) {
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [priorityFilter, setPriorityFilter] = useState('all')
+type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
+type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+type BulkAction = 'mark_complete' | 'mark_pending' | 'change_priority' | 'delete' | 'export'
+
+export function BulkOperationsView({
+  milestones,
+  onTaskUpdate,
+  onTaskDelete,
+  onMilestoneUpdate
+}: BulkOperationsViewProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [editingTask, setEditingTask] = useState<string | null>(null)
-  const [editingStatus, setEditingStatus] = useState<string>('')
-  const [editingPriority, setEditingPriority] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<BulkAction | ''>('')
+  const [newPriority, setNewPriority] = useState<TaskPriority>('medium')
+  const [showFilters, setShowFilters] = useState(false)
 
-  // Sort milestones by order_index and get all tasks
-  const sortedMilestones = [...milestones].sort((a, b) => a.order_index - b.order_index)
-  const allTasks = sortedMilestones.flatMap(milestone => 
-    (milestone.tasks || []).map(task => ({
-      ...task,
-      milestone_title: milestone.title,
-      milestone_id: milestone.id
-    }))
-  )
+  // Get all tasks from milestones
+  const allTasks = useMemo(() => {
+    return milestones.flatMap(milestone => 
+      (milestone.tasks || []).map(task => ({
+        ...task,
+        milestoneTitle: milestone.title,
+        milestoneId: milestone.id
+      }))
+    )
+  }, [milestones])
 
-  // Filter tasks based on status, priority, and search term
-  const filteredTasks = allTasks.filter(task => {
-    const statusMatch = statusFilter === 'all' || task.status === statusFilter
-    const priorityMatch = priorityFilter === 'all' || (task.priority || 'normal') === priorityFilter
-    const searchMatch = searchTerm === '' || 
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.milestone_title.toLowerCase().includes(searchTerm.toLowerCase())
-    return statusMatch && priorityMatch && searchMatch
-  })
+  // Filter tasks based on search and filters
+  const filteredTasks = useMemo(() => {
+    return allTasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          task.milestoneTitle.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesStatus = statusFilter === 'all' || task.status === statusFilter
+      const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
+      
+      return matchesSearch && matchesStatus && matchesPriority
+    })
+  }, [allTasks, searchTerm, statusFilter, priorityFilter])
 
+  // Handle select all
   const handleSelectAll = () => {
     if (selectedTasks.size === filteredTasks.length) {
       setSelectedTasks(new Set())
@@ -54,7 +88,8 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
     }
   }
 
-  const handleSelectTask = (taskId: string) => {
+  // Handle individual task selection
+  const handleTaskSelect = (taskId: string) => {
     const newSelected = new Set(selectedTasks)
     if (newSelected.has(taskId)) {
       newSelected.delete(taskId)
@@ -64,391 +99,382 @@ export function BulkOperationsView({ milestones, userRole, onUpdate }: BulkOpera
     setSelectedTasks(newSelected)
   }
 
-  const handleBulkAction = async (action: string) => {
-    if (selectedTasks.size === 0) return
-    
-    setIsLoading(true)
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Here you would make actual API calls based on the action
-      console.log(`Performing ${action} on ${selectedTasks.size} tasks:`, Array.from(selectedTasks))
-      
-      // Call the parent update function
-      onUpdate()
-      
-      // Clear selection after action
-      setSelectedTasks(new Set())
-    } catch (error) {
-      console.error('Bulk action failed:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleEditTask = (taskId: string, status: string, priority: string) => {
-    setEditingTask(taskId)
-    setEditingStatus(status)
-    setEditingPriority(priority)
-  }
-
-  const handleSaveEdit = async (taskId: string) => {
-    setIsLoading(true)
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      console.log(`Updating task ${taskId}:`, { status: editingStatus, priority: editingPriority })
-      
-      // Call the parent update function
-      onUpdate()
-      
-      setEditingTask(null)
-      setEditingStatus('')
-      setEditingPriority('')
-    } catch (error) {
-      console.error('Task update failed:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingTask(null)
-    setEditingStatus('')
-    setEditingPriority('')
-  }
-
-  const handleExportCSV = () => {
-    const selectedTasksData = filteredTasks.filter(task => selectedTasks.has(task.id))
-    
-    if (selectedTasksData.length === 0) {
-      alert('Please select tasks to export')
+  // Handle bulk actions
+  const handleBulkAction = async () => {
+    if (selectedTasks.size === 0) {
+      toast.error('Please select tasks to perform bulk actions')
       return
     }
 
+    try {
+      switch (bulkAction) {
+        case 'mark_complete':
+          for (const taskId of selectedTasks) {
+            await onTaskUpdate(taskId, { 
+              status: 'completed',
+              completed_at: new Date().toISOString()
+            })
+          }
+          toast.success(`${selectedTasks.size} tasks marked as completed`)
+          break
+
+        case 'mark_pending':
+          for (const taskId of selectedTasks) {
+            await onTaskUpdate(taskId, { status: 'pending' })
+          }
+          toast.success(`${selectedTasks.size} tasks marked as pending`)
+          break
+
+        case 'change_priority':
+          for (const taskId of selectedTasks) {
+            await onTaskUpdate(taskId, { priority: newPriority })
+          }
+          toast.success(`${selectedTasks.size} tasks priority updated`)
+          break
+
+        case 'delete':
+          for (const taskId of selectedTasks) {
+            await onTaskDelete(taskId)
+          }
+          toast.success(`${selectedTasks.size} tasks deleted`)
+          break
+
+        case 'export':
+          exportSelectedTasks()
+          break
+
+        default:
+          toast.error('Please select a bulk action')
+          return
+      }
+
+      setSelectedTasks(new Set())
+      setBulkAction('')
+    } catch (error) {
+      console.error('Error performing bulk action:', error)
+      toast.error('Failed to perform bulk action')
+    }
+  }
+
+  // Export selected tasks to CSV
+  const exportSelectedTasks = () => {
+    const selectedTasksData = filteredTasks.filter(task => selectedTasks.has(task.id))
+    
     const csvContent = [
-      ['Task Title', 'Milestone', 'Status', 'Priority', 'Progress %', 'Hours'],
+      ['Task Title', 'Milestone', 'Status', 'Priority', 'Progress %', 'Due Date', 'Estimated Hours', 'Actual Hours'],
       ...selectedTasksData.map(task => [
         task.title,
-        task.milestone_title,
+        task.milestoneTitle,
         task.status,
-        task.priority || 'normal',
-        task.progress_percentage,
-        `${task.actual_hours || 0}h / ${task.estimated_hours || 0}h`
+        task.priority,
+        task.progress_percentage.toString(),
+        task.due_date || '',
+        (task.estimated_hours || 0).toString(),
+        (task.actual_hours || 0).toString()
       ])
-    ].map(row => row.join(',')).join('\n')
+    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `tasks-export-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `tasks-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
+    
+    toast.success('Tasks exported successfully')
   }
 
+  // Get status color
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'completed':
+        return 'bg-green-100 text-green-800'
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      case 'on_hold':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
   }
 
+  // Get priority color
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-blue-100 text-blue-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'urgent':
+        return 'bg-red-100 text-red-800'
+      case 'high':
+        return 'bg-orange-100 text-orange-800'
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'low':
+        return 'bg-green-100 text-green-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  // Check if task is overdue
+  const isOverdue = (task: Task) => {
+    if (!task.due_date || task.status === 'completed' || task.status === 'cancelled') {
+      return false
+    }
+    return isBefore(new Date(task.due_date), new Date())
   }
 
   return (
     <div className="space-y-6">
-      {/* Header with Filters */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <Checkbox
-              checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
-              onCheckedChange={handleSelectAll}
-            />
-            <span className="text-sm text-gray-600">
-              Select All ({selectedTasks.size}/{filteredTasks.length})
-            </span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Search Box */}
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
-            />
-            
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Filter by status"
+      {/* Header Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+            <MoreHorizontal className="h-5 w-5" />
+            <span>Bulk Operations</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Search and Filters */}
+          <div className="flex items-center space-x-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search tasks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center space-x-2"
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Filter by priority"
-            >
-              <option value="all">All Priority</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+              <Filter className="h-4 w-4" />
+              <span>Filters</span>
+            </Button>
           </div>
-        </div>
 
-        {/* Bulk Actions */}
-        {selectedTasks.size > 0 && (
-          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <span className="text-sm text-blue-700">
-              {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
-            </span>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button 
-                size="sm" 
+          {/* Filters */}
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Status</label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">Priority</label>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priorities</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setStatusFilter('all')
+                    setPriorityFilter('all')
+                    setSearchTerm('')
+                  }}
+                  className="w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Bulk Actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
                 variant="outline"
-                onClick={() => handleBulkAction('mark_complete')}
-                disabled={isLoading}
+                onClick={handleSelectAll}
+                className="flex items-center space-x-2"
               >
-                {isLoading ? 'Processing...' : 'Mark Complete'}
+                <SelectAll className="h-4 w-4" />
+                <span>
+                  {selectedTasks.size === filteredTasks.length ? 'Deselect All' : 'Select All'}
+                </span>
               </Button>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => handleBulkAction('change_priority')}
-                disabled={isLoading}
+              
+              <span className="text-sm text-gray-600">
+                {selectedTasks.size} of {filteredTasks.length} selected
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Select value={bulkAction} onValueChange={(value) => setBulkAction(value as BulkAction)}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select action..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mark_complete">Mark as Complete</SelectItem>
+                  <SelectItem value="mark_pending">Mark as Pending</SelectItem>
+                  <SelectItem value="change_priority">Change Priority</SelectItem>
+                  <SelectItem value="delete">Delete Tasks</SelectItem>
+                  <SelectItem value="export">Export to CSV</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {bulkAction === 'change_priority' && (
+                <Select value={newPriority} onValueChange={(value) => setNewPriority(value as TaskPriority)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              <Button
+                onClick={handleBulkAction}
+                disabled={selectedTasks.size === 0 || !bulkAction}
+                className="flex items-center space-x-2"
               >
-                Change Priority
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => handleBulkAction('assign')}
-                disabled={isLoading}
-              >
-                Assign
-              </Button>
-              <Button 
-                size="sm" 
-                variant="destructive"
-                onClick={() => handleBulkAction('delete')}
-                disabled={isLoading}
-              >
-                Delete
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={handleExportCSV}
-                disabled={isLoading}
-                className="flex items-center gap-1"
-              >
-                <Download className="h-3 w-3" />
-                Export CSV
+                {bulkAction === 'export' ? (
+                  <Download className="h-4 w-4" />
+                ) : bulkAction === 'delete' ? (
+                  <Trash2 className="h-4 w-4" />
+                ) : (
+                  <CheckCircle className="h-4 w-4" />
+                )}
+                <span>Execute</span>
               </Button>
             </div>
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Tasks Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Task
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Milestone
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Progress
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hours
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTasks.map((task) => {
-                const isOverdue = task.due_date && isTaskOverdue(task)
-                
-                return (
-                  <tr key={task.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Checkbox
-                          checked={selectedTasks.has(task.id)}
-                          onCheckedChange={() => handleSelectTask(task.id)}
-                          className="mr-3"
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                          {isOverdue && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <AlertCircle className="h-3 w-3 text-red-500" />
-                              <span className="text-xs text-red-600">Overdue</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{task.milestone_title}</div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {editingTask === task.id ? (
-                        <Select value={editingStatus} onValueChange={setEditingStatus}>
-                          <SelectTrigger className="w-24 h-6 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge className={`text-xs ${getStatusColor(task.status)}`}>
-                          {task.status.replace('_', ' ')}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {editingTask === task.id ? (
-                        <Select value={editingPriority} onValueChange={setEditingPriority}>
-                          <SelectTrigger className="w-20 h-6 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="normal">Normal</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge className={`text-xs ${getPriorityColor(task.priority || 'normal')}`}>
-                          {task.priority || 'normal'}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`bg-blue-600 h-2 rounded-full transition-all duration-300 ${
-                              task.progress_percentage >= 100 ? 'progress-bar-100' :
-                              task.progress_percentage >= 95 ? 'progress-bar-95' :
-                              task.progress_percentage >= 90 ? 'progress-bar-90' :
-                              task.progress_percentage >= 85 ? 'progress-bar-85' :
-                              task.progress_percentage >= 80 ? 'progress-bar-80' :
-                              task.progress_percentage >= 75 ? 'progress-bar-75' :
-                              task.progress_percentage >= 70 ? 'progress-bar-70' :
-                              task.progress_percentage >= 65 ? 'progress-bar-65' :
-                              task.progress_percentage >= 60 ? 'progress-bar-60' :
-                              task.progress_percentage >= 55 ? 'progress-bar-55' :
-                              task.progress_percentage >= 50 ? 'progress-bar-50' :
-                              task.progress_percentage >= 45 ? 'progress-bar-45' :
-                              task.progress_percentage >= 40 ? 'progress-bar-40' :
-                              task.progress_percentage >= 35 ? 'progress-bar-35' :
-                              task.progress_percentage >= 30 ? 'progress-bar-30' :
-                              task.progress_percentage >= 25 ? 'progress-bar-25' :
-                              task.progress_percentage >= 20 ? 'progress-bar-20' :
-                              task.progress_percentage >= 15 ? 'progress-bar-15' :
-                              task.progress_percentage >= 10 ? 'progress-bar-10' :
-                              task.progress_percentage >= 5 ? 'progress-bar-5' : 'progress-bar-0'
-                            }`}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-600">{task.progress_percentage}%</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {(task.actual_hours || 0).toFixed(1)}h / {(task.estimated_hours || 0).toFixed(1)}h
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        {editingTask === task.id ? (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => handleSaveEdit(task.id)}
-                              disabled={isLoading}
-                            >
-                              <Save className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={handleCancelEdit}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => handleEditTask(task.id, task.status, task.priority || 'normal')}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost">
-                              <MoreHorizontal className="h-3 w-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+      <Card>
+        <CardContent className="p-0">
+          {filteredTasks.length === 0 ? (
+            <div className="text-center py-8">
+              <Search className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-500">No tasks found</p>
+              <p className="text-sm text-gray-400">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-left">
+                      <Checkbox
+                        checked={selectedTasks.size === filteredTasks.length && filteredTasks.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Task</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Milestone</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Priority</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Progress</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Due Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Hours</th>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredTasks.map((task) => {
+                    const overdue = isOverdue(task)
+                    
+                    return (
+                      <tr
+                        key={task.id}
+                        className={`hover:bg-gray-50 ${overdue ? 'bg-red-50' : ''}`}
+                      >
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={selectedTasks.has(task.id)}
+                            onCheckedChange={() => handleTaskSelect(task.id)}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-900">{task.title}</span>
+                            {overdue && (
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-gray-500 mt-1">{task.description}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-900">{task.milestoneTitle}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge className={getStatusColor(task.status)}>
+                            {task.status.replace('_', ' ')}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
+                            {task.priority}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${task.progress_percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600">{task.progress_percentage}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-900">
+                            {task.due_date ? format(new Date(task.due_date), 'MMM dd, yyyy') : '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-sm text-gray-900">
+                            <div>Est: {task.estimated_hours || 0}h</div>
+                            <div>Act: {task.actual_hours || 0}h</div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
