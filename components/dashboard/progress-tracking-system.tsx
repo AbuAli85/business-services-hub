@@ -21,10 +21,8 @@ import { ProgressTrackingService, Milestone, Task, BookingProgress, TimeEntry } 
 import { MainProgressHeader } from './main-progress-header'
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { ImprovedMilestonesDisplay } from './improved-milestones-display'
-import { MonthlyProgressTab } from './monthly-progress-tab'
 import { TimelineView } from './timeline-view'
 import { AnalyticsView } from './analytics-view'
-import { BulkOperationsView } from './bulk-operations-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
 import toast from 'react-hot-toast'
 
@@ -48,7 +46,6 @@ export function ProgressTrackingSystem({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [showDebug, setShowDebug] = useState(false)
 
   const { 
     isUpdating, 
@@ -398,82 +395,27 @@ export function ProgressTrackingSystem({
             <h2 className="text-2xl font-bold text-gray-900">Progress Tracking</h2>
             <p className="text-gray-600">Monitor and manage project progress</p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button 
-              onClick={() => setShowDebug(!showDebug)} 
-              variant="ghost"
-              size="sm"
-            >
-              Debug
-            </Button>
-            <Button 
-              onClick={refreshData} 
-              disabled={refreshing}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+          <Button 
+            onClick={refreshData} 
+            disabled={refreshing}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
-        {/* Main Progress Header */}
-        <MainProgressHeader
-          bookingProgress={bookingProgress || {
-            booking_progress: 0,
-            booking_title: 'Project Progress',
-            booking_status: 'in_progress'
-          }}
-          completedMilestones={completedMilestones || 0}
-          totalMilestones={totalMilestones || 0}
-          completedTasks={completedTasks || 0}
-          totalTasks={totalTasks || 0}
-          totalEstimatedHours={totalEstimatedHours || 0}
-          totalActualHours={totalActualHours || 0}
-          overdueTasks={overdueTasks || 0}
-        />
 
-        {/* Debug Panel */}
-        {showDebug && (
-          <Card className="bg-gray-50">
-            <CardContent className="p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <p><strong>Booking ID:</strong> {bookingId}</p>
-                  <p><strong>User Role:</strong> {userRole}</p>
-                  <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-                  <p><strong>Error:</strong> {error || 'None'}</p>
-                </div>
-                <div>
-                  <p><strong>Milestones:</strong> {milestones?.length || 0}</p>
-                  <p><strong>Time Entries:</strong> {timeEntries?.length || 0}</p>
-                  <p><strong>Booking Progress:</strong> {bookingProgress ? 'Yes' : 'No'}</p>
-                  <p><strong>Completed Milestones:</strong> {completedMilestones}</p>
-                </div>
-              </div>
-              <div className="mt-2">
-                <p className="text-xs text-gray-600">
-                  <strong>Raw Data:</strong> Check browser console for detailed logs
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-3">
           <Tabs value={activeView} onValueChange={(value) => setActiveView(value as ViewType)}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview" className="flex items-center space-x-2">
                 <Target className="h-4 w-4" />
                 <span>Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="monthly" className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4" />
-                <span>Monthly</span>
               </TabsTrigger>
               <TabsTrigger value="timeline" className="flex items-center space-x-2">
                 <Clock className="h-4 w-4" />
@@ -483,38 +425,39 @@ export function ProgressTrackingSystem({
                 <BarChart3 className="h-4 w-4" />
                 <span>Analytics</span>
               </TabsTrigger>
-              {userRole === 'provider' && (
-                <TabsTrigger value="bulk" className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Bulk Ops</span>
-                </TabsTrigger>
-              )}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-            <ImprovedMilestonesDisplay
-              milestones={milestones || []}
-              userRole={userRole}
-              onTaskUpdate={handleTaskUpdate}
-              onTaskCreate={handleTaskCreate}
-              onTaskDelete={handleTaskDelete}
-              onMilestoneUpdate={handleMilestoneUpdate}
-              onStartTimeTracking={handleStartTimeTracking}
-              onStopTimeTracking={handleStopTimeTracking}
-              timeEntries={timeEntries || []}
-            />
-            </TabsContent>
-
-            <TabsContent value="monthly" className="space-y-6">
-              <MonthlyProgressTab
+              {/* Main Progress Header */}
+              <MainProgressHeader
+                bookingProgress={bookingProgress || {
+                  booking_progress: 0,
+                  booking_title: 'Project Progress',
+                  booking_status: 'in_progress'
+                }}
+                completedMilestones={completedMilestones || 0}
+                totalMilestones={totalMilestones || 0}
+                completedTasks={completedTasks || 0}
+                totalTasks={totalTasks || 0}
+                totalEstimatedHours={totalEstimatedHours || 0}
+                totalActualHours={totalActualHours || 0}
+                overdueTasks={overdueTasks || 0}
+              />
+              
+              {/* Improved Milestones Display */}
+              <ImprovedMilestonesDisplay
                 milestones={milestones || []}
                 userRole={userRole}
                 onTaskUpdate={handleTaskUpdate}
                 onTaskCreate={handleTaskCreate}
                 onTaskDelete={handleTaskDelete}
                 onMilestoneUpdate={handleMilestoneUpdate}
+                onStartTimeTracking={handleStartTimeTracking}
+                onStopTimeTracking={handleStopTimeTracking}
+                timeEntries={timeEntries || []}
               />
             </TabsContent>
+
 
             <TabsContent value="timeline" className="space-y-6">
               <TimelineView
@@ -537,16 +480,6 @@ export function ProgressTrackingSystem({
               />
             </TabsContent>
 
-            {userRole === 'provider' && (
-              <TabsContent value="bulk" className="space-y-6">
-                <BulkOperationsView
-                  milestones={milestones || []}
-                  onTaskUpdate={handleTaskUpdate}
-                  onTaskDelete={handleTaskDelete}
-                  onMilestoneUpdate={handleMilestoneUpdate}
-                />
-              </TabsContent>
-            )}
           </Tabs>
         </div>
 
