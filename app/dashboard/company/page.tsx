@@ -1259,7 +1259,7 @@ export default function CompanyPage() {
         </div>
       )}
 
-      {creating || editing && (
+      {(creating || editing) && (
         /* Enhanced Company Form */
         <div className="max-w-6xl mx-auto">
           <Card className="border-0 shadow-xl">
