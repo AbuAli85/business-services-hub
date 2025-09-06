@@ -727,12 +727,28 @@ export default function EnhancedBookingDetails() {
     if (!newTaskTitle.trim() || !bookingId) return
     
     try {
+      console.log('🔄 Adding task:', newTaskTitle.trim())
       const supabase = await getSupabaseClient()
+      
+      // Check authentication first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError)
+        throw new Error('Authentication error: ' + sessionError.message)
+      }
+      
+      if (!session) {
+        console.error('❌ No active session')
+        throw new Error('No active session. Please sign in again.')
+      }
+      
+      console.log('✅ User authenticated:', session.user.id)
       
       // Get the first milestone for this booking (or create a default one)
       let milestoneId = milestones[0]?.id
       
       if (!milestoneId) {
+        console.log('📝 Creating default milestone...')
         // Create a default milestone if none exists
         const { data: newMilestone, error: milestoneError } = await supabase
           .from('milestones')
@@ -746,11 +762,18 @@ export default function EnhancedBookingDetails() {
           .select()
           .single()
         
-        if (milestoneError) throw milestoneError
+        if (milestoneError) {
+          console.error('❌ Milestone creation error:', milestoneError)
+          throw milestoneError
+        }
         milestoneId = newMilestone.id
+        console.log('✅ Milestone created:', milestoneId)
+      } else {
+        console.log('✅ Using existing milestone:', milestoneId)
       }
       
       // Create the new task
+      console.log('📝 Creating task...')
       const { data: newTask, error: taskError } = await supabase
         .from('tasks')
         .insert({
@@ -763,7 +786,12 @@ export default function EnhancedBookingDetails() {
         .select()
         .single()
       
-      if (taskError) throw taskError
+      if (taskError) {
+        console.error('❌ Task creation error:', taskError)
+        throw taskError
+      }
+      
+      console.log('✅ Task created successfully:', newTask.id)
       
       // Clear form
       setNewTaskTitle('')
@@ -776,8 +804,8 @@ export default function EnhancedBookingDetails() {
       toast.success('Task added successfully')
       
     } catch (error) {
-      console.error('Error adding task:', error)
-      toast.error('Failed to add task')
+      console.error('❌ Error adding task:', error)
+      toast.error('Failed to add task: ' + (error.message || 'Unknown error'))
     }
   }
 
