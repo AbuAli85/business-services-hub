@@ -299,6 +299,24 @@ export function SimpleMilestones({
     return previousPhase ? previousPhase.status === 'completed' : false
   }
 
+  const getNextAvailablePhase = () => {
+    // Find the first phase that can be started
+    for (let i = 1; i <= 4; i++) {
+      const phase = milestones.find(m => m.phaseNumber === i)
+      if (phase && canStartMilestone(phase) && phase.status === 'pending') {
+        return phase
+      }
+    }
+    return null
+  }
+
+  const autoStartNextPhase = () => {
+    const nextPhase = getNextAvailablePhase()
+    if (nextPhase) {
+      onMilestoneUpdate(nextPhase.id, { status: 'in_progress' })
+    }
+  }
+
   const getProjectPeriodInfo = () => {
     switch (projectType) {
       case 'one_time':
@@ -358,6 +376,15 @@ export function SimpleMilestones({
                 {milestones.filter(m => m.status === 'completed').length} of 4 completed
               </Badge>
             </div>
+            {userRole === 'provider' && getNextAvailablePhase() && (
+              <Button
+                onClick={autoStartNextPhase}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Next Phase
+              </Button>
+            )}
             {projectType === 'monthly' && userRole === 'provider' && (
               <Button
                 onClick={handleMonthlyReset}
@@ -437,14 +464,29 @@ export function SimpleMilestones({
           const completedTasks = milestone.tasks.filter(t => t.completed).length
           const totalTasks = milestone.tasks.length
           
-          // Calculate progress based on status and tasks
+          // Enhanced progress calculation logic
           let progress = 0
+          let progressText = ''
+          
           if (milestone.status === 'completed') {
             progress = 100
+            progressText = '🎉 COMPLETED!'
           } else if (milestone.status === 'in_progress') {
-            progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 25 // Default 25% for in-progress with no tasks
+            if (totalTasks > 0) {
+              progress = Math.round((completedTasks / totalTasks) * 100)
+              progressText = `🚀 ${progress}% Complete`
+            } else {
+              progress = 25 // Default for in-progress with no tasks
+              progressText = '🚀 Getting Started'
+            }
           } else {
-            progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+            if (totalTasks > 0) {
+              progress = Math.round((completedTasks / totalTasks) * 100)
+              progressText = `${progress}% Complete`
+            } else {
+              progress = 0
+              progressText = 'Ready to Start'
+            }
           }
           
           const canStart = canStartMilestone(milestone)
@@ -470,13 +512,22 @@ export function SimpleMilestones({
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <CardTitle className="text-xl font-bold text-gray-900">{milestone.title}</CardTitle>
-                        <div className={`px-3 py-1 rounded-full text-sm font-semibold border-2 ${getStatusColor(milestone.status)}`}>
-                          {isLocked ? 'LOCKED' : milestone.status.replace('_', ' ').toUpperCase()}
+                        <div className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm ${getStatusColor(milestone.status)}`}>
+                          {isLocked ? '🔒 LOCKED' : 
+                           milestone.status === 'completed' ? '✅ COMPLETED' :
+                           milestone.status === 'in_progress' ? '🚀 IN PROGRESS' :
+                           '⏳ PENDING'}
                         </div>
                         {isLocked && (
-                          <div className="flex items-center space-x-1 text-xs text-gray-500">
+                          <div className="flex items-center space-x-1 text-xs text-gray-500 bg-yellow-50 px-2 py-1 rounded-full">
                             <Lock className="h-3 w-3" />
                             <span>Complete previous phase first</span>
+                          </div>
+                        )}
+                        {milestone.status === 'completed' && (
+                          <div className="flex items-center space-x-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                            <CheckCircle className="h-3 w-3" />
+                            <span>Phase completed successfully!</span>
                           </div>
                         )}
                         {milestone.isRecurring && (
@@ -579,9 +630,7 @@ export function SimpleMilestones({
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-sm font-bold text-white drop-shadow-lg">
-                        {milestone.status === 'completed' ? '🎉 COMPLETED!' : 
-                         milestone.status === 'in_progress' ? '🚀 IN PROGRESS' :
-                         `${Math.round(progress)}% Complete`}
+                        {progressText}
                       </span>
                     </div>
                   </div>
@@ -743,42 +792,63 @@ export function SimpleMilestones({
                   )}
                 </div>
 
-                {/* New Task Form */}
+                {/* Enhanced New Task Form */}
                 {newTask && newTask.milestoneId === milestone.id && (
-                  <Card className="mt-4 border-blue-200 bg-blue-50">
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-3">Add New Task</h4>
-                      <div className="space-y-3">
-                        <Input
-                          placeholder="Task title"
-                          value={newTask.task.title}
-                          onChange={(e) => setNewTask({
-                            ...newTask,
-                            task: { ...newTask.task, title: e.target.value }
-                          })}
-                        />
-                        <div className="grid grid-cols-2 gap-2">
+                  <Card className="mt-4 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-bold text-lg text-blue-900">Add New Task to {milestone.title}</h4>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setNewTask(null)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Task Title *</label>
                           <Input
-                            type="date"
-                            placeholder="Due date"
-                            value={newTask.task.dueDate ? format(new Date(newTask.task.dueDate), 'yyyy-MM-dd') : ''}
+                            placeholder="Enter a descriptive task title..."
+                            value={newTask.task.title}
                             onChange={(e) => setNewTask({
                               ...newTask,
-                              task: { ...newTask.task, dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined }
+                              task: { ...newTask.task, title: e.target.value }
                             })}
+                            className="w-full"
                           />
-                          <select
-                            value={newTask.task.priority || 'medium'}
-                            onChange={(e) => setNewTask({
-                              ...newTask,
-                              task: { ...newTask.task, priority: e.target.value as 'low' | 'medium' | 'high' }
-                            })}
-                            className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          >
-                            <option value="low">Low Priority</option>
-                            <option value="medium">Medium Priority</option>
-                            <option value="high">High Priority</option>
-                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Due Date</label>
+                            <Input
+                              type="date"
+                              placeholder="Select due date"
+                              value={newTask.task.dueDate ? format(new Date(newTask.task.dueDate), 'yyyy-MM-dd') : ''}
+                              onChange={(e) => setNewTask({
+                                ...newTask,
+                                task: { ...newTask.task, dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined }
+                              })}
+                              className="w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
+                            <select
+                              value={newTask.task.priority || 'medium'}
+                              onChange={(e) => setNewTask({
+                                ...newTask,
+                                task: { ...newTask.task, priority: e.target.value as 'low' | 'medium' | 'high' }
+                              })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value="low">🟢 Low Priority</option>
+                              <option value="medium">🟡 Medium Priority</option>
+                              <option value="high">🔴 High Priority</option>
+                            </select>
+                          </div>
                         </div>
                         <div className="flex items-center space-x-4">
                           <label className="flex items-center space-x-2">
@@ -807,9 +877,22 @@ export function SimpleMilestones({
                             </select>
                           )}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button onClick={saveNewTask} size="sm">Add Task</Button>
-                          <Button variant="outline" onClick={() => setNewTask(null)} size="sm">Cancel</Button>
+                        <div className="flex items-center justify-end space-x-3 pt-4 border-t border-blue-200">
+                          <Button 
+                            onClick={saveNewTask} 
+                            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-2 font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                            disabled={!newTask.task.title.trim()}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Task
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setNewTask(null)} 
+                            className="px-6 py-2 font-semibold border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200"
+                          >
+                            Cancel
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
