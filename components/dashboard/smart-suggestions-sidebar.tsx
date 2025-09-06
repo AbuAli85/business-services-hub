@@ -15,7 +15,8 @@ import {
   Lightbulb
 } from 'lucide-react'
 import { Milestone, BookingProgress, TimeEntry } from '@/lib/progress-tracking'
-import { format, formatDistanceToNow, isAfter, isBefore, addDays } from 'date-fns'
+import { isAfter, isBefore, addDays } from 'date-fns'
+import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
 import toast from 'react-hot-toast'
 
 interface SmartSuggestion {
@@ -67,7 +68,7 @@ export function SmartSuggestionsSidebar({
           type: 'overdue',
           priority: 'high',
           title: 'Overdue Milestone',
-          description: `"${milestone.title}" was due ${formatDistanceToNow(new Date(milestone.due_date!), { addSuffix: true })}`,
+          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.due_date, { addSuffix: true })}`,
           action: 'Follow up with client',
           data: { milestoneId: milestone.id },
           dismissible: true

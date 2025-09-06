@@ -18,7 +18,8 @@ import {
   TrendingUp,
   Timer
 } from 'lucide-react'
-import { format, addDays } from 'date-fns'
+import { addDays } from 'date-fns'
+import { safeFormatDate } from '@/lib/date-utils'
 
 interface MainProgressHeaderProps {
   bookingProgress: {
@@ -55,7 +56,7 @@ export function MainProgressHeader({
     if (overallProgress >= 100) return 'Completed'
     
     const daysRemaining = Math.ceil((100 - overallProgress) / 10) // Rough estimate
-    return format(addDays(new Date(), daysRemaining), 'MMM dd, yyyy')
+    return safeFormatDate(addDays(new Date(), daysRemaining), 'MMM dd, yyyy')
   }
 
   const estimatedCompletion = getEstimatedCompletion()

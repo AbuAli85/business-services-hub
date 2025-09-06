@@ -13,7 +13,7 @@ import {
   Activity
 } from 'lucide-react'
 import { Milestone, TimeEntry } from '@/lib/progress-tracking'
-import { format, formatDistanceToNow } from 'date-fns'
+import { safeFormatDistanceToNow } from '@/lib/date-utils'
 
 interface TimeTrackingWidgetProps {
   milestone: Milestone
@@ -146,7 +146,7 @@ export function TimeTrackingWidget({
                 <p className="font-medium text-green-900">Currently Tracking</p>
                 <p className="text-sm text-green-700">{activeTask.title}</p>
                 <p className="text-xs text-green-600">
-                  Started {formatDistanceToNow(new Date(activeTimeEntry!.start_time), { addSuffix: true })}
+                  Started {safeFormatDistanceToNow(activeTimeEntry!.start_time, { addSuffix: true })}
                 </p>
               </div>
               <div className="text-right">

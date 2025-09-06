@@ -16,7 +16,8 @@ import {
   Activity
 } from 'lucide-react'
 import { Milestone, TimeEntry } from '@/lib/progress-tracking'
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from 'date-fns'
+import { startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from 'date-fns'
+import { safeFormatDate } from '@/lib/date-utils'
 
 interface AnalyticsViewProps {
   milestones: Milestone[]
@@ -93,7 +94,7 @@ export function AnalyticsView({
       
       timeEntries.forEach(entry => {
         if (entry.duration_minutes) {
-          const date = format(new Date(entry.created_at), 'yyyy-MM-dd')
+          const date = safeFormatDate(entry.created_at, 'yyyy-MM-dd')
           const hours = entry.duration_minutes / 60
           dailyHours.set(date, (dailyHours.get(date) || 0) + hours)
         }
@@ -346,7 +347,7 @@ export function AnalyticsView({
               {analyticsData.timeTracking.map((day, index) => (
                 <div key={day.date} className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">
-                    {format(new Date(day.date), 'MMM dd')}
+                    {safeFormatDate(day.date, 'MMM dd')}
                   </span>
                   <div className="flex items-center space-x-2">
                     <div className="w-32 bg-gray-200 rounded-full h-2">

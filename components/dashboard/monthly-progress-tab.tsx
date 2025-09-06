@@ -18,7 +18,8 @@ import {
   Grid
 } from 'lucide-react'
 import { Milestone, Task } from '@/lib/progress-tracking'
-import { format, startOfMonth, endOfMonth, isWithinInterval, isAfter, isBefore } from 'date-fns'
+import { startOfMonth, endOfMonth, isWithinInterval, isAfter, isBefore } from 'date-fns'
+import { safeFormatDate } from '@/lib/date-utils'
 
 interface MonthlyProgressTabProps {
   milestones: Milestone[]
@@ -407,7 +408,7 @@ export function MonthlyProgressTab({
                         <span>Actual: {task.actual_hours || 0}h</span>
                         {task.due_date && (
                           <span>
-                            Due: {format(new Date(task.due_date), 'MMM dd')}
+                            Due: {safeFormatDate(task.due_date, 'MMM dd')}
                           </span>
                         )}
                       </div>

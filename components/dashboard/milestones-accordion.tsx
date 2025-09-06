@@ -26,7 +26,8 @@ import {
   User
 } from 'lucide-react'
 import { Milestone, Task, TimeEntry } from '@/lib/progress-tracking'
-import { format, formatDistanceToNow, isAfter, isBefore } from 'date-fns'
+import { isAfter, isBefore } from 'date-fns'
+import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
 import { TaskManagement } from './task-management'
 import { TimeTrackingWidget } from './time-tracking-widget'
 import { CommentsSection } from './comments-section'
@@ -213,13 +214,13 @@ export function MilestonesAccordion({
                     <div>
                       <p className="text-sm font-medium text-gray-600">Due Date</p>
                       <p className="text-sm text-gray-900">
-                        {milestone.due_date ? format(new Date(milestone.due_date), 'MMM dd, yyyy') : 'No due date'}
+                        {milestone.due_date ? safeFormatDate(milestone.due_date, 'MMM dd, yyyy') : 'No due date'}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-600">Last Updated</p>
                       <p className="text-sm text-gray-900">
-                        {formatDistanceToNow(new Date(milestone.updated_at), { addSuffix: true })}
+                        {safeFormatDistanceToNow(milestone.updated_at, { addSuffix: true })}
                       </p>
                     </div>
                     <div>

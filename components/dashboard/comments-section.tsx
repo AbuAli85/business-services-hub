@@ -14,7 +14,7 @@ import {
   EyeOff
 } from 'lucide-react'
 import { Milestone, TaskComment } from '@/lib/progress-tracking'
-import { format, formatDistanceToNow } from 'date-fns'
+import { safeFormatDistanceToNow } from '@/lib/date-utils'
 import { ProgressTrackingService } from '@/lib/progress-tracking'
 import toast from 'react-hot-toast'
 
@@ -210,7 +210,7 @@ export function CommentsSection({
                                 {comment.is_internal ? 'Internal Note' : 'Comment'}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                                {safeFormatDistanceToNow(comment.created_at, { addSuffix: true })}
                               </p>
                             </div>
                           </div>

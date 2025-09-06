@@ -29,7 +29,8 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { Milestone, Task, TimeEntry } from '@/lib/progress-tracking'
-import { format, formatDistanceToNow, isAfter, isBefore } from 'date-fns'
+import { formatDistanceToNow, isAfter, isBefore } from 'date-fns'
+import { safeFormatDate } from '@/lib/date-utils'
 import toast from 'react-hot-toast'
 
 interface TaskManagementProps {
@@ -311,7 +312,7 @@ export function TaskManagement({
                           <div className="flex items-center space-x-1">
                             <Calendar className="h-3 w-3" />
                             <span>
-                              {task.due_date ? format(new Date(task.due_date), 'MMM dd') : 'No due date'}
+                              {task.due_date ? safeFormatDate(task.due_date, 'MMM dd') : 'No due date'}
                             </span>
                           </div>
                           <div className="flex items-center space-x-1">

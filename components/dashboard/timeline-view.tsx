@@ -15,7 +15,8 @@ import {
   ArrowDown
 } from 'lucide-react'
 import { Milestone } from '@/lib/progress-tracking'
-import { format, formatDistanceToNow, isAfter, isBefore } from 'date-fns'
+import { formatDistanceToNow, isAfter, isBefore } from 'date-fns'
+import { safeFormatDate } from '@/lib/date-utils'
 
 interface TimelineViewProps {
   milestones: Milestone[]
@@ -228,7 +229,7 @@ export function TimelineView({
                                     <Calendar className="h-3 w-3" />
                                     <span>
                                       {milestone.due_date 
-                                        ? format(new Date(milestone.due_date), 'MMM dd, yyyy')
+                                        ? safeFormatDate(milestone.due_date, 'MMM dd, yyyy')
                                         : 'No due date'
                                       }
                                     </span>

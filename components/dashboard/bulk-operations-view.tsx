@@ -27,7 +27,8 @@ import {
   X
 } from 'lucide-react'
 import { Milestone, Task } from '@/lib/progress-tracking'
-import { format, isBefore } from 'date-fns'
+import { isBefore } from 'date-fns'
+import { safeFormatDate } from '@/lib/date-utils'
 import toast from 'react-hot-toast'
 
 interface BulkOperationsViewProps {
@@ -180,7 +181,7 @@ export function BulkOperationsView({
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `tasks-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    a.download = `tasks-export-${safeFormatDate(new Date(), 'yyyy-MM-dd')}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
     
@@ -459,7 +460,7 @@ export function BulkOperationsView({
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-sm text-gray-900">
-                            {task.due_date ? format(new Date(task.due_date), 'MMM dd, yyyy') : '-'}
+                            {task.due_date ? safeFormatDate(task.due_date, 'MMM dd, yyyy') : '-'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
