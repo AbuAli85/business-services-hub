@@ -233,7 +233,7 @@ export default function EnhancedDashboardPage() {
               <p className="text-gray-600">Welcome back, {user.profile?.full_name || user.email}</p>
             </div>
             <div className="flex space-x-3">
-              <Button onClick={() => router.push('/dashboard/services/create')}>
+              <Button onClick={() => router.push('/dashboard/provider/create-service')}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Service
               </Button>

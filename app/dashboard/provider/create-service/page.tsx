@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Stepper } from '@/components/ui/stepper'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { getSupabaseClient } from '@/lib/supabase'
 import { 
   ArrowLeft, 
@@ -30,7 +30,8 @@ import {
   Target,
   HelpCircle,
   ListChecks,
-  Calendar
+  Calendar,
+  Info
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CreateServiceFormData, ServiceFormStep } from '@/types/services'
@@ -425,30 +426,32 @@ export default function CreateServicePage() {
   // Step components
   const renderStep1 = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <Label htmlFor="title" className="text-sm font-medium text-slate-700 mb-2 block">
-            Service Title *
-            <TooltipProvider>
-              <Tooltip content="Choose a clear, descriptive title that clients will easily understand">
-                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-              </Tooltip>
-            </TooltipProvider>
-          </Label>
-          <Input
-            id="title"
-            value={formData.title}
-            onChange={(e) => handleInputChange('title', e.target.value)}
-            placeholder="e.g., Digital Marketing Campaign"
-            className={`h-12 text-base border-2 transition-all duration-200 ${
-              validationErrors.title ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
-            }`}
-          />
-          {validationErrors.title && (
-            <p className="text-red-500 text-sm mt-1">{validationErrors.title}</p>
-          )}
-        </div>
+      {/* Service Title */}
+      <div>
+        <Label htmlFor="title" className="text-sm font-medium text-slate-700 mb-2 block">
+          Service Title *
+          <TooltipProvider>
+            <Tooltip content="Choose a clear, descriptive title that clients will easily understand">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+            </Tooltip>
+          </TooltipProvider>
+        </Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => handleInputChange('title', e.target.value)}
+          placeholder="e.g., Digital Marketing Campaign"
+          className={`h-12 text-base border-2 transition-all duration-200 ${
+            validationErrors.title ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+          }`}
+        />
+        {validationErrors.title && (
+          <p className="text-red-500 text-sm mt-1">{validationErrors.title}</p>
+        )}
+      </div>
 
+      {/* Category and Duration Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <Label htmlFor="category" className="text-sm font-medium text-slate-700 mb-2 block">
             Category *
@@ -471,33 +474,7 @@ export default function CreateServicePage() {
             <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
           )}
         </div>
-      </div>
 
-      <div>
-        <Label htmlFor="description" className="text-sm font-medium text-slate-700 mb-2 block">
-          Description *
-          <TooltipProvider>
-            <Tooltip content="Describe your service in detail, including what clients can expect">
-              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-            </Tooltip>
-          </TooltipProvider>
-        </Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Describe your service in detail, including what clients can expect, deliverables, and unique value propositions..."
-          rows={5}
-          className={`border-2 transition-all duration-200 resize-none ${
-            validationErrors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
-          }`}
-        />
-        {validationErrors.description && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.description}</p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <Label htmlFor="duration" className="text-sm font-medium text-slate-700 mb-2 block">
             Duration *
@@ -525,32 +502,59 @@ export default function CreateServicePage() {
             <p className="text-red-500 text-sm mt-1">{validationErrors.duration}</p>
           )}
         </div>
-
-        <div>
-          <Label htmlFor="price" className="text-sm font-medium text-slate-700 mb-2 block">
-            Price (OMR) *
-          </Label>
-          <div className="relative">
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.price}
-              onChange={(e) => handleInputChange('price', e.target.value)}
-              placeholder="0.00"
-              className={`h-12 text-base border-2 transition-all duration-200 pl-12 ${
-                validationErrors.price ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
-              }`}
-            />
-            <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-          </div>
-          {validationErrors.price && (
-            <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
-          )}
-        </div>
       </div>
 
+      {/* Description */}
+      <div>
+        <Label htmlFor="description" className="text-sm font-medium text-slate-700 mb-2 block">
+          Description *
+          <TooltipProvider>
+            <Tooltip content="Describe your service in detail, including what clients can expect">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+            </Tooltip>
+          </TooltipProvider>
+        </Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          placeholder="Describe your service in detail, including what clients can expect, deliverables, and unique value propositions..."
+          rows={4}
+          className={`border-2 transition-all duration-200 resize-none ${
+            validationErrors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+          }`}
+        />
+        {validationErrors.description && (
+          <p className="text-red-500 text-sm mt-1">{validationErrors.description}</p>
+        )}
+      </div>
+
+      {/* Price */}
+      <div>
+        <Label htmlFor="price" className="text-sm font-medium text-slate-700 mb-2 block">
+          Price (OMR) *
+        </Label>
+        <div className="relative max-w-xs">
+          <Input
+            id="price"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.price}
+            onChange={(e) => handleInputChange('price', e.target.value)}
+            placeholder="0.00"
+            className={`h-12 text-base border-2 transition-all duration-200 pl-12 ${
+              validationErrors.price ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+            }`}
+          />
+          <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+        </div>
+        {validationErrors.price && (
+          <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
+        )}
+      </div>
+
+      {/* Deliverables */}
       <div>
         <Label className="text-sm font-medium text-slate-700 mb-2 block">
           Deliverables *
@@ -560,22 +564,24 @@ export default function CreateServicePage() {
             </Tooltip>
           </TooltipProvider>
         </Label>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {formData.deliverables.map((deliverable, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                value={deliverable}
-                onChange={(e) => handleArrayChange('deliverables', index, e.target.value)}
-                placeholder="e.g., Marketing strategy document"
-                className="h-10 border-2 border-slate-200 focus:border-blue-500 transition-all duration-200"
-              />
+            <div key={index} className="flex items-center gap-3">
+              <div className="flex-1">
+                <Input
+                  value={deliverable}
+                  onChange={(e) => handleArrayChange('deliverables', index, e.target.value)}
+                  placeholder="e.g., Marketing strategy document"
+                  className="h-11 border-2 border-slate-200 focus:border-blue-500 transition-all duration-200"
+                />
+              </div>
               {formData.deliverables.length > 1 && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => removeArrayItem('deliverables', index)}
-                  className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50"
+                  className="h-11 w-11 p-0 border-red-200 text-red-600 hover:bg-red-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -587,9 +593,9 @@ export default function CreateServicePage() {
             variant="outline"
             size="sm"
             onClick={() => addArrayItem('deliverables')}
-            className="h-10 px-3 border-dashed border-slate-300 text-slate-600 hover:border-slate-400"
+            className="h-11 px-4 border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
           >
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="h-4 w-4 mr-2" />
             Add Deliverable
           </Button>
         </div>
@@ -890,29 +896,30 @@ export default function CreateServicePage() {
 
           {/* Form Content */}
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-6">
-              <CardTitle className="text-2xl text-slate-900">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl text-slate-900 flex items-center gap-3">
+                <FileText className="h-6 w-6 text-blue-600" />
                 {steps[currentStep - 1]?.title}
               </CardTitle>
-              <CardDescription className="text-slate-600 text-base">
+              <CardDescription className="text-slate-600">
                 {steps[currentStep - 1]?.description}
               </CardDescription>
             </CardHeader>
             
-            <CardContent className="space-y-8">
+            <CardContent className="space-y-6">
               {currentStep === 1 && renderStep1()}
               {currentStep === 2 && renderStep2()}
               {currentStep === 3 && renderStep3()}
               {currentStep === 4 && renderStep4()}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between pt-8 border-t border-slate-200">
+              <div className="flex items-center justify-between pt-6 border-t border-slate-200">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={prevStep}
                   disabled={currentStep === 1}
-                  className="h-12 px-6"
+                  className="h-11 px-6"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Previous
@@ -922,9 +929,9 @@ export default function CreateServicePage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="h-12 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    className="h-11 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   >
-                    Next
+                    Next Step
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
@@ -932,7 +939,7 @@ export default function CreateServicePage() {
                     type="button"
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="h-12 px-8 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    className="h-11 px-8 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                   >
                     {loading ? (
                       <>
@@ -941,7 +948,7 @@ export default function CreateServicePage() {
                       </>
                     ) : (
                       <>
-                        <Save className="mr-3 h-5 w-5" />
+                        <Save className="mr-2 h-4 w-4" />
                         Create Service
                       </>
                     )}
@@ -950,6 +957,20 @@ export default function CreateServicePage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Service Approval Process Info */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-1">Service Approval Process</h4>
+                <p className="text-sm text-blue-700">
+                  Your service will be reviewed by our admin team before being published. This usually takes 1-2 business days. 
+                  You'll receive an email notification once your service is approved or if any changes are needed.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>

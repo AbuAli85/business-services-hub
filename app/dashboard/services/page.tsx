@@ -622,7 +622,7 @@ export default function ServicesPage() {
                     Manage Services
                   </Button>
                   <Button 
-                    onClick={() => router.push('/dashboard/services/create')}
+                    onClick={() => router.push('/dashboard/provider/create-service')}
                     className="btn-primary-gradient px-6 py-3 rounded-xl font-medium"
                   >
                     <Plus className="h-5 w-4 mr-2" />

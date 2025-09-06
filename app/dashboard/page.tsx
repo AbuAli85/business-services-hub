@@ -447,7 +447,7 @@ export default function DashboardPage() {
                   Refresh Data
                 </Button>
                 {userRole === 'provider' && (
-                  <Button onClick={() => router.push('/dashboard/services/create')}>
+                  <Button onClick={() => router.push('/dashboard/provider/create-service')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Service
                   </Button>

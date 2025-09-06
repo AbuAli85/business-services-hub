@@ -461,7 +461,7 @@ export default function ProviderDashboardById() {
           <p className="text-gray-600 mt-2">{getWelcomeMessage()}</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/services/create')}>
+          <Button variant="outline" onClick={() => router.push('/dashboard/provider/create-service')}>
             <Plus className="h-4 w-4 mr-2" />
             Add Service
           </Button>
@@ -589,7 +589,7 @@ export default function ProviderDashboardById() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => router.push('/dashboard/services/create')}
+              onClick={() => router.push('/dashboard/provider/create-service')}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add New Service
