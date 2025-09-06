@@ -88,6 +88,7 @@ export function SimpleMilestones({
   const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
   const [projectType, setProjectType] = useState<'one_time' | 'monthly'>('one_time')
+  const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<SimpleMilestone> | null>(null)
 
   // Standard 4 phases - never more, never less
   const standardPhases = [
@@ -235,6 +236,33 @@ export function SimpleMilestones({
         })
       })
     }
+  }
+
+  const handleStartEdit = (milestone: SimpleMilestone) => {
+    setEditingMilestone(milestone.id)
+    setEditingMilestoneData({
+      title: milestone.title,
+      description: milestone.description,
+      purpose: milestone.purpose,
+      mainGoal: milestone.mainGoal,
+      startDate: milestone.startDate,
+      endDate: milestone.endDate,
+      estimatedHours: milestone.estimatedHours,
+      status: milestone.status
+    })
+  }
+
+  const handleSaveEdit = () => {
+    if (editingMilestone && editingMilestoneData) {
+      onMilestoneUpdate(editingMilestone, editingMilestoneData)
+      setEditingMilestone(null)
+      setEditingMilestoneData(null)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMilestone(null)
+    setEditingMilestoneData(null)
   }
 
   return (
@@ -421,7 +449,7 @@ export function SimpleMilestones({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditingMilestone(editingMilestone === milestone.id ? null : milestone.id)}
+                        onClick={() => handleStartEdit(milestone)}
                         className="hover:bg-yellow-50 hover:border-yellow-300 transition-all duration-200"
                       >
                         <Edit3 className="h-4 w-4" />
@@ -718,68 +746,76 @@ export function SimpleMilestones({
                 )}
 
                 {/* Milestone Editing Form */}
-                {editingMilestone === milestone.id && userRole === 'provider' && (
+                {editingMilestone === milestone.id && userRole === 'provider' && editingMilestoneData && (
                   <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <h4 className="font-medium mb-3">Edit Phase Settings</h4>
                     <div className="space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <Input
                           placeholder="Phase Title"
-                          value={milestone.title}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { title: e.target.value })}
+                          value={editingMilestoneData.title || ''}
+                          onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, title: e.target.value } : null)}
                         />
                         <Input
                           placeholder="Purpose of this phase"
-                          value={milestone.purpose || ''}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { purpose: e.target.value })}
+                          value={editingMilestoneData.purpose || ''}
+                          onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, purpose: e.target.value } : null)}
                         />
                       </div>
                       <Textarea
                         placeholder="Phase Description"
-                        value={milestone.description || ''}
-                        onChange={(e) => onMilestoneUpdate(milestone.id, { description: e.target.value })}
+                        value={editingMilestoneData.description || ''}
+                        onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, description: e.target.value } : null)}
                       />
                       <Input
                         placeholder="Main Goal of this phase"
-                        value={milestone.mainGoal || ''}
-                        onChange={(e) => onMilestoneUpdate(milestone.id, { mainGoal: e.target.value })}
+                        value={editingMilestoneData.mainGoal || ''}
+                        onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, mainGoal: e.target.value } : null)}
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="date"
-                          value={milestone.startDate ? format(new Date(milestone.startDate), 'yyyy-MM-dd') : ''}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { 
+                          value={editingMilestoneData.startDate ? format(new Date(editingMilestoneData.startDate), 'yyyy-MM-dd') : ''}
+                          onChange={(e) => setEditingMilestoneData(prev => prev ? { 
+                            ...prev, 
                             startDate: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
-                          })}
+                          } : null)}
                         />
                         <Input
                           type="date"
-                          value={milestone.endDate ? format(new Date(milestone.endDate), 'yyyy-MM-dd') : ''}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { 
+                          value={editingMilestoneData.endDate ? format(new Date(editingMilestoneData.endDate), 'yyyy-MM-dd') : ''}
+                          onChange={(e) => setEditingMilestoneData(prev => prev ? { 
+                            ...prev, 
                             endDate: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
-                          })}
+                          } : null)}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="number"
                           placeholder="Estimated Hours"
-                          value={milestone.estimatedHours || ''}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { estimatedHours: parseInt(e.target.value) || 0 })}
+                          value={editingMilestoneData.estimatedHours || ''}
+                          onChange={(e) => setEditingMilestoneData(prev => prev ? { 
+                            ...prev, 
+                            estimatedHours: parseInt(e.target.value) || 0 
+                          } : null)}
                         />
                         <select
-                          value={milestone.status}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { status: e.target.value as any })}
+                          value={editingMilestoneData.status || 'pending'}
+                          onChange={(e) => setEditingMilestoneData(prev => prev ? { 
+                            ...prev, 
+                            status: e.target.value as 'pending' | 'in_progress' | 'completed' 
+                          } : null)}
                           className="px-3 py-2 border border-gray-300 rounded-md text-sm"
                         >
-                          <option value="not_started">Not Started</option>
+                          <option value="pending">Not Started</option>
                           <option value="in_progress">In Progress</option>
                           <option value="completed">Completed</option>
                         </select>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button onClick={() => setEditingMilestone(null)} size="sm">Save Changes</Button>
-                        <Button variant="outline" onClick={() => setEditingMilestone(null)} size="sm">Cancel</Button>
+                        <Button onClick={handleSaveEdit} size="sm">Save Changes</Button>
+                        <Button variant="outline" onClick={handleCancelEdit} size="sm">Cancel</Button>
                       </div>
                     </div>
                   </div>
