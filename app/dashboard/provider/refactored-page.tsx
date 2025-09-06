@@ -15,11 +15,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
   RefreshCw, 
-  AlertCircle
+  AlertCircle,
+  DollarSign,
+  Calendar,
+  Briefcase,
+  Star
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-export default function ProviderDashboard() {
+export default function RefactoredProviderDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
