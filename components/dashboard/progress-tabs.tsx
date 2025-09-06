@@ -7,7 +7,7 @@ import { ProgressTrackingService, getStatusColor, getPriorityColor, formatDurati
 import { Milestone, Task, BookingProgress } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
-import { TimeTrackingWidget, GlobalTimeTrackingStatus } from './time-tracking-widget'
+import { TimeTrackingWidget } from './time-tracking-widget'
 import { ProgressFallback } from './progress-fallback'
 import { SimpleProgressTracking } from './simple-progress-tracking'
 import { EnhancedProgressTracking } from './enhanced-progress-tracking'
