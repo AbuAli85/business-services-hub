@@ -6,12 +6,16 @@
 ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 
 -- Step 2: Add the status constraint
+-- First drop the existing constraint if it exists, then add the new one
 ALTER TABLE public.bookings 
-ADD CONSTRAINT IF NOT EXISTS bookings_status_check 
-CHECK (status IN ('draft','pending','confirmed','in_progress','completed','cancelled','on_hold','rescheduled'));
+DROP CONSTRAINT IF EXISTS bookings_status_check;
+
+ALTER TABLE public.bookings 
+ADD CONSTRAINT bookings_status_check 
+CHECK (status IN ('pending','approved','declined','in_progress','completed','cancelled','rescheduled','on_hold'));
 
 -- Step 3: Add column comment
-COMMENT ON COLUMN public.bookings.status IS 'Current state of the booking (draft, pending, confirmed, in_progress, completed, cancelled, on_hold, rescheduled)';
+COMMENT ON COLUMN public.bookings.status IS 'Current state of the booking (pending, approved, declined, in_progress, completed, cancelled, rescheduled, on_hold)';
 
 -- Step 4: Verify the column exists
 SELECT column_name, data_type, column_default

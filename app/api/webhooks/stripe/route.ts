@@ -79,7 +79,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, supabas
     .from('bookings')
     .update({ 
       payment_status: 'paid',
-      status: 'confirmed',
+      status: 'approved',
       operational_status: 'approved',
       updated_at: new Date().toISOString()
     })

@@ -21,7 +21,8 @@ export interface Booking {
 export type BookingStatus = 
   | 'draft' 
   | 'pending' 
-  | 'confirmed' 
+  | 'approved'
+  | 'declined'
   | 'in_progress' 
   | 'completed' 
   | 'cancelled'

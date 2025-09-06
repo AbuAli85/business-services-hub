@@ -187,7 +187,6 @@ function getStatusIcon(status) {
     case 'approved': return '✅'
     case 'pending': return '⏳'
     case 'rejected': return '❌'
-    case 'confirmed': return '✅'
     case 'cancelled': return '🚫'
     case 'completed': return '🎉'
     default: return '❓'

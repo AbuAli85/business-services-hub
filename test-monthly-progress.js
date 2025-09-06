@@ -84,7 +84,7 @@ async function testMonthlyProgressSystem() {
           client_id: '00000000-0000-0000-0000-000000000000',
           provider_id: '00000000-0000-0000-0000-000000000000',
           title: 'Test Monthly Progress Booking',
-          status: 'confirmed',
+          status: 'approved',
           amount: 100,
           currency: 'OMR'
         })

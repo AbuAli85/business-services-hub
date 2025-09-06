@@ -176,7 +176,7 @@ async function fixAdminSystem() {
         const { error: updateError } = await supabase
           .from('bookings')
           .update({
-            status: booking.status || 'confirmed',
+            status: booking.status || 'approved',
             updated_at: new Date().toISOString()
           })
           .eq('id', booking.id)
@@ -270,7 +270,7 @@ async function fixAdminSystem() {
             service_id: approvedServices[0].id,
             client_id: adminUser?.id,
             provider_id: approvedServices[0].provider_id,
-            status: 'confirmed',
+            status: 'approved',
             amount: approvedServices[0].base_price,
             currency: approvedServices[0].currency,
             scheduled_date: new Date(Date.now() + 86400000 * 7).toISOString(),
