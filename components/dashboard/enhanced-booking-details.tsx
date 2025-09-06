@@ -804,7 +804,8 @@ export default function EnhancedBookingDetails() {
   const getStatusIcon = (status: string) => {
     const icons = {
       pending: <Clock className="h-4 w-4" />,
-      confirmed: <CheckCircle className="h-4 w-4" />,
+      approved: <CheckCircle className="h-4 w-4" />,
+      declined: <X className="h-4 w-4" />,
       in_progress: <Play className="h-4 w-4" />,
       completed: <Award className="h-4 w-4" />,
       cancelled: <X className="h-4 w-4" />,
@@ -817,7 +818,8 @@ export default function EnhancedBookingDetails() {
   const getStatusColor = (status: string) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      confirmed: 'bg-blue-100 text-blue-800 border-blue-300',
+      approved: 'bg-blue-100 text-blue-800 border-blue-300',
+      declined: 'bg-red-100 text-red-800 border-red-300',
       in_progress: 'bg-purple-100 text-purple-800 border-purple-300',
       completed: 'bg-green-100 text-green-800 border-green-300',
       cancelled: 'bg-red-100 text-red-800 border-red-300',
@@ -1858,7 +1860,7 @@ export default function EnhancedBookingDetails() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
                               <SelectItem value="in_progress">In Progress</SelectItem>
                               <SelectItem value="on_hold">On Hold</SelectItem>
                               <SelectItem value="completed">Completed</SelectItem>
