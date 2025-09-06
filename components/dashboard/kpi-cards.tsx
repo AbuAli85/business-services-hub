@@ -87,9 +87,7 @@ function KPICard({
     return (
       <TooltipProvider>
         <Tooltip content={tooltip}>
-          <TooltipTrigger asChild>
-            {cardContent}
-          </TooltipTrigger>
+          {cardContent}
         </Tooltip>
       </TooltipProvider>
     )

@@ -60,7 +60,7 @@ export class ProviderDashboardService {
       throw error
     }
     
-    return data
+    return data as ProviderDashboardStats
   }
 
   static async getRecentBookings(providerId: string, limit: number = 10): Promise<RecentBooking[]> {
@@ -77,7 +77,7 @@ export class ProviderDashboardService {
       throw error
     }
     
-    return data || []
+    return (data || []) as RecentBooking[]
   }
 
   static async getTopServices(providerId: string, limit: number = 5): Promise<TopService[]> {
@@ -94,7 +94,7 @@ export class ProviderDashboardService {
       throw error
     }
     
-    return data || []
+    return (data || []) as TopService[]
   }
 
   static async getMonthlyEarnings(providerId: string, monthsBack: number = 12): Promise<MonthlyEarnings[]> {
@@ -111,7 +111,7 @@ export class ProviderDashboardService {
       throw error
     }
     
-    return data || []
+    return (data || []) as MonthlyEarnings[]
   }
 
   static async getAllDashboardData(providerId: string) {
