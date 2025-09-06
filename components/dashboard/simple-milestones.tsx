@@ -45,10 +45,12 @@ interface SimpleMilestone {
   status: 'not_started' | 'in_progress' | 'completed'
   tasks: SimpleTask[]
   color: string
-  phaseNumber: number
+  phaseNumber: 1 | 2 | 3 | 4  // Only 4 phases allowed
   estimatedHours?: number
   actualHours?: number
   clientComments?: Comment[]
+  isRecurring?: boolean  // NEW: Monthly recurring project
+  projectType?: 'one_time' | 'monthly'  // NEW: Project type
 }
 
 interface Comment {
@@ -66,6 +68,7 @@ interface SimpleMilestonesProps {
   onTaskAdd: (milestoneId: string, taskData: Omit<SimpleTask, 'id'>) => void
   onTaskDelete: (milestoneId: string, taskId: string) => void
   onCommentAdd: (milestoneId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => void
+  onProjectTypeChange: (projectType: 'one_time' | 'monthly') => void
   userRole: 'provider' | 'client'
 }
 
@@ -76,6 +79,7 @@ export function SimpleMilestones({
   onTaskAdd: onTaskCreate,
   onTaskDelete,
   onCommentAdd,
+  onProjectTypeChange,
   userRole
 }: SimpleMilestonesProps) {
   const [editingMilestone, setEditingMilestone] = useState<string | null>(null)
@@ -83,6 +87,47 @@ export function SimpleMilestones({
   const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<SimpleTask, 'id'>} | null>(null)
   const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
+  const [projectType, setProjectType] = useState<'one_time' | 'monthly'>('one_time')
+
+  // Standard 4 phases - never more, never less
+  const standardPhases = [
+    {
+      id: 'phase-1',
+      title: 'Planning & Setup',
+      description: 'Initial planning, requirements gathering, and project setup',
+      purpose: 'Establish project foundation and clear requirements',
+      mainGoal: 'Complete project planning and setup phase',
+      phaseNumber: 1 as const,
+      color: '#3B82F6'
+    },
+    {
+      id: 'phase-2', 
+      title: 'Development',
+      description: 'Core development work and implementation',
+      purpose: 'Build and implement the main project features',
+      mainGoal: 'Complete all development tasks and features',
+      phaseNumber: 2 as const,
+      color: '#10B981'
+    },
+    {
+      id: 'phase-3',
+      title: 'Testing & Quality',
+      description: 'Testing, quality assurance, and bug fixes',
+      purpose: 'Ensure quality and fix any issues',
+      mainGoal: 'Complete testing and quality assurance',
+      phaseNumber: 3 as const,
+      color: '#F59E0B'
+    },
+    {
+      id: 'phase-4',
+      title: 'Delivery & Launch',
+      description: 'Final delivery, deployment, and project launch',
+      purpose: 'Deliver completed project to client',
+      mainGoal: 'Successfully deliver and launch the project',
+      phaseNumber: 4 as const,
+      color: '#8B5CF6'
+    }
+  ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -176,24 +221,103 @@ export function SimpleMilestones({
     setNewComment(null)
   }
 
+  const handleMonthlyReset = () => {
+    if (projectType === 'monthly' && userRole === 'provider') {
+      // Reset all phases to not_started for next month
+      standardPhases.forEach(phase => {
+        onMilestoneUpdate(phase.id, {
+          status: 'not_started',
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          tasks: [],
+          estimatedHours: 0,
+          actualHours: 0
+        })
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Simple Milestones</h2>
-          <p className="text-gray-600">Easy task management with smart progress tracking</p>
+          <h2 className="text-2xl font-bold text-gray-900">Project Phases</h2>
+          <p className="text-gray-600">4-phase project management system</p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
+          {/* Project Type Selection */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-700">Project Type:</span>
+            <select
+              value={projectType}
+              onChange={(e) => {
+                const newType = e.target.value as 'one_time' | 'monthly'
+                setProjectType(newType)
+                onProjectTypeChange(newType)
+              }}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="one_time">One Time Project</option>
+              <option value="monthly">Monthly Recurring</option>
+            </select>
+          </div>
           <Badge variant="outline" className="text-sm">
-            {milestones.filter(m => m.status === 'completed').length} of {milestones.length} completed
+            {milestones.filter(m => m.status === 'completed').length} of 4 completed
           </Badge>
+          {projectType === 'monthly' && userRole === 'provider' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMonthlyReset}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            >
+              <Repeat className="h-4 w-4 mr-2" />
+              Reset for Next Month
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Milestones */}
+      {/* Project Type Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Target className="h-4 w-4 text-blue-600" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-blue-900 mb-1">
+              {projectType === 'monthly' ? 'Monthly Recurring Project' : 'One Time Project'}
+            </h3>
+            <p className="text-sm text-blue-700">
+              {projectType === 'monthly' 
+                ? 'This project will repeat monthly with the same 4 phases. Perfect for ongoing services, maintenance, or regular deliverables.'
+                : 'This is a one-time project with 4 phases. Once completed, the project is finished.'
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Milestones - Always exactly 4 phases */}
       <div className="space-y-4">
-        {milestones.map((milestone) => {
+        {standardPhases.map((phaseTemplate) => {
+          // Find existing milestone or create from template
+          const milestone = milestones.find(m => m.phaseNumber === phaseTemplate.phaseNumber) || {
+            ...phaseTemplate,
+            id: phaseTemplate.id,
+            startDate: new Date().toISOString(),
+            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'not_started' as const,
+            tasks: [],
+            estimatedHours: 0,
+            actualHours: 0,
+            clientComments: [],
+            isRecurring: projectType === 'monthly',
+            projectType: projectType
+          }
           const smartIndicator = getSmartIndicator(milestone)
           const completedTasks = milestone.tasks.filter(t => t.completed).length
           const totalTasks = milestone.tasks.length
@@ -208,7 +332,15 @@ export function SimpleMilestones({
                       Phase {milestone.phaseNumber}: {milestone.status.replace('_', ' ')}
                     </div>
                     <div className="flex-1">
-                      <CardTitle className="text-lg">{milestone.title}</CardTitle>
+                      <div className="flex items-center space-x-2">
+                        <CardTitle className="text-lg">{milestone.title}</CardTitle>
+                        {milestone.isRecurring && (
+                          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
+                            <Repeat className="h-3 w-3 mr-1" />
+                            Monthly
+                          </Badge>
+                        )}
+                      </div>
                       {milestone.description && (
                         <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
                       )}

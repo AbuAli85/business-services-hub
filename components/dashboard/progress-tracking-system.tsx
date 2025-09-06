@@ -48,34 +48,46 @@ export function ProgressTrackingSystem({
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Transform milestones to simple format
+  // Transform milestones to simple format - Always exactly 4 phases
   const transformToSimpleMilestones = (milestones: Milestone[]) => {
-    return milestones.map((milestone, index) => ({
-      id: milestone.id,
-      title: milestone.title,
-      description: milestone.description,
-      purpose: milestone.description, // Use description as purpose for now
-      mainGoal: `Complete ${milestone.title} phase`, // Default main goal
-      startDate: milestone.created_at,
-      endDate: milestone.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      status: milestone.status as 'not_started' | 'in_progress' | 'completed',
-      color: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'][index % 5],
-      phaseNumber: index + 1,
-      estimatedHours: milestone.estimated_hours || 0,
-      actualHours: 0, // Will be calculated from tasks
-      clientComments: [], // Will be populated from database
-      tasks: (milestone.tasks || []).map(task => ({
-        id: task.id,
-        title: task.title,
-        completed: task.status === 'completed',
-        dueDate: task.due_date,
-        isRecurring: false,
-        recurringType: 'monthly' as const,
-        priority: 'medium' as const,
-        estimatedHours: task.estimated_hours || 1,
-        actualHours: task.actual_hours || 0
-      }))
-    }))
+    const standardPhases = [
+      { title: 'Planning & Setup', phaseNumber: 1, color: '#3B82F6' },
+      { title: 'Development', phaseNumber: 2, color: '#10B981' },
+      { title: 'Testing & Quality', phaseNumber: 3, color: '#F59E0B' },
+      { title: 'Delivery & Launch', phaseNumber: 4, color: '#8B5CF6' }
+    ]
+
+    return standardPhases.map((phase, index) => {
+      const milestone = milestones.find(m => m.title === phase.title) || milestones[index]
+      return {
+        id: milestone?.id || `phase-${phase.phaseNumber}`,
+        title: phase.title,
+        description: milestone?.description || `${phase.title} phase`,
+        purpose: milestone?.description || `Complete ${phase.title} phase`,
+        mainGoal: `Complete ${phase.title} phase`,
+        startDate: milestone?.created_at || new Date().toISOString(),
+        endDate: milestone?.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        status: (milestone?.status as 'not_started' | 'in_progress' | 'completed') || 'not_started',
+        color: phase.color,
+        phaseNumber: phase.phaseNumber as 1 | 2 | 3 | 4,
+        estimatedHours: milestone?.estimated_hours || 0,
+        actualHours: 0,
+        clientComments: [],
+        isRecurring: false, // Will be set by project type
+        projectType: 'one_time' as const, // Will be set by project type
+        tasks: (milestone?.tasks || []).map(task => ({
+          id: task.id,
+          title: task.title,
+          completed: task.status === 'completed',
+          dueDate: task.due_date,
+          isRecurring: false,
+          recurringType: 'monthly' as const,
+          priority: 'medium' as const,
+          estimatedHours: task.estimated_hours || 1,
+          actualHours: task.actual_hours || 0
+        }))
+      }
+    })
   }
 
   const { 
@@ -304,6 +316,17 @@ export function ProgressTrackingSystem({
     }
   }, [])
 
+  const handleProjectTypeChange = useCallback(async (projectType: 'one_time' | 'monthly') => {
+    try {
+      // TODO: Implement project type saving to database
+      console.log('Project type changed to:', projectType)
+      toast.success(`Project type set to ${projectType === 'monthly' ? 'Monthly Recurring' : 'One Time'}`)
+    } catch (error) {
+      console.error('Error changing project type:', error)
+      toast.error('Failed to change project type')
+    }
+  }, [])
+
   // Handle time tracking
   const handleStartTimeTracking = useCallback(async (taskId: string, description?: string) => {
     try {
@@ -524,6 +547,7 @@ export function ProgressTrackingSystem({
                   })
                 }}
                 onCommentAdd={handleCommentAdd}
+                onProjectTypeChange={handleProjectTypeChange}
               />
             </TabsContent>
 
