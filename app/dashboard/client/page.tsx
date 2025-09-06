@@ -220,7 +220,7 @@ export default function ClientDashboard() {
       // Get bookings count and spending
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select('status, subtotal, currency, created_at')
+        .select('status, amount, currency, created_at')
         .eq('client_id', userId)
 
       if (bookingsError) {
@@ -246,7 +246,7 @@ export default function ClientDashboard() {
       const totalSpent = bookings
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
         .reduce((sum, b) => {
-          const subtotal = b.subtotal || 0
+          const subtotal = b.amount || 0
           const vatAmount = subtotal * 0.05 // Default 5% VAT
           return sum + subtotal + vatAmount
         }, 0) || 0
@@ -262,7 +262,7 @@ export default function ClientDashboard() {
       }) || []
       
       const monthlySpent = monthlyBookings.reduce((sum, b) => {
-        const subtotal = b.subtotal || 0
+        const subtotal = b.amount || 0
         const vatAmount = subtotal * 0.05 // Default 5% VAT
         return sum + subtotal + vatAmount
       }, 0)

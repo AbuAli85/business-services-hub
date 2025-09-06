@@ -456,13 +456,13 @@ export default function ServicesPage() {
             const serviceIds = providerServices.map(s => s.id)
             const { data: completedBookings } = await supabase
               .from('bookings')
-              .select('subtotal, currency')
+              .select('amount, currency')
               .eq('status', 'completed')
               .in('service_id', serviceIds)
             
             if (completedBookings) {
               totalRevenue = completedBookings.reduce((sum, booking) => {
-                const subtotal = booking.subtotal || 0
+                const subtotal = booking.amount || 0
                 const vatAmount = subtotal * 0.05 // Default 5% VAT
                 const total = subtotal + vatAmount
                 return sum + total
@@ -473,12 +473,12 @@ export default function ServicesPage() {
           // For clients and admins, get revenue from all completed bookings
           const { data: completedBookings } = await supabase
             .from('bookings')
-            .select('subtotal, currency')
+            .select('amount, currency')
             .eq('status', 'completed')
           
           if (completedBookings) {
             totalRevenue = completedBookings.reduce((sum, booking) => {
-              const subtotal = booking.subtotal || 0
+              const subtotal = booking.amount || 0
               const vatAmount = subtotal * 0.05 // Default 5% VAT
               const total = subtotal + vatAmount
               return sum + total

@@ -202,7 +202,7 @@ export default function InvoicesPage() {
           id, 
           client_id, 
           provider_id, 
-          subtotal, 
+          amount, 
           currency, 
           status,
           created_at
@@ -235,7 +235,7 @@ export default function InvoicesPage() {
           booking_id: booking.id,
           client_id: booking.client_id,
           provider_id: booking.provider_id,
-          amount: booking.subtotal || 0,
+          amount: booking.amount || 0,
           currency: booking.currency || 'OMR',
           status: booking.status === 'paid' ? 'paid' : 'issued',
           created_at: new Date().toISOString()

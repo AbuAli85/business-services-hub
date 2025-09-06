@@ -115,7 +115,7 @@ interface EnhancedBooking {
   id: string
   title: string
   description?: string
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' | 'rescheduled'
+  status: 'pending' | 'approved' | 'declined' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' | 'rescheduled'
   approval_status?: 'pending' | 'approved' | 'rejected' | 'under_review'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   created_at: string
@@ -395,7 +395,7 @@ export default function EnhancedBookingDetails() {
         updated_at: bookingData.updated_at || bookingData.created_at,
         
         // Financial data
-        amount: bookingData.amount || bookingData.total_amount || bookingData.subtotal || 0,
+        amount: bookingData.amount || bookingData.total_amount || 0,
         currency: bookingData.currency || 'OMR',
         payment_status: bookingData.payment_status || 'pending',
         payment_method: bookingData.payment_method || '',
@@ -1178,7 +1178,7 @@ export default function EnhancedBookingDetails() {
       // Update local state
       setBooking({ 
         ...booking, 
-        status: action === 'approve' ? 'confirmed' : 'cancelled',
+        status: action === 'approve' ? 'approved' : 'declined',
         approval_status: action === 'approve' ? 'approved' : 'rejected'
       })
 
@@ -1421,7 +1421,7 @@ export default function EnhancedBookingDetails() {
           )}
 
           {/* Smart Progress Indicator - Only show for approved/in-progress bookings */}
-          {booking.status !== 'pending' && booking.status !== 'cancelled' && (
+          {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
             <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1945,7 +1945,7 @@ export default function EnhancedBookingDetails() {
                       </div>
 
                       {/* Progress Update - Only for approved bookings */}
-                      {booking.status !== 'pending' && booking.status !== 'cancelled' && (
+                      {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
                         <div className="p-3 bg-blue-50 rounded-lg">
                           <label className="text-sm font-medium text-blue-700 mb-2 block">Progress Update</label>
                           <div className="flex items-center space-x-2">
@@ -1967,7 +1967,7 @@ export default function EnhancedBookingDetails() {
                       )}
 
                       {/* Export Progress - Only for approved bookings */}
-                      {booking.status !== 'pending' && booking.status !== 'cancelled' && milestoneStats.total > 0 && (
+                      {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && milestoneStats.total > 0 && (
                         <div className="p-3 bg-green-50 rounded-lg">
                           <label className="text-sm font-medium text-green-700 mb-2 block">Export Progress</label>
                           <div className="grid grid-cols-2 gap-2">

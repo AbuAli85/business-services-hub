@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
         estimated_duration,
         location,
         total_price: amount, // Add required total_price field (matches existing schema)
-        subtotal: amount, // Add required subtotal field for total_amount generation
+        amount: amount, // Add required amount field
         total_amount: amount // Add required total_amount field (for webhook trigger)
       })
       .select(`
@@ -679,7 +679,7 @@ export async function PATCH(request: NextRequest) {
           console.log('Approval denied: User is not a provider')
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
-        updates = { status: 'confirmed', approval_status: 'approved' }
+        updates = { status: 'approved', approval_status: 'approved' }
         notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking' }
         console.log('Approval updates:', updates)
         break
@@ -688,7 +688,7 @@ export async function PATCH(request: NextRequest) {
           console.log('Decline denied: User is not a provider')
           return NextResponse.json({ error: 'Only provider can decline' }, { status: 403 })
         }
-        updates = { status: 'cancelled', approval_status: 'rejected', decline_reason: reason || null }
+        updates = { status: 'declined', approval_status: 'rejected', decline_reason: reason || null }
         notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking' }
         console.log('Decline updates:', updates)
         break
