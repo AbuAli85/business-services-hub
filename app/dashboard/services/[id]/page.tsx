@@ -20,8 +20,8 @@ import {
   Star,
   Eye
 } from 'lucide-react'
-import { getSupabaseClient } from '@/lib/supabase/client'
-import { toast } from 'react-hot-toast'
+import { getSupabaseClient } from '@/lib/supabase'
+import toast from 'react-hot-toast'
 
 interface Service {
   id: string
