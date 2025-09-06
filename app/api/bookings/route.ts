@@ -244,7 +244,6 @@ export async function POST(request: NextRequest) {
         estimated_duration,
         location,
         total_price: amount, // Add required total_price field (matches existing schema)
-        amount: amount, // Add required amount field
         total_amount: amount // Add required total_amount field (for webhook trigger)
       })
       .select(`
