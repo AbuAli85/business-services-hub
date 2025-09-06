@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Milestone, Task } from '@/types/progress'
+import { Milestone, Task } from '@/lib/progress-tracking'
 import { isMilestoneOverdue, isTaskOverdue } from '@/lib/progress-calculations'
 
 interface RefactoredMilestonesAccordionProps {
@@ -132,7 +132,7 @@ export function RefactoredMilestonesAccordion({
 
   const handleTaskToggle = async (milestoneId: string, taskId: string, completed: boolean) => {
     const updates = {
-      status: completed ? 'completed' : 'pending',
+      status: (completed ? 'completed' : 'pending') as 'completed' | 'pending',
       progress_percentage: completed ? 100 : 0,
       updated_at: new Date().toISOString()
     }
@@ -163,12 +163,30 @@ export function RefactoredMilestonesAccordion({
   const handleAddTask = async (milestoneId: string) => {
     if (newTaskTitle.trim()) {
       const newTask = {
+        milestone_id: milestoneId,
         title: newTaskTitle,
-        status: 'pending',
+        description: '',
+        status: 'pending' as 'pending',
+        priority: 'medium' as 'medium',
+        due_date: undefined,
         progress_percentage: 0,
-        editable: true,
+        estimated_hours: 0,
+        actual_hours: 0,
+        tags: [],
+        steps: [],
+        completed_at: undefined,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        created_by: undefined,
+        assigned_to: undefined,
+        is_overdue: false,
+        overdue_since: undefined,
+        approval_status: 'pending' as 'pending',
+        approved_by: undefined,
+        approved_at: undefined,
+        approval_notes: undefined,
+        comments: [],
+        time_entries: []
       }
       
       try {
@@ -214,8 +232,8 @@ export function RefactoredMilestonesAccordion({
         setChangeRequest('')
         
         // Update milestone status and timestamp
-        onMilestoneUpdate(milestoneId, { 
-          status: 'pending_changes',
+        onMilestoneUpdate(milestoneId, {
+          status: 'in_progress',
           updated_at: new Date().toISOString()
         })
       } catch (error) {
@@ -361,7 +379,7 @@ export function RefactoredMilestonesAccordion({
                               onCheckedChange={(checked) => 
                                 handleTaskToggle(milestone.id, task.id, checked as boolean)
                               }
-                              disabled={userRole === 'client' || !task.editable}
+                              disabled={userRole === 'client'}
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -382,7 +400,7 @@ export function RefactoredMilestonesAccordion({
                               )}
                             </div>
                             
-                            {userRole === 'provider' && task.editable && (
+                            {userRole === 'provider' && (
                               <div className="flex items-center gap-1">
                                 <Button
                                   size="sm"
@@ -427,7 +445,7 @@ export function RefactoredMilestonesAccordion({
                           <Button
                             size="sm"
                             className="bg-green-600 hover:bg-green-700 text-white"
-                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'approved' })}
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'completed' })}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Approve Milestone
@@ -435,7 +453,7 @@ export function RefactoredMilestonesAccordion({
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'rejected' })}
+                            onClick={() => onMilestoneUpdate(milestone.id, { status: 'cancelled' })}
                           >
                             <X className="h-4 w-4 mr-1" />
                             Reject Milestone

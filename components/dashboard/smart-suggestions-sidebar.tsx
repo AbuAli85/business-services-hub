@@ -203,7 +203,7 @@ export function SmartSuggestionsSidebar({
       
       // Dismiss the suggestion after action
       if (suggestion.dismissible) {
-        setDismissedSuggestions(prev => new Set([...prev, suggestion.id]))
+        setDismissedSuggestions(prev => new Set([...Array.from(prev), suggestion.id]))
       }
     } catch (error) {
       console.error('Error handling suggestion action:', error)
@@ -213,7 +213,7 @@ export function SmartSuggestionsSidebar({
 
   // Dismiss suggestion
   const dismissSuggestion = (suggestionId: string) => {
-    setDismissedSuggestions(prev => new Set([...prev, suggestionId]))
+    setDismissedSuggestions(prev => new Set([...Array.from(prev), suggestionId]))
   }
 
   // Get priority color

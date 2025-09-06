@@ -74,6 +74,7 @@ export function TaskManagement({
 
     try {
       await onTaskCreate(milestone.id, {
+        milestone_id: milestone.id,
         title: newTask.title.trim(),
         description: newTask.description.trim() || undefined,
         priority: newTask.priority,

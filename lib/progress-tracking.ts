@@ -11,6 +11,8 @@ export interface Milestone {
   priority: 'low' | 'medium' | 'high' | 'urgent'
   progress_percentage: number
   weight: number
+  order_index: number
+  editable: boolean
   completed_at?: string
   created_at: string
   updated_at: string

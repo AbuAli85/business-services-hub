@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import './progress-styles.css'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle } from 'lucide-react'
 import { ProgressTrackingService, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
-import { Milestone, Task, BookingProgress } from '@/types/progress'
+import { Milestone, Task, BookingProgress } from '@/lib/progress-tracking'
 import { MilestoneManagement } from './milestone-management'
 import { ClientProgressView } from './client-progress-view'
 import { TimeTrackingWidget } from './time-tracking-widget'
@@ -144,7 +144,54 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         console.warn('Error loading booking data:', bookingError)
       }
       
-      setMilestones(milestonesData || [])
+      // Transform milestones data to match the expected interface
+      const transformedMilestones = (milestonesData || []).map(milestone => ({
+        ...milestone,
+        booking_id: bookingId,
+        priority: 'medium' as 'medium',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_overdue: milestone.due_date ? new Date(milestone.due_date) < new Date() : false,
+        estimated_hours: 0,
+        actual_hours: 0,
+        tags: [],
+        notes: '',
+        assigned_to: undefined,
+        created_by: undefined,
+        completed_at: undefined,
+        overdue_since: undefined,
+        order_index: milestone.order_index || 0,
+        editable: milestone.editable !== undefined ? milestone.editable : true,
+        tasks: (milestone.tasks || []).map(task => ({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          progress_percentage: task.progress_percentage,
+          due_date: task.due_date,
+          estimated_hours: task.estimated_hours || 0,
+          actual_hours: task.actual_hours || 0,
+          priority: task.priority || 'medium',
+          milestone_id: milestone.id,
+          description: '',
+          tags: [],
+          steps: [],
+          completed_at: undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          created_by: undefined,
+          assigned_to: undefined,
+          is_overdue: task.due_date ? new Date(task.due_date) < new Date() : false,
+          overdue_since: undefined,
+          approval_status: 'pending' as 'pending',
+          approved_by: undefined,
+          approved_at: undefined,
+          approval_notes: undefined,
+          comments: [],
+          time_entries: []
+        }))
+      }))
+      
+      setMilestones(transformedMilestones)
       
       // Calculate overall progress from milestones
       const totalProgress = bookingData?.project_progress || 0
@@ -152,6 +199,12 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
       const totalTasks = milestonesData?.reduce((sum, m) => sum + (m.tasks?.length || 0), 0) || 0
       const completedTasks = milestonesData?.reduce((sum, m) => 
         sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0) || 0
+      
+      // Calculate hours
+      const totalEstimatedHours = milestonesData?.reduce((sum, m) => 
+        sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0) || 0
+      const totalActualHours = milestonesData?.reduce((sum, m) => 
+        sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0) || 0
       
       setBookingProgress({
         booking_id: bookingId,
@@ -420,17 +473,37 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
           {activeTab === 'analytics' && (
             <AnalyticsView
-              bookingProgress={bookingProgress}
               milestones={milestones}
-              loading={loading}
+              timeEntries={[]}
+              totalEstimatedHours={milestones.reduce((sum, m) => 
+                sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
+              )}
+              totalActualHours={milestones.reduce((sum, m) => 
+                sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
+              )}
             />
           )}
 
           {activeTab === 'bulk' && (
             <BulkOperationsView
               milestones={milestones}
-              onUpdate={loadData}
-              userRole={userRole}
+              onTaskUpdate={async (taskId, updates) => {
+                // Find the milestone that contains this task
+                const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
+                if (milestone) {
+                  await handleTaskUpdate(milestone.id, taskId, updates)
+                }
+              }}
+              onTaskDelete={async (taskId) => {
+                // Find the milestone that contains this task
+                const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
+                if (milestone) {
+                  await handleDeleteTask(milestone.id, taskId)
+                }
+              }}
+              onMilestoneUpdate={async (milestoneId, updates) => {
+                await handleMilestoneUpdate(milestoneId, updates)
+              }}
             />
           )}
         </div>
@@ -442,17 +515,15 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         />
 
         {/* Global Time Tracking Status */}
-        <GlobalTimeTrackingStatus />
       </div>
 
       {/* Smart Suggestions Sidebar */}
       <SmartSuggestionsSidebar
-        bookingProgress={bookingProgress}
         milestones={milestones}
-        onSendUpdate={handleSendUpdate}
-        onScheduleFollowUp={handleScheduleFollowUp}
-        onSendPaymentReminder={handleSendPaymentReminder}
-        onDismissSuggestion={handleDismissSuggestion}
+        bookingProgress={bookingProgress}
+        timeEntries={[]}
+        userRole={userRole}
+        onRefresh={loadData}
       />
     </div>
   )

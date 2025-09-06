@@ -88,7 +88,7 @@ export function MilestoneAccordionCards({
 
   const handleTaskToggle = (milestoneId: string, taskId: string, completed: boolean) => {
     const updates = {
-      status: completed ? 'completed' : 'pending',
+      status: (completed ? 'completed' : 'pending') as 'completed' | 'pending',
       progress_percentage: completed ? 100 : 0
     }
     onTaskUpdate(milestoneId, taskId, updates)
@@ -97,10 +97,30 @@ export function MilestoneAccordionCards({
   const handleAddTask = (milestoneId: string) => {
     if (newTaskTitle.trim()) {
       onAddTask(milestoneId, {
+        milestone_id: milestoneId,
         title: newTaskTitle,
-        status: 'pending',
+        description: '',
+        status: 'pending' as 'pending',
+        priority: 'medium' as 'medium',
+        due_date: undefined,
         progress_percentage: 0,
-        editable: true
+        estimated_hours: 0,
+        actual_hours: 0,
+        tags: [],
+        steps: [],
+        completed_at: undefined,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by: undefined,
+        assigned_to: undefined,
+        is_overdue: false,
+        overdue_since: undefined,
+        approval_status: 'pending' as 'pending',
+        approved_by: undefined,
+        approved_at: undefined,
+        approval_notes: undefined,
+        comments: [],
+        time_entries: []
       })
       setNewTaskTitle('')
     }
@@ -231,7 +251,7 @@ export function MilestoneAccordionCards({
                             onCheckedChange={(checked) => 
                               handleTaskToggle(milestone.id, task.id, checked as boolean)
                             }
-                            disabled={userRole === 'client' || !task.editable}
+                            disabled={userRole === 'client'}
                           />
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -252,7 +272,7 @@ export function MilestoneAccordionCards({
                             )}
                           </div>
                           
-                          {userRole === 'provider' && task.editable && (
+                          {userRole === 'provider' && (
                             <div className="flex items-center gap-1">
                               <Button
                                 size="sm"

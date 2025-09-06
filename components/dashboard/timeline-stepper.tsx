@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { CheckCircle, Circle, Clock, AlertCircle, Calendar, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Milestone, Task } from '@/types/progress'
+import { Milestone, Task } from '@/lib/progress-tracking'
 
 interface TimelineStepperProps {
   milestones: Milestone[]
@@ -114,7 +114,7 @@ export function TimelineStepper({
               step.id === 'in_progress' ?
                 milestones.some(m => m.status === 'in_progress') :
                 step.id === 'review' ?
-                  milestones.some(m => m.status === 'on_hold' || m.status === 'review') :
+                  milestones.some(m => m.status === 'on_hold') :
                   milestones.every(m => m.status === 'completed')
 
             return (
@@ -142,7 +142,7 @@ export function TimelineStepper({
               step.id === 'in_progress' ?
                 milestones.some(m => m.status === 'in_progress') :
                 step.id === 'review' ?
-                  milestones.some(m => m.status === 'on_hold' || m.status === 'review') :
+                  milestones.some(m => m.status === 'on_hold') :
                   milestones.every(m => m.status === 'completed')
 
             const nextStep = timelineSteps[index + 1]
@@ -151,7 +151,7 @@ export function TimelineStepper({
               nextStep.id === 'in_progress' ?
                 milestones.some(m => m.status === 'in_progress') :
                 nextStep.id === 'review' ?
-                  milestones.some(m => m.status === 'on_hold' || m.status === 'review') :
+                  milestones.some(m => m.status === 'on_hold') :
                   milestones.every(m => m.status === 'completed')
 
             const connectorColor = isCompleted ? 'bg-green-500' : 'bg-gray-300'

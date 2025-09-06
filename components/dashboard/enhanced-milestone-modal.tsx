@@ -186,7 +186,9 @@ export function EnhancedMilestoneModal({
         const milestone = await ProgressTrackingService.createMilestone({
           ...milestoneData,
           status: 'pending',
-          progress_percentage: 0
+          progress_percentage: 0,
+          order_index: 0,
+          editable: true
         })
         
         // Create tasks from templates

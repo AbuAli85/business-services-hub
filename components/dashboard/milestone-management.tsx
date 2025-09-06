@@ -76,6 +76,8 @@ export function MilestoneManagement({ bookingId, userRole }: MilestoneManagement
         weight: milestoneData.weight || 1.0,
         status: 'pending',
         progress_percentage: 0,
+        order_index: milestoneData.order_index || 0,
+        editable: milestoneData.editable !== undefined ? milestoneData.editable : true,
         created_by: user?.id
       })
       

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { CheckCircle, Clock, AlertCircle, Calendar, ToggleLeft, ToggleRight, ChevronDown, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Milestone } from '@/types/progress'
+import { Milestone } from '@/lib/progress-tracking'
 import { isMilestoneOverdue } from '@/lib/progress-calculations'
 
 interface SimplifiedMonthlyProgressProps {

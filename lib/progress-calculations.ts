@@ -1,4 +1,4 @@
-import { Milestone, Task } from '@/types/progress'
+import { Milestone, Task } from '@/lib/progress-tracking'
 
 export interface ProgressCalculationResult {
   milestoneProgress: number

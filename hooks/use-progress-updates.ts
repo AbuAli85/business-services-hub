@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Milestone, Task } from '@/types/progress'
+import { Milestone, Task } from '@/lib/progress-tracking'
 import { 
   calculateMilestoneProgress, 
   calculateOverallProgress, 
@@ -7,6 +7,25 @@ import {
   isTaskOverdue,
   isMilestoneOverdue
 } from '@/lib/progress-calculations'
+
+// Helper function to transform milestone data to match the expected interface
+const transformMilestoneData = (milestoneData: any): Milestone => ({
+  ...milestoneData,
+  booking_id: milestoneData.booking_id || '',
+  priority: milestoneData.priority || 'medium',
+  created_at: milestoneData.created_at || new Date().toISOString(),
+  updated_at: milestoneData.updated_at || new Date().toISOString(),
+  is_overdue: milestoneData.is_overdue || false,
+  estimated_hours: milestoneData.estimated_hours || 0,
+  actual_hours: milestoneData.actual_hours || 0,
+  tags: milestoneData.tags || [],
+  notes: milestoneData.notes || '',
+  assigned_to: milestoneData.assigned_to || undefined,
+  created_by: milestoneData.created_by || undefined,
+  completed_at: milestoneData.completed_at || undefined,
+  overdue_since: milestoneData.overdue_since || undefined,
+  tasks: milestoneData.tasks || []
+})
 
 interface UseProgressUpdatesProps {
   bookingId: string
@@ -75,7 +94,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
 
       // Calculate new milestone progress
-      const updatedMilestone = calculateUpdatedMilestone(milestoneData)
+      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData))
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone in database
@@ -121,7 +140,8 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         throw new Error(allMilestonesError.message)
       }
 
-      const overallProgress = calculateOverallProgress(allMilestones || [])
+      const transformedMilestones = (allMilestones || []).map(transformMilestoneData)
+      const overallProgress = calculateOverallProgress(transformedMilestones)
 
       // Update booking progress
       const { error: bookingError } = await supabase
@@ -247,7 +267,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         throw new Error(milestoneError.message)
       }
 
-      const updatedMilestone = calculateUpdatedMilestone(milestoneData)
+      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData))
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone progress
@@ -325,7 +345,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         throw new Error(milestoneError.message)
       }
 
-      const updatedMilestone = calculateUpdatedMilestone(milestoneData)
+      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData))
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone progress
