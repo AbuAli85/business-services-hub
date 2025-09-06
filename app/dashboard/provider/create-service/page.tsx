@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Stepper } from '@/components/ui/stepper'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { getSupabaseClient } from '@/lib/supabase'
 import { 
   ArrowLeft, 
@@ -30,13 +32,15 @@ import {
   HelpCircle,
   ListChecks,
   Calendar,
-  Info
+  Info,
+  DollarSign,
+  Users,
+  Package
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { CreateServiceFormData, ServiceFormStep } from '@/types/services'
-import { DeliverablesInput } from '@/components/dashboard/deliverables-input'
-import { MilestonesEditor, MilestoneTemplate } from '@/components/dashboard/milestones-editor'
-import { RequirementsInput } from '@/components/dashboard/requirements-input'
+import { DeliverablesSelector } from '@/components/dashboard/deliverables-selector'
+import { RequirementsSelector } from '@/components/dashboard/requirements-selector'
+import { EnhancedMilestonesEditor, MilestoneTemplate } from '@/components/dashboard/enhanced-milestones-editor'
+import toast from 'react-hot-toast'
 
 // UUID validation utility
 const isValidUUID = (uuid: string): boolean => {
@@ -51,8 +55,46 @@ interface Company {
   logo_url?: string
 }
 
+interface ServiceCategory {
+  id: string
+  name: string
+  description?: string
+  icon?: string
+}
+
+interface ServiceTitle {
+  id: string
+  title: string
+  description?: string
+  is_custom: boolean
+}
+
 interface ValidationErrors {
   [key: string]: string
+}
+
+interface CreateServiceFormData {
+  // Step 1: Basic Information
+  category_id: string
+  service_title: string
+  custom_title: string
+  duration: string
+  description: string
+  price: string
+  price_type: 'fixed' | 'starting_from' | 'custom_quotation'
+  company_id: string
+  
+  // Step 2: Deliverables
+  deliverables: string[]
+  
+  // Step 3: Requirements
+  requirements: string[]
+  
+  // Step 4: Milestones
+  milestones: MilestoneTemplate[]
+  
+  // Step 5: Review & Publish
+  status: 'draft' | 'pending_approval' | 'active'
 }
 
 export default function CreateServicePage() {
@@ -61,77 +103,27 @@ export default function CreateServicePage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [companies, setCompanies] = useState<Company[]>([])
+  const [categories, setCategories] = useState<ServiceCategory[]>([])
+  const [serviceTitles, setServiceTitles] = useState<ServiceTitle[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
+  const [loadingCategories, setLoadingCategories] = useState(true)
 
-  // Fetch user's companies
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoadingCompanies(true)
-        const supabase = await getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        if (!user) return
-
-        const { data: companiesData, error } = await supabase
-          .from('companies')
-          .select('id, name, industry, logo_url')
-          .eq('owner_id', user.id)
-          .order('name')
-
-        if (error) {
-          console.error('Error fetching companies:', error)
-          return
-        }
-
-        setCompanies(companiesData || [])
-        
-        // Auto-select first company if only one exists
-        if (companiesData && companiesData.length === 1) {
-          setFormData(prev => ({
-            ...prev,
-            company_id: companiesData[0].id
-          }))
-        }
-      } catch (error) {
-        console.error('Error fetching companies:', error)
-      } finally {
-        setLoadingCompanies(false)
-      }
-    }
-
-    fetchCompanies()
-  }, [])
-  
   const [formData, setFormData] = useState<CreateServiceFormData>({
-    // Step 1: Basic Information
-    title: '',
-    description: '',
-    category: 'Digital Marketing',
+    category_id: '',
+    service_title: '',
+    custom_title: '',
     duration: '7-14 days',
+    description: '',
     price: '',
+    price_type: 'fixed',
+    company_id: '',
     deliverables: [],
-    company_id: '', // Company providing the service
-    
-    // Step 2: Requirements
     requirements: [],
-    
-    // Step 3: Milestones Template
-    milestones: [
-      {
-        id: '1',
-        milestone_title: 'Project Kickoff',
-        description: 'Initial consultation and project planning',
-        estimated_duration: 2,
-        order_index: 1
-      }
-    ],
-    
-    // Step 4: Review & Publish
+    milestones: [],
     status: 'draft'
   })
 
-  const steps: ServiceFormStep[] = [
+  const steps = [
     {
       id: 1,
       title: 'Basic Information',
@@ -141,69 +133,143 @@ export default function CreateServicePage() {
     },
     {
       id: 2,
-      title: 'Requirements',
-      description: 'Client deliverables needed',
+      title: 'Deliverables',
+      description: 'What clients will receive',
       isCompleted: currentStep > 2,
       isActive: currentStep === 2
     },
     {
       id: 3,
-      title: 'Milestones Template',
-      description: 'Default project milestones',
+      title: 'Requirements',
+      description: 'What clients need to provide',
       isCompleted: currentStep > 3,
       isActive: currentStep === 3
     },
     {
       id: 4,
-      title: 'Review & Publish',
-      description: 'Final review and submission',
+      title: 'Milestones',
+      description: 'Project phases and timeline',
       isCompleted: currentStep > 4,
       isActive: currentStep === 4
+    },
+    {
+      id: 5,
+      title: 'Review & Publish',
+      description: 'Final review and submission',
+      isCompleted: currentStep > 5,
+      isActive: currentStep === 5
     }
-  ]
-
-  const categories = [
-    'Digital Marketing',
-    'Legal Services',
-    'Accounting',
-    'IT Services',
-    'Design & Branding',
-    'Consulting',
-    'Translation',
-    'PRO Services',
-    'HR Services',
-    'Web Development',
-    'Content Creation',
-    'Financial Services',
-    'Healthcare Services',
-    'Education & Training',
-    'Real Estate',
-    'Manufacturing'
   ]
 
   const durationOptions = [
     '1-3 days',
-    '3-5 days',
-    '7-14 days', 
-    '14-21 days',
-    '21-30 days',
+    '4-7 days',
+    '7-14 days',
+    '15-30 days',
     '30+ days',
     'Custom timeframe'
   ]
 
-  // Step validation functions
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        
+        // Fetch companies
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const [companiesResult, categoriesResult] = await Promise.all([
+          supabase
+            .from('companies')
+            .select('id, name, industry, logo_url')
+            .eq('owner_id', user.id)
+            .order('name'),
+          supabase
+            .from('service_categories')
+            .select('id, name, description, icon')
+            .eq('is_active', true)
+            .order('sort_order')
+        ])
+
+        if (companiesResult.error) {
+          console.error('Error fetching companies:', companiesResult.error)
+        } else {
+          setCompanies(companiesResult.data || [])
+          if (companiesResult.data && companiesResult.data.length === 1) {
+            setFormData(prev => ({
+              ...prev,
+              company_id: companiesResult.data[0].id
+            }))
+          }
+        }
+
+        if (categoriesResult.error) {
+          console.error('Error fetching categories:', categoriesResult.error)
+        } else {
+          setCategories(categoriesResult.data || [])
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      } finally {
+        setLoadingCompanies(false)
+        setLoadingCategories(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Fetch service titles when category changes
+  useEffect(() => {
+    const fetchServiceTitles = async () => {
+      if (!formData.category_id) {
+        setServiceTitles([])
+        return
+      }
+
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: titles, error } = await supabase
+          .from('service_titles')
+          .select('id, title, description, is_custom')
+          .eq('category_id', formData.category_id)
+          .eq('is_active', true)
+          .order('sort_order')
+
+        if (error) {
+          console.error('Error fetching service titles:', error)
+          return
+        }
+
+        setServiceTitles(titles || [])
+      } catch (error) {
+        console.error('Error fetching service titles:', error)
+      }
+    }
+
+    fetchServiceTitles()
+  }, [formData.category_id])
+
+  // Validation functions
   const validateStep1 = (): ValidationErrors => {
     const errors: ValidationErrors = {}
     
-    if (!formData.title.trim()) errors.title = 'Service title is required'
+    if (!formData.category_id) errors.category_id = 'Category selection is required'
+    if (!formData.service_title && !formData.custom_title) {
+      errors.service_title = 'Service title is required'
+    }
     if (!formData.description.trim()) errors.description = 'Service description is required'
-    if (!formData.category) errors.category = 'Category selection is required'
-    if (!formData.price || parseFloat(formData.price) <= 0) errors.price = 'Valid price is required'
+    if (formData.description.trim().length < 50) {
+      errors.description = 'Description must be at least 50 characters'
+    }
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      errors.price = 'Valid price is required'
+    }
     if (!formData.duration) errors.duration = 'Duration is required'
     if (!formData.company_id) errors.company_id = 'Please select a company to provide this service'
-    
-    // Validate deliverables
-    if (formData.deliverables.length === 0) errors.deliverables = 'At least one deliverable is required'
     
     return errors
   }
@@ -211,22 +277,25 @@ export default function CreateServicePage() {
   const validateStep2 = (): ValidationErrors => {
     const errors: ValidationErrors = {}
     
-    // Requirements are optional, but if provided should not be empty
-    const validRequirements = formData.requirements.filter(r => r.trim())
-    if (formData.requirements.length > 0 && validRequirements.length === 0) {
-      errors.requirements = 'Please remove empty requirements or add content'
+    if (formData.deliverables.length === 0) {
+      errors.deliverables = 'At least one deliverable is required'
     }
     
     return errors
   }
 
   const validateStep3 = (): ValidationErrors => {
+    // Requirements are optional
+    return {}
+  }
+
+  const validateStep4 = (): ValidationErrors => {
     const errors: ValidationErrors = {}
     
     if (formData.milestones.length === 0) {
       errors.milestones = 'At least one milestone is required'
     } else {
-      const validMilestones = formData.milestones.filter(m => m.milestone_title.trim())
+      const validMilestones = formData.milestones.filter(m => m.title.trim())
       if (validMilestones.length === 0) {
         errors.milestones = 'At least one milestone with a title is required'
       }
@@ -247,6 +316,9 @@ export default function CreateServicePage() {
         break
       case 3:
         errors = validateStep3()
+        break
+      case 4:
+        errors = validateStep4()
         break
       default:
         errors = {}
@@ -296,7 +368,7 @@ export default function CreateServicePage() {
 
   // Navigation functions
   const nextStep = () => {
-    if (validateCurrentStep() && currentStep < 4) {
+    if (validateCurrentStep() && currentStep < 5) {
       setCurrentStep(prev => prev + 1)
     }
   }
@@ -307,75 +379,43 @@ export default function CreateServicePage() {
     }
   }
 
-  // Enhanced authentication validation
-  const validateUser = async () => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error) {
-        console.error('❌ Authentication error:', error)
-        alert('Authentication error. Please sign in again.')
-        router.push('/auth/sign-in')
-        return null
-      }
-      
-      if (!user) {
-        console.error('❌ No authenticated user')
-        alert('You must be logged in to create a service')
-        router.push('/auth/sign-in')
-        return null
-      }
-      
-      if (!user.id || !isValidUUID(user.id)) {
-        console.error('❌ Invalid user ID:', user.id)
-        alert('Invalid user account. Please sign in again.')
-        router.push('/auth/sign-in')
-        return null
-      }
-      
-      console.log('✅ User authenticated with valid ID:', user.id)
-      return user
-    } catch (error) {
-      console.error('❌ Error validating user:', error)
-      alert('Authentication error. Please sign in again.')
-      router.push('/auth/sign-in')
-      return null
-    }
-  }
-
+  // Submit function
   const handleSubmit = async () => {
     setLoading(true)
 
     try {
-      // Get and validate current user
       const user = await validateUser()
       if (!user) return
       
-      // Final validation of all steps
+      // Final validation
       const step1Errors = validateStep1()
       const step2Errors = validateStep2()
       const step3Errors = validateStep3()
+      const step4Errors = validateStep4()
       
-      const allErrors = { ...step1Errors, ...step2Errors, ...step3Errors }
+      const allErrors = { ...step1Errors, ...step2Errors, ...step3Errors, ...step4Errors }
       if (Object.keys(allErrors).length > 0) {
         setValidationErrors(allErrors)
-        alert('Please fix all validation errors before submitting')
+        toast.error('Please fix all validation errors before submitting')
         return
       }
 
       const supabase = await getSupabaseClient()
 
-      // Create service with new schema
+      // Get category name
+      const selectedCategory = categories.find(c => c.id === formData.category_id)
+      const categoryName = selectedCategory?.name || 'General'
+
+      // Create service
       const serviceData = {
-        title: formData.title,
+        title: formData.service_title === 'custom' ? formData.custom_title : formData.service_title,
         description: formData.description,
-        category: formData.category,
+        category: categoryName,
         base_price: parseFloat(formData.price),
         currency: 'OMR',
-        status: formData.status === 'pending_approval' ? 'pending_approval' : 'draft',
+        status: formData.status,
         provider_id: user.id,
-        company_id: formData.company_id, // Add company providing the service
+        company_id: formData.company_id,
         duration: formData.duration,
         deliverables: formData.deliverables
       }
@@ -388,20 +428,18 @@ export default function CreateServicePage() {
 
       if (serviceError) {
         console.error('Error creating service:', serviceError)
-        alert('Failed to create service: ' + serviceError.message)
+        toast.error('Failed to create service: ' + serviceError.message)
         return
       }
 
       // Create service requirements
       if (formData.requirements.length > 0) {
-        const requirementsData = formData.requirements
-          .filter(r => r.trim())
-          .map((requirement, index) => ({
-            service_id: service.id,
-            requirement,
-            is_required: true,
-            order_index: index + 1
-          }))
+        const requirementsData = formData.requirements.map((requirement, index) => ({
+          service_id: service.id,
+          requirement,
+          is_required: true,
+          order_index: index + 1
+        }))
 
         const { error: requirementsError } = await supabase
           .from('service_requirements')
@@ -414,10 +452,10 @@ export default function CreateServicePage() {
 
       // Create service milestones
       const milestonesData = formData.milestones
-        .filter(m => m.milestone_title.trim())
+        .filter(m => m.title.trim())
         .map((milestone, index) => ({
           service_id: service.id,
-          milestone_title: milestone.milestone_title,
+          milestone_title: milestone.title,
           description: milestone.description,
           estimated_duration: milestone.estimated_duration,
           order_index: index + 1,
@@ -434,68 +472,152 @@ export default function CreateServicePage() {
         }
       }
 
-      alert('Service created successfully!')
+      toast.success('Service created successfully!')
       router.push('/dashboard/services')
     } catch (error) {
       console.error('Error creating service:', error)
-      alert('An unexpected error occurred')
+      toast.error('An unexpected error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Enhanced authentication validation
+  const validateUser = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error) {
+        console.error('❌ Authentication error:', error)
+        toast.error('Authentication error. Please sign in again.')
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      if (!user) {
+        console.error('❌ No authenticated user')
+        toast.error('You must be logged in to create a service')
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      if (!user.id || !isValidUUID(user.id)) {
+        console.error('❌ Invalid user ID:', user.id)
+        toast.error('Invalid user account. Please sign in again.')
+        router.push('/auth/sign-in')
+        return null
+      }
+      
+      return user
+    } catch (error) {
+      console.error('❌ Error validating user:', error)
+      toast.error('Authentication error. Please sign in again.')
+      router.push('/auth/sign-in')
+      return null
     }
   }
 
   // Step components
   const renderStep1 = () => (
     <div className="space-y-6">
-      {/* Service Title */}
+      {/* Category Selection */}
       <div>
-        <Label htmlFor="title" className="text-sm font-medium text-slate-700 mb-2 block">
-          Service Title *
+        <Label htmlFor="category_id" className="text-sm font-medium text-slate-700 mb-2 block">
+          Service Category *
           <TooltipProvider>
-            <Tooltip content="Choose a clear, descriptive title that clients will easily understand">
+            <Tooltip content="Choose the category that best fits your service">
               <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
             </Tooltip>
           </TooltipProvider>
         </Label>
-        <Input
-          id="title"
-          value={formData.title}
-          onChange={(e) => handleInputChange('title', e.target.value)}
-          placeholder="e.g., Digital Marketing Campaign"
-          className={`h-12 text-base border-2 transition-all duration-200 ${
-            validationErrors.title ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
-          }`}
-        />
-        {validationErrors.title && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.title}</p>
-        )}
-      </div>
-
-      {/* Category and Duration Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <Label htmlFor="category" className="text-sm font-medium text-slate-700 mb-2 block">
-            Category *
-          </Label>
-          <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+        {loadingCategories ? (
+          <div className="h-12 border-2 border-slate-200 rounded-md flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-slate-600">Loading categories...</span>
+          </div>
+        ) : (
+          <Select value={formData.category_id} onValueChange={(value) => handleInputChange('category_id', value)}>
             <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
-              validationErrors.category ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+              validationErrors.category_id ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
             }`}>
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
               {categories.map(category => (
-                <SelectItem key={category} value={category}>
-                  {category}
+                <SelectItem key={category.id} value={category.id}>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                      {category.icon || category.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-medium">{category.name}</div>
+                      {category.description && (
+                        <div className="text-xs text-slate-500">{category.description}</div>
+                      )}
+                    </div>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {validationErrors.category && (
-            <p className="text-red-500 text-sm mt-1">{validationErrors.category}</p>
-          )}
-        </div>
+        )}
+        {validationErrors.category_id && (
+          <p className="text-red-500 text-sm mt-1">{validationErrors.category_id}</p>
+        )}
+      </div>
 
+      {/* Service Title */}
+      <div>
+        <Label htmlFor="service_title" className="text-sm font-medium text-slate-700 mb-2 block">
+          Service Title *
+          <TooltipProvider>
+            <Tooltip content="Choose from professional service titles or create a custom one">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+            </Tooltip>
+          </TooltipProvider>
+        </Label>
+        <Select value={formData.service_title} onValueChange={(value) => handleInputChange('service_title', value)}>
+          <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
+            validationErrors.service_title ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+          }`}>
+            <SelectValue placeholder="Select or create a service title" />
+          </SelectTrigger>
+          <SelectContent>
+            {serviceTitles.map(title => (
+              <SelectItem key={title.id} value={title.title}>
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-medium">{title.title}</div>
+                    {title.description && (
+                      <div className="text-xs text-slate-500">{title.description}</div>
+                    )}
+                  </div>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        {formData.service_title === 'custom' && (
+          <Input
+            value={formData.custom_title}
+            onChange={(e) => handleInputChange('custom_title', e.target.value)}
+            placeholder="Enter custom service title"
+            className="mt-2 h-12 text-base border-2 border-slate-200 focus:border-blue-500 transition-all duration-200"
+          />
+        )}
+        
+        {validationErrors.service_title && (
+          <p className="text-red-500 text-sm mt-1">{validationErrors.service_title}</p>
+        )}
+      </div>
+
+      {/* Duration and Price Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <Label htmlFor="duration" className="text-sm font-medium text-slate-700 mb-2 block">
             Duration *
@@ -514,13 +636,75 @@ export default function CreateServicePage() {
             <SelectContent>
               {durationOptions.map(duration => (
                 <SelectItem key={duration} value={duration}>
-                  {duration}
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 text-slate-500" />
+                    <span>{duration}</span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {validationErrors.duration && (
             <p className="text-red-500 text-sm mt-1">{validationErrors.duration}</p>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="price" className="text-sm font-medium text-slate-700 mb-2 block">
+            Price (OMR) *
+            <TooltipProvider>
+              <Tooltip content="Set your service pricing">
+                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+              </Tooltip>
+            </TooltipProvider>
+          </Label>
+          <div className="space-y-2">
+            <div className="relative">
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.price}
+                onChange={(e) => handleInputChange('price', e.target.value)}
+                placeholder="0.00"
+                className={`h-12 text-base border-2 transition-all duration-200 pl-12 ${
+                  validationErrors.price ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+                }`}
+              />
+              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 font-medium">OMR</span>
+            </div>
+            
+            {/* Price Type Toggle */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="price-type"
+                  checked={formData.price_type === 'starting_from'}
+                  onCheckedChange={(checked) => 
+                    handleInputChange('price_type', checked ? 'starting_from' : 'fixed')
+                  }
+                />
+                <Label htmlFor="price-type" className="text-sm text-slate-600">
+                  Starting from
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="custom-quotation"
+                  checked={formData.price_type === 'custom_quotation'}
+                  onCheckedChange={(checked) => 
+                    handleInputChange('price_type', checked ? 'custom_quotation' : 'fixed')
+                  }
+                />
+                <Label htmlFor="custom-quotation" className="text-sm text-slate-600">
+                  Custom quotation
+                </Label>
+              </div>
+            </div>
+          </div>
+          {validationErrors.price && (
+            <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
           )}
         </div>
       </div>
@@ -530,7 +714,7 @@ export default function CreateServicePage() {
         <Label htmlFor="description" className="text-sm font-medium text-slate-700 mb-2 block">
           Description *
           <TooltipProvider>
-            <Tooltip content="Describe your service in detail, including what clients can expect">
+            <Tooltip content="Describe your service in detail, including scope, value, and compliance notes">
               <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
             </Tooltip>
           </TooltipProvider>
@@ -539,48 +723,21 @@ export default function CreateServicePage() {
           id="description"
           value={formData.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Describe your service in detail, including what clients can expect, deliverables, and unique value propositions..."
+          placeholder="Describe your service in detail, including scope, value, and compliance notes..."
           rows={4}
           className={`border-2 transition-all duration-200 resize-none ${
             validationErrors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
           }`}
         />
-        {validationErrors.description && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.description}</p>
-        )}
-      </div>
-
-      {/* Price */}
-      <div>
-        <Label htmlFor="price" className="text-sm font-medium text-slate-700 mb-2 block">
-          Price (OMR) *
-        </Label>
-        <div className="relative max-w-xs">
-          <Input
-            id="price"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.price}
-            onChange={(e) => handleInputChange('price', e.target.value)}
-            placeholder="0.00"
-            className={`h-12 text-base border-2 transition-all duration-200 pl-12 ${
-              validationErrors.price ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
-            }`}
-          />
-          <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 font-medium">OMR</span>
+        <div className="flex justify-between items-center mt-1">
+          {validationErrors.description ? (
+            <p className="text-red-500 text-sm">{validationErrors.description}</p>
+          ) : (
+            <p className="text-slate-500 text-sm">Minimum 50 characters</p>
+          )}
+          <p className="text-slate-400 text-sm">{formData.description.length}/500</p>
         </div>
-        {validationErrors.price && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
-        )}
       </div>
-
-      {/* Deliverables */}
-      <DeliverablesInput
-        deliverables={formData.deliverables}
-        onChange={handleDeliverablesChange}
-        error={validationErrors.deliverables}
-      />
 
       {/* Company Selection */}
       <div>
@@ -652,27 +809,33 @@ export default function CreateServicePage() {
   )
 
   const renderStep2 = () => (
-    <div className="space-y-6">
-      <RequirementsInput
-        requirements={formData.requirements}
-        onChange={handleRequirementsChange}
-        error={validationErrors.requirements}
-      />
-    </div>
+    <DeliverablesSelector
+      categoryId={formData.category_id}
+      selectedDeliverables={formData.deliverables}
+      onChange={handleDeliverablesChange}
+      error={validationErrors.deliverables}
+    />
   )
 
   const renderStep3 = () => (
-    <div className="space-y-6">
-      <MilestonesEditor
-        milestones={formData.milestones}
-        onChange={handleMilestonesChange}
-        error={validationErrors.milestones}
-        category={formData.category}
-      />
-    </div>
+    <RequirementsSelector
+      categoryId={formData.category_id}
+      selectedRequirements={formData.requirements}
+      onChange={handleRequirementsChange}
+      error={validationErrors.requirements}
+    />
   )
 
   const renderStep4 = () => (
+    <EnhancedMilestonesEditor
+      categoryId={formData.category_id}
+      milestones={formData.milestones}
+      onChange={handleMilestonesChange}
+      error={validationErrors.milestones}
+    />
+  )
+
+  const renderStep5 = () => (
     <div className="space-y-6">
       <div className="text-center mb-6">
         <Eye className="h-12 w-12 text-blue-600 mx-auto mb-4" />
@@ -689,15 +852,20 @@ export default function CreateServicePage() {
             Service Summary
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Service Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium text-slate-500">Title</Label>
-              <p className="text-slate-900 font-medium">{formData.title || 'Not specified'}</p>
+              <Label className="text-sm font-medium text-slate-500">Service Title</Label>
+              <p className="text-slate-900 font-medium">
+                {formData.service_title === 'custom' ? formData.custom_title : formData.service_title}
+              </p>
             </div>
             <div>
               <Label className="text-sm font-medium text-slate-500">Category</Label>
-              <p className="text-slate-900">{formData.category}</p>
+              <p className="text-slate-900">
+                {categories.find(c => c.id === formData.category_id)?.name || 'Not selected'}
+              </p>
             </div>
             <div>
               <Label className="text-sm font-medium text-slate-500">Duration</Label>
@@ -705,43 +873,60 @@ export default function CreateServicePage() {
             </div>
             <div>
               <Label className="text-sm font-medium text-slate-500">Price</Label>
-              <p className="text-slate-900 font-medium">OMR {formData.price || '0.00'}</p>
+              <p className="text-slate-900 font-medium">
+                OMR {formData.price} 
+                {formData.price_type === 'starting_from' && ' (starting from)'}
+                {formData.price_type === 'custom_quotation' && ' (custom quotation)'}
+              </p>
             </div>
           </div>
           
           <div>
             <Label className="text-sm font-medium text-slate-500">Description</Label>
-            <p className="text-slate-900">{formData.description || 'Not specified'}</p>
+            <p className="text-slate-900">{formData.description}</p>
           </div>
           
           <div>
             <Label className="text-sm font-medium text-slate-500">Deliverables ({formData.deliverables.length})</Label>
-            <ul className="list-disc list-inside text-slate-900 space-y-1">
+            <div className="flex flex-wrap gap-2 mt-2">
               {formData.deliverables.map((deliverable, index) => (
-                <li key={index}>{deliverable}</li>
+                <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {deliverable}
+                </Badge>
               ))}
-            </ul>
+            </div>
           </div>
           
           {formData.requirements.length > 0 && (
             <div>
               <Label className="text-sm font-medium text-slate-500">Requirements ({formData.requirements.length})</Label>
-              <ul className="list-disc list-inside text-slate-900 space-y-1">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {formData.requirements.map((requirement, index) => (
-                  <li key={index}>{requirement}</li>
+                  <Badge key={index} variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+                    {requirement}
+                  </Badge>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
           
           <div>
-            <Label className="text-sm font-medium text-slate-500">Milestones ({formData.milestones.filter(m => m.milestone_title.trim()).length})</Label>
-            <div className="space-y-2">
-              {formData.milestones.filter(m => m.milestone_title.trim()).map((milestone, index) => (
-                <div key={index} className="flex items-center gap-2 p-2 bg-slate-50 rounded">
-                  <Calendar className="h-4 w-4 text-slate-500" />
-                  <span className="font-medium">{milestone.milestone_title}</span>
-                  <span className="text-slate-500">({milestone.estimated_duration} days)</span>
+            <Label className="text-sm font-medium text-slate-500">Milestones ({formData.milestones.filter(m => m.title.trim()).length})</Label>
+            <div className="space-y-2 mt-2">
+              {formData.milestones.filter(m => m.title.trim()).map((milestone, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <Badge variant="outline" className="text-xs">
+                    {index + 1}
+                  </Badge>
+                  <div className="flex-1">
+                    <div className="font-medium">{milestone.title}</div>
+                    {milestone.description && (
+                      <div className="text-sm text-slate-500">{milestone.description}</div>
+                    )}
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {milestone.estimated_duration} days
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -753,19 +938,22 @@ export default function CreateServicePage() {
         <Label className="text-sm font-medium text-slate-700 mb-2 block">
           Publication Status
         </Label>
-        <Select value={formData.status} onValueChange={(value: 'draft' | 'pending_approval') => handleInputChange('status', value)}>
+        <Select value={formData.status} onValueChange={(value: 'draft' | 'pending_approval' | 'active') => handleInputChange('status', value)}>
           <SelectTrigger className="h-12 border-2 border-slate-200 focus:border-blue-500">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="draft">Save as Draft</SelectItem>
             <SelectItem value="pending_approval">Submit for Approval</SelectItem>
+            <SelectItem value="active">Publish Service</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-xs text-slate-500 mt-2">
           {formData.status === 'draft' 
             ? 'Save as draft to continue editing later' 
-            : 'Submit for admin approval to make it available to clients'
+            : formData.status === 'pending_approval'
+            ? 'Submit for admin approval to make it available to clients'
+            : 'Publish immediately to make it available to clients'
           }
         </p>
       </div>
@@ -791,10 +979,10 @@ export default function CreateServicePage() {
                 <Plus className="h-8 w-8 text-white" />
               </div>
               <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">
-                Create New Service
+                Create Professional Service
               </h1>
               <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                Build a comprehensive service offering with milestones and requirements
+                Build a comprehensive service offering with structured categories and professional templates
               </p>
             </div>
           </div>
@@ -819,6 +1007,7 @@ export default function CreateServicePage() {
               {currentStep === 2 && renderStep2()}
               {currentStep === 3 && renderStep3()}
               {currentStep === 4 && renderStep4()}
+              {currentStep === 5 && renderStep5()}
 
               {/* Navigation */}
               <div className="flex items-center justify-between pt-6 border-t border-slate-200">
@@ -833,7 +1022,7 @@ export default function CreateServicePage() {
                   Previous
                 </Button>
                 
-                {currentStep < 4 ? (
+                {currentStep < 5 ? (
                   <Button
                     type="button"
                     onClick={nextStep}
@@ -866,15 +1055,15 @@ export default function CreateServicePage() {
             </CardContent>
           </Card>
 
-          {/* Service Approval Process Info */}
+          {/* Service Creation Info */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
               <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h4 className="font-medium text-blue-900 mb-1">Service Approval Process</h4>
+                <h4 className="font-medium text-blue-900 mb-1">Professional Service Creation</h4>
                 <p className="text-sm text-blue-700">
-                  Your service will be reviewed by our admin team before being published. This usually takes 1-2 business days. 
-                  You'll receive an email notification once your service is approved or if any changes are needed.
+                  This enhanced form uses professional templates and categories to ensure consistency across all services. 
+                  Your service will be structured with proper deliverables, requirements, and milestones for a professional client experience.
                 </p>
               </div>
             </div>
