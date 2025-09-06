@@ -17,7 +17,6 @@ import {
   Save, 
   Plus, 
   Building2, 
-  DollarSign, 
   Tag, 
   FileText, 
   Zap,
@@ -547,7 +546,7 @@ export default function CreateServicePage() {
               validationErrors.price ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
             }`}
           />
-          <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+          <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 font-medium">OMR</span>
         </div>
         {validationErrors.price && (
           <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
