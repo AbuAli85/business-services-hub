@@ -21,6 +21,7 @@ import { ProgressTrackingService, Milestone, Task, BookingProgress, TimeEntry } 
 import { MainProgressHeader } from './main-progress-header'
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { SimpleMilestones } from './simple-milestones'
+import { SimpleTimeline } from './simple-timeline'
 import { TimelineView } from './timeline-view'
 import { AnalyticsView } from './analytics-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
@@ -53,10 +54,16 @@ export function ProgressTrackingSystem({
       id: milestone.id,
       title: milestone.title,
       description: milestone.description,
+      purpose: milestone.description, // Use description as purpose for now
+      mainGoal: `Complete ${milestone.title} phase`, // Default main goal
       startDate: milestone.created_at,
       endDate: milestone.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       status: milestone.status as 'not_started' | 'in_progress' | 'completed',
       color: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'][index % 5],
+      phaseNumber: index + 1,
+      estimatedHours: milestone.estimated_hours || 0,
+      actualHours: 0, // Will be calculated from tasks
+      clientComments: [], // Will be populated from database
       tasks: (milestone.tasks || []).map(task => ({
         id: task.id,
         title: task.title,
@@ -286,6 +293,17 @@ export function ProgressTrackingSystem({
     }
   }, [loadData])
 
+  const handleCommentAdd = useCallback(async (milestoneId: string, comment: any) => {
+    try {
+      // TODO: Implement comment saving to database
+      console.log('Adding comment to milestone:', milestoneId, comment)
+      toast.success('Comment added successfully')
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast.error('Failed to add comment')
+    }
+  }, [])
+
   // Handle time tracking
   const handleStartTimeTracking = useCallback(async (taskId: string, description?: string) => {
     try {
@@ -505,19 +523,15 @@ export function ProgressTrackingSystem({
                     due_date: updates.endDate
                   })
                 }}
+                onCommentAdd={handleCommentAdd}
               />
             </TabsContent>
 
 
             <TabsContent value="timeline" className="space-y-6">
-              <TimelineView
-                milestones={milestones || []}
+              <SimpleTimeline
+                milestones={transformToSimpleMilestones(milestones || [])}
                 userRole={userRole}
-                onMilestoneClick={(milestoneId) => {
-                  // Scroll to milestone in accordion
-                  const element = document.getElementById(`milestone-${milestoneId}`)
-                  element?.scrollIntoView({ behavior: 'smooth' })
-                }}
               />
             </TabsContent>
 

@@ -38,11 +38,25 @@ interface SimpleMilestone {
   id: string
   title: string
   description?: string
+  purpose?: string
+  mainGoal?: string
   startDate: string
   endDate: string
   status: 'not_started' | 'in_progress' | 'completed'
   tasks: SimpleTask[]
   color: string
+  phaseNumber: number
+  estimatedHours?: number
+  actualHours?: number
+  clientComments?: Comment[]
+}
+
+interface Comment {
+  id: string
+  text: string
+  author: string
+  authorRole: 'provider' | 'client'
+  createdAt: string
 }
 
 interface SimpleMilestonesProps {
@@ -51,6 +65,7 @@ interface SimpleMilestonesProps {
   onTaskUpdate: (taskId: string, updates: Partial<SimpleTask>) => void
   onTaskAdd: (milestoneId: string, taskData: Omit<SimpleTask, 'id'>) => void
   onTaskDelete: (milestoneId: string, taskId: string) => void
+  onCommentAdd: (milestoneId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => void
   userRole: 'provider' | 'client'
 }
 
@@ -60,11 +75,14 @@ export function SimpleMilestones({
   onTaskUpdate,
   onTaskAdd: onTaskCreate,
   onTaskDelete,
+  onCommentAdd,
   userRole
 }: SimpleMilestonesProps) {
   const [editingMilestone, setEditingMilestone] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<{milestoneId: string, taskId: string} | null>(null)
   const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<SimpleTask, 'id'>} | null>(null)
+  const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
+  const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -143,6 +161,21 @@ export function SimpleMilestones({
     }
   }
 
+  const handleAddComment = (milestoneId: string) => {
+    setNewComment({ milestoneId, text: '' })
+  }
+
+  const saveComment = () => {
+    if (!newComment || !newComment.text.trim()) return
+    
+    onCommentAdd(newComment.milestoneId, {
+      text: newComment.text,
+      author: userRole === 'provider' ? 'Provider' : 'Client',
+      authorRole: userRole
+    })
+    setNewComment(null)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -172,12 +205,18 @@ export function SimpleMilestones({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(milestone.status)}`}>
-                      {milestone.status.replace('_', ' ')}
+                      Phase {milestone.phaseNumber}: {milestone.status.replace('_', ' ')}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <CardTitle className="text-lg">{milestone.title}</CardTitle>
                       {milestone.description && (
                         <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
+                      )}
+                      {milestone.purpose && (
+                        <p className="text-xs text-blue-600 mt-1"><strong>Purpose:</strong> {milestone.purpose}</p>
+                      )}
+                      {milestone.mainGoal && (
+                        <p className="text-xs text-green-600 mt-1"><strong>Main Goal:</strong> {milestone.mainGoal}</p>
                       )}
                     </div>
                   </div>
@@ -186,6 +225,13 @@ export function SimpleMilestones({
                     <div className={`text-sm font-medium ${smartIndicator.color}`}>
                       {smartIndicator.message}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setExpandedMilestone(expandedMilestone === milestone.id ? null : milestone.id)}
+                    >
+                      {expandedMilestone === milestone.id ? 'Collapse' : 'Expand'}
+                    </Button>
                     {userRole === 'provider' && (
                       <Button
                         variant="ghost"
@@ -373,6 +419,145 @@ export function SimpleMilestones({
                       </div>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Expanded View - Tasks, Comments, and Details */}
+                {expandedMilestone === milestone.id && (
+                  <div className="mt-6 space-y-4">
+                    {/* Milestone Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Phase Details</h4>
+                        <div className="space-y-2 text-sm">
+                          <div><strong>Start Date:</strong> {format(new Date(milestone.startDate), 'MMM dd, yyyy')}</div>
+                          <div><strong>End Date:</strong> {format(new Date(milestone.endDate), 'MMM dd, yyyy')}</div>
+                          <div><strong>Estimated Hours:</strong> {milestone.estimatedHours || 0}h</div>
+                          <div><strong>Actual Hours:</strong> {milestone.actualHours || 0}h</div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Progress Summary</h4>
+                        <div className="space-y-2 text-sm">
+                          <div><strong>Tasks Completed:</strong> {completedTasks} of {totalTasks}</div>
+                          <div><strong>Progress:</strong> {Math.round(progress)}%</div>
+                          <div><strong>Status:</strong> {smartIndicator.message}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Comments Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-gray-900">Comments & Feedback</h4>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddComment(milestone.id)}
+                        >
+                          Add Comment
+                        </Button>
+                      </div>
+                      
+                      {/* Comments List */}
+                      <div className="space-y-2">
+                        {milestone.clientComments?.map((comment) => (
+                          <div key={comment.id} className="p-3 bg-white border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-900">{comment.author}</span>
+                              <span className="text-xs text-gray-500">
+                                {format(new Date(comment.createdAt), 'MMM dd, yyyy HH:mm')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">{comment.text}</p>
+                          </div>
+                        ))}
+                        {(!milestone.clientComments || milestone.clientComments.length === 0) && (
+                          <p className="text-sm text-gray-500 italic">No comments yet. Add the first one!</p>
+                        )}
+                      </div>
+
+                      {/* New Comment Form */}
+                      {newComment && newComment.milestoneId === milestone.id && (
+                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <h5 className="font-medium mb-2">Add Comment</h5>
+                          <Textarea
+                            placeholder="Write your comment or feedback..."
+                            value={newComment.text}
+                            onChange={(e) => setNewComment({ ...newComment, text: e.target.value })}
+                            className="mb-3"
+                          />
+                          <div className="flex items-center space-x-2">
+                            <Button onClick={saveComment} size="sm">Post Comment</Button>
+                            <Button variant="outline" onClick={() => setNewComment(null)} size="sm">Cancel</Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Milestone Editing Form */}
+                {editingMilestone === milestone.id && userRole === 'provider' && (
+                  <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h4 className="font-medium mb-3">Edit Phase Settings</h4>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input
+                          placeholder="Phase Title"
+                          value={milestone.title}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { title: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Purpose of this phase"
+                          value={milestone.purpose || ''}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { purpose: e.target.value })}
+                        />
+                      </div>
+                      <Textarea
+                        placeholder="Phase Description"
+                        value={milestone.description || ''}
+                        onChange={(e) => onMilestoneUpdate(milestone.id, { description: e.target.value })}
+                      />
+                      <Input
+                        placeholder="Main Goal of this phase"
+                        value={milestone.mainGoal || ''}
+                        onChange={(e) => onMilestoneUpdate(milestone.id, { mainGoal: e.target.value })}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          type="date"
+                          value={milestone.startDate}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { startDate: e.target.value })}
+                        />
+                        <Input
+                          type="date"
+                          value={milestone.endDate}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { endDate: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          type="number"
+                          placeholder="Estimated Hours"
+                          value={milestone.estimatedHours || ''}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { estimatedHours: parseInt(e.target.value) || 0 })}
+                        />
+                        <select
+                          value={milestone.status}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { status: e.target.value as any })}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        >
+                          <option value="not_started">Not Started</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button onClick={() => setEditingMilestone(null)} size="sm">Save Changes</Button>
+                        <Button variant="outline" onClick={() => setEditingMilestone(null)} size="sm">Cancel</Button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
