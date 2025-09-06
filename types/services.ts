@@ -55,6 +55,7 @@ export interface CreateServiceFormData {
   duration: string
   price: string
   deliverables: string[]
+  company_id?: string // Company providing the service
   
   // Step 2: Requirements
   requirements: string[]

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -41,6 +41,13 @@ const isValidUUID = (uuid: string): boolean => {
   return uuidRegex.test(uuid)
 }
 
+interface Company {
+  id: string
+  name: string
+  industry?: string
+  logo_url?: string
+}
+
 interface ValidationErrors {
   [key: string]: string
 }
@@ -50,6 +57,48 @@ export default function CreateServicePage() {
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [loadingCompanies, setLoadingCompanies] = useState(true)
+
+  // Fetch user's companies
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoadingCompanies(true)
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (!user) return
+
+        const { data: companiesData, error } = await supabase
+          .from('companies')
+          .select('id, name, industry, logo_url')
+          .eq('owner_id', user.id)
+          .order('name')
+
+        if (error) {
+          console.error('Error fetching companies:', error)
+          return
+        }
+
+        setCompanies(companiesData || [])
+        
+        // Auto-select first company if only one exists
+        if (companiesData && companiesData.length === 1) {
+          setFormData(prev => ({
+            ...prev,
+            company_id: companiesData[0].id
+          }))
+        }
+      } catch (error) {
+        console.error('Error fetching companies:', error)
+      } finally {
+        setLoadingCompanies(false)
+      }
+    }
+
+    fetchCompanies()
+  }, [])
   
   const [formData, setFormData] = useState<CreateServiceFormData>({
     // Step 1: Basic Information
@@ -59,6 +108,7 @@ export default function CreateServicePage() {
     duration: '7-14 days',
     price: '',
     deliverables: [''],
+    company_id: '', // Company providing the service
     
     // Step 2: Requirements
     requirements: [''],
@@ -146,6 +196,7 @@ export default function CreateServicePage() {
     if (!formData.category) errors.category = 'Category selection is required'
     if (!formData.price || parseFloat(formData.price) <= 0) errors.price = 'Valid price is required'
     if (!formData.duration) errors.duration = 'Duration is required'
+    if (!formData.company_id) errors.company_id = 'Please select a company to provide this service'
     
     // Validate deliverables
     const validDeliverables = formData.deliverables.filter(d => d.trim())
@@ -354,6 +405,7 @@ export default function CreateServicePage() {
         currency: 'OMR',
         status: formData.status === 'pending_approval' ? 'pending_approval' : 'draft',
         provider_id: user.id,
+        company_id: formData.company_id, // Add company providing the service
         duration: formData.duration,
         deliverables: formData.deliverables.filter(d => d.trim())
       }
@@ -600,6 +652,73 @@ export default function CreateServicePage() {
         </div>
         {validationErrors.deliverables && (
           <p className="text-red-500 text-sm mt-1">{validationErrors.deliverables}</p>
+        )}
+      </div>
+
+      {/* Company Selection */}
+      <div>
+        <Label htmlFor="company_id" className="text-sm font-medium text-slate-700 mb-2 block">
+          Company Providing Service *
+          <TooltipProvider>
+            <Tooltip content="Select which company will provide this service">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+            </Tooltip>
+          </TooltipProvider>
+        </Label>
+        {loadingCompanies ? (
+          <div className="h-12 border-2 border-slate-200 rounded-md flex items-center justify-center">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-slate-600">Loading companies...</span>
+          </div>
+        ) : companies.length === 0 ? (
+          <div className="h-12 border-2 border-slate-200 rounded-md flex items-center justify-center bg-slate-50">
+            <div className="text-center">
+              <Building2 className="h-5 w-5 text-slate-400 mx-auto mb-1" />
+              <p className="text-slate-600 text-sm">No companies found</p>
+              <Link href="/dashboard/company" className="text-blue-600 text-sm hover:underline">
+                Create a company first
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <Select 
+            value={formData.company_id} 
+            onValueChange={(value) => handleInputChange('company_id', value)}
+          >
+            <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
+              validationErrors.company_id ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+            }`}>
+              <SelectValue placeholder="Select a company" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map(company => (
+                <SelectItem key={company.id} value={company.id}>
+                  <div className="flex items-center space-x-3">
+                    {company.logo_url ? (
+                      <img 
+                        src={company.logo_url} 
+                        alt={`${company.name} logo`} 
+                        className="w-6 h-6 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                        {company.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-medium">{company.name}</div>
+                      {company.industry && (
+                        <div className="text-xs text-slate-500">{company.industry}</div>
+                      )}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {validationErrors.company_id && (
+          <p className="text-red-500 text-sm mt-1">{validationErrors.company_id}</p>
         )}
       </div>
     </div>
