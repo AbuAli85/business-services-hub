@@ -159,6 +159,30 @@ export default function CompanyPage() {
       })
     }
   }, [currentCompany, editing, creating])
+
+  // Clear form when creating a new company
+  useEffect(() => {
+    if (creating && !editing) {
+      console.log('Clearing form for new company creation')
+      setForm({
+        name: '',
+        description: '',
+        cr_number: '',
+        vat_number: '',
+        address: '',
+        phone: '',
+        email: '',
+        website: '',
+        industry: '',
+        size: '',
+        founded_year: new Date().getFullYear(),
+        logo_url: ''
+      })
+      setLogoFile(null)
+      setLogoPreview(null)
+    }
+  }, [creating, editing])
+
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
