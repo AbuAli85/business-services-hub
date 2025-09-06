@@ -168,7 +168,7 @@ export function MultiSelectWithChips({
               "w-full justify-between h-11 border-2 transition-all duration-200",
               error ? "border-red-500" : "border-slate-200 focus:border-blue-500"
             )}
-            disabled={disabled || (maxSelections && selectedValues.length >= maxSelections)}
+            disabled={disabled || (maxSelections ? selectedValues.length >= maxSelections : false)}
           >
             <span className="truncate">
               {selectedValues.length > 0 
