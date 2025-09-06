@@ -144,7 +144,7 @@ export function MonthlyProgressTab({
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <h3 className="text-lg font-semibold">
-            {format(selectedMonth, 'MMMM yyyy')} Progress
+            {safeFormatDate(selectedMonth, 'MMMM yyyy')} Progress
           </h3>
           <div className="flex items-center space-x-2">
             <Button

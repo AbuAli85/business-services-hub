@@ -77,7 +77,7 @@ export function AnalyticsView({
         const weekProgress = weekTasks.length > 0 ? (weekCompletedTasks / weekTasks.length) * 100 : 0
         
         weeks.push({
-          week: format(weekStart, 'MMM dd'),
+          week: safeFormatDate(weekStart, 'MMM dd'),
           milestones: weekMilestones.length,
           tasks: weekTasks.length,
           completedTasks: weekCompletedTasks,
