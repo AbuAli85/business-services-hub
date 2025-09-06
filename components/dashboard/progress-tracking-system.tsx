@@ -48,6 +48,7 @@ export function ProgressTrackingSystem({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
 
   const { 
     isUpdating, 
@@ -80,8 +81,58 @@ export function ProgressTrackingSystem({
       console.log('Loading progress data for booking:', bookingId)
 
       // Load milestones first
-      const milestonesData = await ProgressTrackingService.getMilestones(bookingId)
-      console.log('Loaded milestones:', milestonesData)
+      let milestonesData: Milestone[] = []
+      try {
+        const rawMilestones = await ProgressTrackingService.getMilestones(bookingId)
+        console.log('Raw milestones from service:', rawMilestones)
+        
+        // Transform milestones data to ensure all required properties exist
+        milestonesData = (rawMilestones || []).map(milestone => ({
+          ...milestone,
+          booking_id: milestone.booking_id || bookingId,
+          priority: milestone.priority || 'medium',
+          created_at: milestone.created_at || new Date().toISOString(),
+          updated_at: milestone.updated_at || new Date().toISOString(),
+          is_overdue: milestone.is_overdue || false,
+          estimated_hours: milestone.estimated_hours || 0,
+          actual_hours: milestone.actual_hours || 0,
+          tags: milestone.tags || [],
+          notes: milestone.notes || '',
+          assigned_to: milestone.assigned_to || undefined,
+          created_by: milestone.created_by || undefined,
+          completed_at: milestone.completed_at || undefined,
+          overdue_since: milestone.overdue_since || undefined,
+          order_index: milestone.order_index || 0,
+          editable: milestone.editable !== undefined ? milestone.editable : true,
+          tasks: (milestone.tasks || []).map(task => ({
+            ...task,
+            milestone_id: milestone.id,
+            description: task.description || '',
+            priority: task.priority || 'medium',
+            estimated_hours: task.estimated_hours || 0,
+            actual_hours: task.actual_hours || 0,
+            tags: task.tags || [],
+            steps: task.steps || [],
+            completed_at: task.completed_at || undefined,
+            created_at: task.created_at || new Date().toISOString(),
+            updated_at: task.updated_at || new Date().toISOString(),
+            created_by: task.created_by || undefined,
+            assigned_to: task.assigned_to || undefined,
+            is_overdue: task.is_overdue || false,
+            overdue_since: task.overdue_since || undefined,
+            approval_status: task.approval_status || 'pending',
+            approved_by: task.approved_by || undefined,
+            approved_at: task.approved_at || undefined,
+            approval_notes: task.approval_notes || undefined,
+            comments: task.comments || [],
+            time_entries: task.time_entries || []
+          }))
+        }))
+        console.log('Transformed milestones:', milestonesData)
+      } catch (milestoneError) {
+        console.error('Error loading milestones:', milestoneError)
+        milestonesData = []
+      }
 
       // Try to load booking progress, but don't fail if it doesn't exist
       let progressData = null
@@ -111,8 +162,24 @@ export function ProgressTrackingSystem({
       // Try to load time entries, but don't fail if it doesn't work
       let timeEntriesData: TimeEntry[] = []
       try {
-        timeEntriesData = await ProgressTrackingService.getTimeEntriesByBookingId(bookingId)
-        console.log('Loaded time entries:', timeEntriesData)
+        const rawTimeEntries = await ProgressTrackingService.getTimeEntriesByBookingId(bookingId)
+        console.log('Raw time entries from service:', rawTimeEntries)
+        
+        // Transform time entries data to ensure all required properties exist
+        timeEntriesData = (rawTimeEntries || []).map(entry => ({
+          ...entry,
+          id: entry.id || '',
+          task_id: entry.task_id || '',
+          user_id: entry.user_id || '',
+          description: entry.description || '',
+          start_time: entry.start_time || new Date().toISOString(),
+          end_time: entry.end_time || undefined,
+          duration_minutes: entry.duration_minutes || 0,
+          is_active: entry.is_active || false,
+          created_at: entry.created_at || new Date().toISOString(),
+          updated_at: entry.updated_at || new Date().toISOString()
+        }))
+        console.log('Transformed time entries:', timeEntriesData)
       } catch (timeError) {
         console.warn('Could not load time entries:', timeError)
         timeEntriesData = []
@@ -222,20 +289,32 @@ export function ProgressTrackingSystem({
     }
   }, [loadData])
 
-  // Calculate derived data
-  const completedMilestones = milestones.filter(m => m.status === 'completed').length
-  const totalMilestones = milestones.length
-  const completedTasks = milestones.reduce((sum, m) => 
-    sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
-  )
-  const totalTasks = milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
-  const totalEstimatedHours = milestones.reduce((sum, m) => sum + (m.estimated_hours || 0), 0)
-  const totalActualHours = timeEntries.reduce((sum, entry) => 
-    sum + (entry.duration_minutes || 0) / 60, 0
-  )
-  const overdueTasks = milestones.reduce((sum, m) => 
-    sum + (m.tasks?.filter(t => t.is_overdue).length || 0), 0
-  )
+  // Calculate derived data with safety checks
+  const safeMilestones = milestones || []
+  const safeTimeEntries = timeEntries || []
+  
+  const completedMilestones = safeMilestones.filter(m => m && m.status === 'completed').length
+  const totalMilestones = safeMilestones.length
+  const completedTasks = safeMilestones.reduce((sum, m) => {
+    if (!m || !m.tasks) return sum
+    return sum + (m.tasks.filter(t => t && t.status === 'completed').length || 0)
+  }, 0)
+  const totalTasks = safeMilestones.reduce((sum, m) => {
+    if (!m || !m.tasks) return sum
+    return sum + (m.tasks.length || 0)
+  }, 0)
+  const totalEstimatedHours = safeMilestones.reduce((sum, m) => {
+    if (!m) return sum
+    return sum + (m.estimated_hours || 0)
+  }, 0)
+  const totalActualHours = safeTimeEntries.reduce((sum, entry) => {
+    if (!entry) return sum
+    return sum + (entry.duration_minutes || 0) / 60
+  }, 0)
+  const overdueTasks = safeMilestones.reduce((sum, m) => {
+    if (!m || !m.tasks) return sum
+    return sum + (m.tasks.filter(t => t && t.is_overdue).length || 0)
+  }, 0)
 
   // Loading state
   if (loading) {
@@ -274,24 +353,70 @@ export function ProgressTrackingSystem({
 
   // Add error boundary for render
   try {
+    // If we have no data and not loading, show a simple fallback
+    if (!loading && (!milestones || milestones.length === 0)) {
+      return (
+        <div className={`space-y-6 ${className}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Progress Tracking</h2>
+              <p className="text-gray-600">Monitor and manage project progress</p>
+            </div>
+            <Button 
+              onClick={refreshData} 
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+          
+          <Card>
+            <CardContent className="p-8 text-center">
+              <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Progress Data</h3>
+              <p className="text-gray-600 mb-4">
+                No milestones or tasks have been created for this booking yet.
+              </p>
+              <Button onClick={refreshData} variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
     return (
       <div className={`space-y-6 ${className}`}>
-      {/* Header with refresh button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Progress Tracking</h2>
-          <p className="text-gray-600">Monitor and manage project progress</p>
+        {/* Header with refresh button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Progress Tracking</h2>
+            <p className="text-gray-600">Monitor and manage project progress</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              onClick={() => setShowDebug(!showDebug)} 
+              variant="ghost"
+              size="sm"
+            >
+              Debug
+            </Button>
+            <Button 
+              onClick={refreshData} 
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <Button 
-          onClick={refreshData} 
-          disabled={refreshing}
-          variant="outline"
-          size="sm"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
 
         {/* Main Progress Header */}
         <MainProgressHeader
@@ -308,6 +433,34 @@ export function ProgressTrackingSystem({
           totalActualHours={totalActualHours || 0}
           overdueTasks={overdueTasks || 0}
         />
+
+        {/* Debug Panel */}
+        {showDebug && (
+          <Card className="bg-gray-50">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Information</h3>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p><strong>Booking ID:</strong> {bookingId}</p>
+                  <p><strong>User Role:</strong> {userRole}</p>
+                  <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+                  <p><strong>Error:</strong> {error || 'None'}</p>
+                </div>
+                <div>
+                  <p><strong>Milestones:</strong> {milestones?.length || 0}</p>
+                  <p><strong>Time Entries:</strong> {timeEntries?.length || 0}</p>
+                  <p><strong>Booking Progress:</strong> {bookingProgress ? 'Yes' : 'No'}</p>
+                  <p><strong>Completed Milestones:</strong> {completedMilestones}</p>
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-xs text-gray-600">
+                  <strong>Raw Data:</strong> Check browser console for detailed logs
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Content */}
