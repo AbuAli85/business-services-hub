@@ -372,16 +372,61 @@ export function ProgressTrackingSystem({
     }
   }, [])
 
-  const handleProjectTypeChange = useCallback(async (projectType: 'one_time' | 'monthly') => {
+  const handleProjectTypeChange = useCallback(async (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => {
     try {
       // TODO: Implement project type saving to database
       console.log('Project type changed to:', projectType)
-      toast.success(`Project type set to ${projectType === 'monthly' ? 'Monthly Recurring' : 'One Time'}`)
+      
+      // Update milestone dates based on project type
+      if (milestones && milestones.length > 0) {
+        const baseDate = new Date()
+        const phaseDuration = getPhaseDuration(projectType)
+        
+        for (let i = 0; i < milestones.length; i++) {
+          const milestone = milestones[i]
+          const startDate = new Date(baseDate.getTime() + (i * phaseDuration))
+          const endDate = new Date(startDate.getTime() + phaseDuration)
+          
+          await handleMilestoneUpdate(milestone.id, {
+            due_date: endDate.toISOString()
+          })
+        }
+      }
+      
+      const projectTypeLabels = {
+        'one_time': 'One Time',
+        'monthly': 'Monthly Recurring',
+        '3_months': '3 Month',
+        '6_months': '6 Month',
+        '9_months': '9 Month',
+        '12_months': '12 Month'
+      }
+      
+      toast.success(`Project type set to ${projectTypeLabels[projectType]}`)
     } catch (error) {
       console.error('Error changing project type:', error)
       toast.error('Failed to change project type')
     }
-  }, [])
+  }, [milestones, handleMilestoneUpdate])
+
+  const getPhaseDuration = (projectType: string) => {
+    switch (projectType) {
+      case 'one_time':
+        return 7 * 24 * 60 * 60 * 1000 // 1 week per phase
+      case 'monthly':
+        return 7 * 24 * 60 * 60 * 1000 // 1 week per phase
+      case '3_months':
+        return 20 * 24 * 60 * 60 * 1000 // ~3 weeks per phase
+      case '6_months':
+        return 45 * 24 * 60 * 60 * 1000 // ~6 weeks per phase
+      case '9_months':
+        return 68 * 24 * 60 * 60 * 1000 // ~10 weeks per phase
+      case '12_months':
+        return 90 * 24 * 60 * 60 * 1000 // ~13 weeks per phase
+      default:
+        return 7 * 24 * 60 * 60 * 1000 // 1 week per phase
+    }
+  }
 
   // Handle time tracking
   const handleStartTimeTracking = useCallback(async (taskId: string, description?: string) => {

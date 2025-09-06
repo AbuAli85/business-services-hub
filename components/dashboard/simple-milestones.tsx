@@ -17,6 +17,7 @@ import {
   Repeat,
   Target,
   TrendingUp,
+  Lock,
   AlertCircle,
   CheckCircle2
 } from 'lucide-react'
@@ -50,7 +51,7 @@ interface SimpleMilestone {
   actualHours?: number
   clientComments?: Comment[]
   isRecurring?: boolean  // NEW: Monthly recurring project
-  projectType?: 'one_time' | 'monthly'  // NEW: Project type
+  projectType?: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'  // NEW: Project type
 }
 
 interface Comment {
@@ -68,7 +69,7 @@ interface SimpleMilestonesProps {
   onTaskAdd: (milestoneId: string, taskData: Omit<SimpleTask, 'id'>) => void
   onTaskDelete: (milestoneId: string, taskId: string) => void
   onCommentAdd: (milestoneId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => void
-  onProjectTypeChange: (projectType: 'one_time' | 'monthly') => void
+  onProjectTypeChange: (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => void
   userRole: 'provider' | 'client'
 }
 
@@ -87,7 +88,7 @@ export function SimpleMilestones({
   const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<SimpleTask, 'id'>} | null>(null)
   const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
-  const [projectType, setProjectType] = useState<'one_time' | 'monthly'>('one_time')
+  const [projectType, setProjectType] = useState<'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'>('one_time')
   const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<SimpleMilestone> | null>(null)
 
   // Standard 4 phases - never more, never less
@@ -254,6 +255,18 @@ export function SimpleMilestones({
 
   const handleSaveEdit = () => {
     if (editingMilestone && editingMilestoneData) {
+      // Check if this milestone can be started (previous milestone must be completed)
+      const currentMilestone = milestones.find(m => m.id === editingMilestone)
+      if (currentMilestone && editingMilestoneData.status === 'in_progress') {
+        const currentPhaseNumber = currentMilestone.phaseNumber
+        const previousPhase = milestones.find(m => m.phaseNumber === currentPhaseNumber - 1)
+        
+        if (previousPhase && previousPhase.status !== 'completed') {
+          alert('Please complete the previous phase before starting this one.')
+          return
+        }
+      }
+      
       onMilestoneUpdate(editingMilestone, editingMilestoneData)
       setEditingMilestone(null)
       setEditingMilestoneData(null)
@@ -263,6 +276,33 @@ export function SimpleMilestones({
   const handleCancelEdit = () => {
     setEditingMilestone(null)
     setEditingMilestoneData(null)
+  }
+
+  const canStartMilestone = (milestone: SimpleMilestone) => {
+    if (milestone.status === 'completed') return true
+    if (milestone.phaseNumber === 1) return true
+    
+    const previousPhase = milestones.find(m => m.phaseNumber === milestone.phaseNumber - 1)
+    return previousPhase ? previousPhase.status === 'completed' : true
+  }
+
+  const getProjectPeriodInfo = () => {
+    switch (projectType) {
+      case 'one_time':
+        return { label: 'One Time Project', description: 'Single project completion', duration: 'Variable' }
+      case 'monthly':
+        return { label: 'Monthly Recurring', description: 'Repeats every month', duration: '1 month cycles' }
+      case '3_months':
+        return { label: '3 Month Project', description: 'Quarterly project cycle', duration: '3 months' }
+      case '6_months':
+        return { label: '6 Month Project', description: 'Semi-annual project cycle', duration: '6 months' }
+      case '9_months':
+        return { label: '9 Month Project', description: 'Extended project cycle', duration: '9 months' }
+      case '12_months':
+        return { label: '12 Month Project', description: 'Annual project cycle', duration: '12 months' }
+      default:
+        return { label: 'One Time Project', description: 'Single project completion', duration: 'Variable' }
+    }
   }
 
   return (
@@ -286,7 +326,7 @@ export function SimpleMilestones({
               <select
                 value={projectType}
                 onChange={(e) => {
-                  const newType = e.target.value as 'one_time' | 'monthly'
+                  const newType = e.target.value as 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'
                   setProjectType(newType)
                   onProjectTypeChange(newType)
                 }}
@@ -294,6 +334,10 @@ export function SimpleMilestones({
               >
                 <option value="one_time">One Time Project</option>
                 <option value="monthly">Monthly Recurring</option>
+                <option value="3_months">3 Month Project</option>
+                <option value="6_months">6 Month Project</option>
+                <option value="9_months">9 Month Project</option>
+                <option value="12_months">12 Month Project</option>
               </select>
             </div>
             <div className="bg-white rounded-lg px-4 py-2 shadow-sm border">
@@ -316,18 +360,18 @@ export function SimpleMilestones({
 
       {/* Project Type Info */}
       <div className={`rounded-xl p-6 border-2 transition-all duration-300 ${
-        projectType === 'monthly' 
+        projectType === 'monthly' || projectType.includes('months')
           ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200' 
           : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
       }`}>
         <div className="flex items-start space-x-4">
           <div className="flex-shrink-0">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
-              projectType === 'monthly' 
+              projectType === 'monthly' || projectType.includes('months')
                 ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
                 : 'bg-gradient-to-br from-green-500 to-emerald-500'
             }`}>
-              {projectType === 'monthly' ? (
+              {projectType === 'monthly' || projectType.includes('months') ? (
                 <Repeat className="h-6 w-6 text-white" />
               ) : (
                 <Target className="h-6 w-6 text-white" />
@@ -336,26 +380,23 @@ export function SimpleMilestones({
           </div>
           <div className="flex-1">
             <h3 className={`text-lg font-bold mb-2 ${
-              projectType === 'monthly' ? 'text-purple-900' : 'text-green-900'
+              projectType === 'monthly' || projectType.includes('months') ? 'text-purple-900' : 'text-green-900'
             }`}>
-              {projectType === 'monthly' ? 'Monthly Recurring Project' : 'One Time Project'}
+              {getProjectPeriodInfo().label}
             </h3>
             <p className={`text-sm font-medium ${
-              projectType === 'monthly' ? 'text-purple-700' : 'text-green-700'
+              projectType === 'monthly' || projectType.includes('months') ? 'text-purple-700' : 'text-green-700'
             }`}>
-              {projectType === 'monthly' 
-                ? 'This project will repeat monthly with the same 4 phases. Perfect for ongoing services, maintenance, or regular deliverables.'
-                : 'This is a one-time project with 4 phases. Once completed, the project is finished.'
-              }
+              {getProjectPeriodInfo().description}
             </p>
             <div className="mt-3 flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${
-                projectType === 'monthly' ? 'bg-purple-500' : 'bg-green-500'
+                projectType === 'monthly' || projectType.includes('months') ? 'bg-purple-500' : 'bg-green-500'
               }`}></div>
               <span className={`text-xs font-semibold ${
-                projectType === 'monthly' ? 'text-purple-600' : 'text-green-600'
+                projectType === 'monthly' || projectType.includes('months') ? 'text-purple-600' : 'text-green-600'
               }`}>
-                {projectType === 'monthly' ? 'Recurring every month' : 'Single completion'}
+                Duration: {getProjectPeriodInfo().duration}
               </span>
             </div>
           </div>
@@ -383,11 +424,14 @@ export function SimpleMilestones({
           const completedTasks = milestone.tasks.filter(t => t.completed).length
           const totalTasks = milestone.tasks.length
           const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+          const canStart = canStartMilestone(milestone)
+          const isLocked = !canStart && milestone.status === 'pending'
 
           return (
             <Card key={milestone.id} className={`border-l-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] ${
               milestone.status === 'completed' ? 'bg-gradient-to-r from-green-50 to-emerald-50' :
               milestone.status === 'in_progress' ? 'bg-gradient-to-r from-blue-50 to-indigo-50' :
+              isLocked ? 'bg-gradient-to-r from-gray-100 to-slate-100 opacity-60' :
               'bg-gradient-to-r from-gray-50 to-slate-50'
             }`} style={{ borderLeftColor: milestone.color }}>
               <CardHeader className="pb-4">
@@ -404,8 +448,14 @@ export function SimpleMilestones({
                       <div className="flex items-center space-x-3 mb-2">
                         <CardTitle className="text-xl font-bold text-gray-900">{milestone.title}</CardTitle>
                         <div className={`px-3 py-1 rounded-full text-sm font-semibold border-2 ${getStatusColor(milestone.status)}`}>
-                          {milestone.status.replace('_', ' ').toUpperCase()}
+                          {isLocked ? 'LOCKED' : milestone.status.replace('_', ' ').toUpperCase()}
                         </div>
+                        {isLocked && (
+                          <div className="flex items-center space-x-1 text-xs text-gray-500">
+                            <Lock className="h-3 w-3" />
+                            <span>Complete previous phase first</span>
+                          </div>
+                        )}
                         {milestone.isRecurring && (
                           <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-200">
                             <Repeat className="h-3 w-3 mr-1" />
@@ -445,7 +495,7 @@ export function SimpleMilestones({
                     >
                       {expandedMilestone === milestone.id ? 'Collapse' : 'Expand'}
                     </Button>
-                    {userRole === 'provider' && (
+                    {userRole === 'provider' && !isLocked && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -453,6 +503,16 @@ export function SimpleMilestones({
                         className="hover:bg-yellow-50 hover:border-yellow-300 transition-all duration-200"
                       >
                         <Edit3 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {userRole === 'provider' && isLocked && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        className="opacity-50 cursor-not-allowed"
+                      >
+                        <Lock className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
