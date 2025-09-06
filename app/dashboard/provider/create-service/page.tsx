@@ -430,13 +430,8 @@ export default function CreateServicePage() {
           <Label htmlFor="title" className="text-sm font-medium text-slate-700 mb-2 block">
             Service Title *
             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Choose a clear, descriptive title that clients will easily understand</p>
-                </TooltipContent>
+              <Tooltip content="Choose a clear, descriptive title that clients will easily understand">
+                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
               </Tooltip>
             </TooltipProvider>
           </Label>
@@ -482,13 +477,8 @@ export default function CreateServicePage() {
         <Label htmlFor="description" className="text-sm font-medium text-slate-700 mb-2 block">
           Description *
           <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Describe your service in detail, including what clients can expect</p>
-              </TooltipContent>
+            <Tooltip content="Describe your service in detail, including what clients can expect">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
             </Tooltip>
           </TooltipProvider>
         </Label>
@@ -512,13 +502,8 @@ export default function CreateServicePage() {
           <Label htmlFor="duration" className="text-sm font-medium text-slate-700 mb-2 block">
             Duration *
             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Estimated time to complete the service</p>
-                </TooltipContent>
+              <Tooltip content="Estimated time to complete the service">
+                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
               </Tooltip>
             </TooltipProvider>
           </Label>
@@ -570,13 +555,8 @@ export default function CreateServicePage() {
         <Label className="text-sm font-medium text-slate-700 mb-2 block">
           Deliverables *
           <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>List what clients will receive upon completion</p>
-              </TooltipContent>
+            <Tooltip content="List what clients will receive upon completion">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
             </Tooltip>
           </TooltipProvider>
         </Label>
@@ -634,13 +614,8 @@ export default function CreateServicePage() {
         <Label className="text-sm font-medium text-slate-700 mb-2 block">
           Requirements (Optional)
           <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Help clients understand what they need to prepare</p>
-              </TooltipContent>
+            <Tooltip content="Help clients understand what they need to prepare">
+              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
             </Tooltip>
           </TooltipProvider>
         </Label>
@@ -735,13 +710,8 @@ export default function CreateServicePage() {
                     <Label className="text-sm font-medium text-slate-700 mb-2 block">
                       Estimated Duration (days)
                       <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>How many days this milestone typically takes</p>
-                          </TooltipContent>
+                        <Tooltip content="How many days this milestone typically takes">
+                          <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
                         </Tooltip>
                       </TooltipProvider>
                     </Label>
