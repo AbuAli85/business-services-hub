@@ -327,13 +327,21 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         {/* Main Progress Header */}
         <MainProgressHeader
           bookingProgress={bookingProgress}
-          milestones={milestones}
-          userRole={userRole}
-          loading={loading}
-          onLogHours={handleLogHours}
-          onSendUpdate={handleSendUpdate}
-          onScheduleFollowUp={handleScheduleFollowUp}
-          onSendPaymentReminder={handleSendPaymentReminder}
+          completedMilestones={milestones.filter(m => m.status === 'completed').length}
+          totalMilestones={milestones.length}
+          completedTasks={milestones.reduce((sum, m) => 
+            sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+          )}
+          totalTasks={milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)}
+          totalEstimatedHours={milestones.reduce((sum, m) => 
+            sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
+          )}
+          totalActualHours={milestones.reduce((sum, m) => 
+            sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
+          )}
+          overdueTasks={milestones.reduce((sum, m) => 
+            sum + (m.tasks?.filter(t => t.is_overdue).length || 0), 0
+          )}
         />
 
         {/* Tabs */}
