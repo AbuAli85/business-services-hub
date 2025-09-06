@@ -648,16 +648,28 @@ export async function PATCH(request: NextRequest) {
     let updates: Record<string, any> = {}
     let notification: { user_id: string; title: string; message: string; type: string; priority?: string } | null = null
 
+    console.log(`Processing ${action} action for booking ${booking_id}`)
+    console.log('User role check:', { isProvider, isClient })
+    console.log('Current booking status:', booking.status)
+
     switch (action) {
       case 'approve':
-        if (!isProvider) return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
-        updates = { status: 'approved', approval_status: 'approved' }
+        if (!isProvider) {
+          console.log('Approval denied: User is not a provider')
+          return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
+        }
+        updates = { status: 'confirmed', approval_status: 'approved' }
         notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking' }
+        console.log('Approval updates:', updates)
         break
       case 'decline':
-        if (!isProvider) return NextResponse.json({ error: 'Only provider can decline' }, { status: 403 })
-        updates = { status: 'declined', approval_status: 'declined', decline_reason: reason || null }
+        if (!isProvider) {
+          console.log('Decline denied: User is not a provider')
+          return NextResponse.json({ error: 'Only provider can decline' }, { status: 403 })
+        }
+        updates = { status: 'cancelled', approval_status: 'rejected', decline_reason: reason || null }
         notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking' }
+        console.log('Decline updates:', updates)
         break
       case 'reschedule':
         if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
@@ -677,6 +689,8 @@ export async function PATCH(request: NextRequest) {
         break
     }
 
+    console.log('Updating booking with:', updates)
+    
     const { data: updated, error: updateError } = await supabase
       .from('bookings')
       .update(updates)
@@ -686,12 +700,14 @@ export async function PATCH(request: NextRequest) {
 
     if (updateError) {
       console.error('❌ Booking update error:', updateError)
+      console.error('Update data:', updates)
+      console.error('Booking ID:', booking_id)
       const response = NextResponse.json({ error: 'Failed to update booking', details: updateError.message }, { status: 500 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
-    console.log('✅ Booking updated successfully')
+    console.log('✅ Booking updated successfully:', updated)
 
     if (notification) {
       console.log('🔔 Creating notification:', notification)

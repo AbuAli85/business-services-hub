@@ -1146,10 +1146,12 @@ export default function EnhancedBookingDetails() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update booking')
+        console.error(`API Error (${response.status}):`, errorData)
+        throw new Error(errorData.error || `Failed to ${action} booking (${response.status})`)
       }
 
       const result = await response.json()
+      console.log(`Booking ${action} result:`, result)
       
       // Update local state
       setBooking({ 
@@ -1164,7 +1166,8 @@ export default function EnhancedBookingDetails() {
       await loadBookingData()
     } catch (error) {
       console.error(`Error ${action}ing booking:`, error)
-      toast.error(`Failed to ${action} booking`)
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${action} booking`
+      toast.error(errorMessage)
     } finally {
       setIsUpdating(false)
     }
