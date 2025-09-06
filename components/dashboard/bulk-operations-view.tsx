@@ -23,7 +23,7 @@ import {
   AlertTriangle,
   Edit,
   MoreHorizontal,
-  SelectAll,
+  CheckSquare,
   X
 } from 'lucide-react'
 import { Milestone, Task } from '@/lib/progress-tracking'
@@ -318,7 +318,7 @@ export function BulkOperationsView({
                 onClick={handleSelectAll}
                 className="flex items-center space-x-2"
               >
-                <SelectAll className="h-4 w-4" />
+                <CheckSquare className="h-4 w-4" />
                 <span>
                   {selectedTasks.size === filteredTasks.length ? 'Deselect All' : 'Select All'}
                 </span>
