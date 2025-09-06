@@ -406,9 +406,16 @@ export default function CreateServicePage() {
       const selectedCategory = categories.find(c => c.id === formData.category_id)
       const categoryName = selectedCategory?.name || 'General'
 
+      // Get service title
+      let serviceTitle = formData.custom_title
+      if (formData.service_title !== 'custom') {
+        const selectedTitle = serviceTitles.find(t => t.id === formData.service_title)
+        serviceTitle = selectedTitle?.title || formData.service_title
+      }
+
       // Create service
       const serviceData = {
-        title: formData.service_title === 'custom' ? formData.custom_title : formData.service_title,
+        title: serviceTitle,
         description: formData.description,
         category: categoryName,
         base_price: parseFloat(formData.price),
@@ -585,7 +592,7 @@ export default function CreateServicePage() {
           </SelectTrigger>
           <SelectContent>
             {serviceTitles.map(title => (
-              <SelectItem key={title.id} value={title.title}>
+              <SelectItem key={title.id} value={title.id}>
                 <div className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
                     <FileText className="h-4 w-4 text-blue-600" />
@@ -599,6 +606,17 @@ export default function CreateServicePage() {
                 </div>
               </SelectItem>
             ))}
+            <SelectItem value="custom">
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+                  <Plus className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <div className="font-medium">Custom Title</div>
+                  <div className="text-xs text-slate-500">Create your own service title</div>
+                </div>
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
         
@@ -858,7 +876,8 @@ export default function CreateServicePage() {
             <div>
               <Label className="text-sm font-medium text-slate-500">Service Title</Label>
               <p className="text-slate-900 font-medium">
-                {formData.service_title === 'custom' ? formData.custom_title : formData.service_title}
+                {formData.service_title === 'custom' ? formData.custom_title : 
+                 serviceTitles.find(t => t.id === formData.service_title)?.title || formData.service_title}
               </p>
             </div>
             <div>

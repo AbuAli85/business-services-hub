@@ -743,6 +743,7 @@ export default function EnhancedBookingDetails() {
       }
       
       console.log('✅ User authenticated:', session.user.id)
+      console.log('🔑 Session token:', session.access_token ? 'Present' : 'Missing')
       
       // Get the first milestone for this booking (or create a default one)
       let milestoneId = milestones[0]?.id

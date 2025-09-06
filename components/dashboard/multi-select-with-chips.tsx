@@ -64,6 +64,13 @@ export function MultiSelectWithChips({
   const [showCustomInput, setShowCustomInput] = useState(false)
   const customInputRef = useRef<HTMLInputElement>(null)
 
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 MultiSelectWithChips: options =', options)
+    console.log('🔍 MultiSelectWithChips: selectedValues =', selectedValues)
+    console.log('🔍 MultiSelectWithChips: label =', label)
+  }, [options, selectedValues, label])
+
   const selectedOptions = options.filter(option => 
     selectedValues.includes(option.value)
   )

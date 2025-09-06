@@ -24,13 +24,17 @@ export function DeliverablesSelector({
 
   useEffect(() => {
     const fetchDeliverables = async () => {
+      console.log('🔍 DeliverablesSelector: categoryId =', categoryId)
+      
       if (!categoryId) {
+        console.log('❌ DeliverablesSelector: No categoryId, clearing options')
         setOptions([])
         return
       }
 
       try {
         setLoading(true)
+        console.log('🔄 DeliverablesSelector: Fetching deliverables for category:', categoryId)
         const supabase = await getSupabaseClient()
         
         const { data: deliverables, error } = await supabase
@@ -41,9 +45,12 @@ export function DeliverablesSelector({
           .order('sort_order')
 
         if (error) {
-          console.error('Error fetching deliverables:', error)
+          console.error('❌ DeliverablesSelector: Error fetching deliverables:', error)
           return
         }
+
+        console.log('✅ DeliverablesSelector: Fetched deliverables:', deliverables?.length || 0)
+        console.log('📋 DeliverablesSelector: Deliverables data:', deliverables)
 
         const formattedOptions: SelectOption[] = deliverables.map(item => ({
           id: item.id,
@@ -53,9 +60,10 @@ export function DeliverablesSelector({
           isCustom: item.is_custom
         }))
 
+        console.log('🎯 DeliverablesSelector: Formatted options:', formattedOptions)
         setOptions(formattedOptions)
       } catch (error) {
-        console.error('Error fetching deliverables:', error)
+        console.error('❌ DeliverablesSelector: Error fetching deliverables:', error)
       } finally {
         setLoading(false)
       }
