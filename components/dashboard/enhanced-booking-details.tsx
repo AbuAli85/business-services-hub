@@ -872,18 +872,30 @@ export default function EnhancedBookingDetails() {
       })
 
       // Also send email via SendGrid route (best-effort)
-      const emailTo = user.id === booking.client.id ? booking.provider.email : booking.client.email
+      const emailTo = user.id === booking.client.id ? booking.client.email : booking.provider.email
       if (emailTo) {
-        fetch('/api/notifications/email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: emailTo,
-            subject: `Booking ${booking.id.slice(0,8)} status: ${newStatus.replace('_',' ')}`,
-            text: `Hello,\n\nThe booking ${booking.id} is now ${newStatus}.\n\nThanks,\nBusiness Services Hub`,
-            html: `<p>Hello,</p><p>The booking <strong>${booking.id}</strong> is now <strong>${newStatus.replace('_',' ')}</strong>.</p><p>Thanks,<br/>Business Services Hub</p>`
-          })
-        }).catch(() => {})
+        try {
+          const supabase = await getSupabaseClient()
+          const { data: { session } } = await supabase.auth.getSession()
+          
+          if (session) {
+            fetch('/api/notifications/email', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                to: emailTo,
+                subject: `Booking ${booking.id.slice(0,8)} status: ${newStatus.replace('_',' ')}`,
+                text: `Hello,\n\nThe booking ${booking.id} is now ${newStatus}.\n\nThanks,\nBusiness Services Hub`,
+                html: `<p>Hello,</p><p>The booking <strong>${booking.id}</strong> is now <strong>${newStatus.replace('_',' ')}</strong>.</p><p>Thanks,<br/>Business Services Hub</p>`
+              })
+            }).catch(() => {})
+          }
+        } catch (emailError) {
+          console.log('Email notification failed:', emailError)
+        }
       }
       
     } catch (error) {

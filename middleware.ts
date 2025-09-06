@@ -126,7 +126,7 @@ export const config = {
   matcher: [
     // Temporarily disabled for testing
     // '/dashboard/:path*',
-    '/api/bookings', // Re-enabled to fix 404 issue
+    // '/api/bookings', // Temporarily disabled to test auth issues
     '/api/services/:path*',
     '/api/admin/:path*',
   ],

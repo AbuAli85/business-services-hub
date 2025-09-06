@@ -36,7 +36,7 @@ import toast from 'react-hot-toast'
 
 interface Invoice {
   id: string
-  invoice_number: string
+  invoice_number?: string
   booking_id: string
   client_id: string
   provider_id: string
@@ -224,7 +224,7 @@ export default function AdminInvoicesPage() {
 
     if (searchQuery) {
       filtered = filtered.filter(invoice =>
-        invoice.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`).toLowerCase().includes(searchQuery.toLowerCase()) ||
         invoice.client.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         invoice.provider.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         invoice.booking.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -276,7 +276,7 @@ export default function AdminInvoicesPage() {
 
   const exportInvoices = () => {
     const csvData = filteredInvoices.map(invoice => ({
-      'Invoice Number': invoice.invoice_number,
+      'Invoice Number': invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
       'Client': invoice.client.full_name,
       'Provider': invoice.provider.full_name,
       'Service': invoice.booking.title,
@@ -524,7 +524,7 @@ export default function AdminInvoicesPage() {
                     filteredInvoices.map((invoice) => (
                       <TableRow key={invoice.id} className="hover:bg-muted/50">
                         <TableCell className="font-mono text-sm">
-                          {invoice.invoice_number}
+                          {invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`}
                         </TableCell>
                         <TableCell>
                           <div>

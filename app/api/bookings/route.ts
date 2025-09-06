@@ -73,9 +73,28 @@ async function authenticateUser(request: NextRequest) {
           return acc
         }, {} as Record<string, string>)
         
-        const accessToken = cookies['sb-access-token'] || cookies['supabase-auth-token']
+        console.log('🔍 Available cookies:', Object.keys(cookies))
+        
+        // Try multiple possible cookie names for Supabase auth tokens
+        const possibleTokenKeys = [
+          'sb-access-token',
+          'supabase-auth-token', 
+          'sb-access-token',
+          'supabase.auth.token',
+          'sb-' + (process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || 'default') + '-auth-token'
+        ]
+        
+        let accessToken = null
+        for (const key of possibleTokenKeys) {
+          if (cookies[key]) {
+            accessToken = cookies[key]
+            console.log('🔍 Found token in cookie:', key)
+            break
+          }
+        }
+        
         if (accessToken) {
-          console.log('🔍 Access token found in cookies')
+          console.log('🔍 Access token found in cookies, length:', accessToken.length)
           const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser(accessToken)
           if (cookieUser && !cookieError) {
             user = cookieUser
@@ -85,6 +104,8 @@ async function authenticateUser(request: NextRequest) {
             console.log('❌ Cookie auth failed:', cookieError)
             authError = cookieError
           }
+        } else {
+          console.log('❌ No access token found in any expected cookie')
         }
       } catch (cookieError) {
         console.log('❌ Cookie parsing error:', cookieError)
