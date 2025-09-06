@@ -62,6 +62,7 @@ export interface CreateServiceFormData {
   
   // Step 3: Milestones Template
   milestones: {
+    id: string
     milestone_title: string
     description: string
     estimated_duration: number
