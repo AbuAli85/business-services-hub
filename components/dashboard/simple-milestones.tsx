@@ -587,10 +587,10 @@ export function SimpleMilestones({
                           <Input
                             type="date"
                             placeholder="Due date"
-                            value={newTask.task.dueDate || ''}
+                            value={newTask.task.dueDate ? format(new Date(newTask.task.dueDate), 'yyyy-MM-dd') : ''}
                             onChange={(e) => setNewTask({
                               ...newTask,
-                              task: { ...newTask.task, dueDate: e.target.value }
+                              task: { ...newTask.task, dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined }
                             })}
                           />
                           <select
@@ -747,13 +747,17 @@ export function SimpleMilestones({
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="date"
-                          value={milestone.startDate}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { startDate: e.target.value })}
+                          value={milestone.startDate ? format(new Date(milestone.startDate), 'yyyy-MM-dd') : ''}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { 
+                            startDate: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                          })}
                         />
                         <Input
                           type="date"
-                          value={milestone.endDate}
-                          onChange={(e) => onMilestoneUpdate(milestone.id, { endDate: e.target.value })}
+                          value={milestone.endDate ? format(new Date(milestone.endDate), 'yyyy-MM-dd') : ''}
+                          onChange={(e) => onMilestoneUpdate(milestone.id, { 
+                            endDate: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                          })}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">

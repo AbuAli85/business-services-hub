@@ -265,10 +265,46 @@ export function ProgressTrackingSystem({
     toast.success('Data refreshed')
   }, [loadData])
 
+  // Ensure standard milestones exist
+  const ensureStandardMilestones = useCallback(async () => {
+    try {
+      const standardPhases = [
+        { id: '550e8400-e29b-41d4-a716-446655440001', title: 'Planning & Setup' },
+        { id: '550e8400-e29b-41d4-a716-446655440002', title: 'Development' },
+        { id: '550e8400-e29b-41d4-a716-446655440003', title: 'Testing & Quality' },
+        { id: '550e8400-e29b-41d4-a716-446655440004', title: 'Delivery & Launch' }
+      ]
+
+      for (const phase of standardPhases) {
+        try {
+          await ProgressTrackingService.createMilestone({
+            booking_id: bookingId,
+            title: phase.title,
+            description: `${phase.title} phase`,
+            status: 'pending',
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            progress_percentage: 0,
+            priority: 'medium',
+            weight: 1,
+            order_index: 0,
+            editable: true
+          })
+        } catch (err) {
+          // Milestone might already exist, that's okay
+          console.log(`Milestone ${phase.title} might already exist`)
+        }
+      }
+    } catch (err) {
+      console.error('Error ensuring standard milestones:', err)
+    }
+  }, [bookingId])
+
   // Load data on mount and when bookingId changes
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    ensureStandardMilestones().then(() => {
+      loadData()
+    })
+  }, [ensureStandardMilestones, loadData])
 
   // Handle task operations
   const handleTaskUpdate = useCallback(async (taskId: string, updates: Partial<Task>) => {
@@ -563,7 +599,8 @@ export function ProgressTrackingSystem({
                     title: updates.title,
                     description: updates.description,
                     status: updates.status,
-                    due_date: updates.endDate
+                    due_date: updates.endDate,
+                    progress_percentage: updates.progress_percentage || 0
                   })
                 }}
                 onCommentAdd={handleCommentAdd}
