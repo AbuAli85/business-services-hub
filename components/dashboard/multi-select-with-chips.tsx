@@ -122,6 +122,11 @@ export function MultiSelectWithChips({
     !selectedValues.includes(option.value)
   )
 
+  // Debug logging
+  console.log('🔍 MultiSelectWithChips: availableOptions =', availableOptions.length, availableOptions)
+  console.log('🔍 MultiSelectWithChips: selectedValues =', selectedValues)
+  console.log('🔍 MultiSelectWithChips: all options =', options.length, options)
+
   return (
     <div className="space-y-3">
       {label && (
@@ -186,38 +191,45 @@ export function MultiSelectWithChips({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-50" align="start">
           <Command>
             <CommandInput placeholder="Search items..." />
             <CommandList>
               <CommandEmpty>No items found.</CommandEmpty>
               <CommandGroup>
-                {availableOptions.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={() => handleSelect(option.value)}
-                    className="flex items-center gap-2"
-                  >
-                    <Check
-                      className={cn(
-                        "h-4 w-4",
-                        selectedValues.includes(option.value) ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium">{option.label}</div>
-                      {option.description && (
-                        <div className="text-xs text-slate-500">{option.description}</div>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
+                {console.log('🔍 Rendering availableOptions:', availableOptions.length, availableOptions)}
+                {availableOptions.map((option) => {
+                  console.log('🔍 Rendering option:', option.label, option.value)
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      onSelect={() => {
+                        console.log('🔍 Option selected:', option.label)
+                        handleSelect(option.value)
+                      }}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100"
+                    >
+                      <Check
+                        className={cn(
+                          "h-4 w-4",
+                          selectedValues.includes(option.value) ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium">{option.label}</div>
+                        {option.description && (
+                          <div className="text-xs text-slate-500">{option.description}</div>
+                        )}
+                      </div>
+                    </CommandItem>
+                  )
+                })}
                 {allowCustom && (
                   <CommandItem
                     value="custom"
                     onSelect={() => handleSelect('custom')}
-                    className="flex items-center gap-2 text-blue-600"
+                    className="flex items-center gap-2 text-blue-600 cursor-pointer hover:bg-slate-100"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Add custom item</span>
