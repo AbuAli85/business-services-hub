@@ -103,14 +103,14 @@ function KPICard({
 
 interface KPIGridProps {
   data: {
-    totalEarnings: number
-    monthlyEarnings: number
-    activeBookings: number
-    activeServices: number
-    avgRating: number
-    responseRate: number
-    completionRate: number
-    monthlyGrowth: number
+    total_earnings: number
+    monthly_earnings: number
+    active_bookings: number
+    active_services: number
+    avg_rating: number
+    response_rate: number
+    completion_rate: number
+    monthly_growth: number
   }
 }
 
@@ -119,30 +119,30 @@ export function KPIGrid({ data }: KPIGridProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <KPICard
         title="Total Earnings"
-        value={`$${data.totalEarnings.toLocaleString()}`}
-        change={data.monthlyGrowth}
-        changeType={data.monthlyGrowth > 0 ? 'increase' : data.monthlyGrowth < 0 ? 'decrease' : 'neutral'}
+        value={`$${data.total_earnings.toLocaleString()}`}
+        change={data.monthly_growth}
+        changeType={data.monthly_growth > 0 ? 'increase' : data.monthly_growth < 0 ? 'decrease' : 'neutral'}
         icon={DollarSign}
         tooltip="Total earnings from all completed bookings"
       />
       
       <KPICard
         title="Active Bookings"
-        value={data.activeBookings}
+        value={data.active_bookings}
         icon={Calendar}
         tooltip="Currently active bookings in progress"
       />
       
       <KPICard
         title="Active Services"
-        value={data.activeServices}
+        value={data.active_services}
         icon={Briefcase}
         tooltip="Number of services currently available"
       />
       
       <KPICard
         title="Average Rating"
-        value={data.avgRating ? data.avgRating.toFixed(1) : 'N/A'}
+        value={data.avg_rating ? data.avg_rating.toFixed(1) : 'N/A'}
         icon={Star}
         tooltip="Average rating from client reviews"
       />
@@ -160,13 +160,13 @@ export function PerformanceMetrics({ data }: KPIGridProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-600">Response Rate</span>
               <span className="text-sm font-bold text-gray-900">
-                {(data.responseRate * 100).toFixed(1)}%
+                {(data.response_rate * 100).toFixed(1)}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${data.responseRate * 100}%` }}
+                style={{ width: `${data.response_rate * 100}%` }}
               />
             </div>
           </div>
@@ -175,13 +175,13 @@ export function PerformanceMetrics({ data }: KPIGridProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-600">Completion Rate</span>
               <span className="text-sm font-bold text-gray-900">
-                {(data.completionRate * 100).toFixed(1)}%
+                {(data.completion_rate * 100).toFixed(1)}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${data.completionRate * 100}%` }}
+                style={{ width: `${data.completion_rate * 100}%` }}
               />
             </div>
           </div>
@@ -189,16 +189,16 @@ export function PerformanceMetrics({ data }: KPIGridProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-600">Monthly Growth</span>
-              <span className={`text-sm font-bold ${data.monthlyGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {data.monthlyGrowth >= 0 ? '+' : ''}{data.monthlyGrowth.toFixed(1)}%
+              <span className={`text-sm font-bold ${data.monthly_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {data.monthly_growth >= 0 ? '+' : ''}{data.monthly_growth.toFixed(1)}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  data.monthlyGrowth >= 0 ? 'bg-green-600' : 'bg-red-600'
+                  data.monthly_growth >= 0 ? 'bg-green-600' : 'bg-red-600'
                 }`}
-                style={{ width: `${Math.min(Math.abs(data.monthlyGrowth), 100)}%` }}
+                style={{ width: `${Math.min(Math.abs(data.monthly_growth), 100)}%` }}
               />
             </div>
           </div>

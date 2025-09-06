@@ -16,12 +16,12 @@ import {
 
 interface MonthlyGoalsProps {
   data: {
-    totalEarnings: number
-    monthlyEarnings: number
-    activeBookings: number
-    avgRating: number
-    responseRate: number
-    completionRate: number
+    total_earnings: number
+    monthly_earnings: number
+    active_bookings: number
+    avg_rating: number
+    response_rate: number
+    completion_rate: number
   }
   className?: string
 }
@@ -40,57 +40,57 @@ export function MonthlyGoals({ data, className }: MonthlyGoalsProps) {
     {
       id: 'earnings',
       title: 'Monthly Earnings',
-      current: data.monthlyEarnings,
+      current: data.monthly_earnings,
       target: goals.earnings,
       unit: '$',
       icon: DollarSign,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      progress: Math.min((data.monthlyEarnings / goals.earnings) * 100, 100)
+      progress: Math.min((data.monthly_earnings / goals.earnings) * 100, 100)
     },
     {
       id: 'bookings',
       title: 'Active Bookings',
-      current: data.activeBookings,
+      current: data.active_bookings,
       target: goals.bookings,
       unit: '',
       icon: Calendar,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      progress: Math.min((data.activeBookings / goals.bookings) * 100, 100)
+      progress: Math.min((data.active_bookings / goals.bookings) * 100, 100)
     },
     {
       id: 'rating',
       title: 'Average Rating',
-      current: data.avgRating || 0,
+      current: data.avg_rating || 0,
       target: goals.rating,
       unit: '',
       icon: Star,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
-      progress: data.avgRating ? Math.min((data.avgRating / goals.rating) * 100, 100) : 0
+      progress: data.avg_rating ? Math.min((data.avg_rating / goals.rating) * 100, 100) : 0
     },
     {
       id: 'response',
       title: 'Response Rate',
-      current: data.responseRate * 100,
+      current: data.response_rate * 100,
       target: goals.response * 100,
       unit: '%',
       icon: Clock,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      progress: Math.min((data.responseRate / goals.response) * 100, 100)
+      progress: Math.min((data.response_rate / goals.response) * 100, 100)
     },
     {
       id: 'completion',
       title: 'Completion Rate',
-      current: data.completionRate * 100,
+      current: data.completion_rate * 100,
       target: goals.completion * 100,
       unit: '%',
       icon: CheckCircle,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
-      progress: Math.min((data.completionRate / goals.completion) * 100, 100)
+      progress: Math.min((data.completion_rate / goals.completion) * 100, 100)
     }
   ]
 
