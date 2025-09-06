@@ -107,36 +107,38 @@ export function BulkOperationsView({
     }
 
     try {
+      const selectedTasksArray = Array.from(selectedTasks)
+      
       switch (bulkAction) {
         case 'mark_complete':
-          for (const taskId of selectedTasks) {
+          for (const taskId of selectedTasksArray) {
             await onTaskUpdate(taskId, { 
               status: 'completed',
               completed_at: new Date().toISOString()
             })
           }
-          toast.success(`${selectedTasks.size} tasks marked as completed`)
+          toast.success(`${selectedTasksArray.length} tasks marked as completed`)
           break
 
         case 'mark_pending':
-          for (const taskId of selectedTasks) {
+          for (const taskId of selectedTasksArray) {
             await onTaskUpdate(taskId, { status: 'pending' })
           }
-          toast.success(`${selectedTasks.size} tasks marked as pending`)
+          toast.success(`${selectedTasksArray.length} tasks marked as pending`)
           break
 
         case 'change_priority':
-          for (const taskId of selectedTasks) {
+          for (const taskId of selectedTasksArray) {
             await onTaskUpdate(taskId, { priority: newPriority })
           }
-          toast.success(`${selectedTasks.size} tasks priority updated`)
+          toast.success(`${selectedTasksArray.length} tasks priority updated`)
           break
 
         case 'delete':
-          for (const taskId of selectedTasks) {
+          for (const taskId of selectedTasksArray) {
             await onTaskDelete(taskId)
           }
-          toast.success(`${selectedTasks.size} tasks deleted`)
+          toast.success(`${selectedTasksArray.length} tasks deleted`)
           break
 
         case 'export':
