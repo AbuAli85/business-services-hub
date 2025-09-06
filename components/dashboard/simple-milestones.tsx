@@ -240,63 +240,96 @@ export function SimpleMilestones({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Project Phases</h2>
-          <p className="text-gray-600">4-phase project management system</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          {/* Project Type Selection */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Project Type:</span>
-            <select
-              value={projectType}
-              onChange={(e) => {
-                const newType = e.target.value as 'one_time' | 'monthly'
-                setProjectType(newType)
-                onProjectTypeChange(newType)
-              }}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="one_time">One Time Project</option>
-              <option value="monthly">Monthly Recurring</option>
-            </select>
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Target className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">Project Phases</h2>
+              <p className="text-gray-600 text-lg">4-phase project management system</p>
+            </div>
           </div>
-          <Badge variant="outline" className="text-sm">
-            {milestones.filter(m => m.status === 'completed').length} of 4 completed
-          </Badge>
-          {projectType === 'monthly' && userRole === 'provider' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMonthlyReset}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-            >
-              <Repeat className="h-4 w-4 mr-2" />
-              Reset for Next Month
-            </Button>
-          )}
+          <div className="flex items-center space-x-4">
+            {/* Project Type Selection */}
+            <div className="flex items-center space-x-3 bg-white rounded-lg p-3 shadow-sm border">
+              <span className="text-sm font-semibold text-gray-700">Project Type:</span>
+              <select
+                value={projectType}
+                onChange={(e) => {
+                  const newType = e.target.value as 'one_time' | 'monthly'
+                  setProjectType(newType)
+                  onProjectTypeChange(newType)
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              >
+                <option value="one_time">One Time Project</option>
+                <option value="monthly">Monthly Recurring</option>
+              </select>
+            </div>
+            <div className="bg-white rounded-lg px-4 py-2 shadow-sm border">
+              <Badge variant="outline" className="text-sm font-semibold">
+                {milestones.filter(m => m.status === 'completed').length} of 4 completed
+              </Badge>
+            </div>
+            {projectType === 'monthly' && userRole === 'provider' && (
+              <Button
+                onClick={handleMonthlyReset}
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                <Repeat className="h-4 w-4 mr-2" />
+                Reset for Next Month
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Project Type Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start space-x-3">
+      <div className={`rounded-xl p-6 border-2 transition-all duration-300 ${
+        projectType === 'monthly' 
+          ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200' 
+          : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+      }`}>
+        <div className="flex items-start space-x-4">
           <div className="flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Target className="h-4 w-4 text-blue-600" />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
+              projectType === 'monthly' 
+                ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                : 'bg-gradient-to-br from-green-500 to-emerald-500'
+            }`}>
+              {projectType === 'monthly' ? (
+                <Repeat className="h-6 w-6 text-white" />
+              ) : (
+                <Target className="h-6 w-6 text-white" />
+              )}
             </div>
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-medium text-blue-900 mb-1">
+            <h3 className={`text-lg font-bold mb-2 ${
+              projectType === 'monthly' ? 'text-purple-900' : 'text-green-900'
+            }`}>
               {projectType === 'monthly' ? 'Monthly Recurring Project' : 'One Time Project'}
             </h3>
-            <p className="text-sm text-blue-700">
+            <p className={`text-sm font-medium ${
+              projectType === 'monthly' ? 'text-purple-700' : 'text-green-700'
+            }`}>
               {projectType === 'monthly' 
                 ? 'This project will repeat monthly with the same 4 phases. Perfect for ongoing services, maintenance, or regular deliverables.'
                 : 'This is a one-time project with 4 phases. Once completed, the project is finished.'
               }
             </p>
+            <div className="mt-3 flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                projectType === 'monthly' ? 'bg-purple-500' : 'bg-green-500'
+              }`}></div>
+              <span className={`text-xs font-semibold ${
+                projectType === 'monthly' ? 'text-purple-600' : 'text-green-600'
+              }`}>
+                {projectType === 'monthly' ? 'Recurring every month' : 'Single completion'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -324,51 +357,72 @@ export function SimpleMilestones({
           const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
           return (
-            <Card key={milestone.id} className="border-l-4" style={{ borderLeftColor: milestone.color }}>
-              <CardHeader className="pb-3">
+            <Card key={milestone.id} className={`border-l-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] ${
+              milestone.status === 'completed' ? 'bg-gradient-to-r from-green-50 to-emerald-50' :
+              milestone.status === 'in_progress' ? 'bg-gradient-to-r from-blue-50 to-indigo-50' :
+              'bg-gradient-to-r from-gray-50 to-slate-50'
+            }`} style={{ borderLeftColor: milestone.color }}>
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(milestone.status)}`}>
-                      Phase {milestone.phaseNumber}: {milestone.status.replace('_', ' ')}
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center shadow-lg ${
+                      milestone.status === 'completed' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                      milestone.status === 'in_progress' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' :
+                      'bg-gradient-to-br from-gray-400 to-slate-400'
+                    }`}>
+                      <span className="text-white font-bold text-lg">{milestone.phaseNumber}</span>
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <CardTitle className="text-lg">{milestone.title}</CardTitle>
+                      <div className="flex items-center space-x-3 mb-2">
+                        <CardTitle className="text-xl font-bold text-gray-900">{milestone.title}</CardTitle>
+                        <div className={`px-3 py-1 rounded-full text-sm font-semibold border-2 ${getStatusColor(milestone.status)}`}>
+                          {milestone.status.replace('_', ' ').toUpperCase()}
+                        </div>
                         {milestone.isRecurring && (
-                          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
+                          <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-200">
                             <Repeat className="h-3 w-3 mr-1" />
                             Monthly
                           </Badge>
                         )}
                       </div>
                       {milestone.description && (
-                        <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
+                        <p className="text-sm text-gray-600 mb-2 font-medium">{milestone.description}</p>
                       )}
-                      {milestone.purpose && (
-                        <p className="text-xs text-blue-600 mt-1"><strong>Purpose:</strong> {milestone.purpose}</p>
-                      )}
-                      {milestone.mainGoal && (
-                        <p className="text-xs text-green-600 mt-1"><strong>Main Goal:</strong> {milestone.mainGoal}</p>
-                      )}
+                      <div className="flex flex-wrap gap-3">
+                        {milestone.purpose && (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-xs font-semibold text-blue-700">Purpose: {milestone.purpose}</span>
+                          </div>
+                        )}
+                        {milestone.mainGoal && (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs font-semibold text-green-700">Goal: {milestone.mainGoal}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-2">
-                    <div className={`text-sm font-medium ${smartIndicator.color}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`text-sm font-bold px-3 py-1 rounded-full ${smartIndicator.color} bg-white shadow-sm`}>
                       {smartIndicator.message}
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => setExpandedMilestone(expandedMilestone === milestone.id ? null : milestone.id)}
+                      className="hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
                     >
                       {expandedMilestone === milestone.id ? 'Collapse' : 'Expand'}
                     </Button>
                     {userRole === 'provider' && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => setEditingMilestone(editingMilestone === milestone.id ? null : milestone.id)}
+                        className="hover:bg-yellow-50 hover:border-yellow-300 transition-all duration-200"
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
@@ -379,54 +433,88 @@ export function SimpleMilestones({
 
               <CardContent className="pt-0">
                 {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Progress</span>
-                    <span className="text-sm font-bold text-gray-900">{Math.round(progress)}%</span>
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-bold text-gray-700">Progress</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-2xl font-bold text-gray-900">{Math.round(progress)}%</span>
+                      <div className={`w-3 h-3 rounded-full ${
+                        progress >= 80 ? 'bg-green-500' :
+                        progress >= 60 ? 'bg-blue-500' :
+                        progress >= 40 ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      }`}></div>
+                    </div>
                   </div>
-                  <Progress value={progress} className="h-2" />
-                  <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                    <span>{completedTasks} of {totalTasks} tasks completed</span>
-                    <span>{format(new Date(milestone.startDate), 'MMM dd')} - {format(new Date(milestone.endDate), 'MMM dd, yyyy')}</span>
+                  <div className="relative">
+                    <Progress 
+                      value={progress} 
+                      className="h-3 shadow-inner"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-bold text-white drop-shadow-lg">
+                        {Math.round(progress)}% Complete
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-600 mt-3 font-semibold">
+                    <div className="flex items-center space-x-1">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>{completedTasks} of {totalTasks} tasks completed</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                      <span>{format(new Date(milestone.startDate), 'MMM dd')} - {format(new Date(milestone.endDate), 'MMM dd, yyyy')}</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Tasks */}
-                <div className="space-y-2">
+                <div className="space-y-3">
+                  <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center space-x-2">
+                    <Target className="h-4 w-4" />
+                    <span>Tasks ({totalTasks})</span>
+                  </h4>
                   {milestone.tasks.map((task) => (
-                    <div key={task.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div key={task.id} className={`flex items-center space-x-4 p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
+                      task.completed 
+                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
+                        : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200 hover:border-blue-300'
+                    }`}>
                       <button
                         onClick={() => handleTaskToggle(milestone.id, task.id)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                           task.completed 
-                            ? 'bg-green-500 border-green-500 text-white' 
-                            : 'border-gray-300 hover:border-green-400'
+                            ? 'bg-gradient-to-br from-green-500 to-emerald-500 border-green-500 text-white shadow-lg' 
+                            : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                         }`}
                       >
-                        {task.completed && <CheckCircle2 className="h-3 w-3" />}
+                        {task.completed && <CheckCircle2 className="h-4 w-4" />}
                       </button>
                       
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-sm ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                        <div className="flex items-center space-x-3 mb-2">
+                          <span className={`text-sm font-semibold ${
+                            task.completed ? 'line-through text-gray-500' : 'text-gray-900'
+                          }`}>
                             {task.title}
                           </span>
                           {task.priority && (
-                            <Badge variant="outline" className={`text-xs ${getPriorityColor(task.priority)}`}>
-                              {task.priority}
+                            <Badge variant="outline" className={`text-xs font-semibold ${getPriorityColor(task.priority)}`}>
+                              {task.priority.toUpperCase()}
                             </Badge>
                           )}
                           {task.isRecurring && (
-                            <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
+                            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-200 font-semibold">
                               <Repeat className="h-3 w-3 mr-1" />
-                              {task.recurringType}
+                              {task.recurringType?.toUpperCase()}
                             </Badge>
                           )}
                         </div>
                         {task.dueDate && (
-                          <div className="flex items-center space-x-1 text-xs text-gray-500 mt-1">
+                          <div className="flex items-center space-x-2 text-xs text-gray-600">
                             <Calendar className="h-3 w-3" />
-                            <span>Due: {format(new Date(task.dueDate), 'MMM dd, yyyy')}</span>
+                            <span className="font-medium">Due: {format(new Date(task.dueDate), 'MMM dd, yyyy')}</span>
                           </div>
                         )}
                       </div>
@@ -434,10 +522,10 @@ export function SimpleMilestones({
                       <div className="flex items-center space-x-2">
                         {task.isRecurring && task.completed && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleRecurringTask(milestone.id, task)}
-                            className="text-xs"
+                            className="text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-all duration-200"
                           >
                             <Repeat className="h-3 w-3 mr-1" />
                             Repeat
@@ -445,19 +533,20 @@ export function SimpleMilestones({
                         )}
                         {userRole === 'provider' && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => setEditingTask({milestoneId: milestone.id, taskId: task.id})}
+                            className="hover:bg-yellow-50 hover:border-yellow-300 transition-all duration-200"
                           >
                             <Edit3 className="h-3 w-3" />
                           </Button>
                         )}
                         {userRole === 'provider' && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => onTaskDelete(milestone.id, task.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -472,10 +561,10 @@ export function SimpleMilestones({
                       variant="outline"
                       size="sm"
                       onClick={() => handleAddTask(milestone.id)}
-                      className="w-full mt-2"
+                      className="w-full mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 font-semibold"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Task
+                      Add New Task
                     </Button>
                   )}
                 </div>
