@@ -116,6 +116,7 @@ interface EnhancedBooking {
   title: string
   description?: string
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' | 'rescheduled'
+  approval_status?: 'pending' | 'approved' | 'rejected' | 'under_review'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   created_at: string
   updated_at: string
@@ -1119,6 +1120,56 @@ export default function EnhancedBookingDetails() {
     }
   }
 
+  const handleApprovalAction = async (action: 'approve' | 'decline') => {
+    if (!booking) return
+
+    try {
+      setIsUpdating(true)
+      
+      // Show confirmation dialog for decline
+      let reason = ''
+      if (action === 'decline') {
+        reason = prompt('Please provide a reason for declining this booking (optional):') || ''
+      }
+
+      const response = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          action: action,
+          reason: reason
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update booking')
+      }
+
+      const result = await response.json()
+      
+      // Update local state
+      setBooking({ 
+        ...booking, 
+        status: action === 'approve' ? 'confirmed' : 'cancelled',
+        approval_status: action === 'approve' ? 'approved' : 'rejected'
+      })
+
+      toast.success(`Booking ${action === 'approve' ? 'approved' : 'declined'} successfully`)
+      
+      // Refresh booking data
+      await loadBookingData()
+    } catch (error) {
+      console.error(`Error ${action}ing booking:`, error)
+      toast.error(`Failed to ${action} booking`)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const formatCurrency = (amount: number, currency: string = 'OMR') => {
     return new Intl.NumberFormat('en-OM', {
       style: 'currency',
@@ -1222,6 +1273,32 @@ export default function EnhancedBookingDetails() {
                   <Badge className={`px-2 py-1 ${getPriorityColor(booking.priority)}`}>
                     {booking.priority.toUpperCase()}
                   </Badge>
+                  
+                  {/* Approval Status Badge */}
+                  {booking.approval_status && booking.approval_status !== 'pending' && (
+                    <Badge className={`px-3 py-1 ${
+                      booking.approval_status === 'approved' 
+                        ? 'bg-green-100 text-green-800 border-green-300' 
+                        : booking.approval_status === 'rejected'
+                        ? 'bg-red-100 text-red-800 border-red-300'
+                        : 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                    }`}>
+                      <div className="flex items-center space-x-1">
+                        {booking.approval_status === 'approved' ? (
+                          <CheckCircle className="h-3 w-3" />
+                        ) : booking.approval_status === 'rejected' ? (
+                          <X className="h-3 w-3" />
+                        ) : (
+                          <Clock className="h-3 w-3" />
+                        )}
+                        <span className="font-medium capitalize">
+                          {booking.approval_status === 'approved' ? 'Approved' : 
+                           booking.approval_status === 'rejected' ? 'Declined' : 
+                           'Under Review'}
+                        </span>
+                      </div>
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-gray-600">
                   Created {formatDate(booking.created_at)} • Last updated {formatDistanceToNow(parseISO(booking.updated_at))} ago
@@ -1271,33 +1348,105 @@ export default function EnhancedBookingDetails() {
                 <Video className="h-4 w-4 mr-2" />
                 Video Call
               </Button>
+
+              {/* Approval Actions for Pending Bookings */}
+              {booking.status === 'pending' && isProvider && (
+                <>
+                  <Button 
+                    onClick={() => handleApprovalAction('approve')}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={isUpdating}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve Booking
+                  </Button>
+                  <Button 
+                    onClick={() => handleApprovalAction('decline')}
+                    variant="destructive"
+                    disabled={isUpdating}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Decline
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Smart Progress Indicator */}
-          <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Project Progress</h3>
-                  <p className="text-gray-600 text-sm">
-                    {booking.progress_percentage}% complete • Est. completion: {booking.estimated_completion || 'TBD'}
-                  </p>
+          {/* Approval Notice for Pending Bookings */}
+          {booking.status === 'pending' && isProvider && (
+            <Alert className="border-yellow-200 bg-yellow-50 mb-6">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                <strong>Action Required:</strong> This booking is pending your approval. 
+                Please review the details and either approve or decline the booking to proceed.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Client Notice for Pending Bookings */}
+          {booking.status === 'pending' && isClient && (
+            <Alert className="border-blue-200 bg-blue-50 mb-6">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Waiting for Approval:</strong> Your booking is pending approval from the service provider. 
+                You will be notified once they review and respond to your request.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Smart Progress Indicator - Only show for approved/in-progress bookings */}
+          {booking.status !== 'pending' && booking.status !== 'cancelled' && (
+            <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Project Progress</h3>
+                    <p className="text-gray-600 text-sm">
+                      {booking.progress_percentage}% complete • Est. completion: {booking.estimated_completion || 'TBD'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-600">{booking.progress_percentage}%</div>
+                    <div className="text-sm text-gray-500">Progress</div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600">{booking.progress_percentage}%</div>
-                  <div className="text-sm text-gray-500">Progress</div>
+                <Progress value={booking.progress_percentage} className="h-3 mb-2" />
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Started</span>
+                  <span>In Progress</span>
+                  <span>Review</span>
+                  <span>Complete</span>
                 </div>
-              </div>
-              <Progress value={booking.progress_percentage} className="h-3 mb-2" />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Started</span>
-                <span>In Progress</span>
-                <span>Review</span>
-                <span>Complete</span>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pending Booking Status Card */}
+          {booking.status === 'pending' && (
+            <Card className="border-l-4 border-l-yellow-500 bg-gradient-to-r from-yellow-50 to-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Booking Status</h3>
+                    <p className="text-gray-600 text-sm">
+                      Awaiting provider approval • Project will begin once approved
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-yellow-600">Pending</div>
+                    <div className="text-sm text-gray-500">Approval</div>
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Submitted</span>
+                  <span>Under Review</span>
+                  <span>Approved</span>
+                  <span>In Progress</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Milestones moved to Progress tab */}
         </div>
@@ -1527,7 +1676,9 @@ export default function EnhancedBookingDetails() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-blue-700 text-sm font-medium">Days Active</p>
+                          <p className="text-blue-700 text-sm font-medium">
+                            {booking.status === 'pending' ? 'Days Pending' : 'Days Active'}
+                          </p>
                           <p className="text-2xl font-bold text-blue-900">
                             {Math.ceil((new Date().getTime() - new Date(booking.created_at).getTime()) / (1000 * 60 * 60 * 24))}
                           </p>
@@ -1541,12 +1692,18 @@ export default function EnhancedBookingDetails() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-green-700 text-sm font-medium">Response Time</p>
+                          <p className="text-green-700 text-sm font-medium">
+                            {booking.status === 'pending' ? 'Status' : 'Response Time'}
+                          </p>
                           <p className="text-2xl font-bold text-green-900">
-                            {booking.provider.response_time || '< 1h'}
+                            {booking.status === 'pending' ? 'Pending' : (booking.provider.response_time || '< 1h')}
                           </p>
                         </div>
-                        <Clock className="h-8 w-8 text-green-600" />
+                        {booking.status === 'pending' ? (
+                          <Clock className="h-8 w-8 text-green-600" />
+                        ) : (
+                          <Clock className="h-8 w-8 text-green-600" />
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1555,10 +1712,12 @@ export default function EnhancedBookingDetails() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-purple-700 text-sm font-medium">Satisfaction</p>
+                          <p className="text-purple-700 text-sm font-medium">
+                            {booking.status === 'pending' ? 'Priority' : 'Satisfaction'}
+                          </p>
                           <p className="text-2xl font-bold text-purple-900">
-                            {booking.client_satisfaction || 'N/A'}
-                            {booking.client_satisfaction && '/5'}
+                            {booking.status === 'pending' ? booking.priority.toUpperCase() : 
+                             (booking.client_satisfaction || 'N/A') + (booking.client_satisfaction ? '/5' : '')}
                           </p>
                         </div>
                         <Star className="h-8 w-8 text-purple-600" />
@@ -1570,7 +1729,9 @@ export default function EnhancedBookingDetails() {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-orange-700 text-sm font-medium">Revenue Impact</p>
+                          <p className="text-orange-700 text-sm font-medium">
+                            {booking.status === 'pending' ? 'Estimated Value' : 'Revenue Impact'}
+                          </p>
                           <p className="text-2xl font-bold text-orange-900">
                             {formatCurrency(booking.amount)}
                           </p>
@@ -1663,23 +1824,52 @@ export default function EnhancedBookingDetails() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Status Update */}
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">Update Status</label>
-                        <Select defaultValue={booking.status} onValueChange={handleStatusUpdate} disabled={!canEdit}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="confirmed">Confirmed</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="on_hold">On Hold</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {/* Status Update - Only for approved bookings */}
+                      {booking.status !== 'pending' && (
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">Update Status</label>
+                          <Select defaultValue={booking.status} onValueChange={handleStatusUpdate} disabled={!canEdit}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="on_hold">On Hold</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Pending Booking Actions */}
+                      {booking.status === 'pending' && isProvider && (
+                        <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                          <label className="text-sm font-medium text-yellow-800 mb-2 block">Approval Required</label>
+                          <div className="space-y-2">
+                            <Button 
+                              size="sm" 
+                              className="w-full bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => handleApprovalAction('approve')}
+                              disabled={isUpdating}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Approve Booking
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              className="w-full"
+                              onClick={() => handleApprovalAction('decline')}
+                              disabled={isUpdating}
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Decline Booking
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Communication Actions */}
                       <div className="grid grid-cols-2 gap-2">
@@ -1729,28 +1919,30 @@ export default function EnhancedBookingDetails() {
                         </Button>
                       </div>
 
-                      {/* Progress Update */}
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <label className="text-sm font-medium text-blue-700 mb-2 block">Progress Update</label>
-                        <div className="flex items-center space-x-2">
-                          <Progress value={booking.progress_percentage} className="flex-1" />
-                          <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
+                      {/* Progress Update - Only for approved bookings */}
+                      {booking.status !== 'pending' && booking.status !== 'cancelled' && (
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <label className="text-sm font-medium text-blue-700 mb-2 block">Progress Update</label>
+                          <div className="flex items-center space-x-2">
+                            <Progress value={booking.progress_percentage} className="flex-1" />
+                            <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" 
+                            disabled={!canEdit} 
+                            title={!canEdit ? 'Only providers can update progress' : undefined}
+                            onClick={() => setShowProgressModal(true)}
+                          >
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Update Progress
+                          </Button>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can update progress' : undefined}
-                          onClick={() => setShowProgressModal(true)}
-                        >
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Update Progress
-                        </Button>
-                      </div>
+                      )}
 
-                      {/* Export Progress */}
-                      {milestoneStats.total > 0 && (
+                      {/* Export Progress - Only for approved bookings */}
+                      {booking.status !== 'pending' && booking.status !== 'cancelled' && milestoneStats.total > 0 && (
                         <div className="p-3 bg-green-50 rounded-lg">
                           <label className="text-sm font-medium text-green-700 mb-2 block">Export Progress</label>
                           <div className="grid grid-cols-2 gap-2">
