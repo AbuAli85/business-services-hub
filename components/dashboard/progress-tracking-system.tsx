@@ -124,14 +124,8 @@ export function ProgressTrackingSystem({
       setTotalActualHours(progressData.totalActualHours)
 
       // Load comments (booking-wide) and index by milestone
-      const allComments = await ProgressDataService.getAllCommentsForBooking(bookingId)
-      const byMilestone: Record<string, Comment[]> = {}
-      for (const c of allComments as unknown as Comment[]) {
-        const key = c.milestone_id || 'unknown'
-        if (!byMilestone[key]) byMilestone[key] = []
-        byMilestone[key].push(c)
-      }
-      setCommentsByMilestone(byMilestone)
+      const allCommentsByMilestone = await ProgressDataService.getAllCommentsForBooking(bookingId)
+      setCommentsByMilestone(allCommentsByMilestone)
 
       // Load action requests
       const requests = await ProgressDataService.getActionRequests(bookingId)
@@ -176,6 +170,19 @@ export function ProgressTrackingSystem({
     let cleanup: (() => void) | undefined
     const setup = async () => {
       cleanup = await ProgressDataService.subscribeToApprovals(bookingId, async () => {
+        await loadData()
+      })
+    }
+    setup()
+    return () => { if (cleanup) cleanup() }
+  }, [bookingId, loadData])
+
+  // Subscribe to comments realtime
+  useEffect(() => {
+    if (!bookingId) return
+    let cleanup: (() => void) | undefined
+    const setup = async () => {
+      cleanup = await ProgressDataService.subscribeToComments(bookingId, async () => {
         await loadData()
       })
     }

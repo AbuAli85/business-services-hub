@@ -55,6 +55,7 @@ export function SimpleMilestones({
   const [editingTask, setEditingTask] = useState<{milestoneId: string, taskId: string} | null>(null)
   const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>} | null>(null)
   const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
+  const [replyParentId, setReplyParentId] = useState<string | null>(null)
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
   const [projectType, setProjectType] = useState<'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'>('one_time')
   const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<Milestone> | null>(null)
@@ -143,7 +144,14 @@ export function SimpleMilestones({
   const saveComment = () => {
     if (!newComment || !newComment.text.trim()) return
     
-    onCommentAdd(newComment.milestoneId, newComment.text)
+    if (replyParentId) {
+      // post reply directly via service
+      ProgressDataService.addComment(newComment.milestoneId, newComment.text, false, replyParentId)
+        .catch(() => {})
+      setReplyParentId(null)
+    } else {
+      onCommentAdd(newComment.milestoneId, newComment.text)
+    }
     setNewComment(null)
   }
 
@@ -850,7 +858,7 @@ export function SimpleMilestones({
                         </div>
                       )}
 
-                      {/* Comments List (basic threaded placeholder) */}
+                      {/* Comments List (threaded) */}
                       <div className="space-y-2">
                         {comments.map((comment) => (
                           <div key={comment.id} className="p-3 bg-white border rounded-lg">
@@ -861,6 +869,28 @@ export function SimpleMilestones({
                               </span>
                             </div>
                             <p className="text-sm text-gray-700">{comment.content}</p>
+                            <div className="mt-2">
+                              <button
+                                className="text-xs text-blue-600 hover:underline"
+                                aria-label="Reply to comment"
+                                onClick={() => { setNewComment({ milestoneId: milestone.id, text: `@${comment.author_name || 'user'} ` }); setReplyParentId(comment.id) }}
+                              >
+                                Reply
+                              </button>
+                            </div>
+                            {comment.replies && comment.replies.length > 0 && (
+                              <div className="mt-3 ml-6 border-l pl-4 space-y-2">
+                                {comment.replies.map((reply) => (
+                                  <div key={reply.id} className="p-2 bg-gray-50 border rounded-lg">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="text-xs font-medium text-gray-900">{reply.author_name || 'User'}</span>
+                                      <span className="text-[10px] text-gray-500">{format(new Date(reply.created_at), 'MMM dd, yyyy HH:mm')}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-700">{reply.content}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                         {comments.length === 0 && (

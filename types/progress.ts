@@ -78,6 +78,8 @@ export interface Comment {
   updated_at: string;
   author_name?: string;
   author_role?: UserRole;
+  parent_id?: string | null;
+  replies?: Comment[];
 }
 
 export interface BookingProgress {

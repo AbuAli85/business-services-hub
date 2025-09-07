@@ -1,5 +1,5 @@
 import { getSupabaseClient } from './supabase';
-import { Task, Milestone, TimeEntry, BookingProgress, MilestoneApproval } from '@/types/progress';
+import { Task, Milestone, TimeEntry, BookingProgress, MilestoneApproval, Comment } from '@/types/progress';
 import { NotificationsService } from './notifications-service';
 
 export interface ProgressData {
@@ -246,7 +246,7 @@ export class ProgressDataService {
   }
 
   // Booking-wide comments (milestone_comments joined by milestones under booking)
-  static async getAllCommentsForBooking(bookingId: string): Promise<Comment[]> {
+  static async getAllCommentsForBooking(bookingId: string): Promise<Record<string, Comment[]>> {
     try {
       const supabase = await getSupabaseClient();
       const { data, error } = await supabase
@@ -260,15 +260,41 @@ export class ProgressDataService {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-
-      return (data || []).map((row: any) => ({
+      const flat: Comment[] = (data || []).map((row: any) => ({
         id: row.id,
         milestone_id: row.milestone_id,
         content: row.content,
-        author: row.author?.full_name || 'Unknown',
+        booking_id: row.milestone?.booking_id,
+        user_id: row.author_id,
+        author_name: row.author?.full_name || 'Unknown',
         author_role: row.author?.role || 'client',
-        created_at: row.created_at
+        created_at: row.created_at,
+        updated_at: row.created_at,
+        parent_id: row.parent_id || null
       })) as unknown as Comment[];
+
+      // Group by milestone first
+      const byMilestone: Record<string, Comment[]> = {};
+      for (const c of flat) {
+        const key = c.milestone_id || 'unknown'
+        if (!byMilestone[key]) byMilestone[key] = []
+        byMilestone[key].push(c)
+      }
+      // For each milestone, build nested tree from its comments
+      const result: Record<string, Comment[]> = {}
+      for (const [mid, list] of Object.entries(byMilestone)) {
+        const byParent: Record<string, Comment[]> = {}
+        for (const c of list) {
+          const pid = c.parent_id ?? 'root'
+          if (!byParent[pid]) byParent[pid] = []
+          byParent[pid].push({ ...c, replies: [] })
+        }
+        const buildTree = (parentId: string | null): Comment[] => (
+          (byParent[parentId ?? 'root'] || []).map((c) => ({ ...c, replies: buildTree(c.id) }))
+        )
+        result[mid] = buildTree(null)
+      }
+      return result
     } catch (error) {
       console.error('Error fetching booking comments:', error);
       throw error;
@@ -370,6 +396,33 @@ export class ProgressDataService {
         table: 'action_requests',
         filter: `booking_id=eq.${bookingId}`
       }, async () => { await onChange(); })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }
+
+  static async subscribeToComments(
+    bookingId: string,
+    onChange: () => Promise<void> | void
+  ) {
+    const supabase = await getSupabaseClient();
+    const ch = supabase
+      .channel('milestone-comments-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'milestone_comments',
+      }, async (payload: any) => {
+        try {
+          const { data: m } = await supabase
+            .from('milestones')
+            .select('id, booking_id')
+            .eq('id', payload.new?.milestone_id || payload.old?.milestone_id)
+            .single();
+          if (m && (m as any).booking_id === bookingId) {
+            await onChange();
+          }
+        } catch {}
+      })
       .subscribe();
     return () => supabase.removeChannel(ch);
   }
@@ -490,7 +543,8 @@ export class ProgressDataService {
   static async addComment(
     milestoneId: string,
     content: string,
-    isInternal: boolean = false
+    isInternal: boolean = false,
+    parentId?: string
   ): Promise<Comment> {
     try {
       const supabase = await getSupabaseClient();
@@ -504,7 +558,8 @@ export class ProgressDataService {
           milestone_id: milestoneId,
           content,
           author_id: user.id,
-          is_internal: isInternal
+          is_internal: isInternal,
+          parent_id: parentId || null
         })
         .select(`
           *,
@@ -518,9 +573,14 @@ export class ProgressDataService {
         id: data.id,
         milestone_id: data.milestone_id,
         content: data.content,
-        author: data.author?.full_name || 'Unknown',
+        booking_id: (data as any).booking_id,
+        user_id: data.author_id,
+        author_name: data.author?.full_name || 'Unknown',
         author_role: data.author?.role || 'client',
-        created_at: data.created_at
+        created_at: data.created_at,
+        updated_at: data.created_at,
+        parent_id: data.parent_id || null,
+        replies: []
       } as unknown as Comment;
       try { await NotificationsService.sendCommentNotification({ milestoneId, bookingId: (data as any).booking_id || '', userId: user.id, content }); } catch {}
       return result;
