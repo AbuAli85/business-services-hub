@@ -1896,43 +1896,6 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
               </Card>
             )}
 
-            {/* Smart Suggestions */}
-            <Card className="border-0 shadow-lg border-l-4 border-l-purple-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2">
-                  <Lightbulb className="h-5 w-5 text-purple-600" />
-                  <span>Smart Suggestions</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {smartSuggestions.map((suggestion, index) => (
-                  <div key={index} className="p-3 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-purple-900 text-sm">{suggestion.title}</h4>
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-xs ${
-                          suggestion.priority === 'high' ? 'bg-red-100 text-red-700' :
-                          suggestion.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {suggestion.priority}
-                      </Badge>
-                    </div>
-                    <p className="text-purple-700 text-xs mb-2">{suggestion.description}</p>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="w-full text-xs border-purple-200 text-purple-700 hover:bg-purple-50"
-                      onClick={() => handleSuggestionAction(suggestion)}
-                    >
-                      {suggestion.action}
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
           </div>
 
           {/* Main Content Area */}

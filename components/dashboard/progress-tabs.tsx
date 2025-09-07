@@ -141,7 +141,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       // Load booking data for overall progress
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
-        .select('id, title, project_progress, status, type')
+        .select('id, title, project_progress, status')
         .eq('id', bookingId)
         .single()
       
@@ -235,7 +235,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      setBookingType(bookingData?.type ?? null)
+      setBookingType('recurring') // Default to recurring since type column was removed
 
       // Timeline and comments
       try {
@@ -437,25 +437,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {combinedView ? (
           // Combined Progress & Timeline: no tabs, render both sections
           <div className="space-y-8">
-            {bookingType === 'one_time' ? (
-              <SimpleMilestones
-                milestones={milestones}
-                userRole={userRole}
-                onMilestoneUpdate={handleMilestoneUpdate}
-                onTaskUpdate={handleTaskUpdate}
-                onTaskAdd={handleAddTask}
-                onTaskDelete={handleDeleteTask}
-                onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
-                onProjectTypeChange={() => {}}
-                showHeader={false}
-              />
-            ) : (
-              <ProgressTrackingSystem
-                bookingId={bookingId}
-                userRole={userRole}
-                className=""
-              />
-            )}
+            <ProgressTrackingSystem
+              bookingId={bookingId}
+              userRole={userRole}
+              className=""
+            />
 
             <div className="space-y-6">
               <div>
@@ -647,14 +633,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
-      {/* Smart Suggestions Sidebar */}
-      <SmartSuggestionsSidebar
-        milestones={milestones as any}
-        bookingProgress={bookingProgress}
-        timeEntries={[]}
-        userRole={userRole}
-        onRefresh={loadData}
-      />
     </div>
   )
 }

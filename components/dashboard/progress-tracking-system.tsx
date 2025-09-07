@@ -383,16 +383,12 @@ export function ProgressTrackingSystem({
         })()}
       </div>
 
-      {/* Main content tabs (kept for analytics/timeline) */}
+      {/* Main content tabs (kept for analytics) */}
       <Tabs defaultValue="milestones" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="milestones" className="flex items-center space-x-2">
             <Target className="h-4 w-4" />
             <span>Milestones</span>
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4" />
-            <span>Timeline</span>
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center space-x-2">
             <BarChart3 className="h-4 w-4" />
@@ -430,31 +426,6 @@ export function ProgressTrackingSystem({
           </div>
         </TabsContent>
 
-        <TabsContent value="timeline" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Timeline view placeholder */}
-            <div className="lg:col-span-3">
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Timeline View</h3>
-                  <p className="text-gray-600">Timeline management coming soon...</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <SmartSuggestionsSidebar
-                milestones={milestones as any}
-                userRole={userRole}
-                bookingProgress={bookingProgress}
-                timeEntries={timeEntries as any}
-                onRefresh={loadData}
-              />
-            </div>
-          </div>
-        </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
           <Card>
