@@ -496,7 +496,16 @@ export default function EnhancedProgressDashboard({
                         <div>
                           <p className="font-medium">{entry.description}</p>
                           <p className="text-sm text-gray-600">
-                            {new Date(entry.logged_at).toLocaleString()}
+                            {(() => {
+                              try {
+                                if (!entry.logged_at) return 'N/A'
+                                const date = new Date(entry.logged_at)
+                                return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString()
+                              } catch (error) {
+                                console.warn('Date parsing error:', error)
+                                return 'N/A'
+                              }
+                            })()}
                           </p>
                         </div>
                       </div>

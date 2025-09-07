@@ -312,22 +312,22 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             created_at: task.created_at,
             updated_at: task.updated_at,
           created_by: undefined,
-            assigned_to: undefined,
+          assigned_to: undefined,
             is_overdue: false,
-            overdue_since: undefined,
-            approval_status: 'pending' as 'pending',
-            approved_by: undefined,
-            approved_at: undefined,
-            approval_notes: undefined,
-            comments: [],
-            time_entries: [],
+          overdue_since: undefined,
+          approval_status: 'pending' as 'pending',
+          approved_by: undefined,
+          approved_at: undefined,
+          approval_notes: undefined,
+          comments: [],
+          time_entries: [],
             order_index: task.order_index || 0
-          }))
         }))
-        
+      }))
+      
         // If we get here, database is working
         setUseFallbackMode(false)
-        setMilestones(transformedMilestones)
+      setMilestones(transformedMilestones)
         console.log('✅ Database milestones loaded:', transformedMilestones.length, 'milestones')
         console.log('📊 Milestone data:', transformedMilestones)
         
@@ -373,7 +373,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         const transformedFallback = fallbackData.map(milestone => ({
           ...milestone,
           id: milestone.id,
-          booking_id: bookingId,
+        booking_id: bookingId,
           title: milestone.title,
           description: milestone.description || '',
           status: milestone.status as 'not_started' | 'in_progress' | 'completed',
@@ -662,7 +662,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         <div className="text-center max-w-md">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
             <Target className="h-6 w-6 text-blue-600" />
-          </div>
+      </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Progress Data Yet</h3>
           <p className="text-gray-600 mb-6">
             This booking doesn't have any milestones or progress tracking set up yet. 
@@ -938,7 +938,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   }
 
   console.log('🔍 ProgressTabs render - showMilestoneCreator:', showMilestoneCreator)
-  
+
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Debug indicator - should always be visible when modal should show */}
@@ -1001,7 +1001,13 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             overdueTasks={milestones.reduce((sum, m) => 
               sum + (m.tasks?.filter(t => {
                 if (!t.due_date || t.status === 'completed') return false
-                return new Date(t.due_date) < new Date()
+                try {
+                  const dueDate = new Date(t.due_date)
+                  return !isNaN(dueDate.getTime()) && dueDate < new Date()
+                } catch (error) {
+                  console.warn('Date comparison error:', error)
+                  return false
+                }
               }).length || 0), 0
             )}
           />
@@ -1048,7 +1054,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                       <div key={item.id} className="rounded-lg border p-4 bg-white">
                         <div className="flex items-center justify-between">
                           <div className="font-medium text-gray-900">{item.title}</div>
-                          <div className="text-xs text-gray-500">{new Date(item.start_date).toLocaleDateString()} → {new Date(item.end_date).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-500">{(() => {
+                            try {
+                              const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
+                              const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
+                              return `${startDate} → ${endDate}`
+                            } catch (error) {
+                              console.warn('Date range parsing error:', error)
+                              return 'N/A → N/A'
+                            }
+                          })()}</div>
                         </div>
                         {item.description && (
                           <p className="mt-1 text-sm text-gray-600">{item.description}</p>
@@ -1074,7 +1089,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                             <div key={c.id} className="text-sm">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-gray-800">{c.author_name || 'User'}</span>
-                                <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString()}</span>
+                                <span className="text-xs text-gray-500">{(() => {
+                                  try {
+                                    if (!c.created_at) return 'N/A'
+                                    const date = new Date(c.created_at)
+                                    return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString()
+                                  } catch (error) {
+                                    console.warn('Date parsing error:', error)
+                                    return 'N/A'
+                                  }
+                                })()}</span>
                               </div>
                               <p className="text-gray-700 mt-1">{c.content}</p>
                             </div>
@@ -1154,7 +1178,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                           <div key={item.id} className="rounded-lg border p-4 bg-white">
                             <div className="flex items-center justify-between">
                               <div className="font-medium text-gray-900">{item.title}</div>
-                              <div className="text-xs text-gray-500">{new Date(item.start_date).toLocaleDateString()} → {new Date(item.end_date).toLocaleDateString()}</div>
+                              <div className="text-xs text-gray-500">{(() => {
+                            try {
+                              const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
+                              const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
+                              return `${startDate} → ${endDate}`
+                            } catch (error) {
+                              console.warn('Date range parsing error:', error)
+                              return 'N/A → N/A'
+                            }
+                          })()}</div>
                             </div>
                             {item.description && (
                               <p className="mt-1 text-sm text-gray-600">{item.description}</p>
@@ -1181,7 +1214,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                                 <div key={c.id} className="text-sm">
                                   <div className="flex items-center justify-between">
                                     <span className="font-medium text-gray-800">{c.author_name || 'User'}</span>
-                                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString()}</span>
+                                    <span className="text-xs text-gray-500">{(() => {
+                                  try {
+                                    if (!c.created_at) return 'N/A'
+                                    const date = new Date(c.created_at)
+                                    return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString()
+                                  } catch (error) {
+                                    console.warn('Date parsing error:', error)
+                                    return 'N/A'
+                                  }
+                                })()}</span>
                                   </div>
                                   <p className="text-gray-700 mt-1">{c.content}</p>
                                 </div>

@@ -644,7 +644,13 @@ export default function EnhancedBookingDetails({
       const completed = milestonesData?.filter(m => m.status === 'completed').length || 0
       const overdue = milestonesData?.filter(m => {
         if (!m.due_date) return false
-        return new Date(m.due_date) < new Date() && m.status !== 'completed'
+        try {
+          const dueDate = new Date(m.due_date)
+          return !isNaN(dueDate.getTime()) && dueDate < new Date() && m.status !== 'completed'
+        } catch (error) {
+          console.warn('Date comparison error:', error)
+          return false
+        }
       }).length || 0
       
       setMilestoneStats({ completed, total, overdue })
@@ -1642,7 +1648,14 @@ export default function EnhancedBookingDetails({
                   )}
                 </div>
                 <p className="text-gray-600">
-                  {isProvider ? 'Client Project' : 'Your Project'} • Created {formatDate(booking.created_at)} • Last updated {formatDistanceToNow(parseISO(booking.updated_at))} ago
+                  {isProvider ? 'Client Project' : 'Your Project'} • Created {formatDate(booking.created_at)} • Last updated {booking.updated_at ? (() => {
+                    try {
+                      return formatDistanceToNow(parseISO(booking.updated_at)) + ' ago'
+                    } catch (error) {
+                      console.warn('Date parsing error for updated_at:', booking.updated_at, error)
+                      return 'recently'
+                    }
+                  })() : 'recently'}
                 </p>
               </div>
             </div>
@@ -2104,7 +2117,17 @@ export default function EnhancedBookingDetails({
                         <div>
                           <p className="text-blue-700 text-xs font-medium">Days Active</p>
                           <p className="text-xl font-bold text-blue-900">
-                            {Math.ceil((new Date().getTime() - new Date(booking.created_at).getTime()) / (1000 * 60 * 60 * 24))}
+                            {(() => {
+                              try {
+                                if (!booking.created_at) return 0
+                                const createdDate = new Date(booking.created_at)
+                                if (isNaN(createdDate.getTime())) return 0
+                                return Math.ceil((new Date().getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+                              } catch (error) {
+                                console.warn('Date calculation error:', error)
+                                return 0
+                              }
+                            })()}
                           </p>
                         </div>
                         <Calendar className="h-6 w-6 text-blue-600" />
