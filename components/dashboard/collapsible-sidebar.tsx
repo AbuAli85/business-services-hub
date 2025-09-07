@@ -96,20 +96,6 @@ export function CollapsibleSidebar({ collapsed, setCollapsed, className }: Colla
             </div>
           </div>
 
-          {/* User Profile */}
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="h-5 w-5 text-gray-600" />
-              </div>
-              {!collapsed && (
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">Provider</p>
-                  <p className="text-xs text-gray-500">Active</p>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">

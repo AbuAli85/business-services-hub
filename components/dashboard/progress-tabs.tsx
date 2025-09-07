@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import './progress-styles.css'
-import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle, Target } from 'lucide-react'
+import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle, Target, MessageSquare } from 'lucide-react'
 import { Milestone, Task, BookingProgress, Comment } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
 // Removed legacy client-progress-view
@@ -120,81 +120,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     }
   }, [bookingId, schemaAvailable])
 
-  // Debug function to test milestone creation
-  const testMilestoneCreation = async () => {
-    console.log('🧪 Testing milestone creation...')
-    try {
-      const { getSupabaseClient } = await import('@/lib/supabase')
-      const supabase = await getSupabaseClient()
-      
-      // Check auth
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        console.error('❌ Auth error:', authError)
-        return false
-      }
-      console.log('✅ User authenticated:', user.id)
-      
-      // Try to create a test milestone
-      const { data, error } = await supabase
-        .from('milestones')
-        .insert({
-          booking_id: bookingId,
-          title: 'Debug Test Milestone',
-          description: 'Testing milestone creation',
-          status: 'pending',
-          progress_percentage: 0,
-          order_index: 0,
-          created_by: user.id
-        })
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('❌ Milestone creation failed:', error)
-        return false
-      }
-      
-      console.log('✅ Milestone created successfully:', data.id)
-      
-      // Clean up
-      await supabase.from('milestones').delete().eq('id', data.id)
-      console.log('🧹 Test milestone cleaned up')
-      
-      return true
-    } catch (error) {
-      console.error('❌ Test failed:', error)
-      return false
-    }
-  }
 
-  // Make test function available globally for debugging
-  if (typeof window !== 'undefined') {
-    (window as any).testMilestoneCreation = testMilestoneCreation
-  }
-
-  // Debug modal state
-  useEffect(() => {
-    console.log('Modal state changed - showMilestoneCreator:', showMilestoneCreator)
-    if (showMilestoneCreator) {
-      console.log('Modal should be visible now!')
-      // Test if modal is in DOM
-      setTimeout(() => {
-        const modalElement = document.querySelector('[data-modal="milestone-creator"]')
-        if (modalElement) {
-          console.log('✅ Modal element found in DOM:', modalElement)
-        } else {
-          console.log('❌ Modal element NOT found in DOM')
-          // Try to find any modal-like elements
-          const allModals = document.querySelectorAll('[class*="fixed"]')
-          console.log('All fixed elements found:', allModals.length)
-          allModals.forEach((el, i) => {
-            console.log(`Fixed element ${i}:`, el.className, (el as HTMLElement).style.zIndex)
-          })
-        }
-      }, 100)
-    }
-  }, [showMilestoneCreator])
 
   const loadData = async () => {
     try {
@@ -393,7 +319,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         const transformedFallback = fallbackData.map(milestone => ({
           ...milestone,
           id: milestone.id,
-          booking_id: bookingId,
+        booking_id: bookingId,
           title: milestone.title,
           description: milestone.description || '',
           status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
@@ -753,89 +679,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   ⚠️ Using offline mode - data will be stored locally
                 </div>
               )}
-              <div className="text-xs text-gray-500 text-center mt-2 space-y-1">
-                <button 
-                  onClick={testMilestoneCreation}
-                  className="text-blue-600 hover:text-blue-800 underline block"
-                >
-                  Test Database Connection
-                </button>
-                <button 
-                  onClick={() => {
-                    console.log('Force opening modal...')
-                    setShowMilestoneCreator(true)
-                  }}
-                  className="text-green-600 hover:text-green-800 underline block"
-                >
-                  Force Open Modal
-                </button>
-                <button 
-                  onClick={() => {
-                    alert('Modal state: ' + showMilestoneCreator + '\nFallback mode: ' + useFallbackMode)
-                  }}
-                  className="text-purple-600 hover:text-purple-800 underline block"
-                >
-                  Check Modal State
-                </button>
-                <button 
-                  onClick={() => {
-                    // Create a simple test modal
-                    const testModal = document.createElement('div')
-                    testModal.innerHTML = `
-                      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center;">
-                        <div style="background: white; padding: 20px; border: 5px solid red; border-radius: 8px; max-width: 400px;">
-                          <h2>TEST MODAL</h2>
-                          <p>This is a test modal created directly with JavaScript</p>
-                          <button onclick="this.parentElement.parentElement.remove()">Close</button>
-                        </div>
-                      </div>
-                    `
-                    document.body.appendChild(testModal)
-                    console.log('Test modal created directly')
-                  }}
-                  className="text-orange-600 hover:text-orange-800 underline block"
-                >
-                  Create Test Modal
-                </button>
-                <button 
-                  onClick={() => {
-                    // Create sample milestones for testing
-                    const sampleMilestones = [
-                      {
-                        id: 'sample-1',
-                        title: 'Project Kickoff',
-                        description: 'Initial project setup and planning',
-                        status: 'pending',
-                        progress_percentage: 0,
-                        tasks: [
-                          { id: 'task-1', title: 'Review requirements', status: 'pending', progress_percentage: 0 },
-                          { id: 'task-2', title: 'Create project timeline', status: 'pending', progress_percentage: 0 }
-                        ],
-                        created_at: new Date().toISOString()
-                      },
-                      {
-                        id: 'sample-2',
-                        title: 'Design Phase',
-                        description: 'Create initial designs and mockups',
-                        status: 'pending',
-                        progress_percentage: 0,
-                        tasks: [
-                          { id: 'task-3', title: 'Create wireframes', status: 'pending', progress_percentage: 0 },
-                          { id: 'task-4', title: 'Design mockups', status: 'pending', progress_percentage: 0 }
-                        ],
-                        created_at: new Date().toISOString()
-                      }
-                    ]
-                    
-                    localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(sampleMilestones))
-                    console.log('Sample milestones created in localStorage')
-                    loadData() // Reload data to show the new milestones
-                  }}
-                  className="text-pink-600 hover:text-pink-800 underline block"
-                >
-                  Create Sample Milestones
-                </button>
-              </div>
             </div>
           )}
         </div>
@@ -1125,7 +968,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
                 {timelineItems.length === 0 ? (
-                  <div className="p-6 text-center text-gray-600">No timeline items yet.</div>
+                  <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Clock className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Timeline Activity Yet</h4>
+                    <p className="text-gray-600 mb-4">Timeline items will appear here as you work on milestones and complete tasks.</p>
+                    <div className="text-sm text-gray-500">
+                      <p>• Start a milestone to create timeline entries</p>
+                      <p>• Complete tasks to see progress updates</p>
+                      <p>• Add comments to track important moments</p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {timelineItems.map(item => (
@@ -1156,7 +1010,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Comments</h3>
                 {Object.keys(commentsByMilestone).length === 0 ? (
-                  <div className="p-6 text-center text-gray-600">No comments yet.</div>
+                  <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <MessageSquare className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Comments Yet</h4>
+                    <p className="text-gray-600 mb-4">Comments help track important discussions and decisions throughout the project.</p>
+                    <div className="text-sm text-gray-500">
+                      <p>• Add comments to milestones for context</p>
+                      <p>• Share updates with team members</p>
+                      <p>• Document important decisions</p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {Object.entries(commentsByMilestone).map(([milestoneId, list]) => (
@@ -1249,7 +1114,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
                     {timelineItems.length === 0 ? (
-                      <div className="p-6 text-center text-gray-600">No timeline items yet.</div>
+                      <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Clock className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">No Timeline Activity Yet</h4>
+                        <p className="text-gray-600 mb-4">Timeline items will appear here as you work on milestones and complete tasks.</p>
+                        <div className="text-sm text-gray-500">
+                          <p>• Start a milestone to create timeline entries</p>
+                          <p>• Complete tasks to see progress updates</p>
+                          <p>• Add comments to track important moments</p>
+                        </div>
+                      </div>
                     ) : (
                       <div className="space-y-3">
                         {timelineItems.map(item => (
@@ -1281,7 +1157,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Comments</h3>
                     {Object.keys(commentsByMilestone).length === 0 ? (
-                      <div className="p-6 text-center text-gray-600">No comments yet.</div>
+                      <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                          <MessageSquare className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">No Comments Yet</h4>
+                        <p className="text-gray-600 mb-4">Comments help track important discussions and decisions throughout the project.</p>
+                        <div className="text-sm text-gray-500">
+                          <p>• Add comments to milestones for context</p>
+                          <p>• Share updates with team members</p>
+                          <p>• Document important decisions</p>
+                        </div>
+                      </div>
                     ) : (
                       <div className="space-y-4">
                         {Object.entries(commentsByMilestone).map(([milestoneId, list]) => (
@@ -1347,65 +1234,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
-      {/* Simple Test Modal - Always Render When State is True */}
-      {showMilestoneCreator && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            zIndex: 999999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          onClick={() => {
-            console.log('Test modal clicked, closing')
-            setShowMilestoneCreator(false)
-          }}
-        >
-          <div 
-            style={{
-              backgroundColor: 'white',
-              padding: '30px',
-              borderRadius: '10px',
-              border: '5px solid red',
-              minWidth: '400px',
-              minHeight: '300px',
-              zIndex: 1000000
-            }}
-          >
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
-              🎉 MODAL IS WORKING! 🎉
-            </h2>
-            <p style={{ textAlign: 'center', marginBottom: '20px' }}>
-              This is a simple test modal to verify rendering works.
-            </p>
-            <div style={{ textAlign: 'center' }}>
-              <button
-                onClick={() => {
-                  console.log('Close button clicked')
-                  setShowMilestoneCreator(false)
-                }}
-                style={{
-                  backgroundColor: 'red',
-                  color: 'white',
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontSize: '16px'
-                }}
-              >
-                Close Modal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   )

@@ -178,62 +178,86 @@ export function SmartSuggestionsSidebar({
               id: 'create-first-milestone',
               type: 'follow_up',
               priority: 'high',
-              title: 'Create Your First Milestone',
-              description: 'Start by creating a milestone to break down your project into manageable phases',
+              title: '🚀 Create Your First Milestone',
+              description: 'Start by creating a milestone to break down your project into manageable phases. This will help track progress and keep everyone aligned.',
               action: 'Create milestone',
               dismissible: true
             }
           )
         } else if (milestones.every(m => m.status === 'not_started')) {
+          const firstMilestone = milestones[0]
           newSuggestions.push(
             {
               id: 'start-project',
               type: 'follow_up',
               priority: 'high',
-              title: 'Ready to Start?',
-              description: 'All milestones are set up. Click "Start Phase" to begin working on the first milestone',
+              title: '▶️ Ready to Start?',
+              description: `All ${milestones.length} milestone${milestones.length > 1 ? 's are' : ' is'} set up. Click "Start Phase" to begin working on "${firstMilestone.title}".`,
               action: 'Start first phase',
               dismissible: true
             }
           )
         } else if (milestones.some(m => m.status === 'in_progress')) {
+          const inProgressMilestones = milestones.filter(m => m.status === 'in_progress')
+          const currentMilestone = inProgressMilestones[0]
+          const totalTasks = currentMilestone.tasks?.length || 0
+          const completedTasks = currentMilestone.tasks?.filter(t => t.status === 'completed').length || 0
+          
           newSuggestions.push(
             {
               id: 'add-tasks',
               type: 'follow_up',
               priority: 'medium',
-              title: 'Add More Tasks',
-              description: 'Break down your current milestone into specific tasks for better tracking',
+              title: '📋 Add More Tasks',
+              description: `"${currentMilestone.title}" has ${totalTasks} task${totalTasks !== 1 ? 's' : ''} (${completedTasks} completed). Break it down further for better tracking.`,
               action: 'Add tasks',
               dismissible: true
             }
           )
+          
+          if (totalTasks === 0) {
+            newSuggestions.push(
+              {
+                id: 'add-first-tasks',
+                type: 'follow_up',
+                priority: 'high',
+                title: '⚡ Add Your First Tasks',
+                description: `"${currentMilestone.title}" needs tasks to track progress. Use Smart Tasks to generate suggestions or add them manually.`,
+                action: 'Add first tasks',
+                dismissible: true
+              }
+            )
+          }
         } else {
+          const completedMilestones = milestones.filter(m => m.status === 'completed').length
           newSuggestions.push(
             {
               id: 'review-progress',
               type: 'follow_up',
               priority: 'low',
-              title: 'Review Project Progress',
-              description: 'Check your project status and plan next steps',
+              title: '📊 Review Project Progress',
+              description: `${completedMilestones}/${milestones.length} milestones completed. Check your project status and plan next steps.`,
               action: 'Review progress',
               dismissible: true
             }
           )
         }
         
-        // Always add smart features suggestion
-        newSuggestions.push(
-          {
-            id: 'smart-features',
-            type: 'follow_up',
-            priority: 'low',
-            title: 'Try Smart Task Generation',
-            description: 'Use AI to generate context-aware task suggestions for your milestones',
-            action: 'Use Smart Tasks',
-            dismissible: true
-          }
-        )
+        // Add smart features suggestion with more context
+        const hasInProgressMilestones = milestones.some(m => m.status === 'in_progress')
+        if (hasInProgressMilestones) {
+          newSuggestions.push(
+            {
+              id: 'smart-features',
+              type: 'follow_up',
+              priority: 'low',
+              title: '🤖 Try Smart Task Generation',
+              description: 'Use AI to generate context-aware task suggestions for your active milestones. Save time and get better task breakdowns.',
+              action: 'Use Smart Tasks',
+              dismissible: true
+            }
+          )
+        }
       }
 
       return newSuggestions
