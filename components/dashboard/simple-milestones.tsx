@@ -20,11 +20,14 @@ import {
   Lock,
   AlertCircle,
   CheckCircle2,
-  Play
+  Play,
+  Lightbulb
 } from 'lucide-react'
 import { format, addMonths, isAfter, isBefore } from 'date-fns'
 import { Task, Milestone, Comment, UserRole, MilestoneApproval } from '@/types/progress'
 import { ProgressDataService } from '@/lib/progress-data-service'
+import { SmartTaskGenerator } from './smart-task-generator'
+import { SmartMilestoneTemplates } from './smart-milestone-templates'
 
 interface SimpleMilestonesProps {
   milestones: Milestone[]
@@ -61,6 +64,8 @@ export function SimpleMilestones({
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
   const [projectType, setProjectType] = useState<'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'>('one_time')
   const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<Milestone> | null>(null)
+  const [showSmartTaskGenerator, setShowSmartTaskGenerator] = useState<string | null>(null)
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
 
   // No hardcoded phases - use real data from database
 
@@ -801,17 +806,28 @@ export function SimpleMilestones({
                   {/* Enhanced Add Task Button */}
                   {userRole === 'provider' && (
                     <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-300 transition-all duration-200">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddTask(milestone.id)}
-                        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold py-3"
-                      >
-                        <Plus className="h-5 w-5 mr-2" />
-                        Add New Task to {milestone.title}
-                      </Button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddTask(milestone.id)}
+                          className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold py-3"
+                        >
+                          <Plus className="h-5 w-5 mr-2" />
+                          Add Manual Task
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowSmartTaskGenerator(milestone.id)}
+                          className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold py-3"
+                        >
+                          <Lightbulb className="h-5 w-5 mr-2" />
+                          Smart Tasks
+                        </Button>
+                      </div>
                       <p className="text-xs text-blue-600 text-center mt-2">
-                        Add tasks to track progress and break down this phase into manageable steps
+                        Add tasks manually or use AI to generate smart task suggestions
                       </p>
                     </div>
                   )}
@@ -1142,6 +1158,48 @@ export function SimpleMilestones({
           )
         })}
       </div>
+
+      {/* Smart Task Generator Modal */}
+      {showSmartTaskGenerator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <SmartTaskGenerator
+            milestoneTitle={milestones.find(m => m.id === showSmartTaskGenerator)?.title || ''}
+            milestoneDescription={milestones.find(m => m.id === showSmartTaskGenerator)?.description}
+            existingTasks={milestones.find(m => m.id === showSmartTaskGenerator)?.tasks || []}
+            onTasksGenerated={(tasks) => {
+              // Add generated tasks to the milestone
+              tasks.forEach(task => {
+                onTaskCreate(showSmartTaskGenerator!, {
+                  title: task.title,
+                  description: task.description,
+                  status: 'pending',
+                  progress: 0,
+                  priority: task.priority,
+                  milestone_id: showSmartTaskGenerator!,
+                  order_index: 0,
+                  estimated_hours: task.estimatedHours
+                })
+              })
+              setShowSmartTaskGenerator(null)
+            }}
+            onCancel={() => setShowSmartTaskGenerator(null)}
+          />
+        </div>
+      )}
+
+      {/* Template Selector Modal */}
+      {showTemplateSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <SmartMilestoneTemplates
+            onSelectTemplate={(template) => {
+              // This would create multiple milestones from template
+              console.log('Template selected:', template)
+              setShowTemplateSelector(false)
+            }}
+            onCancel={() => setShowTemplateSelector(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }

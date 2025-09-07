@@ -86,6 +86,67 @@ export function SmartProgressIndicator({
   const generateInsights = () => {
     const newInsights = []
     
+    // Smart milestone sequencing insights
+    if (milestones.length > 1) {
+      const blockedMilestones = milestones.filter(m => 
+        m.status === 'not_started' && 
+        milestones.some(prev => prev.order_index < m.order_index && prev.status !== 'completed')
+      ).length
+      
+      if (blockedMilestones > 0) {
+        newInsights.push({
+          type: 'warning',
+          title: 'Blocked Milestones',
+          message: `${blockedMilestones} milestone${blockedMilestones > 1 ? 's are' : ' is'} waiting for previous phases to complete`,
+          action: 'Review dependencies',
+          priority: 'high'
+        })
+      }
+    }
+    
+    // Task distribution insights
+    const taskDistribution = milestones.map(m => ({
+      milestoneId: m.id,
+      title: m.title,
+      taskCount: m.tasks?.length || 0,
+      completedTasks: m.tasks?.filter((t: any) => t.status === 'completed').length || 0
+    }))
+    
+    const unevenDistribution = taskDistribution.some(m => m.taskCount > 10) && 
+                              taskDistribution.some(m => m.taskCount < 3)
+    
+    if (unevenDistribution) {
+      newInsights.push({
+        type: 'suggestion',
+        title: 'Uneven Task Distribution',
+        message: 'Some milestones have too many tasks while others have too few',
+        action: 'Rebalance tasks',
+        priority: 'medium'
+      })
+    }
+    
+    // Progress velocity insights
+    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+    if (completionRate > 0) {
+      if (velocity > 1.5) {
+        newInsights.push({
+          type: 'success',
+          title: 'Excellent Velocity',
+          message: `Completing ${velocity.toFixed(1)} tasks per day - ahead of schedule!`,
+          action: 'Maintain momentum',
+          priority: 'low'
+        })
+      } else if (velocity < 0.5) {
+        newInsights.push({
+          type: 'warning',
+          title: 'Slow Progress',
+          message: `Only ${velocity.toFixed(1)} tasks completed per day - consider reviewing blockers`,
+          action: 'Review blockers',
+          priority: 'high'
+        })
+      }
+    }
+    
     // Progress insights
     if (currentProgress === 0) {
       newInsights.push({

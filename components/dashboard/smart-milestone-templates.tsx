@@ -4,474 +4,425 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Target, 
-  Clock, 
-  Users, 
+  Lightbulb, 
   Zap, 
-  CheckCircle,
-  ArrowRight,
-  Star,
-  TrendingUp
+  Rocket, 
+  Brain, 
+  Sparkles,
+  Code,
+  Palette,
+  Globe,
+  Shield,
+  Database,
+  Smartphone
 } from 'lucide-react'
 
-interface SmartMilestoneTemplate {
+interface SmartMilestoneTemplatesProps {
+  onSelectTemplate?: (template: MilestoneTemplate) => void
+  onTemplateSelect?: (template: any) => void
+  onCancel: () => void
+  bookingId?: string
+  projectType?: string
+}
+
+interface MilestoneTemplate {
   id: string
   name: string
   description: string
-  category: string
-  duration: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  milestones: Array<{
+  category: 'development' | 'design' | 'marketing' | 'business' | 'custom'
+  icon: any
+  milestones: {
     title: string
     description: string
-    duration: string
-    tasks: string[]
-  }>
-  icon: React.ComponentType<any>
-  color: string
-  popular?: boolean
+    estimatedDays: number
+    priority: 'low' | 'medium' | 'high' | 'urgent'
+    tasks: {
+      title: string
+      description: string
+      estimatedHours: number
+      priority: 'low' | 'medium' | 'high' | 'urgent'
+    }[]
+  }[]
+  tags: string[]
+  estimatedDuration: string
+  complexity: 'simple' | 'moderate' | 'complex' | 'enterprise'
 }
 
-interface SmartMilestoneTemplatesProps {
-  bookingId: string
-  onTemplateSelect: (template: SmartMilestoneTemplate) => void
-  onCancel: () => void
-}
-
-const templates: SmartMilestoneTemplate[] = [
+const templates: MilestoneTemplate[] = [
   {
     id: 'web-development',
-    name: 'Web Development',
-    description: 'Complete website development from design to deployment',
-    category: 'Development',
-    duration: '4-6 weeks',
-    difficulty: 'medium',
-    popular: true,
-    icon: Target,
-    color: 'bg-blue-500',
+    name: 'Web Development Project',
+    description: 'Complete web application development with modern tech stack',
+    category: 'development',
+    icon: Code,
+    estimatedDuration: '8-12 weeks',
+    complexity: 'moderate',
+    tags: ['Frontend', 'Backend', 'Database', 'Testing'],
     milestones: [
       {
-        title: 'Project Setup & Planning',
-        description: 'Initialize project, set up development environment, and create project roadmap',
-        duration: '3-5 days',
+        title: 'Project Planning & Setup',
+        description: 'Initial project setup, requirements gathering, and tech stack selection',
+        estimatedDays: 7,
+        priority: 'high',
         tasks: [
-          'Set up development environment',
-          'Create project repository',
-          'Define project requirements',
-          'Create wireframes and mockups',
-          'Set up project management tools'
+          { title: 'Requirements analysis', description: 'Gather and document all requirements', estimatedHours: 8, priority: 'high' },
+          { title: 'Tech stack selection', description: 'Choose appropriate technologies', estimatedHours: 4, priority: 'medium' },
+          { title: 'Project setup', description: 'Initialize repository and development environment', estimatedHours: 6, priority: 'high' },
+          { title: 'Database design', description: 'Design database schema and relationships', estimatedHours: 8, priority: 'high' }
         ]
       },
       {
         title: 'Frontend Development',
-        description: 'Build user interface and user experience components',
-        duration: '2-3 weeks',
+        description: 'User interface development and responsive design implementation',
+        estimatedDays: 21,
+        priority: 'high',
         tasks: [
-          'Create responsive layouts',
-          'Implement user interface components',
-          'Add interactive features',
-          'Optimize for mobile devices',
-          'Implement accessibility features'
+          { title: 'UI/UX design implementation', description: 'Convert designs to responsive components', estimatedHours: 24, priority: 'high' },
+          { title: 'Component development', description: 'Build reusable UI components', estimatedHours: 20, priority: 'medium' },
+          { title: 'State management setup', description: 'Implement state management solution', estimatedHours: 12, priority: 'medium' },
+          { title: 'API integration', description: 'Connect frontend to backend APIs', estimatedHours: 16, priority: 'high' }
         ]
       },
       {
         title: 'Backend Development',
-        description: 'Develop server-side logic, APIs, and database integration',
-        duration: '1-2 weeks',
+        description: 'Server-side logic, APIs, and database implementation',
+        estimatedDays: 18,
+        priority: 'high',
         tasks: [
-          'Set up backend architecture',
-          'Create API endpoints',
-          'Implement database models',
-          'Add authentication system',
-          'Set up data validation'
+          { title: 'API development', description: 'Build RESTful APIs and endpoints', estimatedHours: 20, priority: 'high' },
+          { title: 'Database implementation', description: 'Set up database and migrations', estimatedHours: 12, priority: 'high' },
+          { title: 'Authentication system', description: 'Implement user authentication and authorization', estimatedHours: 16, priority: 'high' },
+          { title: 'Security measures', description: 'Implement security best practices', estimatedHours: 8, priority: 'medium' }
         ]
       },
       {
         title: 'Testing & Deployment',
-        description: 'Test application thoroughly and deploy to production',
-        duration: '3-5 days',
+        description: 'Quality assurance, testing, and production deployment',
+        estimatedDays: 10,
+        priority: 'medium',
         tasks: [
-          'Write and run unit tests',
-          'Perform integration testing',
-          'Fix bugs and issues',
-          'Deploy to production',
-          'Set up monitoring and analytics'
+          { title: 'Unit testing', description: 'Write and execute unit tests', estimatedHours: 16, priority: 'medium' },
+          { title: 'Integration testing', description: 'Test system integration', estimatedHours: 12, priority: 'medium' },
+          { title: 'Performance optimization', description: 'Optimize application performance', estimatedHours: 8, priority: 'low' },
+          { title: 'Production deployment', description: 'Deploy to production environment', estimatedHours: 6, priority: 'high' }
         ]
       }
     ]
   },
   {
-    id: 'graphic-design',
-    name: 'Graphic Design',
-    description: 'Complete branding and design package for business',
-    category: 'Design',
-    duration: '2-3 weeks',
-    difficulty: 'easy',
-    popular: true,
-    icon: Star,
-    color: 'bg-purple-500',
+    id: 'mobile-app',
+    name: 'Mobile App Development',
+    description: 'Cross-platform mobile application development',
+    category: 'development',
+    icon: Smartphone,
+    estimatedDuration: '10-14 weeks',
+    complexity: 'complex',
+    tags: ['Mobile', 'Cross-platform', 'UI/UX', 'API'],
     milestones: [
       {
-        title: 'Brand Discovery',
-        description: 'Understand brand values, target audience, and design requirements',
-        duration: '2-3 days',
+        title: 'App Planning & Design',
+        description: 'User research, wireframing, and design system creation',
+        estimatedDays: 14,
+        priority: 'high',
         tasks: [
-          'Conduct brand discovery session',
-          'Research target audience',
-          'Analyze competitors',
-          'Define brand personality',
-          'Create mood boards'
+          { title: 'User research', description: 'Conduct user interviews and surveys', estimatedHours: 12, priority: 'high' },
+          { title: 'Wireframing', description: 'Create app wireframes and user flows', estimatedHours: 16, priority: 'high' },
+          { title: 'Design system', description: 'Develop consistent design language', estimatedHours: 20, priority: 'medium' },
+          { title: 'Prototype development', description: 'Create interactive prototype', estimatedHours: 12, priority: 'medium' }
         ]
       },
       {
-        title: 'Logo Design',
-        description: 'Create primary logo and variations',
-        duration: '3-5 days',
+        title: 'Core App Development',
+        description: 'Main application features and functionality',
+        estimatedDays: 28,
+        priority: 'high',
         tasks: [
-          'Sketch initial concepts',
-          'Create digital logo designs',
-          'Develop logo variations',
-          'Create style guide',
-          'Present logo options'
+          { title: 'Navigation setup', description: 'Implement app navigation structure', estimatedHours: 8, priority: 'high' },
+          { title: 'Core features', description: 'Develop main application features', estimatedHours: 40, priority: 'high' },
+          { title: 'Data management', description: 'Implement local and remote data handling', estimatedHours: 16, priority: 'medium' },
+          { title: 'Push notifications', description: 'Set up push notification system', estimatedHours: 12, priority: 'low' }
         ]
       },
       {
-        title: 'Brand Identity',
-        description: 'Develop complete brand identity system',
-        duration: '1 week',
+        title: 'Testing & Polish',
+        description: 'Quality assurance and app store preparation',
+        estimatedDays: 14,
+        priority: 'medium',
         tasks: [
-          'Design business cards',
-          'Create letterhead design',
-          'Design social media templates',
-          'Create brand guidelines',
-          'Design marketing materials'
-        ]
-      },
-      {
-        title: 'Final Delivery',
-        description: 'Prepare and deliver final design assets',
-        duration: '2-3 days',
-        tasks: [
-          'Export final files',
-          'Create usage guidelines',
-          'Prepare presentation',
-          'Deliver assets',
-          'Provide brand training'
+          { title: 'Device testing', description: 'Test on multiple devices and screen sizes', estimatedHours: 20, priority: 'high' },
+          { title: 'Performance optimization', description: 'Optimize app performance and loading times', estimatedHours: 12, priority: 'medium' },
+          { title: 'App store preparation', description: 'Prepare app store listings and assets', estimatedHours: 8, priority: 'medium' },
+          { title: 'Beta testing', description: 'Conduct beta testing with users', estimatedHours: 16, priority: 'high' }
         ]
       }
     ]
   },
   {
     id: 'digital-marketing',
-    name: 'Digital Marketing',
-    description: 'Comprehensive digital marketing strategy and implementation',
-    category: 'Marketing',
-    duration: '6-8 weeks',
-    difficulty: 'hard',
-    icon: TrendingUp,
-    color: 'bg-green-500',
+    name: 'Digital Marketing Campaign',
+    description: 'Comprehensive digital marketing strategy and execution',
+    category: 'marketing',
+    icon: Globe,
+    estimatedDuration: '6-8 weeks',
+    complexity: 'moderate',
+    tags: ['SEO', 'Social Media', 'Content', 'Analytics'],
     milestones: [
       {
-        title: 'Strategy Development',
-        description: 'Research market, analyze competitors, and develop marketing strategy',
-        duration: '1 week',
+        title: 'Strategy & Planning',
+        description: 'Market research, strategy development, and campaign planning',
+        estimatedDays: 7,
+        priority: 'high',
         tasks: [
-          'Conduct market research',
-          'Analyze competitor strategies',
-          'Define target audience',
-          'Set marketing objectives',
-          'Create content calendar'
+          { title: 'Market research', description: 'Analyze target market and competitors', estimatedHours: 12, priority: 'high' },
+          { title: 'Strategy development', description: 'Create comprehensive marketing strategy', estimatedHours: 10, priority: 'high' },
+          { title: 'Content calendar', description: 'Plan content schedule and themes', estimatedHours: 6, priority: 'medium' },
+          { title: 'Budget allocation', description: 'Allocate budget across channels', estimatedHours: 4, priority: 'medium' }
         ]
       },
       {
         title: 'Content Creation',
-        description: 'Create engaging content for all marketing channels',
-        duration: '2-3 weeks',
+        description: 'Develop engaging content for all marketing channels',
+        estimatedDays: 14,
+        priority: 'high',
         tasks: [
-          'Write blog posts',
-          'Create social media content',
-          'Design visual assets',
-          'Produce video content',
-          'Develop email campaigns'
+          { title: 'Blog content', description: 'Write SEO-optimized blog posts', estimatedHours: 16, priority: 'high' },
+          { title: 'Social media content', description: 'Create social media posts and graphics', estimatedHours: 20, priority: 'high' },
+          { title: 'Video content', description: 'Produce promotional videos', estimatedHours: 24, priority: 'medium' },
+          { title: 'Email campaigns', description: 'Design email marketing campaigns', estimatedHours: 12, priority: 'medium' }
         ]
       },
       {
         title: 'Campaign Launch',
-        description: 'Launch and monitor marketing campaigns across platforms',
-        duration: '2-3 weeks',
+        description: 'Execute marketing campaigns across all channels',
+        estimatedDays: 14,
+        priority: 'high',
         tasks: [
-          'Set up advertising accounts',
-          'Launch social media campaigns',
-          'Start email marketing',
-          'Monitor campaign performance',
-          'Optimize based on data'
+          { title: 'SEO optimization', description: 'Optimize website for search engines', estimatedHours: 16, priority: 'high' },
+          { title: 'Social media launch', description: 'Launch social media campaigns', estimatedHours: 8, priority: 'high' },
+          { title: 'Paid advertising', description: 'Set up and launch paid ad campaigns', estimatedHours: 12, priority: 'medium' },
+          { title: 'Influencer outreach', description: 'Connect with relevant influencers', estimatedHours: 10, priority: 'low' }
         ]
       },
       {
-        title: 'Analysis & Optimization',
-        description: 'Analyze results and optimize for better performance',
-        duration: '1 week',
+        title: 'Analytics & Optimization',
+        description: 'Monitor performance and optimize campaigns',
+        estimatedDays: 7,
+        priority: 'medium',
         tasks: [
-          'Analyze campaign data',
-          'Identify top performers',
-          'Optimize underperforming campaigns',
-          'Create performance report',
-          'Plan next phase'
+          { title: 'Analytics setup', description: 'Configure tracking and analytics', estimatedHours: 6, priority: 'high' },
+          { title: 'Performance monitoring', description: 'Monitor campaign performance daily', estimatedHours: 14, priority: 'medium' },
+          { title: 'A/B testing', description: 'Test different campaign variations', estimatedHours: 8, priority: 'medium' },
+          { title: 'Optimization', description: 'Optimize based on performance data', estimatedHours: 10, priority: 'high' }
         ]
       }
     ]
   },
   {
-    id: 'consulting',
-    name: 'Business Consulting',
-    description: 'Strategic business consulting and process improvement',
-    category: 'Consulting',
-    duration: '4-6 weeks',
-    difficulty: 'hard',
-    icon: Users,
-    color: 'bg-orange-500',
+    id: 'business-consulting',
+    name: 'Business Strategy Consulting',
+    description: 'Comprehensive business analysis and strategic planning',
+    category: 'business',
+    icon: Brain,
+    estimatedDuration: '4-6 weeks',
+    complexity: 'simple',
+    tags: ['Strategy', 'Analysis', 'Planning', 'Optimization'],
     milestones: [
       {
-        title: 'Assessment & Analysis',
-        description: 'Analyze current business processes and identify improvement areas',
-        duration: '1 week',
+        title: 'Business Analysis',
+        description: 'Comprehensive analysis of current business state',
+        estimatedDays: 10,
+        priority: 'high',
         tasks: [
-          'Conduct business assessment',
-          'Interview key stakeholders',
-          'Analyze current processes',
-          'Identify pain points',
-          'Document findings'
+          { title: 'Current state assessment', description: 'Analyze current business operations', estimatedHours: 12, priority: 'high' },
+          { title: 'SWOT analysis', description: 'Identify strengths, weaknesses, opportunities, threats', estimatedHours: 8, priority: 'high' },
+          { title: 'Financial review', description: 'Review financial performance and metrics', estimatedHours: 10, priority: 'medium' },
+          { title: 'Market positioning', description: 'Analyze market position and competition', estimatedHours: 8, priority: 'medium' }
         ]
       },
       {
         title: 'Strategy Development',
-        description: 'Develop comprehensive improvement strategy and recommendations',
-        duration: '1-2 weeks',
+        description: 'Create comprehensive business strategy and roadmap',
+        estimatedDays: 14,
+        priority: 'high',
         tasks: [
-          'Create improvement roadmap',
-          'Develop implementation plan',
-          'Create process documentation',
-          'Design new workflows',
-          'Prepare recommendations'
+          { title: 'Strategic planning', description: 'Develop long-term business strategy', estimatedHours: 16, priority: 'high' },
+          { title: 'Goal setting', description: 'Define SMART goals and KPIs', estimatedHours: 6, priority: 'high' },
+          { title: 'Resource planning', description: 'Plan resource allocation and requirements', estimatedHours: 8, priority: 'medium' },
+          { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimatedHours: 6, priority: 'medium' }
         ]
       },
       {
-        title: 'Implementation Support',
-        description: 'Support implementation of recommended changes',
-        duration: '2-3 weeks',
+        title: 'Implementation Planning',
+        description: 'Create detailed implementation plan and timeline',
+        estimatedDays: 7,
+        priority: 'medium',
         tasks: [
-          'Train team members',
-          'Monitor implementation',
-          'Provide ongoing support',
-          'Address challenges',
-          'Track progress'
-        ]
-      },
-      {
-        title: 'Review & Optimization',
-        description: 'Review results and optimize for continued success',
-        duration: '3-5 days',
-        tasks: [
-          'Measure improvements',
-          'Gather feedback',
-          'Identify additional opportunities',
-          'Create maintenance plan',
-          'Deliver final report'
+          { title: 'Action plan creation', description: 'Create detailed step-by-step action plan', estimatedHours: 10, priority: 'high' },
+          { title: 'Timeline development', description: 'Develop realistic implementation timeline', estimatedHours: 6, priority: 'medium' },
+          { title: 'Success metrics', description: 'Define success metrics and measurement methods', estimatedHours: 4, priority: 'medium' },
+          { title: 'Review and refinement', description: 'Review plan with stakeholders and refine', estimatedHours: 6, priority: 'high' }
         ]
       }
     ]
   }
 ]
 
-export function SmartMilestoneTemplates({ 
-  bookingId, 
-  onTemplateSelect, 
-  onCancel 
-}: SmartMilestoneTemplatesProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<SmartMilestoneTemplate | null>(null)
+export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, onCancel, bookingId, projectType }: SmartMilestoneTemplatesProps) {
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'hard': return 'bg-red-100 text-red-800'
+  const categories = [
+    { id: 'all', name: 'All Templates', icon: Sparkles },
+    { id: 'development', name: 'Development', icon: Code },
+    { id: 'design', name: 'Design', icon: Palette },
+    { id: 'marketing', name: 'Marketing', icon: Globe },
+    { id: 'business', name: 'Business', icon: Brain },
+    { id: 'custom', name: 'Custom', icon: Target }
+  ]
+
+  const filteredTemplates = selectedCategory === 'all' 
+    ? templates 
+    : templates.filter(t => t.category === selectedCategory)
+
+  const getComplexityColor = (complexity: string) => {
+    switch (complexity) {
+      case 'simple': return 'bg-green-100 text-green-800'
+      case 'moderate': return 'bg-yellow-100 text-yellow-800'
+      case 'complex': return 'bg-orange-100 text-orange-800'
+      case 'enterprise': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getDifficultyIcon = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return '🟢'
-      case 'medium': return '🟡'
-      case 'hard': return '🔴'
-      default: return '⚪'
-    }
-  }
-
-  if (selectedTemplate) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => setSelectedTemplate(null)}
-            className="text-gray-600 hover:text-gray-900"
-          >
-            ← Back to Templates
-          </Button>
-          <div className="flex items-center space-x-2">
-            <div className={`p-2 rounded-lg ${selectedTemplate.color}`}>
-              <selectedTemplate.icon className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{selectedTemplate.name}</h2>
-              <p className="text-sm text-gray-600">{selectedTemplate.description}</p>
-            </div>
-          </div>
-        </div>
-
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-blue-600" />
-              <span>Project Milestones</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedTemplate.milestones.map((milestone, index) => (
-              <div key={index} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{milestone.title}</h3>
-                    <p className="text-sm text-gray-600">{milestone.description}</p>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {milestone.duration}
-                  </Badge>
-                </div>
-                <div className="mt-3">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Tasks:</h4>
-                  <ul className="space-y-1">
-                    {milestone.tasks.map((task, taskIndex) => (
-                      <li key={taskIndex} className="flex items-center space-x-2 text-sm text-gray-600">
-                        <CheckCircle className="h-3 w-3 text-green-500" />
-                        <span>{task}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+  return (
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Lightbulb className="h-6 w-6 text-yellow-500" />
+          Smart Milestone Templates
+        </CardTitle>
+        <p className="text-sm text-gray-600">
+          Choose from AI-powered templates tailored to your project type
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Category Tabs */}
+        <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+          <TabsList className="grid w-full grid-cols-6">
+            {categories.map((category) => (
+              <TabsTrigger 
+                key={category.id} 
+                value={category.id}
+                className="flex items-center gap-1 text-xs"
+              >
+                <category.icon className="h-3 w-3" />
+                {category.name}
+              </TabsTrigger>
             ))}
-          </CardContent>
-        </Card>
+          </TabsList>
 
-        <div className="flex space-x-3">
-          <Button
-            onClick={() => onTemplateSelect(selectedTemplate)}
-            className="flex-1 bg-blue-600 hover:bg-blue-700"
-          >
-            <Zap className="h-4 w-4 mr-2" />
-            Use This Template
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            className="flex-1"
-          >
+          <TabsContent value={selectedCategory} className="space-y-4 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredTemplates.map((template) => (
+                <Card 
+                  key={template.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    selectedTemplate === template.id ? 'ring-2 ring-blue-500' : ''
+                  }`}
+                  onClick={() => setSelectedTemplate(template.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <template.icon className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 mb-1">{template.name}</h3>
+                        <p className="text-sm text-gray-600 mb-3">{template.description}</p>
+                        
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant="outline" className={getComplexityColor(template.complexity)}>
+                            {template.complexity}
+                          </Badge>
+                          <Badge variant="outline">
+                            {template.estimatedDuration}
+                          </Badge>
+                          <Badge variant="outline">
+                            {template.milestones.length} phases
+                          </Badge>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1">
+                          {template.tags.map((tag) => (
+                            <span 
+                              key={tag}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        {selectedTemplate === template.id && (
+                          <div className="mt-4 pt-4 border-t">
+                            <h4 className="font-medium text-sm mb-2">Included Phases:</h4>
+                            <ul className="space-y-1">
+                              {template.milestones.map((milestone, index) => (
+                                <li key={index} className="text-xs text-gray-600 flex items-center gap-2">
+                                  <Target className="h-3 w-3" />
+                                  {milestone.title} ({milestone.tasks.length} tasks)
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {filteredTemplates.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Target className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No templates found for this category</p>
+                <p className="text-sm">Try selecting a different category</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-4 border-t">
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
+          <div className="flex items-center gap-2">
+            {selectedTemplate && (
+              <Button
+                onClick={() => {
+                  const template = templates.find(t => t.id === selectedTemplate)
+                  if (template) {
+                    if (onSelectTemplate) {
+                      onSelectTemplate(template)
+                    } else if (onTemplateSelect) {
+                      onTemplateSelect(template)
+                    }
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Rocket className="h-4 w-4 mr-2" />
+                Use This Template
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose a Project Template</h2>
-        <p className="text-gray-600">
-          Select a pre-built milestone template to get started quickly with your project
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {templates.map((template) => {
-          const Icon = template.icon
-          return (
-            <Card 
-              key={template.id}
-              className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-              onClick={() => setSelectedTemplate(template)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-3 rounded-lg ${template.color}`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <p className="text-sm text-gray-600">{template.category}</p>
-                    </div>
-                  </div>
-                  {template.popular && (
-                    <Badge className="bg-yellow-100 text-yellow-800">
-                      <Star className="h-3 w-3 mr-1" />
-                      Popular
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-600 text-sm">{template.description}</p>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4 text-gray-500" />
-                      <span className="text-gray-600">{template.duration}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className="text-gray-500">{getDifficultyIcon(template.difficulty)}</span>
-                      <Badge className={getDifficultyColor(template.difficulty)}>
-                        {template.difficulty}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="text-gray-500">
-                    {template.milestones.length} milestones
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full group"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedTemplate(template)
-                    }}
-                  >
-                    View Details
-                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      <div className="text-center">
-        <Button
-          variant="ghost"
-          onClick={onCancel}
-          className="text-gray-600 hover:text-gray-900"
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
