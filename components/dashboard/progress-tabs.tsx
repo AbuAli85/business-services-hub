@@ -950,37 +950,14 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
-      {/* Milestone Creator Modal - Direct Render */}
-      {(() => {
-        console.log('🔍 Modal render check - showMilestoneCreator:', showMilestoneCreator)
-        return null
-      })()}
-      
-      {/* Debug indicator */}
-      {showMilestoneCreator && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: '10px',
-            right: '10px',
-            background: 'red',
-            color: 'white',
-            padding: '10px',
-            zIndex: 9999999,
-            borderRadius: '5px'
-          }}
-        >
-          MODAL SHOULD BE VISIBLE
-        </div>
-      )}
-      
-      {showMilestoneCreator && (
+      {/* Milestone Creator Modal - Using Portal */}
+      {showMilestoneCreator && typeof window !== 'undefined' && createPortal(
         <div 
           data-modal="milestone-creator"
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
           ref={(el) => {
             if (el) {
-              console.log('✅ Modal element rendered in DOM!', el)
+              console.log('✅ Modal element rendered in DOM via Portal!', el)
             }
           }}
           style={{ 
@@ -1024,7 +1001,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             <div className="text-center mb-4">
               <h2 id="modal-title" className="text-lg font-semibold text-gray-900">Create Milestone</h2>
               <p className="text-sm text-gray-600">Modal is working! 🎉</p>
-              <p className="text-xs text-red-600 font-bold">DIRECT MODAL - RED BORDER</p>
+              <p className="text-xs text-red-600 font-bold">PORTAL MODAL - RED BORDER</p>
             </div>
             {useFallbackMode ? (
               <FallbackMilestoneCreator
@@ -1054,7 +1031,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               />
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
