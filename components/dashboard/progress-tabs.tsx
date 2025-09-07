@@ -160,6 +160,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     (window as any).testMilestoneCreation = testMilestoneCreation
   }
 
+  // Debug modal state
+  useEffect(() => {
+    console.log('Modal state changed - showMilestoneCreator:', showMilestoneCreator)
+  }, [showMilestoneCreator])
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -850,29 +855,33 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       {showMilestoneCreator && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            {(() => {
-              console.log('Rendering milestone creator modal')
-              console.log('useFallbackMode:', useFallbackMode)
-              return useFallbackMode ? (
+            {useFallbackMode ? (
               <FallbackMilestoneCreator
                 bookingId={bookingId}
                 onMilestoneCreated={() => {
+                  console.log('Fallback milestone created, closing modal')
                   setShowMilestoneCreator(false)
                   loadData()
                 }}
-                onCancel={() => setShowMilestoneCreator(false)}
+                onCancel={() => {
+                  console.log('Fallback milestone creation cancelled')
+                  setShowMilestoneCreator(false)
+                }}
               />
             ) : (
               <QuickMilestoneCreator
                 bookingId={bookingId}
                 onMilestoneCreated={() => {
+                  console.log('Quick milestone created, closing modal')
                   setShowMilestoneCreator(false)
                   loadData()
                 }}
-                onCancel={() => setShowMilestoneCreator(false)}
+                onCancel={() => {
+                  console.log('Quick milestone creation cancelled')
+                  setShowMilestoneCreator(false)
+                }}
               />
-            )
-            })()}
+            )}
           </div>
         </div>
       )}
