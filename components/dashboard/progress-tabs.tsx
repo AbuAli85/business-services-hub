@@ -515,12 +515,21 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   ⚠️ Using offline mode - data will be stored locally
                 </div>
               )}
-              <div className="text-xs text-gray-500 text-center mt-2">
+              <div className="text-xs text-gray-500 text-center mt-2 space-y-1">
                 <button 
                   onClick={testMilestoneCreation}
-                  className="text-blue-600 hover:text-blue-800 underline"
+                  className="text-blue-600 hover:text-blue-800 underline block"
                 >
                   Test Database Connection
+                </button>
+                <button 
+                  onClick={() => {
+                    console.log('Force opening modal...')
+                    setShowMilestoneCreator(true)
+                  }}
+                  className="text-green-600 hover:text-green-800 underline block"
+                >
+                  Force Open Modal
                 </button>
               </div>
             </div>
@@ -853,8 +862,32 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
 
       {/* Milestone Creator Modal */}
       {showMilestoneCreator && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
+          style={{ 
+            zIndex: 9999,
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              console.log('Modal backdrop clicked, closing modal')
+              setShowMilestoneCreator(false)
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="text-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Create Milestone</h2>
+              <p className="text-sm text-gray-600">Modal is working! 🎉</p>
+            </div>
             {useFallbackMode ? (
               <FallbackMilestoneCreator
                 bookingId={bookingId}
