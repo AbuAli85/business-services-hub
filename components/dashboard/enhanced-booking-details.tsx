@@ -1938,23 +1938,19 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
           {/* Main Content Area */}
           <div className="xl:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-6 lg:grid-cols-7">
+              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-6">
                 <TabsTrigger value="overview" className="text-xs sm:text-sm">
                   <Eye className="h-4 w-4 mr-1" />
                   <span className="hidden sm:inline">Overview</span>
                 </TabsTrigger>
                 <TabsTrigger value="progress" className="text-xs sm:text-sm">
                   <BarChart3 className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Progress</span>
+                  <span className="hidden sm:inline">Progress & Timeline</span>
                   {overdueCount > 0 && (
                     <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
                       {overdueCount}
                     </Badge>
                   )}
-                </TabsTrigger>
-                <TabsTrigger value="timeline" className="text-xs sm:text-sm">
-                  <Activity className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Timeline</span>
                 </TabsTrigger>
                 <TabsTrigger value="messages" className="text-xs sm:text-sm">
                   <MessageCircle className="h-4 w-4 mr-1" />
@@ -2284,40 +2280,6 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                 <ProgressTabs bookingId={bookingId} userRole={isProvider ? 'provider' : 'client'} showHeader={false} combinedView={true} />
               </TabsContent>
 
-              {/* Timeline Tab */}
-              <TabsContent value="timeline" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Timeline</CardTitle>
-                    <CardDescription>Track project milestones and progress</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {milestones.map((milestone, index) => (
-                        <div key={milestone.id} className="flex items-center space-x-4 p-4 border rounded-lg">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-blue-600">{index + 1}</span>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium">{milestone.title}</h4>
-                            <p className="text-sm text-gray-500">{milestone.description}</p>
-                            <div className="flex items-center space-x-2 mt-2">
-                              <Badge variant={milestone.status === 'completed' ? 'default' : 'secondary'}>
-                                {milestone.status}
-                              </Badge>
-                              {milestone.due_date && (
-                                <span className="text-xs text-gray-500">
-                                  Due: {format(new Date(milestone.due_date), 'MMM dd, yyyy')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
 
               {/* Messages Tab */}
               <TabsContent value="messages">
