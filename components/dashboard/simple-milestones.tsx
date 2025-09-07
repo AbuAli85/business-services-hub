@@ -1279,8 +1279,8 @@ export function SimpleMilestones({
 
       {/* Template Selector Modal */}
       {showTemplateSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-6xl h-[90vh] max-h-[800px] overflow-hidden rounded-xl shadow-2xl">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2">
+          <div className="w-full max-w-[98vw] h-[95vh] max-h-[900px] overflow-hidden rounded-2xl shadow-2xl border-4 border-white">
             <SmartMilestoneTemplates
               onSelectTemplate={(template) => {
                 // This would create multiple milestones from template
