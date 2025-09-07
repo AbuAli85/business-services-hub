@@ -566,66 +566,75 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
 
   return (
     <div className="bg-white w-full h-full overflow-hidden flex flex-col">
-      <div className="p-4 border-b border-gray-200 flex-shrink-0">
+      <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-yellow-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Smart Milestone Templates</h2>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Lightbulb className="h-6 w-6 text-yellow-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Smart Milestone Templates</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Choose from AI-powered templates tailored to your project type
+              </p>
+            </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
-        <p className="text-xs text-gray-600 mt-1">
-          Choose from AI-powered templates tailored to your project type
-        </p>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="flex-1 overflow-y-auto p-6">
         {/* Category Tabs */}
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 overflow-x-auto mb-6">
-            {categories.map((category) => (
-              <TabsTrigger 
-                key={category.id} 
-                value={category.id}
-                className="flex items-center gap-1 text-xs whitespace-nowrap px-2 py-1"
-              >
-                <category.icon className="h-3 w-3 flex-shrink-0" />
-                <span className="hidden sm:inline">{category.name}</span>
-                <span className="sm:hidden">{category.name.split(' ')[0]}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Filter by Category</h3>
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 overflow-x-auto bg-gray-100 p-1 rounded-lg">
+              {categories.map((category) => (
+                <TabsTrigger 
+                  key={category.id} 
+                  value={category.id}
+                  className="flex items-center gap-2 text-sm whitespace-nowrap px-3 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                >
+                  <category.icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">{category.name}</span>
+                  <span className="sm:hidden">{category.name.split(' ')[0]}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {templates
                 .filter(template => selectedCategory === 'all' || template.category === selectedCategory)
                 .map((template) => (
                 <Card 
                   key={template.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
-                    selectedTemplate === template.id ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200' : 'border-gray-200 hover:border-gray-300'
+                  className={`cursor-pointer transition-all duration-200 hover:shadow-xl border-2 ${
+                    selectedTemplate === template.id 
+                      ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300 shadow-lg' 
+                      : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
                   }`}
                   onClick={() => setSelectedTemplate(template.id)}
                 >
-                  <CardContent className="p-3 h-full flex flex-col">
-                    <div className="flex items-start gap-2">
-                      <div className="p-1.5 bg-blue-100 rounded-lg flex-shrink-0">
-                        <template.icon className="h-4 w-4 text-blue-600" />
+                  <CardContent className="p-6 h-full flex flex-col">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex-shrink-0">
+                        <template.icon className="h-6 w-6 text-blue-700" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm">{template.name}</h3>
+                        <h3 className="font-bold text-gray-900 mb-2 text-lg">{template.name}</h3>
                         <p 
-                          className="text-xs text-gray-600 mb-2" 
+                          className="text-sm text-gray-600 mb-4 leading-relaxed" 
                           style={{
                             display: '-webkit-box',
-                            WebkitLineClamp: 2,
+                            WebkitLineClamp: 3,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden'
                           }}
@@ -633,45 +642,48 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                           {template.description}
                         </p>
                         
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          <Badge variant="outline" className={`text-[10px] px-1 py-0 ${getComplexityColor(template.complexity)}`}>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <Badge variant="outline" className={`text-xs px-2 py-1 font-medium ${getComplexityColor(template.complexity)}`}>
                             {template.complexity}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                          <Badge variant="outline" className="text-xs px-2 py-1 font-medium bg-gray-100 text-gray-700">
                             {template.estimatedDuration}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-100 text-blue-800">
+                          <Badge variant="outline" className="text-xs px-2 py-1 font-medium bg-blue-100 text-blue-800">
                             {template.serviceType}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-100 text-green-800">
+                          <Badge variant="outline" className="text-xs px-2 py-1 font-medium bg-green-100 text-green-800">
                             {template.priceRange}
                           </Badge>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                          <Badge variant="outline" className="text-xs px-2 py-1 font-medium bg-purple-100 text-purple-800">
                             {template.milestones.length} phases
                           </Badge>
                         </div>
 
-                        <div className="flex flex-wrap gap-1">
-                          {template.tags.slice(0, 2).map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-[10px] px-1 py-0">
+                        <div className="flex flex-wrap gap-1.5">
+                          {template.tags.slice(0, 3).map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs px-2 py-1 bg-gray-100 text-gray-600">
                               {tag}
                             </Badge>
                           ))}
-                          {template.tags.length > 2 && (
-                            <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                              +{template.tags.length - 2}
+                          {template.tags.length > 3 && (
+                            <Badge variant="secondary" className="text-xs px-2 py-1 bg-gray-100 text-gray-600">
+                              +{template.tags.length - 3}
                             </Badge>
                           )}
                         </div>
 
                         {selectedTemplate === template.id && (
-                          <div className="mt-4 pt-4 border-t">
-                            <h4 className="font-medium text-sm mb-2">Included Phases:</h4>
-                            <ul className="space-y-1">
+                          <div className="mt-6 pt-4 border-t border-gray-200">
+                            <h4 className="font-semibold text-sm mb-3 text-gray-800">Included Phases:</h4>
+                            <ul className="space-y-2">
                               {template.milestones.map((milestone, index) => (
-                                <li key={index} className="text-xs text-gray-600 flex items-center gap-2">
-                                  <Target className="h-3 w-3" />
-                                  {milestone.title} ({milestone.tasks.length} tasks)
+                                <li key={index} className="text-sm text-gray-600 flex items-center gap-3">
+                                  <Target className="h-4 w-4 text-blue-500" />
+                                  <span className="font-medium">{milestone.title}</span>
+                                  <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
+                                    {milestone.tasks.length} tasks
+                                  </span>
                                 </li>
                               ))}
                             </ul>
@@ -695,11 +707,15 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
         </Tabs>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200 bg-white sticky bottom-0 mt-4">
-          <Button variant="outline" onClick={onCancel} className="flex-shrink-0 px-4 py-1.5 text-sm">
+        <div className="flex items-center justify-between pt-6 border-t border-gray-200 bg-white sticky bottom-0 mt-6">
+          <Button 
+            variant="outline" 
+            onClick={onCancel} 
+            className="flex-shrink-0 px-6 py-2 text-sm font-medium hover:bg-gray-50"
+          >
             Cancel
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {selectedTemplate && (
               <Button
                 onClick={() => {
@@ -712,9 +728,9 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                     }
                   }
                 }}
-                className="bg-blue-600 hover:bg-blue-700 flex-shrink-0 px-4 py-1.5 text-sm"
+                className="bg-blue-600 hover:bg-blue-700 flex-shrink-0 px-6 py-2 text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-200"
               >
-                <Rocket className="h-3 w-3 mr-1" />
+                <Rocket className="h-4 w-4 mr-2" />
                 Use This Template
               </Button>
             )}
