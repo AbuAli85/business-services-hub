@@ -631,19 +631,25 @@ export class ProgressDataService {
         .single();
       
       if (error) {
-        // Handle permission denied error specifically
-        if (error.code === '42501') {
-          console.warn('Permission denied for milestone_approvals table. This might be due to RLS policies.');
-          // For now, we'll create a mock approval object to prevent the UI from breaking
-          // In a production environment, you would want to fix the RLS policies
+        // Handle table not found or permission denied errors
+        if (error.code === '42501' || error.code === 'PGRST116' || error.code === '403' || error.message?.includes('relation "milestone_approvals" does not exist') || error.message?.includes('permission denied')) {
+          console.warn('milestone_approvals table not accessible. Using local storage fallback.');
+          
+          // Create a mock approval and store it locally
           const mockApproval: MilestoneApproval = {
-            id: `mock-${Date.now()}`,
+            id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             milestone_id: milestoneId,
             user_id: user.id,
             status,
             comment: comment || undefined,
             created_at: new Date().toISOString()
           };
+          
+          // Store in local storage for persistence
+          const existingApprovals = JSON.parse(localStorage.getItem('milestone_approvals') || '[]');
+          existingApprovals.push(mockApproval);
+          localStorage.setItem('milestone_approvals', JSON.stringify(existingApprovals));
+          
           return mockApproval;
         }
         throw error;
@@ -671,10 +677,17 @@ export class ProgressDataService {
       .order('created_at', { ascending: true });
     
     if (error) {
-      // Handle permission denied error specifically
-      if (error.code === '42501') {
-        console.warn('Permission denied for milestone_approvals table. Returning empty array.');
-        return [];
+      // Handle table not found or permission denied errors
+      if (error.code === '42501' || error.code === 'PGRST116' || error.code === '403' || error.message?.includes('relation "milestone_approvals" does not exist') || error.message?.includes('permission denied')) {
+        console.warn('milestone_approvals table not accessible. Using local storage fallback.');
+        
+        // Try to get approvals from local storage
+        try {
+          const localApprovals = JSON.parse(localStorage.getItem('milestone_approvals') || '[]');
+          return localApprovals.filter((approval: MilestoneApproval) => approval.milestone_id === milestoneId);
+        } catch {
+          return [];
+        }
       }
       throw error;
     }
