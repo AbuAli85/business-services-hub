@@ -16,6 +16,7 @@ import { BulkOperations } from './bulk-operations'
 import { MainProgressHeader } from './main-progress-header'
 // Removed legacy refactored accordion
 import { SimpleMilestones } from './simple-milestones'
+import { ProgressTrackingSystem } from './progress-tracking-system'
 // Removed missing imports - using placeholders instead
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { AnalyticsView } from './analytics-view'
@@ -37,6 +38,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const [activeTab, setActiveTab] = useState<ViewType>('overview')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
+  const [bookingType, setBookingType] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [schemaAvailable, setSchemaAvailable] = useState<boolean | null>(null)
@@ -139,7 +141,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       // Load booking data for overall progress
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
-        .select('id, title, project_progress, status')
+        .select('id, title, project_progress, status, type')
         .eq('id', bookingId)
         .single()
       
@@ -233,6 +235,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
+      setBookingType(bookingData?.type ?? null)
 
       // Timeline and comments
       try {
@@ -434,17 +437,25 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {combinedView ? (
           // Combined Progress & Timeline: no tabs, render both sections
           <div className="space-y-8">
-            <SimpleMilestones
-              milestones={milestones}
-              userRole={userRole}
-              onMilestoneUpdate={handleMilestoneUpdate}
-              onTaskUpdate={handleTaskUpdate}
-              onTaskAdd={handleAddTask}
-              onTaskDelete={handleDeleteTask}
-              onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
-              onProjectTypeChange={() => {}}
-              showHeader={false}
-            />
+            {bookingType === 'one_time' ? (
+              <SimpleMilestones
+                milestones={milestones}
+                userRole={userRole}
+                onMilestoneUpdate={handleMilestoneUpdate}
+                onTaskUpdate={handleTaskUpdate}
+                onTaskAdd={handleAddTask}
+                onTaskDelete={handleDeleteTask}
+                onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
+                onProjectTypeChange={() => {}}
+                showHeader={false}
+              />
+            ) : (
+              <ProgressTrackingSystem
+                bookingId={bookingId}
+                userRole={userRole}
+                className=""
+              />
+            )}
 
             <div className="space-y-6">
               <div>
@@ -524,16 +535,24 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             {/* Tab Content */}
             <div className="mt-6">
               {activeTab === 'overview' && (
-                <SimpleMilestones
-                  milestones={milestones}
-                  userRole={userRole}
-                  onMilestoneUpdate={handleMilestoneUpdate}
-                  onTaskUpdate={handleTaskUpdate}
-                  onTaskAdd={handleAddTask}
-                  onTaskDelete={handleDeleteTask}
-                  onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
-                  onProjectTypeChange={() => {}}
-                />
+                bookingType === 'one_time' ? (
+                  <SimpleMilestones
+                    milestones={milestones}
+                    userRole={userRole}
+                    onMilestoneUpdate={handleMilestoneUpdate}
+                    onTaskUpdate={handleTaskUpdate}
+                    onTaskAdd={handleAddTask}
+                    onTaskDelete={handleDeleteTask}
+                    onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
+                    onProjectTypeChange={() => {}}
+                  />
+                ) : (
+                  <ProgressTrackingSystem
+                    bookingId={bookingId}
+                    userRole={userRole}
+                    className=""
+                  />
+                )
               )}
 
               {activeTab === 'monthly' && (
