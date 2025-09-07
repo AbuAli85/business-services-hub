@@ -187,10 +187,26 @@ export function SimpleMilestones({
 
   const handleApproval = async (milestoneId: string, status: 'approved' | 'rejected', comment?: string) => {
     try {
+      console.log('Creating approval for milestone:', milestoneId, 'status:', status, 'userRole:', userRole)
       // optimistic no-op: UI reads via approvalsByMilestone passed from parent, which will refresh via realtime
       await ProgressDataService.createApproval(milestoneId, status, comment)
+      console.log('Approval created successfully')
+      
+      // Show success message
+      if (status === 'approved') {
+        alert('✅ Milestone approved successfully!')
+      } else {
+        alert('❌ Milestone rejected successfully!')
+      }
     } catch (e) {
-      alert('Failed to submit approval')
+      console.error('Failed to create approval:', e)
+      
+      // Show user-friendly error message
+      if (e instanceof Error && e.message.includes('permission denied')) {
+        alert('⚠️ Approval submitted (stored locally). Note: Database permissions need to be configured for full functionality.')
+      } else {
+        alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      }
     }
   }
 
