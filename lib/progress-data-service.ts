@@ -1,8 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { getSupabaseClient } from './supabase';
 
 export interface Task {
   id: string;
@@ -61,6 +57,8 @@ export interface ProgressData {
 export class ProgressDataService {
   static async getProgressData(bookingId: string): Promise<ProgressData> {
     try {
+      const supabase = await getSupabaseClient();
+      
       // Fetch milestones with tasks
       const { data: milestones, error: milestonesError } = await supabase
         .from('milestones')
@@ -109,6 +107,7 @@ export class ProgressDataService {
 
   static async updateTaskStatus(taskId: string, status: 'pending' | 'in_progress' | 'completed'): Promise<void> {
     try {
+      const supabase = await getSupabaseClient();
       const { error } = await supabase
         .from('tasks')
         .update({ 
@@ -134,6 +133,7 @@ export class ProgressDataService {
     }
   ): Promise<void> {
     try {
+      const supabase = await getSupabaseClient();
       const { error } = await supabase
         .from('tasks')
         .update({ 
@@ -159,6 +159,8 @@ export class ProgressDataService {
     }
   ): Promise<Task> {
     try {
+      const supabase = await getSupabaseClient();
+      
       // Get the next order index
       const { data: existingTasks } = await supabase
         .from('tasks')
@@ -198,6 +200,8 @@ export class ProgressDataService {
     description: string
   ): Promise<TimeEntry> {
     try {
+      const supabase = await getSupabaseClient();
+      
       // Get task details to find milestone and booking
       const { data: task, error: taskError } = await supabase
         .from('tasks')
@@ -242,6 +246,8 @@ export class ProgressDataService {
 
   static async updateTaskActualHours(taskId: string): Promise<void> {
     try {
+      const supabase = await getSupabaseClient();
+      
       // Get total hours for this task
       const { data: timeEntries, error: timeError } = await supabase
         .from('time_entries')
