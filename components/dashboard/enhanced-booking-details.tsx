@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ProgressTabs } from './progress-tabs'
 // import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
@@ -2280,127 +2281,7 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
 
               {/* Progress Tab */}
               <TabsContent value="progress" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Progress</CardTitle>
-                    <CardDescription>Track tasks and milestones completion</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      {/* Overall Progress */}
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm font-medium">Overall Progress</span>
-                          <span className="text-sm text-gray-500">{booking?.progress_percentage || 0}%</span>
-                        </div>
-                        <Progress value={booking?.progress_percentage || 0} className="h-2" />
-                      </div>
-
-                      {/* Milestone Stats */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                          <div className="text-2xl font-bold text-blue-600">{milestoneStats.completed}</div>
-                          <div className="text-sm text-blue-600">Completed</div>
-                        </div>
-                        <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                          <div className="text-2xl font-bold text-yellow-600">{milestoneStats.total - milestoneStats.completed}</div>
-                          <div className="text-sm text-yellow-600">Pending</div>
-                        </div>
-                        <div className="text-center p-4 bg-red-50 rounded-lg">
-                          <div className="text-2xl font-bold text-red-600">{milestoneStats.overdue}</div>
-                          <div className="text-sm text-red-600">Overdue</div>
-                        </div>
-                      </div>
-
-                      {/* Progress Actions */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button 
-                          onClick={handleLogHours}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Clock className="h-4 w-4 mr-2" />
-                          Log Hours
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={handleSendProgressUpdate}
-                        >
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Send Progress Update
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={handleScheduleFollowUp}
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Schedule Follow-up
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={handleSendPaymentReminder}
-                        >
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          Send Payment Reminder
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Tasks Management */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>Tasks</span>
-                      <Button 
-                        onClick={() => setShowAddTaskModal(true)}
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Task
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {allTasks.length > 0 ? (
-                        <div className="space-y-2">
-                          {allTasks.map((task) => (
-                            <div key={task.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                              <input
-                                type="checkbox"
-                                checked={task.status === 'completed'}
-                                onChange={(e) => onStepToggle(task.id, e.target.checked ? 'completed' : 'pending')}
-                                className="h-4 w-4 text-blue-600 rounded"
-                              />
-                              <div className="flex-1">
-                                <h4 className="font-medium">{task.title}</h4>
-                                {task.description && (
-                                  <p className="text-sm text-gray-500">{task.description}</p>
-                                )}
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
-                                    {task.status}
-                                  </Badge>
-                                  {task.due_date && (
-                                    <span className="text-xs text-gray-500">
-                                      Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <p>No tasks yet. Add a task to get started.</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                <ProgressTabs bookingId={bookingId} userRole={isProvider ? 'provider' : 'client'} showHeader={false} combinedView={true} />
               </TabsContent>
 
               {/* Timeline Tab */}

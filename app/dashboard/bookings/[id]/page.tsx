@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import EnhancedBookingDetails from '@/components/dashboard/enhanced-booking-details'
-import { ProgressTabs } from '@/components/dashboard/progress-tabs'
 
 type UserRole = 'provider' | 'client'
 
@@ -51,12 +50,6 @@ export default function BookingDetailsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Booking Details Section (includes requirements, actions, etc.) */}
         <EnhancedBookingDetails showProgressCard={false} />
-
-        {/* Progress & Timeline Section */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold text-gray-900">Progress & Timeline</h2>
-          <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
-        </div>
       </div>
     </div>
   )
