@@ -20,6 +20,7 @@ import {
 import { Milestone, Task, BookingProgress, TimeEntry } from '@/types/progress'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { MainProgressHeader } from './main-progress-header'
+import ProgressErrorBoundary from './ProgressErrorBoundary'
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { SimpleMilestones } from './simple-milestones'
 import TimelineManagement from './timeline-management'
@@ -284,6 +285,7 @@ export function ProgressTrackingSystem({
   }
 
   return (
+    <ProgressErrorBoundary>
     <div className={`space-y-6 ${className}`}>
       {/* Header with progress overview */}
       <MainProgressHeader
@@ -405,5 +407,6 @@ export function ProgressTrackingSystem({
         </TabsContent>
       </Tabs>
     </div>
+    </ProgressErrorBoundary>
   )
 }

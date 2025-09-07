@@ -519,10 +519,12 @@ export function SimpleMilestones({
                     </div>
                   </div>
                   <div className="relative">
-                    <Progress 
-                      value={progress} 
-                      className="h-3 shadow-inner"
-                    />
+                    <div role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="w-full">
+                      <Progress 
+                        value={progress} 
+                        className="h-3 shadow-inner"
+                      />
+                    </div>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-sm font-bold text-white drop-shadow-lg">
                         {progressText}
@@ -596,6 +598,7 @@ export function SimpleMilestones({
                     }`}>
                       <button
                         onClick={() => handleTaskToggle(milestone.id, task.id)}
+                        aria-label="Toggle Task"
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                           task.status === 'completed' 
                             ? 'bg-gradient-to-br from-green-500 to-emerald-500 border-green-500 text-white shadow-lg' 
@@ -828,6 +831,7 @@ export function SimpleMilestones({
                           variant="outline"
                           size="sm"
                           onClick={() => handleAddComment(milestone.id)}
+                          aria-label="Add Comment"
                         >
                           Add Comment
                         </Button>

@@ -191,7 +191,7 @@ export default function BookingProgressPage() {
         {/* Progress Dashboard */}
         <EnhancedProgressDashboard
           bookingId={bookingId}
-          milestones={progressData.milestones}
+          milestones={progressData.milestones as any}
           timeEntries={progressData.timeEntries}
           onTaskUpdate={handleTaskUpdate}
           onTimeLog={handleTimeLog}
