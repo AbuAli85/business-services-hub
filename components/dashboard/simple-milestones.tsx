@@ -153,8 +153,6 @@ export function SimpleMilestones({
     setEditingMilestoneData({
       title: milestone.title,
       description: milestone.description,
-      purpose: milestone.purpose,
-      mainGoal: milestone.mainGoal,
       start_date: milestone.start_date,
       end_date: milestone.end_date,
       estimated_hours: milestone.estimated_hours,
@@ -385,7 +383,9 @@ export function SimpleMilestones({
           }
           
           const canStart = canStartMilestone(milestone)
-          const isLocked = !canStart && milestone.status === 'pending'
+          const isLocked = !canStart && milestone.status === 'not_started'
+
+          const comments = commentsByMilestone?.[milestone.id] || []
 
           return (
             <Card key={milestone.id} className={`border-l-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] ${
@@ -393,7 +393,7 @@ export function SimpleMilestones({
               milestone.status === 'in_progress' ? 'bg-gradient-to-r from-blue-50 to-indigo-50' :
               isLocked ? 'bg-gradient-to-r from-gray-100 to-slate-100 opacity-60' :
               'bg-gradient-to-r from-gray-50 to-slate-50'
-            }`} style={{ borderLeftColor: milestone.color }}>
+            }`}>
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -425,30 +425,11 @@ export function SimpleMilestones({
                             <span>Phase completed successfully!</span>
                           </div>
                         )}
-                        {milestone.isRecurring && (
-                          <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-200">
-                            <Repeat className="h-3 w-3 mr-1" />
-                            Monthly
-                          </Badge>
-                        )}
                       </div>
                       {milestone.description && (
                         <p className="text-sm text-gray-600 mb-2 font-medium">{milestone.description}</p>
                       )}
-                      <div className="flex flex-wrap gap-3">
-                        {milestone.purpose && (
-                          <div className="flex items-center space-x-1">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span className="text-xs font-semibold text-blue-700">Purpose: {milestone.purpose}</span>
-                          </div>
-                        )}
-                        {milestone.mainGoal && (
-                          <div className="flex items-center space-x-1">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-xs font-semibold text-green-700">Goal: {milestone.mainGoal}</span>
-                          </div>
-                        )}
-                      </div>
+                      <div className="flex flex-wrap gap-3"></div>
                     </div>
                   </div>
                   
@@ -519,7 +500,7 @@ export function SimpleMilestones({
                     </div>
                   </div>
                   <div className="relative">
-                    <div role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} className="w-full">
+                    <div role="progressbar" aria-label="Milestone progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} className="w-full">
                       <Progress 
                         value={progress} 
                         className="h-3 shadow-inner"
@@ -545,7 +526,7 @@ export function SimpleMilestones({
                   {/* Quick Action Buttons */}
                   {userRole === 'provider' && !isLocked && (
                     <div className="mt-4 flex space-x-2">
-                      {milestone.status === 'pending' && (
+                      {milestone.status === 'not_started' && (
                         <Button
                           onClick={() => onMilestoneUpdate(milestone.id, { status: 'in_progress' })}
                           className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm px-4 py-2"
@@ -620,12 +601,6 @@ export function SimpleMilestones({
                               {task.priority.toUpperCase()}
                             </Badge>
                           )}
-                          {task.isRecurring && (
-                            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-200 font-semibold">
-                              <Repeat className="h-3 w-3 mr-1" />
-                              {task.recurringType?.toUpperCase()}
-                            </Badge>
-                          )}
                         </div>
                         {task.due_date && (
                           <div className="flex items-center space-x-2 text-xs text-gray-600">
@@ -636,17 +611,6 @@ export function SimpleMilestones({
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        {task.isRecurring && task.status === 'completed' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRecurringTask(milestone.id, task)}
-                            className="text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-all duration-200"
-                          >
-                            <Repeat className="h-3 w-3 mr-1" />
-                            Repeat
-                          </Button>
-                        )}
                         {userRole === 'provider' && (
                           <Button
                             variant="outline"
@@ -724,10 +688,10 @@ export function SimpleMilestones({
                             <Input
                               type="date"
                               placeholder="Select due date"
-                              value={newTask.task.dueDate ? format(new Date(newTask.task.dueDate), 'yyyy-MM-dd') : ''}
+                              value={newTask.task.due_date ? format(new Date(newTask.task.due_date), 'yyyy-MM-dd') : ''}
                               onChange={(e) => setNewTask({
                                 ...newTask,
-                                task: { ...newTask.task, dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined }
+                                task: { ...newTask.task, due_date: e.target.value ? new Date(e.target.value).toISOString() : undefined }
                               })}
                               className="w-full"
                             />
@@ -749,34 +713,7 @@ export function SimpleMilestones({
                             </select>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-4">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={newTask.task.isRecurring || false}
-                              onChange={(e) => setNewTask({
-                                ...newTask,
-                                task: { ...newTask.task, isRecurring: e.target.checked }
-                              })}
-                            />
-                            <span className="text-sm">Recurring</span>
-                          </label>
-                          {newTask.task.isRecurring && (
-                            <select
-                              value={newTask.task.recurringType || 'monthly'}
-                              onChange={(e) => setNewTask({
-                                ...newTask,
-                                task: { ...newTask.task, recurringType: e.target.value as 'monthly' | 'weekly' | 'daily' }
-                              })}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm"
-                              aria-label="Select recurring frequency"
-                            >
-                              <option value="daily">Daily</option>
-                              <option value="weekly">Weekly</option>
-                              <option value="monthly">Monthly</option>
-                            </select>
-                          )}
-                        </div>
+                        <div className="flex items-center space-x-4"></div>
                         <div className="flex items-center justify-end space-x-3 pt-4 border-t border-blue-200">
                           <Button 
                             onClick={saveNewTask} 
@@ -839,18 +776,18 @@ export function SimpleMilestones({
                       
                       {/* Comments List */}
                       <div className="space-y-2">
-                        {milestone.clientComments?.map((comment) => (
+                        {comments.map((comment) => (
                           <div key={comment.id} className="p-3 bg-white border rounded-lg">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-900">{comment.author}</span>
+                              <span className="text-sm font-medium text-gray-900">{comment.author_name || 'User'}</span>
                               <span className="text-xs text-gray-500">
-                                {format(new Date(comment.createdAt), 'MMM dd, yyyy HH:mm')}
+                                {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-700">{comment.text}</p>
+                            <p className="text-sm text-gray-700">{comment.content}</p>
                           </div>
                         ))}
-                        {(!milestone.clientComments || milestone.clientComments.length === 0) && (
+                        {comments.length === 0 && (
                           <p className="text-sm text-gray-500 italic">No comments yet. Add the first one!</p>
                         )}
                       </div>
@@ -886,22 +823,14 @@ export function SimpleMilestones({
                           value={editingMilestoneData.title || ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, title: e.target.value } : null)}
                         />
-                        <Input
-                          placeholder="Purpose of this phase"
-                          value={editingMilestoneData.purpose || ''}
-                          onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, purpose: e.target.value } : null)}
-                        />
+                        <div />
                       </div>
                       <Textarea
                         placeholder="Phase Description"
                         value={editingMilestoneData.description || ''}
                         onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, description: e.target.value } : null)}
                       />
-                      <Input
-                        placeholder="Main Goal of this phase"
-                        value={editingMilestoneData.mainGoal || ''}
-                        onChange={(e) => setEditingMilestoneData(prev => prev ? { ...prev, mainGoal: e.target.value } : null)}
-                      />
+                      <div />
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="date"
