@@ -1235,14 +1235,16 @@ export function SimpleMilestones({
       {/* Template Selector Modal */}
       {showTemplateSelector && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <SmartMilestoneTemplates
-            onSelectTemplate={(template) => {
-              // This would create multiple milestones from template
-              console.log('Template selected:', template)
-              setShowTemplateSelector(false)
-            }}
-            onCancel={() => setShowTemplateSelector(false)}
-          />
+          <div className="w-full max-w-7xl max-h-[90vh] overflow-hidden">
+            <SmartMilestoneTemplates
+              onSelectTemplate={(template) => {
+                // This would create multiple milestones from template
+                console.log('Template selected:', template)
+                setShowTemplateSelector(false)
+              }}
+              onCancel={() => setShowTemplateSelector(false)}
+            />
+          </div>
         </div>
       )}
 

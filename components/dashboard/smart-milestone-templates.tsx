@@ -17,7 +17,8 @@ import {
   Globe,
   Shield,
   Database,
-  Smartphone
+  Smartphone,
+  X
 } from 'lucide-react'
 
 interface SmartMilestoneTemplatesProps {
@@ -552,9 +553,6 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
     { id: 'custom', name: 'Custom', icon: Target }
   ]
 
-  const filteredTemplates = selectedCategory === 'all' 
-    ? templates 
-    : templates.filter(t => t.category === selectedCategory)
 
   const getComplexityColor = (complexity: string) => {
     switch (complexity) {
@@ -567,17 +565,27 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="h-6 w-6 text-yellow-500" />
-          Smart Milestone Templates
-        </CardTitle>
-        <p className="text-sm text-gray-600">
+    <div className="bg-white rounded-lg shadow-xl w-full h-full overflow-hidden flex flex-col">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lightbulb className="h-6 w-6 text-yellow-500" />
+            <h2 className="text-xl font-semibold text-gray-900">Smart Milestone Templates</h2>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-sm text-gray-600 mt-2">
           Choose from AI-powered templates tailored to your project type
         </p>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
         {/* Category Tabs */}
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
           <TabsList className="grid w-full grid-cols-6">
@@ -593,9 +601,11 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
             ))}
           </TabsList>
 
-          <TabsContent value={selectedCategory} className="space-y-4 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredTemplates.map((template) => (
+          <div className="space-y-4 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {templates
+                .filter(template => selectedCategory === 'all' || template.category === selectedCategory)
+                .map((template) => (
                 <Card 
                   key={template.id}
                   className={`cursor-pointer transition-all hover:shadow-md ${
@@ -603,7 +613,7 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                   }`}
                   onClick={() => setSelectedTemplate(template.id)}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 h-full flex flex-col">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-blue-100 rounded-lg">
                         <template.icon className="h-5 w-5 text-blue-600" />
@@ -612,33 +622,35 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                         <h3 className="font-semibold text-gray-900 mb-1">{template.name}</h3>
                         <p className="text-sm text-gray-600 mb-3">{template.description}</p>
                         
-                        <div className="flex items-center gap-2 mb-3">
-                          <Badge variant="outline" className={getComplexityColor(template.complexity)}>
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          <Badge variant="outline" className={`text-xs ${getComplexityColor(template.complexity)}`}>
                             {template.complexity}
                           </Badge>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="text-xs">
                             {template.estimatedDuration}
                           </Badge>
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800">
                             {template.serviceType}
                           </Badge>
-                          <Badge variant="outline" className="bg-green-100 text-green-800">
+                          <Badge variant="outline" className="text-xs bg-green-100 text-green-800">
                             {template.priceRange}
                           </Badge>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="text-xs">
                             {template.milestones.length} phases
                           </Badge>
                         </div>
 
                         <div className="flex flex-wrap gap-1">
-                          {template.tags.map((tag) => (
-                            <span 
-                              key={tag}
-                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                            >
+                          {template.tags.slice(0, 3).map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
                               {tag}
-                            </span>
+                            </Badge>
                           ))}
+                          {template.tags.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{template.tags.length - 3}
+                            </Badge>
+                          )}
                         </div>
 
                         {selectedTemplate === template.id && (
@@ -661,14 +673,14 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
               ))}
             </div>
 
-            {filteredTemplates.length === 0 && (
+            {templates.filter(template => selectedCategory === 'all' || template.category === selectedCategory).length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <Target className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p>No templates found for this category</p>
                 <p className="text-sm">Try selecting a different category</p>
               </div>
             )}
-          </TabsContent>
+          </div>
         </Tabs>
 
         {/* Action Buttons */}
@@ -697,7 +709,7 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
