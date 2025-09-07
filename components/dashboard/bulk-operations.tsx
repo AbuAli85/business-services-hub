@@ -1,377 +1,172 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { CheckSquare, Square, Trash2, Edit, Clock, Tag, Filter, Download } from 'lucide-react'
-import { ProgressTrackingService } from '@/lib/progress-tracking'
-
-interface Milestone {
-  id: string
-  title: string
-  description: string
-  progress_percentage: number
-  status: string
-  due_date?: string
-  weight: number
-  order_index: number
-  editable: boolean
-  tasks: Task[]
-  created_at?: string
-  updated_at?: string
-}
-
-interface Task {
-  id: string
-  title: string
-  status: string
-  progress_percentage: number
-  due_date?: string
-  editable: boolean
-}
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Settings, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
+import { Milestone } from '@/types/progress'
 
 interface BulkOperationsProps {
   milestones: Milestone[]
-  onUpdate: () => void
+  onBulkUpdate: (milestoneIds: string[], updates: Partial<Milestone>) => void
+  onBulkDelete: (milestoneIds: string[]) => void
   userRole: 'provider' | 'client'
 }
 
-export function BulkOperations({ milestones, onUpdate, userRole }: BulkOperationsProps) {
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+export function BulkOperations({
+  milestones,
+  onBulkUpdate,
+  onBulkDelete,
+  userRole
+}: BulkOperationsProps) {
+  const [selectedMilestones, setSelectedMilestones] = useState<string[]>([])
   const [bulkAction, setBulkAction] = useState<string>('')
-  const [showBulkModal, setShowBulkModal] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterPriority, setFilterPriority] = useState<string>('all')
-
-  // Get all tasks from milestones
-  const allTasks = milestones.flatMap(milestone => 
-    (milestone.tasks || []).map(task => ({
-      ...task,
-      milestone_title: milestone.title,
-      milestone_id: milestone.id
-    }))
-  )
-
-  // Filter tasks based on current filters
-  const filteredTasks = allTasks.filter(task => {
-    if (filterStatus !== 'all' && task.status !== filterStatus) return false
-    // Priority filtering not available in current structure
-    return true
-  })
 
   const handleSelectAll = () => {
-    if (selectedItems.size === filteredTasks.length) {
-      setSelectedItems(new Set())
+    if (selectedMilestones.length === milestones.length) {
+      setSelectedMilestones([])
     } else {
-      setSelectedItems(new Set(filteredTasks.map(task => task.id)))
+      setSelectedMilestones(milestones.map(m => m.id))
     }
   }
 
-  const handleSelectItem = (itemId: string) => {
-    const newSelected = new Set(selectedItems)
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId)
-    } else {
-      newSelected.add(itemId)
-    }
-    setSelectedItems(newSelected)
+  const handleSelectMilestone = (milestoneId: string) => {
+    setSelectedMilestones(prev => 
+      prev.includes(milestoneId) 
+        ? prev.filter(id => id !== milestoneId)
+        : [...prev, milestoneId]
+    )
   }
 
-  const handleBulkAction = async () => {
-    if (!bulkAction || selectedItems.size === 0) return
+  const handleBulkAction = () => {
+    if (selectedMilestones.length === 0 || !bulkAction) return
 
-    try {
-      setLoading(true)
-      const selectedTasks = filteredTasks.filter(task => selectedItems.has(task.id))
-
-      switch (bulkAction) {
-        case 'delete':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.deleteTask(task.id)
-          ))
-          break
-        case 'status_pending':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.updateTask(task.id, { status: 'pending' })
-          ))
-          break
-        case 'status_in_progress':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.updateTask(task.id, { status: 'in_progress' })
-          ))
-          break
-        case 'status_completed':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.updateTask(task.id, { status: 'completed' })
-          ))
-          break
-        case 'priority_high':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.updateTask(task.id, { priority: 'high' })
-          ))
-          break
-        case 'priority_medium':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.updateTask(task.id, { priority: 'medium' })
-          ))
-          break
-        case 'priority_low':
-          await Promise.all(selectedTasks.map(task => 
-            ProgressTrackingService.updateTask(task.id, { priority: 'low' })
-          ))
-          break
-      }
-
-      setSelectedItems(new Set())
-      setBulkAction('')
-      setShowBulkModal(false)
-      onUpdate()
-    } catch (error) {
-      console.error('Error performing bulk action:', error)
-    } finally {
-      setLoading(false)
+    switch (bulkAction) {
+      case 'mark_completed':
+        onBulkUpdate(selectedMilestones, { status: 'completed' })
+        break
+      case 'mark_in_progress':
+        onBulkUpdate(selectedMilestones, { status: 'in_progress' })
+        break
+      case 'mark_pending':
+        onBulkUpdate(selectedMilestones, { status: 'not_started' })
+        break
+      case 'delete':
+        onBulkDelete(selectedMilestones)
+        break
     }
+
+    setSelectedMilestones([])
+    setBulkAction('')
   }
 
-  const exportSelected = () => {
-    const selectedTasks = filteredTasks.filter(task => selectedItems.has(task.id))
-    const data = {
-      tasks: selectedTasks,
-      exportDate: new Date().toISOString(),
-      totalTasks: selectedTasks.length
-    }
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `tasks-export-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  if (userRole === 'client') {
-    return null // Clients don't get bulk operations
+  if (userRole !== 'provider') {
+    return null
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filters and Controls */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Select All */}
-          <button
-            onClick={handleSelectAll}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            {selectedItems.size === filteredTasks.length ? (
-              <CheckSquare className="h-4 w-4" />
-            ) : (
-              <Square className="h-4 w-4" />
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Bulk Operations
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Selection Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedMilestones.length === milestones.length && milestones.length > 0}
+                onChange={handleSelectAll}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-medium">
+                Select All ({selectedMilestones.length}/{milestones.length})
+              </span>
+            </div>
+            {selectedMilestones.length > 0 && (
+              <Badge variant="outline">
+                {selectedMilestones.length} selected
+              </Badge>
             )}
-            Select All ({selectedItems.size}/{filteredTasks.length})
-          </button>
+          </div>
 
-          {/* Filters */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Filter by status"
-              title="Filter by status"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-
-            <select
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Filter by priority"
-              title="Filter by priority"
-            >
-              <option value="all">All Priority</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+          {/* Milestone List */}
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {milestones.map((milestone) => (
+              <div
+                key={milestone.id}
+                className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedMilestones.includes(milestone.id)}
+                  onChange={() => handleSelectMilestone(milestone.id)}
+                  className="w-4 h-4"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{milestone.title}</div>
+                  <div className="text-xs text-gray-500">{milestone.status}</div>
+                </div>
+                <Badge variant="outline" className="text-xs">
+                  {milestone.progress}%
+                </Badge>
+              </div>
+            ))}
           </div>
 
           {/* Bulk Actions */}
-          {selectedItems.size > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowBulkModal(true)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
-                <Edit className="h-4 w-4" />
-                Bulk Actions ({selectedItems.size})
-              </button>
-
-              <button
-                onClick={exportSelected}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
+          {selectedMilestones.length > 0 && (
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <Select value={bulkAction} onValueChange={setBulkAction}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select action..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mark_completed">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Mark as Completed
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="mark_in_progress">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        Mark as In Progress
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="mark_pending">
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-gray-600" />
+                        Mark as Pending
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="delete">
+                      <div className="flex items-center gap-2">
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                        Delete Selected
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleBulkAction}
+                  disabled={!bulkAction}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Apply
+                </Button>
+              </div>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Tasks List */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      <input
-                      type="checkbox"
-                      checked={selectedItems.size === filteredTasks.length && filteredTasks.length > 0}
-                      onChange={handleSelectAll}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      aria-label="Select all tasks"
-                      title="Select all tasks"
-                    />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Task
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Milestone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Progress
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hours
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTasks.map((task) => (
-                <tr key={task.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.has(task.id)}
-                      onChange={() => handleSelectItem(task.id)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      aria-label={`Select task: ${task.title}`}
-                      title={`Select task: ${task.title}`}
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                    <div className="text-sm text-gray-500 truncate max-w-xs">Task</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {task.milestone_title}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                      task.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {task.status?.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                      normal
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${task.progress_percentage || 0}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-500">{task.progress_percentage || 0}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    0h / 0h
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Bulk Action Modal */}
-      {showBulkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Bulk Actions ({selectedItems.size} items selected)
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Action
-                  </label>
-                  <select
-                    value={bulkAction}
-                    onChange={(e) => setBulkAction(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label="Select bulk action"
-                    title="Select bulk action"
-                  >
-                    <option value="">Select an action...</option>
-                    <option value="status_pending">Set Status to Pending</option>
-                    <option value="status_in_progress">Set Status to In Progress</option>
-                    <option value="status_completed">Set Status to Completed</option>
-                    <option value="priority_high">Set Priority to High</option>
-                    <option value="priority_medium">Set Priority to Medium</option>
-                    <option value="priority_low">Set Priority to Low</option>
-                    <option value="delete">Delete Selected Tasks</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowBulkModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBulkAction}
-                  disabled={!bulkAction || loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Processing...' : 'Apply Action'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   )
 }
