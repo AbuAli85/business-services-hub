@@ -45,6 +45,17 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       // Update task in database
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
+
+      // Look up milestone_id for this task to recalculate progress later
+      const { data: taskRow, error: taskLookupError } = await supabase
+        .from('tasks')
+        .select('milestone_id')
+        .eq('id', taskId)
+        .single()
+      if (taskLookupError || !taskRow) {
+        throw new Error(taskLookupError?.message || 'Task not found')
+      }
+      const milestoneId: string = taskRow.milestone_id
       
       const { error } = await supabase
         .from('tasks')
@@ -53,7 +64,6 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
           updated_at: new Date().toISOString()
         })
         .eq('id', taskId)
-        .eq('milestone_id', milestoneId)
       
       if (error) {
         throw new Error(error.message)
@@ -89,7 +99,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
 
       // Calculate new milestone progress
-      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData))
+      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData) as any)
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone in database
@@ -136,7 +146,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
 
       const transformedMilestones = (allMilestones || []).map(transformMilestoneData)
-      const overallProgress = calculateOverallProgress(transformedMilestones)
+      const overallProgress = calculateOverallProgress(transformedMilestones as any)
 
       // Update booking progress
       const { error: bookingError } = await supabase
@@ -262,7 +272,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         throw new Error(milestoneError.message)
       }
 
-      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData))
+      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData) as any)
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone progress
@@ -299,12 +309,22 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
+
+      // Look up milestone_id before deletion so we can recalc its progress
+      const { data: taskRow, error: taskLookupError } = await supabase
+        .from('tasks')
+        .select('milestone_id')
+        .eq('id', taskId)
+        .single()
+      if (taskLookupError || !taskRow) {
+        throw new Error(taskLookupError?.message || 'Task not found')
+      }
+      const milestoneId: string = taskRow.milestone_id
       
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', taskId)
-        .eq('milestone_id', milestoneId)
       
       if (error) {
         throw new Error(error.message)
@@ -339,7 +359,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         throw new Error(milestoneError.message)
       }
 
-      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData))
+      const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData) as any)
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone progress
