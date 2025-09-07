@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { ProgressTrackingSystem } from '@/components/dashboard/progress-tracking-system'
+import { EnhancedRealtimeProgress } from '@/components/dashboard/enhanced-realtime-progress'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -386,7 +386,7 @@ export default function BookingDetails() {
 
         {/* Progress Tracking System - Only show if approved */}
         {booking.status === 'approved' || booking.status === 'in_progress' || booking.status === 'completed' ? (
-          <ProgressTrackingSystem
+          <EnhancedRealtimeProgress
             bookingId={bookingId}
             userRole={userRole}
           />
