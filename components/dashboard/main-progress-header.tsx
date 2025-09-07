@@ -23,6 +23,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { addDays } from 'date-fns'
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { safeFormatDate } from '@/lib/date-utils'
 
 interface MainProgressHeaderProps {
@@ -53,6 +54,22 @@ export function MainProgressHeader({
   const overallProgress = bookingProgress?.booking_progress || 0
   const remainingMilestones = totalMilestones - completedMilestones
   const efficiency = totalEstimatedHours > 0 ? (totalActualHours / totalEstimatedHours) * 100 : 0
+
+  // Animated counters
+  const progressMv = useMotionValue(0)
+  const progressText = useTransform(progressMv, (v) => `${Math.round(v)}%`)
+  const tasksRemainingMv = useMotionValue(0)
+  const tasksRemainingText = useTransform(tasksRemainingMv, (v) => `${Math.round(v)}`)
+  const overdueMv = useMotionValue(0)
+  const overdueText = useTransform(overdueMv, (v) => `${Math.round(v)}`)
+
+  // On mount/update animate
+  // Using a simple imperative animate to avoid SSR mismatch
+  if (typeof window !== 'undefined') {
+    animate(progressMv, overallProgress, { duration: 0.8 })
+    animate(tasksRemainingMv, Math.max(totalTasks - completedTasks, 0), { duration: 0.8 })
+    animate(overdueMv, overdueTasks, { duration: 0.8 })
+  }
 
   // Calculate estimated completion date based on progress
   const getEstimatedCompletion = () => {
@@ -115,32 +132,26 @@ export function MainProgressHeader({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Circular Progress */}
             <div className="flex flex-col items-center">
-              <div className="relative w-32 h-32 mb-4">
-                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-gray-200"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className={`${getProgressColor(overallProgress)} transition-all duration-1000 ease-out`}
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    fill="none"
-                    strokeDasharray={`${overallProgress}, 100`}
-                    strokeLinecap="round"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
+              <div className="relative w-36 h-36 mb-4">
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-36 h-36 rounded-full"
+                  style={{
+                    background: `conic-gradient(var(--ring-color) ${overallProgress}%, #e5e7eb ${overallProgress}%)`,
+                    // tailwind sets colors; we map ring-color via inline style on parent below
+                  }}
+                />
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`text-3xl font-bold ${getProgressColor(overallProgress)}`}>
-                    {overallProgress}%
-                  </span>
-                  <span className="text-xs text-gray-500">Complete</span>
+                  <motion.span className={`text-3xl font-bold ${getProgressColor(overallProgress)}`}>
+                    {progressText}
+                  </motion.span>
+                  <span className="text-xs text-gray-500">Weighted Complete</span>
                 </div>
               </div>
+              {/* ring color variable */}
+              <div className="sr-only" style={{ ['--ring-color' as any]: overallProgress >= 80 ? '#16a34a' : overallProgress >= 60 ? '#2563eb' : overallProgress >= 40 ? '#ca8a04' : '#ef4444' }} />
               {estimatedCompletion && (
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-700">Estimated Completion</p>
@@ -162,7 +173,9 @@ export function MainProgressHeader({
                     <span className="text-sm font-medium text-gray-700">Completed</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-green-600">{completedMilestones}</span>
+                    <motion.span className="text-2xl font-bold text-green-600" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      {completedMilestones}
+                    </motion.span>
                     <span className="text-sm text-gray-500 ml-1">/{totalMilestones}</span>
                   </div>
                 </div>
@@ -172,7 +185,9 @@ export function MainProgressHeader({
                     <span className="text-sm font-medium text-gray-700">Remaining</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-orange-600">{remainingMilestones}</span>
+                    <motion.span className="text-2xl font-bold text-orange-600" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      {remainingMilestones}
+                    </motion.span>
                     <span className="text-sm text-gray-500 ml-1">to go</span>
                   </div>
                 </div>
@@ -200,15 +215,15 @@ export function MainProgressHeader({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Logged</span>
-                  <span className="text-2xl font-bold text-purple-600">
+                  <motion.span className="text-2xl font-bold text-purple-600" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     {totalActualHours.toFixed(1)}h
-                  </span>
+                  </motion.span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Estimated</span>
-                  <span className="text-lg font-semibold text-gray-900">
+                  <motion.span className="text-lg font-semibold text-gray-900" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     {totalEstimatedHours.toFixed(1)}h
-                  </span>
+                  </motion.span>
                 </div>
                 {efficiency > 0 && (
                   <div className="pt-2">

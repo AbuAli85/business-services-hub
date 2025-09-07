@@ -24,6 +24,12 @@ export interface Task {
   // Phase 6 additions
   weight?: number;
   tags?: string[];
+  attachments?: Array<{
+    url: string;
+    filename: string;
+    uploaded_by: string;
+    uploaded_at: string;
+  }>;
 }
 
 export interface Milestone {

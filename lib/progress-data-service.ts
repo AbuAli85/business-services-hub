@@ -13,6 +13,33 @@ export interface ProgressData {
 }
 
 export class ProgressDataService {
+  // Generate monthly milestones for a newly created booking based on service template
+  static async generateMonthlyMilestonesForBooking(bookingId: string) {
+    const supabase = await getSupabaseClient();
+    // Fetch booking to get service_id
+    const { data: booking } = await supabase.from('bookings').select('id, service_id').eq('id', bookingId).single()
+    if (!booking?.service_id) return
+    // Fetch service template
+    const { data: service } = await supabase.from('services').select('name, default_milestones').eq('id', booking.service_id).single()
+    const template = (service?.default_milestones || []) as Array<{ month: number, title: string, tasks?: string[] }>
+    for (const m of template) {
+      const { data: created } = await supabase
+        .from('milestones')
+        .insert({
+          booking_id: bookingId,
+          title: m.title,
+          status: 'pending',
+          progress: 0,
+          month_number: m.month
+        })
+        .select('id')
+        .single()
+      if (created?.id && Array.isArray(m.tasks)) {
+        const rows = m.tasks.map(title => ({ milestone_id: created.id, title }))
+        await supabase.from('tasks').insert(rows)
+      }
+    }
+  }
   static async getProgressData(bookingId: string): Promise<ProgressData> {
     try {
       const supabase = await getSupabaseClient();

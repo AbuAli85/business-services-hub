@@ -351,7 +351,39 @@ export function ProgressTrackingSystem({
         overdueTasks={overdueTasks}
       />
       
-      {/* Main content tabs */}
+      {/* Grouped by month */}
+      <div className="space-y-6">
+        {(() => {
+          const groups: Record<string, Milestone[]> = {}
+          for (const m of milestones) {
+            const k = String((m as any).month_number ?? '0')
+            if (!groups[k]) groups[k] = []
+            groups[k].push(m)
+          }
+          const keys = Object.keys(groups).sort((a,b)=>Number(a)-Number(b))
+          return keys.map(k => (
+            <div key={k} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">{`Month ${k}`}</h3>
+              </div>
+              <SimpleMilestones
+                milestones={groups[k] as any}
+                userRole={userRole}
+                onTaskUpdate={handleTaskUpdate}
+                onTaskAdd={handleTaskCreate}
+                onTaskDelete={handleTaskDelete}
+                onMilestoneUpdate={handleMilestoneUpdate}
+                onCommentAdd={handleCommentAdd}
+                onProjectTypeChange={() => {}}
+                commentsByMilestone={commentsByMilestone}
+                approvalsByMilestone={approvalsByMilestone}
+              />
+            </div>
+          ))
+        })()}
+      </div>
+
+      {/* Main content tabs (kept for analytics/timeline) */}
       <Tabs defaultValue="milestones" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="milestones" className="flex items-center space-x-2">

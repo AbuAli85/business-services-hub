@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
+import { ProgressDataService } from '@/lib/progress-data-service'
 import { z } from 'zod'
 
 // CORS headers for cross-domain access
@@ -321,21 +322,13 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', service_id)
 
-    // Generate milestones from service type templates for the booking
+    // Generate monthly milestones from service templates via application logic
     try {
-      const { error: milestoneError } = await supabase.rpc('generate_milestones_from_templates', {
-        booking_uuid: booking.id
-      })
-      
-      if (milestoneError) {
-        console.warn('⚠️ Failed to generate milestones from templates:', milestoneError)
-        // Don't fail the booking creation if milestone creation fails
-      } else {
-        console.log('✅ Service-based milestones generated for booking:', booking.id)
-      }
+      await ProgressDataService.generateMonthlyMilestonesForBooking(booking.id)
+      console.log('✅ Monthly milestones generated for booking:', booking.id)
     } catch (milestoneError) {
-      console.warn('⚠️ Error generating milestones from templates:', milestoneError)
-      // Don't fail the booking creation if milestone creation fails
+      console.warn('⚠️ Error generating monthly milestones:', milestoneError)
+      // Non-blocking
     }
 
     const response = NextResponse.json({ 

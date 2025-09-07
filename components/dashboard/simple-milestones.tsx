@@ -427,7 +427,10 @@ export function SimpleMilestones({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <CardTitle className="text-xl font-bold text-gray-900">{milestone.title}</CardTitle>
+                        <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                          {milestone.title}
+                          <span className="text-xs font-semibold text-gray-500">{`Month ${(milestone as any).month_number ?? '?'}`}</span>
+                        </CardTitle>
                         <div className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm ${getStatusColor(milestone.status)}`}>
                           {isLocked ? '🔒 LOCKED' : 
                            milestone.status === 'completed' ? '✅ COMPLETED' :
@@ -702,6 +705,55 @@ export function SimpleMilestones({
                       </div>
                     </div>
                   ))}
+
+                  {/* Attachments */}
+                  <div className="mt-3 space-y-2">
+                    <h5 className="text-xs font-semibold text-gray-700">Attachments</h5>
+                    {milestone.tasks.some(t => (t.attachments || []).length > 0) ? (
+                      <div className="space-y-2">
+                        {milestone.tasks.map(t => (
+                          (t.attachments || []).map((a, idx) => (
+                            <div key={`${t.id}-${idx}`} className="flex items-center justify-between text-xs bg-white border rounded p-2">
+                              <a href={a.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                                {a.filename}
+                              </a>
+                              <span className="text-gray-500">{new Date(a.uploaded_at).toLocaleDateString()}</span>
+                            </div>
+                          ))
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">No attachments</p>
+                    )}
+                    {userRole === 'provider' && (
+                      <div>
+                        <label className="text-xs text-gray-600">Upload to first task:</label>
+                        <input
+                          type="file"
+                          className="block text-xs"
+                          aria-label="Upload attachment to first task"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const firstTask = milestone.tasks[0]
+                            if (!firstTask) return
+                            try {
+                              const supabase = await (await import('@/lib/supabase')).getSupabaseClient()
+                              const path = `${milestone.id}/${firstTask.id}/${Date.now()}-${file.name}`
+                              const { error: upErr } = await supabase.storage.from('reports').upload(path, file)
+                              if (upErr) throw upErr
+                              const { data: pub } = await supabase.storage.from('reports').getPublicUrl(path)
+                              const attachment = { url: pub.publicUrl, filename: file.name, uploaded_by: 'provider', uploaded_at: new Date().toISOString() }
+                              const next = [...(firstTask.attachments || []), attachment]
+                              await ProgressDataService.updateTaskDetails(firstTask.id, { attachments: next })
+                            } catch (err) {
+                              console.error('Upload failed', err)
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Enhanced Add Task Button */}
                   {userRole === 'provider' && (
