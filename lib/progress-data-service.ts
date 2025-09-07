@@ -227,6 +227,135 @@ export class ProgressDataService {
     return this.getProgressData(bookingId);
   }
 
+  // Booking-wide comments (milestone_comments joined by milestones under booking)
+  static async getAllCommentsForBooking(bookingId: string): Promise<Comment[]> {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('milestone_comments')
+        .select(`
+          *,
+          milestone:milestones!inner(id, booking_id),
+          author:profiles!milestone_comments_author_id_fkey(full_name, role)
+        `)
+        .eq('milestone.booking_id', bookingId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        milestone_id: row.milestone_id,
+        content: row.content,
+        author: row.author?.full_name || 'Unknown',
+        author_role: row.author?.role || 'client',
+        created_at: row.created_at
+      })) as unknown as Comment[];
+    } catch (error) {
+      console.error('Error fetching booking comments:', error);
+      throw error;
+    }
+  }
+
+  // Action Requests
+  static async getActionRequests(bookingId: string) {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('action_requests')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching action requests:', error);
+      throw error;
+    }
+  }
+
+  static async createActionRequest(input: {
+    booking_id: string;
+    milestone_id?: string;
+    type: 'change_request' | 'question' | 'approval_needed' | 'issue_report';
+    title: string;
+    description: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+  }) {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('action_requests')
+        .insert({
+          booking_id: input.booking_id,
+          milestone_id: input.milestone_id || null,
+          type: input.type,
+          title: input.title,
+          description: input.description,
+          priority: input.priority || 'medium',
+          requested_by: user.id
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating action request:', error);
+      throw error;
+    }
+  }
+
+  static async respondToActionRequest(actionRequestId: string, response: {
+    response: string;
+    status?: 'in_progress' | 'resolved' | 'rejected';
+  }) {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const updates: any = {
+        response: response.response,
+        response_author: user.id,
+        response_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      if (response.status) updates.status = response.status;
+
+      const { error } = await supabase
+        .from('action_requests')
+        .update(updates)
+        .eq('id', actionRequestId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error responding to action request:', error);
+      throw error;
+    }
+  }
+
+  static async subscribeToActionRequests(
+    bookingId: string,
+    onChange: () => Promise<void> | void
+  ) {
+    const supabase = await getSupabaseClient();
+    const ch = supabase
+      .channel('action-requests-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'action_requests',
+        filter: `booking_id=eq.${bookingId}`
+      }, async () => { await onChange(); })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }
+
   // Milestone management methods
   static async createMilestone(
     bookingId: string,

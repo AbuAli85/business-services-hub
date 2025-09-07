@@ -41,6 +41,8 @@ export function ProgressTrackingSystem({
   // State management
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
+  const [commentsByMilestone, setCommentsByMilestone] = useState<Record<string, Comment[]>>({})
+  const [actionRequests, setActionRequests] = useState<any[]>([])
   const [overallProgress, setOverallProgress] = useState(0)
   const [totalTasks, setTotalTasks] = useState(0)
   const [completedTasks, setCompletedTasks] = useState(0)
@@ -118,6 +120,20 @@ export function ProgressTrackingSystem({
       setTotalEstimatedHours(progressData.totalEstimatedHours)
       setTotalActualHours(progressData.totalActualHours)
 
+      // Load comments (booking-wide) and index by milestone
+      const allComments = await ProgressDataService.getAllCommentsForBooking(bookingId)
+      const byMilestone: Record<string, Comment[]> = {}
+      for (const c of allComments) {
+        const key = c.milestone_id || 'unknown'
+        if (!byMilestone[key]) byMilestone[key] = []
+        byMilestone[key].push(c)
+      }
+      setCommentsByMilestone(byMilestone)
+
+      // Load action requests
+      const requests = await ProgressDataService.getActionRequests(bookingId)
+      setActionRequests(requests)
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load progress data')
       toast.error('Failed to load progress data')
@@ -184,9 +200,25 @@ export function ProgressTrackingSystem({
   }, [updateMilestoneProgress])
 
   // Comment management handlers
-  const handleCommentAdd = useCallback(async (milestoneId: string, comment: { content: string; author: string; author_role: string }) => {
+  const handleCommentAdd = useCallback(async (milestoneId: string, content: string) => {
     try {
-      await ProgressDataService.addComment(milestoneId, comment.content)
+      // optimistic update
+      setCommentsByMilestone(prev => {
+        const next = { ...prev }
+        const list = next[milestoneId] ? [...next[milestoneId]] : []
+        list.push({
+          id: `temp-${Date.now()}`,
+          milestone_id: milestoneId,
+          content,
+          author: 'You',
+          author_role: 'provider',
+          created_at: new Date().toISOString()
+        } as any)
+        next[milestoneId] = list
+        return next
+      })
+
+      await ProgressDataService.addComment(milestoneId, content)
       toast.success('Comment added successfully')
       await loadData()
     } catch (error) {
@@ -304,6 +336,7 @@ export function ProgressTrackingSystem({
                 onMilestoneUpdate={handleMilestoneUpdate}
                 onCommentAdd={handleCommentAdd}
                 onProjectTypeChange={() => {}}
+                commentsByMilestone={commentsByMilestone}
               />
             </div>
 

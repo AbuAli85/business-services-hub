@@ -31,8 +31,9 @@ interface SimpleMilestonesProps {
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
   onTaskAdd: (milestoneId: string, taskData: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => void
   onTaskDelete: (milestoneId: string, taskId: string) => void
-  onCommentAdd: (milestoneId: string, comment: Omit<Comment, 'id' | 'created_at'>) => void
+  onCommentAdd: (milestoneId: string, content: string) => void
   onProjectTypeChange: (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => void
+  commentsByMilestone?: Record<string, Comment[]>
   userRole: UserRole
 }
 
@@ -44,6 +45,7 @@ export function SimpleMilestones({
   onTaskDelete,
   onCommentAdd,
   onProjectTypeChange,
+  commentsByMilestone,
   userRole
 }: SimpleMilestonesProps) {
   const [editingMilestone, setEditingMilestone] = useState<string | null>(null)
@@ -138,11 +140,7 @@ export function SimpleMilestones({
   const saveComment = () => {
     if (!newComment || !newComment.text.trim()) return
     
-    onCommentAdd(newComment.milestoneId, {
-      text: newComment.text,
-      author: userRole === 'provider' ? 'Provider' : 'Client',
-      authorRole: userRole
-    })
+    onCommentAdd(newComment.milestoneId, newComment.text)
     setNewComment(null)
   }
 
