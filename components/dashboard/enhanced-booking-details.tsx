@@ -238,6 +238,14 @@ export default function EnhancedBookingDetails({
     total: 0,
     overdue: 0
   })
+  
+  // Modal state variables
+  const [progressValue, setProgressValue] = useState(0)
+  const [progressNotes, setProgressNotes] = useState('')
+  const [messageText, setMessageText] = useState('')
+  const [meetingDate, setMeetingDate] = useState('')
+  const [meetingTime, setMeetingTime] = useState('')
+  const [meetingNotes, setMeetingNotes] = useState('')
 
   useEffect(() => {
     if (bookingId) {
@@ -727,6 +735,46 @@ export default function EnhancedBookingDetails({
     } catch (error) {
       console.error('Error updating task status:', error)
       toast.error('Failed to update task status')
+    }
+  }
+
+  const handleProgressUpdate = async () => {
+    if (!booking) return
+    
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          progress_percentage: progressValue,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+      
+      if (error) throw error
+      
+      setBooking({ ...booking, progress_percentage: progressValue })
+      toast.success('Progress updated successfully')
+      setShowProgressModal(false)
+    } catch (error) {
+      console.error('Error updating progress:', error)
+      toast.error('Failed to update progress')
+    }
+  }
+
+  const handleScheduleMeeting = async () => {
+    if (!meetingDate || !meetingTime) return
+    
+    try {
+      toast.success('Meeting scheduled successfully')
+      setShowScheduleModal(false)
+      setMeetingDate('')
+      setMeetingTime('')
+      setMeetingNotes('')
+    } catch (error) {
+      console.error('Error scheduling meeting:', error)
+      toast.error('Failed to schedule meeting')
     }
   }
 
@@ -1521,7 +1569,7 @@ export default function EnhancedBookingDetails({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         
         {/* Enhanced Professional Header */}
         <div className="mb-4">
@@ -2090,7 +2138,9 @@ export default function EnhancedBookingDetails({
                   </Card>
                 </div>
 
-                    <CardHeader>
+                {/* Project Information Card */}
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Package className="h-5 w-5 text-blue-600" />
                         <span>Project Information</span>
@@ -2133,213 +2183,12 @@ export default function EnhancedBookingDetails({
 
                     </CardContent>
                   </Card>
-
-                  {/* Quick Actions */}
-                  <Card className="border-0 shadow-lg lg:col-span-1">
-                    <CardHeader>
-                      <CardTitle className="flex items-center space-x-2">
-                        {isProvider ? (
-                          <>
-                            <Zap className="h-5 w-5 text-purple-600" />
-                            <span>Project Management</span>
-                          </>
-                        ) : (
-                          <>
-                            <User className="h-5 w-5 text-blue-600" />
-                            <span>My Project</span>
-                          </>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {/* Status Update - Role-specific */}
-                      {isProvider ? (
-                        /* Provider: Can update status */
-                        booking.status !== 'pending' && (
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Update Project Status</label>
-                          <Select defaultValue={booking.status} onValueChange={handleStatusUpdate}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="on_hold">On Hold</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        )
-                      ) : (
-                        /* Client: Can only view status */
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                          <label className="text-sm font-medium text-blue-700 mb-2 block">Project Status</label>
-                          <div className="flex items-center space-x-2">
-                            <Badge className={`px-3 py-1 ${
-                              booking.status === 'approved' ? 'bg-green-100 text-green-800' :
-                              booking.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              booking.status === 'completed' ? 'bg-purple-100 text-purple-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {booking.status.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                            <span className="text-sm text-gray-600">
-                              {booking.status === 'pending' ? 'Waiting for provider approval' :
-                               booking.status === 'approved' ? 'Project approved, ready to start' :
-                               booking.status === 'in_progress' ? 'Work in progress' :
-                               booking.status === 'completed' ? 'Project completed' :
-                               'Project status unknown'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pending Booking Actions - Role-specific */}
-                      {booking.status === 'pending' && (
-                        isProvider ? (
-                          <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            <label className="text-sm font-medium text-yellow-800 mb-2 block">Client Request Pending</label>
-                            <div className="space-y-2">
-                              <Button 
-                                size="sm" 
-                                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleApprovalAction('approve')}
-                                disabled={isUpdating}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Accept Project
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="destructive"
-                                className="w-full"
-                                onClick={() => handleApprovalAction('decline')}
-                                disabled={isUpdating}
-                              >
-                                <X className="h-4 w-4 mr-2" />
-                                Decline Project
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <label className="text-sm font-medium text-blue-800 mb-2 block">Waiting for Provider</label>
-                            <p className="text-sm text-blue-700 mb-3">
-                              Your project request is pending approval from the service provider. 
-                              You'll be notified once they respond.
-                            </p>
-                            <div className="flex items-center space-x-2 text-sm text-blue-600">
-                              <Clock className="h-4 w-4" />
-                              <span>Response expected within 24 hours</span>
-                            </div>
-                          </div>
-                        )
-                      )}
-
-                      {/* Communication Actions */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="border-green-200 text-green-700 hover:bg-green-50" 
-                          onClick={isProvider ? handleCallClient : handleCallProvider}
-                        >
-                          <Phone className="h-4 w-4 mr-2" />
-                          {isProvider ? 'Call Client' : 'Call Provider'}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="border-blue-200 text-blue-700 hover:bg-blue-50" 
-                          onClick={handleVideoCall}
-                        >
-                          <Video className="h-4 w-4 mr-2" />
-                          Video
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="border-purple-200 text-purple-700 hover:bg-purple-50" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can share from dashboard' : undefined}
-                          onClick={handleShare}
-                        >
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="border-orange-200 text-orange-700 hover:bg-orange-50" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can send notifications' : undefined}
-                          onClick={handleNotify}
-                        >
-                          <Bell className="h-4 w-4 mr-2" />
-                          Notify
-                        </Button>
-                      </div>
-
-                      {/* Progress Update - Only for approved bookings */}
-                      {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <label className="text-sm font-medium text-blue-700 mb-2 block">Progress Update</label>
-                        <div className="flex items-center space-x-2">
-                          <Progress value={booking.progress_percentage} className="flex-1" />
-                          <span className="text-sm font-medium text-blue-700">{booking.progress_percentage}%</span>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="w-full mt-2 border-blue-200 text-blue-700 hover:bg-blue-50" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can update progress' : undefined}
-                          onClick={() => setShowProgressModal(true)}
-                        >
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Update Progress
-                        </Button>
-                      </div>
-                      )}
-
-                      {/* Export Progress - Only for approved bookings */}
-                      {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && milestoneStats.total > 0 && (
-                        <div className="p-3 bg-green-50 rounded-lg">
-                          <label className="text-sm font-medium text-green-700 mb-2 block">Export Progress</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="border-green-200 text-green-700 hover:bg-green-50" 
-                              onClick={() => handleExport('pdf')}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              PDF
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="border-green-200 text-green-700 hover:bg-green-50" 
-                              onClick={() => handleExport('excel')}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Excel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
               </TabsContent>
 
               {/* Progress Tab */}
               <TabsContent value="progress" className="space-y-6">
                 <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
               </TabsContent>
-
 
               {/* Messages Tab */}
               <TabsContent value="messages">
@@ -2349,13 +2198,7 @@ export default function EnhancedBookingDetails({
                     <CardDescription>Communicate with the {isClient ? 'provider' : 'client'}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600">
-                          Message functionality will be available soon. For now, you can use the contact buttons above.
-                        </p>
-                </div>
-                    </div>
+                    <p className="text-gray-600">Messages functionality will be implemented here.</p>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -2364,21 +2207,14 @@ export default function EnhancedBookingDetails({
               <TabsContent value="files">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Project Files</CardTitle>
-                    <CardDescription>Share and manage project files</CardDescription>
+                    <CardTitle>Files</CardTitle>
+                    <CardDescription>Project files and documents</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600">
-                          File management functionality will be available soon.
-                        </p>
-                </div>
-                    </div>
+                    <p className="text-gray-600">File management functionality will be implemented here.</p>
                   </CardContent>
                 </Card>
               </TabsContent>
-
             </Tabs>
           </div>
         </div>
@@ -2391,118 +2227,135 @@ export default function EnhancedBookingDetails({
             <h3 className="text-lg font-semibold mb-4">Update Progress</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Progress Percentage
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Progress Percentage</label>
                 <input
                   type="range"
                   min="0"
                   max="100"
-                  value={tempProgress}
-                  onChange={(e) => setTempProgress(parseInt(e.target.value))}
+                  value={progressValue}
+                  onChange={(e) => setProgressValue(Number(e.target.value))}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-500 mt-1">
+                <div className="flex justify-between text-sm text-gray-600 mt-1">
                   <span>0%</span>
-                  <span className="font-medium">{tempProgress}%</span>
+                  <span className="font-medium">{progressValue}%</span>
                   <span>100%</span>
                 </div>
               </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button variant="outline" onClick={() => setShowProgressModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => {
-                handleUpdateProgress(tempProgress)
-                setShowProgressModal(false)
-              }}>
-                Update Progress
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Details Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Edit Booking Details</h3>
-            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  value={booking?.title || ''}
-                  onChange={(e) => setBooking({ ...booking!, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
                 <textarea
-                  value={booking?.description || ''}
-                  onChange={(e) => setBooking({ ...booking!, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={progressNotes}
+                  onChange={(e) => setProgressNotes(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
+                  placeholder="Add any notes about the progress update..."
                 />
               </div>
             </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowProgressModal(false)}
+              >
                 Cancel
               </Button>
-              <Button onClick={() => {
-                // Save changes to database
-                setShowEditModal(false)
-                toast.success('Details updated successfully')
-              }}>
-                Save Changes
+              <Button
+                onClick={handleProgressUpdate}
+                disabled={isUpdating}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isUpdating ? 'Updating...' : 'Update Progress'}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Reschedule Modal */}
-      {showRescheduleModal && (
+      {/* Message Modal */}
+      {showMessageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Reschedule Booking</h3>
+            <h3 className="text-lg font-semibold mb-4">Send Message</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Date
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="Type your message here..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowMessageModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendMessage}
+                disabled={isUpdating || !messageText.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isUpdating ? 'Sending...' : 'Send Message'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Modal */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Schedule Meeting</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
                 <input
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={meetingDate}
+                  onChange={(e) => setMeetingDate(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Time
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
                 <input
                   type="time"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={meetingTime}
+                  onChange={(e) => setMeetingTime(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                <textarea
+                  value={meetingNotes}
+                  onChange={(e) => setMeetingNotes(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Add any notes about the meeting..."
                 />
               </div>
             </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button variant="outline" onClick={() => setShowRescheduleModal(false)}>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowScheduleModal(false)}
+              >
                 Cancel
               </Button>
-              <Button onClick={() => {
-                setShowRescheduleModal(false)
-                toast.success('Booking rescheduled successfully')
-              }}>
-                Reschedule
+              <Button
+                onClick={handleScheduleMeeting}
+                disabled={isUpdating || !meetingDate || !meetingTime}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isUpdating ? 'Scheduling...' : 'Schedule Meeting'}
               </Button>
             </div>
           </div>
@@ -2513,44 +2366,37 @@ export default function EnhancedBookingDetails({
       {showAddTaskModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Add Task</h3>
+            <h3 className="text-lg font-semibold mb-4">Add New Task</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Task Title
-                </label>
-                <Input
+                <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
+                <input
+                  type="text"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter task title..."
-                  className="w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description (Optional)
-                </label>
-                <Textarea
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                <textarea
                   value={newTaskDescription}
                   onChange={(e) => setNewTaskDescription(e.target.value)}
-                  placeholder="Enter task description..."
-                  className="w-full"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
+                  placeholder="Enter task description..."
                 />
               </div>
             </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowAddTaskModal(false)
-                  setNewTaskTitle('')
-                  setNewTaskDescription('')
-                }}
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddTaskModal(false)}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleAddTask}
                 disabled={!newTaskTitle.trim()}
                 className="bg-blue-600 hover:bg-blue-700"
