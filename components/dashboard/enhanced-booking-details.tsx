@@ -193,7 +193,7 @@ interface CommunicationChannel {
   preferred?: boolean
 }
 
-export default function EnhancedBookingDetails() {
+export default function EnhancedBookingDetails({ showProgressCard = true }: { showProgressCard?: boolean }) {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1659,8 +1659,8 @@ export default function EnhancedBookingDetails() {
             </Alert>
           )}
 
-          {/* Smart Progress Indicator - Only show for approved/in-progress bookings */}
-          {booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
+          {/* Smart Progress Indicator - Only show for approved/in-progress bookings (optional) */}
+          {showProgressCard && booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
           <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
