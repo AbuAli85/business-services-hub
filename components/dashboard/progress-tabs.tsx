@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import './progress-styles.css'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle, Target } from 'lucide-react'
 import { Milestone, Task, BookingProgress, Comment } from '@/types/progress'
@@ -163,6 +164,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   // Debug modal state
   useEffect(() => {
     console.log('Modal state changed - showMilestoneCreator:', showMilestoneCreator)
+    if (showMilestoneCreator) {
+      console.log('Modal should be visible now!')
+      // Test if portal is working
+      setTimeout(() => {
+        const modalElement = document.querySelector('[data-modal="milestone-creator"]')
+        if (modalElement) {
+          console.log('✅ Modal element found in DOM:', modalElement)
+        } else {
+          console.log('❌ Modal element NOT found in DOM')
+        }
+      }, 100)
+    }
   }, [showMilestoneCreator])
 
   const loadData = async () => {
@@ -531,6 +544,14 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                 >
                   Force Open Modal
                 </button>
+                <button 
+                  onClick={() => {
+                    alert('Modal state: ' + showMilestoneCreator + '\nFallback mode: ' + useFallbackMode)
+                  }}
+                  className="text-purple-600 hover:text-purple-800 underline block"
+                >
+                  Check Modal State
+                </button>
               </div>
             </div>
           )}
@@ -860,9 +881,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
-      {/* Milestone Creator Modal */}
-      {showMilestoneCreator && (
+      {/* Milestone Creator Modal - Using Portal */}
+      {showMilestoneCreator && typeof window !== 'undefined' && createPortal(
         <div 
+          data-modal="milestone-creator"
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
           style={{ 
             zIndex: 9999,
@@ -883,10 +905,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             }
           }}
         >
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
+          <div 
+            className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl"
+            style={{
+              border: '3px solid red',
+              backgroundColor: 'white',
+              minHeight: '400px'
+            }}
+          >
             <div className="text-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Create Milestone</h2>
               <p className="text-sm text-gray-600">Modal is working! 🎉</p>
+              <p className="text-xs text-red-600 font-bold">PORTAL MODAL - RED BORDER</p>
             </div>
             {useFallbackMode ? (
               <FallbackMilestoneCreator
@@ -916,7 +946,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               />
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
