@@ -85,7 +85,7 @@ export class ProgressDataService {
       // Calculate overall progress
       const totalTasks = milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0);
       const completedTasks = milestones.reduce((sum, m) => 
-        sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+        sum + (m.tasks?.filter((t: Task) => t.status === 'completed').length || 0), 0
       );
       const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
