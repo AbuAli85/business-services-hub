@@ -674,20 +674,20 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                         </div>
 
                         {selectedTemplate === template.id && (
-                          <div className="mt-8 pt-6 border-t-2 border-gray-300 bg-gray-50 rounded-lg p-4">
-                            <h4 className="font-bold text-lg mb-4 text-gray-900">Included Phases:</h4>
-                            <ul className="space-y-3">
-                              {template.milestones.map((milestone, index) => (
-                                <li key={index} className="text-base text-gray-700 flex items-center gap-4">
-                                  <Target className="h-5 w-5 text-blue-600" />
-                                  <span className="font-semibold">{milestone.title}</span>
-                                  <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
-                                    {milestone.tasks.length} tasks
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                            <div className="mt-8 pt-6 border-t-2 border-gray-300 bg-gray-50 rounded-lg p-4">
+                              <h4 className="font-bold text-lg mb-4 text-gray-900">Included Phases:</h4>
+                              <ul className="space-y-3">
+                                {template.milestones.map((milestone, index) => (
+                                  <li key={index} className="text-base text-gray-700 flex items-center gap-4">
+                                    <Target className="h-5 w-5 text-blue-600" />
+                                    <span className="font-semibold">{milestone.title}</span>
+                                    <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                                      {milestone.tasks.length} tasks
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                         )}
                       </div>
                     </div>
