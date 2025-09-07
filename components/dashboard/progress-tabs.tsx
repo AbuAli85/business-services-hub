@@ -699,6 +699,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     console.log('Dismiss suggestion:', suggestionId)
   }
 
+  console.log('🔍 ProgressTabs render - showMilestoneCreator:', showMilestoneCreator)
+  
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Main Content */}
@@ -949,6 +951,29 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       </div>
 
       {/* Milestone Creator Modal - Direct Render */}
+      {(() => {
+        console.log('🔍 Modal render check - showMilestoneCreator:', showMilestoneCreator)
+        return null
+      })()}
+      
+      {/* Debug indicator */}
+      {showMilestoneCreator && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '10px',
+            right: '10px',
+            background: 'red',
+            color: 'white',
+            padding: '10px',
+            zIndex: 9999999,
+            borderRadius: '5px'
+          }}
+        >
+          MODAL SHOULD BE VISIBLE
+        </div>
+      )}
+      
       {showMilestoneCreator && (
         <div 
           data-modal="milestone-creator"
