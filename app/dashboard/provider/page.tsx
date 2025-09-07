@@ -118,51 +118,56 @@ export default function ProviderDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening with your business.</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 sm:mb-0">
+              <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
+              <p className="mt-2 text-gray-600">Welcome back! Here's what's happening with your business.</p>
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
-        <Button 
-          onClick={handleRefresh} 
-          disabled={refreshing}
-          variant="outline"
-          size="sm"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </Button>
-      </div>
 
-      {/* Dashboard Content */}
-      <div className="space-y-6">
-        {/* KPI Grid */}
-        <section>
-          <ImprovedKPIGrid data={stats} />
-        </section>
+        {/* Dashboard Content */}
+        <div className="space-y-8">
+          {/* KPI Grid */}
+          <section>
+            <ImprovedKPIGrid data={stats} />
+          </section>
 
-        {/* Performance Metrics */}
-        <section>
-          <ImprovedPerformanceMetrics data={stats} />
-        </section>
+          {/* Performance Metrics */}
+          <section>
+            <ImprovedPerformanceMetrics data={stats} />
+          </section>
 
-        {/* Earnings Chart */}
-        <section>
-          <EarningsChart data={monthlyEarnings} />
-        </section>
+          {/* Earnings Chart */}
+          <section>
+            <EarningsChart data={monthlyEarnings} />
+          </section>
 
-        {/* Recent Bookings + Top Services */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentBookings bookings={recentBookings} />
-          <TopServices services={topServices} />
-        </section>
+          {/* Recent Bookings + Top Services */}
+          <section className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <RecentBookings bookings={recentBookings} />
+            <TopServices services={topServices} />
+          </section>
 
-        {/* Monthly Goals & Achievements */}
-        <section>
-          <MonthlyGoals data={stats} />
-        </section>
+          {/* Monthly Goals & Achievements */}
+          <section>
+            <MonthlyGoals data={stats} />
+          </section>
+        </div>
       </div>
     </div>
   )

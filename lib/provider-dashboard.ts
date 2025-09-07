@@ -109,6 +109,12 @@ export class ProviderDashboardService {
     const completionRate = bookings?.length ? 
       bookings.filter(b => b.status === 'completed').length / bookings.length : 0
     
+    // Calculate monthly growth (simplified - compare current month to previous month)
+    const currentMonthEarnings = monthlyEarnings
+    const previousMonthEarnings = 0 // This would need to be calculated from previous month data
+    const monthlyGrowth = previousMonthEarnings > 0 ? 
+      ((currentMonthEarnings - previousMonthEarnings) / previousMonthEarnings) * 100 : 0
+    
     return {
       total_earnings: totalEarnings,
       monthly_earnings: monthlyEarnings,
@@ -117,7 +123,7 @@ export class ProviderDashboardService {
       avg_rating: avgRating,
       response_rate: responseRate,
       completion_rate: completionRate,
-      monthly_growth: 0 // placeholder
+      monthly_growth: monthlyGrowth
     }
   }
 
