@@ -443,6 +443,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               onTaskDelete={handleDeleteTask}
               onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
               onProjectTypeChange={() => {}}
+              showHeader={false}
             />
 
             <div className="space-y-6">

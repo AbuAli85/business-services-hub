@@ -37,6 +37,7 @@ interface SimpleMilestonesProps {
   commentsByMilestone?: Record<string, Comment[]>
   userRole: UserRole
   approvalsByMilestone?: Record<string, MilestoneApproval[]>
+  showHeader?: boolean
 }
 
 export function SimpleMilestones({
@@ -49,7 +50,8 @@ export function SimpleMilestones({
   onProjectTypeChange,
   commentsByMilestone,
   userRole,
-  approvalsByMilestone
+  approvalsByMilestone,
+  showHeader = true
 }: SimpleMilestonesProps) {
   const [editingMilestone, setEditingMilestone] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<{milestoneId: string, taskId: string} | null>(null)
@@ -264,7 +266,8 @@ export function SimpleMilestones({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header (optional) */}
+      {showHeader && (
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -324,8 +327,10 @@ export function SimpleMilestones({
           </div>
         </div>
       </div>
+      )}
 
-      {/* Project Type Info */}
+      {/* Project Type Info (optional) */}
+      {showHeader && (
       <div className={`rounded-xl p-6 border-2 transition-all duration-300 ${
         projectType === 'monthly' || projectType.includes('months')
           ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200' 
@@ -369,6 +374,7 @@ export function SimpleMilestones({
           </div>
         </div>
       </div>
+      )}
 
       {/* Milestones - Always exactly 4 phases */}
       <div className="space-y-4">
