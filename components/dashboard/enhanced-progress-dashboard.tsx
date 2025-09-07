@@ -64,7 +64,15 @@ interface ProgressDashboardProps {
   timeEntries: TimeEntry[];
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void;
   onTimeLog: (taskId: string, hours: number, description: string) => void;
-  onAddTask: (milestoneId: string, task: Omit<Task, 'id'>) => void;
+  onAddTask: (milestoneId: string, task: {
+    title: string;
+    description: string;
+    priority: 'low' | 'medium' | 'high';
+    estimated_hours: number;
+    status: 'pending' | 'in_progress' | 'completed';
+    actual_hours: number;
+    order_index: number;
+  }) => void;
 }
 
 export default function EnhancedProgressDashboard({

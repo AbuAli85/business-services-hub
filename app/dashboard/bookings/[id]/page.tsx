@@ -67,9 +67,22 @@ export default function BookingProgressPage() {
     }
   };
 
-  const handleAddTask = async (milestoneId: string, task: Omit<Task, 'id'>) => {
+  const handleAddTask = async (milestoneId: string, task: {
+    title: string;
+    description: string;
+    priority: 'low' | 'medium' | 'high';
+    estimated_hours: number;
+    status: 'pending' | 'in_progress' | 'completed';
+    actual_hours: number;
+    order_index: number;
+  }) => {
     try {
-      await ProgressDataService.addTask(milestoneId, task);
+      await ProgressDataService.addTask(milestoneId, {
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        estimated_hours: task.estimated_hours
+      });
       await loadProgressData(true);
     } catch (err) {
       console.error('Error adding task:', err);
