@@ -167,7 +167,78 @@ export function FallbackMilestoneCreator({
 // Helper function to get milestones from localStorage
 export function getFallbackMilestones(bookingId: string): Milestone[] {
   try {
-    return JSON.parse(localStorage.getItem(`milestones-${bookingId}`) || '[]')
+    const stored = localStorage.getItem(`milestones-${bookingId}`)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+    
+    // Create sample data if none exists
+    const sampleMilestones: Milestone[] = [
+      {
+        id: 'sample-1',
+        title: 'Project Setup & Planning',
+        description: 'Initial project setup, requirements gathering, and planning phase',
+        status: 'in_progress',
+        progress_percentage: 30,
+        created_at: new Date().toISOString(),
+        tasks: [
+          {
+            id: 'task-1',
+            title: 'Project Requirements Review',
+            description: 'Review and understand project requirements',
+            status: 'completed',
+            progress_percentage: 100,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'task-2',
+            title: 'Create Project Timeline',
+            description: 'Develop detailed project timeline and milestones',
+            status: 'in_progress',
+            progress_percentage: 60,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'task-3',
+            title: 'Client Communication Setup',
+            description: 'Set up communication channels and initial client meeting',
+            status: 'pending',
+            progress_percentage: 0,
+            created_at: new Date().toISOString()
+          }
+        ]
+      },
+      {
+        id: 'sample-2',
+        title: 'Design & Development',
+        description: 'Core design and development work',
+        status: 'pending',
+        progress_percentage: 0,
+        created_at: new Date().toISOString(),
+        tasks: [
+          {
+            id: 'task-4',
+            title: 'Initial Design Concepts',
+            description: 'Create initial design concepts and wireframes',
+            status: 'pending',
+            progress_percentage: 0,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'task-5',
+            title: 'Client Feedback Integration',
+            description: 'Incorporate client feedback into designs',
+            status: 'pending',
+            progress_percentage: 0,
+            created_at: new Date().toISOString()
+          }
+        ]
+      }
+    ]
+    
+    // Store sample data
+    localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(sampleMilestones))
+    return sampleMilestones
   } catch (error) {
     console.error('Error loading fallback milestones:', error)
     return []

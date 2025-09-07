@@ -170,18 +170,60 @@ export function SmartSuggestionsSidebar({
         }
       }
 
-      // Add default suggestions if no data-driven suggestions exist
+      // Add contextual suggestions based on project state
       if (newSuggestions.length === 0) {
+        if (milestones.length === 0) {
+          newSuggestions.push(
+            {
+              id: 'create-first-milestone',
+              type: 'follow_up',
+              priority: 'high',
+              title: 'Create Your First Milestone',
+              description: 'Start by creating a milestone to break down your project into manageable phases',
+              action: 'Create milestone',
+              dismissible: true
+            }
+          )
+        } else if (milestones.every(m => m.status === 'not_started')) {
+          newSuggestions.push(
+            {
+              id: 'start-project',
+              type: 'follow_up',
+              priority: 'high',
+              title: 'Ready to Start?',
+              description: 'All milestones are set up. Click "Start Phase" to begin working on the first milestone',
+              action: 'Start first phase',
+              dismissible: true
+            }
+          )
+        } else if (milestones.some(m => m.status === 'in_progress')) {
+          newSuggestions.push(
+            {
+              id: 'add-tasks',
+              type: 'follow_up',
+              priority: 'medium',
+              title: 'Add More Tasks',
+              description: 'Break down your current milestone into specific tasks for better tracking',
+              action: 'Add tasks',
+              dismissible: true
+            }
+          )
+        } else {
+          newSuggestions.push(
+            {
+              id: 'review-progress',
+              type: 'follow_up',
+              priority: 'low',
+              title: 'Review Project Progress',
+              description: 'Check your project status and plan next steps',
+              action: 'Review progress',
+              dismissible: true
+            }
+          )
+        }
+        
+        // Always add smart features suggestion
         newSuggestions.push(
-          {
-            id: 'get-started',
-            type: 'follow_up',
-            priority: 'medium',
-            title: 'Get Started with Progress Tracking',
-            description: 'Create milestones and tasks to start tracking your project progress',
-            action: 'Create milestone',
-            dismissible: true
-          },
           {
             id: 'smart-features',
             type: 'follow_up',
@@ -189,15 +231,6 @@ export function SmartSuggestionsSidebar({
             title: 'Try Smart Task Generation',
             description: 'Use AI to generate context-aware task suggestions for your milestones',
             action: 'Use Smart Tasks',
-            dismissible: true
-          },
-          {
-            id: 'progress-tips',
-            type: 'follow_up',
-            priority: 'low',
-            title: 'Progress Tracking Tips',
-            description: 'Break down work into smaller tasks for better progress visibility',
-            action: 'Learn more',
             dismissible: true
           }
         )

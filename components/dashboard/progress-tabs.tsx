@@ -298,7 +298,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           tasks: (milestone.tasks || []).map((task: any) => ({
           id: task.id,
           title: task.title,
-          status: task.status as 'pending' | 'in_progress' | 'completed',
+          status: task.status === 'pending' ? 'pending' : task.status as 'pending' | 'in_progress' | 'completed',
           progress_percentage: task.progress_percentage || 0,
           due_date: task.due_date,
           estimated_hours: task.estimated_hours || 0,
@@ -343,7 +343,27 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           sum + (m.tasks?.filter((t: any) => t.status === 'pending').length || 0), 0
         )
         const completedMilestones = transformedMilestones.filter(m => m.status === 'completed').length
-        const overallProgress = transformedMilestones.length > 0 ? Math.round((completedMilestones / transformedMilestones.length) * 100) : 0
+        const inProgressMilestones = transformedMilestones.filter(m => m.status === 'in_progress').length
+        
+        // Calculate progress more intelligently
+        let overallProgress = 0
+        if (transformedMilestones.length > 0) {
+          // Base progress on completed milestones
+          const completedProgress = (completedMilestones / transformedMilestones.length) * 100
+          
+          // Add partial progress for in-progress milestones based on their task completion
+          const inProgressProgress = inProgressMilestones > 0 ? 
+            transformedMilestones
+              .filter(m => m.status === 'in_progress')
+              .reduce((sum, m) => {
+                const milestoneTasks = m.tasks || []
+                const completedMilestoneTasks = milestoneTasks.filter((t: any) => t.status === 'completed').length
+                const milestoneProgress = milestoneTasks.length > 0 ? (completedMilestoneTasks / milestoneTasks.length) * 50 : 0 // Max 50% for in-progress
+                return sum + milestoneProgress
+              }, 0) / transformedMilestones.length : 0
+          
+          overallProgress = Math.round(completedProgress + inProgressProgress)
+        }
         const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
         
         setTotalTasks(totalTasks)
@@ -373,10 +393,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         const transformedFallback = fallbackData.map(milestone => ({
           ...milestone,
           id: milestone.id,
-        booking_id: bookingId,
+          booking_id: bookingId,
           title: milestone.title,
           description: milestone.description || '',
-          status: milestone.status as 'not_started' | 'in_progress' | 'completed',
+          status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
           progress: milestone.progress_percentage || 0,
           start_date: milestone.created_at,
           end_date: milestone.created_at,
@@ -397,7 +417,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           tasks: (milestone.tasks || []).map(task => ({
             id: task.id,
             title: task.title,
-            status: task.status as 'pending' | 'in_progress' | 'completed',
+            status: task.status === 'pending' ? 'pending' : task.status as 'pending' | 'in_progress' | 'completed',
             progress_percentage: task.progress_percentage || 0,
             due_date: task.created_at,
             estimated_hours: 0,
@@ -490,16 +510,44 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             {
               id: 'timeline-1',
               booking_id: bookingId,
-              title: 'Project Started',
-              description: 'Initial project setup and planning',
+              title: 'Project Setup & Planning Started',
+              description: 'Initial project setup, requirements gathering, and planning phase initiated',
               status: 'completed',
-              priority: 'medium',
+              priority: 'high',
               start_date: new Date().toISOString(),
-              end_date: new Date().toISOString(),
+              end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               progress_percentage: 100,
-              order_index: 0,
+              order_index: 1,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
+            },
+            {
+              id: 'timeline-2',
+              booking_id: bookingId,
+              title: 'Project Requirements Review Completed',
+              description: 'Successfully reviewed and documented project requirements',
+              status: 'completed',
+              priority: 'high',
+              start_date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+              end_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+              progress_percentage: 100,
+              order_index: 2,
+              created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+              updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+            },
+            {
+              id: 'timeline-3',
+              booking_id: bookingId,
+              title: 'Project Timeline Creation In Progress',
+              description: 'Currently developing detailed project timeline and milestones',
+              status: 'in_progress',
+              priority: 'medium',
+              start_date: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+              end_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+              progress_percentage: 60,
+              order_index: 3,
+              created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+              updated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString()
             }
           ]
           setTimelineItems(sampleTimeline)
@@ -534,16 +582,30 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           {
             id: 'timeline-1',
             booking_id: bookingId,
-            title: 'Project Started',
-            description: 'Initial project setup and planning',
+            title: 'Project Setup & Planning Started',
+            description: 'Initial project setup, requirements gathering, and planning phase initiated',
             status: 'completed',
-            priority: 'medium',
+            priority: 'high',
             start_date: new Date().toISOString(),
-            end_date: new Date().toISOString(),
+            end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 100,
-            order_index: 0,
+            order_index: 1,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
+          },
+          {
+            id: 'timeline-2',
+            booking_id: bookingId,
+            title: 'Project Requirements Review Completed',
+            description: 'Successfully reviewed and documented project requirements',
+            status: 'completed',
+            priority: 'high',
+            start_date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+            end_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            progress_percentage: 100,
+            order_index: 2,
+            created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
           }
         ]
         setTimelineItems(sampleTimeline)
