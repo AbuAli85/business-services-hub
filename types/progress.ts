@@ -49,13 +49,10 @@ export interface TimeEntry {
   task_id?: string;
   booking_id: string;
   user_id: string;
-  timestamp: string;
-  notes?: string;
-  duration?: number;
-  start_time: string;
-  end_time?: string;
+  duration_hours: number;
+  description?: string;
+  logged_at: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface Comment {
@@ -105,12 +102,9 @@ export interface TimelineItem {
 }
 
 export interface ProgressUpdate {
-  type: 'task' | 'milestone' | 'booking' | 'timeline';
-  taskId?: string;
-  milestoneId?: string;
-  bookingId?: string;
-  timelineId?: string;
-  data: Partial<Task | Milestone | BookingProgress | TimelineItem>;
+  milestoneId: string;
+  milestoneProgress: number;
+  overallProgress: number;
 }
 
 export interface ProgressStats {

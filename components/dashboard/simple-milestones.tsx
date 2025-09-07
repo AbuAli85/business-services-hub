@@ -54,69 +54,7 @@ export function SimpleMilestones({
   const [projectType, setProjectType] = useState<'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'>('one_time')
   const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<Milestone> | null>(null)
 
-  // Standard 4 phases - never more, never less
-  const standardPhases = [
-    {
-      id: '550e8400-e29b-41d4-a716-446655440001', // Planning & Setup UUID
-      title: 'Planning & Setup',
-      description: 'Initial planning, requirements gathering, and project setup',
-      booking_id: '',
-      status: 'not_started' as const,
-      start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      progress: 0,
-      tasks: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      order_index: 1,
-      color: '#3B82F6'
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440002', // Development UUID
-      title: 'Development',
-      description: 'Core development work and implementation',
-      booking_id: '',
-      status: 'not_started' as const,
-      start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      progress: 0,
-      tasks: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      order_index: 2,
-      color: '#10B981'
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440003', // Testing & Quality UUID
-      title: 'Testing & Quality',
-      description: 'Testing, quality assurance, and bug fixes',
-      booking_id: '',
-      status: 'not_started' as const,
-      start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
-      progress: 0,
-      tasks: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      order_index: 3,
-      color: '#F59E0B'
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440004', // Delivery & Launch UUID
-      title: 'Delivery & Launch',
-      description: 'Final delivery, deployment, and project launch',
-      booking_id: '',
-      status: 'not_started' as const,
-      start_date: new Date().toISOString(),
-      end_date: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
-      progress: 0,
-      tasks: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      order_index: 4,
-      color: '#8B5CF6'
-    }
-  ]
+  // No hardcoded phases - use real data from database
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -209,22 +147,10 @@ export function SimpleMilestones({
   }
 
   const handleMonthlyReset = () => {
-    if (projectType === 'monthly' && userRole === 'provider') {
-      // Reset all phases to not_started for next month
-      standardPhases.forEach(phase => {
-        onMilestoneUpdate(phase.id, {
-          status: 'pending',
-          start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          tasks: [],
-          estimated_hours: 0,
-          actual_hours: 0
-        })
-      })
-    }
+    // Project type change handled by parent component
   }
 
-  const handleStartEdit = (milestone: SimpleMilestone) => {
+  const handleStartEdit = (milestone: Milestone) => {
     setEditingMilestone(milestone.id)
     setEditingMilestoneData({
       title: milestone.title,
@@ -430,21 +356,7 @@ export function SimpleMilestones({
 
       {/* Milestones - Always exactly 4 phases */}
       <div className="space-y-4">
-        {standardPhases.map((phaseTemplate) => {
-          // Find existing milestone or create from template
-          const milestone = milestones.find(m => m.order_index === phaseTemplate.order_index) || {
-            ...phaseTemplate,
-            id: phaseTemplate.id,
-            start_date: new Date().toISOString(),
-            end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'not_started' as const,
-            tasks: [],
-            estimated_hours: 0,
-            actual_hours: 0,
-            clientComments: [],
-            isRecurring: projectType === 'monthly',
-            projectType: projectType
-          }
+        {milestones.map((milestone) => {
           const smartIndicator = getSmartIndicator(milestone)
           const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length
           const totalTasks = milestone.tasks.length

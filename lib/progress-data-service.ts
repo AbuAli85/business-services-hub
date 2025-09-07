@@ -173,10 +173,9 @@ export class ProgressDataService {
           milestone_id: task.milestone_id,
           task_id: taskId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
-          duration: duration,
-          notes: description,
-          start_time: new Date(Date.now() - duration * 3600000).toISOString(),
-          timestamp: new Date().toISOString()
+          duration_hours: duration,
+          description: description,
+          logged_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -200,12 +199,12 @@ export class ProgressDataService {
       // Get total hours for this task
       const { data: timeEntries, error: timeError } = await supabase
         .from('time_entries')
-        .select('duration')
+        .select('duration_hours')
         .eq('task_id', taskId);
 
       if (timeError) throw timeError;
 
-      const totalHours = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
+      const totalHours = timeEntries?.reduce((sum, entry) => sum + (entry.duration_hours || 0), 0) || 0;
 
       // Update task
       const { error: updateError } = await supabase
@@ -226,5 +225,231 @@ export class ProgressDataService {
   static async refreshProgressData(bookingId: string): Promise<ProgressData> {
     // Force refresh by adding a timestamp to bypass cache
     return this.getProgressData(bookingId);
+  }
+
+  // Milestone management methods
+  static async createMilestone(
+    bookingId: string,
+    milestone: Omit<Milestone, 'id' | 'created_at' | 'updated_at' | 'tasks'>
+  ): Promise<Milestone> {
+    try {
+      const supabase = await getSupabaseClient();
+      
+      // Get the next order index
+      const { data: existingMilestones } = await supabase
+        .from('milestones')
+        .select('order_index')
+        .eq('booking_id', bookingId)
+        .order('order_index', { ascending: false })
+        .limit(1);
+
+      const nextOrderIndex = existingMilestones?.[0]?.order_index + 1 || 0;
+
+      const { data, error } = await supabase
+        .from('milestones')
+        .insert({
+          booking_id: bookingId,
+          title: milestone.title,
+          description: milestone.description || '',
+          status: milestone.status || 'not_started',
+          start_date: milestone.start_date,
+          end_date: milestone.end_date,
+          progress: milestone.progress || 0,
+          estimated_hours: milestone.estimated_hours || 0,
+          actual_hours: 0,
+          order_index: nextOrderIndex
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { ...data, tasks: [] };
+    } catch (error) {
+      console.error('Error creating milestone:', error);
+      throw error;
+    }
+  }
+
+  static async updateMilestone(
+    milestoneId: string,
+    updates: Partial<Milestone>
+  ): Promise<void> {
+    try {
+      const supabase = await getSupabaseClient();
+      const { error } = await supabase
+        .from('milestones')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', milestoneId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating milestone:', error);
+      throw error;
+    }
+  }
+
+  static async deleteMilestone(milestoneId: string): Promise<void> {
+    try {
+      const supabase = await getSupabaseClient();
+      const { error } = await supabase
+        .from('milestones')
+        .delete()
+        .eq('id', milestoneId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting milestone:', error);
+      throw error;
+    }
+  }
+
+  // Comment management methods
+  static async addComment(
+    milestoneId: string,
+    content: string,
+    isInternal: boolean = false
+  ): Promise<Comment> {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('milestone_comments')
+        .insert({
+          milestone_id: milestoneId,
+          content,
+          author_id: user.id,
+          is_internal: isInternal
+        })
+        .select(`
+          *,
+          author:profiles!milestone_comments_author_id_fkey(full_name, role)
+        `)
+        .single();
+
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        milestone_id: data.milestone_id,
+        content: data.content,
+        author: data.author?.full_name || 'Unknown',
+        author_role: data.author?.role || 'client',
+        created_at: data.created_at
+      } as unknown as Comment;
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      throw error;
+    }
+  }
+
+  static async getComments(milestoneId: string): Promise<Comment[]> {
+    try {
+      const supabase = await getSupabaseClient();
+      const { data, error } = await supabase
+        .from('milestone_comments')
+        .select(`
+          *,
+          author:profiles!milestone_comments_author_id_fkey(full_name, role)
+        `)
+        .eq('milestone_id', milestoneId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      
+      return data.map(comment => ({
+        id: comment.id,
+        milestone_id: comment.milestone_id,
+        content: comment.content,
+        author: comment.author?.full_name || 'Unknown',
+        author_role: comment.author?.role || 'client',
+        created_at: comment.created_at
+      })) as unknown as Comment[];
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      throw error;
+    }
+  }
+
+  // Real-time subscription methods
+  static async subscribeToProgressUpdates(
+    bookingId: string,
+    onUpdate: (data: ProgressData) => void
+  ) {
+    const supabase = await getSupabaseClient();
+    
+    // Subscribe to milestones changes
+    const milestonesSubscription = supabase
+      .channel('milestones-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'milestones',
+          filter: `booking_id=eq.${bookingId}`
+        },
+        async () => {
+          const data = await this.getProgressData(bookingId);
+          onUpdate(data);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to tasks changes
+    const tasksSubscription = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks'
+        },
+        async (payload: any) => {
+          // Check if the task belongs to this booking
+          const { data: task } = await supabase
+            .from('tasks')
+            .select('milestone_id, milestones!inner(booking_id)')
+            .eq('id', payload.new?.id || payload.old?.id)
+            .single();
+
+          if (task && (task as any).milestones?.booking_id === bookingId) {
+            const data = await this.getProgressData(bookingId);
+            onUpdate(data);
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to time entries changes
+    const timeEntriesSubscription = supabase
+      .channel('time-entries-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_entries',
+          filter: `booking_id=eq.${bookingId}`
+        },
+        async () => {
+          const data = await this.getProgressData(bookingId);
+          onUpdate(data);
+        }
+      )
+      .subscribe();
+
+    // Return cleanup function
+    return () => {
+      supabase.removeChannel(milestonesSubscription);
+      supabase.removeChannel(tasksSubscription);
+      supabase.removeChannel(timeEntriesSubscription);
+    };
   }
 }
