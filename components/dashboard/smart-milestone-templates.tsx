@@ -565,16 +565,7 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
   }
 
   return (
-    <>
-      <style jsx>{`
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
-      <div className="bg-white w-full h-full overflow-hidden flex flex-col">
+    <div className="bg-white w-full h-full overflow-hidden flex flex-col">
       <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

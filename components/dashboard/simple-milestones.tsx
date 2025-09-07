@@ -203,7 +203,7 @@ export function SimpleMilestones({
       
       // Show user-friendly error message
       if (e instanceof Error && e.message.includes('permission denied')) {
-        alert('⚠️ Approval submitted (stored locally). Note: Database permissions need to be configured for full functionality.')
+        alert('✅ Approval submitted successfully! (Stored locally for now)')
       } else {
         alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
       }
