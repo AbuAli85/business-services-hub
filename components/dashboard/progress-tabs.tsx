@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import './progress-styles.css'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle } from 'lucide-react'
-import { Milestone, Task, BookingProgress } from '@/types/progress'
+import { Milestone, Task, BookingProgress, Comment } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
 // Removed legacy client-progress-view
 import { TimeTrackingWidget } from './time-tracking-widget'
@@ -21,6 +21,8 @@ import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { AnalyticsView } from './analytics-view'
 import { BulkOperationsView } from './bulk-operations-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
+import { TimelineService, TimelineItem } from '@/lib/timeline-service'
+import { ProgressDataService } from '@/lib/progress-data-service'
 
 interface ProgressTabsProps {
   bookingId: string
@@ -36,6 +38,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [schemaAvailable, setSchemaAvailable] = useState<boolean | null>(null)
+  const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([])
+  const [commentsByMilestone, setCommentsByMilestone] = useState<Record<string, Comment[]>>({})
 
   const { 
     isUpdating, 
@@ -227,6 +231,18 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
+
+      // Timeline and comments
+      try {
+        const [timeline, comments] = await Promise.all([
+          TimelineService.getTimeline(bookingId),
+          ProgressDataService.getAllCommentsForBooking(bookingId)
+        ])
+        setTimelineItems(timeline)
+        setCommentsByMilestone(comments)
+      } catch (e) {
+        // Soft-fail timeline/comments if tables unavailable or RLS blocks
+      }
     } catch (error) {
       console.error('Error loading progress data:', error)
       setError(error instanceof Error ? error.message : 'Failed to load progress data')
@@ -456,8 +472,56 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           )}
 
           {activeTab === 'timeline' && (
-            <div className="p-6 text-center text-gray-600">
-              Timeline view coming soon...
+            <div className="space-y-6">
+              {/* Timeline Items */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
+                {timelineItems.length === 0 ? (
+                  <div className="p-6 text-center text-gray-600">No timeline items yet.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {timelineItems.map(item => (
+                      <div key={item.id} className="rounded-lg border p-4 bg-white">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium text-gray-900">{item.title}</div>
+                          <div className="text-xs text-gray-500">{new Date(item.start_date).toLocaleDateString()} → {new Date(item.end_date).toLocaleDateString()}</div>
+                        </div>
+                        {item.description && (
+                          <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                        )}
+                        <div className="mt-2 text-xs text-gray-500">Status: {item.status} · Priority: {item.priority}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Comments grouped by milestone */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Comments</h3>
+                {Object.keys(commentsByMilestone).length === 0 ? (
+                  <div className="p-6 text-center text-gray-600">No comments yet.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(commentsByMilestone).map(([milestoneId, list]) => (
+                      <div key={milestoneId} className="rounded-lg border bg-white">
+                        <div className="px-4 py-2 border-b text-sm font-medium text-gray-900">Milestone {milestoneId.slice(0, 8)}…</div>
+                        <div className="p-4 space-y-3">
+                          {list.map(c => (
+                            <div key={c.id} className="text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-gray-800">{c.author_name || 'User'}</span>
+                                <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString()}</span>
+                              </div>
+                              <p className="text-gray-700 mt-1">{c.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
