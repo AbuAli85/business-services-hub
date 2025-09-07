@@ -194,7 +194,13 @@ interface CommunicationChannel {
   preferred?: boolean
 }
 
-export default function EnhancedBookingDetails({ showProgressCard = true }: { showProgressCard?: boolean }) {
+export default function EnhancedBookingDetails({ 
+  showProgressCard = true, 
+  userRole = 'provider' 
+}: { 
+  showProgressCard?: boolean
+  userRole?: 'provider' | 'client'
+}) {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1509,17 +1515,17 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
     )
   }
 
-  const isClient = user?.id === booking.client.id
-  const isProvider = user?.id === booking.provider.id
+  const isClient = userRole === 'client'
+  const isProvider = userRole === 'provider'
   const canEdit = isProvider && booking.status !== 'completed'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         
         {/* Enhanced Professional Header */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+        <div className="mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
             <div className="flex items-center space-x-4 mb-4 lg:mb-0">
               <Button 
                 variant="outline" 
@@ -1532,7 +1538,7 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
               <div>
                 <div className="flex items-center space-x-3 mb-2">
                   <h1 className="text-3xl font-bold text-gray-900">
-                    Booking #{booking.id.slice(0, 8)}
+                    {isProvider ? 'Project Management' : 'My Booking'} #{booking.id.slice(0, 8)}
                   </h1>
                   <Badge className={`px-3 py-1 border ${getStatusColor(booking.status)}`}>
                     <div className="flex items-center space-x-1">
@@ -1571,7 +1577,7 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                   )}
                 </div>
                 <p className="text-gray-600">
-                  Created {formatDate(booking.created_at)} • Last updated {formatDistanceToNow(parseISO(booking.updated_at))} ago
+                  {isProvider ? 'Client Project' : 'Your Project'} • Created {formatDate(booking.created_at)} • Last updated {formatDistanceToNow(parseISO(booking.updated_at))} ago
                 </p>
               </div>
             </div>
@@ -1586,16 +1592,16 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                 </Badge>
               )}
               
-              <Button
-                variant="outline"
-                onClick={() => canEdit && setShowQuickActions(!showQuickActions)}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                disabled={!canEdit}
-                title={!canEdit ? 'Only providers can perform quick actions' : undefined}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Quick Actions
-              </Button>
+              {isProvider && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowQuickActions(!showQuickActions)}
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Manage Project
+                </Button>
+              )}
               
               <Button 
                 onClick={() => setShowMessageModal(!showMessageModal)}
@@ -1717,10 +1723,10 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
         </div>
 
         {/* Main Content Layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
           
           {/* Left Sidebar - Key Information */}
-          <div className="xl:col-span-1 space-y-6">
+          <div className="xl:col-span-1 space-y-4">
             
             {/* Service Information */}
             <Card className="border-0 shadow-lg">
@@ -1785,16 +1791,6 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                       )}
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={handleEmailClient}>
-                      <Mail className="h-3 w-3 mr-1" />
-                      Email
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={handleCallClient}>
-                      <Phone className="h-3 w-3 mr-1" />
-                      Call
-                    </Button>
-                  </div>
                 </div>
 
                 <Separator />
@@ -1829,26 +1825,6 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                         </div>
                       )}
                     </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={handleEmailProvider}>
-                      <Mail className="h-3 w-3 mr-1" />
-                      Email
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={handleCallProvider}>
-                      <Phone className="h-3 w-3 mr-1" />
-                      Call
-                    </Button>
-                  </div>
-                  <div className="flex space-x-2 mt-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setShowMessageModal(true)}>
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      Message
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={handleVideoCall}>
-                      <Video className="h-3 w-3 mr-1" />
-                      Video
-                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -1900,7 +1876,7 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
 
           {/* Main Content Area */}
           <div className="xl:col-span-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview" className="text-sm">
                   <Eye className="h-4 w-4 mr-2" />
@@ -2039,56 +2015,104 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                   <Card className="border-0 shadow-lg">
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
-                        <Zap className="h-5 w-5 text-purple-600" />
-                        <span>Quick Actions</span>
+                        {isProvider ? (
+                          <>
+                            <Zap className="h-5 w-5 text-purple-600" />
+                            <span>Project Management</span>
+                          </>
+                        ) : (
+                          <>
+                            <User className="h-5 w-5 text-blue-600" />
+                            <span>My Project</span>
+                          </>
+                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Status Update - Only for approved bookings */}
-                      {booking.status !== 'pending' && (
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">Update Status</label>
-                        <Select defaultValue={booking.status} onValueChange={handleStatusUpdate} disabled={!canEdit}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="on_hold">On Hold</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      )}
-
-                      {/* Pending Booking Actions */}
-                      {booking.status === 'pending' && isProvider && (
-                        <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                          <label className="text-sm font-medium text-yellow-800 mb-2 block">Approval Required</label>
-                          <div className="space-y-2">
-                            <Button 
-                              size="sm" 
-                              className="w-full bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() => handleApprovalAction('approve')}
-                              disabled={isUpdating}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Approve Booking
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              className="w-full"
-                              onClick={() => handleApprovalAction('decline')}
-                              disabled={isUpdating}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Decline Booking
-                            </Button>
+                      {/* Status Update - Role-specific */}
+                      {isProvider ? (
+                        /* Provider: Can update status */
+                        booking.status !== 'pending' && (
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">Update Project Status</label>
+                          <Select defaultValue={booking.status} onValueChange={handleStatusUpdate}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="on_hold">On Hold</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        )
+                      ) : (
+                        /* Client: Can only view status */
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <label className="text-sm font-medium text-blue-700 mb-2 block">Project Status</label>
+                          <div className="flex items-center space-x-2">
+                            <Badge className={`px-3 py-1 ${
+                              booking.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              booking.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              booking.status === 'completed' ? 'bg-purple-100 text-purple-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {booking.status.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                            <span className="text-sm text-gray-600">
+                              {booking.status === 'pending' ? 'Waiting for provider approval' :
+                               booking.status === 'approved' ? 'Project approved, ready to start' :
+                               booking.status === 'in_progress' ? 'Work in progress' :
+                               booking.status === 'completed' ? 'Project completed' :
+                               'Project status unknown'}
+                            </span>
                           </div>
                         </div>
+                      )}
+
+                      {/* Pending Booking Actions - Role-specific */}
+                      {booking.status === 'pending' && (
+                        isProvider ? (
+                          <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <label className="text-sm font-medium text-yellow-800 mb-2 block">Client Request Pending</label>
+                            <div className="space-y-2">
+                              <Button 
+                                size="sm" 
+                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleApprovalAction('approve')}
+                                disabled={isUpdating}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Accept Project
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                className="w-full"
+                                onClick={() => handleApprovalAction('decline')}
+                                disabled={isUpdating}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Decline Project
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <label className="text-sm font-medium text-blue-800 mb-2 block">Waiting for Provider</label>
+                            <p className="text-sm text-blue-700 mb-3">
+                              Your project request is pending approval from the service provider. 
+                              You'll be notified once they respond.
+                            </p>
+                            <div className="flex items-center space-x-2 text-sm text-blue-600">
+                              <Clock className="h-4 w-4" />
+                              <span>Response expected within 24 hours</span>
+                            </div>
+                          </div>
+                        )
                       )}
 
                       {/* Communication Actions */}
@@ -2097,19 +2121,15 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                           variant="outline" 
                           size="sm" 
                           className="border-green-200 text-green-700 hover:bg-green-50" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can call from dashboard' : undefined}
-                          onClick={handleCallProvider}
+                          onClick={isProvider ? handleCallClient : handleCallProvider}
                         >
                           <Phone className="h-4 w-4 mr-2" />
-                          Call
+                          {isProvider ? 'Call Client' : 'Call Provider'}
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           className="border-blue-200 text-blue-700 hover:bg-blue-50" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can start video from dashboard' : undefined}
                           onClick={handleVideoCall}
                         >
                           <Video className="h-4 w-4 mr-2" />
@@ -2194,7 +2214,7 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
 
               {/* Progress Tab */}
               <TabsContent value="progress" className="space-y-6">
-                <ProgressTabs bookingId={bookingId} userRole={isProvider ? 'provider' : 'client'} showHeader={false} combinedView={true} />
+                <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
               </TabsContent>
 
 
