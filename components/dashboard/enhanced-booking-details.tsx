@@ -1521,7 +1521,7 @@ export default function EnhancedBookingDetails({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"></div>
         
         {/* Enhanced Professional Header */}
         <div className="mb-4">
@@ -1872,6 +1872,134 @@ export default function EnhancedBookingDetails({
               </Card>
             )}
 
+            {/* My Project Card - Role-specific */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  {isProvider ? (
+                    <>
+                      <Zap className="h-5 w-5 text-purple-600" />
+                      <span>Project Management</span>
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-5 w-5 text-blue-600" />
+                      <span>My Project</span>
+                    </>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Status Update - Role-specific */}
+                {isProvider ? (
+                  /* Provider: Can update status */
+                  booking.status !== 'pending' && (
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Update Project Status</label>
+                    <Select defaultValue={booking.status} onValueChange={handleStatusUpdate}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="on_hold">On Hold</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  )
+                ) : (
+                  /* Client: Can only view status */
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <label className="text-sm font-medium text-blue-700 mb-2 block">Project Status</label>
+                    <div className="flex items-center space-x-2">
+                      <Badge className={`px-3 py-1 ${
+                        booking.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        booking.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                        booking.status === 'completed' ? 'bg-purple-100 text-purple-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {booking.status.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        {booking.status === 'pending' ? 'Waiting for provider approval' :
+                         booking.status === 'approved' ? 'Project approved, ready to start' :
+                         booking.status === 'in_progress' ? 'Work in progress' :
+                         booking.status === 'completed' ? 'Project completed' :
+                         'Project status unknown'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending Booking Actions - Role-specific */}
+                {booking.status === 'pending' && (
+                  isProvider ? (
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <label className="text-sm font-medium text-yellow-800 mb-2 block">Client Request Pending</label>
+                      <div className="space-y-2">
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleApprovalAction('approve')}
+                          disabled={isUpdating}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Accept Project
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => handleApprovalAction('decline')}
+                          disabled={isUpdating}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Decline Project
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <label className="text-sm font-medium text-blue-800 mb-2 block">Waiting for Provider</label>
+                      <p className="text-sm text-blue-700 mb-3">
+                        Your project request is pending approval from the service provider. 
+                        You'll be notified once they respond.
+                      </p>
+                      <div className="flex items-center space-x-2 text-sm text-blue-600">
+                        <Clock className="h-4 w-4" />
+                        <span>Response expected within 24 hours</span>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* Communication Actions - Role-specific */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setShowMessageModal(true)}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    {isProvider ? 'Contact Client' : 'Contact Provider'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setShowScheduleModal(true)}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    {isProvider ? 'Schedule Meeting' : 'Request Meeting'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
 
           {/* Main Content Area */}
@@ -1962,11 +2090,6 @@ export default function EnhancedBookingDetails({
                   </Card>
                 </div>
 
-                {/* Booking Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  
-                  {/* Project Information */}
-                  <Card className="border-0 shadow-lg">
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         <Package className="h-5 w-5 text-blue-600" />
@@ -2012,7 +2135,7 @@ export default function EnhancedBookingDetails({
                   </Card>
 
                   {/* Quick Actions */}
-                  <Card className="border-0 shadow-lg">
+                  <Card className="border-0 shadow-lg lg:col-span-1">
                     <CardHeader>
                       <CardTitle className="flex items-center space-x-2">
                         {isProvider ? (
