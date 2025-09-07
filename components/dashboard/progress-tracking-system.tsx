@@ -28,6 +28,7 @@ import { SimpleMilestones } from './simple-milestones'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
 import { toast } from 'sonner'
 import { QuickMilestoneCreator } from './quick-milestone-creator'
+import { FallbackMilestoneCreator } from './fallback-milestone-creator'
 
 interface ProgressTrackingSystemProps {
   bookingId: string
@@ -58,6 +59,7 @@ export function ProgressTrackingSystem({
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [showMilestoneCreator, setShowMilestoneCreator] = useState(false)
+  const [useFallbackMode, setUseFallbackMode] = useState(false)
 
   const { 
     isUpdating, 
@@ -501,14 +503,25 @@ export function ProgressTrackingSystem({
       {showMilestoneCreator && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <QuickMilestoneCreator
-              bookingId={bookingId}
-              onMilestoneCreated={() => {
-                setShowMilestoneCreator(false)
-                loadData()
-              }}
-              onCancel={() => setShowMilestoneCreator(false)}
-            />
+            {useFallbackMode ? (
+              <FallbackMilestoneCreator
+                bookingId={bookingId}
+                onMilestoneCreated={() => {
+                  setShowMilestoneCreator(false)
+                  loadData()
+                }}
+                onCancel={() => setShowMilestoneCreator(false)}
+              />
+            ) : (
+              <QuickMilestoneCreator
+                bookingId={bookingId}
+                onMilestoneCreated={() => {
+                  setShowMilestoneCreator(false)
+                  loadData()
+                }}
+                onCancel={() => setShowMilestoneCreator(false)}
+              />
+            )}
           </div>
         </div>
       )}

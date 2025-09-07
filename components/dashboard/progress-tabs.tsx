@@ -25,6 +25,7 @@ import { useProgressUpdates } from '@/hooks/use-progress-updates'
 import { TimelineService, TimelineItem } from '@/lib/timeline-service'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { QuickMilestoneCreator } from './quick-milestone-creator'
+import { FallbackMilestoneCreator, getFallbackMilestones } from './fallback-milestone-creator'
 import { SmartProgressIndicator } from './smart-progress-indicator'
 import { ProgressNotifications } from './progress-notifications'
 import { Button } from '@/components/ui/button'
@@ -49,6 +50,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([])
   const [commentsByMilestone, setCommentsByMilestone] = useState<Record<string, Comment[]>>({})
   const [showMilestoneCreator, setShowMilestoneCreator] = useState(false)
+  const [useFallbackMode, setUseFallbackMode] = useState(false)
+  const [fallbackMilestones, setFallbackMilestones] = useState<any[]>([])
 
   const { 
     isUpdating, 
@@ -107,43 +110,175 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const loadData = async () => {
     try {
       setLoading(true)
-      // Load data directly from Supabase using milestones table
+      
+      // First try to load from database
+      try {
+        const { getSupabaseClient } = await import('@/lib/supabase')
+        const supabase = await getSupabaseClient()
+        
+        // Load milestones with tasks
+        const { data: milestonesData, error: milestonesError } = await supabase
+          .from('milestones')
+          .select(`
+            id,
+            title,
+            description,
+            progress_percentage,
+            status,
+            due_date,
+            weight,
+            order_index,
+            editable,
+            tasks (
+              id,
+              title,
+              status,
+              progress_percentage,
+              due_date,
+              editable,
+              estimated_hours,
+              actual_hours,
+              priority
+            )
+          `)
+          .eq('booking_id', bookingId)
+          .order('order_index', { ascending: true })
+        
+        if (milestonesError) {
+          throw new Error(milestonesError.message)
+        }
+        
+        // Transform milestones data
+        const transformedMilestones = milestonesData.map((milestone: any) => ({
+          ...milestone,
+          id: milestone.id,
+          booking_id: bookingId,
+          title: milestone.title,
+          description: milestone.description || '',
+          status: milestone.status as 'not_started' | 'in_progress' | 'completed',
+          progress: milestone.progress_percentage || 0,
+          start_date: milestone.created_at,
+          end_date: milestone.due_date || milestone.created_at,
+          priority: 'medium' as 'medium',
+          created_at: milestone.created_at,
+          updated_at: milestone.updated_at,
+          is_overdue: false,
+          estimated_hours: 0,
+          actual_hours: 0,
+          tags: [],
+          notes: '',
+          assigned_to: undefined,
+          created_by: undefined,
+          completed_at: undefined,
+          overdue_since: undefined,
+          order_index: milestone.order_index || 0,
+          editable: milestone.editable !== false,
+          tasks: (milestone.tasks || []).map((task: any) => ({
+            id: task.id,
+            title: task.title,
+            status: task.status as 'pending' | 'in_progress' | 'completed',
+            progress_percentage: task.progress_percentage || 0,
+            due_date: task.due_date,
+            estimated_hours: task.estimated_hours || 0,
+            actual_hours: task.actual_hours || 0,
+            priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
+            milestone_id: milestone.id,
+            description: task.description || '',
+            tags: [],
+            steps: [],
+            completed_at: undefined,
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            created_by: undefined,
+            assigned_to: undefined,
+            is_overdue: false,
+            overdue_since: undefined,
+            approval_status: 'pending' as 'pending',
+            approved_by: undefined,
+            approved_at: undefined,
+            approval_notes: undefined,
+            comments: [],
+            time_entries: [],
+            order_index: task.order_index || 0
+          }))
+        }))
+        
+        // If we get here, database is working
+        setUseFallbackMode(false)
+        setMilestones(transformedMilestones)
+        return
+      } catch (dbError) {
+        console.warn('Database not available, using fallback mode:', dbError)
+        setUseFallbackMode(true)
+        
+        // Load from localStorage fallback
+        const fallbackData = getFallbackMilestones(bookingId)
+        setFallbackMilestones(fallbackData)
+        
+        // Transform fallback data to match expected format
+        const transformedFallback = fallbackData.map(milestone => ({
+          ...milestone,
+          id: milestone.id,
+          booking_id: bookingId,
+          title: milestone.title,
+          description: milestone.description || '',
+          status: milestone.status as 'not_started' | 'in_progress' | 'completed',
+          progress: milestone.progress_percentage || 0,
+          start_date: milestone.created_at,
+          end_date: milestone.created_at,
+          priority: 'medium' as 'medium',
+          created_at: milestone.created_at,
+          updated_at: milestone.created_at,
+          is_overdue: false,
+          estimated_hours: 0,
+          actual_hours: 0,
+          tags: [],
+          notes: '',
+          assigned_to: undefined,
+          created_by: undefined,
+          completed_at: undefined,
+          overdue_since: undefined,
+          order_index: 0,
+          editable: true,
+          tasks: (milestone.tasks || []).map(task => ({
+            id: task.id,
+            title: task.title,
+            status: task.status as 'pending' | 'in_progress' | 'completed',
+            progress_percentage: task.progress_percentage || 0,
+            due_date: task.created_at,
+            estimated_hours: 0,
+            actual_hours: 0,
+            priority: 'medium' as 'medium',
+            milestone_id: milestone.id,
+            description: task.description || '',
+            tags: [],
+            steps: [],
+            completed_at: undefined,
+            created_at: task.created_at,
+            updated_at: task.created_at,
+            created_by: undefined,
+            assigned_to: undefined,
+            is_overdue: false,
+            overdue_since: undefined,
+            approval_status: 'pending' as 'pending',
+            approved_by: undefined,
+            approved_at: undefined,
+            approval_notes: undefined,
+            comments: [],
+            time_entries: [],
+            order_index: 0
+          }))
+        }))
+        
+        setMilestones(transformedFallback)
+        return
+      }
+      
+      // This code should not be reached if we're in fallback mode
+      // Load booking data for overall progress
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
       
-      // Load milestones with tasks
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select(`
-          id,
-          title,
-          description,
-          progress_percentage,
-          status,
-          due_date,
-          weight,
-          order_index,
-          editable,
-          tasks (
-            id,
-            title,
-            status,
-            progress_percentage,
-            due_date,
-            editable,
-            estimated_hours,
-            actual_hours,
-            priority
-          )
-        `)
-        .eq('booking_id', bookingId)
-        .order('order_index', { ascending: true })
-      
-      if (milestonesError) {
-        throw new Error(milestonesError.message)
-      }
-      
-      // Load booking data for overall progress
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
         .select('id, title, project_progress, status')
@@ -153,94 +288,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       if (bookingError) {
         console.warn('Error loading booking data:', bookingError)
       }
-      
-      // Transform milestones data to match the expected interface
-      const transformedMilestones = (milestonesData || []).map(milestone => ({
-        ...milestone,
-        id: milestone.id,
-        booking_id: bookingId,
-        title: milestone.title,
-        description: milestone.description || '',
-        status: milestone.status as 'not_started' | 'in_progress' | 'completed',
-        progress: milestone.progress_percentage || 0,
-        start_date: milestone.due_date ? new Date(milestone.due_date).toISOString() : new Date().toISOString(),
-        end_date: milestone.due_date || new Date().toISOString(),
-        priority: 'medium' as 'medium',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_overdue: milestone.due_date ? new Date(milestone.due_date) < new Date() : false,
-        estimated_hours: 0,
-        actual_hours: 0,
-        tags: [],
-        notes: '',
-        assigned_to: undefined,
-        created_by: undefined,
-        completed_at: undefined,
-        overdue_since: undefined,
-        order_index: milestone.order_index || 0,
-        editable: milestone.editable !== undefined ? milestone.editable : true,
-        tasks: (milestone.tasks || []).map(task => ({
-          id: task.id,
-          title: task.title,
-          status: task.status as 'pending' | 'in_progress' | 'completed',
-          progress_percentage: task.progress_percentage || 0,
-          due_date: task.due_date,
-          estimated_hours: task.estimated_hours || 0,
-          actual_hours: task.actual_hours || 0,
-          priority: task.priority || 'medium',
-          milestone_id: milestone.id,
-          description: '',
-          tags: [],
-          steps: [],
-          completed_at: undefined,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          created_by: undefined,
-          assigned_to: undefined,
-          is_overdue: task.due_date ? new Date(task.due_date) < new Date() : false,
-          overdue_since: undefined,
-          approval_status: 'pending' as 'pending',
-          approved_by: undefined,
-          approved_at: undefined,
-          approval_notes: undefined,
-          comments: [],
-          time_entries: [],
-          order_index: 0
-        }))
-      }))
-      
-      setMilestones(transformedMilestones)
-      
-      // Calculate overall progress from milestones
-      const totalProgress = bookingData?.project_progress || 0
-      const completedMilestones = milestonesData?.filter(m => m.status === 'completed').length || 0
-      const totalTasks = milestonesData?.reduce((sum, m) => sum + (m.tasks?.length || 0), 0) || 0
-      const completedTasks = milestonesData?.reduce((sum, m) => 
-        sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0) || 0
-      
-      // Calculate hours
-      const totalEstimatedHours = milestonesData?.reduce((sum, m) => 
-        sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0) || 0
-      const totalActualHours = milestonesData?.reduce((sum, m) => 
-        sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0) || 0
-      
-      setBookingProgress({
-        id: bookingId,
-        booking_id: bookingId,
-        booking_title: bookingData?.title || 'Project Progress',
-        booking_status: bookingData?.status || 'in_progress',
-        booking_progress: totalProgress,
-        completed_milestones: completedMilestones,
-        total_milestones: milestonesData?.length || 0,
-        completed_tasks: completedTasks,
-        total_tasks: totalTasks,
-        total_estimated_hours: 0,
-        total_actual_hours: 0,
-        overdue_tasks: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      setBookingType('recurring') // Default to recurring since type column was removed
 
       // Timeline and comments
       try {
@@ -369,6 +416,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               <p className="text-xs text-gray-500">
                 Milestones help break down the project into manageable phases
               </p>
+              {useFallbackMode && (
+                <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                  ⚠️ Using offline mode - data will be stored locally
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -701,14 +753,25 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       {showMilestoneCreator && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <QuickMilestoneCreator
-              bookingId={bookingId}
-              onMilestoneCreated={() => {
-                setShowMilestoneCreator(false)
-                loadData()
-              }}
-              onCancel={() => setShowMilestoneCreator(false)}
-            />
+            {useFallbackMode ? (
+              <FallbackMilestoneCreator
+                bookingId={bookingId}
+                onMilestoneCreated={() => {
+                  setShowMilestoneCreator(false)
+                  loadData()
+                }}
+                onCancel={() => setShowMilestoneCreator(false)}
+              />
+            ) : (
+              <QuickMilestoneCreator
+                bookingId={bookingId}
+                onMilestoneCreated={() => {
+                  setShowMilestoneCreator(false)
+                  loadData()
+                }}
+                onCancel={() => setShowMilestoneCreator(false)}
+              />
+            )}
           </div>
         </div>
       )}

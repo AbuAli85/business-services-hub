@@ -36,6 +36,18 @@ export function QuickMilestoneCreator({
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
       
+      // Check authentication first
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('Authentication error:', authError)
+        toast.error('Please sign in to create milestones')
+        return
+      }
+
+      console.log('Creating milestone for booking:', bookingId)
+      console.log('User authenticated:', user.id)
+
+      // Try to create milestone with proper error handling
       const { data: newMilestone, error } = await supabase
         .from('milestones')
         .insert({
@@ -44,22 +56,34 @@ export function QuickMilestoneCreator({
           description: description.trim() || null,
           status: 'pending',
           progress_percentage: 0,
-          order_index: 0
+          order_index: 0,
+          created_by: user.id
         })
         .select()
         .single()
       
       if (error) {
         console.error('Error creating milestone:', error)
-        toast.error('Failed to create milestone: ' + error.message)
+        
+        // Handle specific error cases
+        if (error.code === '42501') {
+          toast.error('Permission denied. Please check your account permissions.')
+        } else if (error.code === '23503') {
+          toast.error('Invalid booking ID. Please refresh the page and try again.')
+        } else if (error.code === '23505') {
+          toast.error('A milestone with this title already exists for this booking.')
+        } else {
+          toast.error('Failed to create milestone: ' + error.message)
+        }
         return
       }
 
+      console.log('Milestone created successfully:', newMilestone)
       toast.success('Milestone created successfully!')
       onMilestoneCreated()
     } catch (error) {
-      console.error('Error:', error)
-      toast.error('Failed to create milestone')
+      console.error('Unexpected error:', error)
+      toast.error('An unexpected error occurred. Please try again.')
     } finally {
       setIsCreating(false)
     }
@@ -70,6 +94,20 @@ export function QuickMilestoneCreator({
       setIsCreating(true)
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
+      
+      // Check authentication first
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('Authentication error:', authError)
+        toast.error('Please sign in to apply templates')
+        return
+      }
+
+      console.log('Applying template:', template.name)
+      console.log('User authenticated:', user.id)
+
+      let createdMilestones = 0
+      let createdTasks = 0
       
       // Create milestones from template
       for (let i = 0; i < template.milestones.length; i++) {
@@ -83,21 +121,28 @@ export function QuickMilestoneCreator({
             description: milestone.description,
             status: 'pending',
             progress_percentage: 0,
-            order_index: i
+            order_index: i,
+            created_by: user.id
           })
           .select()
           .single()
         
         if (milestoneError) {
           console.error('Error creating milestone:', milestoneError)
+          if (milestoneError.code === '42501') {
+            toast.error('Permission denied. Please check your account permissions.')
+            return
+          }
           continue
         }
+
+        createdMilestones++
 
         // Create tasks for this milestone
         for (let j = 0; j < milestone.tasks.length; j++) {
           const task = milestone.tasks[j]
           
-          await supabase
+          const { error: taskError } = await supabase
             .from('tasks')
             .insert({
               milestone_id: newMilestone.id,
@@ -105,16 +150,28 @@ export function QuickMilestoneCreator({
               description: '',
               status: 'pending',
               progress_percentage: 0,
-              order_index: j
+              order_index: j,
+              created_by: user.id
             })
+          
+          if (taskError) {
+            console.error('Error creating task:', taskError)
+            continue
+          }
+          
+          createdTasks++
         }
       }
 
-      toast.success(`Template "${template.name}" applied successfully!`)
-      onMilestoneCreated()
+      if (createdMilestones > 0) {
+        toast.success(`Template applied! Created ${createdMilestones} milestones and ${createdTasks} tasks.`)
+        onMilestoneCreated()
+      } else {
+        toast.error('Failed to create any milestones. Please check your permissions.')
+      }
     } catch (error) {
-      console.error('Error applying template:', error)
-      toast.error('Failed to apply template')
+      console.error('Unexpected error applying template:', error)
+      toast.error('An unexpected error occurred while applying template.')
     } finally {
       setIsCreating(false)
     }
