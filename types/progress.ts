@@ -21,6 +21,9 @@ export interface Task {
   assigned_to?: string;
   order_index: number;
   is_overdue?: boolean;
+  // Phase 6 additions
+  weight?: number;
+  tags?: string[];
 }
 
 export interface Milestone {
@@ -41,6 +44,15 @@ export interface Milestone {
   weight?: number;
   order_index: number;
   is_overdue?: boolean;
+}
+
+export interface MilestoneApproval {
+  id: string;
+  milestone_id: string;
+  user_id: string;
+  status: 'approved' | 'rejected';
+  comment?: string;
+  created_at: string;
 }
 
 export interface TimeEntry {

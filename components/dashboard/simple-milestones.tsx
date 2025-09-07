@@ -23,7 +23,8 @@ import {
   Play
 } from 'lucide-react'
 import { format, addMonths, isAfter, isBefore } from 'date-fns'
-import { Task, Milestone, Comment, UserRole } from '@/types/progress'
+import { Task, Milestone, Comment, UserRole, MilestoneApproval } from '@/types/progress'
+import { ProgressDataService } from '@/lib/progress-data-service'
 
 interface SimpleMilestonesProps {
   milestones: Milestone[]
@@ -35,6 +36,7 @@ interface SimpleMilestonesProps {
   onProjectTypeChange: (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => void
   commentsByMilestone?: Record<string, Comment[]>
   userRole: UserRole
+  approvalsByMilestone?: Record<string, MilestoneApproval[]>
 }
 
 export function SimpleMilestones({
@@ -46,7 +48,8 @@ export function SimpleMilestones({
   onCommentAdd,
   onProjectTypeChange,
   commentsByMilestone,
-  userRole
+  userRole,
+  approvalsByMilestone
 }: SimpleMilestonesProps) {
   const [editingMilestone, setEditingMilestone] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<{milestoneId: string, taskId: string} | null>(null)
@@ -142,6 +145,15 @@ export function SimpleMilestones({
     
     onCommentAdd(newComment.milestoneId, newComment.text)
     setNewComment(null)
+  }
+
+  const handleApproval = async (milestoneId: string, status: 'approved' | 'rejected', comment?: string) => {
+    try {
+      // optimistic no-op: UI reads via approvalsByMilestone passed from parent, which will refresh via realtime
+      await ProgressDataService.createApproval(milestoneId, status, comment)
+    } catch (e) {
+      alert('Failed to submit approval')
+    }
   }
 
   const handleMonthlyReset = () => {
@@ -354,35 +366,31 @@ export function SimpleMilestones({
       <div className="space-y-4">
         {milestones.map((milestone) => {
           const smartIndicator = getSmartIndicator(milestone)
+          const approvals = approvalsByMilestone?.[milestone.id] || []
+          const latestApproval = approvals[approvals.length - 1]
           const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length
           const totalTasks = milestone.tasks.length
           
-          // Enhanced progress calculation logic
+          // Weighted progress calculation with fallback to count-based
+          const totalWeight = milestone.tasks?.reduce((sum, t) => sum + ((t.weight ?? 1)), 0) || 0
+          const completedWeight = milestone.tasks?.reduce((sum, t) => sum + ((t.status === 'completed' ? (t.weight ?? 1) : 0)), 0) || 0
           let progress = 0
+          if (totalWeight > 0) {
+            progress = Math.round((completedWeight / totalWeight) * 100)
+          } else if (totalTasks > 0) {
+            progress = Math.round((completedTasks / totalTasks) * 100)
+          } else {
+            progress = 0
+          }
           let progressText = ''
-          
           if (milestone.status === 'completed') {
-            progress = 100
             progressText = '🎉 COMPLETED!'
           } else if (milestone.status === 'in_progress') {
-            if (totalTasks > 0) {
-              progress = Math.round((completedTasks / totalTasks) * 100)
-              progressText = `🚀 ${progress}% Complete`
-            } else {
-              progress = 25 // Default for in-progress with no tasks
-              progressText = '🚀 Getting Started'
-            }
+            progressText = totalTasks > 0 ? `🚀 ${progress}% Complete` : '🚀 Getting Started'
           } else {
-            if (totalTasks > 0) {
-              progress = Math.round((completedTasks / totalTasks) * 100)
-              progressText = `${progress}% Complete`
-            } else {
-              progress = 0
-              progressText = 'Ready to Start'
-            }
+            progressText = totalTasks > 0 ? `${progress}% Complete` : 'Ready to Start'
           }
-          
-          const progressValue = Math.round(Math.max(0, Math.min(100, progress)))
+          const progressValue = Math.max(0, Math.min(100, progress))
           const ariaValueNow = progressValue
           const ariaValueMin = 0
           const ariaValueMax = 100
@@ -423,6 +431,17 @@ export function SimpleMilestones({
                             <Lock className="h-3 w-3" />
                             <span>Complete previous phase first</span>
                           </div>
+                        )}
+                        {latestApproval ? (
+                          <div className={`flex items-center space-x-1 text-xs ${latestApproval.status === 'approved' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'} px-2 py-1 rounded-full`}>
+                            <span>{latestApproval.status === 'approved' ? '🟢 Approved' : '🔴 Rejected'} • {new Date(latestApproval.created_at).toLocaleDateString()}</span>
+                          </div>
+                        ) : (
+                          (milestone.status === 'in_progress' || milestone.status === 'completed') && (
+                            <div className="flex items-center space-x-1 text-xs text-yellow-700 bg-yellow-50 px-2 py-1 rounded-full">
+                              <span>🟡 Pending Approval</span>
+                            </div>
+                          )
                         )}
                         {milestone.status === 'completed' && (
                           <div className="flex items-center space-x-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
@@ -544,7 +563,7 @@ export function SimpleMilestones({
                           Start Phase
                         </Button>
                       )}
-                      {milestone.status === 'in_progress' && (
+                      {milestone.status === 'in_progress' && (!latestApproval || latestApproval.status !== 'approved') && (
                         <Button
                           onClick={() => onMilestoneUpdate(milestone.id, { status: 'completed' })}
                           className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm px-4 py-2"
@@ -553,6 +572,38 @@ export function SimpleMilestones({
                           Complete Phase
                         </Button>
                       )}
+                      {userRole === 'provider' && (milestone.status === 'in_progress' || milestone.status === 'completed') && (!latestApproval || latestApproval.status !== 'approved') && (
+                        <div className="text-xs text-gray-600 flex items-center space-x-1">
+                          <Lock className="h-3 w-3" />
+                          <span>Locked until client approval</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {userRole === 'client' && (milestone.status === 'in_progress' || milestone.status === 'completed') && (
+                    <div className="mt-4 flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleApproval(milestone.id, 'approved')}
+                        className="text-green-700 hover:text-green-800 hover:bg-green-50"
+                        aria-label="Approve milestone"
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const reason = prompt('Optional comment for rejection:') || undefined
+                          handleApproval(milestone.id, 'rejected', reason)
+                        }}
+                        className="text-red-700 hover:text-red-800 hover:bg-red-50"
+                        aria-label="Reject milestone"
+                      >
+                        Reject
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -769,7 +820,7 @@ export function SimpleMilestones({
                       </div>
                     </div>
 
-                    {/* Comments Section */}
+                    {/* Comments & Approvals Section */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium text-gray-900">Comments & Feedback</h4>
@@ -783,7 +834,23 @@ export function SimpleMilestones({
                         </Button>
                       </div>
                       
-                      {/* Comments List */}
+                      {/* Approval History */}
+                      {approvals.length > 0 && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-semibold text-gray-700">Approval History</h5>
+                          {approvals.map((a) => (
+                            <div key={a.id} className="p-2 bg-white border rounded-lg text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className={`font-medium ${a.status === 'approved' ? 'text-green-700' : 'text-red-700'}`}>{a.status.toUpperCase()}</span>
+                                <span className="text-gray-500">{new Date(a.created_at).toLocaleString()}</span>
+                              </div>
+                              {a.comment && <div className="text-gray-700 mt-1">{a.comment}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Comments List (basic threaded placeholder) */}
                       <div className="space-y-2">
                         {comments.map((comment) => (
                           <div key={comment.id} className="p-3 bg-white border rounded-lg">

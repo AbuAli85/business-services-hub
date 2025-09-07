@@ -17,7 +17,7 @@ import {
   Pause,
   RefreshCw
 } from 'lucide-react'
-import { Milestone, Task, BookingProgress, TimeEntry, Comment } from '@/types/progress'
+import { Milestone, Task, BookingProgress, TimeEntry, Comment, MilestoneApproval } from '@/types/progress'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { MainProgressHeader } from './main-progress-header'
 import ProgressErrorBoundary from './ProgressErrorBoundary'
@@ -45,6 +45,7 @@ export function ProgressTrackingSystem({
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [commentsByMilestone, setCommentsByMilestone] = useState<Record<string, Comment[]>>({})
   const [actionRequests, setActionRequests] = useState<any[]>([])
+  const [approvalsByMilestone, setApprovalsByMilestone] = useState<Record<string, MilestoneApproval[]>>({})
   const [overallProgress, setOverallProgress] = useState(0)
   const [totalTasks, setTotalTasks] = useState(0)
   const [completedTasks, setCompletedTasks] = useState(0)
@@ -136,6 +137,16 @@ export function ProgressTrackingSystem({
       const requests = await ProgressDataService.getActionRequests(bookingId)
       setActionRequests(requests)
 
+      // Load approvals for all milestones
+      const approvalsGrouped: Record<string, MilestoneApproval[]> = {}
+      for (const m of progressData.milestones) {
+        try {
+          const approvals = await ProgressDataService.getApprovals(m.id)
+          approvalsGrouped[m.id] = approvals
+        } catch {}
+      }
+      setApprovalsByMilestone(approvalsGrouped)
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load progress data')
       toast.error('Failed to load progress data')
@@ -157,6 +168,19 @@ export function ProgressTrackingSystem({
     if (bookingId) {
       loadData()
     }
+  }, [bookingId, loadData])
+
+  // Subscribe to approvals realtime
+  useEffect(() => {
+    if (!bookingId) return
+    let cleanup: (() => void) | undefined
+    const setup = async () => {
+      cleanup = await ProgressDataService.subscribeToApprovals(bookingId, async () => {
+        await loadData()
+      })
+    }
+    setup()
+    return () => { if (cleanup) cleanup() }
   }, [bookingId, loadData])
 
   // Task management handlers

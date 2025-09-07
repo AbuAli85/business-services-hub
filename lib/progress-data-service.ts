@@ -1,5 +1,6 @@
 import { getSupabaseClient } from './supabase';
-import { Task, Milestone, TimeEntry, BookingProgress } from '@/types/progress';
+import { Task, Milestone, TimeEntry, BookingProgress, MilestoneApproval } from '@/types/progress';
+import { NotificationsService } from './notifications-service';
 
 export interface ProgressData {
   milestones: Milestone[];
@@ -37,12 +38,19 @@ export class ProgressDataService {
 
       if (timeEntriesError) throw timeEntriesError;
 
-      // Calculate overall progress
+      // Calculate overall progress (weighted by task weight; default weight 1)
+      const totals = milestones.reduce((acc, m) => {
+        const tasks = (m.tasks || []) as Task[];
+        for (const t of tasks) {
+          const w = t.weight ?? 1;
+          acc.totalWeight += w;
+          if (t.status === 'completed') acc.completedWeight += w;
+        }
+        return acc;
+      }, { totalWeight: 0, completedWeight: 0 });
       const totalTasks = milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0);
-      const completedTasks = milestones.reduce((sum, m) => 
-        sum + (m.tasks?.filter((t: Task) => t.status === 'completed').length || 0), 0
-      );
-      const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const completedTasks = milestones.reduce((sum, m) => sum + (m.tasks?.filter((t: Task) => t.status === 'completed').length || 0), 0);
+      const overallProgress = totals.totalWeight > 0 ? Math.round((totals.completedWeight / totals.totalWeight) * 100) : 0;
 
       const totalEstimatedHours = milestones.reduce((sum, m) => sum + (m.estimated_hours || 0), 0);
       const totalActualHours = milestones.reduce((sum, m) => sum + (m.actual_hours || 0), 0);
@@ -110,6 +118,8 @@ export class ProgressDataService {
       estimated_hours?: number;
       due_date?: string;
       status?: 'pending' | 'in_progress' | 'completed';
+      weight?: number;
+      tags?: string[];
     }
   ): Promise<Task> {
     try {
@@ -136,7 +146,9 @@ export class ProgressDataService {
           estimated_hours: task.estimated_hours || 0,
           actual_hours: 0,
           order_index: nextOrderIndex,
-          due_date: task.due_date
+          due_date: task.due_date,
+          weight: task.weight ?? 1,
+          tags: task.tags ?? []
         })
         .select()
         .single();
@@ -362,6 +374,34 @@ export class ProgressDataService {
     return () => supabase.removeChannel(ch);
   }
 
+  static async subscribeToApprovals(
+    bookingId: string,
+    onChange: () => Promise<void> | void
+  ) {
+    const supabase = await getSupabaseClient();
+    const ch = supabase
+      .channel('milestone-approvals-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'milestone_approvals',
+      }, async (payload: any) => {
+        // Filter by booking via milestone lookup
+        try {
+          const { data: m } = await supabase
+            .from('milestones')
+            .select('id, booking_id')
+            .eq('id', payload.new?.milestone_id || payload.old?.milestone_id)
+            .single();
+          if (m && (m as any).booking_id === bookingId) {
+            await onChange();
+          }
+        } catch {}
+      })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }
+
   // Milestone management methods
   static async createMilestone(
     bookingId: string,
@@ -392,12 +432,14 @@ export class ProgressDataService {
           progress: milestone.progress || 0,
           estimated_hours: milestone.estimated_hours || 0,
           actual_hours: 0,
-          order_index: nextOrderIndex
+          order_index: nextOrderIndex,
+          weight: milestone.weight ?? 1
         })
         .select()
         .single();
 
       if (error) throw error;
+      await NotificationsService.sendMilestoneUpdate({ milestoneId: data.id, bookingId, action: 'created', title: data.title });
       return { ...data, tasks: [] };
     } catch (error) {
       console.error('Error creating milestone:', error);
@@ -420,6 +462,8 @@ export class ProgressDataService {
         .eq('id', milestoneId);
 
       if (error) throw error;
+      // Best-effort notify
+      try { await NotificationsService.sendMilestoneUpdate({ milestoneId, bookingId: updates.booking_id || '', action: 'updated', title: updates.title }); } catch {}
     } catch (error) {
       console.error('Error updating milestone:', error);
       throw error;
@@ -435,6 +479,7 @@ export class ProgressDataService {
         .eq('id', milestoneId);
 
       if (error) throw error;
+      try { await NotificationsService.sendMilestoneUpdate({ milestoneId, bookingId: '', action: 'deleted' }); } catch {}
     } catch (error) {
       console.error('Error deleting milestone:', error);
       throw error;
@@ -469,7 +514,7 @@ export class ProgressDataService {
 
       if (error) throw error;
       
-      return {
+      const result = {
         id: data.id,
         milestone_id: data.milestone_id,
         content: data.content,
@@ -477,10 +522,42 @@ export class ProgressDataService {
         author_role: data.author?.role || 'client',
         created_at: data.created_at
       } as unknown as Comment;
+      try { await NotificationsService.sendCommentNotification({ milestoneId, bookingId: (data as any).booking_id || '', userId: user.id, content }); } catch {}
+      return result;
     } catch (error) {
       console.error('Error adding comment:', error);
       throw error;
     }
+  }
+
+  // Approvals
+  static async createApproval(milestoneId: string, status: 'approved' | 'rejected', comment?: string): Promise<MilestoneApproval> {
+    const supabase = await getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+    const { data, error } = await supabase
+      .from('milestone_approvals')
+      .insert({ milestone_id: milestoneId, user_id: user.id, status, comment })
+      .select('*')
+      .single();
+    if (error) throw error;
+    // Notify best-effort: need bookingId, fetch via milestone
+    try {
+      const { data: m } = await supabase.from('milestones').select('id, booking_id').eq('id', milestoneId).single();
+      if (m) await NotificationsService.sendApprovalUpdate({ milestoneId, bookingId: (m as any).booking_id, status, userId: user.id, comment });
+    } catch {}
+    return data as MilestoneApproval;
+  }
+
+  static async getApprovals(milestoneId: string): Promise<MilestoneApproval[]> {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from('milestone_approvals')
+      .select('*')
+      .eq('milestone_id', milestoneId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []) as MilestoneApproval[];
   }
 
   static async getComments(milestoneId: string): Promise<Comment[]> {
