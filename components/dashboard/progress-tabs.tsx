@@ -3,20 +3,19 @@
 import { useState, useEffect } from 'react'
 import './progress-styles.css'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle } from 'lucide-react'
-import { ProgressTrackingService, getStatusColor, getPriorityColor, formatDuration, isOverdue } from '@/lib/progress-tracking'
-import { Milestone, Task, BookingProgress } from '@/lib/progress-tracking'
+import { Milestone, Task, BookingProgress } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
-import { ClientProgressView } from './client-progress-view'
+// Removed legacy client-progress-view
 import { TimeTrackingWidget } from './time-tracking-widget'
 import { ProgressFallback } from './progress-fallback'
-import { SimpleProgressTracking } from './simple-progress-tracking'
-import { EnhancedProgressTracking } from './enhanced-progress-tracking'
+// Removed legacy progress tracking imports
 import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
-import { MonthlyProgressTracking } from './monthly-progress-tracking'
-import ServiceMilestoneManager from './service-milestone-manager'
+// Removed legacy monthly-progress-tracking
+// Removed legacy service-milestone-manager
 import { MainProgressHeader } from './main-progress-header'
-import { RefactoredMilestonesAccordion } from './refactored-milestones-accordion'
+// Removed legacy refactored accordion
+import { SimpleMilestones } from './simple-milestones'
 import { SimplifiedMonthlyProgress } from './simplified-monthly-progress'
 import { ProgressSummaryFooter } from './progress-summary-footer'
 import { TimelineStepper } from './timeline-stepper'
@@ -230,8 +229,11 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
   }
 
   // If schema is not available, show monthly progress tracking
+  // If schema unavailable, show fallback
   if (schemaAvailable === false) {
-    return <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
+    return (
+      <div className="p-6 text-sm text-gray-600">Schema unavailable.</div>
+    )
   }
 
   // If still checking schema availability
@@ -298,7 +300,9 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
   // If there are no milestones and no booking progress, show monthly progress tracking
   if (milestones.length === 0 && !bookingProgress) {
-    return <MonthlyProgressTracking bookingId={bookingId} userRole={userRole} />
+    return (
+      <div className="p-6 text-sm text-gray-600">No milestones yet.</div>
+    )
   }
 
   const handleLogHours = () => {
@@ -426,15 +430,19 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         {/* Tab Content */}
         <div className="mt-6">
           {activeTab === 'overview' && (
-            <RefactoredMilestonesAccordion
+            <SimpleMilestones
               milestones={milestones}
               userRole={userRole}
               onMilestoneUpdate={handleMilestoneUpdate}
-              onTaskUpdate={handleTaskUpdate}
-              onAddTask={handleAddTask}
-              onDeleteTask={handleDeleteTask}
-              onAddComment={handleAddComment}
-              onRequestChanges={handleRequestChanges}
+              onTaskUpdate={(taskId, updates) => {
+                // Find milestone
+                const m = milestones.find(mm => mm.tasks?.some(t => t.id === taskId))
+                if (m) handleTaskUpdate(m.id, taskId, updates)
+              }}
+              onTaskAdd={(milestoneId, task) => handleAddTask(milestoneId, task)}
+              onTaskDelete={(milestoneId, taskId) => handleDeleteTask(milestoneId, taskId)}
+              onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
+              onProjectTypeChange={() => {}}
             />
           )}
 
