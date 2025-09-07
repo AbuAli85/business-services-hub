@@ -621,7 +621,17 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 mb-2 text-base">{template.name}</h3>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{template.description}</p>
+                        <p 
+                          className="text-sm text-gray-600 mb-3" 
+                          style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {template.description}
+                        </p>
                         
                         <div className="flex flex-wrap gap-1 mb-3">
                           <Badge variant="outline" className={`text-xs ${getComplexityColor(template.complexity)}`}>
@@ -711,7 +721,6 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
           </div>
         </div>
       </div>
-      </div>
-    </>
+    </div>
   )
 }
