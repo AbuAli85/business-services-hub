@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { TimelineItem } from '@/lib/timeline-service';
 import { 
   Save, 
   X, 
@@ -13,21 +14,6 @@ import {
   Target,
   Clock
 } from 'lucide-react';
-
-interface TimelineItem {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'on_hold';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  start_date: string;
-  end_date: string;
-  assigned_to?: string;
-  progress_percentage: number;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-}
 
 interface TimelineItemEditorProps {
   item: TimelineItem;
@@ -86,6 +72,7 @@ export default function TimelineItemEditor({
               value={editedItem.title}
               onChange={(e) => setEditedItem({...editedItem, title: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Timeline item title"
             />
           </div>
 
@@ -98,6 +85,7 @@ export default function TimelineItemEditor({
               onChange={(e) => setEditedItem({...editedItem, description: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={3}
+              aria-label="Timeline item description"
             />
           </div>
         </div>
@@ -112,6 +100,7 @@ export default function TimelineItemEditor({
               value={editedItem.status}
               onChange={(e) => setEditedItem({...editedItem, status: e.target.value as any})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Timeline item status"
             >
               <option value="pending">Pending</option>
               <option value="in_progress">In Progress</option>
@@ -128,6 +117,7 @@ export default function TimelineItemEditor({
               value={editedItem.priority}
               onChange={(e) => setEditedItem({...editedItem, priority: e.target.value as any})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Timeline item priority"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -148,6 +138,7 @@ export default function TimelineItemEditor({
               value={editedItem.start_date}
               onChange={(e) => setEditedItem({...editedItem, start_date: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Timeline item start date"
             />
           </div>
 
@@ -160,6 +151,7 @@ export default function TimelineItemEditor({
               value={editedItem.end_date}
               onChange={(e) => setEditedItem({...editedItem, end_date: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label="Timeline item end date"
             />
           </div>
         </div>
@@ -177,6 +169,7 @@ export default function TimelineItemEditor({
               value={editedItem.progress_percentage}
               onChange={(e) => setEditedItem({...editedItem, progress_percentage: parseInt(e.target.value)})}
               className="w-full"
+              aria-label="Timeline item progress percentage"
             />
             <div className="flex justify-between text-sm text-gray-600">
               <span>0%</span>
@@ -198,6 +191,7 @@ export default function TimelineItemEditor({
             onChange={(e) => setEditedItem({...editedItem, assigned_to: e.target.value})}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter assignee name or email"
+            aria-label="Timeline item assigned to"
           />
         </div>
 

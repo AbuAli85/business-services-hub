@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { TimelineItem } from '@/lib/timeline-service';
 import { 
   Edit3, 
   Trash2, 
@@ -21,21 +22,6 @@ import {
   Activity,
   AlertCircle
 } from 'lucide-react';
-
-interface TimelineItem {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'on_hold';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  start_date: string;
-  end_date: string;
-  assigned_to?: string;
-  progress_percentage: number;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-}
 
 interface TimelineManagementProps {
   bookingId: string;
@@ -62,7 +48,8 @@ export default function TimelineManagement({
     priority: 'medium',
     start_date: '',
     end_date: '',
-    progress_percentage: 0
+    progress_percentage: 0,
+    booking_id: bookingId
   });
 
   // Track changes
@@ -129,6 +116,7 @@ export default function TimelineManagement({
     if (newItem.title && newItem.description) {
       const newTimelineItem: TimelineItem = {
         id: `temp_${Date.now()}`,
+        booking_id: bookingId,
         title: newItem.title,
         description: newItem.description,
         status: newItem.status as TimelineItem['status'],
@@ -149,7 +137,8 @@ export default function TimelineManagement({
         priority: 'medium',
         start_date: '',
         end_date: '',
-        progress_percentage: 0
+        progress_percentage: 0,
+        booking_id: bookingId
       });
       setShowAddForm(false);
     }
@@ -247,6 +236,7 @@ export default function TimelineManagement({
                   onChange={(e) => setNewItem({...newItem, title: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter timeline item title"
+                  aria-label="Timeline item title"
                 />
               </div>
               <div>
@@ -257,6 +247,7 @@ export default function TimelineManagement({
                   value={newItem.priority || 'medium'}
                   onChange={(e) => setNewItem({...newItem, priority: e.target.value as any})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Timeline item priority"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -276,6 +267,7 @@ export default function TimelineManagement({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={3}
                 placeholder="Enter timeline item description"
+                aria-label="Timeline item description"
               />
             </div>
 
@@ -288,6 +280,7 @@ export default function TimelineManagement({
                   value={newItem.status || 'pending'}
                   onChange={(e) => setNewItem({...newItem, status: e.target.value as any})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Timeline item status"
                 >
                   <option value="pending">Pending</option>
                   <option value="in_progress">In Progress</option>
@@ -304,6 +297,7 @@ export default function TimelineManagement({
                   value={newItem.start_date || ''}
                   onChange={(e) => setNewItem({...newItem, start_date: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Timeline item start date"
                 />
               </div>
               <div>
@@ -315,6 +309,7 @@ export default function TimelineManagement({
                   value={newItem.end_date || ''}
                   onChange={(e) => setNewItem({...newItem, end_date: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Timeline item end date"
                 />
               </div>
             </div>
