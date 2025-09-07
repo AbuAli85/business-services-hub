@@ -83,25 +83,43 @@ export function SimpleMilestones({
   }
 
   const getSmartIndicator = (milestone: Milestone) => {
-    const now = new Date()
-    const startDate = new Date(milestone.start_date)
-    const endDate = new Date(milestone.end_date)
-    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const daysPassed = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const progress = Math.min(Math.max((daysPassed / totalDays) * 100, 0), 100)
-    
-    const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length
-    const totalTasks = milestone.tasks.length
-    const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
+    try {
+      const now = new Date()
+      
+      // Safely parse milestone dates
+      if (!milestone.start_date || !milestone.end_date) {
+        return { type: 'pending', message: 'Dates not set', color: 'text-gray-600' }
+      }
+      
+      const startDate = new Date(milestone.start_date)
+      const endDate = new Date(milestone.end_date)
+      
+      // Validate dates
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.warn('Invalid dates in milestone:', { start: milestone.start_date, end: milestone.end_date })
+        return { type: 'error', message: 'Invalid dates', color: 'text-red-600' }
+      }
+      
+      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      const daysPassed = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      const progress = Math.min(Math.max((daysPassed / totalDays) * 100, 0), 100)
+      
+      const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length
+      const totalTasks = milestone.tasks.length
+      const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
-    // Smart indicators
-    if (milestone.status === 'completed') return { type: 'success', message: 'Completed! 🎉', color: 'text-green-600' }
-    if (isAfter(now, endDate) && (milestone.status === 'not_started' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
-    if (taskProgress > progress + 20) return { type: 'ahead', message: 'Ahead of schedule! 🚀', color: 'text-green-600' }
-    if (taskProgress < progress - 20) return { type: 'behind', message: 'Behind schedule! 📈', color: 'text-orange-600' }
-    if (taskProgress > 80) return { type: 'almost', message: 'Almost done! 💪', color: 'text-blue-600' }
-    
-    return { type: 'on_track', message: 'On track! ✅', color: 'text-blue-600' }
+      // Smart indicators
+      if (milestone.status === 'completed') return { type: 'success', message: 'Completed! 🎉', color: 'text-green-600' }
+      if (isAfter(now, endDate) && (milestone.status === 'not_started' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
+      if (taskProgress > progress + 20) return { type: 'ahead', message: 'Ahead of schedule! 🚀', color: 'text-green-600' }
+      if (taskProgress < progress - 20) return { type: 'behind', message: 'Behind schedule! 📈', color: 'text-orange-600' }
+      if (taskProgress > 80) return { type: 'almost', message: 'Almost done! 💪', color: 'text-blue-600' }
+      
+      return { type: 'on_track', message: 'On track! ✅', color: 'text-blue-600' }
+    } catch (error) {
+      console.warn('Error in getSmartIndicator:', error)
+      return { type: 'error', message: 'Date error', color: 'text-red-600' }
+    }
   }
 
   const handleTaskToggle = (milestoneId: string, taskId: string) => {
@@ -564,7 +582,18 @@ export function SimpleMilestones({
                     </div>
                     <div className="flex items-center space-x-1">
                       <Calendar className="h-4 w-4 text-blue-500" />
-                      <span>{format(new Date(milestone.start_date), 'MMM dd')} - {format(new Date(milestone.end_date), 'MMM dd, yyyy')}</span>
+                      <span>{(() => {
+                        try {
+                          const startDate = new Date(milestone.start_date)
+                          const endDate = new Date(milestone.end_date)
+                          const startStr = isNaN(startDate.getTime()) ? 'N/A' : format(startDate, 'MMM dd')
+                          const endStr = isNaN(endDate.getTime()) ? 'N/A' : format(endDate, 'MMM dd, yyyy')
+                          return `${startStr} - ${endStr}`
+                        } catch (error) {
+                          console.warn('Date range formatting error:', error)
+                          return 'N/A - N/A'
+                        }
+                      })()}</span>
                     </div>
                   </div>
                   
@@ -682,7 +711,15 @@ export function SimpleMilestones({
                         {task.due_date && (
                           <div className="flex items-center space-x-2 text-xs text-gray-600">
                             <Calendar className="h-3 w-3" />
-                            <span className="font-medium">Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}</span>
+                            <span className="font-medium">Due: {(() => {
+                              try {
+                                const date = new Date(task.due_date)
+                                return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy')
+                              } catch (error) {
+                                console.warn('Task due date formatting error:', error)
+                                return 'N/A'
+                              }
+                            })()}</span>
                           </div>
                         )}
                       </div>
@@ -814,7 +851,15 @@ export function SimpleMilestones({
                             <Input
                               type="date"
                               placeholder="Select due date"
-                              value={newTask.task.due_date ? format(new Date(newTask.task.due_date), 'yyyy-MM-dd') : ''}
+                              value={newTask.task.due_date ? (() => {
+                                try {
+                                  const date = new Date(newTask.task.due_date)
+                                  return isNaN(date.getTime()) ? '' : format(date, 'yyyy-MM-dd')
+                                } catch (error) {
+                                  console.warn('New task due date formatting error:', error)
+                                  return ''
+                                }
+                              })() : ''}
                               onChange={(e) => setNewTask({
                                 ...newTask,
                                 task: { ...newTask.task, due_date: e.target.value ? new Date(e.target.value).toISOString() : undefined }
@@ -870,8 +915,24 @@ export function SimpleMilestones({
                       <div>
                         <h4 className="font-medium text-gray-900 mb-2">Phase Details</h4>
                         <div className="space-y-2 text-sm">
-                          <div><strong>Start Date:</strong> {format(new Date(milestone.start_date), 'MMM dd, yyyy')}</div>
-                          <div><strong>End Date:</strong> {format(new Date(milestone.end_date), 'MMM dd, yyyy')}</div>
+                          <div><strong>Start Date:</strong> {(() => {
+                            try {
+                              const date = new Date(milestone.start_date)
+                              return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy')
+                            } catch (error) {
+                              console.warn('Milestone start date formatting error:', error)
+                              return 'N/A'
+                            }
+                          })()}</div>
+                          <div><strong>End Date:</strong> {(() => {
+                            try {
+                              const date = new Date(milestone.end_date)
+                              return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy')
+                            } catch (error) {
+                              console.warn('Milestone end date formatting error:', error)
+                              return 'N/A'
+                            }
+                          })()}</div>
                           <div><strong>Estimated Hours:</strong> {milestone.estimated_hours || 0}h</div>
                           <div><strong>Actual Hours:</strong> {milestone.actual_hours || 0}h</div>
                         </div>
@@ -923,7 +984,15 @@ export function SimpleMilestones({
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-gray-900">{comment.author_name || 'User'}</span>
                               <span className="text-xs text-gray-500">
-                                {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
+                                {(() => {
+                                  try {
+                                    const date = new Date(comment.created_at)
+                                    return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy HH:mm')
+                                  } catch (error) {
+                                    console.warn('Comment date formatting error:', error)
+                                    return 'N/A'
+                                  }
+                                })()}
                               </span>
                             </div>
                             <p className="text-sm text-gray-700">{comment.content}</p>
@@ -942,7 +1011,15 @@ export function SimpleMilestones({
                                   <div key={reply.id} className="p-2 bg-gray-50 border rounded-lg">
                                     <div className="flex items-center justify-between mb-1">
                                       <span className="text-xs font-medium text-gray-900">{reply.author_name || 'User'}</span>
-                                      <span className="text-[10px] text-gray-500">{format(new Date(reply.created_at), 'MMM dd, yyyy HH:mm')}</span>
+                                      <span className="text-[10px] text-gray-500">{(() => {
+                                        try {
+                                          const date = new Date(reply.created_at)
+                                          return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy HH:mm')
+                                        } catch (error) {
+                                          console.warn('Reply date formatting error:', error)
+                                          return 'N/A'
+                                        }
+                                      })()}</span>
                                     </div>
                                     <p className="text-xs text-gray-700">{reply.content}</p>
                                   </div>
@@ -998,7 +1075,15 @@ export function SimpleMilestones({
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="date"
-                          value={editingMilestoneData.start_date ? format(new Date(editingMilestoneData.start_date), 'yyyy-MM-dd') : ''}
+                          value={editingMilestoneData.start_date ? (() => {
+                            try {
+                              const date = new Date(editingMilestoneData.start_date)
+                              return isNaN(date.getTime()) ? '' : format(date, 'yyyy-MM-dd')
+                            } catch (error) {
+                              console.warn('Date formatting error:', error)
+                              return ''
+                            }
+                          })() : ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
                             start_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
@@ -1006,7 +1091,15 @@ export function SimpleMilestones({
                         />
                         <Input
                           type="date"
-                          value={editingMilestoneData.end_date ? format(new Date(editingMilestoneData.end_date), 'yyyy-MM-dd') : ''}
+                          value={editingMilestoneData.end_date ? (() => {
+                            try {
+                              const date = new Date(editingMilestoneData.end_date)
+                              return isNaN(date.getTime()) ? '' : format(date, 'yyyy-MM-dd')
+                            } catch (error) {
+                              console.warn('Date formatting error:', error)
+                              return ''
+                            }
+                          })() : ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
                             end_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
