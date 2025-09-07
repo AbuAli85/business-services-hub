@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { ProgressDataService, ProgressData, Task, TimeEntry } from '@/lib/progress-data-service';
+import { ProgressDataService, ProgressData } from '@/lib/progress-data-service';
+import { Task, TimeEntry } from '@/types/progress';
 import EnhancedProgressDashboard from '@/components/dashboard/enhanced-progress-dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
