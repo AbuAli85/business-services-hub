@@ -23,55 +23,17 @@ import {
   Play
 } from 'lucide-react'
 import { format, addMonths, isAfter, isBefore } from 'date-fns'
-
-interface SimpleTask {
-  id: string
-  title: string
-  completed: boolean
-  dueDate?: string
-  isRecurring?: boolean
-  recurringType?: 'monthly' | 'weekly' | 'daily'
-  priority?: 'low' | 'medium' | 'high'
-  estimatedHours?: number
-  actualHours?: number
-}
-
-interface SimpleMilestone {
-  id: string
-  title: string
-  description?: string
-  purpose?: string
-  mainGoal?: string
-  startDate: string
-  endDate: string
-  status: 'pending' | 'in_progress' | 'completed'
-  tasks: SimpleTask[]
-  color: string
-  phaseNumber: 1 | 2 | 3 | 4  // Only 4 phases allowed
-  estimatedHours?: number
-  actualHours?: number
-  clientComments?: Comment[]
-  isRecurring?: boolean  // NEW: Monthly recurring project
-  projectType?: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'  // NEW: Project type
-}
-
-interface Comment {
-  id: string
-  text: string
-  author: string
-  authorRole: 'provider' | 'client'
-  createdAt: string
-}
+import { Task, Milestone, Comment, UserRole } from '@/types/progress'
 
 interface SimpleMilestonesProps {
-  milestones: SimpleMilestone[]
-  onMilestoneUpdate: (milestoneId: string, updates: Partial<SimpleMilestone>) => void
-  onTaskUpdate: (taskId: string, updates: Partial<SimpleTask>) => void
-  onTaskAdd: (milestoneId: string, taskData: Omit<SimpleTask, 'id'>) => void
+  milestones: Milestone[]
+  onMilestoneUpdate: (milestoneId: string, updates: Partial<Milestone>) => void
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
+  onTaskAdd: (milestoneId: string, taskData: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => void
   onTaskDelete: (milestoneId: string, taskId: string) => void
-  onCommentAdd: (milestoneId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => void
+  onCommentAdd: (milestoneId: string, comment: Omit<Comment, 'id' | 'created_at'>) => void
   onProjectTypeChange: (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => void
-  userRole: 'provider' | 'client'
+  userRole: UserRole
 }
 
 export function SimpleMilestones({
@@ -86,11 +48,11 @@ export function SimpleMilestones({
 }: SimpleMilestonesProps) {
   const [editingMilestone, setEditingMilestone] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<{milestoneId: string, taskId: string} | null>(null)
-  const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<SimpleTask, 'id'>} | null>(null)
+  const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>} | null>(null)
   const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
   const [projectType, setProjectType] = useState<'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'>('one_time')
-  const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<SimpleMilestone> | null>(null)
+  const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<Milestone> | null>(null)
 
   // Standard 4 phases - never more, never less
   const standardPhases = [
@@ -98,36 +60,60 @@ export function SimpleMilestones({
       id: '550e8400-e29b-41d4-a716-446655440001', // Planning & Setup UUID
       title: 'Planning & Setup',
       description: 'Initial planning, requirements gathering, and project setup',
-      purpose: 'Establish project foundation and clear requirements',
-      mainGoal: 'Complete project planning and setup phase',
-      phaseNumber: 1 as const,
+      booking_id: '',
+      status: 'not_started' as const,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 0,
+      tasks: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      order_index: 1,
       color: '#3B82F6'
     },
     {
       id: '550e8400-e29b-41d4-a716-446655440002', // Development UUID
       title: 'Development',
       description: 'Core development work and implementation',
-      purpose: 'Build and implement the main project features',
-      mainGoal: 'Complete all development tasks and features',
-      phaseNumber: 2 as const,
+      booking_id: '',
+      status: 'not_started' as const,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 0,
+      tasks: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      order_index: 2,
       color: '#10B981'
     },
     {
       id: '550e8400-e29b-41d4-a716-446655440003', // Testing & Quality UUID
       title: 'Testing & Quality',
       description: 'Testing, quality assurance, and bug fixes',
-      purpose: 'Ensure quality and fix any issues',
-      mainGoal: 'Complete testing and quality assurance',
-      phaseNumber: 3 as const,
+      booking_id: '',
+      status: 'not_started' as const,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 0,
+      tasks: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      order_index: 3,
       color: '#F59E0B'
     },
     {
       id: '550e8400-e29b-41d4-a716-446655440004', // Delivery & Launch UUID
       title: 'Delivery & Launch',
       description: 'Final delivery, deployment, and project launch',
-      purpose: 'Deliver completed project to client',
-      mainGoal: 'Successfully deliver and launch the project',
-      phaseNumber: 4 as const,
+      booking_id: '',
+      status: 'not_started' as const,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+      progress: 0,
+      tasks: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      order_index: 4,
       color: '#8B5CF6'
     }
   ]
@@ -136,6 +122,7 @@ export function SimpleMilestones({
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200'
       case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'not_started': return 'bg-gray-100 text-gray-800 border-gray-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
@@ -149,21 +136,21 @@ export function SimpleMilestones({
     }
   }
 
-  const getSmartIndicator = (milestone: SimpleMilestone) => {
+  const getSmartIndicator = (milestone: Milestone) => {
     const now = new Date()
-    const startDate = new Date(milestone.startDate)
-    const endDate = new Date(milestone.endDate)
+    const startDate = new Date(milestone.start_date)
+    const endDate = new Date(milestone.end_date)
     const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     const daysPassed = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
     const progress = Math.min(Math.max((daysPassed / totalDays) * 100, 0), 100)
     
-    const completedTasks = milestone.tasks.filter(t => t.completed).length
+    const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length
     const totalTasks = milestone.tasks.length
     const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
     // Smart indicators
     if (milestone.status === 'completed') return { type: 'success', message: 'Completed! 🎉', color: 'text-green-600' }
-    if (isAfter(now, endDate) && (milestone.status === 'pending' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
+    if (isAfter(now, endDate) && (milestone.status === 'not_started' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
     if (taskProgress > progress + 20) return { type: 'ahead', message: 'Ahead of schedule! 🚀', color: 'text-green-600' }
     if (taskProgress < progress - 20) return { type: 'behind', message: 'Behind schedule! 📈', color: 'text-orange-600' }
     if (taskProgress > 80) return { type: 'almost', message: 'Almost done! 💪', color: 'text-blue-600' }
@@ -178,15 +165,18 @@ export function SimpleMilestones({
     const task = milestone.tasks.find(t => t.id === taskId)
     if (!task) return
 
-    onTaskUpdate(taskId, { completed: !task.completed })
+    onTaskUpdate(taskId, { status: task.status === 'completed' ? 'pending' : 'completed' })
   }
 
   const handleAddTask = (milestoneId: string) => {
-    const task: Omit<SimpleTask, 'id'> = {
+    const task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'> = {
       title: '',
-      completed: false,
+      description: '',
+      status: 'pending',
       priority: 'medium',
-      estimatedHours: 1
+      estimated_hours: 1,
+      milestone_id: milestoneId,
+      order_index: 0
     }
     setNewTask({ milestoneId, task })
   }
@@ -197,16 +187,10 @@ export function SimpleMilestones({
     setNewTask(null)
   }
 
-  const handleRecurringTask = (milestoneId: string, task: SimpleTask) => {
-    if (task.isRecurring && task.recurringType === 'monthly') {
-      const nextDueDate = addMonths(new Date(task.dueDate || new Date()), 1)
-      const newTask: Omit<SimpleTask, 'id'> = {
-        ...task,
-        dueDate: format(nextDueDate, 'yyyy-MM-dd'),
-        completed: false
-      }
-      onTaskCreate(milestoneId, { ...newTask })
-    }
+  const handleRecurringTask = (milestoneId: string, task: Task) => {
+    // For now, we'll skip recurring tasks as they're not part of the standardized interface
+    // This can be implemented later if needed
+    console.log('Recurring task functionality not implemented in standardized interface')
   }
 
   const handleAddComment = (milestoneId: string) => {
@@ -230,11 +214,11 @@ export function SimpleMilestones({
       standardPhases.forEach(phase => {
         onMilestoneUpdate(phase.id, {
           status: 'pending',
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          start_date: new Date().toISOString(),
+          end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           tasks: [],
-          estimatedHours: 0,
-          actualHours: 0
+          estimated_hours: 0,
+          actual_hours: 0
         })
       })
     }
@@ -247,9 +231,9 @@ export function SimpleMilestones({
       description: milestone.description,
       purpose: milestone.purpose,
       mainGoal: milestone.mainGoal,
-      startDate: milestone.startDate,
-      endDate: milestone.endDate,
-      estimatedHours: milestone.estimatedHours,
+      start_date: milestone.start_date,
+      end_date: milestone.end_date,
+      estimated_hours: milestone.estimated_hours,
       status: milestone.status
     })
   }
@@ -259,8 +243,8 @@ export function SimpleMilestones({
       // Check if this milestone can be started (previous milestone must be completed)
       const currentMilestone = milestones.find(m => m.id === editingMilestone)
       if (currentMilestone && editingMilestoneData.status === 'in_progress') {
-        const currentPhaseNumber = currentMilestone.phaseNumber
-        const previousPhase = milestones.find(m => m.phaseNumber === currentPhaseNumber - 1)
+        const currentPhaseNumber = currentMilestone.order_index
+        const previousPhase = milestones.find(m => m.order_index === currentPhaseNumber - 1)
         
         if (previousPhase && previousPhase.status !== 'completed') {
           alert('Please complete the previous phase before starting this one.')
@@ -272,8 +256,8 @@ export function SimpleMilestones({
       
       // Auto-start next phase if current phase is completed
       if (editingMilestoneData.status === 'completed' && currentMilestone) {
-        const nextPhase = milestones.find(m => m.phaseNumber === currentMilestone.phaseNumber + 1)
-        if (nextPhase && nextPhase.status === 'pending') {
+        const nextPhase = milestones.find(m => m.order_index === currentMilestone.order_index + 1)
+        if (nextPhase && nextPhase.status === 'not_started') {
           setTimeout(() => {
             onMilestoneUpdate(nextPhase.id, { status: 'in_progress' })
           }, 1000) // Small delay to show completion first
@@ -290,20 +274,20 @@ export function SimpleMilestones({
     setEditingMilestoneData(null)
   }
 
-  const canStartMilestone = (milestone: SimpleMilestone) => {
+  const canStartMilestone = (milestone: Milestone) => {
     if (milestone.status === 'completed') return true
     if (milestone.status === 'in_progress') return true
-    if (milestone.phaseNumber === 1) return true
+    if (milestone.order_index === 1) return true
     
-    const previousPhase = milestones.find(m => m.phaseNumber === milestone.phaseNumber - 1)
+    const previousPhase = milestones.find(m => m.order_index === milestone.order_index - 1)
     return previousPhase ? previousPhase.status === 'completed' : false
   }
 
   const getNextAvailablePhase = () => {
     // Find the first phase that can be started
     for (let i = 1; i <= 4; i++) {
-      const phase = milestones.find(m => m.phaseNumber === i)
-      if (phase && canStartMilestone(phase) && phase.status === 'pending') {
+      const phase = milestones.find(m => m.order_index === i)
+      if (phase && canStartMilestone(phase) && phase.status === 'not_started') {
         return phase
       }
     }
@@ -448,21 +432,21 @@ export function SimpleMilestones({
       <div className="space-y-4">
         {standardPhases.map((phaseTemplate) => {
           // Find existing milestone or create from template
-          const milestone = milestones.find(m => m.phaseNumber === phaseTemplate.phaseNumber) || {
+          const milestone = milestones.find(m => m.order_index === phaseTemplate.order_index) || {
             ...phaseTemplate,
             id: phaseTemplate.id,
-            startDate: new Date().toISOString(),
-            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'pending' as const,
+            start_date: new Date().toISOString(),
+            end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'not_started' as const,
             tasks: [],
-            estimatedHours: 0,
-            actualHours: 0,
+            estimated_hours: 0,
+            actual_hours: 0,
             clientComments: [],
             isRecurring: projectType === 'monthly',
             projectType: projectType
           }
           const smartIndicator = getSmartIndicator(milestone)
-          const completedTasks = milestone.tasks.filter(t => t.completed).length
+          const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length
           const totalTasks = milestone.tasks.length
           
           // Enhanced progress calculation logic
@@ -508,7 +492,7 @@ export function SimpleMilestones({
                       milestone.status === 'in_progress' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' :
                       'bg-gradient-to-br from-gray-400 to-slate-400'
                     }`}>
-                      <span className="text-white font-bold text-lg">{milestone.phaseNumber}</span>
+                      <span className="text-white font-bold text-lg">{milestone.order_index}</span>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
@@ -642,7 +626,7 @@ export function SimpleMilestones({
                     </div>
                     <div className="flex items-center space-x-1">
                       <Calendar className="h-4 w-4 text-blue-500" />
-                      <span>{format(new Date(milestone.startDate), 'MMM dd')} - {format(new Date(milestone.endDate), 'MMM dd, yyyy')}</span>
+                      <span>{format(new Date(milestone.start_date), 'MMM dd')} - {format(new Date(milestone.end_date), 'MMM dd, yyyy')}</span>
                     </div>
                   </div>
                   
@@ -696,25 +680,25 @@ export function SimpleMilestones({
                   </div>
                   {milestone.tasks.map((task) => (
                     <div key={task.id} className={`flex items-center space-x-4 p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
-                      task.completed 
+                      task.status === 'completed' 
                         ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
                         : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200 hover:border-blue-300'
                     }`}>
                       <button
                         onClick={() => handleTaskToggle(milestone.id, task.id)}
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-                          task.completed 
+                          task.status === 'completed' 
                             ? 'bg-gradient-to-br from-green-500 to-emerald-500 border-green-500 text-white shadow-lg' 
                             : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
                         }`}
                       >
-                        {task.completed && <CheckCircle2 className="h-4 w-4" />}
+                        {task.status === 'completed' && <CheckCircle2 className="h-4 w-4" />}
                       </button>
                       
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <span className={`text-sm font-semibold ${
-                            task.completed ? 'line-through text-gray-500' : 'text-gray-900'
+                            task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
                           }`}>
                             {task.title}
                           </span>
@@ -730,16 +714,16 @@ export function SimpleMilestones({
                             </Badge>
                           )}
                         </div>
-                        {task.dueDate && (
+                        {task.due_date && (
                           <div className="flex items-center space-x-2 text-xs text-gray-600">
                             <Calendar className="h-3 w-3" />
-                            <span className="font-medium">Due: {format(new Date(task.dueDate), 'MMM dd, yyyy')}</span>
+                            <span className="font-medium">Due: {format(new Date(task.due_date), 'MMM dd, yyyy')}</span>
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        {task.isRecurring && task.completed && (
+                        {task.isRecurring && task.status === 'completed' && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -910,10 +894,10 @@ export function SimpleMilestones({
                       <div>
                         <h4 className="font-medium text-gray-900 mb-2">Phase Details</h4>
                         <div className="space-y-2 text-sm">
-                          <div><strong>Start Date:</strong> {format(new Date(milestone.startDate), 'MMM dd, yyyy')}</div>
-                          <div><strong>End Date:</strong> {format(new Date(milestone.endDate), 'MMM dd, yyyy')}</div>
-                          <div><strong>Estimated Hours:</strong> {milestone.estimatedHours || 0}h</div>
-                          <div><strong>Actual Hours:</strong> {milestone.actualHours || 0}h</div>
+                          <div><strong>Start Date:</strong> {format(new Date(milestone.start_date), 'MMM dd, yyyy')}</div>
+                          <div><strong>End Date:</strong> {format(new Date(milestone.end_date), 'MMM dd, yyyy')}</div>
+                          <div><strong>Estimated Hours:</strong> {milestone.estimated_hours || 0}h</div>
+                          <div><strong>Actual Hours:</strong> {milestone.actual_hours || 0}h</div>
                         </div>
                       </div>
                       <div>
@@ -1007,18 +991,18 @@ export function SimpleMilestones({
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="date"
-                          value={editingMilestoneData.startDate ? format(new Date(editingMilestoneData.startDate), 'yyyy-MM-dd') : ''}
+                          value={editingMilestoneData.start_date ? format(new Date(editingMilestoneData.start_date), 'yyyy-MM-dd') : ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            startDate: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                            start_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
                           } : null)}
                         />
                         <Input
                           type="date"
-                          value={editingMilestoneData.endDate ? format(new Date(editingMilestoneData.endDate), 'yyyy-MM-dd') : ''}
+                          value={editingMilestoneData.end_date ? format(new Date(editingMilestoneData.end_date), 'yyyy-MM-dd') : ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            endDate: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                            end_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
                           } : null)}
                         />
                       </div>
@@ -1026,22 +1010,22 @@ export function SimpleMilestones({
                         <Input
                           type="number"
                           placeholder="Estimated Hours"
-                          value={editingMilestoneData.estimatedHours || ''}
+                          value={editingMilestoneData.estimated_hours || ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            estimatedHours: parseInt(e.target.value) || 0 
+                            estimated_hours: parseInt(e.target.value) || 0
                           } : null)}
                         />
                         <select
-                          value={editingMilestoneData.status || 'pending'}
+                          value={editingMilestoneData.status || 'not_started'}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            status: e.target.value as 'pending' | 'in_progress' | 'completed' 
+                            status: e.target.value as 'not_started' | 'in_progress' | 'completed' 
                           } : null)}
                           className="px-3 py-2 border border-gray-300 rounded-md text-sm"
                           aria-label="Select milestone status"
                         >
-                          <option value="pending">Not Started</option>
+                          <option value="not_started">Not Started</option>
                           <option value="in_progress">In Progress</option>
                           <option value="completed">Completed</option>
                         </select>

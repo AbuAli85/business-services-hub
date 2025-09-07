@@ -50,93 +50,7 @@ export function ProgressTrackingSystem({
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Transform milestones to simple format - Always exactly 4 phases
-  const transformToSimpleMilestones = (milestones: Milestone[]) => {
-    const standardPhases = [
-      { 
-        id: '550e8400-e29b-41d4-a716-446655440001', // Planning & Setup UUID
-        title: 'Planning & Setup', 
-        phaseNumber: 1, 
-        color: '#3B82F6' 
-      },
-      { 
-        id: '550e8400-e29b-41d4-a716-446655440002', // Development UUID
-        title: 'Development', 
-        phaseNumber: 2, 
-        color: '#10B981' 
-      },
-      { 
-        id: '550e8400-e29b-41d4-a716-446655440003', // Testing & Quality UUID
-        title: 'Testing & Quality', 
-        phaseNumber: 3, 
-        color: '#F59E0B' 
-      },
-      { 
-        id: '550e8400-e29b-41d4-a716-446655440004', // Delivery & Launch UUID
-        title: 'Delivery & Launch', 
-        phaseNumber: 4, 
-        color: '#8B5CF6' 
-      }
-    ]
-
-    // If we have real milestones, use them; otherwise create placeholders
-    if (milestones.length > 0) {
-      return milestones.map((milestone, index) => {
-        const phase = standardPhases[index] || standardPhases[0]
-        return {
-          id: milestone.id,
-          title: milestone.title,
-          description: milestone.description || `${milestone.title} phase`,
-          purpose: milestone.description || `Complete ${milestone.title} phase`,
-          mainGoal: `Complete ${milestone.title} phase`,
-          startDate: milestone.created_at || new Date().toISOString(),
-          endDate: milestone.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          status: (milestone.status as 'pending' | 'in_progress' | 'completed') || 'pending',
-          color: phase.color,
-          phaseNumber: (index + 1) as 1 | 2 | 3 | 4,
-          estimatedHours: 0,
-          actualHours: 0,
-          clientComments: [],
-          isRecurring: false,
-          projectType: 'one_time' as const,
-          tasks: (milestone.tasks || []).map(task => ({
-            id: task.id,
-            title: task.title,
-            description: task.description || '',
-            completed: task.status === 'completed',
-            dueDate: task.due_date,
-            isRecurring: false,
-            recurringType: 'monthly' as const,
-            priority: 'medium' as const,
-            estimatedHours: 1,
-            actualHours: task.actual_hours || 0
-          }))
-        }
-      })
-    }
-
-    // Create 4 standard phases if no real data exists
-    return standardPhases.map((phase, index) => {
-      return {
-        id: phase.id,
-        title: phase.title,
-        description: `${phase.title} phase`,
-        purpose: `Complete ${phase.title} phase`,
-        mainGoal: `Complete ${phase.title} phase`,
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'pending' as const,
-        color: phase.color,
-        phaseNumber: phase.phaseNumber as 1 | 2 | 3 | 4,
-        estimatedHours: 0,
-        actualHours: 0,
-        clientComments: [],
-        isRecurring: false,
-        projectType: 'one_time' as const,
-        tasks: []
-      }
-    })
-  }
+  // No transformation needed - SimpleMilestones now uses standardized interfaces
 
   const { 
     isUpdating, 
@@ -1155,7 +1069,7 @@ export function ProgressTrackingSystem({
                 
                 {/* Simple Milestones Display */}
                 <SimpleMilestones
-                  milestones={transformToSimpleMilestones(milestones || [])}
+                  milestones={milestones || []}
                   userRole={userRole}
                   onTaskUpdate={userRole === 'provider' ? (taskId: string, updates: any) => {
                     // Find the milestone containing this task
@@ -1210,7 +1124,7 @@ export function ProgressTrackingSystem({
                 />
               ) : (
                 <SimpleTimeline
-                  milestones={transformToSimpleMilestones(milestones || [])}
+                  milestones={milestones || []}
                   userRole={userRole}
                 />
               )}

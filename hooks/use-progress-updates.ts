@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Milestone, Task } from '@/lib/progress-tracking'
+import { Milestone, Task, ProgressUpdate } from '@/types/progress'
 import { 
   calculateMilestoneProgress, 
   calculateOverallProgress, 
@@ -29,18 +29,13 @@ const transformMilestoneData = (milestoneData: any): Milestone => ({
 
 interface UseProgressUpdatesProps {
   bookingId: string
-  onProgressUpdate?: (updates: {
-    milestoneId: string
-    milestoneProgress: number
-    overallProgress: number
-  }) => void
+  onProgressUpdate?: (updates: ProgressUpdate) => void
 }
 
 export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressUpdatesProps) {
   const [isUpdating, setIsUpdating] = useState(false)
 
   const updateTaskProgress = useCallback(async (
-    milestoneId: string,
     taskId: string,
     updates: Partial<Task>
   ) => {
@@ -215,7 +210,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
 
   const addTask = useCallback(async (
     milestoneId: string,
-    task: Omit<Task, 'id'>
+    task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>
   ) => {
     try {
       setIsUpdating(true)
@@ -297,7 +292,6 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
   }, [])
 
   const deleteTask = useCallback(async (
-    milestoneId: string,
     taskId: string
   ) => {
     try {

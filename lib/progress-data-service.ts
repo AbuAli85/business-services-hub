@@ -1,48 +1,5 @@
 import { getSupabaseClient } from './supabase';
-
-export interface Task {
-  id: string;
-  milestone_id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  estimated_hours: number;
-  actual_hours: number;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Milestone {
-  id: string;
-  booking_id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  progress_percentage: number;
-  completed_tasks: number;
-  total_tasks: number;
-  estimated_hours: number;
-  actual_hours: number;
-  order_index: number;
-  created_at: string;
-  updated_at: string;
-  tasks: Task[];
-}
-
-export interface TimeEntry {
-  id: string;
-  booking_id: string;
-  milestone_id: string;
-  task_id: string;
-  user_id: string;
-  duration_hours: number;
-  description: string;
-  start_time: string;
-  logged_at: string;
-  created_at: string;
-}
+import { Task, Milestone, TimeEntry, BookingProgress } from '@/types/progress';
 
 export interface ProgressData {
   milestones: Milestone[];
@@ -125,12 +82,7 @@ export class ProgressDataService {
 
   static async updateTaskDetails(
     taskId: string, 
-    updates: {
-      title?: string;
-      description?: string;
-      priority?: 'low' | 'medium' | 'high';
-      estimated_hours?: number;
-    }
+    updates: Partial<Task>
   ): Promise<void> {
     try {
       const supabase = await getSupabaseClient();
@@ -151,12 +103,7 @@ export class ProgressDataService {
 
   static async addTask(
     milestoneId: string,
-    task: {
-      title: string;
-      description: string;
-      priority: 'low' | 'medium' | 'high';
-      estimated_hours: number;
-    }
+    task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>
   ): Promise<Task> {
     try {
       const supabase = await getSupabaseClient();
@@ -176,12 +123,14 @@ export class ProgressDataService {
         .insert({
           milestone_id: milestoneId,
           title: task.title,
-          description: task.description,
-          status: 'pending',
-          priority: task.priority,
-          estimated_hours: task.estimated_hours,
+          description: task.description || '',
+          status: task.status || 'pending',
+          priority: task.priority || 'medium',
+          estimated_hours: task.estimated_hours || 0,
           actual_hours: 0,
-          order_index: nextOrderIndex
+          order_index: nextOrderIndex,
+          due_date: task.due_date,
+          progress: task.progress || 0
         })
         .select()
         .single();
@@ -196,7 +145,7 @@ export class ProgressDataService {
 
   static async logTime(
     taskId: string,
-    durationHours: number,
+    duration: number,
     description: string
   ): Promise<TimeEntry> {
     try {
@@ -224,10 +173,10 @@ export class ProgressDataService {
           milestone_id: task.milestone_id,
           task_id: taskId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
-          duration_hours: durationHours,
-          description,
-          start_time: new Date(Date.now() - durationHours * 3600000).toISOString(),
-          logged_at: new Date().toISOString()
+          duration: duration,
+          notes: description,
+          start_time: new Date(Date.now() - duration * 3600000).toISOString(),
+          timestamp: new Date().toISOString()
         })
         .select()
         .single();
@@ -251,12 +200,12 @@ export class ProgressDataService {
       // Get total hours for this task
       const { data: timeEntries, error: timeError } = await supabase
         .from('time_entries')
-        .select('duration_hours')
+        .select('duration')
         .eq('task_id', taskId);
 
       if (timeError) throw timeError;
 
-      const totalHours = timeEntries?.reduce((sum, entry) => sum + entry.duration_hours, 0) || 0;
+      const totalHours = timeEntries?.reduce((sum, entry) => sum + (entry.duration || 0), 0) || 0;
 
       // Update task
       const { error: updateError } = await supabase
