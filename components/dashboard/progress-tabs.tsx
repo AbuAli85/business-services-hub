@@ -1014,34 +1014,50 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         )}
 
         {combinedView ? (
-          // Combined Progress & Timeline: no tabs, render both sections
-          <div className="space-y-8">
+          // Simplified Combined View - Remove duplication
+          <div className="space-y-6">
             {/* Smart Progress Indicator */}
             <SmartProgressIndicator
               bookingId={bookingId}
-              currentProgress={bookingProgress?.booking_progress || 0}
+              currentProgress={overallProgress}
               milestones={milestones}
               tasks={milestones.flatMap(m => m.tasks || [])}
               userRole={userRole}
               onProgressUpdate={(progress) => {
-                // Update progress in parent component
+                setOverallProgress(progress)
                 console.log('Progress updated:', progress)
               }}
             />
 
-            <ProgressTrackingSystem
-              bookingId={bookingId}
-              userRole={userRole}
-              className=""
-            />
+            {/* Main milestone display with sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Main milestones view */}
+              <div className="lg:col-span-3">
+                <SimpleMilestones
+                  milestones={milestones}
+                  userRole={userRole}
+                  onTaskUpdate={handleTaskUpdate}
+                  onTaskAdd={handleAddTask}
+                  onTaskDelete={handleDeleteTask}
+                  onMilestoneUpdate={handleMilestoneUpdate}
+                  onCommentAdd={handleAddComment}
+                  onProjectTypeChange={() => {}}
+                  commentsByMilestone={commentsByMilestone}
+                  approvalsByMilestone={approvalsByMilestone}
+                />
+              </div>
 
-            {/* Smart Notifications */}
-            <ProgressNotifications
-              bookingId={bookingId}
-              milestones={milestones}
-              tasks={milestones.flatMap(m => m.tasks || [])}
-              userRole={userRole}
-            />
+              {/* Smart suggestions sidebar */}
+              <div className="lg:col-span-1">
+                <SmartSuggestionsSidebar
+                  milestones={milestones}
+                  userRole={userRole}
+                  bookingProgress={bookingProgress}
+                  timeEntries={timeEntries}
+                  onRefresh={loadData}
+                />
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div>

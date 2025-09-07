@@ -14,7 +14,7 @@ import {
   RefreshCw,
   Lightbulb
 } from 'lucide-react'
-import { Milestone, BookingProgress, TimeEntry } from '@/lib/progress-tracking'
+import { Milestone, BookingProgress, TimeEntry } from '@/types/progress'
 import { isAfter, isBefore, addDays } from 'date-fns'
 import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
 import toast from 'react-hot-toast'
@@ -56,10 +56,9 @@ export function SmartSuggestionsSidebar({
 
       // Check for overdue milestones
       const overdueMilestones = milestones.filter(m => 
-        m.due_date && 
-        isBefore(new Date(m.due_date), now) && 
-        m.status !== 'completed' && 
-        m.status !== 'cancelled'
+        m.end_date && 
+        isBefore(new Date(m.end_date), now) && 
+        m.status !== 'completed'
       )
 
       overdueMilestones.forEach(milestone => {
@@ -68,7 +67,7 @@ export function SmartSuggestionsSidebar({
           type: 'overdue',
           priority: 'high',
           title: 'Overdue Milestone',
-          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.due_date, { addSuffix: true })}`,
+          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.end_date, { addSuffix: true })}`,
           action: 'Follow up with client',
           data: { milestoneId: milestone.id },
           dismissible: true
@@ -77,7 +76,7 @@ export function SmartSuggestionsSidebar({
 
       // Check for inactive milestones (no updates in 2+ days)
       const inactiveMilestones = milestones.filter(m => {
-        if (m.status === 'completed' || m.status === 'cancelled') return false
+        if (m.status === 'completed') return false
         const lastUpdate = new Date(m.updated_at)
         const daysSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24)
         return daysSinceUpdate >= 2
@@ -96,30 +95,30 @@ export function SmartSuggestionsSidebar({
         })
       })
 
-      // Check for tasks needing approval (client role)
+      // Check for tasks that might need attention (client role)
       if (userRole === 'client') {
-        const tasksNeedingApproval = milestones.flatMap(m => 
-          m.tasks?.filter(t => t.approval_status === 'pending') || []
+        const completedTasks = milestones.flatMap(m => 
+          m.tasks?.filter(t => t.status === 'completed') || []
         )
 
-        tasksNeedingApproval.forEach(task => {
+        if (completedTasks.length > 0) {
           newSuggestions.push({
-            id: `approval-${task.id}`,
+            id: 'review-completed',
             type: 'milestone_approval',
             priority: 'medium',
-            title: 'Task Approval Needed',
-            description: `"${task.title}" is waiting for your approval`,
-            action: 'Review and approve',
-            data: { taskId: task.id },
-            dismissible: false
+            title: 'Review Completed Tasks',
+            description: `${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed and ready for review`,
+            action: 'Review tasks',
+            data: { taskCount: completedTasks.length },
+            dismissible: true
           })
-        })
+        }
       }
 
       // Check for upcoming due dates (within 3 days)
       const upcomingDueDates = milestones.filter(m => {
-        if (!m.due_date || m.status === 'completed' || m.status === 'cancelled') return false
-        const dueDate = new Date(m.due_date)
+        if (!m.end_date || m.status === 'completed') return false
+        const dueDate = new Date(m.end_date)
         const daysUntilDue = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         return daysUntilDue <= 3 && daysUntilDue > 0
       })
@@ -130,7 +129,7 @@ export function SmartSuggestionsSidebar({
           type: 'follow_up',
           priority: 'low',
           title: 'Upcoming Due Date',
-          description: `"${milestone.title}" is due in ${Math.ceil((new Date(milestone.due_date!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))} days`,
+          description: `"${milestone.title}" is due in ${Math.ceil((new Date(milestone.end_date!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))} days`,
           action: 'Prepare for completion',
           data: { milestoneId: milestone.id },
           dismissible: true
@@ -140,7 +139,7 @@ export function SmartSuggestionsSidebar({
       // Check for time tracking efficiency
       const totalEstimatedHours = milestones.reduce((sum, m) => sum + (m.estimated_hours || 0), 0)
       const totalActualHours = timeEntries.reduce((sum, entry) => 
-        sum + (entry.duration_minutes || 0) / 60, 0
+        sum + (entry.duration_hours || 0), 0
       )
 
       if (totalEstimatedHours > 0 && totalActualHours > 0) {
@@ -169,6 +168,39 @@ export function SmartSuggestionsSidebar({
             dismissible: true
           })
         }
+      }
+
+      // Add default suggestions if no data-driven suggestions exist
+      if (newSuggestions.length === 0) {
+        newSuggestions.push(
+          {
+            id: 'get-started',
+            type: 'follow_up',
+            priority: 'medium',
+            title: 'Get Started with Progress Tracking',
+            description: 'Create milestones and tasks to start tracking your project progress',
+            action: 'Create milestone',
+            dismissible: true
+          },
+          {
+            id: 'smart-features',
+            type: 'follow_up',
+            priority: 'low',
+            title: 'Try Smart Task Generation',
+            description: 'Use AI to generate context-aware task suggestions for your milestones',
+            action: 'Use Smart Tasks',
+            dismissible: true
+          },
+          {
+            id: 'progress-tips',
+            type: 'follow_up',
+            priority: 'low',
+            title: 'Progress Tracking Tips',
+            description: 'Break down work into smaller tasks for better progress visibility',
+            action: 'Learn more',
+            dismissible: true
+          }
+        )
       }
 
       return newSuggestions
