@@ -191,42 +191,42 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       
       // First try to load from database
       try {
-        const { getSupabaseClient } = await import('@/lib/supabase')
-        const supabase = await getSupabaseClient()
-        
-        // Load milestones with tasks
-        const { data: milestonesData, error: milestonesError } = await supabase
-          .from('milestones')
-          .select(`
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabase = await getSupabaseClient()
+      
+      // Load milestones with tasks
+      const { data: milestonesData, error: milestonesError } = await supabase
+        .from('milestones')
+        .select(`
+          id,
+          title,
+          description,
+          progress_percentage,
+          status,
+          due_date,
+          weight,
+          order_index,
+          editable,
+          tasks (
             id,
             title,
-            description,
-            progress_percentage,
             status,
+            progress_percentage,
             due_date,
-            weight,
-            order_index,
             editable,
-            tasks (
-              id,
-              title,
-              status,
-              progress_percentage,
-              due_date,
-              editable,
-              estimated_hours,
-              actual_hours,
-              priority
-            )
-          `)
-          .eq('booking_id', bookingId)
-          .order('order_index', { ascending: true })
-        
-        if (milestonesError) {
+            estimated_hours,
+            actual_hours,
+            priority
+          )
+        `)
+        .eq('booking_id', bookingId)
+        .order('order_index', { ascending: true })
+      
+      if (milestonesError) {
           console.warn('Database query failed, switching to fallback mode:', milestonesError)
-          throw new Error(milestonesError.message)
-        }
-        
+        throw new Error(milestonesError.message)
+      }
+      
         // If no milestones found, check if we can create them (test permissions)
         if (!milestonesData || milestonesData.length === 0) {
           console.log('No milestones found, testing database permissions...')
@@ -243,8 +243,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               order_index: 0
             })
             .select()
-            .single()
-          
+        .single()
+      
           if (testError && testError.code === '42501') {
             console.log('Permission denied, switching to fallback mode')
             throw new Error('Permission denied - using fallback mode')
@@ -260,46 +260,46 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         
         // Transform milestones data
         const transformedMilestones = milestonesData.map((milestone: any) => ({
-          ...milestone,
-          id: milestone.id,
-          booking_id: bookingId,
-          title: milestone.title,
-          description: milestone.description || '',
-          status: milestone.status as 'not_started' | 'in_progress' | 'completed',
-          progress: milestone.progress_percentage || 0,
+        ...milestone,
+        id: milestone.id,
+        booking_id: bookingId,
+        title: milestone.title,
+        description: milestone.description || '',
+        status: milestone.status as 'not_started' | 'in_progress' | 'completed',
+        progress: milestone.progress_percentage || 0,
           start_date: milestone.created_at,
           end_date: milestone.due_date || milestone.created_at,
-          priority: 'medium' as 'medium',
+        priority: 'medium' as 'medium',
           created_at: milestone.created_at,
           updated_at: milestone.updated_at,
           is_overdue: false,
-          estimated_hours: 0,
-          actual_hours: 0,
-          tags: [],
-          notes: '',
-          assigned_to: undefined,
-          created_by: undefined,
-          completed_at: undefined,
-          overdue_since: undefined,
-          order_index: milestone.order_index || 0,
+        estimated_hours: 0,
+        actual_hours: 0,
+        tags: [],
+        notes: '',
+        assigned_to: undefined,
+        created_by: undefined,
+        completed_at: undefined,
+        overdue_since: undefined,
+        order_index: milestone.order_index || 0,
           editable: milestone.editable !== false,
           tasks: (milestone.tasks || []).map((task: any) => ({
-            id: task.id,
-            title: task.title,
-            status: task.status as 'pending' | 'in_progress' | 'completed',
-            progress_percentage: task.progress_percentage || 0,
-            due_date: task.due_date,
-            estimated_hours: task.estimated_hours || 0,
-            actual_hours: task.actual_hours || 0,
+          id: task.id,
+          title: task.title,
+          status: task.status as 'pending' | 'in_progress' | 'completed',
+          progress_percentage: task.progress_percentage || 0,
+          due_date: task.due_date,
+          estimated_hours: task.estimated_hours || 0,
+          actual_hours: task.actual_hours || 0,
             priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
-            milestone_id: milestone.id,
+          milestone_id: milestone.id,
             description: task.description || '',
-            tags: [],
-            steps: [],
-            completed_at: undefined,
+          tags: [],
+          steps: [],
+          completed_at: undefined,
             created_at: task.created_at,
             updated_at: task.updated_at,
-            created_by: undefined,
+          created_by: undefined,
             assigned_to: undefined,
             is_overdue: false,
             overdue_since: undefined,
@@ -371,17 +371,17 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             created_by: undefined,
             assigned_to: undefined,
             is_overdue: false,
-            overdue_since: undefined,
-            approval_status: 'pending' as 'pending',
-            approved_by: undefined,
-            approved_at: undefined,
-            approval_notes: undefined,
-            comments: [],
-            time_entries: [],
-            order_index: 0
-          }))
+          overdue_since: undefined,
+          approval_status: 'pending' as 'pending',
+          approved_by: undefined,
+          approved_at: undefined,
+          approval_notes: undefined,
+          comments: [],
+          time_entries: [],
+          order_index: 0
         }))
-        
+      }))
+      
         setMilestones(transformedFallback)
         console.log('✅ Fallback milestones loaded:', transformedFallback.length, 'milestones')
         console.log('📊 Fallback data:', transformedFallback)
@@ -945,16 +945,15 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       </div>
 
       {/* Milestone Creator Modal - Direct Render */}
-      {(() => {
-        if (showMilestoneCreator) {
-          console.log('About to render modal JSX')
-        }
-        return null
-      })()}
       {showMilestoneCreator && (
         <div 
           data-modal="milestone-creator"
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+          ref={(el) => {
+            if (el) {
+              console.log('✅ Modal element rendered in DOM!', el)
+            }
+          }}
           style={{ 
             zIndex: 999999,
             position: 'fixed',
