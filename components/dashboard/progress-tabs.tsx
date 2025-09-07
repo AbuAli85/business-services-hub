@@ -774,82 +774,130 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     toast.success(`Booking ${action}ed successfully`)
   }
 
-  const handleMarkInProgress = async () => {
+  // Optimized handlers with deferred execution
+  const createOptimizedHandler = (action: () => void, message: string) => {
+    return () => {
+      // Defer to next tick to prevent UI blocking
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => {
+          action()
+          toast.success(message)
+        }, { timeout: 50 })
+      } else {
+        setTimeout(() => {
+          action()
+          toast.success(message)
+        }, 0)
+      }
+    }
+  }
+
+  const handleMarkInProgress = createOptimizedHandler(() => {
     console.log('Mark in progress')
-    toast.success('Booking marked as in progress')
-  }
+  }, 'Booking marked as in progress')
 
-  const handleMarkComplete = async () => {
+  const handleMarkComplete = createOptimizedHandler(() => {
     console.log('Mark complete')
-    toast.success('Booking marked as complete')
-  }
+  }, 'Booking marked as complete')
 
-  const handlePutOnHold = async () => {
+  const handlePutOnHold = createOptimizedHandler(() => {
     console.log('Put on hold')
-    toast.success('Booking put on hold')
-  }
+  }, 'Booking put on hold')
 
-  const handleProgressUpdate = async (newProgress: number) => {
-    console.log('Progress update:', newProgress)
+  const handleProgressUpdate = (newProgress: number) => {
+    // Immediate UI update for better UX
     setOverallProgress(newProgress)
-    toast.success('Progress updated successfully')
+    
+    // Defer heavy operations
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        console.log('Progress update:', newProgress)
+        toast.success('Progress updated successfully')
+      }, { timeout: 50 })
+    } else {
+      setTimeout(() => {
+        console.log('Progress update:', newProgress)
+        toast.success('Progress updated successfully')
+      }, 0)
+    }
   }
 
-  const handleSendProgressUpdate = async () => {
+  const handleSendProgressUpdate = createOptimizedHandler(() => {
     console.log('Send progress update')
-    toast.success('Progress update sent')
-  }
+  }, 'Progress update sent')
 
-  const handleScheduleMeeting = async () => {
+  const handleScheduleMeeting = createOptimizedHandler(() => {
     console.log('Schedule meeting')
-    toast.success('Meeting scheduled')
+  }, 'Meeting scheduled')
+
+  const handleExport = (format: 'pdf' | 'excel') => {
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        console.log('Export:', format)
+        toast.success(`Exporting as ${format.toUpperCase()}`)
+      }, { timeout: 50 })
+    } else {
+      setTimeout(() => {
+        console.log('Export:', format)
+        toast.success(`Exporting as ${format.toUpperCase()}`)
+      }, 0)
+    }
   }
 
-  const handleExport = async (format: 'pdf' | 'excel') => {
-    console.log('Export:', format)
-    toast.success(`Exporting as ${format.toUpperCase()}`)
-  }
+  const handleStatusUpdate = createOptimizedHandler(() => {
+    console.log('Status update')
+  }, 'Status updated successfully')
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    console.log('Status update:', newStatus)
-    toast.success('Status updated successfully')
-  }
-
-  const handleNotify = async () => {
+  const handleNotify = createOptimizedHandler(() => {
     console.log('Send notification')
-    toast.success('Notification sent')
-  }
+  }, 'Notification sent')
 
-  const handleProcessPayment = async () => {
+  const handleProcessPayment = createOptimizedHandler(() => {
     console.log('Process payment')
-    toast.success('Payment processed')
-  }
+  }, 'Payment processed')
 
-  const handleGenerateInvoice = async () => {
+  const handleGenerateInvoice = createOptimizedHandler(() => {
     console.log('Generate invoice')
-    toast.success('Invoice generated')
-  }
+  }, 'Invoice generated')
 
-  const handleDownloadReceipt = async () => {
+  const handleDownloadReceipt = createOptimizedHandler(() => {
     console.log('Download receipt')
-    toast.success('Receipt downloaded')
+  }, 'Receipt downloaded')
+
+  const handleSuggestionAction = (suggestion: any) => {
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        console.log('Suggestion action:', suggestion)
+        toast.success('Suggestion action completed')
+      }, { timeout: 50 })
+    } else {
+      setTimeout(() => {
+        console.log('Suggestion action:', suggestion)
+        toast.success('Suggestion action completed')
+      }, 0)
+    }
   }
 
-  const handleSuggestionAction = async (suggestion: any) => {
-    console.log('Suggestion action:', suggestion)
-    toast.success('Suggestion action completed')
-  }
-
-  const handleUpdateProgress = async (newProgress: number) => {
-    console.log('Update progress:', newProgress)
+  const handleUpdateProgress = (newProgress: number) => {
+    // Immediate UI update
     setOverallProgress(newProgress)
-    toast.success('Progress updated')
+    
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        console.log('Update progress:', newProgress)
+        toast.success('Progress updated')
+      }, { timeout: 50 })
+    } else {
+      setTimeout(() => {
+        console.log('Update progress:', newProgress)
+        toast.success('Progress updated')
+      }, 0)
+    }
   }
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = createOptimizedHandler(() => {
     console.log('Send message')
-    toast.success('Message sent')
-  }
+  }, 'Message sent')
 
   console.log('🔍 ProgressTabs render - showMilestoneCreator:', showMilestoneCreator)
 

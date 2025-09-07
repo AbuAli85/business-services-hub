@@ -1440,68 +1440,80 @@ export default function EnhancedBookingDetails({
   const handleApprovalAction = async (action: 'approve' | 'decline') => {
     if (!booking) return
 
-    try {
-      setIsUpdating(true)
-      
-      // Show confirmation dialog for decline
-      let reason = ''
-      if (action === 'decline') {
-        reason = prompt('Please provide a reason for declining this booking (optional):') || ''
-      }
+    // Defer heavy operations to prevent UI blocking
+    const processApproval = async () => {
+      try {
+        setIsUpdating(true)
+        
+        // Show confirmation dialog for decline (defer to next tick)
+        let reason = ''
+        if (action === 'decline') {
+          await new Promise(resolve => setTimeout(resolve, 0)) // Defer to next tick
+          reason = prompt('Please provide a reason for declining this booking (optional):') || ''
+        }
 
-      // Get authenticated Supabase client
-      const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        throw new Error('No active session. Please sign in again.')
-      }
+        // Get authenticated Supabase client (defer heavy operations)
+        const supabase = await getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session) {
+          throw new Error('No active session. Please sign in again.')
+        }
 
-      // Make authenticated request with proper headers
-      const response = await fetch('/api/bookings', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          booking_id: booking.id,
-          action: action,
-          reason: reason
+        // Make authenticated request with proper headers
+        const response = await fetch('/api/bookings', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            booking_id: booking.id,
+            action: action,
+            reason: reason
+          })
         })
-      })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error(`API Error (${response.status}):`, errorData)
-        throw new Error(errorData.error || `Failed to ${action} booking (${response.status})`)
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error(`API Error (${response.status}):`, errorData)
+          throw new Error(errorData.error || `Failed to ${action} booking (${response.status})`)
+        }
+
+        const result = await response.json()
+        console.log(`Booking ${action} result:`, result)
+        
+        // Update local state immediately for better UX
+        setBooking({ 
+          ...booking, 
+          status: action === 'approve' ? 'approved' : 'declined',
+          approval_status: action === 'approve' ? 'approved' : 'rejected'
+        })
+
+        toast.success(`Booking ${action === 'approve' ? 'approved' : 'declined'} successfully`)
+        
+        // Defer heavy operations to background
+        setTimeout(async () => {
+          await loadBookingData()
+          // Force a page refresh to ensure UI is updated
+          setTimeout(() => {
+            window.location.reload()
+          }, 500)
+        }, 100)
+      } catch (error) {
+        console.error(`Error ${action}ing booking:`, error)
+        const errorMessage = error instanceof Error ? error.message : `Failed to ${action} booking`
+        toast.error(errorMessage)
+      } finally {
+        setIsUpdating(false)
       }
+    }
 
-      const result = await response.json()
-      console.log(`Booking ${action} result:`, result)
-      
-      // Update local state
-      setBooking({ 
-        ...booking, 
-        status: action === 'approve' ? 'approved' : 'declined',
-        approval_status: action === 'approve' ? 'approved' : 'rejected'
-      })
-
-      toast.success(`Booking ${action === 'approve' ? 'approved' : 'declined'} successfully`)
-      
-      // Refresh booking data
-      await loadBookingData()
-      
-      // Force a page refresh to ensure UI is updated
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    } catch (error) {
-      console.error(`Error ${action}ing booking:`, error)
-      const errorMessage = error instanceof Error ? error.message : `Failed to ${action} booking`
-      toast.error(errorMessage)
-    } finally {
-      setIsUpdating(false)
+    // Use requestIdleCallback or setTimeout to defer heavy work
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => processApproval(), { timeout: 100 })
+    } else {
+      setTimeout(() => processApproval(), 0)
     }
   }
 
