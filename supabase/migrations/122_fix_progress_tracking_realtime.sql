@@ -490,11 +490,11 @@ BEGIN
   -- Count total and completed tasks
   SELECT
     COUNT(*),
-    COUNT(*) FILTER (WHERE status = 'completed'),
-    COALESCE(SUM(actual_hours), 0)
+    COUNT(*) FILTER (WHERE t.status = 'completed'),
+    COALESCE(SUM(t.actual_hours), 0)
   INTO total_tasks, completed_tasks, actual_hours
-  FROM public.tasks
-  WHERE milestone_id = milestone_uuid;
+  FROM public.tasks t
+  WHERE t.milestone_id = milestone_uuid;
 
   -- Calculate progress percentage
   IF total_tasks > 0 THEN
