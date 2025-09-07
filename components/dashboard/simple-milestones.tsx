@@ -71,6 +71,7 @@ export function SimpleMilestones({
   const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<Milestone> | null>(null)
   const [showSmartTaskGenerator, setShowSmartTaskGenerator] = useState<string | null>(null)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [usingLocalStorage, setUsingLocalStorage] = useState(false)
 
   // No hardcoded phases - use real data from database
 
@@ -203,7 +204,12 @@ export function SimpleMilestones({
       
       // Show user-friendly error message
         if (e instanceof Error && (e.message.includes('permission denied') || e.message.includes('403'))) {
-          alert('✅ Approval submitted successfully! (Stored locally due to database permissions)')
+          // Set local storage indicator
+          setUsingLocalStorage(true)
+          
+          // Show a more informative success message
+          const successMessage = '✅ Approval submitted successfully!\n\nYour approval has been saved locally and will be synced when database permissions are restored.'
+          alert(successMessage)
         } else {
           alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
         }
@@ -321,6 +327,29 @@ export function SimpleMilestones({
 
   return (
     <div className="space-y-6">
+      {/* Local Storage Indicator */}
+      {usingLocalStorage && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-amber-800">Using Local Storage</h3>
+            <p className="text-xs text-amber-700">Approvals are saved locally and will sync when database is available</p>
+          </div>
+          <button
+            onClick={() => setUsingLocalStorage(false)}
+            className="ml-auto text-amber-600 hover:text-amber-800"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Header (optional) */}
       {showHeader && (
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">

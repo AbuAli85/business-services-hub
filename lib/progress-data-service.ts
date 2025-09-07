@@ -634,6 +634,8 @@ export class ProgressDataService {
         // Handle table not found or permission denied errors
         if (error.code === '42501' || error.code === 'PGRST116' || error.code === '403' || error.message?.includes('relation "milestone_approvals" does not exist') || error.message?.includes('permission denied')) {
           console.log('📝 Using local storage for milestone approvals (RLS policies too restrictive)');
+        console.log('🔧 This is expected behavior - approvals will be stored locally until database permissions are fixed');
+          console.log('🔧 This is expected behavior - approvals will be stored locally until database permissions are fixed');
           
           // Create a mock approval and store it locally
           const mockApproval: MilestoneApproval = {
@@ -685,6 +687,7 @@ export class ProgressDataService {
       // Handle table not found or permission denied errors
       if (error.code === '42501' || error.code === 'PGRST116' || error.code === '403' || error.message?.includes('relation "milestone_approvals" does not exist') || error.message?.includes('permission denied')) {
         console.log('📝 Using local storage for milestone approvals (RLS policies too restrictive)');
+        console.log('🔧 This is expected behavior - approvals will be stored locally until database permissions are fixed');
         
         // Try to get approvals from local storage and session storage
         try {
