@@ -723,6 +723,40 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     console.log('Add comment:', milestoneId, comment)
   }
 
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    try {
+      if (useFallbackMode) {
+        // Delete from localStorage
+        const fallbackMilestones = getFallbackMilestones(bookingId)
+        const updatedMilestones = fallbackMilestones.filter(m => m.id !== milestoneId)
+        localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(updatedMilestones))
+        setFallbackMilestones(updatedMilestones)
+        toast.success('Milestone deleted successfully')
+      } else {
+        // Delete from database
+        const { getSupabaseClient } = await import('@/lib/supabase')
+        const supabase = await getSupabaseClient()
+        
+        const { error } = await supabase
+          .from('milestones')
+          .delete()
+          .eq('id', milestoneId)
+        
+        if (error) {
+          console.error('Error deleting milestone:', error)
+          toast.error('Failed to delete milestone')
+          return
+        }
+        
+        toast.success('Milestone deleted successfully')
+        loadData() // Reload data to reflect changes
+      }
+    } catch (error) {
+      console.error('Error deleting milestone:', error)
+      toast.error('Failed to delete milestone')
+    }
+  }
+
   const handleRequestChanges = (milestoneId: string, reason: string) => {
     // Implement request changes functionality
     console.log('Request changes:', milestoneId, reason)
@@ -881,6 +915,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   onTaskAdd={handleAddTask}
                   onTaskDelete={handleDeleteTask}
                   onMilestoneUpdate={handleMilestoneUpdate}
+                  onMilestoneDelete={handleDeleteMilestone}
                   onCommentAdd={handleAddComment}
                   onProjectTypeChange={() => {}}
                   onMilestoneCreate={() => setShowMilestoneCreator(true)}

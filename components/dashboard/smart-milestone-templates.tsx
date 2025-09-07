@@ -32,7 +32,7 @@ interface MilestoneTemplate {
   id: string
   name: string
   description: string
-  category: 'development' | 'design' | 'marketing' | 'business' | 'custom'
+  category: 'development' | 'design' | 'marketing' | 'business' | 'ecommerce' | 'consulting' | 'content' | 'analytics' | 'custom'
   icon: any
   milestones: {
     title: string
@@ -49,6 +49,8 @@ interface MilestoneTemplate {
   tags: string[]
   estimatedDuration: string
   complexity: 'simple' | 'moderate' | 'complex' | 'enterprise'
+  serviceType: 'one_time' | 'monthly' | 'quarterly' | 'yearly'
+  priceRange: 'budget' | 'standard' | 'premium' | 'enterprise'
 }
 
 const templates: MilestoneTemplate[] = [
@@ -60,6 +62,8 @@ const templates: MilestoneTemplate[] = [
     icon: Code,
     estimatedDuration: '8-12 weeks',
     complexity: 'moderate',
+    serviceType: 'one_time',
+    priceRange: 'standard',
     tags: ['Frontend', 'Backend', 'Database', 'Testing'],
     milestones: [
       {
@@ -120,6 +124,8 @@ const templates: MilestoneTemplate[] = [
     icon: Smartphone,
     estimatedDuration: '10-14 weeks',
     complexity: 'complex',
+    serviceType: 'one_time',
+    priceRange: 'premium',
     tags: ['Mobile', 'Cross-platform', 'UI/UX', 'API'],
     milestones: [
       {
@@ -168,6 +174,8 @@ const templates: MilestoneTemplate[] = [
     icon: Globe,
     estimatedDuration: '6-8 weeks',
     complexity: 'moderate',
+    serviceType: 'monthly',
+    priceRange: 'standard',
     tags: ['SEO', 'Social Media', 'Content', 'Analytics'],
     milestones: [
       {
@@ -228,6 +236,8 @@ const templates: MilestoneTemplate[] = [
     icon: Brain,
     estimatedDuration: '4-6 weeks',
     complexity: 'simple',
+    serviceType: 'quarterly',
+    priceRange: 'premium',
     tags: ['Strategy', 'Analysis', 'Planning', 'Optimization'],
     milestones: [
       {
@@ -267,6 +277,261 @@ const templates: MilestoneTemplate[] = [
         ]
       }
     ]
+  },
+  // E-commerce Templates
+  {
+    id: 'ecommerce-store',
+    name: 'E-commerce Store Setup',
+    description: 'Complete online store development with payment integration',
+    category: 'ecommerce',
+    icon: Database,
+    estimatedDuration: '6-10 weeks',
+    complexity: 'moderate',
+    serviceType: 'one_time',
+    priceRange: 'standard',
+    tags: ['E-commerce', 'Payment', 'Inventory', 'SEO'],
+    milestones: [
+      {
+        title: 'Store Planning & Design',
+        description: 'Store structure, design, and user experience planning',
+        estimatedDays: 10,
+        priority: 'high',
+        tasks: [
+          { title: 'Store architecture', description: 'Plan store structure and navigation', estimatedHours: 8, priority: 'high' },
+          { title: 'UI/UX design', description: 'Design store interface and user flows', estimatedHours: 16, priority: 'high' },
+          { title: 'Product catalog setup', description: 'Plan product categories and attributes', estimatedHours: 6, priority: 'medium' },
+          { title: 'Brand integration', description: 'Integrate brand identity and styling', estimatedHours: 8, priority: 'medium' }
+        ]
+      },
+      {
+        title: 'Store Development',
+        description: 'Build core e-commerce functionality',
+        estimatedDays: 21,
+        priority: 'high',
+        tasks: [
+          { title: 'Product management', description: 'Build product catalog and management system', estimatedHours: 20, priority: 'high' },
+          { title: 'Shopping cart', description: 'Implement cart and checkout functionality', estimatedHours: 16, priority: 'high' },
+          { title: 'Payment integration', description: 'Integrate payment gateways', estimatedHours: 12, priority: 'high' },
+          { title: 'User accounts', description: 'Build user registration and login system', estimatedHours: 10, priority: 'medium' }
+        ]
+      },
+      {
+        title: 'Testing & Launch',
+        description: 'Quality assurance and store launch',
+        estimatedDays: 7,
+        priority: 'medium',
+        tasks: [
+          { title: 'Payment testing', description: 'Test all payment methods and flows', estimatedHours: 8, priority: 'high' },
+          { title: 'Performance optimization', description: 'Optimize store speed and performance', estimatedHours: 6, priority: 'medium' },
+          { title: 'SEO setup', description: 'Configure SEO and meta tags', estimatedHours: 4, priority: 'medium' },
+          { title: 'Launch preparation', description: 'Final testing and launch checklist', estimatedHours: 6, priority: 'high' }
+        ]
+      }
+    ]
+  },
+  // Content Creation Templates
+  {
+    id: 'content-strategy',
+    name: 'Content Marketing Strategy',
+    description: 'Comprehensive content creation and marketing strategy',
+    category: 'content',
+    icon: Palette,
+    estimatedDuration: '4-6 weeks',
+    complexity: 'moderate',
+    serviceType: 'monthly',
+    priceRange: 'standard',
+    tags: ['Content', 'SEO', 'Social Media', 'Blog'],
+    milestones: [
+      {
+        title: 'Content Audit & Strategy',
+        description: 'Analyze existing content and develop strategy',
+        estimatedDays: 7,
+        priority: 'high',
+        tasks: [
+          { title: 'Content audit', description: 'Review existing content and identify gaps', estimatedHours: 8, priority: 'high' },
+          { title: 'Strategy development', description: 'Create content marketing strategy', estimatedHours: 10, priority: 'high' },
+          { title: 'Content calendar', description: 'Plan content schedule and themes', estimatedHours: 6, priority: 'medium' },
+          { title: 'SEO research', description: 'Research keywords and topics', estimatedHours: 8, priority: 'high' }
+        ]
+      },
+      {
+        title: 'Content Creation',
+        description: 'Create high-quality content across channels',
+        estimatedDays: 14,
+        priority: 'high',
+        tasks: [
+          { title: 'Blog content', description: 'Write SEO-optimized blog posts', estimatedHours: 20, priority: 'high' },
+          { title: 'Social media content', description: 'Create engaging social media posts', estimatedHours: 16, priority: 'high' },
+          { title: 'Visual content', description: 'Create graphics and visual assets', estimatedHours: 12, priority: 'medium' },
+          { title: 'Video content', description: 'Produce video content for various platforms', estimatedHours: 18, priority: 'medium' }
+        ]
+      },
+      {
+        title: 'Distribution & Optimization',
+        description: 'Distribute content and optimize performance',
+        estimatedDays: 7,
+        priority: 'medium',
+        tasks: [
+          { title: 'Content distribution', description: 'Publish and promote content across channels', estimatedHours: 8, priority: 'high' },
+          { title: 'Performance tracking', description: 'Monitor content performance and engagement', estimatedHours: 6, priority: 'medium' },
+          { title: 'Optimization', description: 'Optimize content based on performance data', estimatedHours: 8, priority: 'medium' },
+          { title: 'Reporting', description: 'Create content performance reports', estimatedHours: 4, priority: 'low' }
+        ]
+      }
+    ]
+  },
+  // Analytics Templates
+  {
+    id: 'analytics-setup',
+    name: 'Analytics & Reporting Setup',
+    description: 'Comprehensive analytics implementation and reporting system',
+    category: 'analytics',
+    icon: Shield,
+    estimatedDuration: '3-4 weeks',
+    complexity: 'moderate',
+    serviceType: 'monthly',
+    priceRange: 'standard',
+    tags: ['Analytics', 'Reporting', 'Data', 'Insights'],
+    milestones: [
+      {
+        title: 'Analytics Planning',
+        description: 'Plan analytics implementation and reporting needs',
+        estimatedDays: 5,
+        priority: 'high',
+        tasks: [
+          { title: 'Requirements analysis', description: 'Identify analytics and reporting requirements', estimatedHours: 6, priority: 'high' },
+          { title: 'Tool selection', description: 'Select appropriate analytics tools', estimatedHours: 4, priority: 'high' },
+          { title: 'KPI definition', description: 'Define key performance indicators', estimatedHours: 6, priority: 'high' },
+          { title: 'Data mapping', description: 'Map data sources and flows', estimatedHours: 4, priority: 'medium' }
+        ]
+      },
+      {
+        title: 'Implementation',
+        description: 'Set up analytics tools and tracking',
+        estimatedDays: 10,
+        priority: 'high',
+        tasks: [
+          { title: 'Tracking setup', description: 'Implement tracking codes and events', estimatedHours: 12, priority: 'high' },
+          { title: 'Dashboard creation', description: 'Create analytics dashboards', estimatedHours: 16, priority: 'high' },
+          { title: 'Report automation', description: 'Set up automated reporting', estimatedHours: 8, priority: 'medium' },
+          { title: 'Data validation', description: 'Validate data accuracy and completeness', estimatedHours: 6, priority: 'high' }
+        ]
+      },
+      {
+        title: 'Training & Optimization',
+        description: 'Train team and optimize analytics setup',
+        estimatedDays: 5,
+        priority: 'medium',
+        tasks: [
+          { title: 'Team training', description: 'Train team on analytics tools and reports', estimatedHours: 6, priority: 'medium' },
+          { title: 'Process documentation', description: 'Document analytics processes and procedures', estimatedHours: 4, priority: 'low' },
+          { title: 'Performance optimization', description: 'Optimize analytics performance', estimatedHours: 4, priority: 'low' },
+          { title: 'Continuous improvement', description: 'Set up continuous improvement processes', estimatedHours: 6, priority: 'medium' }
+        ]
+      }
+    ]
+  },
+  // Consulting Templates
+  {
+    id: 'digital-transformation',
+    name: 'Digital Transformation Consulting',
+    description: 'Guide businesses through digital transformation process',
+    category: 'consulting',
+    icon: Zap,
+    estimatedDuration: '8-12 weeks',
+    complexity: 'enterprise',
+    serviceType: 'quarterly',
+    priceRange: 'enterprise',
+    tags: ['Transformation', 'Strategy', 'Technology', 'Change Management'],
+    milestones: [
+      {
+        title: 'Assessment & Planning',
+        description: 'Assess current state and plan transformation',
+        estimatedDays: 14,
+        priority: 'high',
+        tasks: [
+          { title: 'Current state analysis', description: 'Analyze current digital capabilities', estimatedHours: 20, priority: 'high' },
+          { title: 'Gap analysis', description: 'Identify gaps and opportunities', estimatedHours: 16, priority: 'high' },
+          { title: 'Transformation roadmap', description: 'Create detailed transformation roadmap', estimatedHours: 18, priority: 'high' },
+          { title: 'Stakeholder alignment', description: 'Align stakeholders on transformation goals', estimatedHours: 12, priority: 'high' }
+        ]
+      },
+      {
+        title: 'Implementation Planning',
+        description: 'Plan detailed implementation strategy',
+        estimatedDays: 21,
+        priority: 'high',
+        tasks: [
+          { title: 'Technology selection', description: 'Select appropriate technologies and tools', estimatedHours: 16, priority: 'high' },
+          { title: 'Change management plan', description: 'Develop change management strategy', estimatedHours: 20, priority: 'high' },
+          { title: 'Training programs', description: 'Design training and development programs', estimatedHours: 18, priority: 'medium' },
+          { title: 'Risk mitigation', description: 'Identify and plan for implementation risks', estimatedHours: 12, priority: 'high' }
+        ]
+      },
+      {
+        title: 'Execution & Monitoring',
+        description: 'Execute transformation and monitor progress',
+        estimatedDays: 14,
+        priority: 'medium',
+        tasks: [
+          { title: 'Implementation support', description: 'Support implementation execution', estimatedHours: 20, priority: 'high' },
+          { title: 'Progress monitoring', description: 'Monitor transformation progress', estimatedHours: 12, priority: 'medium' },
+          { title: 'Issue resolution', description: 'Address implementation issues', estimatedHours: 16, priority: 'high' },
+          { title: 'Success measurement', description: 'Measure transformation success', estimatedHours: 8, priority: 'medium' }
+        ]
+      }
+    ]
+  },
+  // Design Templates
+  {
+    id: 'brand-identity',
+    name: 'Brand Identity Design',
+    description: 'Complete brand identity design and guidelines',
+    category: 'design',
+    icon: Palette,
+    estimatedDuration: '3-4 weeks',
+    complexity: 'moderate',
+    serviceType: 'one_time',
+    priceRange: 'standard',
+    tags: ['Branding', 'Logo', 'Design', 'Guidelines'],
+    milestones: [
+      {
+        title: 'Brand Discovery',
+        description: 'Research and understand brand requirements',
+        estimatedDays: 5,
+        priority: 'high',
+        tasks: [
+          { title: 'Brand research', description: 'Research brand values and positioning', estimatedHours: 8, priority: 'high' },
+          { title: 'Competitor analysis', description: 'Analyze competitor branding', estimatedHours: 6, priority: 'high' },
+          { title: 'Target audience', description: 'Define target audience and personas', estimatedHours: 6, priority: 'high' },
+          { title: 'Brand strategy', description: 'Develop brand strategy and positioning', estimatedHours: 8, priority: 'high' }
+        ]
+      },
+      {
+        title: 'Design Development',
+        description: 'Create brand identity elements',
+        estimatedDays: 10,
+        priority: 'high',
+        tasks: [
+          { title: 'Logo design', description: 'Create primary and secondary logos', estimatedHours: 16, priority: 'high' },
+          { title: 'Color palette', description: 'Develop brand color palette', estimatedHours: 6, priority: 'high' },
+          { title: 'Typography', description: 'Select and customize brand typography', estimatedHours: 8, priority: 'medium' },
+          { title: 'Visual elements', description: 'Create supporting visual elements', estimatedHours: 12, priority: 'medium' }
+        ]
+      },
+      {
+        title: 'Brand Guidelines',
+        description: 'Create comprehensive brand guidelines',
+        estimatedDays: 5,
+        priority: 'medium',
+        tasks: [
+          { title: 'Guidelines document', description: 'Create brand guidelines document', estimatedHours: 12, priority: 'high' },
+          { title: 'Usage examples', description: 'Create usage examples and applications', estimatedHours: 8, priority: 'medium' },
+          { title: 'Asset delivery', description: 'Prepare and deliver brand assets', estimatedHours: 6, priority: 'high' },
+          { title: 'Presentation', description: 'Present brand identity to stakeholders', estimatedHours: 4, priority: 'medium' }
+        ]
+      }
+    ]
   }
 ]
 
@@ -280,6 +545,10 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
     { id: 'design', name: 'Design', icon: Palette },
     { id: 'marketing', name: 'Marketing', icon: Globe },
     { id: 'business', name: 'Business', icon: Brain },
+    { id: 'ecommerce', name: 'E-commerce', icon: Database },
+    { id: 'consulting', name: 'Consulting', icon: Zap },
+    { id: 'content', name: 'Content', icon: Palette },
+    { id: 'analytics', name: 'Analytics', icon: Shield },
     { id: 'custom', name: 'Custom', icon: Target }
   ]
 
@@ -349,6 +618,12 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                           </Badge>
                           <Badge variant="outline">
                             {template.estimatedDuration}
+                          </Badge>
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                            {template.serviceType}
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-100 text-green-800">
+                            {template.priceRange}
                           </Badge>
                           <Badge variant="outline">
                             {template.milestones.length} phases

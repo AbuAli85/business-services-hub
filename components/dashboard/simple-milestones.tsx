@@ -32,6 +32,7 @@ import { SmartMilestoneTemplates } from './smart-milestone-templates'
 interface SimpleMilestonesProps {
   milestones: Milestone[]
   onMilestoneUpdate: (milestoneId: string, updates: Partial<Milestone>) => void
+  onMilestoneDelete?: (milestoneId: string) => void
   onTaskUpdate: (taskId: string, updates: Partial<Task>) => void
   onTaskAdd: (milestoneId: string, taskData: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => void
   onTaskDelete: (milestoneId: string, taskId: string) => void
@@ -47,6 +48,7 @@ interface SimpleMilestonesProps {
 export function SimpleMilestones({
   milestones,
   onMilestoneUpdate,
+  onMilestoneDelete,
   onTaskUpdate,
   onTaskAdd: onTaskCreate,
   onTaskDelete,
@@ -63,6 +65,7 @@ export function SimpleMilestones({
   const [newTask, setNewTask] = useState<{milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>} | null>(null)
   const [newComment, setNewComment] = useState<{milestoneId: string, text: string} | null>(null)
   const [replyParentId, setReplyParentId] = useState<string | null>(null)
+  const [deleteConfirmMilestone, setDeleteConfirmMilestone] = useState<string | null>(null)
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null)
   const [projectType, setProjectType] = useState<'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months'>('one_time')
   const [editingMilestoneData, setEditingMilestoneData] = useState<Partial<Milestone> | null>(null)
@@ -241,6 +244,17 @@ export function SimpleMilestones({
   const handleCancelEdit = () => {
     setEditingMilestone(null)
     setEditingMilestoneData(null)
+  }
+
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    if (!onMilestoneDelete) return
+    
+    try {
+      await onMilestoneDelete(milestoneId)
+      setDeleteConfirmMilestone(null)
+    } catch (error) {
+      console.error('Error deleting milestone:', error)
+    }
   }
 
   const canStartMilestone = (milestone: Milestone) => {
@@ -512,14 +526,26 @@ export function SimpleMilestones({
                       {expandedMilestone === milestone.id ? 'Collapse' : 'Expand'}
                     </Button>
                     {userRole === 'provider' && !isLocked && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStartEdit(milestone)}
-                        className="hover:bg-yellow-50 hover:border-yellow-300 transition-all duration-200"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStartEdit(milestone)}
+                          className="hover:bg-yellow-50 hover:border-yellow-300 transition-all duration-200"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        {onMilestoneDelete && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteConfirmMilestone(milestone.id)}
+                            className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all duration-200"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
                     )}
                     {userRole === 'provider' && isLocked && (
                       <Button
@@ -1217,6 +1243,43 @@ export function SimpleMilestones({
             }}
             onCancel={() => setShowTemplateSelector(false)}
           />
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmMilestone && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Milestone</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this milestone? All tasks and comments associated with it will also be deleted.
+            </p>
+            <div className="flex space-x-3">
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteMilestone(deleteConfirmMilestone)}
+                className="flex-1"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Milestone
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmMilestone(null)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
