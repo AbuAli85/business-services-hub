@@ -382,6 +382,7 @@ export default function EnhancedProgressDashboard({
                                 status: e.target.checked ? 'completed' : 'pending' 
                               })}
                               className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                              aria-label={`Mark task "${task.title}" as ${task.status === 'completed' ? 'incomplete' : 'completed'}`}
                             />
                             <div className="flex-1">
                               <div className="flex items-center space-x-2">

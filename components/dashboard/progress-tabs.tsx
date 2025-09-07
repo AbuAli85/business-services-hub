@@ -30,6 +30,7 @@ import { FallbackMilestoneCreator, getFallbackMilestones } from './fallback-mile
 import { SmartProgressIndicator } from './smart-progress-indicator'
 import { ProgressNotifications } from './progress-notifications'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface ProgressTabsProps {
   bookingId: string
@@ -417,6 +418,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     } catch (error) {
       console.error('Error loading progress data:', error)
       setError(error instanceof Error ? error.message : 'Failed to load progress data')
+      toast.error('Failed to load progress data')
     } finally {
       setLoading(false)
     }
@@ -521,6 +523,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   setShowMilestoneCreator(true)
                 }}
                 className="bg-blue-600 hover:bg-blue-700"
+                aria-label="Create the first milestone for this project"
+                role="button"
               >
                 <Target className="h-4 w-4 mr-2" />
                 Create First Milestone
@@ -972,6 +976,12 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               setShowMilestoneCreator(false)
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              console.log('Escape key pressed, closing modal')
+              setShowMilestoneCreator(false)
+            }
+          }}
         >
           <div 
             className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl"
@@ -981,9 +991,13 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               minHeight: '400px',
               zIndex: 1000000
             }}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
           >
             <div className="text-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Create Milestone</h2>
+              <h2 id="modal-title" className="text-lg font-semibold text-gray-900">Create Milestone</h2>
               <p className="text-sm text-gray-600">Modal is working! 🎉</p>
               <p className="text-xs text-red-600 font-bold">DIRECT MODAL - RED BORDER</p>
             </div>
