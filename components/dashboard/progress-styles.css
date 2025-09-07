@@ -1,48 +1,135 @@
-/* Progress bar styles with dynamic width */
-.progress-bar {
+/* Progress Tracking System Styles */
+
+/* Progress bars with dynamic width */
+.progress-bar-dynamic {
   transition: width 0.3s ease-in-out;
 }
 
-.progress-bar-0 { width: 0%; }
-.progress-bar-5 { width: 5%; }
-.progress-bar-10 { width: 10%; }
-.progress-bar-15 { width: 15%; }
-.progress-bar-20 { width: 20%; }
-.progress-bar-25 { width: 25%; }
-.progress-bar-30 { width: 30%; }
-.progress-bar-35 { width: 35%; }
-.progress-bar-40 { width: 40%; }
-.progress-bar-45 { width: 45%; }
-.progress-bar-50 { width: 50%; }
-.progress-bar-55 { width: 55%; }
-.progress-bar-60 { width: 60%; }
-.progress-bar-65 { width: 65%; }
-.progress-bar-70 { width: 70%; }
-.progress-bar-75 { width: 75%; }
-.progress-bar-80 { width: 80%; }
-.progress-bar-85 { width: 85%; }
-.progress-bar-90 { width: 90%; }
-.progress-bar-95 { width: 95%; }
-.progress-bar-100 { width: 100%; }
-
-/* Timeline progress line */
-.timeline-progress-line {
-  transition: width 0.5s ease-in-out;
+/* Calendar day cells */
+.calendar-day {
+  transition: all 0.2s ease-in-out;
 }
 
-.timeline-progress-0 { width: 0%; }
-.timeline-progress-25 { width: 25%; }
-.timeline-progress-50 { width: 50%; }
-.timeline-progress-75 { width: 75%; }
-.timeline-progress-100 { width: 100%; }
+.calendar-day:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
-/* Timeline connector positioning */
-.timeline-connector-0 { left: 0%; width: 25%; }
-.timeline-connector-1 { left: 25%; width: 25%; }
-.timeline-connector-2 { left: 50%; width: 25%; }
-.timeline-connector-3 { left: 75%; width: 25%; }
+/* Task progress slider */
+.task-progress-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
 
-/* Monthly progress milestone progress bars */
-.milestone-progress-bar {
-  transition: width 0.3s ease-in-out;
+.task-progress-slider::-webkit-slider-track {
+  background: #e5e7eb;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.task-progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #3b82f6;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.task-progress-slider::-moz-range-track {
+  background: #e5e7eb;
+  height: 8px;
+  border-radius: 4px;
+  border: none;
+}
+
+.task-progress-slider::-moz-range-thumb {
+  background: #3b82f6;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Milestone cards */
+.milestone-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.milestone-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Status indicators */
+.status-indicator {
+  position: relative;
+  overflow: hidden;
+}
+
+.status-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .milestone-card {
+    margin-bottom: 1rem;
+  }
+  
+  .calendar-day {
+    height: 3rem;
+  }
+  
+  .task-progress-slider {
+    height: 6px;
+  }
+  
+  .task-progress-slider::-webkit-slider-thumb {
+    height: 16px;
+    width: 16px;
+  }
+  
+  .task-progress-slider::-moz-range-thumb {
+    height: 16px;
+    width: 16px;
+  }
 }

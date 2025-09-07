@@ -1,102 +1,165 @@
-export interface Milestone {
-  id: string
-  booking_id: string
-  title: string
-  description?: string
-  due_date?: string
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  progress_percentage: number
-  weight: number
-  order_index: number
-  editable: boolean
-  completed_at?: string
-  created_at: string
-  updated_at: string
-  created_by?: string
-  is_overdue: boolean
-  overdue_since?: string
-  estimated_hours?: number
-  actual_hours?: number
-  tags?: string[]
-  notes?: string
-  assigned_to?: string
-  tasks?: Task[]
-}
+// Standardized Progress Tracking Types
+// This file contains all the core types used across the progress tracking system
+
+export type TaskStatus = "pending" | "in_progress" | "completed";
+export type MilestoneStatus = "not_started" | "in_progress" | "completed";
+export type UserRole = "provider" | "client" | "admin";
 
 export interface Task {
-  id: string
-  milestone_id: string
-  title: string
-  description?: string
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  due_date?: string
-  progress_percentage: number
-  estimated_hours?: number
-  actual_hours: number
-  tags: string[]
-  steps: TaskStep[]
-  completed_at?: string
-  created_at: string
-  updated_at: string
-  created_by?: string
-  assigned_to?: string
-  is_overdue: boolean
-  overdue_since?: string
-  approval_status: 'pending' | 'approved' | 'rejected'
-  approved_by?: string
-  approved_at?: string
-  approval_notes?: string
-  comments?: TaskComment[]
-  time_entries?: TimeEntry[]
+  id: string;
+  milestone_id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  progress?: number;
+  due_date?: string;
+  created_at: string;
+  updated_at: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+  priority?: "low" | "medium" | "high" | "urgent";
+  assigned_to?: string;
+  order_index: number;
+  is_overdue?: boolean;
 }
 
-export interface TaskStep {
-  title: string
-  completed: boolean
-  due_date?: string
-}
-
-export interface TaskComment {
-  id: string
-  task_id: string
-  user_id: string
-  comment: string
-  is_internal: boolean
-  created_at: string
-  updated_at: string
+export interface Milestone {
+  id: string;
+  booking_id: string;
+  title: string;
+  description?: string;
+  status: MilestoneStatus;
+  start_date: string;
+  end_date: string;
+  progress: number;
+  tasks: Task[];
+  created_at: string;
+  updated_at: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+  priority?: "low" | "medium" | "high" | "urgent";
+  weight?: number;
+  order_index: number;
+  is_overdue?: boolean;
 }
 
 export interface TimeEntry {
-  id: string
-  task_id: string
-  user_id: string
-  description?: string
-  start_time: string
-  end_time?: string
-  duration_minutes?: number
-  is_active: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  milestone_id?: string;
+  task_id?: string;
+  booking_id: string;
+  user_id: string;
+  timestamp: string;
+  notes?: string;
+  duration?: number;
+  start_time: string;
+  end_time?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Comment {
+  id: string;
+  milestone_id?: string;
+  task_id?: string;
+  booking_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  author_name?: string;
+  author_role?: UserRole;
 }
 
 export interface BookingProgress {
-  booking_id: string
-  booking_title: string
-  booking_status: string
-  booking_progress: number
-  completed_milestones: number
-  total_milestones: number
-  completed_tasks: number
-  total_tasks: number
-  total_estimated_hours: number
-  total_actual_hours: number
-  overdue_tasks: number
-  created_at: string
-  updated_at: string
+  id: string;
+  booking_id: string;
+  booking_title: string;
+  booking_status: string;
+  booking_progress: number;
+  completed_milestones: number;
+  total_milestones: number;
+  completed_tasks: number;
+  total_tasks: number;
+  total_estimated_hours: number;
+  total_actual_hours: number;
+  overdue_tasks: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
-export type Priority = 'high' | 'medium' | 'low'
+export interface TimelineItem {
+  id: string;
+  booking_id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: "low" | "medium" | "high" | "urgent";
+  start_date: string;
+  end_date: string;
+  assigned_to?: string;
+  progress_percentage: number;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProgressUpdate {
+  type: 'task' | 'milestone' | 'booking' | 'timeline';
+  taskId?: string;
+  milestoneId?: string;
+  bookingId?: string;
+  timelineId?: string;
+  data: Partial<Task | Milestone | BookingProgress | TimelineItem>;
+}
+
+export interface ProgressStats {
+  totalBookings: number;
+  activeBookings: number;
+  completedBookings: number;
+  averageProgress: number;
+  overdueTasks: number;
+  totalHours: number;
+  completedHours: number;
+}
+
+// Component Props Interfaces
+export interface ProgressTrackingSystemProps {
+  bookingId: string;
+  userRole: UserRole;
+  className?: string;
+}
+
+export interface MilestoneListProps {
+  milestones: Milestone[];
+  userRole: UserRole;
+  onMilestoneUpdate: (milestoneId: string, updates: Partial<Milestone>) => Promise<void>;
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  onTaskCreate: (milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => Promise<void>;
+  onTaskDelete: (taskId: string) => Promise<void>;
+  onCommentAdd: (milestoneId: string, content: string) => Promise<void>;
+}
+
+export interface TaskListProps {
+  tasks: Task[];
+  userRole: UserRole;
+  onTaskUpdate: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  onTaskCreate: (milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => Promise<void>;
+  onTaskDelete: (taskId: string) => Promise<void>;
+  onTimeLog: (taskId: string, duration: number, description: string) => Promise<void>;
+}
+
+export interface TimelineProps {
+  timeline: TimelineItem[];
+  userRole: UserRole;
+  onTimelineUpdate: (timeline: TimelineItem[]) => void;
+  onSave: (timeline: TimelineItem[]) => Promise<void>;
+}
+
+export interface AnalyticsProps {
+  milestones: Milestone[];
+  timeEntries: TimeEntry[];
+  totalEstimatedHours: number;
+  totalActualHours: number;
+  stats?: ProgressStats;
+}
