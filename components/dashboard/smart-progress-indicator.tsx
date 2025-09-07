@@ -12,8 +12,6 @@ import {
   CheckCircle, 
   AlertTriangle, 
   Calendar,
-  Zap,
-  BarChart3,
   Activity,
   Award
 } from 'lucide-react'
@@ -36,7 +34,6 @@ export function SmartProgressIndicator({
   onProgressUpdate
 }: SmartProgressIndicatorProps) {
   const [animatedProgress, setAnimatedProgress] = useState(0)
-  const [insights, setInsights] = useState<any[]>([])
   const [trending, setTrending] = useState<'up' | 'down' | 'stable'>('stable')
 
   // Helper functions
@@ -83,152 +80,6 @@ export function SmartProgressIndicator({
   // Calculate velocity (tasks completed per day)
   const velocity = calculateVelocity(tasks)
   
-  const generateInsights = () => {
-    const newInsights = []
-    
-    // Smart milestone sequencing insights
-    if (milestones.length > 1) {
-      const blockedMilestones = milestones.filter(m => 
-        m.status === 'not_started' && 
-        milestones.some(prev => prev.order_index < m.order_index && prev.status !== 'completed')
-      ).length
-      
-      if (blockedMilestones > 0) {
-        newInsights.push({
-          type: 'warning',
-          title: 'Blocked Milestones',
-          message: `${blockedMilestones} milestone${blockedMilestones > 1 ? 's are' : ' is'} waiting for previous phases to complete`,
-          action: 'Review dependencies',
-          priority: 'high'
-        })
-      }
-    }
-    
-    // Task distribution insights
-    const taskDistribution = milestones.map(m => ({
-      milestoneId: m.id,
-      title: m.title,
-      taskCount: m.tasks?.length || 0,
-      completedTasks: m.tasks?.filter((t: any) => t.status === 'completed').length || 0
-    }))
-    
-    const unevenDistribution = taskDistribution.some(m => m.taskCount > 10) && 
-                              taskDistribution.some(m => m.taskCount < 3)
-    
-    if (unevenDistribution) {
-      newInsights.push({
-        type: 'suggestion',
-        title: 'Uneven Task Distribution',
-        message: 'Some milestones have too many tasks while others have too few',
-        action: 'Rebalance tasks',
-        priority: 'medium'
-      })
-    }
-    
-    // Progress velocity insights
-    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
-    if (completionRate > 0) {
-      if (velocity > 1.5) {
-        newInsights.push({
-          type: 'success',
-          title: 'Excellent Velocity',
-          message: `Completing ${velocity.toFixed(1)} tasks per day - ahead of schedule!`,
-          action: 'Maintain momentum',
-          priority: 'low'
-        })
-      } else if (velocity < 0.5) {
-        newInsights.push({
-          type: 'warning',
-          title: 'Slow Progress',
-          message: `Only ${velocity.toFixed(1)} tasks completed per day - consider reviewing blockers`,
-          action: 'Review blockers',
-          priority: 'high'
-        })
-      }
-    }
-    
-    // Progress insights
-    if (currentProgress === 0) {
-      newInsights.push({
-        type: 'info',
-        icon: Target,
-        title: 'Project Ready to Start',
-        message: 'All milestones are set up. Ready to begin work!',
-        action: 'Start First Task'
-      })
-    } else if (currentProgress > 0 && currentProgress < 25) {
-      newInsights.push({
-        type: 'success',
-        icon: TrendingUp,
-        title: 'Great Start!',
-        message: 'Project is off to a good start. Keep the momentum going!',
-        action: 'View Tasks'
-      })
-    } else if (currentProgress >= 25 && currentProgress < 50) {
-      newInsights.push({
-        type: 'info',
-        icon: Activity,
-        title: 'Making Progress',
-        message: 'You\'re making steady progress. Consider reviewing upcoming milestones.',
-        action: 'Review Timeline'
-      })
-    } else if (currentProgress >= 50 && currentProgress < 75) {
-      newInsights.push({
-        type: 'warning',
-        icon: Clock,
-        title: 'Halfway Point',
-        message: 'You\'re halfway there! Time to push for the finish line.',
-        action: 'Accelerate Progress'
-      })
-    } else if (currentProgress >= 75 && currentProgress < 100) {
-      newInsights.push({
-        type: 'success',
-        icon: Award,
-        title: 'Almost There!',
-        message: 'Excellent work! You\'re in the final stretch.',
-        action: 'Complete Project'
-      })
-    }
-
-    // Overdue tasks insight
-    if (overdueTasks > 0) {
-      newInsights.push({
-        type: 'error',
-        icon: AlertTriangle,
-        title: `${overdueTasks} Overdue Task${overdueTasks > 1 ? 's' : ''}`,
-        message: 'Some tasks are past their due date. Consider prioritizing them.',
-        action: 'Review Overdue'
-      })
-    }
-
-    // Velocity insights
-    if (velocity > 0) {
-      if (velocity > 1) {
-        newInsights.push({
-          type: 'success',
-          icon: TrendingUp,
-          title: 'High Velocity',
-          message: `Completing ${velocity.toFixed(1)} tasks per day. Great pace!`,
-          action: 'Maintain Pace'
-        })
-      } else if (velocity < 0.5) {
-        newInsights.push({
-          type: 'warning',
-          icon: Clock,
-          title: 'Slow Progress',
-          message: 'Consider increasing task completion rate to meet deadlines.',
-          action: 'Increase Pace'
-        })
-      }
-    }
-
-    setInsights(newInsights)
-  }
-
-  // Generate smart insights
-  useEffect(() => {
-    generateInsights()
-  }, [milestones, tasks, currentProgress])
 
   // Animate progress bar
   useEffect(() => {
@@ -340,85 +191,6 @@ export function SmartProgressIndicator({
         </CardContent>
       </Card>
 
-      {/* Smart Insights */}
-      {insights.length > 0 && (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <Zap className="h-5 w-5 text-yellow-500" />
-              <h3 className="text-lg font-semibold text-gray-900">Smart Insights</h3>
-            </div>
-            <div className="space-y-3">
-              {insights.map((insight, index) => {
-                const Icon = insight.icon
-                return (
-                  <div 
-                    key={index}
-                    className={`p-4 rounded-lg border-l-4 ${
-                      insight.type === 'success' ? 'bg-green-50 border-green-400' :
-                      insight.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
-                      insight.type === 'error' ? 'bg-red-50 border-red-400' :
-                      'bg-blue-50 border-blue-400'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <Icon className={`h-5 w-5 mt-0.5 ${
-                        insight.type === 'success' ? 'text-green-600' :
-                        insight.type === 'warning' ? 'text-yellow-600' :
-                        insight.type === 'error' ? 'text-red-600' :
-                        'text-blue-600'
-                      }`} />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{insight.title}</h4>
-                        <p className="text-sm text-gray-600 mt-1">{insight.message}</p>
-                        {insight.action && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="mt-2 text-xs"
-                          >
-                            {insight.action}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Progress Analytics */}
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <BarChart3 className="h-5 w-5 text-purple-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Progress Analytics</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
-                {totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0}%
-              </div>
-              <div className="text-sm text-purple-600">Milestone Progress</div>
-            </div>
-            <div className="text-center p-4 bg-indigo-50 rounded-lg">
-              <div className="text-2xl font-bold text-indigo-600">
-                {totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%
-              </div>
-              <div className="text-sm text-indigo-600">Task Completion</div>
-            </div>
-            <div className="text-center p-4 bg-pink-50 rounded-lg">
-              <div className="text-2xl font-bold text-pink-600">
-                {overdueTasks > 0 ? Math.round((overdueTasks / totalTasks) * 100) : 0}%
-              </div>
-              <div className="text-sm text-pink-600">Overdue Rate</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
