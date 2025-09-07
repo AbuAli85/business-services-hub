@@ -1508,11 +1508,23 @@ export default function EnhancedBookingDetails({
   }
 
   const formatDate = (date: string) => {
-    return format(parseISO(date), 'PPP')
+    if (!date) return 'N/A'
+    try {
+      return format(parseISO(date), 'PPP')
+    } catch (error) {
+      console.warn('Invalid date format:', date, error)
+      return 'Invalid Date'
+    }
   }
 
   const formatTime = (date: string) => {
-    return format(parseISO(date), 'p')
+    if (!date) return 'N/A'
+    try {
+      return format(parseISO(date), 'p')
+    } catch (error) {
+      console.warn('Invalid time format:', date, error)
+      return 'Invalid Time'
+    }
   }
 
   if (loading) {
