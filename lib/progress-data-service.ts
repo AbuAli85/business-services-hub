@@ -210,10 +210,13 @@ export class ProgressDataService {
 
       if (taskError) throw taskError;
 
+      // Extract booking_id from the nested structure
+      const bookingId = (task as any).milestones.booking_id;
+
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
-          booking_id: task.milestones.booking_id,
+          booking_id: bookingId,
           milestone_id: task.milestone_id,
           task_id: taskId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
