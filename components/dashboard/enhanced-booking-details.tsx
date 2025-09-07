@@ -1901,115 +1901,93 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
           {/* Main Content Area */}
           <div className="xl:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5 lg:grid-cols-6">
-                <TabsTrigger value="overview" className="text-xs sm:text-sm">
-                  <Eye className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Overview</span>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview" className="text-sm">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Overview
                 </TabsTrigger>
-                <TabsTrigger value="progress" className="text-xs sm:text-sm">
-                  <BarChart3 className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Progress & Timeline</span>
+                <TabsTrigger value="progress" className="text-sm">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Progress & Timeline
                   {overdueCount > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                    <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
                       {overdueCount}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="messages" className="text-xs sm:text-sm">
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Messages</span>
+                <TabsTrigger value="messages" className="text-sm">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Messages
                 </TabsTrigger>
-                <TabsTrigger value="files" className="text-xs sm:text-sm">
-                  <FileIcon className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Files</span>
-                </TabsTrigger>
-                <TabsTrigger value="payment" className="text-xs sm:text-sm">
-                  <CreditCard className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Payment</span>
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="text-xs sm:text-sm hidden lg:flex">
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                  Analytics
+                <TabsTrigger value="files" className="text-sm">
+                  <FileIcon className="h-4 w-4 mr-2" />
+                  Files
                 </TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-6">
-                
+              <TabsContent value="overview" className="space-y-4">
                 {/* Key Metrics Dashboard */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
-                    <CardContent className="p-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-blue-700 text-sm font-medium">
-                            {booking.status === 'pending' ? 'Days Pending' : 'Days Active'}
-                          </p>
-                          <p className="text-2xl font-bold text-blue-900">
+                          <p className="text-blue-700 text-xs font-medium">Days Active</p>
+                          <p className="text-xl font-bold text-blue-900">
                             {Math.ceil((new Date().getTime() - new Date(booking.created_at).getTime()) / (1000 * 60 * 60 * 24))}
                           </p>
                         </div>
-                        <Calendar className="h-8 w-8 text-blue-600" />
+                        <Calendar className="h-6 w-6 text-blue-600" />
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
-                    <CardContent className="p-4">
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-green-100">
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-green-700 text-sm font-medium">
-                            {booking.status === 'pending' ? 'Status' : 'Response Time'}
-                          </p>
-                          <p className="text-2xl font-bold text-green-900">
-                            {booking.status === 'pending' ? 'Pending' : (booking.provider.response_time || '< 1h')}
+                          <p className="text-green-700 text-xs font-medium">Response Time</p>
+                          <p className="text-xl font-bold text-green-900">
+                            {booking.provider.response_time || '< 1h'}
                           </p>
                         </div>
-                        {booking.status === 'pending' ? (
-                        <Clock className="h-8 w-8 text-green-600" />
-                        ) : (
-                          <Clock className="h-8 w-8 text-green-600" />
-                        )}
+                        <Clock className="h-6 w-6 text-green-600" />
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100">
-                    <CardContent className="p-4">
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-50 to-purple-100">
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-purple-700 text-sm font-medium">
-                            {booking.status === 'pending' ? 'Priority' : 'Satisfaction'}
-                          </p>
-                          <p className="text-2xl font-bold text-purple-900">
-                            {booking.status === 'pending' ? booking.priority.toUpperCase() : 
-                             (booking.client_satisfaction || 'N/A') + (booking.client_satisfaction ? '/5' : '')}
+                          <p className="text-purple-700 text-xs font-medium">Satisfaction</p>
+                          <p className="text-xl font-bold text-purple-900">
+                            {booking.client_satisfaction || 'N/A'}
                           </p>
                         </div>
-                        <Star className="h-8 w-8 text-purple-600" />
+                        <Star className="h-6 w-6 text-purple-600" />
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-0 shadow-md bg-gradient-to-br from-orange-50 to-orange-100">
-                    <CardContent className="p-4">
+                  <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-50 to-orange-100">
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-orange-700 text-sm font-medium">
-                            {booking.status === 'pending' ? 'Estimated Value' : 'Revenue Impact'}
-                          </p>
-                          <p className="text-2xl font-bold text-orange-900">
+                          <p className="text-orange-700 text-xs font-medium">Amount</p>
+                          <p className="text-xl font-bold text-orange-900">
                             {formatCurrency(booking.amount)}
                           </p>
                         </div>
-                        <TrendingUp className="h-8 w-8 text-orange-600" />
+                        <TrendingUp className="h-6 w-6 text-orange-600" />
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* Booking Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   
                   {/* Project Information */}
                   <Card className="border-0 shadow-lg">
@@ -2054,30 +2032,6 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                         </div>
                       )}
 
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can edit details' : undefined}
-                          onClick={() => setShowEditModal(true)}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Details
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="flex-1" 
-                          disabled={!canEdit} 
-                          title={!canEdit ? 'Only providers can reschedule' : undefined}
-                          onClick={() => setShowRescheduleModal(true)}
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Reschedule
-                        </Button>
-                      </div>
                     </CardContent>
                   </Card>
 
@@ -2282,85 +2236,6 @@ export default function EnhancedBookingDetails({ showProgressCard = true }: { sh
                 </Card>
               </TabsContent>
 
-              {/* Payment Tab */}
-              <TabsContent value="payment">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <CreditCard className="h-5 w-5 text-purple-600" />
-                      <span>Payment Management</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-green-700 text-sm font-medium">Total Amount</p>
-                              <p className="text-2xl font-bold text-green-900">{formatCurrency(booking.amount)}</p>
-                            </div>
-                            <DollarSign className="h-8 w-8 text-green-600" />
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-blue-700 text-sm font-medium">Payment Status</p>
-                              <p className="text-lg font-bold text-blue-900 capitalize">{booking.payment_status}</p>
-                            </div>
-                            <CreditCard className="h-8 w-8 text-blue-600" />
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-purple-700 text-sm font-medium">Method</p>
-                              <p className="text-lg font-bold text-purple-900">{booking.payment_method || 'N/A'}</p>
-                            </div>
-                            <Wallet className="h-8 w-8 text-purple-600" />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-3">
-                        <Button className="bg-green-600 hover:bg-green-700 flex-1" onClick={handleProcessPayment}>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Process Payment
-                        </Button>
-                        <Button variant="outline" className="flex-1" onClick={handleGenerateInvoice}>
-                          <Receipt className="h-4 w-4 mr-2" />
-                          Generate Invoice
-                        </Button>
-                        <Button variant="outline" className="flex-1" onClick={handleDownloadReceipt}>
-                          <Download className="h-4 w-4 mr-2" />
-                          Receipt
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Analytics Tab */}
-              <TabsContent value="analytics">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <BarChart3 className="h-5 w-5 text-blue-600" />
-                      <span>Project Analytics</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-gray-500">
-                      <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p>Analytics dashboard coming soon</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
