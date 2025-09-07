@@ -565,15 +565,21 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-xl w-full h-full overflow-hidden flex flex-col" style={{
-      '--line-clamp-1': '1',
-      '--line-clamp-2': '2'
-    } as React.CSSProperties}>
+    <>
+      <style jsx>{`
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
+      <div className="bg-white w-full h-full overflow-hidden flex flex-col">
       <div className="p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Smart Milestone Templates</h2>
+            <Lightbulb className="h-6 w-6 text-yellow-500" />
+            <h2 className="text-xl font-semibold text-gray-900">Smart Milestone Templates</h2>
           </div>
           <Button
             variant="ghost"
@@ -581,22 +587,22 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
-        <p className="text-sm text-gray-600 mt-1 sm:mt-2">
+        <p className="text-sm text-gray-600 mt-2">
           Choose from AI-powered templates tailored to your project type
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {/* Category Tabs */}
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="grid w-full grid-cols-5 sm:grid-cols-6 lg:grid-cols-10 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 overflow-x-auto mb-6">
             {categories.map((category) => (
               <TabsTrigger 
                 key={category.id} 
                 value={category.id}
-                className="flex items-center gap-1 text-xs whitespace-nowrap"
+                className="flex items-center gap-1 text-xs whitespace-nowrap px-2 py-1"
               >
                 <category.icon className="h-3 w-3 flex-shrink-0" />
                 <span className="hidden sm:inline">{category.name}</span>
@@ -605,30 +611,26 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
             ))}
           </TabsList>
 
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {templates
                 .filter(template => selectedCategory === 'all' || template.category === selectedCategory)
                 .map((template) => (
                 <Card 
                   key={template.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedTemplate === template.id ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                  className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
+                    selectedTemplate === template.id ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200' : 'border-gray-200 hover:border-gray-300'
                   }`}
                   onClick={() => setSelectedTemplate(template.id)}
                 >
-                  <CardContent className="p-3 h-full flex flex-col">
-                    <div className="flex items-start gap-2">
-                      <div className="p-1.5 bg-blue-100 rounded-lg flex-shrink-0">
-                        <template.icon className="h-4 w-4 text-blue-600" />
+                  <CardContent className="p-4 h-full flex flex-col">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                        <template.icon className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base truncate">{template.name}</h3>
-                        <p className="text-xs sm:text-sm text-gray-600 mb-2 overflow-hidden" style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical'
-                        }}>{template.description}</p>
+                        <h3 className="font-semibold text-gray-900 mb-2 text-base">{template.name}</h3>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{template.description}</p>
                         
                         <div className="flex flex-wrap gap-1 mb-3">
                           <Badge variant="outline" className={`text-xs ${getComplexityColor(template.complexity)}`}>
@@ -692,11 +694,11 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
         </Tabs>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t bg-white sticky bottom-0 mt-4">
-          <Button variant="outline" onClick={onCancel} className="flex-shrink-0">
+        <div className="flex items-center justify-between pt-6 border-t border-gray-200 bg-white sticky bottom-0 mt-6">
+          <Button variant="outline" onClick={onCancel} className="flex-shrink-0 px-6 py-2">
             Cancel
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {selectedTemplate && (
               <Button
                 onClick={() => {
@@ -709,7 +711,7 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                     }
                   }
                 }}
-                className="bg-blue-600 hover:bg-blue-700 flex-shrink-0"
+                className="bg-blue-600 hover:bg-blue-700 flex-shrink-0 px-6 py-2"
               >
                 <Rocket className="h-4 w-4 mr-2" />
                 Use This Template
@@ -718,6 +720,7 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
