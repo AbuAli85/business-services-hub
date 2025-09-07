@@ -31,7 +31,7 @@ interface SmartTaskGeneratorProps {
 interface TaskTemplate {
   title: string
   description: string
-  estimatedHours: number
+  estimated_hours: number
   priority: 'low' | 'medium' | 'high' | 'urgent'
   category: string
   dependencies?: string[]
@@ -49,7 +49,7 @@ export function SmartTaskGenerator({
   const [customTask, setCustomTask] = useState({
     title: '',
     description: '',
-    estimatedHours: 4,
+    estimated_hours: 4,
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent'
   })
   const [showCustomForm, setShowCustomForm] = useState(false)
@@ -63,58 +63,58 @@ export function SmartTaskGenerator({
     // Development-related tasks
     if (title.includes('development') || title.includes('coding') || title.includes('programming')) {
       tasks.push(
-        { title: 'Code review and quality check', description: 'Review code for best practices and quality', estimatedHours: 4, priority: 'high', category: 'development' },
-        { title: 'Unit testing implementation', description: 'Write and execute unit tests', estimatedHours: 6, priority: 'medium', category: 'development' },
-        { title: 'Documentation update', description: 'Update technical documentation', estimatedHours: 3, priority: 'low', category: 'development' },
-        { title: 'Performance optimization', description: 'Optimize code performance and efficiency', estimatedHours: 5, priority: 'medium', category: 'development' }
+        { title: 'Code review and quality check', description: 'Review code for best practices and quality', estimated_hours: 4, priority: 'high', category: 'development' },
+        { title: 'Unit testing implementation', description: 'Write and execute unit tests', estimated_hours: 6, priority: 'medium', category: 'development' },
+        { title: 'Documentation update', description: 'Update technical documentation', estimated_hours: 3, priority: 'low', category: 'development' },
+        { title: 'Performance optimization', description: 'Optimize code performance and efficiency', estimated_hours: 5, priority: 'medium', category: 'development' }
       )
     }
 
     // Design-related tasks
     if (title.includes('design') || title.includes('ui') || title.includes('ux')) {
       tasks.push(
-        { title: 'User research analysis', description: 'Analyze user feedback and requirements', estimatedHours: 4, priority: 'high', category: 'design' },
-        { title: 'Wireframe creation', description: 'Create detailed wireframes', estimatedHours: 8, priority: 'high', category: 'design' },
-        { title: 'Prototype development', description: 'Build interactive prototype', estimatedHours: 12, priority: 'medium', category: 'design' },
-        { title: 'Design system documentation', description: 'Document design patterns and components', estimatedHours: 4, priority: 'low', category: 'design' }
+        { title: 'User research analysis', description: 'Analyze user feedback and requirements', estimated_hours: 4, priority: 'high', category: 'design' },
+        { title: 'Wireframe creation', description: 'Create detailed wireframes', estimated_hours: 8, priority: 'high', category: 'design' },
+        { title: 'Prototype development', description: 'Build interactive prototype', estimated_hours: 12, priority: 'medium', category: 'design' },
+        { title: 'Design system documentation', description: 'Document design patterns and components', estimated_hours: 4, priority: 'low', category: 'design' }
       )
     }
 
     // Marketing-related tasks
     if (title.includes('marketing') || title.includes('promotion') || title.includes('campaign')) {
       tasks.push(
-        { title: 'Market research', description: 'Research target audience and competitors', estimatedHours: 6, priority: 'high', category: 'marketing' },
-        { title: 'Content strategy', description: 'Develop content marketing strategy', estimatedHours: 4, priority: 'high', category: 'marketing' },
-        { title: 'Social media planning', description: 'Plan social media campaigns', estimatedHours: 5, priority: 'medium', category: 'marketing' },
-        { title: 'Analytics setup', description: 'Set up tracking and analytics', estimatedHours: 3, priority: 'medium', category: 'marketing' }
+        { title: 'Market research', description: 'Research target audience and competitors', estimated_hours: 6, priority: 'high', category: 'marketing' },
+        { title: 'Content strategy', description: 'Develop content marketing strategy', estimated_hours: 4, priority: 'high', category: 'marketing' },
+        { title: 'Social media planning', description: 'Plan social media campaigns', estimated_hours: 5, priority: 'medium', category: 'marketing' },
+        { title: 'Analytics setup', description: 'Set up tracking and analytics', estimated_hours: 3, priority: 'medium', category: 'marketing' }
       )
     }
 
     // Testing-related tasks
     if (title.includes('testing') || title.includes('qa') || title.includes('quality')) {
       tasks.push(
-        { title: 'Test plan creation', description: 'Create comprehensive test plan', estimatedHours: 4, priority: 'high', category: 'testing' },
-        { title: 'Automated testing setup', description: 'Set up automated testing pipeline', estimatedHours: 8, priority: 'medium', category: 'testing' },
-        { title: 'Manual testing execution', description: 'Execute manual test cases', estimatedHours: 12, priority: 'high', category: 'testing' },
-        { title: 'Bug tracking and resolution', description: 'Track and resolve identified issues', estimatedHours: 10, priority: 'high', category: 'testing' }
+        { title: 'Test plan creation', description: 'Create comprehensive test plan', estimated_hours: 4, priority: 'high', category: 'testing' },
+        { title: 'Automated testing setup', description: 'Set up automated testing pipeline', estimated_hours: 8, priority: 'medium', category: 'testing' },
+        { title: 'Manual testing execution', description: 'Execute manual test cases', estimated_hours: 12, priority: 'high', category: 'testing' },
+        { title: 'Bug tracking and resolution', description: 'Track and resolve identified issues', estimated_hours: 10, priority: 'high', category: 'testing' }
       )
     }
 
     // Planning-related tasks
     if (title.includes('planning') || title.includes('setup') || title.includes('initial')) {
       tasks.push(
-        { title: 'Requirements gathering', description: 'Collect and document all requirements', estimatedHours: 6, priority: 'high', category: 'planning' },
-        { title: 'Resource allocation', description: 'Plan and allocate necessary resources', estimatedHours: 3, priority: 'medium', category: 'planning' },
-        { title: 'Timeline creation', description: 'Create detailed project timeline', estimatedHours: 4, priority: 'medium', category: 'planning' },
-        { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimatedHours: 3, priority: 'medium', category: 'planning' }
+        { title: 'Requirements gathering', description: 'Collect and document all requirements', estimated_hours: 6, priority: 'high', category: 'planning' },
+        { title: 'Resource allocation', description: 'Plan and allocate necessary resources', estimated_hours: 3, priority: 'medium', category: 'planning' },
+        { title: 'Timeline creation', description: 'Create detailed project timeline', estimated_hours: 4, priority: 'medium', category: 'planning' },
+        { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimated_hours: 3, priority: 'medium', category: 'planning' }
       )
     }
 
     // Generic tasks for any milestone
     tasks.push(
-      { title: 'Progress review meeting', description: 'Review progress with stakeholders', estimatedHours: 2, priority: 'low', category: 'general' },
-      { title: 'Status update communication', description: 'Communicate status to team and clients', estimatedHours: 1, priority: 'low', category: 'general' },
-      { title: 'Milestone completion review', description: 'Review and validate milestone completion', estimatedHours: 2, priority: 'medium', category: 'general' }
+      { title: 'Progress review meeting', description: 'Review progress with stakeholders', estimated_hours: 2, priority: 'low', category: 'general' },
+      { title: 'Status update communication', description: 'Communicate status to team and clients', estimated_hours: 1, priority: 'low', category: 'general' },
+      { title: 'Milestone completion review', description: 'Review and validate milestone completion', estimated_hours: 2, priority: 'medium', category: 'general' }
     )
 
     // Filter out tasks that are similar to existing ones
@@ -161,7 +161,7 @@ export function SmartTaskGenerator({
     setCustomTask({
       title: '',
       description: '',
-      estimatedHours: 4,
+      estimated_hours: 4,
       priority: 'medium'
     })
     setShowCustomForm(false)
@@ -267,7 +267,7 @@ export function SmartTaskGenerator({
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {task.estimatedHours}h
+                          {task.estimated_hours}h
                         </div>
                         <div className="flex items-center gap-1">
                           <Star className="h-3 w-3" />
@@ -327,8 +327,8 @@ export function SmartTaskGenerator({
                   <label className="block text-sm font-medium mb-2">Estimated Hours</label>
                   <Input
                     type="number"
-                    value={customTask.estimatedHours}
-                    onChange={(e) => setCustomTask(prev => ({ ...prev, estimatedHours: parseInt(e.target.value) || 4 }))}
+                    value={customTask.estimated_hours}
+                    onChange={(e) => setCustomTask(prev => ({ ...prev, estimated_hours: parseInt(e.target.value) || 4 }))}
                     min="1"
                     max="40"
                   />
@@ -386,7 +386,7 @@ export function SmartTaskGenerator({
                     let total = 0
                     selectedTasks.forEach(index => {
                       if (generatedTasks[index]) {
-                        total += generatedTasks[index].estimatedHours
+                        total += generatedTasks[index].estimated_hours
                       }
                     })
                     return total

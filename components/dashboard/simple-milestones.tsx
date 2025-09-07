@@ -1222,7 +1222,7 @@ export function SimpleMilestones({
                   priority: task.priority,
                   milestone_id: showSmartTaskGenerator!,
                   order_index: 0,
-                  estimated_hours: task.estimatedHours
+                  estimated_hours: task.estimated_hours
                 })
               })
               setShowSmartTaskGenerator(null)
