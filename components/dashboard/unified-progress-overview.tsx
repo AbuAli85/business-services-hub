@@ -69,9 +69,10 @@ export function UnifiedProgressOverview({
     let upcoming = 0
 
     milestones.forEach(milestone => {
-      if (milestone.due_date) {
-        const dueDate = new Date(milestone.due_date)
-        const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      const endDateStr = (milestone as any).end_date
+      if (endDateStr) {
+        const endDate = new Date(endDateStr)
+        const daysDiff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         
         if (daysDiff < 0 && milestone.status !== 'completed') {
           overdue++
