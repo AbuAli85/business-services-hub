@@ -2187,7 +2187,24 @@ export default function EnhancedBookingDetails({
 
               {/* Progress Tab */}
               <TabsContent value="progress" className="space-y-6">
-                <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">Project Progress</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // Refresh progress data
+                        window.location.reload()
+                      }}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </div>
+                  <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
+                </div>
               </TabsContent>
 
               {/* Messages Tab */}
@@ -2235,6 +2252,7 @@ export default function EnhancedBookingDetails({
                   value={progressValue}
                   onChange={(e) => setProgressValue(Number(e.target.value))}
                   className="w-full"
+                  aria-label="Progress percentage"
                 />
                 <div className="flex justify-between text-sm text-gray-600 mt-1">
                   <span>0%</span>
@@ -2321,6 +2339,7 @@ export default function EnhancedBookingDetails({
                   value={meetingDate}
                   onChange={(e) => setMeetingDate(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Meeting date"
                 />
               </div>
               <div>
@@ -2330,6 +2349,7 @@ export default function EnhancedBookingDetails({
                   value={meetingTime}
                   onChange={(e) => setMeetingTime(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Meeting time"
                 />
               </div>
               <div>

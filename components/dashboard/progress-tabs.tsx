@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import './progress-styles.css'
-import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle } from 'lucide-react'
+import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle, Target } from 'lucide-react'
 import { Milestone, Task, BookingProgress, Comment } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
 // Removed legacy client-progress-view
@@ -24,6 +24,8 @@ import { BulkOperationsView } from './bulk-operations-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
 import { TimelineService, TimelineItem } from '@/lib/timeline-service'
 import { ProgressDataService } from '@/lib/progress-data-service'
+import { QuickMilestoneCreator } from './quick-milestone-creator'
+import { Button } from '@/components/ui/button'
 
 interface ProgressTabsProps {
   bookingId: string
@@ -44,6 +46,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const [schemaAvailable, setSchemaAvailable] = useState<boolean | null>(null)
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([])
   const [commentsByMilestone, setCommentsByMilestone] = useState<Record<string, Comment[]>>({})
+  const [showMilestoneCreator, setShowMilestoneCreator] = useState(false)
 
   const { 
     isUpdating, 
@@ -256,11 +259,24 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     }
   }
 
-  // If schema is not available, show monthly progress tracking
-  // If schema unavailable, show fallback
+  // If schema is not available, show helpful error message
   if (schemaAvailable === false) {
     return (
-      <div className="p-6 text-sm text-gray-600">Schema unavailable.</div>
+      <div className="flex flex-col items-center justify-center p-12 bg-red-50 rounded-lg border-2 border-dashed border-red-300">
+        <div className="text-center max-w-md">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <AlertCircle className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Database Schema Issue</h3>
+          <p className="text-gray-600 mb-4">
+            The progress tracking system requires database tables that aren't available yet. 
+            Please contact your administrator to set up the required database schema.
+          </p>
+          <div className="text-sm text-gray-500">
+            Required tables: milestones, tasks, milestone_comments
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -326,10 +342,35 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     )
   }
 
-  // If there are no milestones and no booking progress, show monthly progress tracking
+  // If there are no milestones and no booking progress, show empty state with action
   if (milestones.length === 0 && !bookingProgress) {
     return (
-      <div className="p-6 text-sm text-gray-600">No milestones yet.</div>
+      <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="text-center max-w-md">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+            <Target className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Progress Data Yet</h3>
+          <p className="text-gray-600 mb-6">
+            This booking doesn't have any milestones or progress tracking set up yet. 
+            {userRole === 'provider' ? ' You can start by creating milestones and tasks.' : ' The provider will set up progress tracking soon.'}
+          </p>
+          {userRole === 'provider' && (
+            <div className="space-y-3">
+              <Button 
+                onClick={() => setShowMilestoneCreator(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Create First Milestone
+              </Button>
+              <p className="text-xs text-gray-500">
+                Milestones help break down the project into manageable phases
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     )
   }
 
@@ -632,6 +673,22 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
 
         {/* Global Time Tracking Status */}
       </div>
+
+      {/* Milestone Creator Modal */}
+      {showMilestoneCreator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <QuickMilestoneCreator
+              bookingId={bookingId}
+              onMilestoneCreated={() => {
+                setShowMilestoneCreator(false)
+                loadData()
+              }}
+              onCancel={() => setShowMilestoneCreator(false)}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   )
