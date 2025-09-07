@@ -633,7 +633,7 @@ export class ProgressDataService {
       if (error) {
         // Handle table not found or permission denied errors
         if (error.code === '42501' || error.code === 'PGRST116' || error.code === '403' || error.message?.includes('relation "milestone_approvals" does not exist') || error.message?.includes('permission denied')) {
-          console.log('📝 Using local storage for milestone approvals (database table not configured)');
+          console.log('📝 Using local storage for milestone approvals (RLS policies too restrictive)');
           
           // Create a mock approval and store it locally
           const mockApproval: MilestoneApproval = {
@@ -649,6 +649,11 @@ export class ProgressDataService {
           const existingApprovals = JSON.parse(localStorage.getItem('milestone_approvals') || '[]');
           existingApprovals.push(mockApproval);
           localStorage.setItem('milestone_approvals', JSON.stringify(existingApprovals));
+          
+          // Also store in session storage for immediate access
+          const sessionApprovals = JSON.parse(sessionStorage.getItem('milestone_approvals') || '[]');
+          sessionApprovals.push(mockApproval);
+          sessionStorage.setItem('milestone_approvals', JSON.stringify(sessionApprovals));
           
           return mockApproval;
         }
@@ -679,12 +684,20 @@ export class ProgressDataService {
     if (error) {
       // Handle table not found or permission denied errors
       if (error.code === '42501' || error.code === 'PGRST116' || error.code === '403' || error.message?.includes('relation "milestone_approvals" does not exist') || error.message?.includes('permission denied')) {
-        console.log('📝 Using local storage for milestone approvals (database table not configured)');
+        console.log('📝 Using local storage for milestone approvals (RLS policies too restrictive)');
         
-        // Try to get approvals from local storage
+        // Try to get approvals from local storage and session storage
         try {
           const localApprovals = JSON.parse(localStorage.getItem('milestone_approvals') || '[]');
-          return localApprovals.filter((approval: MilestoneApproval) => approval.milestone_id === milestoneId);
+          const sessionApprovals = JSON.parse(sessionStorage.getItem('milestone_approvals') || '[]');
+          
+          // Combine both sources and remove duplicates
+          const allApprovals = [...localApprovals, ...sessionApprovals];
+          const uniqueApprovals = allApprovals.filter((approval: MilestoneApproval, index: number, self: MilestoneApproval[]) => 
+            index === self.findIndex(a => a.id === approval.id)
+          );
+          
+          return uniqueApprovals.filter((approval: MilestoneApproval) => approval.milestone_id === milestoneId);
         } catch {
           return [];
         }

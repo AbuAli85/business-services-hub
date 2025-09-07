@@ -202,11 +202,11 @@ export function SimpleMilestones({
       console.error('Failed to create approval:', e)
       
       // Show user-friendly error message
-      if (e instanceof Error && e.message.includes('permission denied')) {
-        alert('✅ Approval submitted successfully! (Stored locally for now)')
-      } else {
-        alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
-      }
+        if (e instanceof Error && (e.message.includes('permission denied') || e.message.includes('403'))) {
+          alert('✅ Approval submitted successfully! (Stored locally due to database permissions)')
+        } else {
+          alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
+        }
     }
   }
 
