@@ -166,13 +166,19 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     console.log('Modal state changed - showMilestoneCreator:', showMilestoneCreator)
     if (showMilestoneCreator) {
       console.log('Modal should be visible now!')
-      // Test if portal is working
+      // Test if modal is in DOM
       setTimeout(() => {
         const modalElement = document.querySelector('[data-modal="milestone-creator"]')
         if (modalElement) {
           console.log('✅ Modal element found in DOM:', modalElement)
         } else {
           console.log('❌ Modal element NOT found in DOM')
+          // Try to find any modal-like elements
+          const allModals = document.querySelectorAll('[class*="fixed"]')
+          console.log('All fixed elements found:', allModals.length)
+          allModals.forEach((el, i) => {
+            console.log(`Fixed element ${i}:`, el.className, (el as HTMLElement).style.zIndex)
+          })
         }
       }, 100)
     }
@@ -552,6 +558,26 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                 >
                   Check Modal State
                 </button>
+                <button 
+                  onClick={() => {
+                    // Create a simple test modal
+                    const testModal = document.createElement('div')
+                    testModal.innerHTML = `
+                      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999999; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 20px; border: 5px solid red; border-radius: 8px; max-width: 400px;">
+                          <h2>TEST MODAL</h2>
+                          <p>This is a test modal created directly with JavaScript</p>
+                          <button onclick="this.parentElement.parentElement.remove()">Close</button>
+                        </div>
+                      </div>
+                    `
+                    document.body.appendChild(testModal)
+                    console.log('Test modal created directly')
+                  }}
+                  className="text-orange-600 hover:text-orange-800 underline block"
+                >
+                  Create Test Modal
+                </button>
               </div>
             </div>
           )}
@@ -881,19 +907,25 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
-      {/* Milestone Creator Modal - Using Portal */}
-      {showMilestoneCreator && typeof window !== 'undefined' && createPortal(
+      {/* Milestone Creator Modal - Direct Render */}
+      {(() => {
+        if (showMilestoneCreator) {
+          console.log('About to render modal JSX')
+        }
+        return null
+      })()}
+      {showMilestoneCreator && (
         <div 
           data-modal="milestone-creator"
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
           style={{ 
-            zIndex: 9999,
+            zIndex: 999999,
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -908,15 +940,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           <div 
             className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl"
             style={{
-              border: '3px solid red',
+              border: '5px solid red',
               backgroundColor: 'white',
-              minHeight: '400px'
+              minHeight: '400px',
+              zIndex: 1000000
             }}
           >
             <div className="text-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Create Milestone</h2>
               <p className="text-sm text-gray-600">Modal is working! 🎉</p>
-              <p className="text-xs text-red-600 font-bold">PORTAL MODAL - RED BORDER</p>
+              <p className="text-xs text-red-600 font-bold">DIRECT MODAL - RED BORDER</p>
             </div>
             {useFallbackMode ? (
               <FallbackMilestoneCreator
@@ -946,8 +979,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               />
             )}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
     </div>
