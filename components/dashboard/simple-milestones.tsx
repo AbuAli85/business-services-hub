@@ -37,6 +37,7 @@ interface SimpleMilestonesProps {
   onTaskDelete: (milestoneId: string, taskId: string) => void
   onCommentAdd: (milestoneId: string, content: string) => void
   onProjectTypeChange: (projectType: 'one_time' | 'monthly' | '3_months' | '6_months' | '9_months' | '12_months') => void
+  onMilestoneCreate?: () => void
   commentsByMilestone?: Record<string, Comment[]>
   userRole: UserRole
   approvalsByMilestone?: Record<string, MilestoneApproval[]>
@@ -51,6 +52,7 @@ export function SimpleMilestones({
   onTaskDelete,
   onCommentAdd,
   onProjectTypeChange,
+  onMilestoneCreate,
   commentsByMilestone,
   userRole,
   approvalsByMilestone,
@@ -1158,6 +1160,23 @@ export function SimpleMilestones({
           )
         })}
       </div>
+
+      {/* Create New Milestone Button */}
+      {userRole === 'provider' && onMilestoneCreate && (
+        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 rounded-xl hover:border-blue-300 transition-all duration-200">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Need Another Milestone?</h3>
+            <p className="text-sm text-gray-600 mb-4">Create additional milestones to better organize your project phases</p>
+            <Button
+              onClick={onMilestoneCreate}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold py-3 px-6"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Create New Milestone
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Smart Task Generator Modal */}
       {showSmartTaskGenerator && (

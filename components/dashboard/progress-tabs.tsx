@@ -165,35 +165,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         throw new Error(milestonesError.message)
       }
       
-        // If no milestones found, check if we can create them (test permissions)
+        // If no milestones found, switch to fallback mode
         if (!milestonesData || milestonesData.length === 0) {
-          console.log('No milestones found, testing database permissions...')
-          
-          // Test if we can create a milestone (this will fail if permissions are wrong)
-          const { error: testError } = await supabase
-            .from('milestones')
-            .insert({
-              booking_id: bookingId,
-              title: 'test-permission-check',
-              description: 'test',
-              status: 'pending',
-              progress_percentage: 0,
-              order_index: 0
-            })
-            .select()
-        .single()
-      
-          if (testError && testError.code === '42501') {
-            console.log('Permission denied, switching to fallback mode')
-            throw new Error('Permission denied - using fallback mode')
-          } else if (testError) {
-            console.log('Other database error, switching to fallback mode:', testError)
-            throw new Error('Database error - using fallback mode')
-          } else {
-            // Clean up test milestone
-            await supabase.from('milestones').delete().eq('title', 'test-permission-check')
-            console.log('Database permissions OK, but no milestones exist')
-          }
+          console.log('No milestones found, switching to fallback mode')
+          throw new Error('No milestones found - using fallback mode')
         }
         
         // Transform milestones data
@@ -846,45 +821,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
-      {/* Debug indicator - should always be visible when modal should show */}
-      {showMilestoneCreator && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: '50px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'red',
-            color: 'white',
-            padding: '20px',
-            zIndex: 9999999,
-            borderRadius: '10px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            border: '3px solid yellow'
-          }}
-        >
-          🚨 MODAL SHOULD BE VISIBLE NOW! 🚨
-          <br />
-          showMilestoneCreator: {showMilestoneCreator.toString()}
-          <br />
-          <button 
-            onClick={() => setShowMilestoneCreator(false)}
-            style={{
-              background: 'white',
-              color: 'black',
-              padding: '5px 10px',
-              border: 'none',
-              borderRadius: '3px',
-              marginTop: '10px',
-              cursor: 'pointer'
-            }}
-          >
-            Close Debug
-          </button>
-        </div>
-      )}
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         {/* Main Progress Header (optional) */}
@@ -947,6 +883,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   onMilestoneUpdate={handleMilestoneUpdate}
                   onCommentAdd={handleAddComment}
                   onProjectTypeChange={() => {}}
+                  onMilestoneCreate={() => setShowMilestoneCreator(true)}
                   commentsByMilestone={commentsByMilestone}
                   approvalsByMilestone={approvalsByMilestone}
                 />
@@ -1234,6 +1171,22 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
+      {/* Milestone Creator Modal */}
+      {showMilestoneCreator && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <QuickMilestoneCreator
+              bookingId={bookingId}
+              onMilestoneCreated={() => {
+                setShowMilestoneCreator(false)
+                loadData()
+                toast.success('Milestone created successfully!')
+              }}
+              onCancel={() => setShowMilestoneCreator(false)}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   )
