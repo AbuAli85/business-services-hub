@@ -103,7 +103,14 @@ export class ProgressDataService {
 
   static async addTask(
     milestoneId: string,
-    task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>
+    task: {
+      title: string;
+      description?: string;
+      priority?: 'low' | 'medium' | 'high' | 'urgent';
+      estimated_hours?: number;
+      due_date?: string;
+      status?: 'pending' | 'in_progress' | 'completed';
+    }
   ): Promise<Task> {
     try {
       const supabase = await getSupabaseClient();
@@ -129,8 +136,7 @@ export class ProgressDataService {
           estimated_hours: task.estimated_hours || 0,
           actual_hours: 0,
           order_index: nextOrderIndex,
-          due_date: task.due_date,
-          progress: task.progress || 0
+          due_date: task.due_date
         })
         .select()
         .single();

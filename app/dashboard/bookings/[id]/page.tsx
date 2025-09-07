@@ -82,7 +82,9 @@ export default function BookingProgressPage() {
         title: task.title,
         description: task.description,
         priority: task.priority,
-        estimated_hours: task.estimated_hours
+        estimated_hours: task.estimated_hours,
+        status: 'pending',
+        due_date: undefined
       });
       await loadProgressData(true);
     } catch (err) {
