@@ -242,6 +242,7 @@ export default function ProgressMilestoneCard({
                     value={newTask.priority}
                     onChange={(e) => setNewTask({...newTask, priority: e.target.value as any})}
                     className="px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    aria-label="Select task priority"
                   >
                     <option value="low">Low Priority</option>
                     <option value="medium">Medium Priority</option>
@@ -289,6 +290,7 @@ export default function ProgressMilestoneCard({
                       status: e.target.checked ? 'completed' : 'pending' 
                     })}
                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    aria-label={`Mark task "${task.title}" as ${task.status === 'completed' ? 'incomplete' : 'completed'}`}
                   />
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">

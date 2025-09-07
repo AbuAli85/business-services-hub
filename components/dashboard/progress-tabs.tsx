@@ -331,13 +331,20 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         console.log('✅ Database milestones loaded:', transformedMilestones.length, 'milestones')
         console.log('📊 Milestone data:', transformedMilestones)
         
-        // Calculate progress statistics
+        // Calculate progress statistics with comprehensive task completion tracking
         const totalTasks = transformedMilestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
         const completedTasks = transformedMilestones.reduce((sum, m) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0
         )
+        const inProgressTasks = transformedMilestones.reduce((sum, m) => 
+          sum + (m.tasks?.filter((t: any) => t.status === 'in_progress').length || 0), 0
+        )
+        const pendingTasks = transformedMilestones.reduce((sum, m) => 
+          sum + (m.tasks?.filter((t: any) => t.status === 'pending').length || 0), 0
+        )
         const completedMilestones = transformedMilestones.filter(m => m.status === 'completed').length
         const overallProgress = transformedMilestones.length > 0 ? Math.round((completedMilestones / transformedMilestones.length) * 100) : 0
+        const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
         
         setTotalTasks(totalTasks)
         setCompletedTasks(completedTasks)
@@ -348,7 +355,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           completedMilestones,
           totalTasks,
           completedTasks,
-          overallProgress
+          inProgressTasks,
+          pendingTasks,
+          overallProgress,
+          taskCompletionRate
         })
         return
       } catch (dbError) {
@@ -418,13 +428,20 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         console.log('✅ Fallback milestones loaded:', transformedFallback.length, 'milestones')
         console.log('📊 Fallback data:', transformedFallback)
         
-        // Calculate progress statistics for fallback data
+        // Calculate progress statistics for fallback data with comprehensive tracking
         const totalTasks = transformedFallback.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
         const completedTasks = transformedFallback.reduce((sum, m) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0
         )
+        const inProgressTasks = transformedFallback.reduce((sum, m) => 
+          sum + (m.tasks?.filter((t: any) => t.status === 'in_progress').length || 0), 0
+        )
+        const pendingTasks = transformedFallback.reduce((sum, m) => 
+          sum + (m.tasks?.filter((t: any) => t.status === 'pending').length || 0), 0
+        )
         const completedMilestones = transformedFallback.filter(m => m.status === 'completed').length
         const overallProgress = transformedFallback.length > 0 ? Math.round((completedMilestones / transformedFallback.length) * 100) : 0
+        const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
         
         setTotalTasks(totalTasks)
         setCompletedTasks(completedTasks)
@@ -435,7 +452,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           completedMilestones,
           totalTasks,
           completedTasks,
-          overallProgress
+          inProgressTasks,
+          pendingTasks,
+          overallProgress,
+          taskCompletionRate
         })
         return
       }
@@ -943,6 +963,21 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           🚨 MODAL SHOULD BE VISIBLE NOW! 🚨
           <br />
           showMilestoneCreator: {showMilestoneCreator.toString()}
+          <br />
+          <button 
+            onClick={() => setShowMilestoneCreator(false)}
+            style={{
+              background: 'white',
+              color: 'black',
+              padding: '5px 10px',
+              border: 'none',
+              borderRadius: '3px',
+              marginTop: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            Close Debug
+          </button>
         </div>
       )}
       {/* Main Content */}
