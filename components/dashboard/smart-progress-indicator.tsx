@@ -39,35 +39,7 @@ export function SmartProgressIndicator({
   const [insights, setInsights] = useState<any[]>([])
   const [trending, setTrending] = useState<'up' | 'down' | 'stable'>('stable')
 
-  // Calculate smart metrics
-  const totalMilestones = milestones.length
-  const completedMilestones = milestones.filter(m => m.status === 'completed').length
-  const totalTasks = tasks.length
-  const completedTasks = tasks.filter(t => t.status === 'completed').length
-  const overdueTasks = tasks.filter(t => {
-    if (!t.due_date || t.status === 'completed') return false
-    return new Date(t.due_date) < new Date()
-  }).length
-
-  // Calculate estimated completion
-  const estimatedCompletion = calculateEstimatedCompletion(milestones, tasks)
-  
-  // Calculate velocity (tasks completed per day)
-  const velocity = calculateVelocity(tasks)
-  
-  // Generate smart insights
-  useEffect(() => {
-    generateInsights()
-  }, [milestones, tasks, currentProgress])
-
-  // Animate progress bar
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimatedProgress(currentProgress)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [currentProgress])
-
+  // Helper functions
   const calculateEstimatedCompletion = (milestones: any[], tasks: any[]) => {
     if (milestones.length === 0) return null
     
@@ -95,6 +67,22 @@ export function SmartProgressIndicator({
     return recentCompleted / 7 // tasks per day
   }
 
+  // Calculate smart metrics
+  const totalMilestones = milestones.length
+  const completedMilestones = milestones.filter(m => m.status === 'completed').length
+  const totalTasks = tasks.length
+  const completedTasks = tasks.filter(t => t.status === 'completed').length
+  const overdueTasks = tasks.filter(t => {
+    if (!t.due_date || t.status === 'completed') return false
+    return new Date(t.due_date) < new Date()
+  }).length
+
+  // Calculate estimated completion
+  const estimatedCompletion = calculateEstimatedCompletion(milestones, tasks)
+  
+  // Calculate velocity (tasks completed per day)
+  const velocity = calculateVelocity(tasks)
+  
   const generateInsights = () => {
     const newInsights = []
     
@@ -175,6 +163,19 @@ export function SmartProgressIndicator({
 
     setInsights(newInsights)
   }
+
+  // Generate smart insights
+  useEffect(() => {
+    generateInsights()
+  }, [milestones, tasks, currentProgress])
+
+  // Animate progress bar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedProgress(currentProgress)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [currentProgress])
 
   const getProgressColor = (progress: number) => {
     if (progress === 0) return 'bg-gray-200'
