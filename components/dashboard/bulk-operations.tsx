@@ -84,6 +84,7 @@ export function BulkOperations({
                 checked={selectedMilestones.length === milestones.length && milestones.length > 0}
                 onChange={handleSelectAll}
                 className="w-4 h-4"
+                aria-label="Select all milestones"
               />
               <span className="text-sm font-medium">
                 Select All ({selectedMilestones.length}/{milestones.length})
@@ -108,6 +109,7 @@ export function BulkOperations({
                   checked={selectedMilestones.includes(milestone.id)}
                   onChange={() => handleSelectMilestone(milestone.id)}
                   className="w-4 h-4"
+                  aria-label={`Select milestone: ${milestone.title}`}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm truncate">{milestone.title}</div>

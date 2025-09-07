@@ -798,6 +798,30 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   
   return (
     <div className="flex flex-col lg:flex-row gap-6">
+      {/* Debug indicator - should always be visible when modal should show */}
+      {showMilestoneCreator && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '50px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'red',
+            color: 'white',
+            padding: '20px',
+            zIndex: 9999999,
+            borderRadius: '10px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            border: '3px solid yellow'
+          }}
+        >
+          🚨 MODAL SHOULD BE VISIBLE NOW! 🚨
+          <br />
+          showMilestoneCreator: {showMilestoneCreator.toString()}
+        </div>
+      )}
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         {/* Main Progress Header (optional) */}
@@ -1045,89 +1069,64 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {/* Global Time Tracking Status */}
       </div>
 
-      {/* Milestone Creator Modal - Using Portal */}
-      {showMilestoneCreator && typeof window !== 'undefined' && createPortal(
+      {/* Simple Test Modal - Always Render When State is True */}
+      {showMilestoneCreator && (
         <div 
-          data-modal="milestone-creator"
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-          ref={(el) => {
-            if (el) {
-              console.log('✅ Modal element rendered in DOM via Portal!', el)
-            }
-          }}
-          style={{ 
-            zIndex: 999999,
+          style={{
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            zIndex: 999999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              console.log('Modal backdrop clicked, closing modal')
-              setShowMilestoneCreator(false)
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              console.log('Escape key pressed, closing modal')
-              setShowMilestoneCreator(false)
-            }
+          onClick={() => {
+            console.log('Test modal clicked, closing')
+            setShowMilestoneCreator(false)
           }}
         >
           <div 
-            className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl"
             style={{
-              border: '5px solid red',
               backgroundColor: 'white',
-              minHeight: '400px',
+              padding: '30px',
+              borderRadius: '10px',
+              border: '5px solid red',
+              minWidth: '400px',
+              minHeight: '300px',
               zIndex: 1000000
             }}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-title"
           >
-            <div className="text-center mb-4">
-              <h2 id="modal-title" className="text-lg font-semibold text-gray-900">Create Milestone</h2>
-              <p className="text-sm text-gray-600">Modal is working! 🎉</p>
-              <p className="text-xs text-red-600 font-bold">PORTAL MODAL - RED BORDER</p>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px', textAlign: 'center' }}>
+              🎉 MODAL IS WORKING! 🎉
+            </h2>
+            <p style={{ textAlign: 'center', marginBottom: '20px' }}>
+              This is a simple test modal to verify rendering works.
+            </p>
+            <div style={{ textAlign: 'center' }}>
+              <button
+                onClick={() => {
+                  console.log('Close button clicked')
+                  setShowMilestoneCreator(false)
+                }}
+                style={{
+                  backgroundColor: 'red',
+                  color: 'white',
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }}
+              >
+                Close Modal
+              </button>
             </div>
-            {useFallbackMode ? (
-              <FallbackMilestoneCreator
-                bookingId={bookingId}
-                onMilestoneCreated={() => {
-                  console.log('Fallback milestone created, closing modal')
-                  setShowMilestoneCreator(false)
-                  loadData()
-                }}
-                onCancel={() => {
-                  console.log('Fallback milestone creation cancelled')
-                  setShowMilestoneCreator(false)
-                }}
-              />
-            ) : (
-              <QuickMilestoneCreator
-                bookingId={bookingId}
-                onMilestoneCreated={() => {
-                  console.log('Quick milestone created, closing modal')
-                  setShowMilestoneCreator(false)
-                  loadData()
-                }}
-                onCancel={() => {
-                  console.log('Quick milestone creation cancelled')
-                  setShowMilestoneCreator(false)
-                }}
-              />
-            )}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
     </div>
