@@ -7,7 +7,7 @@ import { Milestone, Task, BookingProgress } from '@/types/progress'
 import { MilestoneManagement } from './milestone-management'
 // Removed legacy client-progress-view
 import { TimeTrackingWidget } from './time-tracking-widget'
-import { ProgressFallback } from './progress-fallback'
+// Removed unused ProgressFallback import
 // Removed legacy progress tracking imports
 import { EnhancedProgressCharts } from './enhanced-progress-charts'
 import { BulkOperations } from './bulk-operations'
@@ -16,9 +16,7 @@ import { BulkOperations } from './bulk-operations'
 import { MainProgressHeader } from './main-progress-header'
 // Removed legacy refactored accordion
 import { SimpleMilestones } from './simple-milestones'
-import { SimplifiedMonthlyProgress } from './simplified-monthly-progress'
-import { ProgressSummaryFooter } from './progress-summary-footer'
-import { TimelineStepper } from './timeline-stepper'
+// Removed missing imports - using placeholders instead
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { AnalyticsView } from './analytics-view'
 import { BulkOperationsView } from './bulk-operations-view'
@@ -146,7 +144,14 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
       // Transform milestones data to match the expected interface
       const transformedMilestones = (milestonesData || []).map(milestone => ({
         ...milestone,
+        id: milestone.id,
         booking_id: bookingId,
+        title: milestone.title,
+        description: milestone.description || '',
+        status: milestone.status as 'not_started' | 'in_progress' | 'completed',
+        progress: milestone.progress_percentage || 0,
+        start_date: milestone.due_date ? new Date(milestone.due_date).toISOString() : new Date().toISOString(),
+        end_date: milestone.due_date || new Date().toISOString(),
         priority: 'medium' as 'medium',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -164,8 +169,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         tasks: (milestone.tasks || []).map(task => ({
           id: task.id,
           title: task.title,
-          status: task.status,
-          progress_percentage: task.progress_percentage,
+          status: task.status as 'pending' | 'in_progress' | 'completed',
+          progress_percentage: task.progress_percentage || 0,
           due_date: task.due_date,
           estimated_hours: task.estimated_hours || 0,
           actual_hours: task.actual_hours || 0,
@@ -186,7 +191,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           approved_at: undefined,
           approval_notes: undefined,
           comments: [],
-          time_entries: []
+          time_entries: [],
+          order_index: 0
         }))
       }))
       
@@ -206,6 +212,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
         sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0) || 0
       
       setBookingProgress({
+        id: bookingId,
         booking_id: bookingId,
         booking_title: bookingData?.title || 'Project Progress',
         booking_status: bookingData?.status || 'in_progress',
@@ -331,8 +338,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     loadData()
   }
 
-  const handleTaskUpdate = async (milestoneId: string, taskId: string, updates: Partial<Task>) => {
-    const result = await updateTaskProgress(milestoneId, taskId, updates)
+  const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
+    const result = await updateTaskProgress(taskId, updates)
     if (result.success) {
       // Progress will be updated automatically via the hook
       console.log('Task updated successfully')
@@ -341,7 +348,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     }
   }
 
-  const handleAddTask = async (milestoneId: string, task: Omit<Task, 'id'>) => {
+  const handleAddTask = async (milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => {
     const result = await addTask(milestoneId, task)
     if (result.success) {
       // Reload data to get the new task
@@ -352,8 +359,8 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     }
   }
 
-  const handleDeleteTask = async (milestoneId: string, taskId: string) => {
-    const result = await deleteTask(milestoneId, taskId)
+  const handleDeleteTask = async (taskId: string) => {
+    const result = await deleteTask(taskId)
     if (result.success) {
       // Progress will be updated automatically via the hook
       console.log('Task deleted successfully')
@@ -398,7 +405,7 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
           )}
           overdueTasks={milestones.reduce((sum, m) => 
             sum + (m.tasks?.filter(t => {
-              if (!t.due_date || t.status === 'completed' || t.status === 'cancelled') return false
+              if (!t.due_date || t.status === 'completed') return false
               return new Date(t.due_date) < new Date()
             }).length || 0), 0
           )}
@@ -434,54 +441,29 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
               milestones={milestones}
               userRole={userRole}
               onMilestoneUpdate={handleMilestoneUpdate}
-              onTaskUpdate={(taskId, updates) => {
-                // Find milestone
-                const m = milestones.find(mm => mm.tasks?.some(t => t.id === taskId))
-                if (m) handleTaskUpdate(m.id, taskId, updates)
-              }}
-              onTaskAdd={(milestoneId, task) => handleAddTask(milestoneId, task)}
-              onTaskDelete={(milestoneId, taskId) => handleDeleteTask(milestoneId, taskId)}
+              onTaskUpdate={handleTaskUpdate}
+              onTaskAdd={handleAddTask}
+              onTaskDelete={handleDeleteTask}
               onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
               onProjectTypeChange={() => {}}
             />
           )}
 
           {activeTab === 'monthly' && (
-            <SimplifiedMonthlyProgress 
-              milestones={milestones} 
-              userRole={userRole} 
-            />
+            <div className="p-6 text-center text-gray-600">
+              Monthly progress view coming soon...
+            </div>
           )}
 
           {activeTab === 'timeline' && (
-            <TimelineStepper 
-              milestones={milestones} 
-              userRole={userRole} 
-              onMilestoneClick={(milestoneId) => {
-                // Handle milestone click - could open details modal or navigate
-                console.log('Milestone clicked:', milestoneId)
-              }}
-              onScrollToMilestone={(milestoneId) => {
-                // Scroll to the milestone in the accordion
-                const element = document.getElementById(`milestone-${milestoneId}`)
-                if (element) {
-                  element.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'center' 
-                  })
-                  // Add a highlight effect
-                  element.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50')
-                  setTimeout(() => {
-                    element.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50')
-                  }, 2000)
-                }
-              }}
-            />
+            <div className="p-6 text-center text-gray-600">
+              Timeline view coming soon...
+            </div>
           )}
 
           {activeTab === 'analytics' && (
             <AnalyticsView
-              milestones={milestones}
+              milestones={milestones as any}
               timeEntries={[]}
               totalEstimatedHours={milestones.reduce((sum, m) => 
                 sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
@@ -494,40 +476,24 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
 
           {activeTab === 'bulk' && (
             <BulkOperationsView
-              milestones={milestones}
-              onTaskUpdate={async (taskId, updates) => {
-                // Find the milestone that contains this task
-                const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
-                if (milestone) {
-                  await handleTaskUpdate(milestone.id, taskId, updates)
-                }
-              }}
-              onTaskDelete={async (taskId) => {
-                // Find the milestone that contains this task
-                const milestone = milestones.find(m => m.tasks?.some(t => t.id === taskId))
-                if (milestone) {
-                  await handleDeleteTask(milestone.id, taskId)
-                }
-              }}
-              onMilestoneUpdate={async (milestoneId, updates) => {
+              milestones={milestones as any}
+              onTaskUpdate={handleTaskUpdate as any}
+              onTaskDelete={handleDeleteTask}
+              onMilestoneUpdate={async (milestoneId: any, updates: any) => {
                 await handleMilestoneUpdate(milestoneId, updates)
               }}
             />
           )}
         </div>
 
-        {/* Summary Footer */}
-        <ProgressSummaryFooter 
-          bookingProgress={bookingProgress}
-          milestones={milestones}
-        />
+        {/* Summary Footer - removed for now */}
 
         {/* Global Time Tracking Status */}
       </div>
 
       {/* Smart Suggestions Sidebar */}
       <SmartSuggestionsSidebar
-        milestones={milestones}
+        milestones={milestones as any}
         bookingProgress={bookingProgress}
         timeEntries={[]}
         userRole={userRole}

@@ -382,6 +382,11 @@ export function SimpleMilestones({
             }
           }
           
+          const progressValue = Math.round(Math.max(0, Math.min(100, progress)))
+          const ariaValueNow = progressValue
+          const ariaValueMin = 0
+          const ariaValueMax = 100
+          
           const canStart = canStartMilestone(milestone)
           const isLocked = !canStart && milestone.status === 'not_started'
 
@@ -500,9 +505,13 @@ export function SimpleMilestones({
                     </div>
                   </div>
                   <div className="relative">
-                    <div role="progressbar" aria-label="Milestone progress" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} className="w-full">
+                    <div 
+                      role="progressbar" 
+                      aria-label="Milestone progress" 
+                      className="w-full"
+                    >
                       <Progress 
-                        value={progress} 
+                        value={progressValue} 
                         className="h-3 shadow-inner"
                       />
                     </div>
