@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Target, Plus, X } from 'lucide-react'
+import { Target, Plus, X, Sparkles } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { SmartMilestoneTemplates } from './smart-milestone-templates'
 
 interface QuickMilestoneCreatorProps {
   bookingId: string
@@ -22,6 +23,7 @@ export function QuickMilestoneCreator({
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -61,6 +63,71 @@ export function QuickMilestoneCreator({
     } finally {
       setIsCreating(false)
     }
+  }
+
+  const handleTemplateSelect = async (template: any) => {
+    try {
+      setIsCreating(true)
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabase = await getSupabaseClient()
+      
+      // Create milestones from template
+      for (let i = 0; i < template.milestones.length; i++) {
+        const milestone = template.milestones[i]
+        
+        const { data: newMilestone, error: milestoneError } = await supabase
+          .from('milestones')
+          .insert({
+            booking_id: bookingId,
+            title: milestone.title,
+            description: milestone.description,
+            status: 'pending',
+            progress_percentage: 0,
+            order_index: i
+          })
+          .select()
+          .single()
+        
+        if (milestoneError) {
+          console.error('Error creating milestone:', milestoneError)
+          continue
+        }
+
+        // Create tasks for this milestone
+        for (let j = 0; j < milestone.tasks.length; j++) {
+          const task = milestone.tasks[j]
+          
+          await supabase
+            .from('tasks')
+            .insert({
+              milestone_id: newMilestone.id,
+              title: task,
+              description: '',
+              status: 'pending',
+              progress_percentage: 0,
+              order_index: j
+            })
+        }
+      }
+
+      toast.success(`Template "${template.name}" applied successfully!`)
+      onMilestoneCreated()
+    } catch (error) {
+      console.error('Error applying template:', error)
+      toast.error('Failed to apply template')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  if (showTemplates) {
+    return (
+      <SmartMilestoneTemplates
+        bookingId={bookingId}
+        onTemplateSelect={handleTemplateSelect}
+        onCancel={() => setShowTemplates(false)}
+      />
+    )
   }
 
   return (
@@ -107,31 +174,52 @@ export function QuickMilestoneCreator({
           />
         </div>
 
-        <div className="flex space-x-3 pt-4">
-          <Button
-            onClick={handleCreate}
-            disabled={isCreating || !title.trim()}
-            className="flex-1 bg-blue-600 hover:bg-blue-700"
-          >
-            {isCreating ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Creating...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Milestone
-              </>
-            )}
-          </Button>
+        <div className="space-y-3 pt-4">
+          <div className="flex space-x-3">
+            <Button
+              onClick={handleCreate}
+              disabled={isCreating || !title.trim()}
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+            >
+              {isCreating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Milestone
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              disabled={isCreating}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+          
           <Button
             variant="outline"
-            onClick={onCancel}
+            onClick={() => setShowTemplates(true)}
             disabled={isCreating}
-            className="flex-1"
+            className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
           >
-            Cancel
+            <Sparkles className="h-4 w-4 mr-2" />
+            Use Smart Template
           </Button>
         </div>
 

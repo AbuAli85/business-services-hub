@@ -25,6 +25,8 @@ import { useProgressUpdates } from '@/hooks/use-progress-updates'
 import { TimelineService, TimelineItem } from '@/lib/timeline-service'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { QuickMilestoneCreator } from './quick-milestone-creator'
+import { SmartProgressIndicator } from './smart-progress-indicator'
+import { ProgressNotifications } from './progress-notifications'
 import { Button } from '@/components/ui/button'
 
 interface ProgressTabsProps {
@@ -478,10 +480,31 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {combinedView ? (
           // Combined Progress & Timeline: no tabs, render both sections
           <div className="space-y-8">
+            {/* Smart Progress Indicator */}
+            <SmartProgressIndicator
+              bookingId={bookingId}
+              currentProgress={bookingProgress?.booking_progress || 0}
+              milestones={milestones}
+              tasks={milestones.flatMap(m => m.tasks || [])}
+              userRole={userRole}
+              onProgressUpdate={(progress) => {
+                // Update progress in parent component
+                console.log('Progress updated:', progress)
+              }}
+            />
+
             <ProgressTrackingSystem
               bookingId={bookingId}
               userRole={userRole}
               className=""
+            />
+
+            {/* Smart Notifications */}
+            <ProgressNotifications
+              bookingId={bookingId}
+              milestones={milestones}
+              tasks={milestones.flatMap(m => m.tasks || [])}
+              userRole={userRole}
             />
 
             <div className="space-y-6">
