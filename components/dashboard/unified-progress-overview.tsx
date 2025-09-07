@@ -284,6 +284,7 @@ export function UnifiedProgressOverview({
         {milestones.map((milestone) => {
           const color = getMilestoneColor(milestone.title)
           const icon = getMilestoneIcon(milestone.title)
+          const percent = ((milestone as any).progress_percentage ?? (milestone as any).progress ?? 0) as number
           
           return (
             <div key={milestone.id} className={`bg-white border border-${color}-200 rounded-lg p-4 hover:shadow-md transition-shadow`}>
@@ -300,10 +301,10 @@ export function UnifiedProgressOverview({
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Progress</span>
-                  <span className="font-medium">{milestone.progress_percentage}%</span>
+                  <span className="font-medium">{percent}%</span>
                 </div>
                 <Progress 
-                  value={milestone.progress_percentage} 
+                  value={percent} 
                   className="h-2"
                 />
                 <div className="text-xs text-gray-500">
