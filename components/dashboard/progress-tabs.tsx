@@ -27,11 +27,12 @@ import { ProgressDataService } from '@/lib/progress-data-service'
 interface ProgressTabsProps {
   bookingId: string
   userRole: 'provider' | 'client'
+  showHeader?: boolean
 }
 
 type ViewType = 'overview' | 'monthly' | 'timeline' | 'analytics' | 'bulk'
 
-export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
+export function ProgressTabs({ bookingId, userRole, showHeader = true }: ProgressTabsProps) {
   const [activeTab, setActiveTab] = useState<ViewType>('overview')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
@@ -404,28 +405,30 @@ export function ProgressTabs({ bookingId, userRole }: ProgressTabsProps) {
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Main Content */}
       <div className="flex-1 space-y-6">
-        {/* Main Progress Header */}
-        <MainProgressHeader
-          bookingProgress={bookingProgress}
-          completedMilestones={milestones.filter(m => m.status === 'completed').length}
-          totalMilestones={milestones.length}
-          completedTasks={milestones.reduce((sum, m) => 
-            sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
-          )}
-          totalTasks={milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)}
-          totalEstimatedHours={milestones.reduce((sum, m) => 
-            sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
-          )}
-          totalActualHours={milestones.reduce((sum, m) => 
-            sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
-          )}
-          overdueTasks={milestones.reduce((sum, m) => 
-            sum + (m.tasks?.filter(t => {
-              if (!t.due_date || t.status === 'completed') return false
-              return new Date(t.due_date) < new Date()
-            }).length || 0), 0
-          )}
-        />
+        {/* Main Progress Header (optional) */}
+        {showHeader && (
+          <MainProgressHeader
+            bookingProgress={bookingProgress}
+            completedMilestones={milestones.filter(m => m.status === 'completed').length}
+            totalMilestones={milestones.length}
+            completedTasks={milestones.reduce((sum, m) => 
+              sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
+            )}
+            totalTasks={milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)}
+            totalEstimatedHours={milestones.reduce((sum, m) => 
+              sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
+            )}
+            totalActualHours={milestones.reduce((sum, m) => 
+              sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
+            )}
+            overdueTasks={milestones.reduce((sum, m) => 
+              sum + (m.tasks?.filter(t => {
+                if (!t.due_date || t.status === 'completed') return false
+                return new Date(t.due_date) < new Date()
+              }).length || 0), 0
+            )}
+          />
+        )}
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
