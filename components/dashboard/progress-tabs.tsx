@@ -28,11 +28,12 @@ interface ProgressTabsProps {
   bookingId: string
   userRole: 'provider' | 'client'
   showHeader?: boolean
+  combinedView?: boolean
 }
 
 type ViewType = 'overview' | 'monthly' | 'timeline' | 'analytics' | 'bulk'
 
-export function ProgressTabs({ bookingId, userRole, showHeader = true }: ProgressTabsProps) {
+export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedView = false }: ProgressTabsProps) {
   const [activeTab, setActiveTab] = useState<ViewType>('overview')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [bookingProgress, setBookingProgress] = useState<BookingProgress | null>(null)
@@ -430,32 +431,9 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true }: Progres
           />
         )}
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-8 overflow-x-auto">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as ViewType)}
-                  className={`flex items-center gap-1 sm:gap-2 py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        <div className="mt-6">
-          {activeTab === 'overview' && (
+        {combinedView ? (
+          // Combined Progress & Timeline: no tabs, render both sections
+          <div className="space-y-8">
             <SimpleMilestones
               milestones={milestones}
               userRole={userRole}
@@ -466,17 +444,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true }: Progres
               onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
               onProjectTypeChange={() => {}}
             />
-          )}
 
-          {activeTab === 'monthly' && (
-            <div className="p-6 text-center text-gray-600">
-              Monthly progress view coming soon...
-            </div>
-          )}
-
-          {activeTab === 'timeline' && (
             <div className="space-y-6">
-              {/* Timeline Items */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
                 {timelineItems.length === 0 ? (
@@ -499,7 +468,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true }: Progres
                 )}
               </div>
 
-              {/* Comments grouped by milestone */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Comments</h3>
                 {Object.keys(commentsByMilestone).length === 0 ? (
@@ -526,32 +494,133 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true }: Progres
                 )}
               </div>
             </div>
-          )}
+          </div>
+        ) : (
+          <>
+            {/* Tabs */}
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-8 overflow-x-auto">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as ViewType)}
+                      className={`flex items-center gap-1 sm:gap-2 py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                        activeTab === tab.id
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {tab.label}
+                    </button>
+                  )
+                })}
+              </nav>
+            </div>
 
-          {activeTab === 'analytics' && (
-            <AnalyticsView
-              milestones={milestones as any}
-              timeEntries={[]}
-              totalEstimatedHours={milestones.reduce((sum, m) => 
-                sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
+            {/* Tab Content */}
+            <div className="mt-6">
+              {activeTab === 'overview' && (
+                <SimpleMilestones
+                  milestones={milestones}
+                  userRole={userRole}
+                  onMilestoneUpdate={handleMilestoneUpdate}
+                  onTaskUpdate={handleTaskUpdate}
+                  onTaskAdd={handleAddTask}
+                  onTaskDelete={handleDeleteTask}
+                  onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
+                  onProjectTypeChange={() => {}}
+                />
               )}
-              totalActualHours={milestones.reduce((sum, m) => 
-                sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
-              )}
-            />
-          )}
 
-          {activeTab === 'bulk' && (
-            <BulkOperationsView
-              milestones={milestones as any}
-              onTaskUpdate={handleTaskUpdate as any}
-              onTaskDelete={handleDeleteTask}
-              onMilestoneUpdate={async (milestoneId: any, updates: any) => {
-                await handleMilestoneUpdate(milestoneId, updates)
-              }}
-            />
-          )}
-        </div>
+              {activeTab === 'monthly' && (
+                <div className="p-6 text-center text-gray-600">
+                  Monthly progress view coming soon...
+                </div>
+              )}
+
+              {activeTab === 'timeline' && (
+                <div className="space-y-6">
+                  {/* Timeline Items */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
+                    {timelineItems.length === 0 ? (
+                      <div className="p-6 text-center text-gray-600">No timeline items yet.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {timelineItems.map(item => (
+                          <div key={item.id} className="rounded-lg border p-4 bg-white">
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium text-gray-900">{item.title}</div>
+                              <div className="text-xs text-gray-500">{new Date(item.start_date).toLocaleDateString()} → {new Date(item.end_date).toLocaleDateString()}</div>
+                            </div>
+                            {item.description && (
+                              <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                            )}
+                            <div className="mt-2 text-xs text-gray-500">Status: {item.status} · Priority: {item.priority}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Comments grouped by milestone */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Comments</h3>
+                    {Object.keys(commentsByMilestone).length === 0 ? (
+                      <div className="p-6 text-center text-gray-600">No comments yet.</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {Object.entries(commentsByMilestone).map(([milestoneId, list]) => (
+                          <div key={milestoneId} className="rounded-lg border bg-white">
+                            <div className="px-4 py-2 border-b text-sm font-medium text-gray-900">Milestone {milestoneId.slice(0, 8)}…</div>
+                            <div className="p-4 space-y-3">
+                              {list.map(c => (
+                                <div key={c.id} className="text-sm">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-gray-800">{c.author_name || 'User'}</span>
+                                    <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString()}</span>
+                                  </div>
+                                  <p className="text-gray-700 mt-1">{c.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'analytics' && (
+                <AnalyticsView
+                  milestones={milestones as any}
+                  timeEntries={[]}
+                  totalEstimatedHours={milestones.reduce((sum, m) => 
+                    sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
+                  )}
+                  totalActualHours={milestones.reduce((sum, m) => 
+                    sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
+                  )}
+                />
+              )}
+
+              {activeTab === 'bulk' && (
+                <BulkOperationsView
+                  milestones={milestones as any}
+                  onTaskUpdate={handleTaskUpdate as any}
+                  onTaskDelete={handleDeleteTask}
+                  onMilestoneUpdate={async (milestoneId: any, updates: any) => {
+                    await handleMilestoneUpdate(milestoneId, updates)
+                  }}
+                />
+              )}
+            </div>
+          </>
+        )}
 
         {/* Summary Footer - removed for now */}
 

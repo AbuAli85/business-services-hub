@@ -55,7 +55,7 @@ export default function BookingDetailsPage() {
         {/* Progress & Timeline Section */}
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold text-gray-900">Progress & Timeline</h2>
-          <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} />
+          <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
         </div>
       </div>
     </div>
