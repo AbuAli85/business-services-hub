@@ -107,6 +107,59 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     }
   }, [bookingId, schemaAvailable])
 
+  // Debug function to test milestone creation
+  const testMilestoneCreation = async () => {
+    console.log('🧪 Testing milestone creation...')
+    try {
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabase = await getSupabaseClient()
+      
+      // Check auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('❌ Auth error:', authError)
+        return false
+      }
+      console.log('✅ User authenticated:', user.id)
+      
+      // Try to create a test milestone
+      const { data, error } = await supabase
+        .from('milestones')
+        .insert({
+          booking_id: bookingId,
+          title: 'Debug Test Milestone',
+          description: 'Testing milestone creation',
+          status: 'pending',
+          progress_percentage: 0,
+          order_index: 0,
+          created_by: user.id
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('❌ Milestone creation failed:', error)
+        return false
+      }
+      
+      console.log('✅ Milestone created successfully:', data.id)
+      
+      // Clean up
+      await supabase.from('milestones').delete().eq('id', data.id)
+      console.log('🧹 Test milestone cleaned up')
+      
+      return true
+    } catch (error) {
+      console.error('❌ Test failed:', error)
+      return false
+    }
+  }
+
+  // Make test function available globally for debugging
+  if (typeof window !== 'undefined') {
+    (window as any).testMilestoneCreation = testMilestoneCreation
+  }
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -145,7 +198,39 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           .order('order_index', { ascending: true })
         
         if (milestonesError) {
+          console.warn('Database query failed, switching to fallback mode:', milestonesError)
           throw new Error(milestonesError.message)
+        }
+        
+        // If no milestones found, check if we can create them (test permissions)
+        if (!milestonesData || milestonesData.length === 0) {
+          console.log('No milestones found, testing database permissions...')
+          
+          // Test if we can create a milestone (this will fail if permissions are wrong)
+          const { error: testError } = await supabase
+            .from('milestones')
+            .insert({
+              booking_id: bookingId,
+              title: 'test-permission-check',
+              description: 'test',
+              status: 'pending',
+              progress_percentage: 0,
+              order_index: 0
+            })
+            .select()
+            .single()
+          
+          if (testError && testError.code === '42501') {
+            console.log('Permission denied, switching to fallback mode')
+            throw new Error('Permission denied - using fallback mode')
+          } else if (testError) {
+            console.log('Other database error, switching to fallback mode:', testError)
+            throw new Error('Database error - using fallback mode')
+          } else {
+            // Clean up test milestone
+            await supabase.from('milestones').delete().eq('title', 'test-permission-check')
+            console.log('Database permissions OK, but no milestones exist')
+          }
         }
         
         // Transform milestones data
@@ -407,7 +492,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           {userRole === 'provider' && (
             <div className="space-y-3">
               <Button 
-                onClick={() => setShowMilestoneCreator(true)}
+                onClick={() => {
+                  console.log('Create First Milestone clicked')
+                  console.log('Current fallback mode:', useFallbackMode)
+                  setShowMilestoneCreator(true)
+                }}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 <Target className="h-4 w-4 mr-2" />
@@ -421,6 +510,14 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   ⚠️ Using offline mode - data will be stored locally
                 </div>
               )}
+              <div className="text-xs text-gray-500 text-center mt-2">
+                <button 
+                  onClick={testMilestoneCreation}
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  Test Database Connection
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -753,7 +850,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       {showMilestoneCreator && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            {useFallbackMode ? (
+            {(() => {
+              console.log('Rendering milestone creator modal')
+              console.log('useFallbackMode:', useFallbackMode)
+              return useFallbackMode ? (
               <FallbackMilestoneCreator
                 bookingId={bookingId}
                 onMilestoneCreated={() => {
@@ -771,7 +871,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                 }}
                 onCancel={() => setShowMilestoneCreator(false)}
               />
-            )}
+            )
+            })()}
           </div>
         </div>
       )}
