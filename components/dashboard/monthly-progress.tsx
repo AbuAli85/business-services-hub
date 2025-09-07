@@ -39,7 +39,7 @@ export function MonthlyProgress({ milestones, timeEntries, userRole }: MonthlyPr
 
   // Filter time entries for current month
   const monthlyTimeEntries = timeEntries.filter(entry => {
-    const entryDate = new Date(entry.timestamp);
+    const entryDate = new Date(entry.logged_at);
     return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
   });
 
@@ -48,7 +48,7 @@ export function MonthlyProgress({ milestones, timeEntries, userRole }: MonthlyPr
   const completedTasks = monthlyMilestones.reduce((sum, m) => 
     sum + m.tasks.filter(t => t.status === 'completed').length, 0
   );
-  const totalHours = monthlyTimeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+  const totalHours = monthlyTimeEntries.reduce((sum, entry) => sum + (entry.duration_hours || 0), 0);
   const totalEstimatedHours = monthlyMilestones.reduce((sum, m) => sum + (m.estimated_hours || 0), 0);
   
   const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -108,11 +108,11 @@ export function MonthlyProgress({ milestones, timeEntries, userRole }: MonthlyPr
 
   const getDayProgress = (date: Date) => {
     const dayTimeEntries = monthlyTimeEntries.filter(entry => {
-      const entryDate = new Date(entry.timestamp);
+      const entryDate = new Date(entry.logged_at);
       return entryDate.toDateString() === date.toDateString();
     });
     
-    const dayHours = dayTimeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0);
+    const dayHours = dayTimeEntries.reduce((sum, entry) => sum + (entry.duration_hours || 0), 0);
     const dayTasks = monthlyMilestones.reduce((sum, milestone) => {
       return sum + milestone.tasks.filter(task => {
         const taskDate = new Date(task.created_at);
