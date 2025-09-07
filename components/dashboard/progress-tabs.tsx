@@ -187,6 +187,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const loadData = async () => {
     try {
       setLoading(true)
+      console.log('🔄 Loading progress data for booking:', bookingId)
       
       // First try to load from database
       try {
@@ -315,6 +316,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         // If we get here, database is working
         setUseFallbackMode(false)
         setMilestones(transformedMilestones)
+        console.log('✅ Database milestones loaded:', transformedMilestones.length, 'milestones')
+        console.log('📊 Milestone data:', transformedMilestones)
         return
       } catch (dbError) {
         console.warn('Database not available, using fallback mode:', dbError)
@@ -380,6 +383,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         }))
         
         setMilestones(transformedFallback)
+        console.log('✅ Fallback milestones loaded:', transformedFallback.length, 'milestones')
+        console.log('📊 Fallback data:', transformedFallback)
         return
       }
       
@@ -479,6 +484,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading progress data...</p>
+          <p className="text-xs text-gray-500 mt-2">This may take a moment</p>
         </div>
       </div>
     )
@@ -492,13 +498,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     { id: 'bulk', label: 'Bulk Operations', icon: Clock }
   ]
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
 
   // If there are no milestones and no booking progress, show empty state with action
   if (milestones.length === 0 && !bookingProgress) {
@@ -577,6 +576,44 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                   className="text-orange-600 hover:text-orange-800 underline block"
                 >
                   Create Test Modal
+                </button>
+                <button 
+                  onClick={() => {
+                    // Create sample milestones for testing
+                    const sampleMilestones = [
+                      {
+                        id: 'sample-1',
+                        title: 'Project Kickoff',
+                        description: 'Initial project setup and planning',
+                        status: 'pending',
+                        progress_percentage: 0,
+                        tasks: [
+                          { id: 'task-1', title: 'Review requirements', status: 'pending', progress_percentage: 0 },
+                          { id: 'task-2', title: 'Create project timeline', status: 'pending', progress_percentage: 0 }
+                        ],
+                        created_at: new Date().toISOString()
+                      },
+                      {
+                        id: 'sample-2',
+                        title: 'Design Phase',
+                        description: 'Create initial designs and mockups',
+                        status: 'pending',
+                        progress_percentage: 0,
+                        tasks: [
+                          { id: 'task-3', title: 'Create wireframes', status: 'pending', progress_percentage: 0 },
+                          { id: 'task-4', title: 'Design mockups', status: 'pending', progress_percentage: 0 }
+                        ],
+                        created_at: new Date().toISOString()
+                      }
+                    ]
+                    
+                    localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(sampleMilestones))
+                    console.log('Sample milestones created in localStorage')
+                    loadData() // Reload data to show the new milestones
+                  }}
+                  className="text-pink-600 hover:text-pink-800 underline block"
+                >
+                  Create Sample Milestones
                 </button>
               </div>
             </div>

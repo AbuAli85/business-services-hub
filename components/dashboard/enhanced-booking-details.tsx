@@ -1485,6 +1485,11 @@ export default function EnhancedBookingDetails({
       
       // Refresh booking data
       await loadBookingData()
+      
+      // Force a page refresh to ensure UI is updated
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error(`Error ${action}ing booking:`, error)
       const errorMessage = error instanceof Error ? error.message : `Failed to ${action} booking`
