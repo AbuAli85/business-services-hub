@@ -600,7 +600,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     { id: 'bulk', label: 'Bulk Operations', icon: Clock }
   ]
 
-  const headerStats = useMemo(() => {
+  const computeHeaderStats = () => {
     const completedMilestones = milestones.filter(m => m.status === 'completed').length;
     const totalMilestones = milestones.length;
     const completedTasks = milestones.reduce((s: number, m: Milestone) => s + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0);
@@ -618,7 +618,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       totalActualHours,
       overdueTasks,
     };
-  }, [milestones]);
+  };
 
 
   // If there are no milestones and no booking progress, show empty state with action
@@ -947,13 +947,13 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {showHeader && (
           <MainProgressHeader
             bookingProgress={bookingProgress}
-            completedMilestones={headerStats.completedMilestones}
-            totalMilestones={headerStats.totalMilestones}
-            completedTasks={headerStats.completedTasks}
-            totalTasks={headerStats.totalTasks}
-            totalEstimatedHours={headerStats.totalEstimatedHours}
-            totalActualHours={headerStats.totalActualHours}
-            overdueTasks={headerStats.overdueTasks}
+            completedMilestones={computeHeaderStats().completedMilestones}
+            totalMilestones={computeHeaderStats().totalMilestones}
+            completedTasks={computeHeaderStats().completedTasks}
+            totalTasks={computeHeaderStats().totalTasks}
+            totalEstimatedHours={computeHeaderStats().totalEstimatedHours}
+            totalActualHours={computeHeaderStats().totalActualHours}
+            overdueTasks={computeHeaderStats().overdueTasks}
           />
         )}
 
