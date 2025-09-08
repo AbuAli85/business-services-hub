@@ -687,6 +687,15 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
 
   const handleMilestoneUpdate = async (milestoneId: string, updates: Partial<Milestone>) => {
     try {
+      if (useFallbackMode) {
+        const existing = getFallbackMilestones(bookingId)
+        const updated = existing.map((m: any) => m.id === milestoneId ? { ...m, ...updates } : m)
+        localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(updated))
+        setMilestones(prev => prev.map(m => m.id === milestoneId ? { ...m, ...updates } : m))
+        toast.success('Milestone updated (offline)')
+        return
+      }
+
       await ProgressDataService.updateMilestone(milestoneId, updates)
       console.log('Milestone updated:', milestoneId, updates)
       toast.success('Milestone updated')
@@ -698,33 +707,66 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   }
 
   const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
+    if (useFallbackMode) {
+      // Update local state only
+      setMilestones(prev => prev.map(m => ({
+        ...m,
+        tasks: (m.tasks || []).map(t => t.id === taskId ? { ...t, ...updates } : t)
+      })))
+      // Persist in localStorage
+      const existing = getFallbackMilestones(bookingId)
+      const updated = existing.map((m: any) => ({
+        ...m,
+        tasks: (m.tasks || []).map((t: any) => t.id === taskId ? { ...t, ...updates } : t)
+      }))
+      localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(updated))
+      return
+    }
+
     const result = await updateTaskProgress(taskId, updates)
-    if (result.success) {
-      // Progress will be updated automatically via the hook
-      console.log('Task updated successfully')
-    } else {
+    if (!result.success) {
       console.error('Failed to update task:', result.error)
+      toast.error('Failed to update task')
     }
   }
 
   const handleAddTask = async (milestoneId: string, task: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'is_overdue' | 'actual_hours'>) => {
+    if (useFallbackMode) {
+      const newTask: any = {
+        ...task,
+        id: `task-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      setMilestones(prev => prev.map(m => m.id === milestoneId ? { ...m, tasks: [...(m.tasks || []), newTask] } : m))
+      const existing = getFallbackMilestones(bookingId)
+      const updated = existing.map((m: any) => m.id === milestoneId ? { ...m, tasks: [...(m.tasks || []), newTask] } : m)
+      localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(updated))
+      return
+    }
+
     const result = await addTask(milestoneId, task)
     if (result.success) {
-      // Reload data to get the new task
       loadData()
       console.log('Task added successfully')
     } else {
       console.error('Failed to add task:', result.error)
+      toast.error('Failed to add task')
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
+    if (useFallbackMode) {
+      setMilestones(prev => prev.map(m => ({ ...m, tasks: (m.tasks || []).filter(t => t.id !== taskId) })))
+      const existing = getFallbackMilestones(bookingId)
+      const updated = existing.map((m: any) => ({ ...m, tasks: (m.tasks || []).filter((t: any) => t.id !== taskId) }))
+      localStorage.setItem(`milestones-${bookingId}`, JSON.stringify(updated))
+      return
+    }
     const result = await deleteTask(taskId)
-    if (result.success) {
-      // Progress will be updated automatically via the hook
-      console.log('Task deleted successfully')
-    } else {
+    if (!result.success) {
       console.error('Failed to delete task:', result.error)
+      toast.error('Failed to delete task')
     }
   }
 
