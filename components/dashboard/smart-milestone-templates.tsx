@@ -18,7 +18,8 @@ import {
   Shield,
   Database,
   Smartphone,
-  X
+  X,
+  Clock
 } from 'lucide-react'
 
 interface SmartMilestoneTemplatesProps {
@@ -539,6 +540,8 @@ const templates: MilestoneTemplate[] = [
 export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, onCancel, bookingId, projectType }: SmartMilestoneTemplatesProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [showPreview, setShowPreview] = useState<boolean>(false)
 
   const categories = [
     { id: 'all', name: 'All Templates', icon: Sparkles },
@@ -564,14 +567,24 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
     }
   }
 
+  // Filter templates based on category and search query
+  const filteredTemplates = templates.filter(template => {
+    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory
+    const matchesSearch = searchQuery === '' || 
+      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    return matchesCategory && matchesSearch
+  })
+
   return (
     <div className="bg-white w-full h-full overflow-hidden flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gray-100 rounded-lg w-10 h-10 flex items-center justify-center">
-              <Lightbulb className="w-5 h-5 text-primary" />
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg w-10 h-10 flex items-center justify-center shadow-sm">
+              <Lightbulb className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Milestone Templates</h2>
@@ -584,10 +597,24 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
             variant="ghost"
             size="sm"
             onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
           >
             <X className="h-4 w-4" />
           </Button>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Target className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search templates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
         </div>
       </div>
 
@@ -595,117 +622,249 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
       <div className="flex-1 overflow-y-auto p-6">
         {/* Category Filter */}
         <div className="mb-6">
-          <h3 className="text-base font-semibold text-gray-900 mb-3">Filter by Category</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-gray-900">Filter by Category</h3>
+            <span className="text-sm text-gray-500">
+              {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} found
+            </span>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category.id)}
-                className="flex items-center gap-2 text-sm"
-              >
-                <category.icon className="h-4 w-4" />
-                {category.name}
-              </Button>
-            ))}
+            {categories.map((category) => {
+              const count = templates.filter(t => category.id === 'all' || t.category === category.id).length
+              return (
+                <Button
+                  key={category.id}
+                  variant={selectedCategory === category.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex items-center gap-2 text-sm transition-all ${
+                    selectedCategory === category.id 
+                      ? 'bg-blue-600 text-white shadow-sm' 
+                      : 'hover:bg-gray-50 border-gray-300'
+                  }`}
+                >
+                  <category.icon className="h-4 w-4" />
+                  {category.name}
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs ${
+                    selectedCategory === category.id 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {count}
+                  </span>
+                </Button>
+              )
+            })}
           </div>
         </div>
 
         {/* Templates Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {templates
-            .filter(template => selectedCategory === 'all' || template.category === selectedCategory)
-            .map((template) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTemplates.map((template) => (
             <div
               key={template.id}
-              className={`rounded-xl shadow-sm border p-4 bg-white flex flex-col justify-between hover:shadow-md transition cursor-pointer ${
-                selectedTemplate === template.id ? "border-primary" : "border-gray-200"
+              className={`group relative rounded-xl border-2 bg-white hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden ${
+                selectedTemplate === template.id 
+                  ? "border-blue-500 shadow-lg ring-2 ring-blue-100" 
+                  : "border-gray-200 hover:border-gray-300"
               }`}
               onClick={() => setSelectedTemplate(template.id)}
             >
-              {/* Header */}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-gray-100 rounded-lg w-10 h-10 flex items-center justify-center">
-                  <template.icon className="w-5 h-5 text-primary" />
+              {/* Card Header with Gradient */}
+              <div className="relative p-6 pb-4">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-xl shadow-sm ${
+                      selectedTemplate === template.id 
+                        ? 'bg-blue-100' 
+                        : 'bg-gray-100 group-hover:bg-blue-50'
+                    }`}>
+                      <template.icon className={`w-6 h-6 ${
+                        selectedTemplate === template.id 
+                          ? 'text-blue-600' 
+                          : 'text-gray-600 group-hover:text-blue-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                        {template.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
+                        {template.category}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Selection Indicator */}
+                  {selectedTemplate === template.id && (
+                    <div className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 line-clamp-1">{template.name}</h3>
+
+                {/* Description */}
+                <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed mb-4">
+                  {template.description}
+                </p>
+
+                {/* Stats Row */}
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                  <div className="flex items-center gap-1">
+                    <Target className="w-3 h-3" />
+                    <span>{template.milestones.length} phases</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    <span>{template.estimatedDuration}</span>
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  <Badge 
+                    variant="secondary" 
+                    className={`text-xs px-2 py-1 font-medium ${
+                      getComplexityColor(template.complexity)
+                    }`}
+                  >
+                    {template.complexity}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs px-2 py-1 font-medium">
+                    {template.serviceType}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs px-2 py-1 font-medium">
+                    {template.priceRange}
+                  </Badge>
+                </div>
               </div>
 
-              {/* Description/Category */}
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{template.description}</p>
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1 mb-3">
-                <Badge variant="secondary" className="text-xs">
-                  {template.complexity}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  {template.estimatedDuration}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  {template.milestones.length} phases
-                </Badge>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-between">
-                <button 
-                  className="text-sm text-primary hover:underline font-medium"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const templateData = templates.find(t => t.id === template.id)
-                    if (templateData) {
-                      if (onSelectTemplate) {
-                        onSelectTemplate(templateData)
-                      } else if (onTemplateSelect) {
-                        onTemplateSelect(templateData)
+              {/* Card Footer */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <button 
+                    className={`text-sm font-medium transition-colors ${
+                      selectedTemplate === template.id
+                        ? 'text-blue-600 hover:text-blue-700'
+                        : 'text-gray-600 hover:text-blue-600'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const templateData = templates.find(t => t.id === template.id)
+                      if (templateData) {
+                        if (onSelectTemplate) {
+                          onSelectTemplate(templateData)
+                        } else if (onTemplateSelect) {
+                          onTemplateSelect(templateData)
+                        }
                       }
-                    }
-                  }}
-                >
-                  Use Template
-                </button>
-                {selectedTemplate === template.id && (
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                )}
+                    }}
+                  >
+                    Use Template
+                  </button>
+                  
+                  <button
+                    className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowPreview(!showPreview)
+                    }}
+                  >
+                    Preview
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
         {/* Empty State */}
-        {templates.filter(template => selectedCategory === 'all' || template.category === selectedCategory).length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            <Target className="h-8 w-8 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">No templates found for this category</p>
-            <p className="text-xs text-gray-400">Try selecting a different category</p>
+        {filteredTemplates.length === 0 && (
+          <div className="text-center py-16 text-gray-500">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <Target className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No templates found</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {searchQuery ? 'Try adjusting your search terms' : 'Try selecting a different category'}
+            </p>
+            {searchQuery && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="text-sm"
+              >
+                Clear search
+              </Button>
+            )}
           </div>
         )}
 
         {/* Selected Template Details */}
         {selectedTemplate && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Template Details</h4>
+          <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <Target className="w-4 h-4 text-white" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900">Selected Template</h4>
+            </div>
             {(() => {
               const template = templates.find(t => t.id === selectedTemplate)
               if (!template) return null
               
               return (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Phases included:</span>
-                    <span className="text-sm font-medium">{template.milestones.length}</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Phases included:</span>
+                      <span className="text-sm font-semibold text-blue-600">{template.milestones.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Estimated duration:</span>
+                      <span className="text-sm font-semibold text-blue-600">{template.estimatedDuration}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Complexity:</span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${getComplexityColor(template.complexity)}`}
+                      >
+                        {template.complexity}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Estimated duration:</span>
-                    <span className="text-sm font-medium">{template.estimatedDuration}</span>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Service type:</span>
+                      <span className="text-sm font-medium">{template.serviceType}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Price range:</span>
+                      <span className="text-sm font-medium">{template.priceRange}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Category:</span>
+                      <span className="text-sm font-medium capitalize">{template.category}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Complexity:</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {template.complexity}
-                    </Badge>
+                  
+                  <div className="space-y-2">
+                    <span className="text-sm text-gray-600">Tags:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {template.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {template.tags.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{template.tags.length - 3}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
@@ -717,13 +876,26 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
       {/* Action Buttons */}
       <div className="p-6 border-t border-gray-200 bg-white">
         <div className="flex items-center justify-between">
-          <Button 
-            variant="outline" 
-            onClick={onCancel}
-            className="text-sm font-medium"
-          >
-            Cancel
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={onCancel}
+              className="text-sm font-medium px-6 py-2"
+            >
+              Cancel
+            </Button>
+            {selectedTemplate && (
+              <Button
+                variant="outline"
+                onClick={() => setShowPreview(!showPreview)}
+                className="text-sm font-medium px-6 py-2"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Preview Details
+              </Button>
+            )}
+          </div>
+          
           {selectedTemplate && (
             <Button
               onClick={() => {
@@ -736,7 +908,7 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
                   }
                 }
               }}
-              className="text-sm font-medium"
+              className="text-sm font-medium px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
             >
               <Rocket className="h-4 w-4 mr-2" />
               Use This Template

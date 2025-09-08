@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, Plus, X, Sparkles } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import { SmartMilestoneTemplates } from './smart-milestone-templates'
+import { UnifiedTemplateSelector } from './unified-template-selector'
 
 interface QuickMilestoneCreatorProps {
   bookingId: string
@@ -24,6 +24,7 @@ export function QuickMilestoneCreator({
   const [description, setDescription] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
 
   const createFallbackMilestone = async () => {
     try {
@@ -123,7 +124,93 @@ export function QuickMilestoneCreator({
     }
   }
 
-  const handleTemplateSelect = async (template: any) => {
+  const applyTemplateSteps = async () => {
+    if (!selectedTemplate || !selectedTemplate.defaultSteps) return
+
+    try {
+      setIsCreating(true)
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabase = await getSupabaseClient()
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('Authentication error:', authError)
+        toast.error('Please sign in to create milestones')
+        return
+      }
+
+      // Create milestone
+      const { data: newMilestone, error: milestoneError } = await supabase
+        .from('milestones')
+        .insert({
+          booking_id: bookingId,
+          title: title.trim(),
+          description: description.trim(),
+          status: 'pending',
+          progress_percentage: 0,
+          order_index: 0,
+          created_by: user.id
+        })
+        .select()
+        .single()
+
+      if (milestoneError) {
+        console.error('Error creating milestone:', milestoneError)
+        toast.error('Failed to create milestone')
+        return
+      }
+
+      // Create tasks from template steps
+      let createdTasks = 0
+      for (let i = 0; i < selectedTemplate.defaultSteps.length; i++) {
+        const step = selectedTemplate.defaultSteps[i]
+        
+        const { error: taskError } = await supabase
+          .from('tasks')
+          .insert({
+            milestone_id: newMilestone.id,
+            title: step.title,
+            description: step.description,
+            status: 'pending',
+            progress: 0,
+            priority: 'medium',
+            order_index: i,
+            created_by: user.id
+          })
+        
+        if (taskError) {
+          console.error('Error creating task:', taskError)
+          continue
+        }
+        
+        createdTasks++
+      }
+
+      console.log(`Milestone created with ${createdTasks} tasks from template`)
+      toast.success(`Milestone created with ${createdTasks} tasks!`)
+      onMilestoneCreated()
+    } catch (error) {
+      console.error('Error creating milestone with template:', error)
+      toast.error('Failed to create milestone')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleTemplateSelect = (template: any) => {
+    if (template.type === 'milestone') {
+      // Apply milestone template
+      setTitle(template.title)
+      setDescription(template.description)
+      setSelectedTemplate(template)
+      setShowTemplates(false)
+      toast.success(`Template "${template.title}" applied!`)
+    } else {
+      toast.error('Please select a milestone template')
+    }
+  }
+
+  const handleTemplateSelectOld = async (template: any) => {
     try {
       setIsCreating(true)
       const { getSupabaseClient } = await import('@/lib/supabase')
@@ -213,10 +300,11 @@ export function QuickMilestoneCreator({
 
   if (showTemplates) {
     return (
-      <SmartMilestoneTemplates
+      <UnifiedTemplateSelector
         bookingId={bookingId}
-        onTemplateSelect={handleTemplateSelect}
+        onSelectTemplate={handleTemplateSelect}
         onCancel={() => setShowTemplates(false)}
+        userRole="provider"
       />
     )
   }
@@ -243,6 +331,11 @@ export function QuickMilestoneCreator({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Milestone Title *
+            {selectedTemplate && (
+              <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                From template: {selectedTemplate.title}
+              </span>
+            )}
           </label>
           <Input
             value={title}
@@ -268,7 +361,7 @@ export function QuickMilestoneCreator({
         <div className="space-y-3 pt-4">
           <div className="flex space-x-3">
             <Button
-              onClick={handleCreate}
+              onClick={selectedTemplate ? applyTemplateSteps : handleCreate}
               disabled={isCreating || !title.trim()}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
             >
@@ -280,7 +373,7 @@ export function QuickMilestoneCreator({
               ) : (
                 <>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Milestone
+                  {selectedTemplate ? 'Create with Template' : 'Create Milestone'}
                 </>
               )}
             </Button>
