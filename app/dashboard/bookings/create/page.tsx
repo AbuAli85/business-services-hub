@@ -518,7 +518,7 @@ export default function CreateBookingPage() {
                               }}
                               initialFocus
                               weekStartsOn={1}
-                              captionLayout="dropdown-buttons"
+                              captionLayout="dropdown"
                               disabled={(date) => date < startOfToday()}
                             />
                             <div className="flex items-center justify-between gap-2 pt-2">
