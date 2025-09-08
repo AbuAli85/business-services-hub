@@ -226,6 +226,7 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       
       // Use the messages API instead of direct database insertion
       // Include Authorization header for environments that require it
+      const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch('/api/messages', {
         method: 'POST',
