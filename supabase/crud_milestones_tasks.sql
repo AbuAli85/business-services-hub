@@ -79,7 +79,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION add_task(
   milestone_id uuid,
   title text,
-  due_date timestamptz DEFAULT NULL
+  due_date timestamptz DEFAULT NULL,
+  description text DEFAULT NULL,
+  priority text DEFAULT 'medium',
+  estimated_hours numeric DEFAULT 0
 ) RETURNS uuid AS $$
 DECLARE 
   new_id uuid;
@@ -88,15 +91,32 @@ BEGIN
   SELECT booking_id INTO booking_uuid FROM milestones WHERE id = milestone_id;
 
   INSERT INTO tasks (
-    milestone_id, title, status, due_date, editable, created_at, updated_at
+    milestone_id, title, status, due_date, description, priority, estimated_hours,
+    editable, created_at, updated_at
   )
   VALUES (
-    milestone_id, title, 'pending', due_date, true, now(), now()
+    milestone_id, title, 'pending', due_date, COALESCE(description, ''),
+    COALESCE(priority, 'medium'), COALESCE(estimated_hours, 0),
+    true, now(), now()
   )
   RETURNING id INTO new_id;
 
   PERFORM update_milestone_progress(milestone_id);
   PERFORM calculate_booking_progress(booking_uuid);
+  RETURN new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backward-compatible wrapper (3-arg signature)
+CREATE OR REPLACE FUNCTION add_task(
+  milestone_id uuid,
+  title text,
+  due_date timestamptz
+) RETURNS uuid AS $$
+DECLARE
+  new_id uuid;
+BEGIN
+  SELECT add_task(milestone_id, title, due_date, NULL, 'medium', 0) INTO new_id;
   RETURN new_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -149,6 +169,7 @@ GRANT EXECUTE ON FUNCTION add_milestone(uuid, text, text, timestamptz, numeric) 
 GRANT EXECUTE ON FUNCTION update_milestone(uuid, text, text, timestamptz, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_milestone(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION add_task(uuid, text, timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION add_task(uuid, text, timestamptz, text, text, numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION update_task(uuid, text, text, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_task(uuid) TO authenticated;
 

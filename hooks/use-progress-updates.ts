@@ -218,11 +218,33 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
       
-      const { data, error } = await supabase.rpc('add_task', {
-        milestone_id: milestoneId,
-        title: task.title,
-        due_date: (task.due_date as any) ?? null
-      })
+      // Try new signature first (with description/priority/estimated_hours)
+      let data: any = null
+      let error: any = null
+      try {
+        const res = await supabase.rpc('add_task', {
+          milestone_id: milestoneId,
+          title: task.title,
+          due_date: (task.due_date as any) ?? null,
+          description: (task as any).description ?? null,
+          priority: (task.priority as any) ?? 'medium',
+          estimated_hours: (task.estimated_hours as any) ?? 0
+        })
+        data = res.data
+        error = res.error
+        if (error && /function add_task\(/i.test(error.message || '')) {
+          throw error
+        }
+      } catch (rpcSigError) {
+        // Fallback to older signature (milestone_id, title, due_date)
+        const res2 = await supabase.rpc('add_task', {
+          milestone_id: milestoneId,
+          title: task.title,
+          due_date: (task.due_date as any) ?? null
+        })
+        data = res2.data
+        error = res2.error
+      }
       
       if (error) {
         throw new Error(error.message)
