@@ -145,8 +145,13 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       
         // If no milestones found, switch to fallback mode
         if (!milestonesData || milestonesData.length === 0) {
-          console.log('No milestones found, switching to fallback mode')
-          throw new Error('No milestones found - using fallback mode')
+          console.log('No milestones found from API; showing empty state (no fallback).')
+          setUseFallbackMode(false)
+          setMilestones([])
+          setTotalTasks(0)
+          setCompletedTasks(0)
+          setOverallProgress(0)
+          return
         }
         
         // Transform milestones data
