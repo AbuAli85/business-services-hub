@@ -863,7 +863,6 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             title: t.title,
             description: (t as any).description || '',
             status: (t as any).status || 'pending',
-            progress_percentage: (t as any).progress_percentage || 0,
             due_date: (t as any).due_date || t.created_at,
             estimated_hours: (t as any).estimated_hours || 0,
             priority: ((t as any).priority as any) || 'medium',
