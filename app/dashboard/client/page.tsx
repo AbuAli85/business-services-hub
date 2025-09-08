@@ -871,7 +871,7 @@ export default function ClientDashboard() {
                 <Button 
                   variant="outline" 
                   className="mt-4"
-                  onClick={() => router.push('/services')}
+                  onClick={() => router.push('/dashboard/services')}
                 >
                   Browse Services
                 </Button>
