@@ -67,6 +67,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const [totalActualHours, setTotalActualHours] = useState(0)
   const [overdueTasks, setOverdueTasks] = useState(0)
   const [clientApproved, setClientApproved] = useState<Record<string, boolean>>({})
+  const [dismissedApproval, setDismissedApproval] = useState<Record<string, boolean>>({})
 
   const { 
     isUpdating, 
@@ -870,6 +871,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         ]
       }))
       setClientApproved(prev => ({ ...prev, [milestoneId]: true }))
+      setDismissedApproval(prev => ({ ...prev, [milestoneId]: true }))
       toast.success('Milestone approved')
       await loadData()
     } catch (e) {
@@ -901,6 +903,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         ]
       }))
       setClientApproved(prev => ({ ...prev, [milestoneId]: true }))
+      setDismissedApproval(prev => ({ ...prev, [milestoneId]: true }))
       toast.success('Change request sent')
       await loadData()
     } catch (e) {
@@ -1245,15 +1248,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {userRole === 'client' ? (
           <div className="space-y-6">
             {/* Client approval banner when any milestone completed and awaiting approval */}
-            {milestones.some(m => m.status === 'completed' && !(clientApproved[m.id] || (commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))) && (
+            {milestones.some(m => m.status === 'completed' && !(dismissedApproval[m.id] || clientApproved[m.id] || (commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))) && (
               <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-blue-800">
                 A milestone is completed and awaiting your approval.
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {milestones.filter(m => m.status === 'completed' && !(clientApproved[m.id] || (commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))).map(m => (
+                  {milestones.filter(m => m.status === 'completed' && !(dismissedApproval[m.id] || clientApproved[m.id] || (commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))).map(m => (
                     <div key={m.id} className="flex items-center gap-2">
                       <span className="text-sm font-medium">{m.title}</span>
                       <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={() => handleClientApproveMilestone(m.id)}>Approve</button>
                       <button className="px-2 py-1 text-xs rounded bg-amber-600 text-white hover:bg-amber-700" onClick={() => handleClientRequestChanges(m.id)}>Request Changes</button>
+                      <button className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-800 hover:bg-gray-300" onClick={() => setDismissedApproval(prev => ({ ...prev, [m.id]: true }))}>Dismiss</button>
                     </div>
                   ))}
                 </div>
