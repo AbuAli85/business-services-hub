@@ -975,7 +975,101 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           />
         )}
 
-        {combinedView ? (
+        {userRole === 'client' ? (
+          <div className="space-y-6">
+            <SmartProgressIndicator
+              bookingId={bookingId}
+              currentProgress={overallProgress}
+              milestones={milestones}
+              tasks={milestones.flatMap(m => m.tasks || [])}
+              userRole={userRole}
+              onProgressUpdate={(progress) => {
+                setOverallProgress(progress)
+                console.log('Progress updated:', progress)
+              }}
+            />
+
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
+                {timelineItems.length === 0 ? (
+                  <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Clock className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Timeline Activity Yet</h4>
+                    <p className="text-gray-600 mb-4">Timeline items will appear here as work completes.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {timelineItems.map(item => (
+                      <div key={item.id} className="rounded-lg border p-4 bg-white">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium text-gray-900">{item.title}</div>
+                          <div className="text-xs text-gray-500">{(() => {
+                            try {
+                              const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
+                              const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
+                              return `${startDate} → ${endDate}`
+                            } catch (error) {
+                              console.warn('Date range parsing error:', error)
+                              return 'N/A → N/A'
+                            }
+                          })()}</div>
+                        </div>
+                        {item.description && (
+                          <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                        )}
+                        <div className="mt-2 text-xs text-gray-500">Status: {item.status} · Priority: {item.priority}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Comments</h3>
+                {Object.keys(commentsByMilestone).length === 0 ? (
+                  <div className="p-8 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <MessageSquare className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Comments Yet</h4>
+                    <p className="text-gray-600 mb-4">Your provider’s updates and notes will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(commentsByMilestone).map(([milestoneId, list]) => (
+                      <div key={milestoneId} className="rounded-lg border bg-white">
+                        <div className="px-4 py-2 border-b text-sm font-medium text-gray-900">Milestone {milestoneId.slice(0, 8)}…</div>
+                        <div className="p-4 space-y-3">
+                          {list.map(c => (
+                            <div key={c.id} className="text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-gray-800">{c.author_name || 'User'}</span>
+                                <span className="text-xs text-gray-500">{(() => {
+                                  try {
+                                    if (!c.created_at) return 'N/A'
+                                    const date = new Date(c.created_at)
+                                    return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString()
+                                  } catch (error) {
+                                    console.warn('Date parsing error:', error)
+                                    return 'N/A'
+                                  }
+                                })()}</span>
+                              </div>
+                              <p className="text-gray-700 mt-1">{c.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : combinedView ? (
           // Simplified Combined View - Remove duplication
           <div className="space-y-6">
             {/* Smart Progress Indicator */}
