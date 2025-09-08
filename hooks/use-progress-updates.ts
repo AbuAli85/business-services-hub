@@ -66,17 +66,14 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
       const milestoneId: string = taskRow.milestone_id
       
-      // Prefer extended signature first to avoid ambiguity on overloaded functions
+      // Call explicit wrapper to avoid overloaded name ambiguity
       let rpcError: any = null
       try {
-        const { error } = await supabase.rpc('update_task', {
+        const { error } = await supabase.rpc('update_task_basic', {
           task_id: taskId,
           title: (updates.title as any) ?? null,
           status: (updates.status as any) ?? null,
           due_date: (updates.due_date as any) ?? null,
-          progress_percentage: (updates as any).progress_percentage ?? null,
-          actual_hours: (updates as any).actual_hours ?? null,
-          notes: (updates as any).notes ?? null,
         })
         if (error) rpcError = error
       } catch (e: any) {
@@ -84,7 +81,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
 
       if (rpcError) {
-        // Fallback to base signature
+        // Fallback to original 3-arg function if wrapper not present
         const { error: baseErr } = await supabase.rpc('update_task', {
           task_id: taskId,
           title: (updates.title as any) ?? null,
