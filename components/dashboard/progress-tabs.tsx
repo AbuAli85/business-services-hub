@@ -21,6 +21,7 @@ import { ProgressTrackingSystem } from './progress-tracking-system'
 // Removed missing imports - using placeholders instead
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { AnalyticsView } from './analytics-view'
+import { MessagesThread } from './messages-thread'
 import { BulkOperationsView } from './bulk-operations-view'
 import { useProgressUpdates } from '@/hooks/use-progress-updates'
 import { TimelineService, TimelineItem } from '@/lib/timeline-service'
@@ -39,7 +40,7 @@ interface ProgressTabsProps {
   combinedView?: boolean
 }
 
-type ViewType = 'overview' | 'monthly' | 'timeline' | 'analytics' | 'bulk'
+type ViewType = 'overview' | 'monthly' | 'timeline' | 'analytics' | 'messages' | 'bulk'
 
 export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedView = false }: ProgressTabsProps) {
   const [activeTab, setActiveTab] = useState<ViewType>('overview')
@@ -65,6 +66,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const [totalEstimatedHours, setTotalEstimatedHours] = useState(0)
   const [totalActualHours, setTotalActualHours] = useState(0)
   const [overdueTasks, setOverdueTasks] = useState(0)
+  const [clientApproved, setClientApproved] = useState<Record<string, boolean>>({})
 
   const { 
     isUpdating, 
@@ -757,6 +759,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     { id: 'monthly', label: 'Monthly Progress', icon: Calendar },
     { id: 'timeline', label: 'Timeline View', icon: Calendar },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'bulk', label: 'Bulk Operations', icon: Clock }
   ]
 
@@ -866,6 +869,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           } as any
         ]
       }))
+      setClientApproved(prev => ({ ...prev, [milestoneId]: true }))
       toast.success('Milestone approved')
       await loadData()
     } catch (e) {
@@ -896,6 +900,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           } as any
         ]
       }))
+      setClientApproved(prev => ({ ...prev, [milestoneId]: true }))
       toast.success('Change request sent')
       await loadData()
     } catch (e) {
@@ -1240,11 +1245,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {userRole === 'client' ? (
           <div className="space-y-6">
             {/* Client approval banner when any milestone completed and awaiting approval */}
-            {milestones.some(m => m.status === 'completed' && !((commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))) && (
+            {milestones.some(m => m.status === 'completed' && !(clientApproved[m.id] || (commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))) && (
               <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-blue-800">
                 A milestone is completed and awaiting your approval.
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {milestones.filter(m => m.status === 'completed' && !((commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))).map(m => (
+                  {milestones.filter(m => m.status === 'completed' && !(clientApproved[m.id] || (commentsByMilestone[m.id] || []).some(c => (c.content || '').toLowerCase().includes('approved by client')))).map(m => (
                     <div key={m.id} className="flex items-center gap-2">
                       <span className="text-sm font-medium">{m.title}</span>
                       <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={() => handleClientApproveMilestone(m.id)}>Approve</button>
@@ -1678,6 +1683,12 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                     sum + (m.tasks?.reduce((taskSum: number, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
                   )}
                 />
+              )}
+
+              {activeTab === 'messages' && (
+                <div className="mt-2">
+                  <MessagesThread bookingId={bookingId} />
+                </div>
               )}
 
               {activeTab === 'bulk' && (
