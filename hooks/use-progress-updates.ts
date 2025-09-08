@@ -42,7 +42,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
     try {
       setIsUpdating(true)
       
-      // Update task in database
+      // Update task via RPC to avoid RLS/schema issues
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
 
@@ -57,13 +57,12 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
       const milestoneId: string = taskRow.milestone_id
       
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId)
+      const { error } = await supabase.rpc('update_task', {
+        task_id: taskId,
+        title: (updates.title as any) ?? null,
+        status: (updates.status as any) ?? null,
+        due_date: (updates.due_date as any) ?? null
+      })
       
       if (error) {
         throw new Error(error.message)
@@ -102,15 +101,10 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       const updatedMilestone = calculateUpdatedMilestone(transformMilestoneData(milestoneData) as any)
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
-      // Update milestone in database
-      const { error: updateError } = await supabase
-        .from('milestones')
-        .update({
-          progress_percentage: milestoneProgress,
-          status: updatedMilestone.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', milestoneId)
+      // Update milestone progress via RPC (best-effort)
+      const { error: updateError } = await supabase.rpc('update_milestone_progress', {
+        milestone_uuid: milestoneId
+      })
 
       if (updateError) {
         throw new Error(updateError.message)
@@ -148,14 +142,10 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       const transformedMilestones = (allMilestones || []).map(transformMilestoneData)
       const overallProgress = calculateOverallProgress(transformedMilestones as any)
 
-      // Update booking progress
-      const { error: bookingError } = await supabase
-        .from('bookings')
-        .update({
-          project_progress: overallProgress.overallProgress,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId)
+      // Update booking progress via RPC
+      const { error: bookingError } = await supabase.rpc('calculate_booking_progress', {
+        booking_id: bookingId
+      })
 
       if (bookingError) {
         console.warn('Error updating booking progress:', bookingError)
@@ -228,16 +218,11 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
       
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-          ...task,
-          milestone_id: milestoneId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc('add_task', {
+        milestone_id: milestoneId,
+        title: task.title,
+        due_date: (task.due_date as any) ?? null
+      })
       
       if (error) {
         throw new Error(error.message)
@@ -276,14 +261,9 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone progress
-      const { error: updateError } = await supabase
-        .from('milestones')
-        .update({
-          progress_percentage: milestoneProgress,
-          status: updatedMilestone.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', milestoneId)
+      const { error: updateError } = await supabase.rpc('update_milestone_progress', {
+        milestone_uuid: milestoneId
+      })
 
       if (updateError) {
         throw new Error(updateError.message)
@@ -321,10 +301,9 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
       const milestoneId: string = taskRow.milestone_id
       
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
+      const { error } = await supabase.rpc('delete_task', {
+        task_id: taskId
+      })
       
       if (error) {
         throw new Error(error.message)
@@ -363,14 +342,9 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       const milestoneProgress = calculateMilestoneProgress(updatedMilestone)
 
       // Update milestone progress
-      const { error: updateError } = await supabase
-        .from('milestones')
-        .update({
-          progress_percentage: milestoneProgress,
-          status: updatedMilestone.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', milestoneId)
+      const { error: updateError } = await supabase.rpc('update_milestone_progress', {
+        milestone_uuid: milestoneId
+      })
 
       if (updateError) {
         throw new Error(updateError.message)
