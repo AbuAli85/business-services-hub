@@ -137,6 +137,15 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         credentials: 'include',
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } as Record<string, string> : undefined
       })
+      if (res.status === 204) {
+        console.log('No milestones found from API (204); showing empty state (no fallback).')
+        setUseFallbackMode(false)
+        setMilestones([])
+        setTotalTasks(0)
+        setCompletedTasks(0)
+        setOverallProgress(0)
+        return
+      }
       if (!res.ok) {
         console.warn('Milestones API failed, status:', res.status)
         throw new Error('Milestones API failed')
@@ -944,18 +953,21 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         {/* Main Progress Header (optional) */}
-        {showHeader && (
-          <MainProgressHeader
-            bookingProgress={bookingProgress}
-            completedMilestones={computeHeaderStats().completedMilestones}
-            totalMilestones={computeHeaderStats().totalMilestones}
-            completedTasks={computeHeaderStats().completedTasks}
-            totalTasks={computeHeaderStats().totalTasks}
-            totalEstimatedHours={computeHeaderStats().totalEstimatedHours}
-            totalActualHours={computeHeaderStats().totalActualHours}
-            overdueTasks={computeHeaderStats().overdueTasks}
-          />
-        )}
+        {showHeader && (() => {
+          const headerStats = computeHeaderStats()
+          return (
+            <MainProgressHeader
+              bookingProgress={bookingProgress}
+              completedMilestones={headerStats.completedMilestones}
+              totalMilestones={headerStats.totalMilestones}
+              completedTasks={headerStats.completedTasks}
+              totalTasks={headerStats.totalTasks}
+              totalEstimatedHours={headerStats.totalEstimatedHours}
+              totalActualHours={headerStats.totalActualHours}
+              overdueTasks={headerStats.overdueTasks}
+            />
+          )
+        })()}
 
         {userRole === 'client' ? (
           <div className="space-y-6">
