@@ -92,6 +92,22 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     checkSchemaAvailability()
   }, [])
 
+  // Realtime sync: reflect provider edits for both provider and client views
+  useEffect(() => {
+    let cleanup: (() => void) | null = null
+    ;(async () => {
+      try {
+        if (!bookingId) return
+        cleanup = await ProgressDataService.subscribeToProgressUpdates(bookingId, async () => {
+          await loadData()
+        })
+      } catch (e) {
+        console.warn('Realtime subscribe failed; will continue without live updates:', e)
+      }
+    })()
+    return () => { try { cleanup?.() } catch {} }
+  }, [bookingId])
+
   const checkSchemaAvailability = async () => {
     try {
       // Check if milestones table exists by trying to query it
@@ -842,6 +858,20 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       await ProgressDataService.updateMilestone(milestoneId, updates)
       console.log('Milestone updated:', milestoneId, updates)
       toast.success('Milestone updated')
+      // Auto-advance: if this milestone was marked completed, start the next one
+      if (updates.status === 'completed') {
+        const sorted = [...milestones].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+        const currentIndex = sorted.findIndex(m => m.id === milestoneId)
+        const next = currentIndex >= 0 ? sorted.slice(currentIndex + 1).find(m => m.status !== 'completed') : null
+        if (next) {
+          try {
+            await ProgressDataService.updateMilestone(next.id, { status: 'in_progress' } as any)
+            console.log('Auto-started next milestone:', next.id)
+          } catch (e) {
+            console.warn('Failed to auto-start next milestone:', e)
+          }
+        }
+      }
       await loadData()
     } catch (err) {
       console.error('Failed to update milestone:', err)
