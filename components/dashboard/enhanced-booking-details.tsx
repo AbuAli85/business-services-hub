@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MessagesThread } from './messages-thread'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -2267,7 +2268,7 @@ export default function EnhancedBookingDetails({
                     <CardDescription>Communicate with the {isClient ? 'provider' : 'client'}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600">Messages functionality will be implemented here.</p>
+                    <MessagesThread bookingId={bookingId} />
                   </CardContent>
                 </Card>
               </TabsContent>
