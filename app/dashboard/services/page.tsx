@@ -126,7 +126,19 @@ export default function ServicesPage() {
     if (userRole && user?.id) {
       checkUserAndLoadServices()
     }
-  }, [userRole, user?.id, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder])
+  }, [
+    userRole,
+    user?.id,
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+    sortBy,
+    sortOrder,
+    priceRange.min,
+    priceRange.max,
+    ratingFilter,
+    dateRange
+  ])
 
   // Real-time service updates
   useEffect(() => {
@@ -242,6 +254,35 @@ export default function ServicesPage() {
 
       if (searchTerm) {
         query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+      }
+
+      // Price range filter
+      const minPrice = parseFloat(String(priceRange.min || ''))
+      const maxPrice = parseFloat(String(priceRange.max || ''))
+      if (!isNaN(minPrice)) {
+        query = query.gte('base_price', minPrice)
+      }
+      if (!isNaN(maxPrice)) {
+        query = query.lte('base_price', maxPrice)
+      }
+
+      // Rating filter (average_rating)
+      const minRating = parseFloat(ratingFilter)
+      if (!isNaN(minRating)) {
+        query = query.gte('average_rating', minRating)
+      }
+
+      // Date created filter
+      if (dateRange && dateRange !== 'all') {
+        const now = new Date()
+        let after: Date | null = null
+        if (dateRange === '7d') after = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        else if (dateRange === '30d') after = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        else if (dateRange === '90d') after = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+        else if (dateRange === 'year') after = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+        if (after) {
+          query = query.gte('created_at', after.toISOString())
+        }
       }
 
       // Apply sorting
