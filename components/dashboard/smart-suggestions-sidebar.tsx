@@ -184,7 +184,7 @@ export function SmartSuggestionsSidebar({
               dismissible: true
             }
           )
-        } else if (milestones.every(m => m.status === 'not_started')) {
+        } else if (milestones.every(m => m.status === 'pending')) {
           const firstMilestone = milestones[0]
           newSuggestions.push(
             {

@@ -64,7 +64,7 @@ async function checkAccess(bookingId: string, userId: string) {
   return { hasAccess: isClient || isProvider }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { bookingId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { user, authError } = await authenticateUser(request)
     if (authError || !user) {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest, { params }: { params: { bookingI
       Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
       return res
     }
-    const { bookingId } = params
+    const bookingId = params.id
     const { hasAccess } = await checkAccess(bookingId, user.id)
     if (!hasAccess) {
       const res = NextResponse.json({ error: 'Access denied' }, { status: 403 })

@@ -62,7 +62,7 @@ export function MilestoneList({
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200';
       case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'not_started': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -81,7 +81,7 @@ export function MilestoneList({
     switch (status) {
       case 'completed': return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'in_progress': return <Clock className="w-5 h-5 text-blue-600" />;
-      case 'not_started': return <AlertTriangle className="w-5 h-5 text-gray-600" />;
+      case 'pending': return <AlertTriangle className="w-5 h-5 text-gray-600" />;
       default: return <AlertTriangle className="w-5 h-5 text-gray-600" />;
     }
   };
@@ -119,7 +119,7 @@ export function MilestoneList({
         const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length;
         const totalTasks = milestone.tasks.length;
         const canStart = canStartMilestone(milestone);
-        const isLocked = !canStart && milestone.status === 'not_started';
+        const isLocked = !canStart && milestone.status === 'pending';
 
         return (
           <Card key={milestone.id} className={`transition-all duration-200 ${isExpanded ? 'shadow-lg' : 'hover:shadow-md'}`}>
@@ -181,7 +181,7 @@ export function MilestoneList({
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm font-medium text-gray-700">Milestone Actions:</span>
-                        {milestone.status === 'not_started' && canStart && (
+                        {milestone.status === 'pending' && canStart && (
                           <Button
                             size="sm"
                             onClick={() => handleMilestoneStatusChange(milestone.id, 'in_progress')}

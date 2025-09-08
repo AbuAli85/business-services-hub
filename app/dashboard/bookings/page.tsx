@@ -32,7 +32,8 @@ import {
   Edit,
   Copy,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Target
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -700,6 +701,10 @@ export default function BookingsPage() {
     router.push(`/dashboard/bookings/${bookingId}`)
   }
 
+  const handleViewMilestones = (bookingId: string) => {
+    router.push(`/dashboard/bookings/${bookingId}/milestones`)
+  }
+
   const handleSendMessage = (bookingId: string) => {
     router.push(`/dashboard/bookings/${bookingId}?tab=messages`)
   }
@@ -1210,6 +1215,15 @@ export default function BookingsPage() {
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewMilestones(booking.id)}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          >
+                            <Target className="h-4 w-4 mr-2" />
+                            Milestones
                           </Button>
                           <Button
                             size="sm"

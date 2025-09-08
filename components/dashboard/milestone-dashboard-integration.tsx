@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { EnhancedMilestoneDashboard } from './enhanced-milestone-dashboard'
 import { Milestone, Task, UserRole } from '@/types/progress'
+import { getSupabaseClient } from '@/lib/supabase'
 
 interface MilestoneDashboardIntegrationProps {
   bookingId: string
@@ -29,41 +30,78 @@ export function MilestoneDashboardIntegration({
         setLoading(true)
         setError(null)
 
-        // Load milestones with tasks
-        const milestonesResponse = await fetch(`/api/secure-milestones/${bookingId}`)
-        if (!milestonesResponse.ok) {
-          throw new Error('Failed to load milestones')
+        // Use Supabase client for authenticated requests
+        const supabase = await getSupabaseClient()
+        
+        // Load milestones with tasks directly from Supabase
+        const { data: milestonesData, error: milestonesError } = await supabase
+          .from('milestones')
+          .select(`
+            *,
+            tasks (*)
+          `)
+          .eq('booking_id', bookingId)
+          .order('order_index', { ascending: true })
+
+        if (milestonesError) {
+          throw new Error(`Failed to load milestones: ${milestonesError.message}`)
         }
-        const milestonesData = await milestonesResponse.json()
+        
         setMilestones(milestonesData || [])
 
-        // Load comments (if you have this endpoint)
+        // Load comments from Supabase
         try {
-          const commentsResponse = await fetch(`/api/milestone-comments/${bookingId}`)
-          if (commentsResponse.ok) {
-            const commentsData = await commentsResponse.json()
-            setCommentsByMilestone(commentsData || {})
+          const { data: commentsData, error: commentsError } = await supabase
+            .from('milestone_comments')
+            .select('*')
+            .eq('booking_id', bookingId)
+            .order('created_at', { ascending: false })
+          
+          if (!commentsError) {
+            // Group comments by milestone
+            const groupedComments = (commentsData || []).reduce((acc, comment) => {
+              const milestoneId = comment.milestone_id
+              if (!acc[milestoneId]) acc[milestoneId] = []
+              acc[milestoneId].push(comment)
+              return acc
+            }, {} as Record<string, any[]>)
+            setCommentsByMilestone(groupedComments)
           }
         } catch (err) {
           console.warn('Comments not available:', err)
         }
 
-        // Load approvals (if you have this endpoint)
+        // Load approvals from Supabase
         try {
-          const approvalsResponse = await fetch(`/api/milestone-approvals/${bookingId}`)
-          if (approvalsResponse.ok) {
-            const approvalsData = await approvalsResponse.json()
-            setApprovalsByMilestone(approvalsData || {})
+          const { data: approvalsData, error: approvalsError } = await supabase
+            .from('milestone_approvals')
+            .select('*')
+            .eq('booking_id', bookingId)
+            .order('created_at', { ascending: false })
+          
+          if (!approvalsError) {
+            // Group approvals by milestone
+            const groupedApprovals = (approvalsData || []).reduce((acc, approval) => {
+              const milestoneId = approval.milestone_id
+              if (!acc[milestoneId]) acc[milestoneId] = []
+              acc[milestoneId].push(approval)
+              return acc
+            }, {} as Record<string, any[]>)
+            setApprovalsByMilestone(groupedApprovals)
           }
         } catch (err) {
           console.warn('Approvals not available:', err)
         }
 
-        // Load time entries (if you have this endpoint)
+        // Load time entries from Supabase
         try {
-          const timeEntriesResponse = await fetch(`/api/time-entries/${bookingId}`)
-          if (timeEntriesResponse.ok) {
-            const timeEntriesData = await timeEntriesResponse.json()
+          const { data: timeEntriesData, error: timeEntriesError } = await supabase
+            .from('time_entries')
+            .select('*')
+            .eq('booking_id', bookingId)
+            .order('created_at', { ascending: false })
+          
+          if (!timeEntriesError) {
             setTimeEntries(timeEntriesData || [])
           }
         } catch (err) {

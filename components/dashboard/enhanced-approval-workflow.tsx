@@ -194,7 +194,7 @@ export function EnhancedApprovalWorkflow({
       const clientSatisfaction = approved > 0 ? Math.round((approved / (approved + rejected)) * 100) : 0
 
       setApprovalStats({
-        totalRequests,
+        totalRequests: total,
         pendingRequests: pending,
         approvedRequests: approved,
         rejectedRequests: rejected,

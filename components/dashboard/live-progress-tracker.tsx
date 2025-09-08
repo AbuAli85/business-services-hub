@@ -93,8 +93,8 @@ export function LiveProgressTracker({
       // Calculate tasks completed today
       const allTasks = milestones.flatMap(m => m.tasks || [])
       const tasksCompletedToday = allTasks.filter(t => {
-        if (t.status !== 'completed' || !t.completed_at) return false
-        const completedDate = new Date(t.completed_at)
+        if (t.status !== 'completed') return false
+        const completedDate = new Date(t.updated_at)
         return completedDate >= today
       }).length
       

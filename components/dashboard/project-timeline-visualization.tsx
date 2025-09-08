@@ -160,13 +160,13 @@ export function ProjectTimelineVisualization({
         // Task completion events
         if (milestone.tasks) {
           milestone.tasks.forEach(task => {
-            if (task.status === 'completed' && task.completed_at) {
+            if (task.status === 'completed') {
               events.push({
                 id: `task-complete-${task.id}`,
                 type: 'task_complete',
                 title: `${task.title} Completed`,
                 description: `Task completed in ${milestone.title}`,
-                date: new Date(task.completed_at),
+                date: new Date(task.updated_at),
                 milestoneId: milestone.id,
                 taskId: task.id,
                 status: 'completed',

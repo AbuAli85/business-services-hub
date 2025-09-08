@@ -5,10 +5,10 @@ import { ProgressTrackingService } from '@/lib/progress-tracking'
 // GET /api/time-entries/[bookingId] - Get time entries for a specific booking
 export async function GET(
   request: NextRequest,
-  { params }: { params: { bookingId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { bookingId } = params
+    const bookingId = params.id
     
     if (!bookingId) {
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 })
@@ -62,10 +62,10 @@ export async function GET(
 // ❌ WRONG WAY: This would cause 406 error
 export async function POST(
   request: NextRequest,
-  { params }: { params: { bookingId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { bookingId } = params
+    const bookingId = params.id
     const supabase = await getSupabaseClient()
 
     // This is WRONG and will cause 406 error

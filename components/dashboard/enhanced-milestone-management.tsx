@@ -200,7 +200,7 @@ export function EnhancedMilestoneManagement({
         title: newMilestone.title.trim(),
         description: newMilestone.description.trim() || undefined,
         due_date: newMilestone.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'not_started',
+        status: 'pending',
         priority: newMilestone.priority,
         estimated_hours: newMilestone.estimated_hours,
         weight: 1.0,

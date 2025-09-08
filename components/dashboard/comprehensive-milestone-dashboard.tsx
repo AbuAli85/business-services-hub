@@ -31,7 +31,8 @@ import {
   RefreshCw,
   ChevronRight,
   ChevronDown,
-  ExternalLink
+  ExternalLink,
+  XCircle
 } from 'lucide-react'
 import { format, isAfter, isBefore, differenceInDays, differenceInHours } from 'date-fns'
 import { Milestone, Task, UserRole } from '@/types/progress'

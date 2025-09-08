@@ -51,7 +51,7 @@ export function BulkOperations({
         onBulkUpdate(selectedMilestones, { status: 'in_progress' })
         break
       case 'mark_pending':
-        onBulkUpdate(selectedMilestones, { status: 'not_started' })
+        onBulkUpdate(selectedMilestones, { status: 'pending' })
         break
       case 'delete':
         onBulkDelete(selectedMilestones)
