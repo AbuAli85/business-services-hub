@@ -844,6 +844,45 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     console.log('Send payment reminder clicked')
   }
 
+  // Provider-only: publish offline (fallback) milestones/tasks to server
+  const syncFallbackToServer = async () => {
+    try {
+      if (userRole !== 'provider') return
+      const offline = getFallbackMilestones(bookingId)
+      if (!offline || offline.length === 0) return
+      for (const m of offline) {
+        // Create milestone on server
+        const created = await ProgressDataService.createMilestone(bookingId, {
+          title: m.title,
+          description: m.description || '',
+          end_date: (m as any).end_date || (m as any).due_date || m.created_at
+        } as any)
+        // Create tasks under this milestone
+        for (const t of (m.tasks || [])) {
+          await addTask(created.id, {
+            title: t.title,
+            description: (t as any).description || '',
+            status: (t as any).status || 'pending',
+            progress_percentage: (t as any).progress_percentage || 0,
+            due_date: (t as any).due_date || t.created_at,
+            estimated_hours: (t as any).estimated_hours || 0,
+            priority: ((t as any).priority as any) || 'medium',
+            milestone_id: created.id,
+            editable: true,
+          } as any)
+        }
+      }
+      toast.success('Offline milestones published to server')
+      // Clear offline copy to avoid duplicates
+      try { localStorage.removeItem(`milestones-${bookingId}`) } catch {}
+      setUseFallbackMode(false)
+      await loadData()
+    } catch (e) {
+      console.error('Sync to server failed:', e)
+      toast.error('Failed to sync offline milestones')
+    }
+  }
+
   const handleMilestoneUpdate = async (milestoneId: string, updates: Partial<Milestone>) => {
     try {
       if (useFallbackMode) {
@@ -1115,6 +1154,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
+      {useFallbackMode && userRole === 'provider' && (
+        <div className="w-full p-3 rounded bg-amber-50 border border-amber-200 text-amber-800">
+          You are viewing offline progress data. <button onClick={syncFallbackToServer} className="underline font-medium">Sync to Server</button>
+        </div>
+      )}
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         {/* Main Progress Header (optional) */}
