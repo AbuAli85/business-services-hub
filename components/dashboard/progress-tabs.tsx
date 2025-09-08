@@ -989,6 +989,41 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               }}
             />
 
+            {/* Read-only task list for clients */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900">Project Tasks</h3>
+              {milestones.length === 0 ? (
+                <div className="p-6 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                  <p className="text-gray-600">No milestones yet. Your provider will add them soon.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {milestones.map(m => (
+                    <div key={m.id} className="rounded-lg border bg-white">
+                      <div className="px-4 py-2 border-b flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-900">{m.title}</div>
+                        <div className="text-xs text-gray-600">{m.tasks?.filter(t => t.status === 'completed').length || 0}/{m.tasks?.length || 0} done</div>
+                      </div>
+                      <div className="p-3">
+                        {(m.tasks && m.tasks.length > 0) ? (
+                          <ul className="divide-y">
+                            {m.tasks.map(t => (
+                              <li key={t.id} className="py-2 flex items-center justify-between">
+                                <div className="text-sm text-gray-800 truncate pr-3">{t.title}</div>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${t.status === 'completed' ? 'bg-green-100 text-green-700' : t.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>{t.status.replace('_',' ')}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="text-sm text-gray-600">No tasks in this milestone yet.</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Project Timeline</h3>
