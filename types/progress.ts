@@ -2,7 +2,7 @@
 // This file contains all the core types used across the progress tracking system
 
 export type TaskStatus = "pending" | "in_progress" | "completed";
-export type MilestoneStatus = "not_started" | "in_progress" | "completed";
+export type MilestoneStatus = "pending" | "in_progress" | "completed" | "cancelled" | "on_hold";
 export type UserRole = "provider" | "client" | "admin";
 
 export interface Task {

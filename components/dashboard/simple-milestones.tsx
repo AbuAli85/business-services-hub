@@ -79,7 +79,7 @@ export function SimpleMilestones({
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800 border-green-200'
       case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'not_started': return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
@@ -128,7 +128,7 @@ export function SimpleMilestones({
 
       // Smart indicators
       if (milestone.status === 'completed') return { type: 'success', message: 'Completed! 🎉', color: 'text-green-600' }
-      if (isAfter(now, endDate) && (milestone.status === 'not_started' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
+      if (isAfter(now, endDate) && (milestone.status === 'pending' || milestone.status === 'in_progress')) return { type: 'overdue', message: 'Overdue! ⚠️', color: 'text-red-600' }
       if (taskProgress > progress + 20) return { type: 'ahead', message: 'Ahead of schedule! 🚀', color: 'text-green-600' }
       if (taskProgress < progress - 20) return { type: 'behind', message: 'Behind schedule! 📈', color: 'text-orange-600' }
       if (taskProgress > 80) return { type: 'almost', message: 'Almost done! 💪', color: 'text-blue-600' }
@@ -256,7 +256,7 @@ export function SimpleMilestones({
       // Auto-start next phase if current phase is completed
       if (editingMilestoneData.status === 'completed' && currentMilestone) {
         const nextPhase = milestones.find(m => m.order_index === currentMilestone.order_index + 1)
-        if (nextPhase && nextPhase.status === 'not_started') {
+        if (nextPhase && nextPhase.status === 'pending') {
           setTimeout(() => {
             onMilestoneUpdate(nextPhase.id, { status: 'in_progress' })
           }, 1000) // Small delay to show completion first
@@ -297,7 +297,7 @@ export function SimpleMilestones({
     // Find the first phase that can be started
     for (let i = 1; i <= 4; i++) {
       const phase = milestones.find(m => m.order_index === i)
-      if (phase && canStartMilestone(phase) && phase.status === 'not_started') {
+      if (phase && canStartMilestone(phase) && phase.status === 'pending') {
         return phase
       }
     }
@@ -499,7 +499,7 @@ export function SimpleMilestones({
           const ariaValueMax = 100
           
           const canStart = canStartMilestone(milestone)
-          const isLocked = !canStart && milestone.status === 'not_started'
+          const isLocked = !canStart && milestone.status === 'pending'
 
           const comments = commentsByMilestone?.[milestone.id] || []
 
@@ -685,7 +685,7 @@ export function SimpleMilestones({
                   {/* Quick Action Buttons */}
                   {userRole === 'provider' && !isLocked && (
                     <div className="mt-4 flex space-x-2">
-                      {milestone.status === 'not_started' && (
+                      {milestone.status === 'pending' && (
                         <Button
                           onClick={() => onMilestoneUpdate(milestone.id, { status: 'in_progress' })}
                           className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm px-4 py-2"
@@ -1233,15 +1233,15 @@ export function SimpleMilestones({
                           } : null)}
                         />
                         <select
-                          value={editingMilestoneData.status || 'not_started'}
+                          value={editingMilestoneData.status || 'pending'}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            status: e.target.value as 'not_started' | 'in_progress' | 'completed' 
+                            status: e.target.value as 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' 
                           } : null)}
                           className="px-3 py-2 border border-gray-300 rounded-md text-sm"
                           aria-label="Select milestone status"
                         >
-                          <option value="not_started">Not Started</option>
+                          <option value="pending">Not Started</option>
                           <option value="in_progress">In Progress</option>
                           <option value="completed">Completed</option>
                         </select>
