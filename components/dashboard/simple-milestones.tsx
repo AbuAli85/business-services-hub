@@ -97,13 +97,13 @@ export function SimpleMilestones({
     try {
       const now = new Date()
       
-      // Safely parse milestone dates
-      if (!milestone.start_date || !milestone.end_date) {
-        return { type: 'pending', message: 'Dates not set', color: 'text-gray-600' }
-      }
+      // Safely parse milestone dates with sensible fallbacks
+      const startIso = milestone.start_date || (milestone as any).created_at || ''
+      const endIso = milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || ''
+      if (!startIso && !endIso) return { type: 'pending', message: 'Dates not set', color: 'text-gray-600' }
       
-      const startDate = new Date(milestone.start_date)
-      const endDate = new Date(milestone.end_date)
+      const startDate = new Date(startIso)
+      const endDate = new Date(endIso)
       
       // Validate dates
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -662,8 +662,8 @@ export function SimpleMilestones({
                       <Calendar className="h-4 w-4 text-blue-500" />
                       <span>{(() => {
                         try {
-                          const startDate = new Date(milestone.start_date)
-                          const endDate = new Date(milestone.end_date)
+                          const startDate = new Date(milestone.start_date || (milestone as any).created_at || '')
+                          const endDate = new Date(milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || '')
                           const startStr = isNaN(startDate.getTime()) ? 'N/A' : format(startDate, 'MMM dd')
                           const endStr = isNaN(endDate.getTime()) ? 'N/A' : format(endDate, 'MMM dd, yyyy')
                           return `${startStr} - ${endStr}`
@@ -1022,7 +1022,7 @@ export function SimpleMilestones({
                           })()}</div>
                           <div><strong>End Date:</strong> {(() => {
                             try {
-                              const date = new Date(milestone.end_date)
+                              const date = new Date(milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || '')
                               return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy')
                             } catch (error) {
                               console.warn('Milestone end date formatting error:', error)

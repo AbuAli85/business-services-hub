@@ -739,21 +739,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         setFallbackMilestones(updatedMilestones)
         toast.success('Milestone deleted successfully')
       } else {
-        // Delete from database
-        const { getSupabaseClient } = await import('@/lib/supabase')
-        const supabase = await getSupabaseClient()
-        
-        const { error } = await supabase
-          .from('milestones')
-          .delete()
-          .eq('id', milestoneId)
-        
-        if (error) {
-          console.error('Error deleting milestone:', error)
-          toast.error('Failed to delete milestone')
-          return
-        }
-        
+        // Delete from database using RPC service
+        await ProgressDataService.deleteMilestone(milestoneId)
         toast.success('Milestone deleted successfully')
         loadData() // Reload data to reflect changes
       }
