@@ -58,7 +58,11 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', { cache: 'no-store' })
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      const res = await fetch('/api/admin/users', { cache: 'no-store', headers })
       if (!res.ok) throw new Error(`Request failed: ${res.status}`)
       const json = await res.json()
       const apiUsers: AdminUser[] = (json.users || []).map((u: any) => ({
