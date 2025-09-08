@@ -756,12 +756,13 @@ export function SimpleMilestones({
                     )}
                   </div>
                   {milestone.tasks.map((task) => (
-                    <div key={task.id} className={`flex items-center space-x-4 p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
+                    <div key={task.id} className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
                       task.status === 'completed' 
                         ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
                         : 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200 hover:border-blue-300'
                     }`}>
-                      <button
+                      <div className="flex items-center space-x-4">
+                        <button
                         onClick={() => handleTaskToggle(milestone.id, task.id)}
                         aria-label="Toggle Task"
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
@@ -771,9 +772,9 @@ export function SimpleMilestones({
                         }`}
                       >
                         {task.status === 'completed' && <CheckCircle2 className="h-4 w-4" />}
-                      </button>
-                      
-                      <div className="flex-1">
+                        </button>
+                        
+                        <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <span className={`text-sm font-semibold ${
                             task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
@@ -800,9 +801,15 @@ export function SimpleMilestones({
                             })()}</span>
                           </div>
                         )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2">
+                        {typeof task.estimated_hours === 'number' && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                            ⌛ {Math.max(0, task.estimated_hours)}h
+                          </span>
+                        )}
                         {userRole === 'provider' && (
                           <Button
                             variant="outline"
@@ -1118,7 +1125,20 @@ export function SimpleMilestones({
                           </div>
                         ))}
                         {comments.length === 0 && (
-                          <p className="text-sm text-gray-500 italic">No comments yet. Add the first one!</p>
+                          <div className="text-center py-8 text-gray-500">
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                              <svg className="h-6 w-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg>
+                            </div>
+                            <p className="text-sm">No comments yet</p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-3"
+                              onClick={() => handleAddComment(milestone.id)}
+                            >
+                              + Add Comment
+                            </Button>
+                          </div>
                         )}
                       </div>
 
