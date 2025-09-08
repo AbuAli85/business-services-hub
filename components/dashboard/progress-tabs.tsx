@@ -848,6 +848,24 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const handleClientApproveMilestone = async (milestoneId: string) => {
     try {
       await ProgressDataService.addComment(milestoneId, 'Approved by client', false)
+      // Optimistically update local comments state so banner hides immediately
+      setCommentsByMilestone(prev => ({
+        ...prev,
+        [milestoneId]: [
+          ...(prev[milestoneId] || []),
+          {
+            id: `local-${Date.now()}`,
+            booking_id: bookingId,
+            milestone_id: milestoneId,
+            user_id: 'client',
+            content: 'Approved by client',
+            author_name: 'Client',
+            author_role: 'client',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } as any
+        ]
+      }))
       toast.success('Milestone approved')
       await loadData()
     } catch (e) {
@@ -860,7 +878,24 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     try {
       const reason = typeof window !== 'undefined' ? window.prompt('Describe requested changes:') || 'Client requested changes' : 'Client requested changes'
       await ProgressDataService.addComment(milestoneId, reason, false)
-      await ProgressDataService.updateMilestone(milestoneId, { status: 'in_progress' } as any)
+      // Optimistically add comment and rely on provider to reopen if needed
+      setCommentsByMilestone(prev => ({
+        ...prev,
+        [milestoneId]: [
+          ...(prev[milestoneId] || []),
+          {
+            id: `local-${Date.now()}`,
+            booking_id: bookingId,
+            milestone_id: milestoneId,
+            user_id: 'client',
+            content: reason,
+            author_name: 'Client',
+            author_role: 'client',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } as any
+        ]
+      }))
       toast.success('Change request sent')
       await loadData()
     } catch (e) {
