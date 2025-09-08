@@ -129,7 +129,14 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       
       // First try to load from database via secure endpoint (works for client/provider)
       try {
-      const res = await fetch(`/api/secure-milestones/${bookingId}`, { cache: 'no-store' })
+      const { getSupabaseClient } = await import('@/lib/supabase')
+      const supabaseClient = await getSupabaseClient()
+      const { data: { session } } = await supabaseClient.auth.getSession()
+      const res = await fetch(`/api/secure-milestones/${bookingId}`, {
+        cache: 'no-store',
+        credentials: 'include',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } as Record<string, string> : undefined
+      })
       if (!res.ok) {
         console.warn('Milestones API failed, status:', res.status)
         throw new Error('Milestones API failed')
