@@ -54,86 +54,31 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers()
-  }, [searchQuery, selectedRole, selectedStatus])
+  }, [])
 
   const fetchUsers = async () => {
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Enhanced mock data with permission information
-      const mockUsers: AdminUser[] = [
-        {
-          id: '1',
-          email: 'admin@businesshub.com',
-          full_name: 'Admin User',
-          role: 'admin',
-          phone: '+968 1234 5678',
-          created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
-          last_sign_in: new Date(Date.now() - 3600000).toISOString(),
-          status: 'active',
-          permissions: ['admin:*'],
-          is_verified: true,
-          two_factor_enabled: true
-        },
-        {
-          id: '2',
-          email: 'fahad.alamri@example.com',
-          full_name: 'Fahad Alamri',
-          role: 'provider',
-          phone: '+968 9515 3930',
-          company_name: 'Digital Solutions',
-          created_at: new Date(Date.now() - 86400000 * 15).toISOString(),
-          last_sign_in: new Date(Date.now() - 1800000).toISOString(),
-          status: 'active',
-          permissions: ['service:create', 'service:update:own', 'booking:read:own'],
-          is_verified: true,
-          two_factor_enabled: false
-        },
-        {
-          id: '3',
-          email: 'client@example.com',
-          full_name: 'Ahmed Al-Rashid',
-          role: 'client',
-          phone: '+968 9876 5432',
-          created_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-          last_sign_in: new Date(Date.now() - 7200000).toISOString(),
-          status: 'active',
-          permissions: ['service:read:all', 'booking:create', 'booking:read:own'],
-          is_verified: false,
-          two_factor_enabled: false
-        },
-        {
-          id: '4',
-          email: 'moderator@businesshub.com',
-          full_name: 'Sarah Johnson',
-          role: 'moderator',
-          phone: '+968 5555 1234',
-          created_at: new Date(Date.now() - 86400000 * 20).toISOString(),
-          last_sign_in: new Date(Date.now() - 900000).toISOString(),
-          status: 'active',
-          permissions: ['user:read', 'user:suspend', 'service:approve', 'analytics:view'],
-          is_verified: true,
-          two_factor_enabled: true
-        },
-        {
-          id: '5',
-          email: 'support@businesshub.com',
-          full_name: 'Mike Chen',
-          role: 'support',
-          phone: '+968 4444 5678',
-          created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
-          last_sign_in: new Date(Date.now() - 1800000).toISOString(),
-          status: 'active',
-          permissions: ['user:read', 'user:update', 'booking:read', 'booking:update'],
-          is_verified: true,
-          two_factor_enabled: false
-        }
-      ]
-
-      setUsers(mockUsers)
-      setLoading(false)
+      const res = await fetch('/api/admin/users', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+      const json = await res.json()
+      const apiUsers: AdminUser[] = (json.users || []).map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+        role: u.role,
+        phone: u.phone || undefined,
+        company_name: u.company_name || undefined,
+        created_at: u.created_at,
+        last_sign_in: u.last_sign_in || undefined,
+        status: (u.status || 'active') as any,
+        is_verified: !!u.is_verified,
+        two_factor_enabled: !!u.two_factor_enabled,
+        permissions: []
+      }))
+      setUsers(apiUsers)
     } catch (error) {
       console.error('Error fetching users:', error)
+    } finally {
       setLoading(false)
     }
   }
