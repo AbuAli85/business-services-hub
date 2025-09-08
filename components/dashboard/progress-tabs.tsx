@@ -844,6 +844,32 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     console.log('Send payment reminder clicked')
   }
 
+  // Client-side approval actions
+  const handleClientApproveMilestone = async (milestoneId: string) => {
+    try {
+      await ProgressDataService.addComment(milestoneId, 'Approved by client', false)
+      await ProgressDataService.updateMilestone(milestoneId, { status: 'approved' } as any)
+      toast.success('Milestone approved')
+      await loadData()
+    } catch (e) {
+      console.error('Client approve failed:', e)
+      toast.error('Failed to approve milestone')
+    }
+  }
+
+  const handleClientRequestChanges = async (milestoneId: string) => {
+    try {
+      const reason = typeof window !== 'undefined' ? window.prompt('Describe requested changes:') || 'Client requested changes' : 'Client requested changes'
+      await ProgressDataService.addComment(milestoneId, reason, false)
+      await ProgressDataService.updateMilestone(milestoneId, { status: 'in_progress' } as any)
+      toast.success('Change request sent')
+      await loadData()
+    } catch (e) {
+      console.error('Client request changes failed:', e)
+      toast.error('Failed to send request')
+    }
+  }
+
   // Provider-only: publish offline (fallback) milestones/tasks to server
   const syncFallbackToServer = async () => {
     try {
@@ -1164,8 +1190,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {showHeader && (() => {
           const headerStats = computeHeaderStats()
           return (
-            <MainProgressHeader
-              bookingProgress={bookingProgress}
+          <MainProgressHeader
+            bookingProgress={bookingProgress}
               completedMilestones={headerStats.completedMilestones}
               totalMilestones={headerStats.totalMilestones}
               completedTasks={headerStats.completedTasks}
@@ -1179,6 +1205,21 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
 
         {userRole === 'client' ? (
           <div className="space-y-6">
+            {/* Client approval banner when any milestone completed and awaiting approval */}
+            {milestones.some(m => m.status === 'completed') && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-blue-800">
+                A milestone is completed and awaiting your approval.
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {milestones.filter(m => m.status === 'completed').map(m => (
+                    <div key={m.id} className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{m.title}</span>
+                      <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={() => handleClientApproveMilestone(m.id)}>Approve</button>
+                      <button className="px-2 py-1 text-xs rounded bg-amber-600 text-white hover:bg-amber-700" onClick={() => handleClientRequestChanges(m.id)}>Request Changes</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <SmartProgressIndicator
               bookingId={bookingId}
               currentProgress={overallProgress}
@@ -1248,7 +1289,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                               const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
                               const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
                               return `${startDate} → ${endDate}`
-                            } catch (error) {
+                } catch (error) {
                               console.warn('Date range parsing error:', error)
                               return 'N/A → N/A'
                             }
