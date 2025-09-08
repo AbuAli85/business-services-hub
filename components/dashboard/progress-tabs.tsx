@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import './progress-styles.css'
 import { List, Kanban, Calendar, BarChart3, Clock, AlertCircle, Target, MessageSquare } from 'lucide-react'
@@ -127,47 +127,14 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       setLoading(true)
       console.log('🔄 Loading progress data for booking:', bookingId)
       
-      // First try to load from database
+      // First try to load from database via secure endpoint (works for client/provider)
       try {
-      const { getSupabaseClient } = await import('@/lib/supabase')
-      const supabase = await getSupabaseClient()
-      
-      // Load milestones with tasks
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select(`
-          id,
-          title,
-          description,
-          progress_percentage,
-          status,
-          due_date,
-          weight,
-          order_index,
-          editable,
-          created_at,
-          updated_at,
-          tasks (
-            id,
-            title,
-            status,
-            progress_percentage,
-            due_date,
-            editable,
-            estimated_hours,
-            actual_hours,
-            priority,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('booking_id', bookingId)
-        .order('order_index', { ascending: true })
-      
-      if (milestonesError) {
-          console.warn('Database query failed, switching to fallback mode:', milestonesError)
-        throw new Error(milestonesError.message)
+      const res = await fetch(`/api/secure-milestones/${bookingId}`, { cache: 'no-store' })
+      if (!res.ok) {
+        console.warn('Milestones API failed, status:', res.status)
+        throw new Error('Milestones API failed')
       }
+      const { milestones: milestonesData } = await res.json()
       
         // If no milestones found, switch to fallback mode
         if (!milestonesData || milestonesData.length === 0) {
@@ -237,18 +204,18 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         console.log('📊 Milestone data:', transformedMilestones)
         
         // Calculate progress statistics with comprehensive task completion tracking
-        const totalTasks = transformedMilestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
-        const completedTasks = transformedMilestones.reduce((sum, m) => 
+        const totalTasks = transformedMilestones.reduce((sum: number, m: Milestone) => sum + (m.tasks?.length || 0), 0)
+        const completedTasks = transformedMilestones.reduce((sum: number, m: Milestone) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0
         )
-        const inProgressTasks = transformedMilestones.reduce((sum, m) => 
+        const inProgressTasks = transformedMilestones.reduce((sum: number, m: Milestone) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'in_progress').length || 0), 0
         )
-        const pendingTasks = transformedMilestones.reduce((sum, m) => 
+        const pendingTasks = transformedMilestones.reduce((sum: number, m: Milestone) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'pending').length || 0), 0
         )
-        const completedMilestones = transformedMilestones.filter(m => m.status === 'completed').length
-        const inProgressMilestones = transformedMilestones.filter(m => m.status === 'in_progress').length
+        const completedMilestones = transformedMilestones.filter((m: Milestone) => m.status === 'completed').length
+        const inProgressMilestones = transformedMilestones.filter((m: Milestone) => m.status === 'in_progress').length
         
         // Calculate progress more intelligently
         let overallProgress = 0
@@ -259,9 +226,9 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           // Add partial progress for in-progress milestones based on their task completion
           const inProgressProgress = inProgressMilestones > 0 ? 
             transformedMilestones
-              .filter(m => m.status === 'in_progress')
-              .reduce((sum, m) => {
-                const milestoneTasks = m.tasks || []
+              .filter((m: Milestone) => m.status === 'in_progress')
+              .reduce((sum: number, m: Milestone) => {
+                const milestoneTasks = (m.tasks || []) as any[]
                 const completedMilestoneTasks = milestoneTasks.filter((t: any) => t.status === 'completed').length
                 const milestoneProgress = milestoneTasks.length > 0 ? (completedMilestoneTasks / milestoneTasks.length) * 50 : 0 // Max 50% for in-progress
                 return sum + milestoneProgress
@@ -354,17 +321,17 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         console.log('📊 Fallback data:', transformedFallback)
         
         // Calculate progress statistics for fallback data with comprehensive tracking
-        const totalTasks = transformedFallback.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
-        const completedTasks = transformedFallback.reduce((sum, m) => 
+        const totalTasks = transformedFallback.reduce((sum: number, m: Milestone) => sum + (m.tasks?.length || 0), 0)
+        const completedTasks = transformedFallback.reduce((sum: number, m: Milestone) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0
         )
-        const inProgressTasks = transformedFallback.reduce((sum, m) => 
+        const inProgressTasks = transformedFallback.reduce((sum: number, m: Milestone) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'in_progress').length || 0), 0
         )
-        const pendingTasks = transformedFallback.reduce((sum, m) => 
+        const pendingTasks = transformedFallback.reduce((sum: number, m: Milestone) => 
           sum + (m.tasks?.filter((t: any) => t.status === 'pending').length || 0), 0
         )
-        const completedMilestones = transformedFallback.filter(m => m.status === 'completed').length
+        const completedMilestones = transformedFallback.filter((m: Milestone) => m.status === 'completed').length
         const overallProgress = transformedFallback.length > 0 ? Math.round((completedMilestones / transformedFallback.length) * 100) : 0
         const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
         
@@ -620,6 +587,26 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'bulk', label: 'Bulk Operations', icon: Clock }
   ]
+
+  const headerStats = useMemo(() => {
+    const completedMilestones = milestones.filter(m => m.status === 'completed').length;
+    const totalMilestones = milestones.length;
+    const completedTasks = milestones.reduce((s: number, m: Milestone) => s + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0);
+    const totalTasks = milestones.reduce((s: number, m: Milestone) => s + (m.tasks?.length || 0), 0);
+    const totalEstimatedHours = milestones.reduce((s: number, m: Milestone) => s + (m.tasks?.reduce((t: number, x: any) => t + (x.estimated_hours || 0), 0) || 0), 0);
+    const totalActualHours = milestones.reduce((s: number, m: Milestone) => s + (m.tasks?.reduce((t: number, x: any) => t + (x.actual_hours || 0), 0) || 0), 0);
+    const overdueTasks = milestones.reduce((s: number, m: Milestone) => s + (m.tasks?.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed').length || 0), 0);
+
+    return {
+      completedMilestones,
+      totalMilestones,
+      completedTasks,
+      totalTasks,
+      totalEstimatedHours,
+      totalActualHours,
+      overdueTasks,
+    };
+  }, [milestones]);
 
 
   // If there are no milestones and no booking progress, show empty state with action
@@ -948,30 +935,13 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         {showHeader && (
           <MainProgressHeader
             bookingProgress={bookingProgress}
-            completedMilestones={milestones.filter(m => m.status === 'completed').length}
-            totalMilestones={milestones.length}
-            completedTasks={milestones.reduce((sum, m) => 
-              sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0
-            )}
-            totalTasks={milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)}
-            totalEstimatedHours={milestones.reduce((sum, m) => 
-              sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
-            )}
-            totalActualHours={milestones.reduce((sum, m) => 
-              sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
-            )}
-            overdueTasks={milestones.reduce((sum, m) => 
-              sum + (m.tasks?.filter(t => {
-                if (!t.due_date || t.status === 'completed') return false
-                try {
-                  const dueDate = new Date(t.due_date)
-                  return !isNaN(dueDate.getTime()) && dueDate < new Date()
-                } catch (error) {
-                  console.warn('Date comparison error:', error)
-                  return false
-                }
-              }).length || 0), 0
-            )}
+            completedMilestones={headerStats.completedMilestones}
+            totalMilestones={headerStats.totalMilestones}
+            completedTasks={headerStats.completedTasks}
+            totalTasks={headerStats.totalTasks}
+            totalEstimatedHours={headerStats.totalEstimatedHours}
+            totalActualHours={headerStats.totalActualHours}
+            overdueTasks={headerStats.overdueTasks}
           />
         )}
 
@@ -1394,11 +1364,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                 <AnalyticsView
                   milestones={milestones as any}
                   timeEntries={[]}
-                  totalEstimatedHours={milestones.reduce((sum, m) => 
-                    sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
+                  totalEstimatedHours={milestones.reduce((sum: number, m) => 
+                    sum + (m.tasks?.reduce((taskSum: number, t) => taskSum + (t.estimated_hours || 0), 0) || 0), 0
                   )}
-                  totalActualHours={milestones.reduce((sum, m) => 
-                    sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
+                  totalActualHours={milestones.reduce((sum: number, m) => 
+                    sum + (m.tasks?.reduce((taskSum: number, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
                   )}
                 />
               )}
