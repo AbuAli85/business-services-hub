@@ -102,13 +102,20 @@ export function SimpleMilestones({
       const endIso = milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || ''
       if (!startIso && !endIso) return { type: 'pending', message: 'Dates not set', color: 'text-gray-600' }
       
-      const startDate = new Date(startIso)
-      const endDate = new Date(endIso)
+      let startDate = new Date(startIso)
+      let endDate = new Date(endIso)
       
       // Validate dates
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        console.warn('Invalid dates in milestone:', { start: milestone.start_date, end: milestone.end_date })
-        return { type: 'error', message: 'Invalid dates', color: 'text-red-600' }
+      if (isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+        // Fallback: assume a week before end
+        startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000)
+      }
+      if (!isNaN(startDate.getTime()) && isNaN(endDate.getTime())) {
+        // Fallback: same day as start
+        endDate = new Date(startDate.getTime())
+      }
+      if (isNaN(startDate.getTime()) && isNaN(endDate.getTime())) {
+        return { type: 'pending', message: 'Dates not set', color: 'text-gray-600' }
       }
       
       const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -519,7 +526,9 @@ export function SimpleMilestones({
                       <div className="flex items-center space-x-3 mb-2">
                         <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
                           {milestone.title}
-                          <span className="text-xs font-semibold text-gray-500">{`Month ${(milestone as any).month_number ?? '?'}`}</span>
+                          {typeof (milestone as any).month_number !== 'undefined' && (
+                            <span className="text-xs font-semibold text-gray-500">{`Month ${(milestone as any).month_number}`}</span>
+                          )}
                         </CardTitle>
                         <div className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm ${getStatusColor(milestone.status)}`}>
                           {isLocked ? '🔒 LOCKED' : 
