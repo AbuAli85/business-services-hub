@@ -547,13 +547,25 @@ export class ProgressDataService {
         if (typeof allowedUpdates[k] === 'undefined') delete allowedUpdates[k];
       });
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('milestones')
         .update({
           ...allowedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', milestoneId);
+
+      // If status normalization removed the status field and DB still rejects, try direct RPC update_milestone
+      if (error && error.code === '23514') {
+        const { error: rpcErr } = await supabase.rpc('update_milestone', {
+          milestone_id: milestoneId,
+          title: allowedUpdates.title ?? null,
+          description: allowedUpdates.description ?? null,
+          due_date: allowedUpdates.due_date ?? null,
+          status: allowedUpdates.status ?? null,
+        })
+        error = rpcErr || null as any
+      }
 
       if (error) throw error;
       // Best-effort notify

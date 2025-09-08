@@ -89,7 +89,19 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
           due_date: (updates.due_date as any) ?? null,
         })
         if (baseErr) {
-          throw new Error(baseErr.message)
+          // Final fallback: direct table update (RLS must allow)
+          const { error: directErr } = await supabase
+            .from('tasks')
+            .update({
+              title: (updates.title as any) ?? undefined,
+              status: (updates.status as any) ?? undefined,
+              due_date: (updates.due_date as any) ?? undefined,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', taskId)
+          if (directErr) {
+            throw new Error(directErr.message)
+          }
         }
       }
 
