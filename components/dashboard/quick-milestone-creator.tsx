@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, Plus, X, Sparkles } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { UnifiedTemplateSelector } from './unified-template-selector'
+import { ProgressDataService } from '@/lib/progress-data-service'
 
 interface QuickMilestoneCreatorProps {
   bookingId: string
@@ -62,63 +63,19 @@ export function QuickMilestoneCreator({
 
     try {
       setIsCreating(true)
-      const { getSupabaseClient } = await import('@/lib/supabase')
-      const supabase = await getSupabaseClient()
-      
-      // Check authentication first
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        console.error('Authentication error:', authError)
-        toast.error('Please sign in to create milestones')
-        return
-      }
+      // Try via centralized service (RPC-backed)
+      await ProgressDataService.createMilestone(bookingId, {
+        title: title.trim(),
+        description: description.trim() || '',
+      } as any)
 
-      console.log('Creating milestone for booking:', bookingId)
-      console.log('User authenticated:', user.id)
-
-      // Try to create milestone with proper error handling
-      const { data: newMilestone, error } = await supabase
-        .from('milestones')
-        .insert({
-          booking_id: bookingId,
-          title: title.trim(),
-          description: description.trim() || null,
-          status: 'pending',
-          progress_percentage: 0,
-          order_index: 0,
-          created_by: user.id
-        })
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error creating milestone:', error)
-        
-        // Handle specific error cases
-        if (error.code === '42501') {
-          toast.error('Database permission denied. Switching to offline mode...')
-          // Try to create in localStorage as fallback
-          await createFallbackMilestone()
-          return
-        } else if (error.code === '23503') {
-          toast.error('Invalid booking ID. Please refresh the page and try again.')
-        } else if (error.code === '23505') {
-          toast.error('A milestone with this title already exists for this booking.')
-        } else {
-          toast.error('Database error. Switching to offline mode...')
-          // Try to create in localStorage as fallback
-          await createFallbackMilestone()
-          return
-        }
-        return
-      }
-
-      console.log('Milestone created successfully:', newMilestone)
       toast.success('Milestone created successfully!')
       onMilestoneCreated()
-    } catch (error) {
-      console.error('Unexpected error:', error)
-      toast.error('An unexpected error occurred. Please try again.')
+    } catch (error: any) {
+      console.error('Error creating milestone via service:', error)
+      toast.error('Database error. Switching to offline mode...')
+      await createFallbackMilestone()
+      return
     } finally {
       setIsCreating(false)
     }
