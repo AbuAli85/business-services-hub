@@ -265,7 +265,6 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       setNewMessage('')
       
       // Update booking last_message_at
-      const supabase = await getSupabaseClient()
       await supabase
         .from('bookings')
         .update({ last_message_at: new Date().toISOString() })
