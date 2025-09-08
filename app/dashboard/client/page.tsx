@@ -326,7 +326,7 @@ export default function ClientDashboard() {
           currency,
           created_at
         `)
-        .eq('client_id', userId)
+        .or(`client_id.eq.${userId},user_id.eq.${userId}`)
         .order('created_at', { ascending: false })
         .limit(5)
 

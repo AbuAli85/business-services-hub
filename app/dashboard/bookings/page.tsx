@@ -229,7 +229,7 @@ export default function BookingsPage() {
         bookingsData = data || []
         error = providerError
       } else if (profile?.role === 'client') {
-        // Client sees their own bookings
+        // Client sees their own bookings (support legacy rows that used user_id)
         const { data, error: clientError } = await supabase
           .from('bookings')
           .select(`
@@ -247,9 +247,9 @@ export default function BookingsPage() {
             provider_id,
             service_id
           `)
-          .eq('client_id', user.id)
+          .or(`client_id.eq.${user.id},user_id.eq.${user.id}`)
           .order('created_at', { ascending: false })
-        
+
         bookingsData = data || []
         error = clientError
       } else {
