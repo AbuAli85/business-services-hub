@@ -30,7 +30,7 @@ import { toast } from 'react-hot-toast'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
+import { format, addDays, startOfToday } from 'date-fns'
 
 interface Service {
   id: string
@@ -93,6 +93,9 @@ export default function CreateBookingPage() {
     budget_range: '',
     urgency: 'medium'
   })
+
+  // Control date popover so it closes after picking a date
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false)
 
   useEffect(() => {
     checkUserAndFetchServices()
@@ -490,7 +493,7 @@ export default function CreateBookingPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Preferred Date
                       </label>
-                      <Popover>
+                      <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
@@ -503,14 +506,37 @@ export default function CreateBookingPage() {
                             {formData.scheduled_date ? format(formData.scheduled_date, "PPP") : "Pick a date"}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={formData.scheduled_date}
-                            onSelect={(date) => setFormData(prev => ({ ...prev, scheduled_date: date }))}
-                            initialFocus
-                            disabled={(date) => date < new Date()}
-                          />
+                        <PopoverContent className="w-auto p-0 rounded-md shadow-lg transition-transform duration-150 ease-out data-[state=open]:scale-100 data-[state=closed]:scale-95">
+                          <div className="p-2">
+                            <Calendar
+                              mode="single"
+                              selected={formData.scheduled_date}
+                              onSelect={(date) => {
+                                if (!date) return
+                                setFormData(prev => ({ ...prev, scheduled_date: date }))
+                                setDatePopoverOpen(false)
+                              }}
+                              initialFocus
+                              weekStartsOn={1}
+                              captionLayout="dropdown-buttons"
+                              disabled={(date) => date < startOfToday()}
+                            />
+                            <div className="flex items-center justify-between gap-2 pt-2">
+                              <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                const d = startOfToday();
+                                setFormData(prev => ({ ...prev, scheduled_date: d }))
+                                setDatePopoverOpen(false)
+                              }}>Today</Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                const d = addDays(startOfToday(), 7)
+                                setFormData(prev => ({ ...prev, scheduled_date: d }))
+                                setDatePopoverOpen(false)
+                              }}>Next week</Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                setFormData(prev => ({ ...prev, scheduled_date: undefined }))
+                              }}>Clear</Button>
+                            </div>
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
