@@ -5,13 +5,34 @@ import { getSupabaseAdminClient, getSupabaseClient } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
   try {
-    const admin = getSupabaseAdminClient()
+    // Initialize clients with explicit error handling for env misconfig
+    let admin
+    try {
+      admin = getSupabaseAdminClient()
+    } catch (clientErr: any) {
+      console.error('❌ Admin client initialization failed:', clientErr)
+      return NextResponse.json({
+        error: 'Server configuration error',
+        details: 'Supabase admin client could not be initialized.'
+      }, { status: 500 })
+    }
+
     const supabase = await getSupabaseClient()
 
     // Fetch auth users (service role)
     const { data: authList, error: authError } = await admin.auth.admin.listUsers()
     if (authError) {
-      return NextResponse.json({ error: 'Failed to list auth users', details: authError.message }, { status: 500 })
+      // Log full error server-side for diagnostics
+      console.error('❌ listUsers failed:', {
+        message: authError.message,
+        name: (authError as any)?.name,
+        status: (authError as any)?.status,
+        code: (authError as any)?.code
+      })
+      const clientMessage = authError.message?.includes('Database error')
+        ? 'Auth database unavailable'
+        : 'Failed to list auth users'
+      return NextResponse.json({ error: clientMessage }, { status: 502 })
     }
 
     const authUsers = authList?.users || []
@@ -51,7 +72,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ users: merged })
   } catch (e: any) {
-    return NextResponse.json({ error: 'Unexpected error', details: e?.message || String(e) }, { status: 500 })
+    console.error('❌ Admin users API unexpected error:', e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
