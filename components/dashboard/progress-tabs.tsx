@@ -1596,6 +1596,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                     onTaskDelete={handleDeleteTask}
                     onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
                     onProjectTypeChange={() => {}}
+                    commentsByMilestone={commentsByMilestone}
                   />
                 ) : (
                   <ProgressTrackingSystem
