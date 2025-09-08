@@ -35,12 +35,21 @@ interface UseProgressUpdatesProps {
 export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressUpdatesProps) {
   const [isUpdating, setIsUpdating] = useState(false)
 
+  const isUuid = (id: string | undefined): boolean => {
+    if (!id) return false
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  }
+
   const updateTaskProgress = useCallback(async (
     taskId: string,
     updates: Partial<Task>
   ) => {
     try {
       setIsUpdating(true)
+      // In fallback/local mode, sample ids aren't UUIDs. Avoid DB calls.
+      if (!isUuid(taskId)) {
+        return { success: true, milestoneProgress: 0, overallProgress: 0 }
+      }
       
       // Update task via RPC to avoid RLS/schema issues
       const { getSupabaseClient } = await import('@/lib/supabase')
@@ -180,6 +189,9 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
   ) => {
     try {
       setIsUpdating(true)
+      if (!isUuid(milestoneId)) {
+        return { success: true }
+      }
       
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
@@ -214,6 +226,10 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
   ) => {
     try {
       setIsUpdating(true)
+      if (!isUuid(milestoneId)) {
+        // Non-UUID milestone implies fallback/local; let caller handle local insertion.
+        return { success: true, task: null }
+      }
       
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
@@ -308,6 +324,9 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
   ) => {
     try {
       setIsUpdating(true)
+      if (!isUuid(taskId)) {
+        return { success: true }
+      }
       
       const { getSupabaseClient } = await import('@/lib/supabase')
       const supabase = await getSupabaseClient()
