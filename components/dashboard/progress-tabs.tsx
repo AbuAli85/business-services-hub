@@ -145,6 +145,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           weight,
           order_index,
           editable,
+          created_at,
+          updated_at,
           tasks (
             id,
             title,
@@ -154,7 +156,9 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             editable,
             estimated_hours,
             actual_hours,
-            priority
+            priority,
+            created_at,
+            updated_at
           )
         `)
         .eq('booking_id', bookingId)
