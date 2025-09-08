@@ -98,8 +98,8 @@ export function SimpleMilestones({
       const now = new Date()
       
       // Safely parse milestone dates with sensible fallbacks
-      const startIso = milestone.start_date || (milestone as any).created_at || ''
-      const endIso = milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || ''
+      const startIso = (milestone as any).created_at || ''
+      const endIso = milestone.due_date || (milestone as any).due_date || (milestone as any).created_at || ''
       if (!startIso && !endIso) return { type: 'pending', message: 'Dates not set', color: 'text-gray-600' }
       
       let startDate = new Date(startIso)
@@ -231,8 +231,7 @@ export function SimpleMilestones({
     setEditingMilestoneData({
       title: milestone.title,
       description: milestone.description,
-      start_date: milestone.start_date,
-      end_date: milestone.end_date,
+      due_date: milestone.due_date,
       estimated_hours: milestone.estimated_hours,
       status: milestone.status
     })
@@ -670,8 +669,8 @@ export function SimpleMilestones({
                       <Calendar className="h-4 w-4 text-blue-500" />
                       <span>{(() => {
                         try {
-                          const startDate = new Date(milestone.start_date || (milestone as any).created_at || '')
-                          const endDate = new Date(milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || '')
+                          const startDate = new Date((milestone as any).created_at || '')
+                          const endDate = new Date(milestone.due_date || (milestone as any).due_date || (milestone as any).created_at || '')
                           const startStr = isNaN(startDate.getTime()) ? 'N/A' : format(startDate, 'MMM dd')
                           const endStr = isNaN(endDate.getTime()) ? 'N/A' : format(endDate, 'MMM dd, yyyy')
                           return `${startStr} - ${endStr}`
@@ -1021,7 +1020,7 @@ export function SimpleMilestones({
                         <div className="space-y-2 text-sm">
                           <div><strong>Start Date:</strong> {(() => {
                             try {
-                              const date = new Date(milestone.start_date)
+                              const date = new Date(milestone.created_at)
                               return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy')
                             } catch (error) {
                               console.warn('Milestone start date formatting error:', error)
@@ -1030,7 +1029,7 @@ export function SimpleMilestones({
                           })()}</div>
                           <div><strong>End Date:</strong> {(() => {
                             try {
-                              const date = new Date(milestone.end_date || (milestone as any).due_date || (milestone as any).created_at || '')
+                              const date = new Date(milestone.due_date || (milestone as any).due_date || (milestone as any).created_at || '')
                               return isNaN(date.getTime()) ? 'N/A' : format(date, 'MMM dd, yyyy')
                             } catch (error) {
                               console.warn('Milestone end date formatting error:', error)
@@ -1192,9 +1191,9 @@ export function SimpleMilestones({
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           type="date"
-                          value={editingMilestoneData.start_date ? (() => {
+                          value={editingMilestoneData.created_at ? (() => {
                             try {
-                              const date = new Date(editingMilestoneData.start_date)
+                              const date = new Date(editingMilestoneData.created_at)
                               return isNaN(date.getTime()) ? '' : format(date, 'yyyy-MM-dd')
                             } catch (error) {
                               console.warn('Date formatting error:', error)
@@ -1203,14 +1202,14 @@ export function SimpleMilestones({
                           })() : ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            start_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                            created_at: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
                           } : null)}
                         />
                         <Input
                           type="date"
-                          value={editingMilestoneData.end_date ? (() => {
+                          value={editingMilestoneData.due_date ? (() => {
                             try {
-                              const date = new Date(editingMilestoneData.end_date)
+                              const date = new Date(editingMilestoneData.due_date)
                               return isNaN(date.getTime()) ? '' : format(date, 'yyyy-MM-dd')
                             } catch (error) {
                               console.warn('Date formatting error:', error)
@@ -1219,7 +1218,7 @@ export function SimpleMilestones({
                           })() : ''}
                           onChange={(e) => setEditingMilestoneData(prev => prev ? { 
                             ...prev, 
-                            end_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                            due_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
                           } : null)}
                         />
                       </div>

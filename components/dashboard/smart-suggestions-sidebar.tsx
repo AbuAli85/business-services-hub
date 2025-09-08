@@ -56,8 +56,8 @@ export function SmartSuggestionsSidebar({
 
       // Check for overdue milestones
       const overdueMilestones = milestones.filter(m => 
-        m.end_date && 
-        isBefore(new Date(m.end_date), now) && 
+        m.due_date && 
+        isBefore(new Date(m.due_date), now) && 
         m.status !== 'completed'
       )
 
@@ -67,7 +67,7 @@ export function SmartSuggestionsSidebar({
           type: 'overdue',
           priority: 'high',
           title: 'Overdue Milestone',
-          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.end_date, { addSuffix: true })}`,
+          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.due_date, { addSuffix: true })}`,
           action: 'Follow up with client',
           data: { milestoneId: milestone.id },
           dismissible: true
@@ -117,8 +117,8 @@ export function SmartSuggestionsSidebar({
 
       // Check for upcoming due dates (within 3 days)
       const upcomingDueDates = milestones.filter(m => {
-        if (!m.end_date || m.status === 'completed') return false
-        const dueDate = new Date(m.end_date)
+        if (!m.due_date || m.status === 'completed') return false
+        const dueDate = new Date(m.due_date)
         const daysUntilDue = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
         return daysUntilDue <= 3 && daysUntilDue > 0
       })
@@ -129,7 +129,7 @@ export function SmartSuggestionsSidebar({
           type: 'follow_up',
           priority: 'low',
           title: 'Upcoming Due Date',
-          description: `"${milestone.title}" is due in ${Math.ceil((new Date(milestone.end_date!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))} days`,
+          description: `"${milestone.title}" is due in ${Math.ceil((new Date(milestone.due_date!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))} days`,
           action: 'Prepare for completion',
           data: { milestoneId: milestone.id },
           dismissible: true

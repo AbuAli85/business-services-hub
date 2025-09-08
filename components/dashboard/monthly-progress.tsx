@@ -33,7 +33,7 @@ export function MonthlyProgress({ milestones, timeEntries, userRole }: MonthlyPr
   
   // Filter milestones for current month
   const monthlyMilestones = milestones.filter(milestone => {
-    const milestoneDate = new Date(milestone.start_date);
+    const milestoneDate = new Date(milestone.created_at);
     return milestoneDate.getMonth() === currentMonth && milestoneDate.getFullYear() === currentYear;
   });
 
@@ -330,3 +330,5 @@ export function MonthlyProgress({ milestones, timeEntries, userRole }: MonthlyPr
     </div>
   );
 }
+
+

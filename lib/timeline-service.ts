@@ -7,8 +7,7 @@ export interface TimelineItem {
   description: string;
   status: 'pending' | 'in_progress' | 'completed' | 'on_hold';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  start_date: string;
-  end_date: string;
+  due_date: string;
   assigned_to?: string;
   progress_percentage: number;
   order_index: number;
@@ -180,8 +179,8 @@ export class TimelineService {
             description: item.description,
             status: item.status,
             priority: item.priority,
-            start_date: item.start_date,
-            end_date: item.end_date,
+            created_at: item.created_at,
+            due_date: item.due_date,
             assigned_to: item.assigned_to,
             progress_percentage: item.progress_percentage,
             order_index: item.order_index,
@@ -200,12 +199,11 @@ export class TimelineService {
           description: item.description,
           status: item.status,
           priority: item.priority,
-          start_date: item.start_date,
-          end_date: item.end_date,
+          created_at: item.created_at || new Date().toISOString(),
+          due_date: item.due_date,
           assigned_to: item.assigned_to,
           progress_percentage: item.progress_percentage,
           order_index: item.order_index,
-          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }));
 

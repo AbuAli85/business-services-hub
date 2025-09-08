@@ -65,8 +65,18 @@ export class ProgressDataService {
 
       const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
+      // Transform due_date to end_date for frontend compatibility
+      const transformedMilestones = milestones?.map(milestone => ({
+        ...milestone,
+        end_date: milestone.due_date,
+        tasks: milestone.tasks?.map((task: Task) => ({
+          ...task,
+          end_date: task.due_date
+        })) || []
+      })) || []
+
       return {
-        milestones: milestones || [],
+        milestones: transformedMilestones,
         timeEntries: timeEntries || [],
         comments: comments || [],
         bookingProgress: bookingProgress || null,
@@ -123,15 +133,20 @@ export class ProgressDataService {
   // Create milestone
   static async createMilestone(bookingId: string, milestone: Omit<Milestone, 'id' | 'created_at' | 'updated_at' | 'progress' | 'tasks'>) {
     try {
+      // Transform end_date to due_date for database compatibility
+      const { end_date, ...restMilestone } = milestone as any
+      const dbMilestone = {
+        ...restMilestone,
+        ...(end_date && { due_date: end_date }),
+        booking_id: bookingId,
+        progress: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
       const { data, error } = await supabase
         .from('milestones')
-        .insert({
-          ...milestone,
-          booking_id: bookingId,
-          progress: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert(dbMilestone)
         .select()
         .single()
 
@@ -146,12 +161,17 @@ export class ProgressDataService {
   // Update milestone
   static async updateMilestone(milestoneId: string, updates: Partial<Milestone>) {
     try {
+      // Transform end_date to due_date for database compatibility
+      const { end_date, ...restUpdates } = updates as any
+      const dbUpdates = {
+        ...restUpdates,
+        ...(end_date && { due_date: end_date }),
+        updated_at: new Date().toISOString()
+      }
+
       const { data, error } = await supabase
         .from('milestones')
-        .update({ 
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(dbUpdates)
         .eq('id', milestoneId)
         .select()
         .single()
@@ -203,12 +223,12 @@ export class ProgressDataService {
     }
   }
 
-  // Update task
+      // Update task
   static async updateTask(taskId: string, updates: Partial<Task>) {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .update({
+        .update({ 
           ...updates,
           updated_at: new Date().toISOString()
         })
@@ -462,10 +482,10 @@ export class ProgressDataService {
   // Get approvals for milestone
   static async getApprovals(milestoneId: string) {
     try {
-      const { data, error } = await supabase
-        .from('milestone_approvals')
-        .select('*')
-        .eq('milestone_id', milestoneId)
+    const { data, error } = await supabase
+      .from('milestone_approvals')
+      .select('*')
+      .eq('milestone_id', milestoneId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -507,8 +527,7 @@ export class ProgressDataService {
           booking_id: bookingId,
           title: `Month ${i + 1} Progress`,
           description: `Monthly progress milestone for ${booking.services?.title || 'service'}`,
-          start_date: milestoneStartDate.toISOString(),
-          end_date: milestoneEndDate.toISOString(),
+          due_date: milestoneEndDate.toISOString(),
           status: i === 0 ? 'in_progress' : 'pending',
           priority: 'medium',
           progress: 0,
@@ -635,7 +654,7 @@ export class ProgressDataService {
         )
         .subscribe()
 
-      return () => {
+    return () => {
         supabase.removeChannel(subscription)
       }
     } catch (error) {

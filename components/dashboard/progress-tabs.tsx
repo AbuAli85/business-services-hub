@@ -180,8 +180,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             description: milestone.description || '',
             status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
             progress: milestone.progress_percentage || 0,
-            start_date: milestone.created_at,
-            end_date: milestone.created_at,
+            due_date: milestone.created_at,
             priority: 'medium' as 'medium',
             created_at: milestone.created_at,
             updated_at: milestone.created_at,
@@ -263,8 +262,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               description: milestone.description || '',
               status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
               progress: milestone.progress_percentage || 0,
-              start_date: milestone.created_at,
-              end_date: milestone.created_at,
+              due_date: milestone.created_at,
               priority: 'medium' as 'medium',
               created_at: milestone.created_at,
               updated_at: milestone.created_at,
@@ -337,8 +335,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         description: milestone.description || '',
         status: milestone.status as 'not_started' | 'in_progress' | 'completed',
         progress: milestone.progress_percentage || 0,
-          start_date: milestone.created_at,
-          end_date: milestone.due_date || milestone.created_at,
+        due_date: milestone.due_date || milestone.created_at,
         priority: 'medium' as 'medium',
           created_at: milestone.created_at,
           updated_at: milestone.updated_at,
@@ -456,8 +453,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
           description: milestone.description || '',
           status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
           progress: milestone.progress_percentage || 0,
-          start_date: milestone.created_at,
-          end_date: milestone.created_at,
+          due_date: milestone.created_at,
           priority: 'medium' as 'medium',
           created_at: milestone.created_at,
           updated_at: milestone.created_at,
@@ -572,8 +568,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               description: 'Initial project setup, requirements gathering, and planning phase initiated',
               status: 'completed',
               priority: 'high',
-              start_date: new Date().toISOString(),
-              end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               progress_percentage: 100,
               order_index: 1,
               created_at: new Date().toISOString(),
@@ -586,8 +581,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               description: 'Successfully reviewed and documented project requirements',
               status: 'completed',
               priority: 'high',
-              start_date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-              end_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+              due_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
               progress_percentage: 100,
               order_index: 2,
               created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
@@ -600,8 +594,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
               description: 'Currently developing detailed project timeline and milestones',
               status: 'in_progress',
               priority: 'medium',
-              start_date: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-              end_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+              due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
               progress_percentage: 60,
               order_index: 3,
               created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
@@ -644,8 +637,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             description: 'Initial project setup, requirements gathering, and planning phase initiated',
             status: 'completed',
             priority: 'high',
-            start_date: new Date().toISOString(),
-            end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 100,
             order_index: 1,
             created_at: new Date().toISOString(),
@@ -658,8 +650,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             description: 'Successfully reviewed and documented project requirements',
             status: 'completed',
             priority: 'high',
-            start_date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-            end_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            due_date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
             progress_percentage: 100,
             order_index: 2,
             created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
@@ -946,7 +937,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         const created = await ProgressDataService.createMilestone(bookingId, {
           title: m.title,
           description: m.description || '',
-          end_date: (m as any).end_date || (m as any).due_date || m.created_at
+          due_date: (m as any).due_date || (m as any).due_date || m.created_at
         } as any)
         // Create tasks under this milestone
         for (const t of (m.tasks || [])) {
@@ -1360,8 +1351,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                           <div className="font-medium text-gray-900">{item.title}</div>
                           <div className="text-xs text-gray-500">{(() => {
                             try {
-                              const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
-                              const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
+                              const startDate = item.created_at && !isNaN(new Date(item.created_at).getTime()) ? new Date(item.created_at).toLocaleDateString() : 'N/A'
+                              const endDate = item.due_date && !isNaN(new Date(item.due_date).getTime()) ? new Date(item.due_date).toLocaleDateString() : 'N/A'
                               return `${startDate} → ${endDate}`
                 } catch (error) {
                               console.warn('Date range parsing error:', error)
@@ -1493,8 +1484,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                           <div className="font-medium text-gray-900">{item.title}</div>
                           <div className="text-xs text-gray-500">{(() => {
                             try {
-                              const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
-                              const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
+                              const startDate = item.created_at && !isNaN(new Date(item.created_at).getTime()) ? new Date(item.created_at).toLocaleDateString() : 'N/A'
+                              const endDate = item.due_date && !isNaN(new Date(item.due_date).getTime()) ? new Date(item.due_date).toLocaleDateString() : 'N/A'
                               return `${startDate} → ${endDate}`
                             } catch (error) {
                               console.warn('Date range parsing error:', error)
@@ -1588,10 +1579,10 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             <div className="mt-6">
               {activeTab === 'overview' && (
                 <EnhancedProgressTracking
-                  bookingId={bookingId}
-                  userRole={userRole}
-                  className=""
-                />
+                    bookingId={bookingId}
+                    userRole={userRole}
+                    className=""
+                  />
               )}
 
               {activeTab === 'monthly' && (
@@ -1626,8 +1617,8 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
                               <div className="font-medium text-gray-900">{item.title}</div>
                               <div className="text-xs text-gray-500">{(() => {
                             try {
-                              const startDate = item.start_date && !isNaN(new Date(item.start_date).getTime()) ? new Date(item.start_date).toLocaleDateString() : 'N/A'
-                              const endDate = item.end_date && !isNaN(new Date(item.end_date).getTime()) ? new Date(item.end_date).toLocaleDateString() : 'N/A'
+                              const startDate = item.created_at && !isNaN(new Date(item.created_at).getTime()) ? new Date(item.created_at).toLocaleDateString() : 'N/A'
+                              const endDate = item.due_date && !isNaN(new Date(item.due_date).getTime()) ? new Date(item.due_date).toLocaleDateString() : 'N/A'
                               return `${startDate} → ${endDate}`
                             } catch (error) {
                               console.warn('Date range parsing error:', error)

@@ -364,7 +364,7 @@ export function EnhancedProgressTracking({
       let comparison = 0
       switch (sortBy) {
         case 'due_date':
-          comparison = new Date(a.end_date).getTime() - new Date(b.end_date).getTime()
+          comparison = new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
           break
         case 'priority':
           const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }

@@ -135,8 +135,8 @@ export default function TimelineItemEditor({
             </label>
             <input
               type="date"
-              value={editedItem.start_date}
-              onChange={(e) => setEditedItem({...editedItem, start_date: e.target.value})}
+              value={editedItem.created_at ? editedItem.created_at.split('T')[0] : ''}
+              onChange={(e) => setEditedItem({...editedItem, created_at: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               aria-label="Timeline item start date"
             />
@@ -148,8 +148,8 @@ export default function TimelineItemEditor({
             </label>
             <input
               type="date"
-              value={editedItem.end_date}
-              onChange={(e) => setEditedItem({...editedItem, end_date: e.target.value})}
+              value={editedItem.due_date ? editedItem.due_date.split('T')[0] : ''}
+              onChange={(e) => setEditedItem({...editedItem, due_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               aria-label="Timeline item end date"
             />
@@ -210,11 +210,11 @@ export default function TimelineItemEditor({
           <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
             <span className="flex items-center space-x-1">
               <Calendar className="w-3 h-3" />
-              <span>{new Date(editedItem.start_date).toLocaleDateString()}</span>
+              <span>{editedItem.created_at ? new Date(editedItem.created_at).toLocaleDateString() : 'N/A'}</span>
             </span>
             <span className="flex items-center space-x-1">
               <Calendar className="w-3 h-3" />
-              <span>{new Date(editedItem.end_date).toLocaleDateString()}</span>
+              <span>{editedItem.due_date ? new Date(editedItem.due_date).toLocaleDateString() : 'N/A'}</span>
             </span>
             <span className="flex items-center space-x-1">
               <Target className="w-3 h-3" />

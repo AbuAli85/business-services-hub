@@ -38,8 +38,7 @@ export interface Milestone {
   title: string;
   description?: string;
   status: MilestoneStatus;
-  start_date: string;
-  end_date: string;
+  due_date: string;
   progress: number;
   tasks: Task[];
   created_at: string;
@@ -50,6 +49,12 @@ export interface Milestone {
   weight?: number;
   order_index: number;
   is_overdue?: boolean;
+  completed_at?: string;
+  created_by?: string;
+  overdue_since?: string;
+  completed_tasks?: number;
+  total_tasks?: number;
+  editable?: boolean;
 }
 
 export interface MilestoneApproval {
@@ -112,8 +117,7 @@ export interface TimelineItem {
   description?: string;
   status: TaskStatus;
   priority: "low" | "medium" | "high" | "urgent";
-  start_date: string;
-  end_date: string;
+  due_date: string;
   assigned_to?: string;
   progress_percentage: number;
   order_index: number;

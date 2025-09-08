@@ -128,8 +128,8 @@ export function EnhancedSmartSuggestions({
 
       // Check for overdue milestones
       const overdueMilestones = milestones.filter(m => 
-        m.end_date && 
-        isBefore(new Date(m.end_date), now) && 
+        m.due_date && 
+        isBefore(new Date(m.due_date), now) && 
         m.status !== 'completed'
       )
 
@@ -139,7 +139,7 @@ export function EnhancedSmartSuggestions({
           type: 'overdue',
           priority: 'urgent',
           title: 'Overdue Milestone',
-          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.end_date, { addSuffix: true })}`,
+          description: `"${milestone.title}" was due ${safeFormatDistanceToNow(milestone.due_date, { addSuffix: true })}`,
           action: 'Follow up with client',
           data: { milestoneId: milestone.id },
           dismissible: true,
@@ -203,8 +203,8 @@ export function EnhancedSmartSuggestions({
       const slowProgressMilestones = milestones.filter(m => {
         if (m.status === 'completed') return false
         const progress = m.progress || 0
-        const startDate = new Date(m.start_date)
-        const endDate = new Date(m.end_date)
+        const startDate = new Date(m.created_at)
+        const endDate = new Date(m.due_date)
         const totalDays = differenceInDays(endDate, startDate)
         const elapsedDays = differenceInDays(now, startDate)
         const expectedProgress = Math.min(Math.round((elapsedDays / totalDays) * 100), 100)

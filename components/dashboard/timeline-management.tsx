@@ -46,8 +46,8 @@ export default function TimelineManagement({
     description: '',
     status: 'pending',
     priority: 'medium',
-    start_date: '',
-    end_date: '',
+    created_at: new Date().toISOString(),
+    due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     progress_percentage: 0,
     booking_id: bookingId
   });
@@ -121,11 +121,10 @@ export default function TimelineManagement({
         description: newItem.description,
         status: newItem.status as TimelineItem['status'],
         priority: newItem.priority as TimelineItem['priority'],
-        start_date: newItem.start_date || new Date().toISOString().split('T')[0],
-        end_date: newItem.end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        created_at: newItem.created_at || new Date().toISOString(),
+        due_date: newItem.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         progress_percentage: newItem.progress_percentage || 0,
         order_index: timeline.length,
-        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
       
@@ -135,8 +134,8 @@ export default function TimelineManagement({
         description: '',
         status: 'pending',
         priority: 'medium',
-        start_date: '',
-        end_date: '',
+        created_at: new Date().toISOString(),
+        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         progress_percentage: 0,
         booking_id: bookingId
       });
@@ -294,8 +293,8 @@ export default function TimelineManagement({
                 </label>
                 <input
                   type="date"
-                  value={newItem.start_date || ''}
-                  onChange={(e) => setNewItem({...newItem, start_date: e.target.value})}
+                  value={newItem.created_at ? newItem.created_at.split('T')[0] : ''}
+                  onChange={(e) => setNewItem({...newItem, created_at: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   aria-label="Timeline item start date"
                 />
@@ -306,8 +305,8 @@ export default function TimelineManagement({
                 </label>
                 <input
                   type="date"
-                  value={newItem.end_date || ''}
-                  onChange={(e) => setNewItem({...newItem, end_date: e.target.value})}
+                  value={newItem.due_date ? newItem.due_date.split('T')[0] : ''}
+                  onChange={(e) => setNewItem({...newItem, due_date: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   aria-label="Timeline item end date"
                 />
@@ -375,13 +374,13 @@ export default function TimelineManagement({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
-                    {new Date(item.start_date).toLocaleDateString()}
+                    {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
                   </div>
                   <div className="text-xs text-gray-600">Start Date</div>
                 </div>
                 <div className="p-3 bg-purple-50 rounded-lg">
                   <div className="text-2xl font-bold text-purple-600">
-                    {new Date(item.end_date).toLocaleDateString()}
+                    {item.due_date ? new Date(item.due_date).toLocaleDateString() : 'N/A'}
                   </div>
                   <div className="text-xs text-gray-600">End Date</div>
                 </div>

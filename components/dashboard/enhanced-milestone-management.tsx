@@ -177,8 +177,7 @@ export function EnhancedMilestoneManagement({
   const [newMilestone, setNewMilestone] = useState({
     title: '',
     description: '',
-    start_date: '',
-    end_date: '',
+    due_date: '',
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     estimated_hours: 0
   })
@@ -200,8 +199,7 @@ export function EnhancedMilestoneManagement({
         booking_id: '', // This will be set by the parent component
         title: newMilestone.title.trim(),
         description: newMilestone.description.trim() || undefined,
-        start_date: newMilestone.start_date || new Date().toISOString(),
-        end_date: newMilestone.end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        due_date: newMilestone.due_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'not_started',
         priority: newMilestone.priority,
         estimated_hours: newMilestone.estimated_hours,
@@ -213,8 +211,7 @@ export function EnhancedMilestoneManagement({
       setNewMilestone({
         title: '',
         description: '',
-        start_date: '',
-        end_date: '',
+        due_date: '',
         priority: 'medium',
         estimated_hours: 0
       })
@@ -374,15 +371,15 @@ export function EnhancedMilestoneManagement({
   // Check if milestone is overdue
   const isOverdue = (milestone: Milestone) => {
     if (milestone.status === 'completed') return false
-    return milestone.end_date && isBefore(new Date(milestone.end_date), new Date())
+    return milestone.due_date && isBefore(new Date(milestone.due_date), new Date())
   }
 
   // Get trend indicator
   const getTrendIndicator = (milestone: Milestone) => {
     const progress = calculateMilestoneProgress(milestone)
     const now = new Date()
-    const startDate = new Date(milestone.start_date)
-    const endDate = new Date(milestone.end_date)
+    const startDate = new Date(milestone.due_date)
+    const endDate = new Date(milestone.due_date)
     const totalDays = differenceInDays(endDate, startDate)
     const elapsedDays = differenceInDays(now, startDate)
     const expectedProgress = Math.min(Math.round((elapsedDays / totalDays) * 100), 100)
@@ -478,7 +475,7 @@ export function EnhancedMilestoneManagement({
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <div className="flex items-center space-x-1">
                             <Calendar className="h-4 w-4" />
-                            <span>Due: {safeFormatDate(milestone.end_date)}</span>
+                            <span>Due: {safeFormatDate(milestone.due_date)}</span>
                           </div>
                           <div className="flex items-center space-x-1">
                             <Timer className="h-4 w-4" />
@@ -793,8 +790,8 @@ export function EnhancedMilestoneManagement({
                 <label className="text-sm font-medium text-gray-700">Start Date</label>
                 <Input
                   type="date"
-                  value={newMilestone.start_date}
-                  onChange={(e) => setNewMilestone(prev => ({ ...prev, start_date: e.target.value }))}
+                  value={newMilestone.due_date}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, due_date: e.target.value }))}
                   className="mt-1"
                 />
               </div>
@@ -802,8 +799,8 @@ export function EnhancedMilestoneManagement({
                 <label className="text-sm font-medium text-gray-700">End Date</label>
                 <Input
                   type="date"
-                  value={newMilestone.end_date}
-                  onChange={(e) => setNewMilestone(prev => ({ ...prev, end_date: e.target.value }))}
+                  value={newMilestone.due_date}
+                  onChange={(e) => setNewMilestone(prev => ({ ...prev, due_date: e.target.value }))}
                   className="mt-1"
                 />
               </div>

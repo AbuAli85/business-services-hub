@@ -499,7 +499,7 @@ function calculateRiskIndicators(milestones: Milestone[]) {
   
   // Overdue milestones
   const overdueMilestones = milestones.filter(m => 
-    m.end_date && new Date(m.end_date) < new Date() && m.status !== 'completed'
+    m.due_date && new Date(m.due_date) < new Date() && m.status !== 'completed'
   )
   
   if (overdueMilestones.length > 0) {
@@ -514,8 +514,8 @@ function calculateRiskIndicators(milestones: Milestone[]) {
   const slowProgress = milestones.filter(m => {
     if (m.status === 'completed') return false
     const progress = m.progress || 0
-    const startDate = new Date(m.start_date)
-    const endDate = new Date(m.end_date)
+    const startDate = new Date(m.created_at)
+    const endDate = new Date(m.due_date)
     const totalDays = differenceInDays(endDate, startDate)
     const elapsedDays = differenceInDays(new Date(), startDate)
     const expectedProgress = Math.min(Math.round((elapsedDays / totalDays) * 100), 100)
