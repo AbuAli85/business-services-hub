@@ -138,12 +138,79 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } as Record<string, string> : undefined
       })
       if (res.status === 204) {
-        console.log('No milestones found from API (204); showing empty state (no fallback).')
-        setUseFallbackMode(false)
-        setMilestones([])
-        setTotalTasks(0)
-        setCompletedTasks(0)
-        setOverallProgress(0)
+        console.log('No milestones found from API (204); attempting fallback...')
+        const fallbackData = getFallbackMilestones(bookingId)
+        if (fallbackData && fallbackData.length > 0) {
+          setUseFallbackMode(true)
+          const transformedFallback = fallbackData.map(milestone => ({
+            ...milestone,
+            id: milestone.id,
+            booking_id: bookingId,
+            title: milestone.title,
+            description: milestone.description || '',
+            status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
+            progress: milestone.progress_percentage || 0,
+            start_date: milestone.created_at,
+            end_date: milestone.created_at,
+            priority: 'medium' as 'medium',
+            created_at: milestone.created_at,
+            updated_at: milestone.created_at,
+            is_overdue: false,
+            estimated_hours: 0,
+            actual_hours: 0,
+            tags: [],
+            notes: '',
+            assigned_to: undefined,
+            created_by: undefined,
+            completed_at: undefined,
+            overdue_since: undefined,
+            order_index: 0,
+            editable: true,
+            tasks: (milestone.tasks || []).map(task => ({
+              id: task.id,
+              title: task.title,
+              status: task.status === 'pending' ? 'pending' : task.status as 'pending' | 'in_progress' | 'completed',
+              progress_percentage: task.progress_percentage || 0,
+              due_date: task.created_at,
+              estimated_hours: 0,
+              actual_hours: 0,
+              priority: 'medium' as 'medium',
+              milestone_id: milestone.id,
+              description: task.description || '',
+              tags: [],
+              steps: [],
+              completed_at: undefined,
+              created_at: task.created_at,
+              updated_at: task.created_at,
+              created_by: undefined,
+              assigned_to: undefined,
+              is_overdue: false,
+              overdue_since: undefined,
+              approval_status: 'pending' as 'pending',
+              approved_by: undefined,
+              approved_at: undefined,
+              approval_notes: undefined,
+              comments: [],
+              time_entries: [],
+              order_index: 0
+            }))
+          }))
+          setMilestones(transformedFallback)
+          // quick stats
+          const totalTasksFb = transformedFallback.reduce((sum: number, m: any) => sum + (m.tasks?.length || 0), 0)
+          const completedTasksFb = transformedFallback.reduce((sum: number, m: any) => sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0)
+          const completedMilestonesFb = transformedFallback.filter((m: any) => m.status === 'completed').length
+          const overallFb = transformedFallback.length > 0 ? Math.round((completedMilestonesFb / transformedFallback.length) * 100) : 0
+          setTotalTasks(totalTasksFb)
+          setCompletedTasks(completedTasksFb)
+          setOverallProgress(overallFb)
+        } else {
+          setUseFallbackMode(false)
+          setMilestones([])
+          setTotalTasks(0)
+          setCompletedTasks(0)
+          setOverallProgress(0)
+        }
         return
       }
       if (!res.ok) {
@@ -152,15 +219,83 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
       }
       const { milestones: milestonesData } = await res.json()
       
-        // If no milestones found, switch to fallback mode
+        // If no milestones found, try fallback like before
         if (!milestonesData || milestonesData.length === 0) {
-          console.log('No milestones found from API; showing empty state (no fallback).')
-          setUseFallbackMode(false)
-          setMilestones([])
-          setTotalTasks(0)
-          setCompletedTasks(0)
-          setOverallProgress(0)
-          return
+          console.log('No milestones found from API; attempting fallback...')
+          const fallbackData = getFallbackMilestones(bookingId)
+          if (fallbackData && fallbackData.length > 0) {
+            setUseFallbackMode(true)
+            const transformedFallback = fallbackData.map(milestone => ({
+              ...milestone,
+              id: milestone.id,
+              booking_id: bookingId,
+              title: milestone.title,
+              description: milestone.description || '',
+              status: milestone.status === 'pending' ? 'not_started' : milestone.status as 'not_started' | 'in_progress' | 'completed',
+              progress: milestone.progress_percentage || 0,
+              start_date: milestone.created_at,
+              end_date: milestone.created_at,
+              priority: 'medium' as 'medium',
+              created_at: milestone.created_at,
+              updated_at: milestone.created_at,
+              is_overdue: false,
+              estimated_hours: 0,
+              actual_hours: 0,
+              tags: [],
+              notes: '',
+              assigned_to: undefined,
+              created_by: undefined,
+              completed_at: undefined,
+              overdue_since: undefined,
+              order_index: 0,
+              editable: true,
+              tasks: (milestone.tasks || []).map(task => ({
+                id: task.id,
+                title: task.title,
+                status: task.status === 'pending' ? 'pending' : task.status as 'pending' | 'in_progress' | 'completed',
+                progress_percentage: task.progress_percentage || 0,
+                due_date: task.created_at,
+                estimated_hours: 0,
+                actual_hours: 0,
+                priority: 'medium' as 'medium',
+                milestone_id: milestone.id,
+                description: task.description || '',
+                tags: [],
+                steps: [],
+                completed_at: undefined,
+                created_at: task.created_at,
+                updated_at: task.created_at,
+                created_by: undefined,
+                assigned_to: undefined,
+                is_overdue: false,
+                overdue_since: undefined,
+                approval_status: 'pending' as 'pending',
+                approved_by: undefined,
+                approved_at: undefined,
+                approval_notes: undefined,
+                comments: [],
+                time_entries: [],
+                order_index: 0
+              }))
+            }))
+            setMilestones(transformedFallback)
+            const totalTasksFb = transformedFallback.reduce((sum: number, m: any) => sum + (m.tasks?.length || 0), 0)
+            const completedTasksFb = transformedFallback.reduce((sum: number, m: any) => sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0)
+            const completedMilestonesFb = transformedFallback.filter((m: any) => m.status === 'completed').length
+            const overallFb = transformedFallback.length > 0 ? Math.round((completedMilestonesFb / transformedFallback.length) * 100) : 0
+            setTotalTasks(totalTasksFb)
+            setCompletedTasks(completedTasksFb)
+            setOverallProgress(overallFb)
+            return
+          } else {
+            console.log('No fallback milestones available; showing empty state.')
+            setUseFallbackMode(false)
+            setMilestones([])
+            setTotalTasks(0)
+            setCompletedTasks(0)
+            setOverallProgress(0)
+            return
+          }
         }
         
         // Transform milestones data
