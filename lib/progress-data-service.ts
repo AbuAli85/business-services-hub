@@ -521,10 +521,18 @@ export class ProgressDataService {
     try {
       const supabase = await getSupabaseClient();
       // Map UI fields to actual DB columns and strip unknowns
+      // Normalize status to valid enum used by DB
+      const normalizedStatus = ((): string | undefined => {
+        const s: any = (updates as any).status
+        if (!s) return undefined
+        if (s === 'approved') return 'completed'
+        if (s === 'pending' || s === 'in_progress' || s === 'completed') return s
+        return undefined
+      })();
       const allowedUpdates: Record<string, any> = {
         title: updates.title,
         description: updates.description,
-        status: updates.status,
+        status: normalizedStatus,
         // UI uses end_date; DB uses due_date
         due_date: (updates as any).end_date ?? (updates as any).due_date,
         weight: (updates as any).weight,
