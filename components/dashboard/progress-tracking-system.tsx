@@ -92,7 +92,9 @@ export function ProgressTrackingSystem({
     const setupSubscription = async () => {
       cleanup = await ProgressDataService.subscribeToProgressUpdates(
         bookingId,
-        (data) => {
+        async () => {
+          // Reload data when changes are detected
+          const data = await ProgressDataService.getProgressData(bookingId);
           setMilestones(data.milestones);
           setTimeEntries(data.timeEntries);
           setOverallProgress(data.overallProgress);
@@ -257,7 +259,7 @@ export function ProgressTrackingSystem({
         return next
       })
 
-      await ProgressDataService.addComment(milestoneId, content)
+      await ProgressDataService.addComment(bookingId, milestoneId, content)
       toast.success('Comment added successfully')
       await loadData()
     } catch (error) {
@@ -280,7 +282,7 @@ export function ProgressTrackingSystem({
   // Time logging handlers
   const handleTimeLog = useCallback(async (taskId: string, duration: number, description: string) => {
     try {
-      await ProgressDataService.logTime(taskId, duration, description)
+      await ProgressDataService.logTime(bookingId, taskId, duration, description)
       toast.success('Time logged successfully')
       await loadData()
     } catch (error) {

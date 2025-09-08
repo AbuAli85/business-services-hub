@@ -18,6 +18,7 @@ import { MainProgressHeader } from './main-progress-header'
 // Removed legacy refactored accordion
 import { SimpleMilestones } from './simple-milestones'
 import { ProgressTrackingSystem } from './progress-tracking-system'
+import { EnhancedProgressTracking } from './enhanced-progress-tracking'
 // Removed missing imports - using placeholders instead
 import { SmartSuggestionsSidebar } from './smart-suggestions-sidebar'
 import { AnalyticsView } from './analytics-view'
@@ -861,7 +862,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   // Client-side approval actions
   const handleClientApproveMilestone = async (milestoneId: string) => {
     try {
-      await ProgressDataService.addComment(milestoneId, 'Approved by client', false)
+      await ProgressDataService.addComment(bookingId, milestoneId, 'Approved by client')
       // Optimistically update local comments state so banner hides immediately
       setCommentsByMilestone(prev => ({
         ...prev,
@@ -899,7 +900,7 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
   const handleClientRequestChanges = async (milestoneId: string) => {
     try {
       const reason = typeof window !== 'undefined' ? window.prompt('Describe requested changes:') || 'Client requested changes' : 'Client requested changes'
-      await ProgressDataService.addComment(milestoneId, reason, false)
+      await ProgressDataService.addComment(bookingId, milestoneId, reason)
       // Optimistically add comment and rely on provider to reopen if needed
       setCommentsByMilestone(prev => ({
         ...prev,
@@ -1586,25 +1587,11 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
             {/* Tab Content */}
             <div className="mt-6">
               {activeTab === 'overview' && (
-                bookingType === 'one_time' ? (
-                  <SimpleMilestones
-                    milestones={milestones}
-                    userRole={userRole}
-                    onMilestoneUpdate={handleMilestoneUpdate}
-                    onTaskUpdate={handleTaskUpdate}
-                    onTaskAdd={handleAddTask}
-                    onTaskDelete={handleDeleteTask}
-                    onCommentAdd={(milestoneId, content) => handleAddComment(milestoneId, content)}
-                    onProjectTypeChange={() => {}}
-                    commentsByMilestone={commentsByMilestone}
-                  />
-                ) : (
-                  <ProgressTrackingSystem
-                    bookingId={bookingId}
-                    userRole={userRole}
-                    className=""
-                  />
-                )
+                <EnhancedProgressTracking
+                  bookingId={bookingId}
+                  userRole={userRole}
+                  className=""
+                />
               )}
 
               {activeTab === 'monthly' && (

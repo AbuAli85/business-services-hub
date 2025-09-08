@@ -183,9 +183,8 @@ export function SimpleMilestones({
     if (!newComment || !newComment.text.trim()) return
     
     if (replyParentId) {
-      // post reply directly via service
-      ProgressDataService.addComment(newComment.milestoneId, newComment.text, false, replyParentId)
-        .catch(() => {})
+      // post reply via callback
+      onCommentAdd(newComment.milestoneId, newComment.text)
       setReplyParentId(null)
     } else {
       onCommentAdd(newComment.milestoneId, newComment.text)
