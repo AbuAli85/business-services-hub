@@ -208,14 +208,30 @@ export function createOptimizedClickHandler(
       // Defer execution to prevent UI blocking
       if (typeof requestIdleCallback !== 'undefined') {
         await new Promise<void>((resolve) => {
-          requestIdleCallback(() => {
-            handler().then(resolve).catch(resolve)
+          requestIdleCallback(async () => {
+            try {
+              const result = handler()
+              if (result instanceof Promise) {
+                await result
+              }
+              resolve()
+            } catch (error) {
+              resolve()
+            }
           }, { timeout })
         })
       } else {
         await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            handler().then(resolve).catch(resolve)
+          setTimeout(async () => {
+            try {
+              const result = handler()
+              if (result instanceof Promise) {
+                await result
+              }
+              resolve()
+            } catch (error) {
+              resolve()
+            }
           }, 0)
         })
       }
