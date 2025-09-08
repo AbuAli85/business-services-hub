@@ -533,10 +533,29 @@ export class ProgressDataService {
   ): Promise<void> {
     try {
       const supabase = await getSupabaseClient();
+      // Map UI fields to actual DB columns and strip unknowns
+      const allowedUpdates: Record<string, any> = {
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+        // UI uses end_date; DB uses due_date
+        due_date: (updates as any).end_date ?? (updates as any).due_date,
+        weight: (updates as any).weight,
+        order_index: (updates as any).order_index,
+        progress_percentage: (updates as any).progress_percentage,
+        estimated_hours: (updates as any).estimated_hours,
+        actual_hours: (updates as any).actual_hours,
+        editable: (updates as any).editable
+      };
+      // Remove undefined keys
+      Object.keys(allowedUpdates).forEach((k) => {
+        if (typeof allowedUpdates[k] === 'undefined') delete allowedUpdates[k];
+      });
+
       const { error } = await supabase
         .from('milestones')
         .update({
-          ...updates,
+          ...allowedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', milestoneId);
