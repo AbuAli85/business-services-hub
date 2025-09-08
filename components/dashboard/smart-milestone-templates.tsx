@@ -566,175 +566,182 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
 
   return (
     <div className="bg-white w-full h-full overflow-hidden flex flex-col">
-      <div className="p-8 border-b-2 border-gray-300 flex-shrink-0 bg-gradient-to-r from-blue-100 to-indigo-100">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-yellow-200 rounded-2xl shadow-lg">
-              <Lightbulb className="h-8 w-8 text-yellow-700" />
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-100 rounded-lg w-10 h-10 flex items-center justify-center">
+              <Lightbulb className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Smart Milestone Templates</h2>
-              <p className="text-lg text-gray-700 mt-2">
-                Choose from AI-powered templates tailored to your project type
+              <h2 className="text-xl font-semibold text-gray-900">Milestone Templates</h2>
+              <p className="text-sm text-muted-foreground">
+                Choose a template to get started quickly
               </p>
             </div>
           </div>
           <Button
             variant="ghost"
-            size="lg"
+            size="sm"
             onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-full p-3 text-xl"
+            className="text-gray-500 hover:text-gray-700"
           >
-            <X className="h-6 w-6" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-8">
-        {/* Category Tabs */}
-        <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <div className="mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Filter by Category</h3>
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 overflow-x-auto bg-gray-200 p-2 rounded-xl shadow-inner">
-              {categories.map((category) => (
-                <TabsTrigger 
-                  key={category.id} 
-                  value={category.id}
-                  className="flex items-center gap-3 text-base font-semibold whitespace-nowrap px-4 py-3 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-blue-500 rounded-lg transition-all duration-200"
-                >
-                  <category.icon className="h-5 w-5 flex-shrink-0" />
-                  <span className="hidden sm:inline">{category.name}</span>
-                  <span className="sm:hidden">{category.name.split(' ')[0]}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {/* Category Filter */}
+        <div className="mb-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-3">Filter by Category</h3>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <Button
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category.id)}
+                className="flex items-center gap-2 text-sm"
+              >
+                <category.icon className="h-4 w-4" />
+                {category.name}
+              </Button>
+            ))}
           </div>
+        </div>
 
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-              {templates
-                .filter(template => selectedCategory === 'all' || template.category === selectedCategory)
-                .map((template) => (
-                <Card 
-                  key={template.id}
-                  className={`cursor-pointer transition-all duration-300 hover:shadow-2xl border-4 ${
-                    selectedTemplate === template.id 
-                      ? 'ring-4 ring-blue-500 bg-blue-50 border-blue-400 shadow-2xl scale-105' 
-                      : 'border-gray-300 hover:border-blue-400 hover:shadow-xl hover:scale-102'
-                  }`}
-                  onClick={() => setSelectedTemplate(template.id)}
-                >
-                  <CardContent className="p-8 h-full flex flex-col min-h-[300px]">
-                    <div className="flex items-start gap-6">
-                      <div className="p-4 bg-gradient-to-br from-blue-200 to-blue-300 rounded-2xl flex-shrink-0 shadow-lg">
-                        <template.icon className="h-8 w-8 text-blue-800" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-gray-900 mb-3 text-2xl">{template.name}</h3>
-                        <p 
-                          className="text-base text-gray-700 mb-6 leading-relaxed" 
-                          style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 4,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}
-                        >
-                          {template.description}
-                        </p>
-                        
-                        <div className="flex flex-wrap gap-3 mb-6">
-                          <Badge variant="outline" className={`text-sm px-3 py-2 font-bold ${getComplexityColor(template.complexity)} border-2`}>
-                            {template.complexity}
-                          </Badge>
-                          <Badge variant="outline" className="text-sm px-3 py-2 font-bold bg-gray-200 text-gray-800 border-2">
-                            {template.estimatedDuration}
-                          </Badge>
-                          <Badge variant="outline" className="text-sm px-3 py-2 font-bold bg-blue-200 text-blue-900 border-2">
-                            {template.serviceType}
-                          </Badge>
-                          <Badge variant="outline" className="text-sm px-3 py-2 font-bold bg-green-200 text-green-900 border-2">
-                            {template.priceRange}
-                          </Badge>
-                          <Badge variant="outline" className="text-sm px-3 py-2 font-bold bg-purple-200 text-purple-900 border-2">
-                            {template.milestones.length} phases
-                          </Badge>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {template.tags.slice(0, 3).map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-sm px-3 py-1.5 bg-gray-200 text-gray-700 font-medium">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {template.tags.length > 3 && (
-                            <Badge variant="secondary" className="text-sm px-3 py-1.5 bg-gray-200 text-gray-700 font-medium">
-                              +{template.tags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-
-                        {selectedTemplate === template.id && (
-                            <div className="mt-8 pt-6 border-t-2 border-gray-300 bg-gray-50 rounded-lg p-4">
-                              <h4 className="font-bold text-lg mb-4 text-gray-900">Included Phases:</h4>
-                              <ul className="space-y-3">
-                                {template.milestones.map((milestone, index) => (
-                                  <li key={index} className="text-base text-gray-700 flex items-center gap-4">
-                                    <Target className="h-5 w-5 text-blue-600" />
-                                    <span className="font-semibold">{milestone.title}</span>
-                                    <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
-                                      {milestone.tasks.length} tasks
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {templates.filter(template => selectedCategory === 'all' || template.category === selectedCategory).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Target className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No templates found for this category</p>
-                <p className="text-sm">Try selecting a different category</p>
+        {/* Templates Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {templates
+            .filter(template => selectedCategory === 'all' || template.category === selectedCategory)
+            .map((template) => (
+            <div
+              key={template.id}
+              className={`rounded-xl shadow-sm border p-4 bg-white flex flex-col justify-between hover:shadow-md transition cursor-pointer ${
+                selectedTemplate === template.id ? "border-primary" : "border-gray-200"
+              }`}
+              onClick={() => setSelectedTemplate(template.id)}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 bg-gray-100 rounded-lg w-10 h-10 flex items-center justify-center">
+                  <template.icon className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 line-clamp-1">{template.name}</h3>
               </div>
-            )}
-          </div>
-        </Tabs>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-8 border-t-2 border-gray-300 bg-white sticky bottom-0 mt-8">
+              {/* Description/Category */}
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{template.description}</p>
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1 mb-3">
+                <Badge variant="secondary" className="text-xs">
+                  {template.complexity}
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {template.estimatedDuration}
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {template.milestones.length} phases
+                </Badge>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between">
+                <button 
+                  className="text-sm text-primary hover:underline font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const templateData = templates.find(t => t.id === template.id)
+                    if (templateData) {
+                      if (onSelectTemplate) {
+                        onSelectTemplate(templateData)
+                      } else if (onTemplateSelect) {
+                        onTemplateSelect(templateData)
+                      }
+                    }
+                  }}
+                >
+                  Use Template
+                </button>
+                {selectedTemplate === template.id && (
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Empty State */}
+        {templates.filter(template => selectedCategory === 'all' || template.category === selectedCategory).length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <Target className="h-8 w-8 mx-auto mb-3 text-gray-300" />
+            <p className="text-sm">No templates found for this category</p>
+            <p className="text-xs text-gray-400">Try selecting a different category</p>
+          </div>
+        )}
+
+        {/* Selected Template Details */}
+        {selectedTemplate && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Template Details</h4>
+            {(() => {
+              const template = templates.find(t => t.id === selectedTemplate)
+              if (!template) return null
+              
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Phases included:</span>
+                    <span className="text-sm font-medium">{template.milestones.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Estimated duration:</span>
+                    <span className="text-sm font-medium">{template.estimatedDuration}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Complexity:</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {template.complexity}
+                    </Badge>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="p-6 border-t border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
           <Button 
             variant="outline" 
-            onClick={onCancel} 
-            className="flex-shrink-0 px-8 py-4 text-lg font-bold hover:bg-gray-100 border-2 border-gray-400"
+            onClick={onCancel}
+            className="text-sm font-medium"
           >
             Cancel
           </Button>
-          <div className="flex items-center gap-4">
-            {selectedTemplate && (
-              <Button
-                onClick={() => {
-                  const template = templates.find(t => t.id === selectedTemplate)
-                  if (template) {
-                    if (onSelectTemplate) {
-                      onSelectTemplate(template)
-                    } else if (onTemplateSelect) {
-                      onTemplateSelect(template)
-                    }
+          {selectedTemplate && (
+            <Button
+              onClick={() => {
+                const template = templates.find(t => t.id === selectedTemplate)
+                if (template) {
+                  if (onSelectTemplate) {
+                    onSelectTemplate(template)
+                  } else if (onTemplateSelect) {
+                    onTemplateSelect(template)
                   }
-                }}
-                className="bg-blue-600 hover:bg-blue-700 flex-shrink-0 px-8 py-4 text-lg font-bold shadow-2xl hover:shadow-3xl transition-all duration-300 border-2 border-blue-700"
-              >
-                <Rocket className="h-6 w-6 mr-3" />
-                Use This Template
-              </Button>
-            )}
-          </div>
+                }
+              }}
+              className="text-sm font-medium"
+            >
+              <Rocket className="h-4 w-4 mr-2" />
+              Use This Template
+            </Button>
+          )}
         </div>
       </div>
     </div>
