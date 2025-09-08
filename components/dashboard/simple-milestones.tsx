@@ -542,9 +542,9 @@ export function SimpleMilestones({
                             <span>Complete previous phase first</span>
                           </div>
                         )}
-                        {latestApproval ? (
+                        {latestApproval || (commentsByMilestone && commentsByMilestone[milestone.id]?.some(c => (c.content || '').toLowerCase().includes('approved by client'))) ? (
                           <div className={`flex items-center space-x-1 text-xs ${latestApproval.status === 'approved' ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'} px-2 py-1 rounded-full`}>
-                            <span>{latestApproval.status === 'approved' ? '🟢 Approved' : '🔴 Rejected'} • {new Date(latestApproval.created_at).toLocaleDateString()}</span>
+                            <span>🟢 Approved</span>
                           </div>
                         ) : (
                           (milestone.status === 'in_progress' || milestone.status === 'completed') && (
