@@ -14,10 +14,31 @@ const CreateMessageSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const supabase = await getSupabaseClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
+
+    // Support Authorization: Bearer <token> like the GET handler
+    let user: any = null
+    let authError: any = null
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7)
+      const { data: { user: tokenUser }, error } = await supabase.auth.getUser(token)
+      if (tokenUser && !error) {
+        user = tokenUser
+      } else {
+        authError = error
+      }
+    }
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      const { data: { user: cookieUser }, error } = await supabase.auth.getUser()
+      if (cookieUser && !error) {
+        user = cookieUser
+      } else {
+        authError = error
+      }
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized', details: authError?.message || 'No user' }, { status: 401 })
     }
 
     // Ensure sender has a profile

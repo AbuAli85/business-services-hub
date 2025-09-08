@@ -225,10 +225,13 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       const receiverId = user.id === booking.client_id ? booking.provider_id : booking.client_id
       
       // Use the messages API instead of direct database insertion
+      // Include Authorization header for environments that require it
+      const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch('/api/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
           receiver_id: receiverId,
