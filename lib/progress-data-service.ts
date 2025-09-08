@@ -489,38 +489,25 @@ export class ProgressDataService {
   ): Promise<Milestone> {
     try {
       const supabase = await getSupabaseClient();
-      
-      // Get the next order index
-      const { data: existingMilestones } = await supabase
-        .from('milestones')
-        .select('order_index')
-        .eq('booking_id', bookingId)
-        .order('order_index', { ascending: false })
-        .limit(1);
-
-      const nextOrderIndex = existingMilestones?.[0]?.order_index + 1 || 0;
-
-      const { data, error } = await supabase
-        .from('milestones')
-        .insert({
-          booking_id: bookingId,
-          title: milestone.title,
-          description: milestone.description || '',
-          status: milestone.status || 'not_started',
-          start_date: milestone.start_date,
-          end_date: milestone.end_date,
-          progress: milestone.progress || 0,
-          estimated_hours: milestone.estimated_hours || 0,
-          actual_hours: 0,
-          order_index: nextOrderIndex,
-          weight: milestone.weight ?? 1
-        })
-        .select()
-        .single();
-
+      // Use RPC to add milestone (maps to due_date internally)
+      const { data: newId, error } = await supabase.rpc('add_milestone', {
+        booking_id: bookingId,
+        title: milestone.title,
+        description: milestone.description || '',
+        due_date: (milestone as any).end_date ?? (milestone as any).due_date ?? null,
+        weight: (milestone as any).weight ?? 1
+      });
       if (error) throw error;
-      await NotificationsService.sendMilestoneUpdate({ milestoneId: data.id, bookingId, action: 'created', title: data.title });
-      return { ...data, tasks: [] };
+
+      // Fetch created milestone for return shape
+      const { data, error: fetchErr } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('id', newId)
+        .single();
+      if (fetchErr) throw fetchErr;
+      try { await NotificationsService.sendMilestoneUpdate({ milestoneId: data.id, bookingId, action: 'created', title: data.title }); } catch {}
+      return { ...(data as any), tasks: [] };
     } catch (error) {
       console.error('Error creating milestone:', error);
       throw error;
@@ -572,11 +559,7 @@ export class ProgressDataService {
   static async deleteMilestone(milestoneId: string): Promise<void> {
     try {
       const supabase = await getSupabaseClient();
-      const { error } = await supabase
-        .from('milestones')
-        .delete()
-        .eq('id', milestoneId);
-
+      const { error } = await supabase.rpc('delete_milestone', { milestone_id: milestoneId });
       if (error) throw error;
       try { await NotificationsService.sendMilestoneUpdate({ milestoneId, bookingId: '', action: 'deleted' }); } catch {}
     } catch (error) {
