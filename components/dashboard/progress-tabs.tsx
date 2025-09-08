@@ -681,10 +681,16 @@ export function ProgressTabs({ bookingId, userRole, showHeader = true, combinedV
     console.log('Send payment reminder clicked')
   }
 
-  const handleMilestoneUpdate = (milestoneId: string, updates: Partial<Milestone>) => {
-    // Implement milestone update functionality
-    console.log('Milestone update:', milestoneId, updates)
-    loadData()
+  const handleMilestoneUpdate = async (milestoneId: string, updates: Partial<Milestone>) => {
+    try {
+      await ProgressDataService.updateMilestone(milestoneId, updates)
+      console.log('Milestone updated:', milestoneId, updates)
+      toast.success('Milestone updated')
+      await loadData()
+    } catch (err) {
+      console.error('Failed to update milestone:', err)
+      toast.error('Failed to update milestone')
+    }
   }
 
   const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
