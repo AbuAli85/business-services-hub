@@ -2096,19 +2096,10 @@ export default function EnhancedBookingDetails({
           {/* Main Content Area */}
           <div className="xl:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="overview" className="text-sm">
                   <Eye className="h-4 w-4 mr-2" />
                   Overview
-                </TabsTrigger>
-                <TabsTrigger value="progress" className="text-sm">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Progress & Timeline
-                  {overdueCount > 0 && (
-                    <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                      {overdueCount}
-                    </Badge>
-                  )}
                 </TabsTrigger>
                 <TabsTrigger value="messages" className="text-sm">
                   <MessageCircle className="h-4 w-4 mr-2" />
@@ -2235,27 +2226,7 @@ export default function EnhancedBookingDetails({
                   </Card>
               </TabsContent>
 
-              {/* Progress Tab */}
-              <TabsContent value="progress" className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Project Progress</h3>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        // Refresh progress data
-                        window.location.reload()
-                      }}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
-                  </div>
-                  <ProgressTabs bookingId={bookingId} userRole={userRole} showHeader={false} combinedView={true} />
-                </div>
-              </TabsContent>
+              {/* Progress tab removed by request */}
 
               {/* Messages Tab */}
               <TabsContent value="messages">
