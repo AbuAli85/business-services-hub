@@ -143,14 +143,26 @@ export class DocumentManagementService {
         priority: form.priority
       }
 
-      const { data, error } = await supabase
+      // Insert without returning row to avoid SELECT policy requirement
+      const { error: insertError } = await supabase
         .from('document_requests')
-        .insert(requestData)
+        .insert(requestData, { returning: 'minimal' })
+
+      if (insertError) throw insertError
+
+      // Fetch the created request via a read that should pass dr_read
+      const { data: created, error: fetchError } = await supabase
+        .from('document_requests')
         .select('*')
+        .eq('booking_id', bookingId)
+        .eq('requested_by', user.id)
+        .eq('title', form.title)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single()
 
-      if (error) throw error
-      return data
+      if (fetchError) throw fetchError
+      return created
     } catch (error) {
       console.error('Error creating document request:', error)
       return null
