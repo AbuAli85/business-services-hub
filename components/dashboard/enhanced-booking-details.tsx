@@ -250,6 +250,8 @@ export default function EnhancedBookingDetails({
   const [sixMonthTrend, setSixMonthTrend] = useState<{ label: string; count: number; amount: number }[]>([])
   const [chartMode, setChartMode] = useState<'count'|'amount'>('count')
   const [bookingsWindow, setBookingsWindow] = useState<any[]>([])
+  const [historyFilterMonth, setHistoryFilterMonth] = useState<string>('all')
+  const [historyFilterStatus, setHistoryFilterStatus] = useState<'all'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'declined'|'on_hold'>('all')
   // Recent overview extras
   const [recentActivity, setRecentActivity] = useState<{ id: string; when: string; text: string; type: 'task'|'milestone'|'document' }[]>([])
   const [recentFiles, setRecentFiles] = useState<{ id: string; name: string; url: string; created_at: string }[]>([])
@@ -781,6 +783,18 @@ export default function EnhancedBookingDetails({
       setRecentActivity([])
       setRecentFiles([])
     }
+  }
+
+  // Filtered history helper
+  const filteredHistory = () => {
+    return (bookingsWindow || []).filter((b:any)=>{
+      const d = new Date(b.created_at)
+      const monthOk = historyFilterMonth==='all' ? true : d.getMonth() === Number(historyFilterMonth)
+      const statusOk = historyFilterStatus==='all' ? true : (b.status || 'pending') === historyFilterStatus
+      return monthOk && statusOk
+    })
+    .sort((a:any,b:any)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0,50)
   }
 
   const onStepToggle = async (taskId: string, newStatus: string) => {
@@ -2409,7 +2423,7 @@ export default function EnhancedBookingDetails({
                                   <div className="w-6 bg-blue-200 hover:bg-blue-300 transition-colors rounded-t cursor-pointer"
                                     style={{ height: h }}
                                     onClick={() => {
-                                      // Filter Overview to this month (update summary)
+                                      // Filter Overview to this month (update summary) and navigate to list
                                       const now = new Date()
                                       const base = new Date(now.getFullYear(), now.getMonth()- (sixMonthTrend.length-1-idx), 1)
                                       const month = base.getMonth(); const year = base.getFullYear()
@@ -2426,6 +2440,11 @@ export default function EnhancedBookingDetails({
                                         paid,
                                         pending
                                       })
+                                      try {
+                                        const m = (month+1).toString().padStart(2,'0')
+                                        const y = year.toString()
+                                        window.location.href = `/dashboard/bookings?month=${y}-${m}`
+                                      } catch {}
                                     }}
                                     title={`${m.label}: ${m.count} bookings • ${formatCurrency(m.amount)}`}
                                   ></div>
@@ -2506,6 +2525,70 @@ export default function EnhancedBookingDetails({
                               ))}
                             </ul>
                           )}
+                        </div>
+                      </div>
+
+                      {/* Bookings History */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-gray-700">Bookings History</h4>
+                          <div className="flex items-center gap-2">
+                            {/* Month Filter */}
+                            <Select value={historyFilterMonth} onValueChange={(v:any)=> setHistoryFilterMonth(v)}>
+                              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Month" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All months</SelectItem>
+                                {Array.from({length:12}).map((_,i)=>{
+                                  const d = new Date(); d.setMonth(i); const label = d.toLocaleString(undefined,{month:'long'})
+                                  return <SelectItem key={i} value={`${i}`}>{label}</SelectItem>
+                                })}
+                              </SelectContent>
+                            </Select>
+                            {/* Status Filter */}
+                            <Select value={historyFilterStatus} onValueChange={(v:any)=> setHistoryFilterStatus(v)}>
+                              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                              <SelectContent>
+                                {['all','pending','approved','in_progress','completed','cancelled','declined','on_hold'].map(s=> (
+                                  <SelectItem key={s} value={s}>{s.replace('_',' ')}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="outline" onClick={()=>{
+                              // CSV export of filtered rows
+                              const rows = [['Date','Service','Status','Amount']].concat(filteredHistory().map((b:any)=>[
+                                new Date(b.created_at).toLocaleDateString(), b.service_title || 'Service', (b.status||'pending'), (b.amount||0).toString()
+                              ]))
+                              const csv = rows.map(r=>r.join(',')).join('\n')
+                              const blob = new Blob([csv], { type:'text/csv' })
+                              const url = URL.createObjectURL(blob)
+                              const a = document.createElement('a'); a.href=url; a.download='bookings-history.csv'; a.click(); URL.revokeObjectURL(url)
+                            }}>Export CSV</Button>
+                          </div>
+                        </div>
+                        <div className="overflow-auto rounded border">
+                          <table className="min-w-full text-xs">
+                            <thead className="bg-gray-50 text-gray-700">
+                              <tr>
+                                <th className="px-3 py-2 text-left">Date</th>
+                                <th className="px-3 py-2 text-left">Service</th>
+                                <th className="px-3 py-2 text-left">Status</th>
+                                <th className="px-3 py-2 text-right">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {filteredHistory().map((b:any)=> (
+                                <tr key={b.id} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2">{new Date(b.created_at).toLocaleDateString()}</td>
+                                  <td className="px-3 py-2">{b.service_title || 'Service'}</td>
+                                  <td className="px-3 py-2 capitalize">{(b.status||'pending').replace('_',' ')}</td>
+                                  <td className="px-3 py-2 text-right">{formatCurrency(b.amount||0, b.currency||'OMR')}</td>
+                                </tr>
+                              ))}
+                              {filteredHistory().length===0 && (
+                                <tr><td className="px-3 py-3 text-center text-gray-500" colSpan={4}>No records</td></tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
 
