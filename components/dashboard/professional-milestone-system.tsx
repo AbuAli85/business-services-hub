@@ -590,7 +590,6 @@ export function ProfessionalMilestoneSystem({
           .from('tasks')
           .insert({
             milestone_id: selectedMilestone?.id,
-            booking_id: bookingId,
             title: taskForm.title,
             description: taskForm.description || '',
             status: 'pending',
