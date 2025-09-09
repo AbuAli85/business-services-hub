@@ -90,6 +90,10 @@ export interface NotificationData {
   sender_id?: string
   sender_name?: string
   
+  // Review related
+  review_id?: string
+  rating?: number
+  
   // Document related
   document_id?: string
   document_name?: string
