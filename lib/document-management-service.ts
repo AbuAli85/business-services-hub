@@ -310,10 +310,7 @@ export class DocumentManagementService {
       const { data, error } = await supabase
         .from('documents')
         .insert(documentData)
-        .select(`
-          *,
-          uploaded_by_user:profiles!documents_uploaded_by_fkey(id, full_name, email)
-        `)
+        .select('*')
         .single()
 
       if (error) throw error
