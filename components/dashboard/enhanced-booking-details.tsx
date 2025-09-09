@@ -2357,107 +2357,105 @@ export default function EnhancedBookingDetails({
                         </div>
                       )}
 
-                      {/* Overview Extras: Recent Activity & Files */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-gray-700">Recent Activity</h4>
-                          </div>
-                          {recentActivity.length === 0 ? (
-                            <p className="text-xs text-gray-500">No recent activity</p>
-                          ) : (
-                            <ul className="space-y-2">
-                              {recentActivity.map(a => (
-                                <li key={a.id} className="text-xs text-gray-700 flex items-center gap-2">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${a.type==='task'?'bg-green-500':a.type==='milestone'?'bg-blue-500':'bg-purple-500'}`}></span>
-                                  <span className="text-gray-500">{new Date(a.when).toLocaleDateString()}:</span>
-                                  <span>{a.text}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium text-gray-700">Recent Files</h4>
-                          </div>
-                          {recentFiles.length === 0 ? (
-                            <p className="text-xs text-gray-500">No files uploaded</p>
-                          ) : (
-                            <ul className="space-y-2">
-                              {recentFiles.map(f => (
-                                <li key={f.id} className="text-xs text-gray-700 flex items-center justify-between">
-                                  <span className="truncate pr-2" title={f.name}>{f.name}</span>
-                                  <a className="text-blue-600 hover:underline" href={f.url} target="_blank" rel="noreferrer">View</a>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Bookings History */}
+                      {/* Overview Tabs: Activity, Files, History */}
                       <div className="mt-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-gray-700">Bookings History</h4>
-                          <div className="flex items-center gap-2">
-                            {/* Month Filter */}
-                            <Select value={historyFilterMonth} onValueChange={(v:any)=> setHistoryFilterMonth(v)}>
-                              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Month" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All months</SelectItem>
-                                {Array.from({length:12}).map((_,i)=>{
-                                  const d = new Date(); d.setMonth(i); const label = d.toLocaleString(undefined,{month:'long'})
-                                  return <SelectItem key={i} value={`${i}`}>{label}</SelectItem>
-                                })}
-                              </SelectContent>
-                            </Select>
-                            {/* Status Filter */}
-                            <Select value={historyFilterStatus} onValueChange={(v:any)=> setHistoryFilterStatus(v)}>
-                              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                              <SelectContent>
-                                {['all','pending','approved','in_progress','completed','cancelled','declined','on_hold'].map(s=> (
-                                  <SelectItem key={s} value={s}>{s.replace('_',' ')}</SelectItem>
+                        <Tabs defaultValue="activity">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="activity">Activity</TabsTrigger>
+                            <TabsTrigger value="files">Files</TabsTrigger>
+                            <TabsTrigger value="history">History</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="activity" className="mt-3">
+                            {recentActivity.length === 0 ? (
+                              <p className="text-xs text-gray-500">No recent activity</p>
+                            ) : (
+                              <ul className="space-y-2">
+                                {recentActivity.map(a => (
+                                  <li key={a.id} className="text-xs text-gray-700 flex items-center gap-2">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${a.type==='task'?'bg-green-500':a.type==='milestone'?'bg-blue-500':'bg-purple-500'}`}></span>
+                                    <span className="text-gray-500">{new Date(a.when).toLocaleDateString()}:</span>
+                                    <span>{a.text}</span>
+                                  </li>
                                 ))}
-                              </SelectContent>
-                            </Select>
-                            <Button size="sm" variant="outline" onClick={()=>{
-                              // CSV export of filtered rows
-                              const rows = [['Date','Service','Status','Amount']].concat(filteredHistory().map((b:any)=>[
-                                new Date(b.created_at).toLocaleDateString(), b.service_title || 'Service', (b.status||'pending'), (b.amount||0).toString()
-                              ]))
-                              const csv = rows.map(r=>r.join(',')).join('\n')
-                              const blob = new Blob([csv], { type:'text/csv' })
-                              const url = URL.createObjectURL(blob)
-                              const a = document.createElement('a'); a.href=url; a.download='bookings-history.csv'; a.click(); URL.revokeObjectURL(url)
-                            }}>Export CSV</Button>
-                          </div>
-                        </div>
-                        <div className="overflow-auto rounded border">
-                          <table className="min-w-full text-xs">
-                            <thead className="bg-gray-50 text-gray-700">
-                              <tr>
-                                <th className="px-3 py-2 text-left">Date</th>
-                                <th className="px-3 py-2 text-left">Service</th>
-                                <th className="px-3 py-2 text-left">Status</th>
-                                <th className="px-3 py-2 text-right">Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                              {filteredHistory().map((b:any)=> (
-                                <tr key={b.id} className="hover:bg-gray-50">
-                                  <td className="px-3 py-2">{new Date(b.created_at).toLocaleDateString()}</td>
-                                  <td className="px-3 py-2">{b.service_title || 'Service'}</td>
-                                  <td className="px-3 py-2 capitalize">{(b.status||'pending').replace('_',' ')}</td>
-                                  <td className="px-3 py-2 text-right">{formatCurrency(b.amount||0, b.currency||'OMR')}</td>
-                                </tr>
-                              ))}
-                              {filteredHistory().length===0 && (
-                                <tr><td className="px-3 py-3 text-center text-gray-500" colSpan={4}>No records</td></tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                              </ul>
+                            )}
+                          </TabsContent>
+
+                          <TabsContent value="files" className="mt-3">
+                            {recentFiles.length === 0 ? (
+                              <p className="text-xs text-gray-500">No files uploaded</p>
+                            ) : (
+                              <ul className="space-y-2">
+                                {recentFiles.map(f => (
+                                  <li key={f.id} className="text-xs text-gray-700 flex items-center justify-between">
+                                    <span className="truncate pr-2" title={f.name}>{f.name}</span>
+                                    <a className="text-blue-600 hover:underline" href={f.url} target="_blank" rel="noreferrer">View</a>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </TabsContent>
+
+                          <TabsContent value="history" className="mt-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Select value={historyFilterMonth} onValueChange={(v:any)=> setHistoryFilterMonth(v)}>
+                                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Month" /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="all">All months</SelectItem>
+                                    {Array.from({length:12}).map((_,i)=>{
+                                      const d = new Date(); d.setMonth(i); const label = d.toLocaleString(undefined,{month:'long'})
+                                      return <SelectItem key={i} value={`${i}`}>{label}</SelectItem>
+                                    })}
+                                  </SelectContent>
+                                </Select>
+                                <Select value={historyFilterStatus} onValueChange={(v:any)=> setHistoryFilterStatus(v)}>
+                                  <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                                  <SelectContent>
+                                    {['all','pending','approved','in_progress','completed','cancelled','declined','on_hold'].map(s=> (
+                                      <SelectItem key={s} value={s}>{s.replace('_',' ')}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button size="sm" variant="outline" onClick={()=>{
+                                const rows = [['Date','Service','Status','Amount']].concat(filteredHistory().map((b:any)=>[
+                                  new Date(b.created_at).toLocaleDateString(), b.service_title || 'Service', (b.status||'pending'), (b.amount||0).toString()
+                                ]))
+                                const csv = rows.map(r=>r.join(',')).join('\n')
+                                const blob = new Blob([csv], { type:'text/csv' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a'); a.href=url; a.download='bookings-history.csv'; a.click(); URL.revokeObjectURL(url)
+                              }}>Export CSV</Button>
+                            </div>
+                            <div className="overflow-auto rounded border">
+                              <table className="min-w-full text-xs">
+                                <thead className="bg-gray-50 text-gray-700">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left">Date</th>
+                                    <th className="px-3 py-2 text-left">Service</th>
+                                    <th className="px-3 py-2 text-left">Status</th>
+                                    <th className="px-3 py-2 text-right">Amount</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                  {filteredHistory().map((b:any)=> (
+                                    <tr key={b.id} className="hover:bg-gray-50">
+                                      <td className="px-3 py-2">{new Date(b.created_at).toLocaleDateString()}</td>
+                                      <td className="px-3 py-2">{b.service_title || 'Service'}</td>
+                                      <td className="px-3 py-2 capitalize">{(b.status||'pending').replace('_',' ')}</td>
+                                      <td className="px-3 py-2 text-right">{formatCurrency(b.amount||0, b.currency||'OMR')}</td>
+                                    </tr>
+                                  ))}
+                                  {filteredHistory().length===0 && (
+                                    <tr><td className="px-3 py-3 text-center text-gray-500" colSpan={4}>No records</td></tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </div>
 
                     </CardContent>
