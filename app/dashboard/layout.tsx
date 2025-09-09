@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase'
-import { NotificationBell } from '@/components/ui/notification-bell'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 import { 
   Home, 
   Briefcase, 
@@ -21,7 +21,8 @@ import {
   Package,
   BarChart3,
   FileText,
-  DollarSign
+  DollarSign,
+  Bell
 } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 
@@ -199,6 +200,7 @@ export default function DashboardLayout({
       { name: 'Dashboard', href: '/dashboard', icon: Home },
       { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
       { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
+      { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
       { name: 'Profile', href: '/dashboard/profile', icon: User },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ]

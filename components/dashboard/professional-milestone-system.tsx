@@ -45,6 +45,7 @@ import { TaskMilestoneLinking } from './task-milestone-linking'
 import { DocumentManager } from './document-manager'
 import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase'
+import { notificationTriggerService } from '@/lib/notification-triggers'
 import { 
   Milestone, 
   Task, 
@@ -462,6 +463,43 @@ export function ProfessionalMilestoneSystem({
       
       if (error) throw error
       
+      // Trigger notification for task completion
+      if (status === 'completed') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+          // Get task and milestone details for notification
+          const { data: taskData } = await supabase
+            .from('tasks')
+            .select(`
+              id, title, milestone_id,
+              milestones!inner(id, title, booking_id)
+            `)
+            .eq('id', taskId)
+            .single()
+          
+          if (taskData && taskData.milestones && Array.isArray(taskData.milestones) && taskData.milestones.length > 0) {
+            const milestone = taskData.milestones[0]
+            await notificationTriggerService.triggerTaskCompleted(
+              user.id,
+              {
+                task_id: taskData.id,
+                task_title: taskData.title,
+                milestone_id: taskData.milestone_id,
+                milestone_title: milestone.title,
+                booking_id: milestone.booking_id,
+                project_name: milestone.title,
+                actor_id: user.id,
+                actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
+              }
+            )
+          }
+          }
+        } catch (notificationError) {
+          console.warn('Failed to send notification:', notificationError)
+        }
+      }
+      
       toast.success('Task status updated')
       await loadData() // This will trigger progress recalculation
     } catch (err) {
@@ -628,6 +666,29 @@ export function ProfessionalMilestoneSystem({
           .eq('id', editingTask.id)
         
         if (error) throw error
+        
+        // Trigger notification for task update
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && selectedMilestone) {
+            await notificationTriggerService.triggerTaskCreated(
+              user.id,
+              {
+                task_id: editingTask.id,
+                task_title: taskForm.title,
+                milestone_id: selectedMilestone.id,
+                milestone_title: selectedMilestone.title,
+                booking_id: bookingId,
+                project_name: selectedMilestone.title,
+                actor_id: user.id,
+                actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
+              }
+            )
+          }
+        } catch (notificationError) {
+          console.warn('Failed to send notification:', notificationError)
+        }
+        
         toast.success('Task updated successfully')
       } else {
         // Create new task
@@ -651,6 +712,29 @@ export function ProfessionalMilestoneSystem({
           })
         
         if (error) throw error
+        
+        // Trigger notification for task creation
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && selectedMilestone) {
+            await notificationTriggerService.triggerTaskCreated(
+              user.id,
+              {
+                task_id: taskForm.title, // This will be the task ID after creation
+                task_title: taskForm.title,
+                milestone_id: selectedMilestone.id,
+                milestone_title: selectedMilestone.title,
+                booking_id: bookingId,
+                project_name: selectedMilestone.title,
+                actor_id: user.id,
+                actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
+              }
+            )
+          }
+        } catch (notificationError) {
+          console.warn('Failed to send notification:', notificationError)
+        }
+        
         toast.success('Task created successfully')
       }
       
@@ -889,6 +973,41 @@ export function ProfessionalMilestoneSystem({
         .single()
 
       if (error) throw error
+
+      // Trigger notification for task comment
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          // Get task and milestone details for notification
+          const { data: taskData } = await supabase
+            .from('tasks')
+            .select(`
+              id, title, milestone_id,
+              milestones!inner(id, title, booking_id)
+            `)
+            .eq('id', selectedTask.id)
+            .single()
+          
+          if (taskData && taskData.milestones && Array.isArray(taskData.milestones) && taskData.milestones.length > 0) {
+            const milestone = taskData.milestones[0]
+            await notificationTriggerService.triggerTaskComment(
+              user.id,
+              {
+                task_id: taskData.id,
+                task_title: taskData.title,
+                milestone_id: taskData.milestone_id,
+                milestone_title: milestone.title,
+                booking_id: milestone.booking_id,
+                project_name: milestone.title,
+                actor_id: user.id,
+                actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
+              }
+            )
+          }
+        }
+      } catch (notificationError) {
+        console.warn('Failed to send notification:', notificationError)
+      }
 
       // Optimistically show the new comment under the task
       setTaskComments(prev => {
