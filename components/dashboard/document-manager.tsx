@@ -156,11 +156,21 @@ export function DocumentManager({
     }
 
     try {
-      // For now, we'll need to get the other user's ID from the booking
-      // This would typically come from the booking data
-      const otherUserId = 'placeholder' // This should be the client/provider ID
-      
-      const request = await documentManagementService.createRequest(bookingId, requestForm, otherUserId)
+      // Resolve the other participant from the booking
+      const supabase = await documentManagementService['getClient']?.() || (await import('@/lib/supabase')).getSupabaseClient()
+      const client = typeof supabase === 'function' ? await supabase() : supabase
+      const { data: { user } } = await client.auth.getUser()
+      const { data: booking } = await client
+        .from('bookings')
+        .select('id, client_id, provider_id')
+        .eq('id', bookingId)
+        .single()
+
+      const otherUserId = booking
+        ? (user?.id === booking.client_id ? booking.provider_id : booking.client_id)
+        : null
+
+      const request = await documentManagementService.createRequest(bookingId, requestForm, otherUserId || '')
       if (request) {
         setRequests(prev => [request, ...prev])
         onRequestCreated?.(request)

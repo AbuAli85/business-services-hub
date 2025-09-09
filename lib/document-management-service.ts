@@ -134,7 +134,7 @@ export class DocumentManagementService {
         milestone_id: form.milestone_id || null,
         task_id: form.task_id || null,
         requested_by: user.id,
-        requested_from: requestedFrom,
+        requested_from: (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedFrom) ? requestedFrom : user.id),
         title: form.title,
         description: form.description,
         category_id: form.category_id || null,
@@ -146,12 +146,7 @@ export class DocumentManagementService {
       const { data, error } = await supabase
         .from('document_requests')
         .insert(requestData)
-        .select(`
-          *,
-          category:document_categories(*),
-          requested_by_user:profiles!document_requests_requested_by_fkey(id, full_name, email),
-          requested_from_user:profiles!document_requests_requested_from_fkey(id, full_name, email)
-        `)
+        .select('*')
         .single()
 
       if (error) throw error
