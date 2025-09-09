@@ -322,6 +322,40 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', service_id)
 
+    // Send notifications for booking creation
+    try {
+      const { notificationTriggerService } = await import('@/lib/notification-triggers')
+      
+      // Notify the client about their booking
+      await notificationTriggerService.triggerBookingCreated(
+        user.id, // client_id
+        {
+          booking_id: booking.id,
+          booking_title: booking.title,
+          service_name: service.title,
+          actor_id: service.provider_id || user.id,
+          actor_name: service.provider?.full_name || 'Service Provider'
+        }
+      )
+
+      // Notify the provider about the new booking
+      if (service.provider_id) {
+        await notificationTriggerService.triggerBookingCreated(
+          service.provider_id, // provider_id
+          {
+            booking_id: booking.id,
+            booking_title: booking.title,
+            service_name: service.title,
+            actor_id: user.id,
+            actor_name: clientProfile?.full_name || 'Client'
+          }
+        )
+      }
+    } catch (notificationError) {
+      console.warn('Failed to send booking notifications:', notificationError)
+      // Non-blocking - don't fail the booking if notifications fail
+    }
+
     // Generate monthly milestones from service templates via application logic
     try {
       await ProgressDataService.generateMonthlyMilestonesForBooking(booking.id)

@@ -284,6 +284,96 @@ export class NotificationTriggerService {
     return notificationService.createFromTemplate(userId, 'booking_created', data, template)
   }
 
+  async triggerBookingUpdated(
+    userId: string,
+    bookingData: {
+      booking_id: string
+      booking_title: string
+      service_name: string
+      actor_id: string
+      actor_name: string
+    }
+  ) {
+    const template = getNotificationTemplate('booking_updated')
+    const data: NotificationData = {
+      booking_id: bookingData.booking_id,
+      booking_title: bookingData.booking_title,
+      service_name: bookingData.service_name,
+      actor_id: bookingData.actor_id,
+      actor_name: bookingData.actor_name
+    }
+
+    return notificationService.createFromTemplate(userId, 'booking_updated', data, template)
+  }
+
+  async triggerBookingCancelled(
+    userId: string,
+    bookingData: {
+      booking_id: string
+      booking_title: string
+      service_name: string
+      actor_id: string
+      actor_name: string
+    }
+  ) {
+    const template = getNotificationTemplate('booking_cancelled')
+    const data: NotificationData = {
+      booking_id: bookingData.booking_id,
+      booking_title: bookingData.booking_title,
+      service_name: bookingData.service_name,
+      actor_id: bookingData.actor_id,
+      actor_name: bookingData.actor_name
+    }
+
+    return notificationService.createFromTemplate(userId, 'booking_cancelled', data, template)
+  }
+
+  async triggerBookingConfirmed(
+    userId: string,
+    bookingData: {
+      booking_id: string
+      booking_title: string
+      service_name: string
+      actor_id: string
+      actor_name: string
+    }
+  ) {
+    const template = getNotificationTemplate('booking_confirmed')
+    const data: NotificationData = {
+      booking_id: bookingData.booking_id,
+      booking_title: bookingData.booking_title,
+      service_name: bookingData.service_name,
+      actor_id: bookingData.actor_id,
+      actor_name: bookingData.actor_name
+    }
+
+    return notificationService.createFromTemplate(userId, 'booking_confirmed', data, template)
+  }
+
+  async triggerBookingReminder(
+    userId: string,
+    bookingData: {
+      booking_id: string
+      booking_title: string
+      service_name: string
+      scheduled_date: string
+      actor_id: string
+      actor_name: string
+    }
+  ) {
+    const template = getNotificationTemplate('booking_reminder')
+    const data: NotificationData = {
+      booking_id: bookingData.booking_id,
+      booking_title: bookingData.booking_title,
+      service_name: bookingData.service_name,
+      scheduled_date: bookingData.scheduled_date,
+      actor_id: bookingData.actor_id,
+      actor_name: bookingData.actor_name
+    }
+
+    return notificationService.createFromTemplate(userId, 'booking_reminder', data, template)
+  }
+
   async triggerBookingCompleted(
     userId: string,
     bookingData: {
