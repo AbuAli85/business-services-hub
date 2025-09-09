@@ -282,10 +282,16 @@ export default function EnhancedBookingDetails({
       generateSmartSuggestions()
       loadOverdueCount()
       loadMilestoneData()
+    }
+  }, [bookingId])
+
+  // After booking is loaded, compute monthly summary & overview extras scoped to this booking
+  useEffect(() => {
+    if (booking) {
       loadMonthlySummary()
       loadOverviewExtras()
     }
-  }, [bookingId])
+  }, [booking])
 
   // Initialize tempProgress when progress modal opens
   useEffect(() => {
@@ -702,8 +708,8 @@ export default function EnhancedBookingDetails({
       since.setMonth(since.getMonth() - 5)
       const { data, error } = await supabase
         .from('bookings')
-        .select('id, created_at, amount, currency, payment_status, client_id, provider_id')
-        .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+        .select('id, created_at, amount, currency, payment_status, client_id, provider_id, service_id')
+        .eq('service_id', (booking as any)?.service?.id || '')
         .gte('created_at', since.toISOString())
       if (error) throw error
       setBookingsWindow(data || [])
