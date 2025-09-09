@@ -74,6 +74,7 @@ export function ClientMilestoneViewer({
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [comments, setComments] = useState<Record<string, Comment[]>>({})
   const [approvals, setApprovals] = useState<Record<string, Approval[]>>({})
+  const [taskComments, setTaskComments] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
@@ -158,6 +159,34 @@ export function ClientMilestoneViewer({
       } catch (err) {
         console.warn('Approvals table not available:', err)
         setApprovals({})
+      }
+
+      // Load task comments for all visible tasks
+      try {
+        const taskIds = (milestonesData || []).flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
+        if (taskIds.length > 0) {
+          const { data: commentsRows, error: tcErr } = await supabase
+            .from('task_comments')
+            .select('id, task_id, user_id, comment, created_at')
+            .in('task_id', taskIds)
+            .order('created_at', { ascending: false })
+          if (!tcErr) {
+            const grouped: Record<string, any[]> = {}
+            for (const row of commentsRows || []) {
+              if (!grouped[row.task_id]) grouped[row.task_id] = []
+              grouped[row.task_id].push(row)
+            }
+            setTaskComments(grouped)
+          } else {
+            console.warn('Task comments load error:', tcErr)
+            setTaskComments({})
+          }
+        } else {
+          setTaskComments({})
+        }
+      } catch (e) {
+        console.warn('Task comments not available:', e)
+        setTaskComments({})
       }
 
     } catch (err) {
@@ -565,6 +594,7 @@ export function ClientMilestoneViewer({
             milestone={milestone}
             comments={comments[milestone.id] || []}
             approvals={approvals[milestone.id] || []}
+            taskComments={taskComments}
             onComment={() => {
               setSelectedMilestone(milestone)
               setShowCommentDialog(true)
@@ -728,6 +758,7 @@ interface ClientMilestoneCardProps {
   milestone: Milestone
   comments: Comment[]
   approvals: Approval[]
+  taskComments?: Record<string, any[]>
   onComment: () => void
   onApprove: () => void
   onDownload: () => void
@@ -738,6 +769,7 @@ function ClientMilestoneCard({
   milestone,
   comments,
   approvals,
+  taskComments = {},
   onComment,
   onApprove,
   onDownload,
@@ -858,26 +890,44 @@ function ClientMilestoneCard({
                 <h4 className="font-medium mb-3">Tasks ({tasks.length})</h4>
                 <div className="space-y-2">
                   {tasks.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
-                      <div className="flex items-center gap-3 flex-1">
-                        {task.status === 'completed' ? 
-                          <CheckCircle className="h-4 w-4 text-green-600" /> : 
-                          <Clock className="h-4 w-4 text-gray-500" />
-                        }
-                        <div className="flex-1">
-                          <h5 className="font-medium text-sm">{task.title}</h5>
-                          {task.description && (
-                            <p className="text-xs text-gray-600 mt-1">{task.description}</p>
-                          )}
+                    <div key={task.id} className="p-3 border rounded-lg bg-gray-50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          {task.status === 'completed' ? 
+                            <CheckCircle className="h-4 w-4 text-green-600" /> : 
+                            <Clock className="h-4 w-4 text-gray-500" />
+                          }
+                          <div className="flex-1">
+                            <h5 className="font-medium text-sm">{task.title}</h5>
+                            {task.description && (
+                              <p className="text-xs text-gray-600 mt-1">{task.description}</p>
+                            )}
+                          </div>
                         </div>
+                        <Badge className={
+                          task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }>
+                          {task.status.replace('_', ' ')}
+                        </Badge>
                       </div>
-                      <Badge className={
-                        task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }>
-                        {task.status.replace('_', ' ')}
-                      </Badge>
+                      
+                      {/* Task Comments */}
+                      {taskComments[task.id]?.length ? (
+                        <div className="bg-white border rounded p-2">
+                          <div className="text-xs font-medium text-gray-600 mb-1">Comments</div>
+                          <ul className="space-y-1 max-h-28 overflow-auto">
+                            {taskComments[task.id].map((c: any) => (
+                              <li key={c.id} className="text-xs text-gray-700 flex items-center gap-2">
+                                <span className="text-gray-400">•</span>
+                                <span className="truncate">{c.comment}</span>
+                                <span className="ml-auto text-[10px] text-gray-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
