@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 
-import { triggerUserRegistered, triggerProfileUpdated } from '@/lib/notification-triggers-comprehensive'
+import { triggerUserRegistered } from '@/lib/notification-triggers-simple'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
