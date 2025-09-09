@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     })
     
     const emailPayload = {
-      Source: from || 'send@marketing.thedigitalmorph.com', // Use your verified domain
+      Source: from || 'notifications@thedigitalmorph.com', // Use your verified domain
       Destination: {
         ToAddresses: [to],
       },
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
           },
         },
       },
-      ReplyToAddresses: [replyTo || 'noreply@marketing.thedigitalmorph.com'],
+      ReplyToAddresses: [replyTo || 'noreply@thedigitalmorph.com'],
       Tags: [
         {
           Name: 'Notification-ID',
