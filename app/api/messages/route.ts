@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
+import { triggerMessageReceived } from '@/lib/notification-triggers-comprehensive'
 // Force fresh deployment - Updated: 2024-12-27 15:30 UTC
 // Validation schema for message creation
 const CreateMessageSchema = z.object({
@@ -188,19 +189,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create notification for receiver
-    await supabase.from('notifications').insert({
-      user_id: receiver_id,
-      type: 'message',
-      title: 'New Message',
-      message: `New message from ${messageWithProfiles.sender.full_name}: ${subject}`,
-      metadata: { 
-        message_id: message.id, 
-        booking_id,
-        sender_name: messageWithProfiles.sender.full_name
-      },
-      priority: 'medium'
-    })
+    // Send notification to receiver about new message
+    try {
+      await triggerMessageReceived(message.id, {
+        receiver_id: receiver_id,
+        sender_id: user.id,
+        sender_name: messageWithProfiles.sender.full_name,
+        subject: subject,
+        content: content,
+        booking_id: booking_id
+      })
+    } catch (notificationError) {
+      console.warn('Failed to send message notification:', notificationError)
+      // Non-blocking - don't fail the message creation if notifications fail
+    }
 
     return NextResponse.json({ 
       success: true,

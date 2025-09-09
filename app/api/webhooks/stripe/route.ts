@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getSupabaseClient } from '@/lib/supabase'
 import { headers } from 'next/headers'
+import { triggerPaymentReceived, triggerPaymentFailed } from '@/lib/notification-triggers-comprehensive'
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -122,36 +123,21 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, supabas
     console.error('Error creating invoice:', invoiceError)
   }
 
-  // Notify provider
-  if (provider_id) {
-    await supabase.from('notifications').insert({
-      user_id: provider_id,
-      type: 'payment',
-      title: 'Payment Received',
-      message: `Payment received for ${service_title} - ${paymentIntent.currency.toUpperCase()} ${paymentIntent.amount / 100}`,
-      metadata: { 
-        booking_id, 
-        amount: paymentIntent.amount / 100,
-        currency: paymentIntent.currency.toUpperCase()
-      },
-      priority: 'high'
+  // Send payment notifications to both client and provider
+  try {
+    await triggerPaymentReceived(paymentIntent.id, {
+      booking_id: booking_id,
+      client_id: client_id,
+      provider_id: provider_id,
+      amount: paymentIntent.amount / 100,
+      currency: paymentIntent.currency.toUpperCase(),
+      payment_method: 'stripe',
+      transaction_id: paymentIntent.id,
+      service_name: service_title
     })
-  }
-
-  // Notify client
-  if (client_id) {
-    await supabase.from('notifications').insert({
-      user_id: client_id,
-      type: 'payment',
-      title: 'Payment Successful',
-      message: `Payment successful for ${service_title}`,
-      metadata: { 
-        booking_id, 
-        amount: paymentIntent.amount / 100,
-        currency: paymentIntent.currency.toUpperCase()
-      },
-      priority: 'medium'
-    })
+  } catch (notificationError) {
+    console.warn('Failed to send payment notifications:', notificationError)
+    // Non-blocking - don't fail the payment processing if notifications fail
   }
 
   console.log(`Payment successful for booking ${booking_id}`)
@@ -181,16 +167,20 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent, supabas
     })
     .eq('stripe_payment_intent_id', paymentIntent.id)
 
-  // Notify client
-  if (client_id) {
-    await supabase.from('notifications').insert({
-      user_id: client_id,
-      type: 'payment',
-      title: 'Payment Failed',
-      message: `Payment failed for ${service_title}. Please try again.`,
-      metadata: { booking_id },
-      priority: 'high'
+  // Send payment failure notification
+  try {
+    await triggerPaymentFailed(paymentIntent.id, {
+      booking_id: booking_id,
+      client_id: client_id,
+      provider_id: paymentIntent.metadata.provider_id,
+      amount: paymentIntent.amount / 100,
+      currency: paymentIntent.currency.toUpperCase(),
+      error_message: 'Payment processing failed',
+      service_name: service_title
     })
+  } catch (notificationError) {
+    console.warn('Failed to send payment failure notification:', notificationError)
+    // Non-blocking - don't fail the payment processing if notifications fail
   }
 
   console.log(`Payment failed for booking ${booking_id}`)

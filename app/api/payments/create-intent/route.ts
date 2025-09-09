@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { getSupabaseClient } from '@/lib/supabase'
 import { z } from 'zod'
 
+import { triggerPaymentReceived, triggerPaymentFailed } from '@/lib/notification-triggers-comprehensive'
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16'

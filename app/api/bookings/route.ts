@@ -3,6 +3,13 @@ import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { z } from 'zod'
 
+import { 
+  triggerBookingCreated,
+  triggerBookingUpdated, 
+  triggerBookingCancelled, 
+  triggerBookingConfirmed, 
+  triggerBookingCompleted 
+} from '@/lib/notification-triggers-comprehensive'
 // CORS headers for cross-domain access
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Allow all origins in production, or use process.env.NEXT_PUBLIC_ALLOWED_ORIGINS
@@ -324,33 +331,18 @@ export async function POST(request: NextRequest) {
 
     // Send notifications for booking creation
     try {
-      const { notificationTriggerService } = await import('@/lib/notification-triggers')
-      
-      // Notify the client about their booking
-      await notificationTriggerService.triggerBookingCreated(
-        user.id, // client_id
-        {
-          booking_id: booking.id,
-          booking_title: booking.title,
-          service_name: service.title,
-          actor_id: service.provider_id || user.id,
-          actor_name: service.provider?.full_name || 'Service Provider'
-        }
-      )
-
-      // Notify the provider about the new booking
-      if (service.provider_id) {
-        await notificationTriggerService.triggerBookingCreated(
-          service.provider_id, // provider_id
-          {
-            booking_id: booking.id,
-            booking_title: booking.title,
-            service_name: service.title,
-            actor_id: user.id,
-            actor_name: clientProfile?.full_name || 'Client'
-          }
-        )
-      }
+      // Notify both client and provider about the new booking
+      await triggerBookingCreated(booking.id, {
+        client_id: user.id,
+        client_name: clientProfile?.full_name || 'Client',
+        provider_id: service.provider_id,
+        provider_name: service.provider?.full_name || 'Service Provider',
+        service_name: service.title,
+        booking_title: booking.title,
+        scheduled_date: booking.scheduled_date,
+        total_amount: booking.amount,
+        currency: booking.currency
+      })
     } catch (notificationError) {
       console.warn('Failed to send booking notifications:', notificationError)
       // Non-blocking - don't fail the booking if notifications fail

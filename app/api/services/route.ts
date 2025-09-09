@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
+import { triggerServiceCreated, triggerServiceUpdated, triggerServiceDeactivated } from '@/lib/notification-triggers-comprehensive'
 // Validation schema for service creation
 const CreateServiceSchema = z.object({
   title: z.string().min(3).max(100),
@@ -171,14 +172,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create service' }, { status: 500 })
     }
     
-    // Create notification for admin (if needed)
-    await supabase.from('notifications').insert({
-      user_id: user.id,
-      type: 'service_created',
-      title: 'Service Created Successfully',
-      message: `Your service "${serviceData.title}" has been created and is now active.`,
-      data: { service_id: service.id }
-    })
+    // Send notification to provider about service creation
+    try {
+      await triggerServiceCreated(service.id, {
+        title: serviceData.title,
+        provider_id: user.id,
+        provider_name: user.email // You might want to get full name from profile
+      })
+    } catch (notificationError) {
+      console.warn('Failed to send service creation notification:', notificationError)
+      // Non-blocking - don't fail the service creation if notifications fail
+    }
     
     return NextResponse.json({ 
       success: true,
