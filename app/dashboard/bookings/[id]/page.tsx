@@ -62,7 +62,7 @@ export default function BookingDetailsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to: 'operations@falconeyegroup.net',
+          to: 'chairman@falconeyegroup.net',
           subject: `Email Test - ${new Date().toLocaleString()}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

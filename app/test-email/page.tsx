@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
 
 export default function TestEmailPage() {
-  const [email, setEmail] = useState('operations@falconeyegroup.net')
+  const [email, setEmail] = useState('chairman@falconeyegroup.net')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string; data?: any } | null>(null)
 

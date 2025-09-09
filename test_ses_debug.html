@@ -65,8 +65,8 @@
         <div class="test-section info">
             <h3>📋 Current Configuration</h3>
             <p><strong>API Endpoint:</strong> https://marketing.thedigitalmorph.com/api/send-email</p>
-            <p><strong>From Address:</strong> send@marketing.thedigitalmorph.com</p>
-            <p><strong>Test Email:</strong> operations@falconeyegroup.net</p>
+            <p><strong>From Address:</strong> notifications@thedigitalmorph.com</p>
+            <p><strong>Test Email:</strong> chairman@falconeyegroup.net</p>
             <p><strong>Service:</strong> Amazon SES (AWS)</p>
         </div>
 
@@ -137,7 +137,7 @@
             showResult('email-result', 'Sending test email...', 'info');
             
             const testData = {
-                to: 'operations@falconeyegroup.net',
+                to: 'chairman@falconeyegroup.net',
                 subject: `SES Debug Test - ${new Date().toLocaleString()}`,
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -148,8 +148,8 @@
                     </div>
                 `,
                 text: `SES Debug Test Email - ${new Date().toISOString()}`,
-                from: 'send@marketing.thedigitalmorph.com',
-                replyTo: 'noreply@marketing.thedigitalmorph.com',
+                from: 'notifications@thedigitalmorph.com',
+                replyTo: 'noreply@thedigitalmorph.com',
                 notificationId: 'debug-' + Date.now(),
                 notificationType: 'test',
                 userId: 'debug-user'
@@ -190,7 +190,7 @@
                     replyTo: 'noreply@marketing.thedigitalmorph.com'
                 } },
                 { name: 'POST Request (Full)', method: 'POST', data: {
-                    to: 'operations@falconeyegroup.net',
+                    to: 'chairman@falconeyegroup.net',
                     subject: 'Detailed SES Test',
                     html: '<p>Test</p>',
                     text: 'Test',
@@ -244,7 +244,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        to: 'operations@falconeyegroup.net',
+                        to: 'chairman@falconeyegroup.net',
                         subject: 'Server Response Test',
                         html: '<p>Test</p>',
                         text: 'Test',

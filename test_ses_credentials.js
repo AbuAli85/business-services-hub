@@ -34,9 +34,9 @@ async function testSESCredentials() {
 
     // Test with a simple email
     const testEmail = {
-      Source: 'send@marketing.thedigitalmorph.com',
+      Source: 'notifications@thedigitalmorph.com',
       Destination: {
-        ToAddresses: ['operations@falconeyegroup.net'],
+        ToAddresses: ['chairman@falconeyegroup.net'],
       },
       Message: {
         Subject: {
