@@ -576,7 +576,7 @@ export function ProfessionalMilestoneSystem({
             start_date: taskForm.start_date || null,
             due_date: taskForm.due_date || null,
             estimated_hours: taskForm.estimated_hours || 0,
-            assigned_to: taskForm.assigned_to || null,
+            assigned_to: (typeof taskForm.assigned_to === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(taskForm.assigned_to)) ? taskForm.assigned_to : null,
             risk_level: taskForm.risk_level,
             updated_at: new Date().toISOString()
           })
@@ -599,8 +599,7 @@ export function ProfessionalMilestoneSystem({
             estimated_hours: taskForm.estimated_hours || 0,
             actual_hours: 0,
             progress_percentage: 0,
-            assigned_to: taskForm.assigned_to || null,
-            created_by: 'current_user', // This should be the actual user ID
+            assigned_to: (typeof taskForm.assigned_to === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(taskForm.assigned_to)) ? taskForm.assigned_to : null,
             risk_level: taskForm.risk_level,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
