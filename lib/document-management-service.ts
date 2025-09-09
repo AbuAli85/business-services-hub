@@ -267,14 +267,7 @@ export class DocumentManagementService {
         throw new Error('Documents table does not exist. Please run the database migration first.')
       }
 
-      // Check if storage bucket exists
-      const { data: bucketList, error: bucketError } = await supabase.storage.listBuckets()
-      if (bucketError) throw bucketError
-      
-      const documentsBucket = bucketList?.find((bucket: any) => bucket.name === 'documents')
-      if (!documentsBucket) {
-        throw new Error('Documents storage bucket not found. Please create a "documents" bucket in Supabase Storage.')
-      }
+      // Skip listing buckets (requires elevated perms on some projects). Rely on upload error for detection.
 
       // Generate unique file name
       const fileExt = form.file.name.split('.').pop()
