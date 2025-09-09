@@ -29,6 +29,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { documentManagementService } from '@/lib/document-management-service'
+import { getSupabaseClient } from '@/lib/supabase'
 import { 
   Document, 
   DocumentRequest, 
