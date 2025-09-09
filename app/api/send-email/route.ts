@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
+import { Resend } from 'resend'
 
 export async function POST(request: NextRequest) {
   // Handle CORS preflight
@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for AWS SES credentials
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    // Check for Resend API key
+    if (!process.env.RESEND_API_KEY) {
       return NextResponse.json(
-        { error: 'AWS credentials not configured. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY' },
+        { error: 'RESEND_API_KEY environment variable is not set' },
         { 
           status: 500,
           headers: {
@@ -50,78 +50,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('🔑 AWS credentials exist:', {
-      accessKey: !!process.env.AWS_ACCESS_KEY_ID,
-      secretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
-      region: process.env.AWS_REGION || 'us-east-1'
-    })
+    console.log('🔑 RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY)
+    console.log('🔑 RESEND_API_KEY length:', process.env.RESEND_API_KEY?.length || 0)
     
-    // Initialize SES client
-    const sesClient = new SESClient({
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    })
+    const resend = new Resend(process.env.RESEND_API_KEY)
     
     const emailPayload = {
-      Source: from || 'notifications@thedigitalmorph.com', // Use your verified domain
-      Destination: {
-        ToAddresses: [to],
+      from: from || 'notifications@thedigitalmorph.com',
+      to: to,
+      subject: subject,
+      html: html,
+      text: text,
+      replyTo: replyTo || 'noreply@thedigitalmorph.com',
+      headers: {
+        'X-Notification-ID': notificationId || '',
+        'X-Notification-Type': notificationType || '',
+        'X-User-ID': userId || '',
       },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: 'UTF-8',
-        },
-        Body: {
-          Html: {
-            Data: html,
-            Charset: 'UTF-8',
-          },
-          Text: {
-            Data: text,
-            Charset: 'UTF-8',
-          },
-        },
-      },
-      ReplyToAddresses: [replyTo || 'noreply@thedigitalmorph.com'],
-      Tags: [
-        {
-          Name: 'Notification-ID',
-          Value: notificationId || '',
-        },
-        {
-          Name: 'Notification-Type',
-          Value: notificationType || '',
-        },
-        {
-          Name: 'User-ID',
-          Value: userId || '',
-        },
-      ],
     }
     
-    console.log('📧 Sending email with SES payload:', {
-      Source: emailPayload.Source,
-      ToAddresses: emailPayload.Destination.ToAddresses,
-      Subject: emailPayload.Message.Subject.Data,
-      ReplyToAddresses: emailPayload.ReplyToAddresses,
-      hasHtml: !!emailPayload.Message.Body.Html.Data,
-      hasText: !!emailPayload.Message.Body.Text.Data,
-      Tags: emailPayload.Tags
+    console.log('📧 Sending email with Resend payload:', {
+      from: emailPayload.from,
+      to: emailPayload.to,
+      subject: emailPayload.subject,
+      replyTo: emailPayload.replyTo,
+      hasHtml: !!emailPayload.html,
+      hasText: !!emailPayload.text,
+      headers: emailPayload.headers
     })
     
-    const command = new SendEmailCommand(emailPayload)
-    const response = await sesClient.send(command)
+    const { data, error } = await resend.emails.send(emailPayload)
     
-    console.log('📊 SES response:', response)
+    console.log('📊 Resend response:', { data, error })
 
-    if (response.$metadata.httpStatusCode !== 200) {
-      console.error('❌ SES email error:', response.$metadata)
+    if (error) {
+      console.error('❌ Resend email error:', error)
+      console.error('❌ Error details:', JSON.stringify(error, null, 2))
       return NextResponse.json(
-        { success: false, error: 'Failed to send email via SES' },
+        { success: false, error: error.message },
         { 
           status: 500,
           headers: {
@@ -133,9 +99,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('✅ Email sent successfully! Message ID:', response.MessageId)
+    console.log('✅ Email sent successfully! Message ID:', data?.id)
     return NextResponse.json(
-      { success: true, messageId: response.MessageId },
+      { success: true, messageId: data?.id },
       {
         status: 200,
         headers: {
