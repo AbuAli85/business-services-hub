@@ -107,6 +107,31 @@ export function DocumentManager({
         documentManagementService.getStats(bookingId)
       ])
 
+      // Enrich documents with uploader display names
+      let enrichedDocuments = documentsData
+      try {
+        const supabase = await getSupabaseClient()
+        const ids = Array.from(new Set((documentsData || []).map(d => d.uploaded_by).filter(Boolean))) as string[]
+        if (ids.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', ids)
+          const idToProfile: Record<string, { id: string, full_name?: string, email?: string }> = {}
+          for (const p of (profiles || [])) idToProfile[p.id] = p
+          enrichedDocuments = (documentsData || []).map(d => ({
+            ...d,
+            uploaded_by_user: d.uploaded_by ? {
+              id: d.uploaded_by,
+              full_name: idToProfile[d.uploaded_by]?.full_name || idToProfile[d.uploaded_by]?.email || 'User',
+              email: idToProfile[d.uploaded_by]?.email || ''
+            } : undefined
+          }))
+        }
+      } catch {
+        enrichedDocuments = documentsData
+      }
+
       // Enrich requests with display names for requested_by and requested_from
       let enrichedRequests = requestsData
       try {
@@ -146,7 +171,7 @@ export function DocumentManager({
         enrichedRequests = requestsData
       }
 
-      setDocuments(documentsData)
+      setDocuments(enrichedDocuments)
       setRequests(enrichedRequests)
       setCategories(categoriesData)
       setStats(statsData)
