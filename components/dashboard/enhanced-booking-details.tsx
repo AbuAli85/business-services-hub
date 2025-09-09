@@ -239,6 +239,20 @@ export default function EnhancedBookingDetails({
     total: 0,
     overdue: 0
   })
+  // Monthly summary + mini chart
+  const [monthlySummary, setMonthlySummary] = useState({
+    monthLabel: '',
+    bookings: 0,
+    amount: 0,
+    paid: 0,
+    pending: 0
+  })
+  const [sixMonthTrend, setSixMonthTrend] = useState<{ label: string; count: number; amount: number }[]>([])
+  const [chartMode, setChartMode] = useState<'count'|'amount'>('count')
+  const [bookingsWindow, setBookingsWindow] = useState<any[]>([])
+  // Recent overview extras
+  const [recentActivity, setRecentActivity] = useState<{ id: string; when: string; text: string; type: 'task'|'milestone'|'document' }[]>([])
+  const [recentFiles, setRecentFiles] = useState<{ id: string; name: string; url: string; created_at: string }[]>([])
   
   // Modal state variables
   const [progressValue, setProgressValue] = useState(0)
@@ -248,6 +262,17 @@ export default function EnhancedBookingDetails({
   const [meetingTime, setMeetingTime] = useState('')
   const [meetingNotes, setMeetingNotes] = useState('')
 
+  // Surprise: sticky quick action bar on scroll
+  const [showStickyBar, setShowStickyBar] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => {
+      setShowStickyBar(window.scrollY > 140)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   useEffect(() => {
     if (bookingId) {
       loadBookingData()
@@ -255,6 +280,8 @@ export default function EnhancedBookingDetails({
       generateSmartSuggestions()
       loadOverdueCount()
       loadMilestoneData()
+      loadMonthlySummary()
+      loadOverviewExtras()
     }
   }, [bookingId])
 
@@ -660,6 +687,99 @@ export default function EnhancedBookingDetails({
       console.error('Error loading milestone data:', error)
       setMilestones([])
       setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
+    }
+  }
+
+  const loadMonthlySummary = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      // Pull last 6 months of this user's bookings (as client or provider)
+      const since = new Date()
+      since.setMonth(since.getMonth() - 5)
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, created_at, amount, currency, payment_status, client_id, provider_id')
+        .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+        .gte('created_at', since.toISOString())
+      if (error) throw error
+      setBookingsWindow(data || [])
+
+      const now = new Date()
+      const curMonth = now.getMonth()
+      const curYear = now.getFullYear()
+
+      // Current month
+      const cur = (data || []).filter((b:any) => {
+        const d = new Date(b.created_at)
+        return d.getMonth() === curMonth && d.getFullYear() === curYear
+      })
+      const amountSum = cur.reduce((s:number,b:any)=> s + (b.amount || 0), 0)
+      const paid = cur.filter((b:any)=> b.payment_status === 'paid').length
+      const pending = cur.filter((b:any)=> (b.payment_status || 'pending') !== 'paid').length
+      setMonthlySummary({
+        monthLabel: now.toLocaleString(undefined,{ month:'long', year:'numeric'}),
+        bookings: cur.length,
+        amount: amountSum,
+        paid,
+        pending
+      })
+
+      // 6-month trend
+      const trend: { [k:string]: { count:number; amount:number; label:string } } = {}
+      for (let i=5;i>=0;i--) {
+        const d = new Date()
+        d.setMonth(d.getMonth()-i)
+        const key = `${d.getFullYear()}-${d.getMonth()}`
+        trend[key] = { count:0, amount:0, label: d.toLocaleString(undefined,{ month:'short'}) }
+      }
+      (data || []).forEach((b:any)=>{
+        const d = new Date(b.created_at)
+        const key = `${d.getFullYear()}-${d.getMonth()}`
+        if (trend[key]) {
+          trend[key].count += 1
+          trend[key].amount += (b.amount || 0)
+        }
+      })
+      setSixMonthTrend(Object.values(trend))
+    } catch (e) {
+      console.warn('Monthly summary error:', e)
+      setMonthlySummary({ monthLabel:'This month', bookings:0, amount:0, paid:0, pending:0 })
+      setSixMonthTrend([])
+    }
+  }
+
+  const loadOverviewExtras = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      // Recent files for this booking
+      const { data: files } = await supabase
+        .from('documents')
+        .select('id, original_name, file_url, created_at')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+        .limit(3)
+      setRecentFiles((files||[]).map((f:any)=>({ id:f.id, name:f.original_name, url:f.file_url, created_at:f.created_at })))
+
+      // Build recent activity from milestones, tasks and documents (local + fetched files)
+      const acts: { id:string; when:string; text:string; type:'task'|'milestone'|'document' }[] = []
+      milestones.forEach((m:any)=>{
+        if (m.created_at) acts.push({ id:m.id, when:m.created_at, text:`Milestone created: ${m.title}`, type:'milestone' })
+      })
+      allTasks.forEach((t:any)=>{
+        if (t.created_at) acts.push({ id:t.id, when:t.created_at, text:`Task added: ${t.title}`, type:'task' })
+        if (t.completed_at) acts.push({ id:`${t.id}-c`, when:t.completed_at, text:`Task completed: ${t.title}`, type:'task' })
+      })
+      ;(files||[]).forEach((f:any)=>{
+        acts.push({ id:f.id, when:f.created_at, text:`File uploaded: ${f.original_name}`, type:'document' })
+      })
+      acts.sort((a,b)=> new Date(b.when).getTime() - new Date(a.when).getTime())
+      setRecentActivity(acts.slice(0,5))
+    } catch (e) {
+      console.warn('Overview extras error:', e)
+      setRecentActivity([])
+      setRecentFiles([])
     }
   }
 
@@ -1605,6 +1725,29 @@ export default function EnhancedBookingDetails({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Sticky Quick Action Bar */}
+      {showStickyBar && booking && (
+        <div className="fixed top-0 left-0 right-0 z-40 backdrop-blur bg-white/80 border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Booking</span>
+              <span className="font-semibold">#{booking.id.slice(0,8)}</span>
+              <Badge className={`px-2 py-0.5 ${getStatusColor(booking.status)}`}>{booking.status.replace('_',' ')}</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={()=>setShowMessageModal(true)}>
+                <MessageSquare className="h-4 w-4 mr-1" /> Message
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleScheduleFollowUp}>
+                <Calendar className="h-4 w-4 mr-1" /> Schedule
+              </Button>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={()=>navigator.clipboard.writeText(window.location.href)}>
+                <Share2 className="h-4 w-4 mr-1" /> Share
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         
         {/* Enhanced Professional Header */}
@@ -2110,8 +2253,8 @@ export default function EnhancedBookingDetails({
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-4">
-                {/* Key Metrics Dashboard */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Key Metrics Dashboard + Progress Ring */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
@@ -2177,6 +2320,29 @@ export default function EnhancedBookingDetails({
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Progress Ring */}
+                  <Card className="border-0 shadow-sm bg-white">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-center">
+                        <div className="relative h-16 w-16">
+                          <svg viewBox="0 0 36 36" className="h-16 w-16">
+                            <path className="text-gray-200" stroke="currentColor" strokeWidth="3.6" fill="none" d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path className="text-blue-600" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round" fill="none"
+                              strokeDasharray={`${booking.progress_percentage}, 100`} d="M18 2.0845
+                              a 15.9155 15.9155 0 0 1 0 31.831
+                              a 15.9155 15.9155 0 0 1 0 -31.831" />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-sm font-semibold text-blue-700">{booking.progress_percentage}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-center mt-1 text-xs text-gray-600">Progress</div>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Project Information Card */}
@@ -2188,6 +2354,88 @@ export default function EnhancedBookingDetails({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => {
+                          // Export current month summary to CSV
+                          const rows = [['Month','Bookings','Amount','Paid','Pending'],[monthlySummary.monthLabel, monthlySummary.bookings.toString(), monthlySummary.amount.toString(), monthlySummary.paid.toString(), monthlySummary.pending.toString()]]
+                          const csv = rows.map(r=>r.join(',')).join('\n')
+                          const blob = new Blob([csv], { type:'text/csv' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a'); a.href=url; a.download='monthly-summary.csv'; a.click(); URL.revokeObjectURL(url)
+                        }}>Export CSV</Button>
+                        <Button size="sm" onClick={() => {
+                          // Simple PDF via window.print fallback (prints the summary section)
+                          window.print()
+                        }}>Export PDF</Button>
+                      </div>
+                      {/* Monthly Summary */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-3 rounded bg-blue-50 border border-blue-100">
+                          <div className="text-xs text-blue-700">This month</div>
+                          <div className="text-sm font-semibold text-blue-900">{monthlySummary.monthLabel}</div>
+                        </div>
+                        <div className="p-3 rounded bg-green-50 border border-green-100">
+                          <div className="text-xs text-green-700">Bookings</div>
+                          <div className="text-lg font-bold text-green-900">{monthlySummary.bookings}</div>
+                        </div>
+                        <div className="p-3 rounded bg-orange-50 border border-orange-100">
+                          <div className="text-xs text-orange-700">Amount</div>
+                          <div className="text-lg font-bold text-orange-900">{formatCurrency(monthlySummary.amount)}</div>
+                        </div>
+                        <div className="p-3 rounded bg-gray-50 border border-gray-200">
+                          <div className="text-xs text-gray-600">Paid / Pending</div>
+                          <div className="text-sm font-semibold text-gray-900">{monthlySummary.paid} / {monthlySummary.pending}</div>
+                        </div>
+                      </div>
+
+                      {/* 6-month mini chart (SVG bars) with toggle + click-to-filter */}
+                      {sixMonthTrend.length > 0 && (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs text-gray-500">Last 6 months</div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className={`px-2 py-0.5 rounded cursor-pointer ${chartMode==='count'?'bg-blue-600 text-white':'bg-gray-100 text-gray-700'}`} onClick={()=>setChartMode('count')}>Count</span>
+                              <span className={`px-2 py-0.5 rounded cursor-pointer ${chartMode==='amount'?'bg-blue-600 text-white':'bg-gray-100 text-gray-700'}`} onClick={()=>setChartMode('amount')}>Amount</span>
+                            </div>
+                          </div>
+                          <div className="flex items-end gap-2 h-20">
+                            {sixMonthTrend.map((m, idx) => {
+                              const base = chartMode==='count' ? sixMonthTrend.map(x=>x.count) : sixMonthTrend.map(x=>x.amount)
+                              const max = Math.max(1, ...base)
+                              const value = chartMode==='count' ? m.count : m.amount
+                              const h = Math.max(4, Math.round((value / max) * 64))
+                              return (
+                                <div key={idx} className="flex flex-col items-center">
+                                  <div className="w-6 bg-blue-200 hover:bg-blue-300 transition-colors rounded-t cursor-pointer"
+                                    style={{ height: h }}
+                                    onClick={() => {
+                                      // Filter Overview to this month (update summary)
+                                      const now = new Date()
+                                      const base = new Date(now.getFullYear(), now.getMonth()- (sixMonthTrend.length-1-idx), 1)
+                                      const month = base.getMonth(); const year = base.getFullYear()
+                                      const monthBookings = bookingsWindow.filter((b:any)=>{
+                                        const d=new Date(b.created_at); return d.getMonth()===month && d.getFullYear()===year
+                                      })
+                                      const amountSum = monthBookings.reduce((s:number,b:any)=> s + (b.amount || 0), 0)
+                                      const paid = monthBookings.filter((b:any)=> b.payment_status==='paid').length
+                                      const pending = monthBookings.filter((b:any)=> (b.payment_status || 'pending')!=='paid').length
+                                      setMonthlySummary({
+                                        monthLabel: base.toLocaleString(undefined,{ month:'long', year:'numeric'}),
+                                        bookings: monthBookings.length,
+                                        amount: amountSum,
+                                        paid,
+                                        pending
+                                      })
+                                    }}
+                                    title={`${m.label}: ${m.count} bookings • ${formatCurrency(m.amount)}`}
+                                  ></div>
+                                  <div className="text-[10px] text-gray-500 mt-1">{m.label}</div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-gray-600">Scheduled Date</label>
@@ -2221,6 +2469,45 @@ export default function EnhancedBookingDetails({
                           </p>
                         </div>
                       )}
+
+                      {/* Overview Extras: Recent Activity & Files */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-gray-700">Recent Activity</h4>
+                          </div>
+                          {recentActivity.length === 0 ? (
+                            <p className="text-xs text-gray-500">No recent activity</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {recentActivity.map(a => (
+                                <li key={a.id} className="text-xs text-gray-700 flex items-center gap-2">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${a.type==='task'?'bg-green-500':a.type==='milestone'?'bg-blue-500':'bg-purple-500'}`}></span>
+                                  <span className="text-gray-500">{new Date(a.when).toLocaleDateString()}:</span>
+                                  <span>{a.text}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-gray-700">Recent Files</h4>
+                          </div>
+                          {recentFiles.length === 0 ? (
+                            <p className="text-xs text-gray-500">No files uploaded</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {recentFiles.map(f => (
+                                <li key={f.id} className="text-xs text-gray-700 flex items-center justify-between">
+                                  <span className="truncate pr-2" title={f.name}>{f.name}</span>
+                                  <a className="text-blue-600 hover:underline" href={f.url} target="_blank" rel="noreferrer">View</a>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
 
                     </CardContent>
                   </Card>
