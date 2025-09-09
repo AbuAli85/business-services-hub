@@ -66,9 +66,13 @@ export function MilestoneDashboardIntegration({
               return acc
             }, {} as Record<string, any[]>)
             setCommentsByMilestone(groupedComments)
+          } else {
+            console.warn('Comments loading error:', commentsError)
+            setCommentsByMilestone({})
           }
         } catch (err) {
           console.warn('Comments not available:', err)
+          setCommentsByMilestone({})
         }
 
         // Load approvals from Supabase
@@ -88,9 +92,13 @@ export function MilestoneDashboardIntegration({
               return acc
             }, {} as Record<string, any[]>)
             setApprovalsByMilestone(groupedApprovals)
+          } else {
+            console.warn('Approvals loading error:', approvalsError)
+            setApprovalsByMilestone({})
           }
         } catch (err) {
           console.warn('Approvals not available:', err)
+          setApprovalsByMilestone({})
         }
 
         // Load time entries from Supabase
