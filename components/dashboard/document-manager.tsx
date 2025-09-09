@@ -105,9 +105,48 @@ export function DocumentManager({
         documentManagementService.getCategories(),
         documentManagementService.getStats(bookingId)
       ])
-      
+
+      // Enrich requests with display names for requested_by and requested_from
+      let enrichedRequests = requestsData
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        const ids = Array.from(new Set(
+          (requestsData || []).flatMap(r => [r.requested_by, r.requested_from]).filter(Boolean)
+        )) as string[]
+        if (ids.length > 0) {
+          // Try profiles first for full_name/email
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', ids)
+
+          const idToProfile: Record<string, { id: string, full_name?: string, email?: string }> = {}
+          if (!profilesError && profiles) {
+            for (const p of profiles) idToProfile[p.id] = p
+          }
+
+          enrichedRequests = (requestsData || []).map(r => ({
+            ...r,
+            requested_by_user: r.requested_by ? {
+              id: r.requested_by,
+              full_name: r.requested_by === user?.id ? 'You' : (idToProfile[r.requested_by]?.full_name || idToProfile[r.requested_by]?.email || 'User'),
+              email: idToProfile[r.requested_by]?.email || ''
+            } : undefined,
+            requested_from_user: r.requested_from ? {
+              id: r.requested_from,
+              full_name: r.requested_from === user?.id ? 'You' : (idToProfile[r.requested_from]?.full_name || idToProfile[r.requested_from]?.email || 'User'),
+              email: idToProfile[r.requested_from]?.email || ''
+            } : undefined
+          }))
+        }
+      } catch (e) {
+        // If lookup fails (RLS or missing table), keep original data; UI will show Unknown
+        enrichedRequests = requestsData
+      }
+
       setDocuments(documentsData)
-      setRequests(requestsData)
+      setRequests(enrichedRequests)
       setCategories(categoriesData)
       setStats(statsData)
     } catch (error) {
