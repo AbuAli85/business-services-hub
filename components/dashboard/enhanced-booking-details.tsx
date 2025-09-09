@@ -2096,7 +2096,7 @@ export default function EnhancedBookingDetails({
           {/* Main Content Area */}
           <div className="xl:col-span-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview" className="text-sm">
                   <Eye className="h-4 w-4 mr-2" />
                   Overview
@@ -2114,10 +2114,7 @@ export default function EnhancedBookingDetails({
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Messages
                 </TabsTrigger>
-                <TabsTrigger value="files" className="text-sm">
-                  <FileIcon className="h-4 w-4 mr-2" />
-                  Files
-                </TabsTrigger>
+                {/* Files tab removed; files are managed under milestones now */}
               </TabsList>
 
               {/* Overview Tab */}
