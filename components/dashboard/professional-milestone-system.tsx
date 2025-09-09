@@ -255,7 +255,7 @@ export function ProfessionalMilestoneSystem({
 
       // Load task comments for all visible tasks
       try {
-        const taskIds = (updatedMilestones || []).flatMap(m => (m.tasks || []).map(t => t.id))
+        const taskIds = (milestones || []).flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
         if (taskIds.length > 0) {
           const { data: commentsRows, error: tcErr } = await supabase
             .from('task_comments')
@@ -1053,6 +1053,7 @@ export function ProfessionalMilestoneSystem({
                 milestone={milestone}
                 comments={comments[milestone.id] || []}
                 approvals={approvals[milestone.id] || []}
+                taskComments={taskComments}
                 onEdit={() => editMilestone(milestone)}
                 onDelete={() => deleteMilestone(milestone.id)}
                 onStatusChange={(status) => updateMilestoneStatus(milestone.id, status)}
@@ -1547,11 +1548,55 @@ export function ProfessionalMilestoneSystem({
   )
 }
 
+// Helper functions
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'completed': return 'bg-green-100 text-green-800'
+    case 'in_progress': return 'bg-blue-100 text-blue-800'
+    case 'pending': return 'bg-gray-100 text-gray-800'
+    case 'cancelled': return 'bg-red-100 text-red-800'
+    case 'on_hold': return 'bg-yellow-100 text-yellow-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+function getPriorityColor(priority: string) {
+  switch (priority) {
+    case 'urgent': return 'bg-red-100 text-red-800'
+    case 'high': return 'bg-orange-100 text-orange-800'
+    case 'medium': return 'bg-yellow-100 text-yellow-800'
+    case 'low': return 'bg-green-100 text-green-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+function getRiskColor(risk: string) {
+  switch (risk) {
+    case 'critical': return 'bg-red-100 text-red-800'
+    case 'high': return 'bg-orange-100 text-orange-800'
+    case 'medium': return 'bg-yellow-100 text-yellow-800'
+    case 'low': return 'bg-green-100 text-green-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+function formatDateOnly(value?: string | null) {
+  try {
+    if (!value) return 'N/A'
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return 'N/A'
+    return d.toLocaleDateString()
+  } catch {
+    return 'N/A'
+  }
+}
+
 // Milestone Card Component
 function MilestoneCard({ 
   milestone, 
   comments = [],
   approvals = [],
+  taskComments = {},
   onEdit, 
   onDelete,
   onStatusChange,
@@ -1574,6 +1619,7 @@ function MilestoneCard({
   milestone: Milestone
   comments?: any[]
   approvals?: any[]
+  taskComments?: Record<string, any[]>
   onEdit: () => void
   onDelete: () => void
   onStatusChange: (status: string) => void
@@ -1610,37 +1656,37 @@ function MilestoneCard({
             <GripVertical className="h-5 w-5 text-gray-400 cursor-grab" />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">{milestone.title}</h3>
-              <Badge className={getStatusColor(milestone.status)}>
-                {milestone.status.replace('_', ' ')}
-              </Badge>
-              <Badge className={getPriorityColor(milestone.priority)}>
-                {milestone.priority}
-              </Badge>
-              {milestone.critical_path && (
-                <Badge className="bg-red-100 text-red-800">
-                  Critical Path
+                <h3 className="text-lg font-semibold text-gray-900">{milestone.title}</h3>
+                <Badge className={getStatusColor(milestone.status)}>
+                  {milestone.status.replace('_', ' ')}
                 </Badge>
-              )}
+                <Badge className={getPriorityColor(milestone.priority)}>
+                  {milestone.priority}
+                </Badge>
+                {milestone.critical_path && (
+                  <Badge className="bg-red-100 text-red-800">
+                    Critical Path
+                  </Badge>
+                )}
+              </div>
+              <p className="text-gray-600 mb-3">{milestone.description}</p>
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {formatDateOnly(milestone.start_date)} - {formatDateOnly(milestone.due_date)}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {milestone.estimated_hours}h
+                </div>
+                <div className="flex items-center gap-1">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className={getRiskColor(milestone.risk_level)}>
+                    {milestone.risk_level} risk
+                  </span>
+                </div>
+              </div>
             </div>
-            <p className="text-gray-600 mb-3">{milestone.description}</p>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {formatDateOnly(milestone.start_date)} - {formatDateOnly(milestone.due_date)}
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {milestone.estimated_hours}h
-              </div>
-              <div className="flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4" />
-                <span className={getRiskColor(milestone.risk_level)}>
-                  {milestone.risk_level} risk
-                </span>
-              </div>
-            </div>
-          </div>
           </div>
           <div className="flex items-center gap-2">
             <Select value={milestone.status} onValueChange={onStatusChange}>
@@ -1697,51 +1743,52 @@ function MilestoneCard({
               <div key={task.id} className="p-2 bg-gray-50 rounded space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                  <Select 
-                    value={task.status} 
-                    onValueChange={(status) => onTaskStatusChange(task.id, status)}
-                  >
-                    <SelectTrigger className="w-24 h-6 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-gray-700">{task.title}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Clock className="h-3 w-3" />
-                    {task.estimated_hours}h
+                    <Select 
+                      value={task.status} 
+                      onValueChange={(status) => onTaskStatusChange(task.id, status)}
+                    >
+                      <SelectTrigger className="w-24 h-6 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-700">{task.title}</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => onTaskComment(task)} title="Add Comment">
-                    <MessageSquare className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'flag')} title="Flag Task">
-                    <Flag className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'assign')} title="Assign Task">
-                    <Users className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'priority')} title="Set Priority">
-                    <AlertTriangle className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onEditTask(task)} title="Edit Task">
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onDeleteTask(task.id)} title="Delete Task">
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Clock className="h-3 w-3" />
+                      {task.estimated_hours}h
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => onTaskComment(task)} title="Add Comment">
+                      <MessageSquare className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'flag')} title="Flag Task">
+                      <Flag className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'assign')} title="Assign Task">
+                      <Users className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'priority')} title="Set Priority">
+                      <AlertTriangle className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onEditTask(task)} title="Edit Task">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => onDeleteTask(task.id)} title="Delete Task">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
                 {taskComments[task.id]?.length ? (
                   <div className="bg-white border rounded p-2">
                     <div className="text-xs font-medium text-gray-600 mb-1">Comments</div>
                     <ul className="space-y-1 max-h-28 overflow-auto">
-                      {taskComments[task.id].map(c => (
+                      {taskComments[task.id].map((c: any) => (
                         <li key={c.id} className="text-xs text-gray-700 flex items-center gap-2">
                           <span className="text-gray-400">•</span>
                           <span className="truncate">{c.comment}</span>
@@ -1753,7 +1800,7 @@ function MilestoneCard({
                 ) : null}
               </div>
             ))}
-            {milestone.tasks.length > 3 && (
+            {milestone.tasks && milestone.tasks.length > 3 && (
               <p className="text-xs text-gray-500">+{milestone.tasks.length - 3} more tasks</p>
             )}
           </div>
@@ -1847,47 +1894,4 @@ function MilestoneCard({
       </CardContent>
     </Card>
   )
-}
-
-// Helper functions
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'completed': return 'bg-green-100 text-green-800'
-    case 'in_progress': return 'bg-blue-100 text-blue-800'
-    case 'pending': return 'bg-gray-100 text-gray-800'
-    case 'cancelled': return 'bg-red-100 text-red-800'
-    case 'on_hold': return 'bg-yellow-100 text-yellow-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-function getPriorityColor(priority: string) {
-  switch (priority) {
-    case 'urgent': return 'bg-red-100 text-red-800'
-    case 'high': return 'bg-orange-100 text-orange-800'
-    case 'medium': return 'bg-yellow-100 text-yellow-800'
-    case 'low': return 'bg-green-100 text-green-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-function getRiskColor(risk: string) {
-  switch (risk) {
-    case 'critical': return 'bg-red-100 text-red-800'
-    case 'high': return 'bg-orange-100 text-orange-800'
-    case 'medium': return 'bg-yellow-100 text-yellow-800'
-    case 'low': return 'bg-green-100 text-green-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-function formatDateOnly(value?: string | null) {
-  try {
-    if (!value) return 'N/A'
-    const d = new Date(value)
-    if (isNaN(d.getTime())) return 'N/A'
-    return d.toLocaleDateString()
-  } catch {
-    return 'N/A'
-  }
 }
