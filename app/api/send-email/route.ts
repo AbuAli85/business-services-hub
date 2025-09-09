@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 export async function POST(request: NextRequest) {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    })
+  }
+
   try {
     const { to, subject, html, text, from, replyTo, notificationId, notificationType, userId } = await request.json()
 
@@ -42,12 +54,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ success: true, messageId: data?.id })
+    return NextResponse.json(
+      { success: true, messageId: data?.id },
+      {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      }
+    )
   } catch (error) {
     console.error('Email API error:', error)
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      }
     )
   }
 }
