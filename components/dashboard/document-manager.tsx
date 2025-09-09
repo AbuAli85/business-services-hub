@@ -74,6 +74,10 @@ export function DocumentManager({
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([])
+  const [requestStatusFilter, setRequestStatusFilter] = useState<'all' | 'pending' | 'uploaded' | 'approved' | 'rejected' | 'overdue'>('all')
+  const [requestPriorityFilter, setRequestPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high' | 'urgent'>('all')
+  const [requestDateFrom, setRequestDateFrom] = useState<string>('')
+  const [requestDateTo, setRequestDateTo] = useState<string>('')
   
   // Dialog states
   const [showUploadDialog, setShowUploadDialog] = useState(false)
@@ -386,10 +390,16 @@ export function DocumentManager({
       }
     })
 
-  const filteredRequests = requests.filter(req => 
-    req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    req.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredRequests = requests
+    .filter(req => {
+      const matchesText = req.title.toLowerCase().includes(searchTerm.toLowerCase()) || (req.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+      const matchesStatus = requestStatusFilter === 'all' ? true : req.status === requestStatusFilter
+      const matchesPriority = requestPriorityFilter === 'all' ? true : req.priority === requestPriorityFilter
+      const created = new Date(req.created_at).getTime()
+      const fromOk = requestDateFrom ? created >= new Date(requestDateFrom).getTime() : true
+      const toOk = requestDateTo ? created <= new Date(requestDateTo).getTime() + 24*60*60*1000 - 1 : true
+      return matchesText && matchesStatus && matchesPriority && fromOk && toOk
+    })
 
   if (loading) {
     return (
@@ -675,6 +685,38 @@ export function DocumentManager({
         </TabsContent>
 
         <TabsContent value="requests" className="space-y-4">
+          {/* Request filters */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Select value={requestStatusFilter} onValueChange={(v: any)=> setRequestStatusFilter(v)}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="uploaded">Uploaded</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={requestPriorityFilter} onValueChange={(v: any)=> setRequestPriorityFilter(v)}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Priority" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All priorities</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <Input type="date" value={requestDateFrom} onChange={(e)=> setRequestDateFrom(e.target.value)} className="w-[150px]" />
+              <span className="text-sm text-gray-500">to</span>
+              <Input type="date" value={requestDateTo} onChange={(e)=> setRequestDateTo(e.target.value)} className="w-[150px]" />
+            </div>
+            {(requestStatusFilter!=='all' || requestPriorityFilter!=='all' || requestDateFrom || requestDateTo) && (
+              <Button variant="outline" onClick={()=>{ setRequestStatusFilter('all'); setRequestPriorityFilter('all'); setRequestDateFrom(''); setRequestDateTo('') }}>Clear</Button>
+            )}
+          </div>
           {filteredRequests.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">

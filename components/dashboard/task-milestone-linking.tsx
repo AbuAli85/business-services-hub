@@ -488,7 +488,7 @@ export function TaskMilestoneLinking({
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {task.start_date} - {task.due_date}
+                          {formatDateOnly(task.start_date)} - {formatDateOnly(task.due_date)}
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
@@ -844,4 +844,15 @@ export function TaskMilestoneLinking({
       </Dialog>
     </div>
   )
+}
+
+function formatDateOnly(value?: string | null) {
+  try {
+    if (!value) return 'N/A'
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return 'N/A'
+    return d.toLocaleDateString()
+  } catch {
+    return 'N/A'
+  }
 }

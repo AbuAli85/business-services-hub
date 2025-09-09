@@ -1279,7 +1279,7 @@ function MilestoneCard({
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                {milestone.start_date} - {milestone.due_date}
+                {formatDateOnly(milestone.start_date)} - {formatDateOnly(milestone.due_date)}
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
@@ -1494,5 +1494,16 @@ function getRiskColor(risk: string) {
     case 'medium': return 'bg-yellow-100 text-yellow-800'
     case 'low': return 'bg-green-100 text-green-800'
     default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+function formatDateOnly(value?: string | null) {
+  try {
+    if (!value) return 'N/A'
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return 'N/A'
+    return d.toLocaleDateString()
+  } catch {
+    return 'N/A'
   }
 }
