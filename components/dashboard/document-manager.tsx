@@ -66,6 +66,13 @@ export function DocumentManager({
   const [activeTab, setActiveTab] = useState('documents')
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState<DocumentFilter>({})
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'size' | 'type' | 'version' | 'uploaded_at' | 'uploaded_by'>('uploaded_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'uploaded' | 'approved' | 'rejected' | 'revision_requested'>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
   
   // Dialog states
   const [showUploadDialog, setShowUploadDialog] = useState(false)
@@ -91,6 +98,10 @@ export function DocumentManager({
     milestone_id: milestoneId,
     task_id: taskId
   })
+
+  // expose request handlers to child card via window bridge (keeps file scoped)
+  ;(globalThis as any).handleApproveRequest = (id: string) => handleApproveRequest(id)
+  ;(globalThis as any).handleRejectRequest = (id: string) => handleRejectRequest(id)
 
   useEffect(() => {
     loadData()
@@ -311,10 +322,68 @@ export function DocumentManager({
     }
   }
 
-  const filteredDocuments = documents.filter(doc => 
-    doc.original_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Request status handlers
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      const ok = await documentManagementService.updateRequestStatus(requestId, 'approved')
+      if (ok) {
+        setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'approved' } as any : r))
+        toast.success('Request approved')
+      } else {
+        toast.error('Failed to approve request')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to approve request')
+    }
+  }
+
+  const handleRejectRequest = async (requestId: string) => {
+    const reason = typeof window !== 'undefined' ? (window.prompt('Reason for rejection:') || 'Not sufficient') : 'Not sufficient'
+    try {
+      const ok = await documentManagementService.updateRequestStatus(requestId, 'rejected', reason)
+      if (ok) {
+        setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected', rejection_reason: reason } as any : r))
+        toast.success('Request rejected')
+      } else {
+        toast.error('Failed to reject request')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to reject request')
+    }
+  }
+
+  const filteredDocuments = documents
+    .filter(doc => {
+      const matchesText = doc.original_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+      const matchesStatus = statusFilter === 'all' ? true : doc.status === statusFilter
+      const matchesType = typeFilter === 'all' ? true : (doc.file_type || '').toLowerCase().includes(typeFilter)
+      const created = new Date(doc.created_at).getTime()
+      const fromOk = dateFrom ? created >= new Date(dateFrom).getTime() : true
+      const toOk = dateTo ? created <= new Date(dateTo).getTime() + 24*60*60*1000 - 1 : true
+      return matchesText && matchesStatus && matchesType && fromOk && toOk
+    })
+    .sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      switch (sortBy) {
+        case 'name':
+          return a.original_name.localeCompare(b.original_name) * dir
+        case 'status':
+          return a.status.localeCompare(b.status) * dir
+        case 'size':
+          return ((a.file_size || 0) - (b.file_size || 0)) * dir
+        case 'type':
+          return (a.file_type || '').localeCompare(b.file_type || '') * dir
+        case 'version':
+          return ((a.version || 0) - (b.version || 0)) * dir
+        case 'uploaded_by':
+          return ((a.uploaded_by_user?.full_name || '')).localeCompare(b.uploaded_by_user?.full_name || '') * dir
+        default:
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir
+      }
+    })
 
   const filteredRequests = requests.filter(req => 
     req.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -456,8 +525,8 @@ export function DocumentManager({
         </div>
       )}
 
-      {/* Search */}
-      <div className="flex items-center gap-4">
+      {/* Search & Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -467,6 +536,34 @@ export function DocumentManager({
             className="pl-10"
           />
         </div>
+        <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="uploaded">Uploaded</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="revision_requested">Revision requested</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={(v: any)=> setTypeFilter(v)}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="pdf">PDF</SelectItem>
+            <SelectItem value="word">Word</SelectItem>
+            <SelectItem value="image">Image</SelectItem>
+            <SelectItem value="text">Text</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2">
+          <Input type="date" value={dateFrom} onChange={(e)=> setDateFrom(e.target.value)} className="w-[150px]" />
+          <span className="text-sm text-gray-500">to</span>
+          <Input type="date" value={dateTo} onChange={(e)=> setDateTo(e.target.value)} className="w-[150px]" />
+        </div>
+        {(dateFrom || dateTo || statusFilter!=='all' || typeFilter!=='all' || searchTerm) && (
+          <Button variant="outline" onClick={()=>{ setSearchTerm(''); setStatusFilter('all'); setTypeFilter('all'); setDateFrom(''); setDateTo('') }}>Clear</Button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -490,17 +587,88 @@ export function DocumentManager({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {filteredDocuments.map((document) => (
-                <DocumentCard
-                  key={document.id}
-                  document={document}
-                  userRole={userRole}
-                  onApprove={() => handleApproveDocument(document.id)}
-                  onReject={(reason) => handleRejectDocument(document.id, reason)}
-                  onDelete={() => handleDeleteDocument(document.id)}
-                />
-              ))}
+            <div className="overflow-auto rounded border">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedIds.length>0 && selectedIds.length===filteredDocuments.length} onChange={(e)=> setSelectedIds(e.target.checked? filteredDocuments.map(d=>d.id): [])} /></th>
+                    {[
+                      { key:'name', label:'Name' },
+                      { key:'status', label:'Status' },
+                      { key:'size', label:'Size' },
+                      { key:'type', label:'Type' },
+                      { key:'version', label:'Version' },
+                      { key:'uploaded_by', label:'Uploaded By' },
+                      { key:'uploaded_at', label:'Created' },
+                    ].map(col => (
+                      <th key={col.key} className="px-3 py-2 text-left cursor-pointer" onClick={()=>{
+                        const k = col.key as any; setSortBy(k); setSortDir(prev=> prev==='asc'?'desc':'asc')
+                      }}>
+                        {col.label}{' '}
+                        {sortBy===col.key && (sortDir==='asc'?'▲':'▼')}
+                      </th>
+                    ))}
+                    <th className="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filteredDocuments.map(doc => (
+                    <tr key={doc.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <input type="checkbox" checked={selectedIds.includes(doc.id)} onChange={(e)=> setSelectedIds(prev=> e.target.checked? [...prev, doc.id]: prev.filter(id=>id!==doc.id))} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900 truncate max-w-[280px]" title={doc.original_name}>{doc.original_name}</div>
+                        <div className="text-xs text-gray-500">{doc.file_path}</div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge className={doc.status==='approved'? 'bg-green-100 text-green-800': doc.status==='rejected'? 'bg-red-100 text-red-800': 'bg-blue-100 text-blue-800'}>
+                          {doc.status.replace('_',' ')}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">{(doc.file_size/1024/1024).toFixed(2)} MB</td>
+                      <td className="px-3 py-2">{doc.file_type}</td>
+                      <td className="px-3 py-2">v{doc.version || 1}</td>
+                      <td className="px-3 py-2">{doc.uploaded_by_user?.full_name || 'Unknown'}</td>
+                      <td className="px-3 py-2">{new Date(doc.created_at).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="inline-flex gap-2">
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={doc.file_url} target="_blank" rel="noreferrer">View</a>
+                          </Button>
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={doc.file_url} download={doc.original_name}>Download</a>
+                          </Button>
+                          {userRole==='provider' && doc.status==='uploaded' && (
+                            <>
+                              <Button size="sm" onClick={()=>handleApproveDocument(doc.id)} className="bg-green-600 hover:bg-green-700 text-white">Approve</Button>
+                              <Button size="sm" onClick={()=>handleRejectDocument(doc.id,'Not suitable')} className="bg-red-600 hover:bg-red-700 text-white">Reject</Button>
+                            </>
+                          )}
+                          <Button size="sm" variant="outline" onClick={()=>handleDeleteDocument(doc.id)}>Delete</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {selectedIds.length>0 && (
+                <div className="p-3 border-t flex items-center justify-between bg-gray-50">
+                  <div className="text-sm text-gray-600">{selectedIds.length} selected</div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={async()=>{
+                      for (const id of selectedIds) await documentManagementService.updateDocumentStatus(id,'approved');
+                      setDocuments(prev=> prev.map(d=> selectedIds.includes(d.id)? { ...d, status:'approved'}: d));
+                      setSelectedIds([])
+                    }} className="bg-green-600 hover:bg-green-700">Approve selected</Button>
+                    <Button size="sm" onClick={async()=>{
+                      for (const id of selectedIds) await documentManagementService.deleteDocument(id);
+                      setDocuments(prev=> prev.filter(d=> !selectedIds.includes(d.id)));
+                      setSelectedIds([])
+                    }} variant="outline">Delete selected</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -838,11 +1006,16 @@ function DocumentRequestCard({
                   Required
                 </Badge>
               )}
+              {request.category && (
+                <Badge variant="outline" className="border-gray-300 text-gray-700">
+                  {request.category.name}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-gray-600 mb-2">{request.description}</p>
             <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span>Requested by {request.requested_by_user?.full_name || 'Unknown'}</span>
-              <span>From {request.requested_from_user?.full_name || 'Unknown'}</span>
+              <span>Requested by <span className="font-medium text-gray-700">{request.requested_by_user?.full_name || 'Unknown'}</span></span>
+              <span>From <span className="font-medium text-gray-700">{request.requested_from_user?.full_name || 'Unknown'}</span></span>
               {request.due_date && (
                 <span>Due {new Date(request.due_date).toLocaleDateString()}</span>
               )}
@@ -867,6 +1040,16 @@ function DocumentRequestCard({
                 <Upload className="h-4 w-4 mr-1" />
                 Upload
               </Button>
+            )}
+            {userRole === 'provider' && request.status === 'pending' && (
+              <>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => (window as any).handleApproveRequest?.(request.id)}>
+                  Approve
+                </Button>
+                <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={() => (window as any).handleRejectRequest?.(request.id)}>
+                  Reject
+                </Button>
+              </>
             )}
             <Button size="sm" variant="outline">
               <MessageSquare className="h-4 w-4" />
