@@ -712,6 +712,33 @@ export function ProfessionalMilestoneSystem({
     setDragOverMilestone(milestoneId)
   }
 
+  // Simpler reordering via buttons
+  const moveMilestone = async (milestoneId: string, direction: 'up' | 'down') => {
+    try {
+      const index = milestones.findIndex(m => m.id === milestoneId)
+      if (index === -1) return
+      const targetIndex = direction === 'up' ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= milestones.length) return
+
+      const newMilestones = [...milestones]
+      const [item] = newMilestones.splice(index, 1)
+      newMilestones.splice(targetIndex, 0, item)
+
+      // Persist order_index for all milestones
+      const supabase = await getSupabaseClient()
+      for (let i = 0; i < newMilestones.length; i++) {
+        const m = newMilestones[i]
+        await supabase.from('milestones').update({ order_index: i }).eq('id', m.id)
+      }
+
+      setMilestones(newMilestones)
+      toast.success('Milestone reordered')
+    } catch (error) {
+      console.error('Reorder error:', error)
+      toast.error('Failed to reorder')
+    }
+  }
+
   const handleDragLeave = () => {
     setDragOverMilestone(null)
   }
@@ -1005,6 +1032,8 @@ export function ProfessionalMilestoneSystem({
                 onDeleteTask={deleteTask}
                 onTaskAction={handleTaskAction}
                 onTaskComment={handleTaskComment}
+                onMoveUp={() => moveMilestone(milestone.id, 'up')}
+                onMoveDown={() => moveMilestone(milestone.id, 'down')}
                 onDragStart={(e) => handleDragStart(e, milestone.id)}
                 onDragOver={(e) => handleDragOver(e, milestone.id)}
                 onDragLeave={handleDragLeave}
@@ -1496,6 +1525,8 @@ function MilestoneCard({
   onDeleteTask,
   onTaskAction,
   onTaskComment,
+  onMoveUp,
+  onMoveDown,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -1516,6 +1547,8 @@ function MilestoneCard({
   onDeleteTask: (taskId: string) => void
   onTaskAction: (task: Task, action: 'comment' | 'flag' | 'assign' | 'priority') => void
   onTaskComment: (task: Task) => void
+  onMoveUp: () => void
+  onMoveDown: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
@@ -1585,6 +1618,14 @@ function MilestoneCard({
                 <SelectItem value="on_hold">On Hold</SelectItem>
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={onMoveUp} title="Move up">
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={onMoveDown} title="Move down">
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            </div>
             <Button size="sm" variant="outline" onClick={onManageDependencies}>
               <Link className="h-4 w-4 mr-1" />
               Dependencies
