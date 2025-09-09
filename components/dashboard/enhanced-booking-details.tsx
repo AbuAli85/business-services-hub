@@ -223,7 +223,6 @@ export default function EnhancedBookingDetails({
   const [realtimeUpdates, setRealtimeUpdates] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [overdueCount, setOverdueCount] = useState(0)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [showProgressModal, setShowProgressModal] = useState(false)
@@ -280,7 +279,6 @@ export default function EnhancedBookingDetails({
       loadBookingData()
       initializeCommunicationChannels()
       generateSmartSuggestions()
-      loadOverdueCount()
       loadMilestoneData()
     }
   }, [bookingId])
@@ -590,48 +588,6 @@ export default function EnhancedBookingDetails({
     setSmartSuggestions(suggestions)
   }
 
-  const loadOverdueCount = async () => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      // First get milestone IDs for this booking
-      const { data: milestones, error: milestonesError } = await supabase
-        .from('milestones')
-        .select('id')
-        .eq('booking_id', bookingId)
-      
-      if (milestonesError) throw milestonesError
-      
-      if (!milestones || milestones.length === 0) {
-        setOverdueCount(0)
-        return
-      }
-      
-      // Ensure we have valid UUIDs
-      const milestoneIds = milestones
-        .map(m => m.id)
-        .filter(id => id && typeof id === 'string')
-      
-      if (milestoneIds.length === 0) {
-        setOverdueCount(0)
-        return
-      }
-      
-      // Get overdue count for tasks in these milestones
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('id')
-        .in('milestone_id', milestoneIds)
-        .eq('is_overdue', true)
-
-      if (error) throw error
-      setOverdueCount(data?.length || 0)
-    } catch (error) {
-      console.error('Error loading overdue count:', error)
-      // Fallback to 0 if new tables don't exist yet
-      setOverdueCount(0)
-    }
-  }
 
   const loadMilestoneData = async () => {
     try {
@@ -1838,13 +1794,6 @@ export default function EnhancedBookingDetails({
             
             {/* Smart Action Buttons */}
             <div className="flex items-center space-x-3">
-              {/* Overdue Count Badge */}
-              {overdueCount > 0 && (
-                <Badge variant="destructive" className="px-3 py-1">
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  {overdueCount} Overdue
-                </Badge>
-              )}
               
               {isProvider && (
                 <Button
