@@ -70,7 +70,7 @@ class EmailNotificationService {
       return true
     } catch (error) {
       console.error('Error in sendEmailNotification:', error)
-      await this.logEmailNotification(notification, recipientEmail, 'failed', null, error.message)
+      await this.logEmailNotification(notification, recipientEmail, 'failed', undefined, error instanceof Error ? error.message : 'Unknown error')
       return false
     }
   }
