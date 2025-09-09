@@ -30,6 +30,8 @@ export type NotificationType =
   | 'booking_created'
   | 'booking_updated'
   | 'booking_cancelled'
+  | 'booking_confirmed'
+  | 'booking_reminder'
   | 'booking_completed'
   | 'payment_received'
   | 'payment_failed'
@@ -64,15 +66,20 @@ export interface NotificationData {
   booking_id?: string
   booking_title?: string
   service_name?: string
+  service_title?: string
+  status?: string
   
   // Payment related
   payment_id?: string
   amount?: number
   currency?: string
+  payment_method?: string
+  transaction_id?: string
   
   // Invoice related
   invoice_id?: string
   invoice_number?: string
+  due_date?: string
   
   // Request related
   request_id?: string
@@ -90,6 +97,7 @@ export interface NotificationData {
   // Project related
   project_id?: string
   project_name?: string
+  scheduled_date?: string
   
   // User related
   actor_id?: string

@@ -10,6 +10,7 @@ import {
   NotificationFilters,
   NotificationBulkAction
 } from '@/types/notifications'
+import { emailNotificationService } from './email-notification-service'
 
 export class NotificationService {
   private static instance: NotificationService
@@ -66,6 +67,9 @@ export class NotificationService {
       console.error('Error creating notification:', error)
       throw new Error('Failed to create notification')
     }
+
+    // Send email notification asynchronously
+    this.sendEmailNotificationAsync(result)
 
     return result
   }
@@ -429,6 +433,75 @@ export class NotificationService {
     if (error) {
       console.error('Error cleaning up expired notifications:', error)
       throw new Error('Failed to cleanup expired notifications')
+    }
+  }
+
+  // Send email notification asynchronously
+  private async sendEmailNotificationAsync(notification: Notification): Promise<void> {
+    try {
+      // Get user email and name
+      const supabase = await this.getSupabase()
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', notification.user_id)
+        .single()
+
+      if (!userData?.email) {
+        console.warn(`No email found for user ${notification.user_id}`)
+        return
+      }
+
+      // Send email notification
+      await emailNotificationService.sendEmailNotification(
+        notification,
+        userData.email,
+        userData.full_name
+      )
+    } catch (error) {
+      console.error('Error sending email notification:', error)
+      // Don't throw error - email failure shouldn't break notification creation
+    }
+  }
+
+  // Send email notification for existing notification
+  async sendEmailNotification(notificationId: string): Promise<boolean> {
+    try {
+      const supabase = await this.getSupabase()
+      
+      // Get notification
+      const { data: notification } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('id', notificationId)
+        .single()
+
+      if (!notification) {
+        console.warn(`Notification ${notificationId} not found`)
+        return false
+      }
+
+      // Get user email and name
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', notification.user_id)
+        .single()
+
+      if (!userData?.email) {
+        console.warn(`No email found for user ${notification.user_id}`)
+        return false
+      }
+
+      // Send email notification
+      return await emailNotificationService.sendEmailNotification(
+        notification,
+        userData.email,
+        userData.full_name
+      )
+    } catch (error) {
+      console.error('Error sending email notification:', error)
+      return false
     }
   }
 }

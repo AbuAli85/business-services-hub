@@ -65,6 +65,52 @@ export const notificationTemplates: Record<NotificationType, NotificationTemplat
     action_url_template: '/dashboard/bookings/{{booking_id}}/milestones',
     action_label: 'View Milestone'
   },
+
+  // Booking notifications
+  booking_created: {
+    type: 'booking_created',
+    title_template: 'New Booking: {{booking_title}}',
+    message_template: 'A new booking "{{booking_title}}" has been created for service "{{service_title}}" on {{scheduled_date}}.',
+    priority: 'high',
+    action_url_template: '/dashboard/bookings/{{booking_id}}',
+    action_label: 'View Booking'
+  },
+  
+  booking_updated: {
+    type: 'booking_updated',
+    title_template: 'Booking Updated: {{booking_title}}',
+    message_template: 'Your booking "{{booking_title}}" has been updated. Check the details for changes.',
+    priority: 'medium',
+    action_url_template: '/dashboard/bookings/{{booking_id}}',
+    action_label: 'View Booking'
+  },
+  
+  booking_cancelled: {
+    type: 'booking_cancelled',
+    title_template: 'Booking Cancelled: {{booking_title}}',
+    message_template: 'Your booking "{{booking_title}}" has been cancelled. Contact support if you have questions.',
+    priority: 'high',
+    action_url_template: '/dashboard/bookings/{{booking_id}}',
+    action_label: 'View Booking'
+  },
+  
+  booking_confirmed: {
+    type: 'booking_confirmed',
+    title_template: 'Booking Confirmed: {{booking_title}}',
+    message_template: 'Great news! Your booking "{{booking_title}}" has been confirmed and is ready to proceed.',
+    priority: 'high',
+    action_url_template: '/dashboard/bookings/{{booking_id}}',
+    action_label: 'View Booking'
+  },
+  
+  booking_reminder: {
+    type: 'booking_reminder',
+    title_template: 'Booking Reminder: {{booking_title}}',
+    message_template: 'Reminder: Your booking "{{booking_title}}" is scheduled for {{scheduled_date}}. Please prepare accordingly.',
+    priority: 'medium',
+    action_url_template: '/dashboard/bookings/{{booking_id}}',
+    action_label: 'View Booking'
+  },
   
   milestone_updated: {
     type: 'milestone_updated',
@@ -111,33 +157,6 @@ export const notificationTemplates: Record<NotificationType, NotificationTemplat
     action_label: 'View Milestone'
   },
 
-  // Booking notifications
-  booking_created: {
-    type: 'booking_created',
-    title_template: 'New Booking: {{booking_title}}',
-    message_template: 'A new booking "{{booking_title}}" has been created for service "{{service_name}}"',
-    priority: 'medium',
-    action_url_template: '/dashboard/bookings/{{booking_id}}',
-    action_label: 'View Booking'
-  },
-  
-  booking_updated: {
-    type: 'booking_updated',
-    title_template: 'Booking Updated: {{booking_title}}',
-    message_template: 'Booking "{{booking_title}}" has been updated',
-    priority: 'low',
-    action_url_template: '/dashboard/bookings/{{booking_id}}',
-    action_label: 'View Booking'
-  },
-  
-  booking_cancelled: {
-    type: 'booking_cancelled',
-    title_template: 'Booking Cancelled: {{booking_title}}',
-    message_template: 'Booking "{{booking_title}}" has been cancelled',
-    priority: 'high',
-    action_url_template: '/dashboard/bookings/{{booking_id}}',
-    action_label: 'View Booking'
-  },
   
   booking_completed: {
     type: 'booking_completed',
