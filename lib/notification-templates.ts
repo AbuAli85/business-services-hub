@@ -103,6 +103,15 @@ export const notificationTemplates: Record<NotificationType, NotificationTemplat
     action_label: 'View Booking'
   },
   
+  booking_approved: {
+    type: 'booking_approved',
+    title_template: 'Booking Approved: {{booking_title}}',
+    message_template: 'Great news! Your booking "{{booking_title}}" for service "{{service_name}}" has been approved by {{actor_name}}.',
+    priority: 'high',
+    action_url_template: '/dashboard/bookings/{{booking_id}}',
+    action_label: 'View Booking'
+  },
+  
   booking_reminder: {
     type: 'booking_reminder',
     title_template: 'Booking Reminder: {{booking_title}}',

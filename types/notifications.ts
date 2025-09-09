@@ -31,6 +31,7 @@ export type NotificationType =
   | 'booking_updated'
   | 'booking_cancelled'
   | 'booking_confirmed'
+  | 'booking_approved'
   | 'booking_reminder'
   | 'booking_completed'
   | 'payment_received'
