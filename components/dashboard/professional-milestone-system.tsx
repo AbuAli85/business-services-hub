@@ -815,7 +815,6 @@ export function ProfessionalMilestoneSystem({
       
       const actionData = {
         task_id: selectedTask.id,
-        booking_id: bookingId,
         action_type: actionType,
         content: actionText,
         created_by: (await supabase.auth.getUser()).data.user?.id,
@@ -847,7 +846,6 @@ export function ProfessionalMilestoneSystem({
       
       const commentData = {
         task_id: selectedTask.id,
-        booking_id: bookingId,
         content: commentText,
         created_by: (await supabase.auth.getUser()).data.user?.id,
         created_at: new Date().toISOString()
