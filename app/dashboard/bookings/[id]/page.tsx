@@ -76,8 +76,8 @@ export default function BookingDetailsPage() {
             </div>
           `,
           text: `Email System Test\n\nThis is a test email from your booking page to verify the notification system is working!\n\n✅ System Status: Email notifications are working!\n\nTest Time: ${new Date().toLocaleString()}\nBooking ID: ${bookingId}`,
-          from: 'notifications@thedigitalmorph.com',
-          replyTo: 'noreply@thedigitalmorph.com',
+          from: 'onboarding@resend.dev',
+          replyTo: 'noreply@resend.dev',
           notificationId: 'test-' + Date.now(),
           notificationType: 'test',
           userId: 'test-user'

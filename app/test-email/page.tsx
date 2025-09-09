@@ -39,8 +39,8 @@ export default function TestEmailPage() {
             </div>
           `,
           text: `Email System Test\n\nThis is a test email to verify your notification system is working in production!\n\n✅ System Status: Email notifications are working!\n\nTest Time: ${new Date().toLocaleString()}\nTest Type: Production Email Test`,
-          from: 'notifications@thedigitalmorph.com',
-          replyTo: 'noreply@thedigitalmorph.com',
+          from: 'onboarding@resend.dev',
+          replyTo: 'noreply@resend.dev',
           notificationId: 'test-' + Date.now(),
           notificationType: 'test',
           userId: 'test-user'
