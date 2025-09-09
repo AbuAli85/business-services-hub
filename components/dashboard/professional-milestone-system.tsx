@@ -32,7 +32,11 @@ import {
   ArrowDown,
   ArrowUp,
   GitBranch,
-  GitCommit
+  GitCommit,
+  GripVertical,
+  MessageSquare,
+  MoreVertical,
+  Flag
 } from 'lucide-react'
 import { DependencyManagement } from './dependency-management'
 import { MilestoneSettings } from './milestone-settings'
@@ -83,6 +87,18 @@ export function ProfessionalMilestoneSystem({
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
   const [selectedPhase, setSelectedPhase] = useState<ProjectPhase | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Drag & Drop states
+  const [draggedMilestone, setDraggedMilestone] = useState<string | null>(null)
+  const [dragOverMilestone, setDragOverMilestone] = useState<string | null>(null)
+  
+  // Action/Comment states
+  const [showActionModal, setShowActionModal] = useState(false)
+  const [showCommentModal, setShowCommentModal] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [actionText, setActionText] = useState('')
+  const [commentText, setCommentText] = useState('')
+  const [actionType, setActionType] = useState<'comment' | 'flag' | 'assign' | 'priority'>('comment')
 
   // Milestone form
   const [milestoneForm, setMilestoneForm] = useState({
@@ -684,6 +700,149 @@ export function ProfessionalMilestoneSystem({
     }
   }
 
+  // Drag & Drop handlers
+  const handleDragStart = (e: React.DragEvent, milestoneId: string) => {
+    setDraggedMilestone(milestoneId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, milestoneId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverMilestone(milestoneId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverMilestone(null)
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetMilestoneId: string) => {
+    e.preventDefault()
+    
+    if (!draggedMilestone || draggedMilestone === targetMilestoneId) {
+      setDraggedMilestone(null)
+      setDragOverMilestone(null)
+      return
+    }
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Get current order indices
+      const draggedIndex = milestones.findIndex(m => m.id === draggedMilestone)
+      const targetIndex = milestones.findIndex(m => m.id === targetMilestoneId)
+      
+      if (draggedIndex === -1 || targetIndex === -1) return
+
+      // Create new order
+      const newMilestones = [...milestones]
+      const [draggedItem] = newMilestones.splice(draggedIndex, 1)
+      newMilestones.splice(targetIndex, 0, draggedItem)
+
+      // Update order indices in database
+      const updates = newMilestones.map((milestone, index) => ({
+        id: milestone.id,
+        order_index: index
+      }))
+
+      for (const update of updates) {
+        await supabase
+          .from('milestones')
+          .update({ order_index: update.order_index })
+          .eq('id', update.id)
+      }
+
+      // Update local state
+      setMilestones(newMilestones)
+      toast.success('Milestone order updated successfully')
+      
+    } catch (error) {
+      console.error('Error reordering milestones:', error)
+      toast.error('Failed to reorder milestones')
+    } finally {
+      setDraggedMilestone(null)
+      setDragOverMilestone(null)
+    }
+  }
+
+  // Action/Comment handlers
+  const handleTaskAction = (task: Task, action: 'comment' | 'flag' | 'assign' | 'priority') => {
+    setSelectedTask(task)
+    setActionType(action)
+    setActionText('')
+    setCommentText('')
+    setShowActionModal(true)
+  }
+
+  const handleTaskComment = (task: Task) => {
+    setSelectedTask(task)
+    setCommentText('')
+    setShowCommentModal(true)
+  }
+
+  const submitAction = async () => {
+    if (!selectedTask || !actionText.trim()) return
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const actionData = {
+        task_id: selectedTask.id,
+        booking_id: bookingId,
+        action_type: actionType,
+        content: actionText,
+        created_by: (await supabase.auth.getUser()).data.user?.id,
+        created_at: new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('task_actions')
+        .insert(actionData)
+
+      if (error) throw error
+
+      toast.success('Action added successfully')
+      setShowActionModal(false)
+      setActionText('')
+      setSelectedTask(null)
+      
+    } catch (error) {
+      console.error('Error adding action:', error)
+      toast.error('Failed to add action')
+    }
+  }
+
+  const submitComment = async () => {
+    if (!selectedTask || !commentText.trim()) return
+
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const commentData = {
+        task_id: selectedTask.id,
+        booking_id: bookingId,
+        content: commentText,
+        created_by: (await supabase.auth.getUser()).data.user?.id,
+        created_at: new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('task_comments')
+        .insert(commentData)
+
+      if (error) throw error
+
+      toast.success('Comment added successfully')
+      setShowCommentModal(false)
+      setCommentText('')
+      setSelectedTask(null)
+      
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast.error('Failed to add comment')
+    }
+  }
+
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case 'critical': return 'bg-red-100 text-red-800'
@@ -844,6 +1003,14 @@ export function ProfessionalMilestoneSystem({
                 onTaskStatusChange={updateTaskStatus}
                 onEditTask={editTask}
                 onDeleteTask={deleteTask}
+                onTaskAction={handleTaskAction}
+                onTaskComment={handleTaskComment}
+                onDragStart={(e) => handleDragStart(e, milestone.id)}
+                onDragOver={(e) => handleDragOver(e, milestone.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, milestone.id)}
+                isDragging={draggedMilestone === milestone.id}
+                isDragOver={dragOverMilestone === milestone.id}
               />
             ))}
           </div>
@@ -1226,6 +1393,90 @@ export function ProfessionalMilestoneSystem({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Action Modal */}
+      <Dialog open={showActionModal} onOpenChange={setShowActionModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === 'comment' && 'Add Comment'}
+              {actionType === 'flag' && 'Flag Task'}
+              {actionType === 'assign' && 'Assign Task'}
+              {actionType === 'priority' && 'Set Priority'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Task: {selectedTask?.title}
+              </label>
+              <Textarea
+                value={actionText}
+                onChange={(e) => setActionText(e.target.value)}
+                placeholder={
+                  actionType === 'comment' ? 'Add a comment...' :
+                  actionType === 'flag' ? 'Reason for flagging...' :
+                  actionType === 'assign' ? 'Assignment notes...' :
+                  'Priority notes...'
+                }
+                rows={4}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowActionModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitAction}
+              disabled={!actionText.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Submit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comment Modal */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Comment to Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Task: {selectedTask?.title}
+              </label>
+              <Textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Add a comment..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowCommentModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitComment}
+              disabled={!commentText.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Add Comment
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1242,7 +1493,15 @@ function MilestoneCard({
   onManageDependencies,
   onTaskStatusChange,
   onEditTask,
-  onDeleteTask
+  onDeleteTask,
+  onTaskAction,
+  onTaskComment,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  isDragging,
+  isDragOver
 }: {
   milestone: Milestone
   comments?: any[]
@@ -1255,13 +1514,32 @@ function MilestoneCard({
   onTaskStatusChange: (taskId: string, status: string) => void
   onEditTask: (task: Task) => void
   onDeleteTask: (taskId: string) => void
+  onTaskAction: (task: Task, action: 'comment' | 'flag' | 'assign' | 'priority') => void
+  onTaskComment: (task: Task) => void
+  onDragStart: (e: React.DragEvent) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDragLeave: () => void
+  onDrop: (e: React.DragEvent) => void
+  isDragging: boolean
+  isDragOver: boolean
 }) {
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card 
+      className={`hover:shadow-md transition-shadow cursor-move ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      } ${isDragOver ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <GripVertical className="h-5 w-5 text-gray-400 cursor-grab" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
               <h3 className="text-lg font-semibold text-gray-900">{milestone.title}</h3>
               <Badge className={getStatusColor(milestone.status)}>
                 {milestone.status.replace('_', ' ')}
@@ -1292,6 +1570,7 @@ function MilestoneCard({
                 </span>
               </div>
             </div>
+          </div>
           </div>
           <div className="flex items-center gap-2">
             <Select value={milestone.status} onValueChange={onStatusChange}>
@@ -1360,10 +1639,22 @@ function MilestoneCard({
                     <Clock className="h-3 w-3" />
                     {task.estimated_hours}h
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => onEditTask(task)}>
+                  <Button size="sm" variant="ghost" onClick={() => onTaskComment(task)} title="Add Comment">
+                    <MessageSquare className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'flag')} title="Flag Task">
+                    <Flag className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'assign')} title="Assign Task">
+                    <Users className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'priority')} title="Set Priority">
+                    <AlertTriangle className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onEditTask(task)} title="Edit Task">
                     <Edit className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onDeleteTask(task.id)}>
+                  <Button size="sm" variant="ghost" onClick={() => onDeleteTask(task.id)} title="Delete Task">
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
