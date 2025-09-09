@@ -229,6 +229,8 @@ export default function EnhancedBookingDetails({
   const [tempProgress, setTempProgress] = useState(0)
   const [showShareModal, setShowShareModal] = useState(false)
   const [showAddTaskModal, setShowAddTaskModal] = useState(false)
+  const [showActionRequestModal, setShowActionRequestModal] = useState<string | null>(null)
+  const [actionRequestText, setActionRequestText] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskDescription, setNewTaskDescription] = useState('')
   const [allTasks, setAllTasks] = useState<any[]>([])
@@ -1534,6 +1536,46 @@ export default function EnhancedBookingDetails({
     }
   }
 
+  const handleSendActionRequest = async () => {
+    if (!actionRequestText.trim() || !showActionRequestModal || !booking) return
+
+    try {
+      setIsUpdating(true)
+      const supabase = await getSupabaseClient()
+      
+      const requestTypes = {
+        'schedule': 'Schedule Meeting',
+        'update': 'Request Update',
+        'change': 'Request Changes',
+        'files': 'Request Files',
+        'payment': 'Payment Inquiry',
+        'other': 'Other Request'
+      }
+
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          receiver_id: booking.provider.id,
+          content: `🎯 [${requestTypes[showActionRequestModal as keyof typeof requestTypes]}] ${actionRequestText}`,
+          message_type: 'action_request',
+          booking_id: booking.id
+        })
+
+      if (error) throw error
+
+      toast.success('Action request sent successfully!')
+      setActionRequestText('')
+      setShowActionRequestModal(null)
+      
+    } catch (error) {
+      console.error('Error sending action request:', error)
+      toast.error('Failed to send action request')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const handleApprovalAction = async (action: 'approve' | 'decline') => {
     if (!booking) return
 
@@ -1846,6 +1888,84 @@ export default function EnhancedBookingDetails({
               )}
             </div>
           </div>
+
+          {/* Client Action Requests Section */}
+          {isClient && booking.status === 'approved' && (
+            <Card className="mb-6 border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-800">
+                  <Zap className="h-5 w-5" />
+                  Request Action from Provider
+                </CardTitle>
+                <CardDescription className="text-green-700">
+                  Send specific requests to your service provider
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
+                    onClick={() => setShowActionRequestModal('schedule')}
+                  >
+                    <Calendar className="h-5 w-5 mb-2 text-green-600" />
+                    <span className="font-medium">Schedule Meeting</span>
+                    <span className="text-xs text-gray-500">Request a call or meeting</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
+                    onClick={() => setShowActionRequestModal('update')}
+                  >
+                    <RefreshCw className="h-5 w-5 mb-2 text-green-600" />
+                    <span className="font-medium">Request Update</span>
+                    <span className="text-xs text-gray-500">Ask for project progress</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
+                    onClick={() => setShowActionRequestModal('change')}
+                  >
+                    <Edit className="h-5 w-5 mb-2 text-green-600" />
+                    <span className="font-medium">Request Changes</span>
+                    <span className="text-xs text-gray-500">Modify project scope</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
+                    onClick={() => setShowActionRequestModal('files')}
+                  >
+                    <FileText className="h-5 w-5 mb-2 text-green-600" />
+                    <span className="font-medium">Request Files</span>
+                    <span className="text-xs text-gray-500">Ask for documents</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
+                    onClick={() => setShowActionRequestModal('payment')}
+                  >
+                    <DollarSign className="h-5 w-5 mb-2 text-green-600" />
+                    <span className="font-medium">Payment Inquiry</span>
+                    <span className="text-xs text-gray-500">Ask about billing</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
+                    onClick={() => setShowActionRequestModal('other')}
+                  >
+                    <MessageSquare className="h-5 w-5 mb-2 text-green-600" />
+                    <span className="font-medium">Other Request</span>
+                    <span className="text-xs text-gray-500">Custom request</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Single compact notice for Pending */}
           {booking.status === 'pending' && (
@@ -2483,6 +2603,59 @@ export default function EnhancedBookingDetails({
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 Add
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Request Modal */}
+      {showActionRequestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">
+              {showActionRequestModal === 'schedule' && 'Schedule Meeting'}
+              {showActionRequestModal === 'update' && 'Request Update'}
+              {showActionRequestModal === 'change' && 'Request Changes'}
+              {showActionRequestModal === 'files' && 'Request Files'}
+              {showActionRequestModal === 'payment' && 'Payment Inquiry'}
+              {showActionRequestModal === 'other' && 'Other Request'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Your Request</label>
+                <textarea
+                  value={actionRequestText}
+                  onChange={(e) => setActionRequestText(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  rows={4}
+                  placeholder={
+                    showActionRequestModal === 'schedule' ? 'Please suggest a time and date for our meeting...' :
+                    showActionRequestModal === 'update' ? 'Please provide an update on the project progress...' :
+                    showActionRequestModal === 'change' ? 'Please describe the changes you would like to make...' :
+                    showActionRequestModal === 'files' ? 'Please specify which files or documents you need...' :
+                    showActionRequestModal === 'payment' ? 'Please describe your payment inquiry...' :
+                    'Please describe your request...'
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowActionRequestModal(null)
+                  setActionRequestText('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendActionRequest}
+                disabled={isUpdating || !actionRequestText.trim()}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isUpdating ? 'Sending...' : 'Send Request'}
               </Button>
             </div>
           </div>
