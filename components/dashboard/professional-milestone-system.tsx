@@ -882,11 +882,19 @@ export function ProfessionalMilestoneSystem({
         created_at: new Date().toISOString()
       }
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('task_comments')
         .insert(commentData)
+        .select('id, task_id, user_id, comment, created_at')
+        .single()
 
       if (error) throw error
+
+      // Optimistically show the new comment under the task
+      setTaskComments(prev => {
+        const list = prev[selectedTask.id] || []
+        return { ...prev, [selectedTask.id]: [inserted || commentData, ...list] }
+      })
 
       toast.success('Comment added successfully')
       setShowCommentModal(false)
