@@ -196,7 +196,7 @@ export class DocumentManagementService {
         .from('documents')
         .select(`
           *,
-          comments(*)
+          comments:document_comments(*)
         `)
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: false })
