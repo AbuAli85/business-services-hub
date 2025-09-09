@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
 
     const resend = new Resend(process.env.RESEND_API_KEY)
     const { data, error } = await resend.emails.send({
-      from: from || 'notifications@yourdomain.com',
+      from: from || 'onboarding@resend.dev', // Use Resend's verified domain
       to: to,
       subject: subject,
       html: html,
       text: text,
-      replyTo: replyTo || 'noreply@yourdomain.com',
+      replyTo: replyTo || 'noreply@resend.dev',
       headers: {
         'X-Notification-ID': notificationId || '',
         'X-Notification-Type': notificationType || '',
