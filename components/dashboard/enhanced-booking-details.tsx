@@ -1892,24 +1892,12 @@ export default function EnhancedBookingDetails({
             </div>
           </div>
 
-          {/* Approval Notice for Pending Bookings */}
-          {booking.status === 'pending' && isProvider && (
-            <Alert className="border-yellow-200 bg-yellow-50 mb-6">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-800">
-                <strong>Action Required:</strong> This booking is pending your approval. 
-                Please review the details and either approve or decline the booking to proceed.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Client Notice for Pending Bookings */}
-          {booking.status === 'pending' && isClient && (
-            <Alert className="border-blue-200 bg-blue-50 mb-6">
+          {/* Single compact notice for Pending */}
+          {booking.status === 'pending' && (
+            <Alert className="mb-6 border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
-                <strong>Waiting for Approval:</strong> Your booking is pending approval from the service provider. 
-                You will be notified once they review and respond to your request.
+                Booking is pending approval. Use the top action bar to approve/decline or contact the other party.
               </AlertDescription>
             </Alert>
           )}
@@ -2120,133 +2108,7 @@ export default function EnhancedBookingDetails({
               </Card>
             )}
 
-            {/* My Project Card - Role-specific */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  {isProvider ? (
-                    <>
-                      <Zap className="h-5 w-5 text-purple-600" />
-                      <span>Project Management</span>
-                    </>
-                  ) : (
-                    <>
-                      <User className="h-5 w-5 text-blue-600" />
-                      <span>My Project</span>
-                    </>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Status Update - Role-specific */}
-                {isProvider ? (
-                  /* Provider: Can update status */
-                  booking.status !== 'pending' && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Update Project Status</label>
-                    <Select defaultValue={booking.status} onValueChange={handleStatusUpdate}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="on_hold">On Hold</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  )
-                ) : (
-                  /* Client: Can only view status */
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <label className="text-sm font-medium text-blue-700 mb-2 block">Project Status</label>
-                    <div className="flex items-center space-x-2">
-                      <Badge className={`px-3 py-1 ${
-                        booking.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        booking.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        booking.status === 'completed' ? 'bg-purple-100 text-purple-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {booking.status.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                      <span className="text-sm text-gray-600">
-                        {booking.status === 'pending' ? 'Waiting for provider approval' :
-                         booking.status === 'approved' ? 'Project approved, ready to start' :
-                         booking.status === 'in_progress' ? 'Work in progress' :
-                         booking.status === 'completed' ? 'Project completed' :
-                         'Project status unknown'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Pending Booking Actions - Role-specific */}
-                {booking.status === 'pending' && (
-                  isProvider ? (
-                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <label className="text-sm font-medium text-yellow-800 mb-2 block">Client Request Pending</label>
-                      <div className="space-y-2">
-                        <Button 
-                          size="sm" 
-                          className="w-full bg-green-600 hover:bg-green-700 text-white"
-                          onClick={() => handleApprovalAction('approve')}
-                          disabled={isUpdating}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Accept Project
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          className="w-full"
-                          onClick={() => handleApprovalAction('decline')}
-                          disabled={isUpdating}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Decline Project
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <label className="text-sm font-medium text-blue-800 mb-2 block">Waiting for Provider</label>
-                      <p className="text-sm text-blue-700 mb-3">
-                        Your project request is pending approval from the service provider. 
-                        You'll be notified once they respond.
-                      </p>
-                      <div className="flex items-center space-x-2 text-sm text-blue-600">
-                        <Clock className="h-4 w-4" />
-                        <span>Response expected within 24 hours</span>
-                      </div>
-                    </div>
-                  )
-                )}
-
-                {/* Communication Actions - Role-specific */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => setShowMessageModal(true)}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    {isProvider ? 'Contact Client' : 'Contact Provider'}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => setShowScheduleModal(true)}
-                  >
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {isProvider ? 'Schedule Meeting' : 'Request Meeting'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Removed My Project / Provider Actions: sticky top bar is the single action hub. */}
 
           </div>
 
