@@ -99,6 +99,7 @@ export function ProfessionalMilestoneSystem({
   const [actionText, setActionText] = useState('')
   const [commentText, setCommentText] = useState('')
   const [actionType, setActionType] = useState<'comment' | 'flag' | 'assign' | 'priority'>('comment')
+  const [taskComments, setTaskComments] = useState<Record<string, any[]>>({})
 
   // Milestone form
   const [milestoneForm, setMilestoneForm] = useState({
@@ -250,6 +251,34 @@ export function ProfessionalMilestoneSystem({
       } catch (err) {
         console.warn('Approvals not available:', err)
         setApprovals({})
+      }
+
+      // Load task comments for all visible tasks
+      try {
+        const taskIds = (updatedMilestones || []).flatMap(m => (m.tasks || []).map(t => t.id))
+        if (taskIds.length > 0) {
+          const { data: commentsRows, error: tcErr } = await supabase
+            .from('task_comments')
+            .select('id, task_id, user_id, comment, created_at')
+            .in('task_id', taskIds)
+            .order('created_at', { ascending: false })
+          if (!tcErr) {
+            const grouped: Record<string, any[]> = {}
+            for (const row of commentsRows || []) {
+              if (!grouped[row.task_id]) grouped[row.task_id] = []
+              grouped[row.task_id].push(row)
+            }
+            setTaskComments(grouped)
+          } else {
+            console.warn('Task comments load error:', tcErr)
+            setTaskComments({})
+          }
+        } else {
+          setTaskComments({})
+        }
+      } catch (e) {
+        console.warn('Task comments not available:', e)
+        setTaskComments({})
       }
       
       // Load phases (placeholder for now)
@@ -1657,8 +1686,9 @@ function MilestoneCard({
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-700">Tasks ({milestone.tasks.length})</h4>
             {milestone.tasks.slice(0, 3).map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div className="flex items-center gap-2">
+              <div key={task.id} className="p-2 bg-gray-50 rounded space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                   <Select 
                     value={task.status} 
                     onValueChange={(status) => onTaskStatusChange(task.id, status)}
@@ -1699,6 +1729,20 @@ function MilestoneCard({
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
+                {taskComments[task.id]?.length ? (
+                  <div className="bg-white border rounded p-2">
+                    <div className="text-xs font-medium text-gray-600 mb-1">Comments</div>
+                    <ul className="space-y-1 max-h-28 overflow-auto">
+                      {taskComments[task.id].map(c => (
+                        <li key={c.id} className="text-xs text-gray-700 flex items-center gap-2">
+                          <span className="text-gray-400">•</span>
+                          <span className="truncate">{c.comment}</span>
+                          <span className="ml-auto text-[10px] text-gray-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             ))}
             {milestone.tasks.length > 3 && (
