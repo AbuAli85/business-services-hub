@@ -2278,59 +2278,6 @@ export default function EnhancedBookingDetails({
                         </div>
                       </div>
 
-                      {/* 6-month mini chart (SVG bars) with toggle + click-to-filter */}
-                      {sixMonthTrend.length > 0 && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="text-xs text-gray-500">Last 6 months</div>
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className={`px-2 py-0.5 rounded cursor-pointer ${chartMode==='count'?'bg-blue-600 text-white':'bg-gray-100 text-gray-700'}`} onClick={()=>setChartMode('count')}>Count</span>
-                              <span className={`px-2 py-0.5 rounded cursor-pointer ${chartMode==='amount'?'bg-blue-600 text-white':'bg-gray-100 text-gray-700'}`} onClick={()=>setChartMode('amount')}>Amount</span>
-                            </div>
-                          </div>
-                          <div className="flex items-end gap-2 h-20">
-                            {sixMonthTrend.map((m, idx) => {
-                              const base = chartMode==='count' ? sixMonthTrend.map(x=>x.count) : sixMonthTrend.map(x=>x.amount)
-                              const max = Math.max(1, ...base)
-                              const value = chartMode==='count' ? m.count : m.amount
-                              const h = Math.max(4, Math.round((value / max) * 64))
-                              return (
-                                <div key={idx} className="flex flex-col items-center">
-                                  <div className="w-6 bg-blue-200 hover:bg-blue-300 transition-colors rounded-t cursor-pointer"
-                                    style={{ height: h }}
-                                    onClick={() => {
-                                      // Filter Overview to this month (update summary) and navigate to list
-                                      const now = new Date()
-                                      const base = new Date(now.getFullYear(), now.getMonth()- (sixMonthTrend.length-1-idx), 1)
-                                      const month = base.getMonth(); const year = base.getFullYear()
-                                      const monthBookings = bookingsWindow.filter((b:any)=>{
-                                        const d=new Date(b.created_at); return d.getMonth()===month && d.getFullYear()===year
-                                      })
-                                      const amountSum = monthBookings.reduce((s:number,b:any)=> s + (b.amount || 0), 0)
-                                      const paid = monthBookings.filter((b:any)=> b.payment_status==='paid').length
-                                      const pending = monthBookings.filter((b:any)=> (b.payment_status || 'pending')!=='paid').length
-                                      setMonthlySummary({
-                                        monthLabel: base.toLocaleString(undefined,{ month:'long', year:'numeric'}),
-                                        bookings: monthBookings.length,
-                                        amount: amountSum,
-                                        paid,
-                                        pending
-                                      })
-                                      try {
-                                        const m = (month+1).toString().padStart(2,'0')
-                                        const y = year.toString()
-                                        window.location.href = `/dashboard/bookings?month=${y}-${m}`
-                                      } catch {}
-                                    }}
-                                    title={`${m.label}: ${m.count} bookings • ${formatCurrency(m.amount)}`}
-                                  ></div>
-                                  <div className="text-[10px] text-gray-500 mt-1">{m.label}</div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-gray-600">Scheduled Date</label>
