@@ -813,11 +813,12 @@ export function ProfessionalMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
       
+      const userId = (await supabase.auth.getUser()).data.user?.id
       const actionData = {
         task_id: selectedTask.id,
         action_type: actionType,
         content: actionText,
-        created_by: (await supabase.auth.getUser()).data.user?.id,
+        created_by: userId,
         created_at: new Date().toISOString()
       }
 
@@ -844,10 +845,11 @@ export function ProfessionalMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
       
+      const userId = (await supabase.auth.getUser()).data.user?.id
       const commentData = {
         task_id: selectedTask.id,
-        content: commentText,
-        created_by: (await supabase.auth.getUser()).data.user?.id,
+        user_id: userId,
+        comment: commentText,
         created_at: new Date().toISOString()
       }
 
