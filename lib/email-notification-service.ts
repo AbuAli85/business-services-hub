@@ -47,17 +47,27 @@ class EmailNotificationService {
       // Generate email content
       const emailContent = this.generateEmailContent(notification, templateStyle)
       
-      // Send email via Supabase Edge Function
-      const { data, error } = await this.supabase.functions.invoke('send-email', {
-        body: {
+      // Send email via API route
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           to: recipientEmail,
           subject: emailContent.subject,
           html: emailContent.html,
           text: emailContent.text,
-          notification_type: notification.type,
-          notification_id: notification.id
-        }
+          from: process.env.NEXT_PUBLIC_EMAIL_FROM_ADDRESS || 'notifications@yourdomain.com',
+          replyTo: process.env.NEXT_PUBLIC_EMAIL_REPLY_TO_ADDRESS || 'noreply@yourdomain.com',
+          notificationId: notification.id,
+          notificationType: notification.type,
+          userId: notification.user_id,
+        }),
       })
+
+      const data = await response.json()
+      const error = !response.ok ? data : null
 
       if (error) {
         console.error('Error sending email:', error)

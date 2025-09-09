@@ -1,102 +1,85 @@
-// Simple test to verify email notifications are working
+// Simple email notification test
 // Run this in your browser console on your booking page
 
 async function testEmailNotifications() {
   console.log('🧪 Testing Email Notifications...\n')
 
   try {
-    // 1. Check if email tables exist
-    console.log('1️⃣ Checking email tables...')
-    
-    const { data: tables, error: tablesError } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public')
-      .in('table_name', ['email_notification_logs', 'user_email_preferences'])
-
-    if (tablesError) {
-      console.error('❌ Error checking tables:', tablesError)
-      console.log('💡 You need to run the SQL migration first')
-      return
-    }
-
-    console.log('✅ Email tables found:', tables.map(t => t.table_name))
-
-    // 2. Check your existing notification
-    console.log('\n2️⃣ Checking your notification...')
-    
-    const { data: notifications, error: notifError } = await supabase
+    // 1. Create a test notification
+    const { data: testNotification, error: notifError } = await supabase
       .from('notifications')
-      .select('*')
-      .eq('id', 'afd6ae15-28e8-494f-9d79-cbc2f0b04ae0')
+      .insert({
+        user_id: 'afd6ae15-28e8-494f-9d79-cbc2f0b04ae0', // Your user ID
+        type: 'booking_confirmed',
+        title: 'Test Email Notification - ' + new Date().toLocaleTimeString(),
+        message: 'This is a test email notification to verify the system is working.',
+        priority: 'high',
+        data: {
+          booking_id: '0049dcf7-de0e-4959-99fa-c99df07ced72',
+          booking_title: 'Website Development Package',
+          service_name: 'Web Development Service',
+          scheduled_date: new Date().toLocaleDateString()
+        },
+        action_url: '/dashboard/bookings/0049dcf7-de0e-4959-99fa-c99df07ced72',
+        action_label: 'View Booking'
+      })
+      .select()
+      .single()
 
     if (notifError) {
-      console.error('❌ Error loading notification:', notifError)
+      console.error('❌ Error creating notification:', notifError)
       return
     }
 
-    console.log('✅ Notification found:', notifications[0])
+    console.log('✅ Test notification created:', testNotification.id)
 
-    // 3. Check email logs for this notification
-    console.log('\n3️⃣ Checking email logs...')
+    // 2. Test the email API directly
+    const emailResponse = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: 'operations@falconeyegroup.net', // Your email
+        subject: 'Test Email from Business Services Hub',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #333;">Test Email Notification</h2>
+            <p>This is a test email to verify the notification system is working.</p>
+            <p><strong>Notification ID:</strong> ${testNotification.id}</p>
+            <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+            <div style="margin-top: 20px; padding: 15px; background-color: #f0f8ff; border-left: 4px solid #007bff;">
+              <p style="margin: 0;"><strong>System Status:</strong> Email notifications are working! 🎉</p>
+            </div>
+          </div>
+        `,
+        text: `Test Email Notification\n\nThis is a test email to verify the notification system is working.\n\nNotification ID: ${testNotification.id}\nTime: ${new Date().toLocaleString()}\n\nSystem Status: Email notifications are working! 🎉`,
+        from: 'notifications@yourdomain.com',
+        replyTo: 'noreply@yourdomain.com',
+        notificationId: testNotification.id,
+        notificationType: 'booking_confirmed',
+        userId: 'afd6ae15-28e8-494f-9d79-cbc2f0b04ae0'
+      }),
+    })
+
+    const emailResult = await emailResponse.json()
     
-    const { data: emailLogs, error: logsError } = await supabase
-      .from('email_notification_logs')
-      .select('*')
-      .eq('notification_id', 'afd6ae15-28e8-494f-9d79-cbc2f0b04ae0')
-
-    if (logsError) {
-      console.error('❌ Error loading email logs:', logsError)
-      console.log('💡 Email logs table might not exist yet')
+    if (emailResponse.ok) {
+      console.log('✅ Email sent successfully!', emailResult)
+      console.log('📧 Check your email inbox for the test message!')
     } else {
-      console.log('✅ Email logs found:', emailLogs.length, 'entries')
-      if (emailLogs.length > 0) {
-        console.log('📧 Latest email log:', emailLogs[0])
-      } else {
-        console.log('ℹ️ No email logs found - this means no email was sent')
-      }
+      console.error('❌ Email sending failed:', emailResult)
     }
 
-    // 4. Check user email preferences
-    console.log('\n4️⃣ Checking email preferences...')
-    
-    const { data: preferences, error: prefError } = await supabase
-      .from('user_email_preferences')
-      .select('*')
-      .eq('user_id', 'afd6ae15-28e8-494f-9d79-cbc2f0b04ae0')
-
-    if (prefError) {
-      console.error('❌ Error loading preferences:', prefError)
-      console.log('💡 Email preferences table might not exist yet')
-    } else {
-      console.log('✅ Email preferences found:', preferences)
-    }
-
-    // 5. Test sending an email for your existing notification
-    console.log('\n5️⃣ Testing email sending...')
-    
-    try {
-      // Import the notification service (this would work in a real Next.js environment)
-      const { notificationService } = await import('/lib/notification-service')
+    // 3. Check email logs
+    setTimeout(async () => {
+      const { data: emailLogs } = await supabase
+        .from('email_notification_logs')
+        .select('*')
+        .eq('notification_id', testNotification.id)
       
-      const emailResult = await notificationService.sendEmailNotification('afd6ae15-28e8-494f-9d79-cbc2f0b04ae0')
-      console.log('✅ Email sending test result:', emailResult)
-    } catch (emailError) {
-      console.log('⚠️ Email service test (expected in browser):', emailError.message)
-    }
-
-    console.log('\n🎯 DIAGNOSIS:')
-    if (tables.length === 0) {
-      console.log('❌ Email tables don\'t exist - run the SQL migration first')
-    } else if (emailLogs.length === 0) {
-      console.log('❌ No email logs found - email wasn\'t sent for your notification')
-      console.log('💡 This could be because:')
-      console.log('   - Email preferences are disabled')
-      console.log('   - Email service isn\'t working')
-      console.log('   - Edge Function isn\'t deployed')
-    } else {
-      console.log('✅ Email system is working! Check your email inbox')
-    }
+      console.log('📧 Email logs:', emailLogs)
+    }, 2000)
 
   } catch (error) {
     console.error('❌ Test failed:', error)
