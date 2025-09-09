@@ -73,6 +73,7 @@ export function DocumentManager({
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([])
   
   // Dialog states
   const [showUploadDialog, setShowUploadDialog] = useState(false)
@@ -689,18 +690,71 @@ export function DocumentManager({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {filteredRequests.map((request) => (
-                <DocumentRequestCard
-                  key={request.id}
-                  request={request}
-                  userRole={userRole}
-                  onUpload={() => {
-                    setUploadForm(prev => ({ ...prev, request_id: request.id }))
-                    setShowUploadDialog(true)
-                  }}
-                />
-              ))}
+            <div className="overflow-auto rounded border">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedRequestIds.length>0 && selectedRequestIds.length===filteredRequests.length} onChange={(e)=> setSelectedRequestIds(e.target.checked? filteredRequests.map(r=>r.id): [])} /></th>
+                    <th className="px-3 py-2 text-left">Title</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Priority</th>
+                    <th className="px-3 py-2 text-left">Category</th>
+                    <th className="px-3 py-2 text-left">Requested By</th>
+                    <th className="px-3 py-2 text-left">From</th>
+                    <th className="px-3 py-2 text-left">Due</th>
+                    <th className="px-3 py-2 text-left">Created</th>
+                    <th className="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filteredRequests.map((r)=> (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2"><input type="checkbox" checked={selectedRequestIds.includes(r.id)} onChange={(e)=> setSelectedRequestIds(prev=> e.target.checked? [...prev, r.id]: prev.filter(id=>id!==r.id))} /></td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900 truncate max-w-[280px]" title={r.title}>{r.title}</div>
+                        {r.description && <div className="text-xs text-gray-500 truncate max-w-[280px]">{r.description}</div>}
+                      </td>
+                      <td className="px-3 py-2"><Badge className={r.status==='approved'? 'bg-blue-100 text-blue-800': r.status==='rejected'? 'bg-red-100 text-red-800': 'bg-yellow-100 text-yellow-800'}>{r.status.replace('_',' ')}</Badge></td>
+                      <td className="px-3 py-2"><Badge className={r.priority==='urgent'? 'bg-red-100 text-red-800': r.priority==='high'? 'bg-orange-100 text-orange-800': r.priority==='medium'? 'bg-yellow-100 text-yellow-800': 'bg-green-100 text-green-800'}>{r.priority}</Badge></td>
+                      <td className="px-3 py-2">{r.category?.name || '-'}</td>
+                      <td className="px-3 py-2">{r.requested_by_user?.full_name || 'Unknown'}</td>
+                      <td className="px-3 py-2">{r.requested_from_user?.full_name || 'Unknown'}</td>
+                      <td className="px-3 py-2">{r.due_date ? new Date(r.due_date).toLocaleDateString() : '-'}</td>
+                      <td className="px-3 py-2">{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="inline-flex gap-2">
+                          {userRole==='client' && r.status==='pending' && (
+                            <Button size="sm" onClick={()=>{ setUploadForm(prev=> ({...prev, request_id: r.id})); setShowUploadDialog(true) }}>Upload</Button>
+                          )}
+                          {userRole==='provider' && r.status==='pending' && (
+                            <>
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={()=> handleApproveRequest(r.id)}>Approve</Button>
+                              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={()=> handleRejectRequest(r.id)}>Reject</Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {selectedRequestIds.length>0 && (
+                <div className="p-3 border-t flex items-center justify-between bg-gray-50">
+                  <div className="text-sm text-gray-600">{selectedRequestIds.length} selected</div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={async()=>{
+                      for (const id of selectedRequestIds) await documentManagementService.updateRequestStatus(id,'approved');
+                      setRequests(prev=> prev.map(r=> selectedRequestIds.includes(r.id)? { ...r, status:'approved'} as any: r));
+                      setSelectedRequestIds([])
+                    }} className="bg-green-600 hover:bg-green-700">Approve selected</Button>
+                    <Button size="sm" onClick={async()=>{
+                      for (const id of selectedRequestIds) await documentManagementService.updateRequestStatus(id,'rejected','Bulk rejected');
+                      setRequests(prev=> prev.map(r=> selectedRequestIds.includes(r.id)? { ...r, status:'rejected'} as any: r));
+                      setSelectedRequestIds([])
+                    }} variant="outline">Reject selected</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
