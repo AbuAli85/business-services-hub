@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Email 500 Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.success { background: #28a745; color: white; }
+        .status.error { background: #dc3545; color: white; }
+        .status.info { background: #17a2b8; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Email 500 Error</h1>
+        <p>This page helps debug the 500 error in the email API.</p>
+
+        <div class="test-section info">
+            <h3>📋 Test Information</h3>
+            <p><strong>API Endpoint:</strong> https://marketing.thedigitalmorph.com/api/send-email</p>
+            <p><strong>Test Email:</strong> operations@falconeyegroup.net</p>
+            <p><strong>From Address:</strong> onboarding@resend.dev (Resend verified domain)</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test 1: Basic API Check</h3>
+            <button onclick="testAPIEndpoint()">Test API Endpoint</button>
+            <div id="api-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📧 Test 2: Send Test Email</h3>
+            <button onclick="sendTestEmail()">Send Test Email</button>
+            <div id="email-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Test 3: Detailed Error Analysis</h3>
+            <button onclick="detailedTest()">Run Detailed Test</button>
+            <div id="detailed-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test 4: Check Environment Variables</h3>
+            <button onclick="checkEnvironment()">Check Environment</button>
+            <div id="env-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://marketing.thedigitalmorph.com';
+        
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${content}</div>`;
+        }
+
+        function showDetailedResult(elementId, title, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `
+                <h4>${title}</h4>
+                <div class="status ${type}">${content}</div>
+                <pre>${JSON.stringify(content, null, 2)}</pre>
+            `;
+        }
+
+        async function testAPIEndpoint() {
+            showResult('api-result', 'Testing API endpoint...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/send-email`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    showResult('api-result', '✅ API endpoint is accessible and CORS is working!', 'success');
+                } else {
+                    showResult('api-result', `❌ API returned status: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showResult('api-result', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendTestEmail() {
+            showResult('email-result', 'Sending test email...', 'info');
+            
+            const testData = {
+                to: 'operations@falconeyegroup.net',
+                subject: `Debug Test - ${new Date().toLocaleString()}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2>Debug Test Email</h2>
+                        <p>This is a test email to debug the 500 error.</p>
+                        <p>Time: ${new Date().toISOString()}</p>
+                        <p>If you receive this, the API is working correctly.</p>
+                    </div>
+                `,
+                text: `Debug Test Email - ${new Date().toISOString()}`,
+                from: 'onboarding@resend.dev',
+                replyTo: 'noreply@resend.dev',
+                notificationId: 'debug-' + Date.now(),
+                notificationType: 'test',
+                userId: 'debug-user'
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/send-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showDetailedResult('email-result', '✅ Email sent successfully!', result, 'success');
+                } else {
+                    showDetailedResult('email-result', `❌ Email sending failed (${response.status})`, result, 'error');
+                }
+            } catch (error) {
+                showDetailedResult('email-result', '❌ Network error', { error: error.message }, 'error');
+            }
+        }
+
+        async function detailedTest() {
+            showResult('detailed-result', 'Running detailed test...', 'info');
+            
+            const tests = [
+                { name: 'OPTIONS Request', method: 'OPTIONS' },
+                { name: 'POST Request (Minimal)', method: 'POST', data: { to: 'test@example.com', subject: 'Test', html: 'Test', text: 'Test' } },
+                { name: 'POST Request (Full)', method: 'POST', data: {
+                    to: 'operations@falconeyegroup.net',
+                    subject: 'Detailed Test',
+                    html: '<p>Test</p>',
+                    text: 'Test',
+                    from: 'onboarding@resend.dev',
+                    replyTo: 'noreply@resend.dev',
+                    notificationId: 'test-' + Date.now(),
+                    notificationType: 'test',
+                    userId: 'test-user'
+                }}
+            ];
+
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/send-email`, {
+                        method: test.method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: test.data ? JSON.stringify(test.data) : undefined
+                    });
+
+                    const result = await response.json();
+                    results.push({
+                        test: test.name,
+                        status: response.status,
+                        success: response.ok,
+                        result: result
+                    });
+                } catch (error) {
+                    results.push({
+                        test: test.name,
+                        status: 'ERROR',
+                        success: false,
+                        error: error.message
+                    });
+                }
+            }
+
+            showDetailedResult('detailed-result', '📊 Detailed Test Results', results, 'info');
+        }
+
+        async function checkEnvironment() {
+            showResult('env-result', 'Checking environment...', 'info');
+            
+            // This is a mock check since we can't access server environment variables from client
+            const mockEnvCheck = {
+                message: 'Environment variables cannot be checked from client-side',
+                suggestion: 'Check server logs for RESEND_API_KEY and other environment variables',
+                commonIssues: [
+                    'RESEND_API_KEY not set',
+                    'Invalid Resend API key',
+                    'Resend account not verified',
+                    'Rate limiting issues'
+                ]
+            };
+
+            showDetailedResult('env-result', '🔧 Environment Check', mockEnvCheck, 'info');
+        }
+
+        // Auto-run basic test on page load
+        window.onload = function() {
+            testAPIEndpoint();
+        };
+    </script>
+</body>
+</html>
