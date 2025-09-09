@@ -37,10 +37,11 @@ export function EmailNotificationSettings() {
 
   const loadPreferences = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const supabaseClient = await supabase
+      const { data: { user } } = await supabaseClient.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('user_email_preferences')
         .select('*')
         .eq('user_id', user.id)
@@ -78,10 +79,11 @@ export function EmailNotificationSettings() {
     setMessage(null)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const supabaseClient = await supabase
+      const { data: { user } } = await supabaseClient.auth.getUser()
       if (!user) return
 
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('user_email_preferences')
         .upsert({
           ...preferences,
