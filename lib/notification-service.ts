@@ -508,3 +508,16 @@ export class NotificationService {
 
 // Export singleton instance
 export const notificationService = NotificationService.getInstance()
+
+// Export standalone createNotification function for easy importing
+export async function createNotification(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  message: string,
+  data?: NotificationData,
+  priority: NotificationPriority = 'medium',
+  expiresAt?: string
+): Promise<Notification> {
+  return notificationService.createNotification(userId, type, title, message, data, priority, expiresAt)
+}

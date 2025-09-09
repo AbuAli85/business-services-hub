@@ -11,35 +11,35 @@ import { NotificationType, NotificationData } from '@/types/notifications'
 // ============================================================================
 
 export async function triggerUserRegistered(userId: string, userData: { email: string; full_name: string }) {
-  return createNotification({
-    user_id: userId,
-    type: 'system_announcement',
-    title: 'Welcome to Business Services Hub!',
-    message: `Welcome ${userData.full_name}! Your account has been created successfully.`,
-    priority: 'medium',
-    data: {
+  return createNotification(
+    userId,
+    'system_announcement',
+    'Welcome to Business Services Hub!',
+    `Welcome ${userData.full_name}! Your account has been created successfully.`,
+    {
       actor_id: userId,
       actor_name: userData.full_name,
       entity_type: 'user',
       entity_id: userId
-    }
-  })
+    },
+    'medium'
+  )
 }
 
 export async function triggerProfileUpdated(userId: string, changes: string[]) {
-  return createNotification({
-    user_id: userId,
-    type: 'system_announcement',
-    title: 'Profile Updated',
-    message: `Your profile has been updated: ${changes.join(', ')}`,
-    priority: 'low',
-    data: {
+  return createNotification(
+    userId,
+    'system_announcement',
+    'Profile Updated',
+    `Your profile has been updated: ${changes.join(', ')}`,
+    {
       actor_id: userId,
       entity_type: 'profile',
       entity_id: userId,
       metadata: { changes }
-    }
-  })
+    },
+    'low'
+  )
 }
 
 // ============================================================================
@@ -47,20 +47,20 @@ export async function triggerProfileUpdated(userId: string, changes: string[]) {
 // ============================================================================
 
 export async function triggerServiceCreated(serviceId: string, serviceData: { title: string; provider_id: string; provider_name: string }) {
-  return createNotification({
-    user_id: serviceData.provider_id,
-    type: 'system_announcement',
-    title: 'Service Created',
-    message: `Your service "${serviceData.title}" has been created and is now live!`,
-    priority: 'medium',
-    data: {
+  return createNotification(
+    serviceData.provider_id,
+    'system_announcement',
+    'Service Created',
+    `Your service "${serviceData.title}" has been created and is now live!`,
+    {
       entity_id: serviceId,
       entity_type: 'service',
       service_name: serviceData.title,
       actor_id: serviceData.provider_id,
       actor_name: serviceData.provider_name
-    }
-  })
+    },
+    'medium'
+  )
 }
 
 export async function triggerServiceUpdated(serviceId: string, serviceData: { title: string; provider_id: string; changes: string[] }) {

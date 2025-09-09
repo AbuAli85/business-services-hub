@@ -4,12 +4,8 @@ import { ProgressDataService } from '@/lib/progress-data-service'
 import { z } from 'zod'
 
 import { 
-  triggerBookingCreated,
-  triggerBookingUpdated, 
-  triggerBookingCancelled, 
-  triggerBookingConfirmed, 
-  triggerBookingCompleted 
-} from '@/lib/notification-triggers-comprehensive'
+  triggerBookingCreated
+} from '@/lib/notification-triggers-simple'
 // CORS headers for cross-domain access
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Allow all origins in production, or use process.env.NEXT_PUBLIC_ALLOWED_ORIGINS

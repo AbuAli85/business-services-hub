@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 
-import { triggerMessageReceived } from '@/lib/notification-triggers-comprehensive'
+import { triggerMessageReceived } from '@/lib/notification-triggers-simple'
 // Force fresh deployment - Updated: 2024-12-27 15:30 UTC
 // Validation schema for message creation
 const CreateMessageSchema = z.object({
