@@ -68,12 +68,12 @@ export async function POST(request: NextRequest) {
     const resend = new Resend(process.env.RESEND_API_KEY)
     
     const emailPayload = {
-      from: from || 'notifications@thedigitalmorph.com',
+      from: from || 'onboarding@resend.dev', // Use Resend's default domain
       to: to,
       subject: subject,
       html: html,
       text: text,
-      replyTo: replyTo || 'noreply@thedigitalmorph.com',
+      replyTo: replyTo || 'noreply@resend.dev', // Use Resend's default domain
       headers: {
         'X-Notification-ID': notificationId || '',
         'X-Notification-Type': notificationType || '',
