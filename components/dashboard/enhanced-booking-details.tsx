@@ -2365,50 +2365,6 @@ export default function EnhancedBookingDetails({
                         </div>
                       )}
 
-                      {/* Recent Activity */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <Activity className="h-4 w-4" />
-                            Recent Activity
-                          </h4>
-                        </div>
-                        {recentActivity.length === 0 ? (
-                          <p className="text-sm text-gray-500 py-4">No recent activity</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {recentActivity.slice(0, 5).map(a => (
-                              <div key={a.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
-                                <span className={`w-2 h-2 rounded-full ${a.type==='task'?'bg-green-500':a.type==='milestone'?'bg-blue-500':'bg-purple-500'}`}></span>
-                                <span className="text-sm text-gray-500">{new Date(a.when).toLocaleDateString()}</span>
-                                <span className="text-sm text-gray-700">{a.text}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Recent Files */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            Recent Files
-                          </h4>
-                        </div>
-                        {recentFiles.length === 0 ? (
-                          <p className="text-sm text-gray-500 py-4">No files uploaded</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {recentFiles.slice(0, 3).map(f => (
-                              <div key={f.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50">
-                                <span className="text-sm text-gray-700 truncate pr-2" title={f.name}>{f.name}</span>
-                                <a className="text-sm text-blue-600 hover:underline" href={f.url} target="_blank" rel="noreferrer">View</a>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
 
                     </CardContent>
                   </Card>
