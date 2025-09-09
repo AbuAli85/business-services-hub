@@ -4,8 +4,10 @@ import { ProgressDataService } from '@/lib/progress-data-service'
 import { z } from 'zod'
 
 import { 
-  triggerBookingCreated
+  triggerBookingCreated,
+  triggerBookingApproved
 } from '@/lib/notification-triggers-simple'
+import { createNotification } from '@/lib/notification-service'
 // CORS headers for cross-domain access
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Allow all origins in production, or use process.env.NEXT_PUBLIC_ALLOWED_ORIGINS
@@ -694,7 +696,7 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
         updates = { status: 'approved', approval_status: 'approved' }
-        notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking' }
+        notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
         console.log('Approval updates:', updates)
         break
       case 'decline':
@@ -745,24 +747,63 @@ export async function PATCH(request: NextRequest) {
     console.log('✅ Booking updated successfully:', updated)
 
     if (notification) {
-      console.log('🔔 Creating notification:', notification)
+      console.log('🔔 Creating comprehensive notification with email:', notification)
       try {
-        const { error: notificationError } = await supabase.from('notifications').insert({
-          user_id: notification.user_id,
-          type: notification.type,
-          title: notification.title,
-          message: notification.message,
-          data: { booking_id }
-        })
+        // Get user details for better notification content
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', user.id)
+          .single()
         
-        if (notificationError) {
-          console.error('⚠️ Notification creation failed (non-critical):', notificationError)
-          // Don't fail the entire request if notification fails
+        const actorName = userProfile?.full_name || user.email || 'User'
+        
+        // Use comprehensive trigger for approval
+        if (action === 'approve') {
+          // Get client details
+          const { data: clientProfile } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', booking.client_id)
+            .single()
+          
+          const clientName = clientProfile?.full_name || 'Client'
+          
+          await triggerBookingApproved(booking_id, {
+            client_id: booking.client_id,
+            client_name: clientName,
+            provider_id: user.id,
+            provider_name: actorName,
+            service_name: booking.service?.title || 'Service',
+            booking_title: booking.title,
+            scheduled_date: booking.scheduled_date,
+            total_amount: booking.amount,
+            currency: booking.currency
+          })
         } else {
-          console.log('✅ Notification created successfully')
+          // Use basic notification for other actions
+          await createNotification(
+            notification.user_id,
+            notification.type as any,
+            notification.title,
+            notification.message,
+            {
+              booking_id,
+              actor_id: user.id,
+              actor_name: actorName,
+              service_name: booking.service?.title || 'Service',
+              booking_title: booking.title,
+              scheduled_date: booking.scheduled_date,
+              amount: booking.amount,
+              currency: booking.currency
+            },
+            'high'
+          )
         }
-      } catch (notificationInsertError) {
-        console.error('⚠️ Notification insert error (non-critical):', notificationInsertError)
+        
+        console.log('✅ Comprehensive notification created successfully with email')
+      } catch (notificationError) {
+        console.error('⚠️ Comprehensive notification creation failed (non-critical):', notificationError)
         // Don't fail the entire request if notification fails
       }
     }

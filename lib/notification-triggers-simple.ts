@@ -64,6 +64,60 @@ export async function triggerBookingCreated(bookingId: string, bookingData: {
   return Promise.all(notifications)
 }
 
+export async function triggerBookingApproved(bookingId: string, bookingData: {
+  client_id: string
+  client_name: string
+  provider_id: string
+  provider_name: string
+  service_name: string
+  booking_title: string
+  scheduled_date?: string
+  total_amount?: number
+  currency?: string
+}) {
+  const notifications = []
+
+  // Notify client about approval
+  notifications.push(createNotification(
+    bookingData.client_id,
+    'booking_approved',
+    'Booking Approved!',
+    `Great news! Your booking for "${bookingData.service_name}" has been approved by ${bookingData.provider_name}.`,
+    {
+      booking_id: bookingId,
+      booking_title: bookingData.booking_title,
+      service_name: bookingData.service_name,
+      scheduled_date: bookingData.scheduled_date,
+      amount: bookingData.total_amount,
+      currency: bookingData.currency,
+      actor_id: bookingData.provider_id,
+      actor_name: bookingData.provider_name
+    },
+    'high'
+  ))
+
+  // Notify provider about their approval action
+  notifications.push(createNotification(
+    bookingData.provider_id,
+    'booking_approved',
+    'Booking Approved Successfully',
+    `You have approved the booking for "${bookingData.service_name}" from ${bookingData.client_name}.`,
+    {
+      booking_id: bookingId,
+      booking_title: bookingData.booking_title,
+      service_name: bookingData.service_name,
+      scheduled_date: bookingData.scheduled_date,
+      amount: bookingData.total_amount,
+      currency: bookingData.currency,
+      actor_id: bookingData.client_id,
+      actor_name: bookingData.client_name
+    },
+    'medium'
+  ))
+
+  return Promise.all(notifications)
+}
+
 // ============================================================================
 // SERVICE EVENTS
 // ============================================================================
