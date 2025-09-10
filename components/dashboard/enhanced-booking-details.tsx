@@ -28,7 +28,7 @@ import {
   Phone,
   Mail,
   MapPin,
-  DollarSign,
+  Banknote,
   FileText,
   RefreshCw,
   Upload,
@@ -59,7 +59,6 @@ import {
   ExternalLink,
   QrCode,
   CreditCard,
-  Banknote,
   Calendar as CalendarIcon,
   Clock4,
   MapPin as LocationIcon,
@@ -1948,7 +1947,7 @@ export default function EnhancedBookingDetails({
                     className="h-auto p-4 flex flex-col items-start text-left hover:bg-green-50"
                     onClick={() => setShowActionRequestModal('payment')}
                   >
-                    <DollarSign className="h-5 w-5 mb-2 text-green-600" />
+                    <Banknote className="h-5 w-5 mb-2 text-green-600" />
                     <span className="font-medium">Payment Inquiry</span>
                     <span className="text-xs text-gray-500">Ask about billing</span>
                   </Button>

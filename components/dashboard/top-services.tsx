@@ -15,7 +15,7 @@ import {
 import { 
   Briefcase, 
   Star, 
-  DollarSign, 
+  Banknote, 
   Calendar,
   TrendingUp,
   Eye,
@@ -155,7 +155,7 @@ export function TopServices({ services, className }: TopServicesProps) {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <DollarSign className="h-3 w-3 text-gray-400" />
+                          <Banknote className="h-3 w-3 text-gray-400" />
                           <div>
                             <p className="font-medium text-gray-900">
                               ${service.total_earnings.toLocaleString()}

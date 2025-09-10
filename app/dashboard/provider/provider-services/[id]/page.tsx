@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
-  ArrowLeft, Edit, Eye, Calendar, DollarSign, 
+  ArrowLeft, Edit, Eye, Calendar, Banknote, 
   User, MapPin, Clock, Building2, Star, TrendingUp, MessageCircle
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
@@ -28,6 +28,23 @@ interface Service {
   bookings_count?: number
   rating?: number
   tags?: string[]
+  duration?: string
+  deliverables?: string[]
+  company_id?: string
+}
+
+interface CompanyInfo {
+  id: string
+  name: string
+  industry?: string
+  logo_url?: string
+}
+
+interface ServiceMilestoneRow {
+  milestone_title: string
+  description?: string
+  estimated_duration: number
+  order_index: number
 }
 
 export default function ProviderServiceDetailPage() {
@@ -40,6 +57,9 @@ export default function ProviderServiceDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [isServiceOwner, setIsServiceOwner] = useState(false)
+  const [requirements, setRequirements] = useState<string[]>([])
+  const [milestones, setMilestones] = useState<ServiceMilestoneRow[]>([])
+  const [company, setCompany] = useState<CompanyInfo | null>(null)
 
   useEffect(() => {
     if (serviceId && serviceId !== 'undefined') {
@@ -96,6 +116,38 @@ export default function ProviderServiceDetailPage() {
 
       setService(service)
       setIsServiceOwner(true)
+
+      // Load related details to mirror create form
+      try {
+        // Requirements
+        const { data: reqRows } = await supabase
+          .from('service_requirements')
+          .select('requirement, order_index')
+          .eq('service_id', id)
+          .order('order_index', { ascending: true })
+        setRequirements((reqRows || []).map(r => r.requirement))
+
+        // Milestones
+        const { data: msRows } = await supabase
+          .from('service_milestones')
+          .select('milestone_title, description, estimated_duration, order_index')
+          .eq('service_id', id)
+          .order('order_index', { ascending: true })
+        setMilestones((msRows || []) as ServiceMilestoneRow[])
+
+        // Company info
+        if (service.company_id) {
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('id, name, industry, logo_url')
+            .eq('id', service.company_id)
+            .maybeSingle()
+          if (comp) setCompany(comp as CompanyInfo)
+        }
+      } catch (e) {
+        // Non-fatal
+        console.warn('Related service data load warning:', e)
+      }
       
     } catch (error) {
       console.error('Error fetching service:', error)
@@ -183,9 +235,31 @@ export default function ProviderServiceDetailPage() {
           </Button>
           
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">{service.title}</h1>
-              <p className="text-gray-600 text-lg">{service.description}</p>
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                {service.cover_image_url ? (
+                  <img src={service.cover_image_url} alt={service.title} className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="h-10 w-10 text-white opacity-90" />
+                )}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-1">{service.title}</h1>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{service.category}</Badge>
+                  {company && (
+                    <span className="text-sm text-gray-600 flex items-center gap-2">
+                      {company.logo_url ? (
+                        <img src={company.logo_url} alt={company.name} className="w-4 h-4 rounded" />
+                      ) : (
+                        <Building2 className="h-4 w-4 text-gray-400" />
+                      )}
+                      {company.name}
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-600 mt-1 max-w-2xl">{service.description}</p>
+              </div>
             </div>
             <Button onClick={handleEditService} className="bg-blue-600 hover:bg-blue-700">
               <Edit className="mr-2 h-4 w-4" />
@@ -207,24 +281,45 @@ export default function ProviderServiceDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">Category</Label>
-                  <Badge variant="secondary" className="mt-1">
-                    {service.category}
-                  </Badge>
-                </div>
-                
-                <div>
                   <Label className="text-sm font-medium text-gray-700">Status</Label>
                   <Badge className="mt-1">
                     {service.status}
                   </Badge>
                 </div>
                 
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Description</Label>
-                  <p className="mt-1 text-gray-600">{service.description}</p>
-                </div>
+                {service.duration && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Estimated Duration</Label>
+                    <p className="mt-1 text-gray-600">{service.duration}</p>
+                  </div>
+                )}
                 
+                {requirements.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Client Requirements</Label>
+                    <ul className="mt-2 list-disc list-inside text-gray-700 space-y-1">
+                      {requirements.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {milestones.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Milestones</Label>
+                    <div className="mt-2 space-y-2">
+                      {milestones.map((m, i) => (
+                        <div key={i} className="p-3 border rounded-lg">
+                          <div className="font-medium">{i + 1}. {m.milestone_title}</div>
+                          {m.description && <div className="text-sm text-gray-600 mt-1">{m.description}</div>}
+                          <div className="text-xs text-gray-500 mt-1">Estimated: {m.estimated_duration} days</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {service.tags && service.tags.length > 0 && (
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Tags</Label>
@@ -247,7 +342,7 @@ export default function ProviderServiceDetailPage() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <Banknote className="h-5 w-5 text-green-600" />
                   Pricing
                 </CardTitle>
               </CardHeader>

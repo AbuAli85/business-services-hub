@@ -16,7 +16,7 @@ import {
   Package, 
   Star, 
   Clock, 
-  DollarSign, 
+  Banknote, 
   TrendingUp, 
   Users, 
   Calendar,
@@ -753,7 +753,7 @@ export default function ServicesPage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-semibold text-purple-800">Total Revenue</CardTitle>
               <div className="p-2 bg-purple-500 rounded-xl group-hover:scale-110 transition-transform duration-200 shadow-soft">
-                <DollarSign className="h-5 w-5 text-white" />
+                <Banknote className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent>
@@ -1332,7 +1332,7 @@ export default function ServicesPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100 shadow-soft hover:shadow-medium transition-shadow duration-200">
                       <div className="flex items-center space-x-2">
-                        <DollarSign className="h-5 w-5 text-blue-600" />
+                        <Banknote className="h-5 w-5 text-blue-600" />
                         <span className="text-gray-700 font-medium">Starting from:</span>
                       </div>
                       <span className="font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
