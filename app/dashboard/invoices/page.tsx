@@ -228,46 +228,22 @@ export default function InvoicesPage() {
 
       const existingBookingIds = new Set(existingInvoices?.map(inv => inv.booking_id) || [])
       
-      // Generate invoices for bookings that don't have them
-      const invoicesToCreate = bookings
-        .filter(booking => !existingBookingIds.has(booking.id))
-        .map(booking => ({
-          booking_id: booking.id,
-          client_id: booking.client_id,
-          provider_id: booking.provider_id,
-          amount: booking.amount || 0,
-          currency: booking.currency || 'OMR',
-          status: booking.status === 'paid' ? 'paid' : 'issued',
-          created_at: new Date().toISOString()
-        }))
-
-      if (invoicesToCreate.length > 0) {
-        // Try to insert invoices, but handle permission errors gracefully
-        const { error: insertError } = await supabase
-          .from('invoices')
-          .insert(invoicesToCreate)
-
-        if (insertError) {
-          // If permission denied, show a helpful message instead of failing silently
-          if (insertError.code === '42501') {
-            console.warn('Permission denied for invoice creation. RLS policies may need updating.')
-            // For now, we'll create virtual invoices that exist only in the UI
-            // This allows the feature to work while the permissions are being fixed
-            const virtualInvoices = invoicesToCreate.map(invoice => ({
-              ...invoice,
-              id: `virtual-${invoice.booking_id}`,
-              pdf_url: null
-            }))
-            
-            // Store virtual invoices in localStorage for this session
-            localStorage.setItem('virtual_invoices', JSON.stringify(virtualInvoices))
-            console.log(`Created ${virtualInvoices.length} virtual invoices for this session`)
-            return
+      // Generate invoices for bookings that don't have them using smart service
+      const { smartInvoiceService } = await import('@/lib/smart-invoice-service')
+      
+      for (const booking of bookings) {
+        if (!existingBookingIds.has(booking.id)) {
+          try {
+            await smartInvoiceService.generateInvoiceOnApproval(booking.id)
+          } catch (error) {
+            console.warn(`Failed to generate invoice for booking ${booking.id}:`, error)
           }
-          throw insertError
         }
-        console.log(`Generated ${invoicesToCreate.length} invoices from bookings`)
       }
+
+      // Refresh the invoices list
+      await fetchInvoices()
+      console.log('✅ Invoice generation completed')
     } catch (error) {
       console.error('Error generating invoices from bookings:', error)
     }

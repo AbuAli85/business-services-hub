@@ -780,6 +780,21 @@ export async function PATCH(request: NextRequest) {
             total_amount: booking.amount,
             currency: booking.currency
           })
+
+          // Automatically generate invoice when booking is approved
+          try {
+            const { smartInvoiceService } = await import('@/lib/smart-invoice-service')
+            const invoice = await smartInvoiceService.generateInvoiceOnApproval(booking_id)
+            
+            if (invoice) {
+              console.log('✅ Invoice automatically generated:', invoice.invoice_number)
+            } else {
+              console.log('ℹ️ Invoice generation skipped (may already exist)')
+            }
+          } catch (invoiceError) {
+            console.warn('⚠️ Failed to generate invoice automatically:', invoiceError)
+            // Non-blocking - don't fail the approval if invoice generation fails
+          }
         } else {
           // Use basic notification for other actions
           await createNotification(
