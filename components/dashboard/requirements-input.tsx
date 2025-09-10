@@ -34,7 +34,7 @@ export function RequirementsInput({
   }
 
   const updateRequirement = (index: number, value: string) => {
-    const updated = requirements.map((req, i) => i === index ? value : req)
+    const updated = Array.isArray(requirements) ? requirements.map((req, i) => i === index ? value : req) : []
     onChange(updated)
   }
 
