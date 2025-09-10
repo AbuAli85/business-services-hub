@@ -53,6 +53,11 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [sortBy, setSortBy] = useState<'name'|'email'|'role'|'status'|'created'|'last_seen'>('created')
+  const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchUsers()
@@ -131,6 +136,29 @@ export default function AdminUsersPage() {
     
     return matchesSearch && matchesRole && matchesStatus
   })
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortBy) {
+      case 'name':
+        return a.full_name.localeCompare(b.full_name) * dir
+      case 'email':
+        return a.email.localeCompare(b.email) * dir
+      case 'role':
+        return a.role.localeCompare(b.role) * dir
+      case 'status':
+        return a.status.localeCompare(b.status) * dir
+      case 'last_seen':
+        return ((new Date(a.last_sign_in || 0).getTime()) - (new Date(b.last_sign_in || 0).getTime())) * dir
+      case 'created':
+      default:
+        return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir
+    }
+  })
+
+  const totalPages = Math.max(1, Math.ceil(sortedUsers.length / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const pagedUsers = sortedUsers.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize)
 
   async function callAdminUpdate(userId: string, payload: any) {
     const supabase = await getSupabaseClient()
@@ -368,6 +396,54 @@ export default function AdminUsersPage() {
               </div>
             </div>
           </div>
+
+          {/* Sorting & Pagination Controls */}
+          <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Sort by</span>
+              <select className="border rounded px-2 py-1 text-sm" value={sortBy} onChange={(e)=>{setSortBy(e.target.value as any); setPage(1)}}>
+                <option value="created">Joined</option>
+                <option value="name">Name</option>
+                <option value="email">Email</option>
+                <option value="role">Role</option>
+                <option value="status">Status</option>
+                <option value="last_seen">Last seen</option>
+              </select>
+              <select className="border rounded px-2 py-1 text-sm" value={sortDir} onChange={(e)=>{setSortDir(e.target.value as any); setPage(1)}}>
+                <option value="asc">Asc</option>
+                <option value="desc">Desc</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Page size</span>
+              <select className="border rounded px-2 py-1 text-sm" value={pageSize} onChange={(e)=>{setPageSize(parseInt(e.target.value)); setPage(1)}}>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            {selectedIds.size>0 && (
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-sm">Selected: {selectedIds.size}</span>
+                <Button size="sm" variant="outline" onClick={async()=>{
+                  try {
+                    const ops = Array.from(selectedIds).map(id=>callAdminUpdate(id,{ status: 'approved' }))
+                    await Promise.all(ops)
+                    setSelectedIds(new Set())
+                    await fetchUsers()
+                  } catch(e:any){ alert(e.message) }
+                }}>Activate</Button>
+                <Button size="sm" variant="outline" onClick={async()=>{
+                  try {
+                    const ops = Array.from(selectedIds).map(id=>callAdminUpdate(id,{ status: 'suspended' }))
+                    await Promise.all(ops)
+                    setSelectedIds(new Set())
+                    await fetchUsers()
+                  } catch(e:any){ alert(e.message) }
+                }}>Suspend</Button>
+              </div>
+            )}
+          </div>
           
           {/* Quick Filter Tags */}
           <div className="flex items-center gap-2 mt-4 pt-4 border-t">
@@ -423,12 +499,17 @@ export default function AdminUsersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredUsers.map((user) => (
+              {pagedUsers.map((user) => (
                 <div
                   key={user.id}
                   className="flex items-center justify-between p-6 border-2 rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-200 group"
                 >
                   <div className="flex items-center space-x-6">
+                    <input type="checkbox" className="mt-1" checked={selectedIds.has(user.id)} onChange={(e)=>{
+                      const next = new Set(selectedIds)
+                      if (e.target.checked) next.add(user.id); else next.delete(user.id)
+                      setSelectedIds(next)
+                    }} />
                     <div className="relative">
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
                         <span className="text-blue-700 font-bold text-lg">
@@ -501,6 +582,25 @@ export default function AdminUsersPage() {
                   </div>
                   
                   <div className="flex items-center space-x-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                    {/* inline quick editors */}
+                    <select className="border rounded px-2 py-1 text-xs" value={user.role} onChange={async (e)=>{
+                      try { await callAdminUpdate(user.id, { role: e.target.value }); await fetchUsers() } catch(err:any){ alert(err.message) }
+                    }}>
+                      <option value="admin">admin</option>
+                      <option value="manager">manager</option>
+                      <option value="provider">provider</option>
+                      <option value="client">client</option>
+                    </select>
+                    <select className="border rounded px-2 py-1 text-xs" value={user.status}
+                      onChange={async (e)=>{
+                        const s = e.target.value
+                        const backend = s==='active'?'approved':(s==='suspended'?'suspended':'pending')
+                        try { await callAdminUpdate(user.id, { status: backend }); await fetchUsers() } catch(err:any){ alert(err.message) }
+                      }}>
+                      <option value="active">active</option>
+                      <option value="inactive">inactive</option>
+                      <option value="suspended">suspended</option>
+                    </select>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -543,17 +643,11 @@ export default function AdminUsersPage() {
               
               {/* Pagination */}
               <div className="flex items-center justify-between pt-6 border-t">
-                <div className="text-sm text-gray-600">
-                  Showing {filteredUsers.length} of {users.length} users
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" disabled>
-                    Previous
-                  </Button>
-                  <Badge variant="outline" className="px-3">1</Badge>
-                  <Button variant="outline" size="sm" disabled>
-                    Next
-                  </Button>
+                <div className="text-sm text-gray-600">Showing {(currentPage-1)*pageSize+1}-{Math.min(currentPage*pageSize, sortedUsers.length)} of {sortedUsers.length} users</div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled={currentPage===1} onClick={()=>setPage(p=>Math.max(1,p-1))}>Previous</Button>
+                  <Badge variant="outline" className="px-3">{currentPage}/{totalPages}</Badge>
+                  <Button variant="outline" size="sm" disabled={currentPage===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))}>Next</Button>
                 </div>
               </div>
             </div>
