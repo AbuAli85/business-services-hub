@@ -106,13 +106,13 @@ export default function ClientInvoicesPage() {
       return new Date(inv.due_date) < new Date()
     }).length
 
-    const totalAmount = invoices.reduce((sum, inv) => sum + inv.total_amount, 0)
+    const totalAmount = invoices.reduce((sum, inv) => sum + (inv.total_amount || inv.amount || 0), 0)
     const paidAmount = invoices
       .filter(inv => inv.status === 'paid')
-      .reduce((sum, inv) => sum + inv.total_amount, 0)
+      .reduce((sum, inv) => sum + (inv.total_amount || inv.amount || 0), 0)
     const pendingAmount = invoices
       .filter(inv => inv.status === 'issued')
-      .reduce((sum, inv) => sum + inv.total_amount, 0)
+      .reduce((sum, inv) => sum + (inv.total_amount || inv.amount || 0), 0)
 
     setStats({
       total,
@@ -437,7 +437,7 @@ export default function ClientInvoicesPage() {
                           <div>
                             <span className="font-medium">Amount:</span> 
                             <span className="font-semibold text-lg text-gray-900 ml-2">
-                              {formatCurrency(invoice.total_amount, invoice.currency)}
+                              {formatCurrency(invoice.total_amount || invoice.amount, invoice.currency)}
                             </span>
                           </div>
                           <div>
