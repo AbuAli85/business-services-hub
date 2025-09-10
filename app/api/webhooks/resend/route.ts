@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseAdminClient } from '@/lib/supabase'
 
 // Minimal Resend webhook handler: logs delivered, bounced, complained
 export async function POST(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
     const status = statusMap[eventType] || 'sent'
 
-    const supabase = await getSupabaseClient()
+    const supabase = getSupabaseAdminClient()
     // We may not have notification_id in webhook; store minimal record
     await supabase.from('email_notification_logs').insert({
       notification_id: null,
