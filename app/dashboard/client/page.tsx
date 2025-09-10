@@ -363,11 +363,14 @@ export default function ClientDashboard() {
         const enrichedBookings = bookings.map((b: any) => {
           const service = servicesResponse.data?.find(s => s.id === b.service_id)
           const provider = providersResponse.data?.find(p => p.id === b.provider_id)
+          console.log('Booking data:', b)
+          console.log('Service data:', service)
+          console.log('Provider data:', provider)
           return {
             ...b,
             service_title: service?.title || 'Unknown Service',
             provider_name: provider?.full_name || 'Unknown Provider',
-            provider_company: provider?.company_name || 'Unknown Company',
+            provider_company: provider?.company_name || provider?.full_name || 'Unknown Company',
             amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
             scheduled_date: b.scheduled_date || b.start_time || b.created_at
           }
@@ -628,14 +631,14 @@ export default function ClientDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 xl:p-8">
           {/* Welcome Section with Enhanced Design */}
-          <div className="mb-10 sm:mb-12">
+          <div className="mb-8 sm:mb-10">
             <div className="relative">
               {/* Enhanced Background Pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-purple-50/60 rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
-              <div className="relative bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/30 shadow-2xl p-6 sm:p-8 lg:p-10">
+              <div className="relative bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/30 shadow-2xl p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-4">
@@ -697,7 +700,7 @@ export default function ClientDashboard() {
           </div>
               
           {/* KPI Grid */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-slate-50/40 via-gray-50/30 to-slate-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
@@ -708,7 +711,7 @@ export default function ClientDashboard() {
           </section>
 
           {/* Performance Metrics */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-indigo-50/30 to-blue-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
@@ -719,7 +722,7 @@ export default function ClientDashboard() {
           </section>
 
           {/* Spending Chart */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-green-50/40 via-emerald-50/30 to-green-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
@@ -730,21 +733,21 @@ export default function ClientDashboard() {
           </section>
 
           {/* Bookings + Service Suggestions */}
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-8 sm:gap-10 mb-10 sm:mb-12">
-            <div className="relative">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 mb-8 sm:mb-10">
+            <div className="relative min-h-[500px]">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-50/40 via-pink-50/30 to-purple-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative">
+              <div className="relative h-full">
                 <PremiumClientBookings 
                   recentBookings={recentBookings} 
                   upcomingBookings={upcomingBookings} 
                 />
               </div>
             </div>
-            <div className="relative">
+            <div className="relative min-h-[500px]">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative">
+              <div className="relative h-full">
                 <EliteServiceSuggestions suggestions={serviceSuggestions} />
               </div>
             </div>
