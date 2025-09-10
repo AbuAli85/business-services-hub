@@ -16,7 +16,7 @@ export interface RecentBooking {
   title: string
   description: string
   status: string
-  start_date: string
+  scheduled_date: string
   end_date: string
   total_amount: number
   currency: string
@@ -178,7 +178,7 @@ export class ProviderDashboardService {
       title: booking.title || 'Untitled Booking',
       description: booking.description || '',
       status: booking.status || 'pending',
-      start_date: booking.start_time ? new Date(booking.start_time).toISOString() : '',
+      scheduled_date: booking.start_time ? new Date(booking.start_time).toISOString() : '',
       end_date: booking.end_time ? new Date(booking.end_time).toISOString() : '',
       total_amount: booking.total_amount || 0,
       currency: booking.currency || 'OMR',

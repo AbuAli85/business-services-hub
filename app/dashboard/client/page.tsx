@@ -574,7 +574,7 @@ export default function ClientDashboard() {
   }
 
   if (error || !stats) {
-  return (
+    return (
       <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <CollapsibleSidebar 
           collapsed={sidebarCollapsed} 
@@ -593,13 +593,13 @@ export default function ClientDashboard() {
                 <div className="text-center">
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="h-8 w-8 text-red-600" />
-        </div>
+                  </div>
                   <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
                   <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
                   <Button onClick={checkUserAndFetchData} variant="outline" className="bg-white hover:bg-gray-50">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Try Again
-          </Button>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -628,13 +628,14 @@ export default function ClientDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {/* Welcome Section with Enhanced Design */}
-          <div className="mb-8 sm:mb-10">
+          <div className="mb-10 sm:mb-12">
             <div className="relative">
-              {/* Background Pattern */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-3xl -m-4 sm:-m-6 lg:-m-8"></div>
-              <div className="relative bg-white/70 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-6 sm:p-8">
+              {/* Enhanced Background Pattern */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-purple-50/60 rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
+              <div className="relative bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/30 shadow-2xl p-6 sm:p-8 lg:p-10">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-4">
@@ -649,23 +650,27 @@ export default function ClientDashboard() {
                       </div>
                     </div>
                     
-                    {/* Quick Stats Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
-                        <div className="text-lg sm:text-xl font-bold text-blue-600">{stats?.totalSpent ? formatCurrency(stats.totalSpent) : 'OMR 0'}</div>
-                        <div className="text-xs text-gray-600">Total Spent</div>
+                    {/* Enhanced Quick Stats Row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mt-6 sm:mt-8">
+                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                        <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">{stats?.totalSpent ? formatCurrency(stats.totalSpent) : 'OMR 0'}</div>
+                        <div className="text-sm font-medium text-gray-700">Total Spent</div>
+                        <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mx-auto mt-2"></div>
                       </div>
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
-                        <div className="text-lg sm:text-xl font-bold text-green-600">{stats?.activeBookings || 0}</div>
-                        <div className="text-xs text-gray-600">Active Bookings</div>
+                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                        <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">{stats?.activeBookings || 0}</div>
+                        <div className="text-sm font-medium text-gray-700">Active Bookings</div>
+                        <div className="w-8 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto mt-2"></div>
                       </div>
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
-                        <div className="text-lg sm:text-xl font-bold text-purple-600">{stats?.completedBookings || 0}</div>
-                        <div className="text-xs text-gray-600">Completed</div>
+                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                        <div className="text-xl sm:text-2xl font-bold text-purple-600 mb-1">{stats?.completedBookings || 0}</div>
+                        <div className="text-sm font-medium text-gray-700">Completed</div>
+                        <div className="w-8 h-1 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full mx-auto mt-2"></div>
                       </div>
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
-                        <div className="text-lg sm:text-xl font-bold text-orange-600">{stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}</div>
-                        <div className="text-xs text-gray-600">Avg Rating</div>
+                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                        <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-1">{stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}</div>
+                        <div className="text-sm font-medium text-gray-700">Avg Rating</div>
+                        <div className="w-8 h-1 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mx-auto mt-2"></div>
                       </div>
                     </div>
                   </div>
@@ -694,7 +699,8 @@ export default function ClientDashboard() {
           {/* KPI Grid */}
           <section className="mb-10 sm:mb-12">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-50/30 to-gray-50/30 rounded-2xl -m-2"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-50/40 via-gray-50/30 to-slate-100/40 rounded-3xl -m-4"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
                 <EnhancedClientKPIGrid data={stats} />
               </div>
@@ -704,7 +710,8 @@ export default function ClientDashboard() {
           {/* Performance Metrics */}
           <section className="mb-10 sm:mb-12">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 to-indigo-50/30 rounded-2xl -m-2"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-indigo-50/30 to-blue-100/40 rounded-3xl -m-4"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
                 <EnhancedClientPerformanceMetrics data={stats} />
               </div>
@@ -714,7 +721,8 @@ export default function ClientDashboard() {
           {/* Spending Chart */}
           <section className="mb-10 sm:mb-12">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-50/30 to-emerald-50/30 rounded-2xl -m-2"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-green-50/40 via-emerald-50/30 to-green-100/40 rounded-3xl -m-4"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
                 <AdvancedClientSpendingChart data={stats} />
               </div>
@@ -724,7 +732,8 @@ export default function ClientDashboard() {
           {/* Bookings + Service Suggestions */}
           <section className="grid grid-cols-1 xl:grid-cols-2 gap-8 sm:gap-10 mb-10 sm:mb-12">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/30 to-pink-50/30 rounded-2xl -m-2"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-50/40 via-pink-50/30 to-purple-100/40 rounded-3xl -m-4"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
                 <PremiumClientBookings 
                   recentBookings={recentBookings} 
@@ -733,7 +742,8 @@ export default function ClientDashboard() {
               </div>
             </div>
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-50/30 to-amber-50/30 rounded-2xl -m-2"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-100/40 rounded-3xl -m-4"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
                 <EliteServiceSuggestions suggestions={serviceSuggestions} />
               </div>
@@ -743,8 +753,9 @@ export default function ClientDashboard() {
           {/* Quick Actions & Insights */}
           <section className="mb-8">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-50/30 to-slate-50/30 rounded-2xl -m-2"></div>
-              <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6 sm:p-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-50/40 via-slate-50/30 to-gray-100/40 rounded-3xl -m-4"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+              <div className="relative bg-white/85 backdrop-blur-md rounded-2xl border border-white/30 shadow-2xl p-6 sm:p-8 lg:p-10">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-4">
