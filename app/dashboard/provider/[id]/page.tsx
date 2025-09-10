@@ -29,7 +29,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Clock as ClockIcon
+  Clock as ClockIcon,
+  ExternalLink
 } from 'lucide-react'
 import { useRouter, useParams } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -685,13 +686,24 @@ export default function ProviderDashboardById() {
                             <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/client/${booking.client_id}`)}
+                            title="View Client Profile"
+                          >
+                            <User className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
+                            title="View Booking Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                     <Button 

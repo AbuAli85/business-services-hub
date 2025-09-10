@@ -644,13 +644,24 @@ export default function ClientDashboardById() {
                           <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/provider/${booking.provider_id}`)}
+                          title="View Provider Profile"
+                        >
+                          <Building2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
+                          title="View Booking Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   <Button 
