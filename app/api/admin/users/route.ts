@@ -19,19 +19,19 @@ export async function GET(req: NextRequest) {
 
     const supabase = await getSupabaseClient()
 
-    // Require authenticated admin
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Require authenticated admin via Bearer token (works in API route)
+    const authHeader = req.headers.get('authorization') || ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : ''
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { data: tokenUser, error: tokenErr } = await admin.auth.getUser(token)
+    if (tokenErr || !tokenUser?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const userId = tokenUser.user.id
     const { data: me } = await supabase
       .from('profiles')
       .select('role')
-      .eq('id', session.user.id)
+      .eq('id', userId)
       .single()
-    if ((me?.role || 'client') !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // Fetch auth users (service role)
     const { data: authList, error: authError } = await admin.auth.admin.listUsers()

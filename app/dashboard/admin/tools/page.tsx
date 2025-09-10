@@ -29,7 +29,8 @@ export default function AdminToolsPage() {
   async function loadUsers() {
     try {
       setLoadingUsers(true)
-      const res = await fetch('/api/admin/users', { cache: 'no-store' })
+      const token = (await (await import('@supabase/supabase-js')).createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.getSession()).data.session?.access_token
+      const res = await fetch('/api/admin/users', { cache: 'no-store', headers: token ? { Authorization: `Bearer ${token}` } : {} })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to load users')
       setUsers(data.users || [])
@@ -53,10 +54,11 @@ export default function AdminToolsPage() {
   async function updateUser() {
     if (!selectedUser) return toast.error('Select a user')
     try {
+      const token = (await (await import('@supabase/supabase-js')).createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.getSession()).data.session?.access_token
       const res = await fetch('/api/admin/user-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUser.id, status: userStatus, role: userRole })
+        body: JSON.stringify({ user_id: selectedUser.id, status: userStatus, role: userRole, token })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed')
