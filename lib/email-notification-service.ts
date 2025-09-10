@@ -6,11 +6,6 @@ export type EmailSendPreference = 'immediate' | 'daily_digest' | 'weekly_digest'
 
 class EmailNotificationService {
   private static instance: EmailNotificationService
-  private supabase: any
-
-  private constructor() {
-    this.supabase = getSupabaseClient()
-  }
 
   static getInstance(): EmailNotificationService {
     if (!EmailNotificationService.instance) {
@@ -27,7 +22,8 @@ class EmailNotificationService {
   ): Promise<boolean> {
     try {
       // Check if user has email notifications enabled
-      const { data: preferences } = await this.supabase
+      const supabase = await getSupabaseClient()
+      const { data: preferences } = await supabase
         .from('user_email_preferences')
         .select('*')
         .eq('user_id', notification.user_id)
@@ -285,7 +281,8 @@ class EmailNotificationService {
     errorMessage?: string
   ): Promise<void> {
     try {
-      await this.supabase
+      const supabase = await getSupabaseClient()
+      await supabase
         .from('email_notification_logs')
         .insert({
           notification_id: notification.id,
