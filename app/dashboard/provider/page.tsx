@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ImprovedKPIGrid, ImprovedPerformanceMetrics } from '@/components/dashboard/improved-kpi-cards'
-import { EarningsChart } from '@/components/dashboard/earnings-chart'
-import { RecentBookings } from '@/components/dashboard/recent-bookings'
-import { TopServices } from '@/components/dashboard/top-services'
+import { CollapsibleSidebar } from '@/components/dashboard/collapsible-sidebar'
+import { Topbar } from '@/components/dashboard/topbar'
+import { EnhancedKPIGrid, EnhancedPerformanceMetrics } from '@/components/dashboard/enhanced-kpi-cards'
+import { AdvancedEarningsChart } from '@/components/dashboard/advanced-earnings-chart'
+import { PremiumRecentBookings } from '@/components/dashboard/premium-recent-bookings'
+import { EliteTopServices } from '@/components/dashboard/elite-top-services'
 import { MonthlyGoals } from '@/components/dashboard/monthly-goals'
 import { ProviderDashboardService, ProviderDashboardStats, RecentBooking, TopService, MonthlyEarnings } from '@/lib/provider-dashboard'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -13,7 +15,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
   RefreshCw, 
-  AlertCircle
+  AlertCircle,
+  TrendingUp,
+  Award,
+  Target,
+  Zap
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -23,6 +29,7 @@ export default function ProviderDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   
   // Dashboard data
   const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
@@ -90,10 +97,32 @@ export default function ProviderDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center space-x-2">
-          <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Loading dashboard...</span>
+      <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <CollapsibleSidebar 
+          collapsed={sidebarCollapsed} 
+          setCollapsed={setSidebarCollapsed} 
+        />
+        
+        <div className="flex flex-col flex-1">
+          <Topbar 
+            title="Provider Dashboard" 
+            subtitle="Loading your dashboard..." 
+          />
+          
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="flex items-center justify-center h-64">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                  <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
+                  <p className="text-sm text-gray-600">Preparing your business insights...</p>
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     )
@@ -101,73 +130,160 @@ export default function ProviderDashboard() {
 
   if (error || !stats) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-            <p className="text-gray-600 mb-4">{error || 'Failed to load dashboard data'}</p>
-            <Button onClick={loadUserAndData} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <CollapsibleSidebar 
+          collapsed={sidebarCollapsed} 
+          setCollapsed={setSidebarCollapsed} 
+        />
+        
+        <div className="flex flex-col flex-1">
+          <Topbar 
+            title="Provider Dashboard" 
+            subtitle="Error loading dashboard" 
+          />
+          
+          <main className="flex-1 overflow-y-auto p-6">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardContent className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="h-8 w-8 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+                  <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
+                  <Button onClick={loadUserAndData} variant="outline" className="bg-white hover:bg-gray-50">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div className="mb-4 sm:mb-0">
-              <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
-              <p className="mt-2 text-gray-600">Welcome back! Here's what's happening with your business.</p>
-            </div>
-            <Button 
-              onClick={handleRefresh} 
-              disabled={refreshing}
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </div>
-        </div>
+    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Sidebar */}
+      <CollapsibleSidebar 
+        collapsed={sidebarCollapsed} 
+        setCollapsed={setSidebarCollapsed} 
+      />
 
-        {/* Dashboard Content */}
-        <div className="space-y-8">
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1">
+        {/* Topbar */}
+        <Topbar 
+          title="Provider Dashboard" 
+          subtitle="Welcome back! Here's what's happening with your business." 
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+        />
+
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Business Overview
+                </h1>
+                <p className="text-gray-600 mt-2">Monitor your performance and grow your business</p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-gray-700">Live</span>
+                </div>
+                <Button 
+                  onClick={handleRefresh} 
+                  disabled={refreshing}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* KPI Grid */}
-          <section>
-            <ImprovedKPIGrid data={stats} />
+          <section className="mb-8">
+            <EnhancedKPIGrid data={stats} />
           </section>
 
           {/* Performance Metrics */}
-          <section>
-            <ImprovedPerformanceMetrics data={stats} />
+          <section className="mb-8">
+            <EnhancedPerformanceMetrics data={stats} />
           </section>
 
           {/* Earnings Chart */}
-          <section>
-            <EarningsChart data={monthlyEarnings} />
+          <section className="mb-8">
+            <AdvancedEarningsChart data={monthlyEarnings} />
           </section>
 
           {/* Recent Bookings + Top Services */}
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <RecentBookings bookings={recentBookings} />
-            <TopServices services={topServices} />
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <PremiumRecentBookings bookings={recentBookings} />
+            <EliteTopServices services={topServices} />
           </section>
 
           {/* Monthly Goals & Achievements */}
-          <section>
+          <section className="mb-8">
             <MonthlyGoals data={stats} />
           </section>
-        </div>
+
+          {/* Quick Actions */}
+          <section className="mb-8">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
+                    <p className="text-gray-600">Streamline your workflow</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <Zap className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button 
+                    onClick={() => router.push('/dashboard/provider/create-service')}
+                    className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">Create Service</div>
+                      <div className="text-sm opacity-90">Add new offering</div>
+                    </div>
+                  </Button>
+                  <Button 
+                    onClick={() => router.push('/dashboard/bookings')}
+                    className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">View Bookings</div>
+                      <div className="text-sm opacity-90">Manage projects</div>
+                    </div>
+                  </Button>
+                  <Button 
+                    onClick={() => router.push('/dashboard/analytics')}
+                    className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">Analytics</div>
+                      <div className="text-sm opacity-90">View insights</div>
+                    </div>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        </main>
       </div>
     </div>
   )

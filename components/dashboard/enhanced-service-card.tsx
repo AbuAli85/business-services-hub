@@ -166,7 +166,7 @@ export default function EnhancedServiceCard({
           <div className="flex items-center text-sm text-gray-600">
             <DollarSign className="h-4 w-4 mr-2 text-green-600" />
             <span className="font-medium">
-              {service.base_price} {service.currency}
+              {service.base_price} {service.currency || 'OMR'}
             </span>
           </div>
           <div className="flex items-center text-sm text-gray-600">

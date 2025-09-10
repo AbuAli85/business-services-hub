@@ -158,7 +158,7 @@ export function TopServices({ services, className }: TopServicesProps) {
                           <Banknote className="h-3 w-3 text-gray-400" />
                           <div>
                             <p className="font-medium text-gray-900">
-                              ${service.total_earnings.toLocaleString()}
+                              OMR {service.total_earnings.toLocaleString()}
                             </p>
                             <p className="text-gray-500">Earnings</p>
                           </div>

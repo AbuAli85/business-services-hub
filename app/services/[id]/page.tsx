@@ -243,7 +243,7 @@ export default function ServiceDetail() {
                         <DollarSign className="h-4 w-4 mr-2 text-gray-500" />
                         <div>
                           <div className="text-xs text-gray-500">Starting at</div>
-                          <div className="text-gray-900 font-medium">{service.base_price != null ? service.base_price : 'N/A'} {service.currency || ''}</div>
+                          <div className="text-gray-900 font-medium">{service.base_price != null ? service.base_price : 'N/A'} {service.currency || 'OMR'}</div>
                         </div>
                       </div>
                       <div className="flex items-center rounded-md border bg-white p-3">
