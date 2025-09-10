@@ -64,10 +64,11 @@ export async function GET(req: NextRequest) {
     // Try to merge with auth users to include any without profiles
     let merged: any[] = [...profileUsers]
     try {
-      const { data: authList, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 }) as any
-      if (!listErr && authList?.users?.length) {
+      const res: any = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      const authUsers = res?.data?.users || res?.users || []
+      if (authUsers?.length) {
         const seen = new Set(merged.map(u => u.id))
-        for (const au of authList.users) {
+        for (const au of authUsers) {
           if (q) {
             const s = q.toLowerCase()
             const em = (au.email || '').toLowerCase()

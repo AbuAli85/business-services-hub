@@ -15,9 +15,14 @@ export async function POST(req: NextRequest) {
     if (metaRole !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // Fetch auth users (up to 1000)
-    const { data: authList, error: listErr } = await (admin.auth.admin.listUsers({ page: 1, perPage: 1000 }) as any)
-    if (listErr) return NextResponse.json({ error: 'Auth list failed', details: listErr.message }, { status: 500 })
-    const authUsers = authList?.users || []
+    let authUsers: any[] = []
+    let listErr: any = null
+    try {
+      const res: any = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      authUsers = res?.data?.users || res?.users || []
+    } catch (e: any) {
+      listErr = e
+    }
 
     // Fetch existing profiles ids
     const { data: existingProfiles, error: profErr } = await admin
@@ -31,27 +36,34 @@ export async function POST(req: NextRequest) {
     const toUpdateProfiles: any[] = []
     const toReplaceUserRoles: any[] = []
 
-    for (const u of authUsers) {
-      const uid = u.id as string
-      const email = (u.email as string) || null
-      const meta = (u.user_metadata || {}) as any
-      const role = (meta.role as string) || 'client'
-      const status = (meta.status as string) || 'pending'
-      const fullName = (meta.full_name as string) || null
+    if (authUsers.length) {
+      for (const u of authUsers) {
+        const uid = u.id as string
+        const email = (u.email as string) || null
+        const meta = (u.user_metadata || {}) as any
+        const role = (meta.role as string) || 'client'
+        const status = (meta.status as string) || 'pending'
+        const fullName = (meta.full_name as string) || null
 
-      const prof = idToProfile.get(uid)
-      if (!prof) {
-        toInsertProfiles.push({ id: uid, email, role, status, full_name: fullName })
-      } else {
-        const upd: any = { }
-        let needs = false
-        if (!prof.email && email) { upd.email = email; needs = true }
-        if (prof.role !== role) { upd.role = role; needs = true }
-        if (!prof.status || prof.status !== status) { upd.status = status; needs = true }
-        if (fullName && prof.full_name !== fullName) { upd.full_name = fullName; needs = true }
-        if (needs) { upd.id = uid; toUpdateProfiles.push(upd) }
+        const prof = idToProfile.get(uid)
+        if (!prof) {
+          toInsertProfiles.push({ id: uid, email, role, status, full_name: fullName })
+        } else {
+          const upd: any = { }
+          let needs = false
+          if (!prof.email && email) { upd.email = email; needs = true }
+          if (prof.role !== role) { upd.role = role; needs = true }
+          if (!prof.status || prof.status !== status) { upd.status = status; needs = true }
+          if (fullName && prof.full_name !== fullName) { upd.full_name = fullName; needs = true }
+          if (needs) { upd.id = uid; toUpdateProfiles.push(upd) }
+        }
+        toReplaceUserRoles.push({ user_id: uid, role })
       }
-      toReplaceUserRoles.push({ user_id: uid, role })
+    } else {
+      // Fallback: sync roles from existing profiles only
+      for (const p of existingProfiles || []) {
+        toReplaceUserRoles.push({ user_id: p.id, role: p.role || 'client' })
+      }
     }
 
     // Execute mutations
@@ -78,7 +90,7 @@ export async function POST(req: NextRequest) {
       if (insErr) return NextResponse.json({ error: 'Insert user_roles failed', details: insErr.message, id: r.user_id }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, inserted: toInsertProfiles.length, updated: toUpdateProfiles.length, roles_synced: toReplaceUserRoles.length })
+    return NextResponse.json({ success: true, inserted: toInsertProfiles.length, updated: toUpdateProfiles.length, roles_synced: toReplaceUserRoles.length, fallback: authUsers.length ? false : true, note: authUsers.length ? undefined : 'Auth list unavailable; synced roles from profiles only' })
   } catch (e: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

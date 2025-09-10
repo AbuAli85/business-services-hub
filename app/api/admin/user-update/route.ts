@@ -45,10 +45,10 @@ export async function POST(req: NextRequest) {
       }
 
       if (role !== undefined) {
-        // Upsert user_roles if table exists
+        // Upsert user_roles on unique user_id
         const { error: roleErr } = await admin
           .from('user_roles')
-          .upsert({ user_id, role })
+          .upsert({ user_id, role }, { onConflict: 'user_id' })
 
         if (roleErr && !roleErr.message?.includes('relation') ) {
           return NextResponse.json({ error: 'Failed to upsert user role', details: roleErr.message }, { status: 400 })
