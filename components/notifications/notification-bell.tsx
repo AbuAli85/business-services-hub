@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Bell, BellOff } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import { Notification, NotificationStats } from '@/types/notifications'
 import { notificationService } from '@/lib/notification-service'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
+import { getSupabaseClient } from '@/lib/supabase'
 
 interface NotificationBellProps {
   userId: string
@@ -26,11 +27,69 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
   const [stats, setStats] = useState<NotificationStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
+  const channelRef = useRef<any>(null)
 
   useEffect(() => {
     if (userId) {
       loadRecentNotifications()
       loadStats()
+    }
+  }, [userId])
+
+  // Realtime subscription to notifications for this user
+  useEffect(() => {
+    let isMounted = true
+    const setup = async () => {
+      if (!userId) return
+      try {
+        const supabase = await getSupabaseClient()
+        if (channelRef.current) {
+          await supabase.removeChannel(channelRef.current)
+          channelRef.current = null
+        }
+        const channel = supabase
+          .channel(`notifications-${userId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+          }, (payload: any) => {
+            if (!isMounted) return
+            // Keep the bell fast: update the in-memory list for unread view and refresh stats
+            if (payload.eventType === 'INSERT' && payload.new) {
+              setNotifications(prev => [payload.new, ...prev].slice(0, 5))
+            } else if (payload.eventType === 'UPDATE' && payload.new) {
+              setNotifications(prev => prev.map(n => n.id === payload.new.id ? { ...n, ...payload.new } : n))
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              setNotifications(prev => prev.filter(n => n.id !== payload.old.id))
+            }
+            loadStats()
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              loadRecentNotifications()
+              loadStats()
+            }
+          })
+
+        channelRef.current = channel
+      } catch (e) {
+        console.warn('NotificationBell realtime setup failed:', e)
+      }
+    }
+    setup()
+    return () => {
+      isMounted = false
+      ;(async () => {
+        try {
+          const supabase = await getSupabaseClient()
+          if (channelRef.current) {
+            await supabase.removeChannel(channelRef.current)
+            channelRef.current = null
+          }
+        } catch {}
+      })()
     }
   }, [userId])
 
