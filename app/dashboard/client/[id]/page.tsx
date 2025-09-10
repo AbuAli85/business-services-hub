@@ -56,6 +56,7 @@ interface ClientBooking {
   service_title: string
   provider_name: string
   provider_company: string
+  provider_id: string
   status: string
   amount: number
   currency: string

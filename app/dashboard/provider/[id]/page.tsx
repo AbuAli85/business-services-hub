@@ -53,6 +53,7 @@ interface RecentBooking {
   id: string
   service_title: string
   client_name: string
+  client_id: string
   status: string
   amount: number
   currency: string
