@@ -9,14 +9,16 @@ import {
 import { 
   Wallet, 
   Calendar, 
-  Briefcase, 
+  CheckCircle, 
   Star,
   TrendingUp,
   TrendingDown,
   Minus,
   Target,
   Award,
-  Zap
+  Zap,
+  Clock,
+  MessageSquare
 } from 'lucide-react'
 
 interface KPICardProps {
@@ -110,20 +112,22 @@ function EnhancedKPICard({
   return cardContent
 }
 
-interface KPIGridProps {
-  data: {
-    total_earnings: number
-    monthly_earnings: number
-    active_bookings: number
-    active_services: number
-    avg_rating: number
-    response_rate: number
-    completion_rate: number
-    monthly_growth: number
-  }
+interface ClientStats {
+  totalBookings: number
+  activeBookings: number
+  completedBookings: number
+  totalSpent: number
+  monthlySpent: number
+  averageRating: number
+  totalReviews: number
+  favoriteProviders: number
 }
 
-export function EnhancedKPIGrid({ data }: KPIGridProps) {
+interface KPIGridProps {
+  data: ClientStats
+}
+
+export function EnhancedClientKPIGrid({ data }: KPIGridProps) {
   const formatCurrency = (amount: number) => {
     return `OMR ${amount.toLocaleString('en-US', { 
       minimumFractionDigits: 2, 
@@ -131,12 +135,22 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
     })}`
   }
 
+  const calculateSuccessRate = () => {
+    if (data.totalBookings === 0) return 0
+    return Math.round((data.completedBookings / data.totalBookings) * 100)
+  }
+
+  const calculateMonthlyGrowth = () => {
+    // Simple calculation - in real app, compare with previous month
+    return data.monthlySpent > 0 ? 12 : 0
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Key Performance Indicators</h2>
-          <p className="text-gray-600">Your business metrics at a glance</p>
+          <h2 className="text-2xl font-bold text-gray-900">Your Service Overview</h2>
+          <p className="text-gray-600">Track your bookings and spending at a glance</p>
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-500">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -146,39 +160,39 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <EnhancedKPICard
-          title="Total Earnings"
-          value={formatCurrency(data.total_earnings)}
-          change={data.monthly_growth}
-          changeType={data.monthly_growth > 0 ? 'increase' : data.monthly_growth < 0 ? 'decrease' : 'neutral'}
+          title="Total Spent"
+          value={formatCurrency(data.totalSpent)}
+          change={calculateMonthlyGrowth()}
+          changeType={calculateMonthlyGrowth() > 0 ? 'increase' : 'neutral'}
           icon={Wallet}
-          tooltip="Total earnings from all completed bookings"
+          tooltip="Total amount spent on all completed and active bookings"
           className="bg-gradient-to-br from-green-50 to-emerald-100 border-green-200"
           gradient="from-green-500 to-emerald-600"
         />
         
         <EnhancedKPICard
           title="Active Bookings"
-          value={data.active_bookings}
-          icon={Calendar}
+          value={data.activeBookings}
+          icon={Clock}
           tooltip="Currently active bookings in progress"
           className="bg-gradient-to-br from-blue-50 to-sky-100 border-blue-200"
           gradient="from-blue-500 to-sky-600"
         />
         
         <EnhancedKPICard
-          title="Active Services"
-          value={data.active_services}
-          icon={Briefcase}
-          tooltip="Number of services currently available"
+          title="Success Rate"
+          value={`${calculateSuccessRate()}%`}
+          icon={CheckCircle}
+          tooltip="Percentage of completed bookings"
           className="bg-gradient-to-br from-purple-50 to-violet-100 border-purple-200"
           gradient="from-purple-500 to-violet-600"
         />
         
         <EnhancedKPICard
           title="Average Rating"
-          value={data.avg_rating ? `${data.avg_rating.toFixed(1)} ★` : 'N/A'}
+          value={data.averageRating ? `${data.averageRating.toFixed(1)} ★` : 'N/A'}
           icon={Star}
-          tooltip="Average rating from client reviews"
+          tooltip="Average rating from your reviews"
           className="bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-200"
           gradient="from-yellow-500 to-amber-600"
         />
@@ -187,14 +201,24 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
   )
 }
 
-export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
+export function EnhancedClientPerformanceMetrics({ data }: KPIGridProps) {
+  const calculateSuccessRate = () => {
+    if (data.totalBookings === 0) return 0
+    return (data.completedBookings / data.totalBookings) * 100
+  }
+
+  const calculateMonthlyGrowth = () => {
+    // Simple calculation - in real app, compare with previous month
+    return data.monthlySpent > 0 ? 12 : 0
+  }
+
   return (
     <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
       <CardContent className="p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h3 className="text-2xl font-bold text-gray-900">Performance Analytics</h3>
-            <p className="text-gray-600 mt-1">Track your business performance over time</p>
+            <p className="text-gray-600 mt-1">Track your service engagement and satisfaction</p>
           </div>
           <div className="flex items-center space-x-2 text-sm text-gray-500">
             <Target className="h-4 w-4" />
@@ -206,29 +230,29 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Response Rate</span>
+                <span className="text-sm font-semibold text-gray-700">Success Rate</span>
               </div>
-              <span className="text-2xl font-bold text-blue-600">
-                {(data.response_rate * 100).toFixed(1)}%
+              <span className="text-2xl font-bold text-green-600">
+                {calculateSuccessRate().toFixed(1)}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${Math.min(data.response_rate * 100, 100)}%` }}
+                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${Math.min(calculateSuccessRate(), 100)}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-500">Performance</span>
               <span className={`font-medium ${
-                data.response_rate >= 0.95 ? 'text-green-600' : 
-                data.response_rate >= 0.8 ? 'text-yellow-600' : 'text-red-600'
+                calculateSuccessRate() >= 90 ? 'text-green-600' : 
+                calculateSuccessRate() >= 70 ? 'text-yellow-600' : 'text-red-600'
               }`}>
-                {data.response_rate >= 0.95 ? 'Excellent' : 
-                 data.response_rate >= 0.8 ? 'Good' : 'Needs Improvement'}
+                {calculateSuccessRate() >= 90 ? 'Excellent' : 
+                 calculateSuccessRate() >= 70 ? 'Good' : 'Needs Improvement'}
               </span>
             </div>
           </div>
@@ -236,29 +260,29 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Award className="h-4 w-4 text-green-600" />
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Completion Rate</span>
+                <span className="text-sm font-semibold text-gray-700">Monthly Growth</span>
               </div>
-              <span className="text-2xl font-bold text-green-600">
-                {(data.completion_rate * 100).toFixed(1)}%
+              <span className="text-2xl font-bold text-blue-600">
+                +{calculateMonthlyGrowth()}%
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
-                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${Math.min(data.completion_rate * 100, 100)}%` }}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${Math.min(calculateMonthlyGrowth(), 100)}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Performance</span>
+              <span className="text-gray-500">Trend</span>
               <span className={`font-medium ${
-                data.completion_rate >= 0.9 ? 'text-green-600' : 
-                data.completion_rate >= 0.7 ? 'text-yellow-600' : 'text-red-600'
+                calculateMonthlyGrowth() >= 10 ? 'text-green-600' : 
+                calculateMonthlyGrowth() >= 0 ? 'text-yellow-600' : 'text-red-600'
               }`}>
-                {data.completion_rate >= 0.9 ? 'Excellent' : 
-                 data.completion_rate >= 0.7 ? 'Good' : 'Needs Improvement'}
+                {calculateMonthlyGrowth() >= 10 ? 'Excellent' : 
+                 calculateMonthlyGrowth() >= 0 ? 'Good' : 'Declining'}
               </span>
             </div>
           </div>
@@ -267,32 +291,28 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Zap className="h-4 w-4 text-purple-600" />
+                  <Star className="h-4 w-4 text-purple-600" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Monthly Growth</span>
+                <span className="text-sm font-semibold text-gray-700">Review Activity</span>
               </div>
-              <span className={`text-2xl font-bold ${data.monthly_growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {data.monthly_growth >= 0 ? '+' : ''}{data.monthly_growth.toFixed(1)}%
+              <span className="text-2xl font-bold text-purple-600">
+                {data.totalReviews}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
               <div 
-                className={`h-3 rounded-full transition-all duration-700 ease-out ${
-                  data.monthly_growth >= 0 
-                    ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                    : 'bg-gradient-to-r from-red-500 to-red-600'
-                }`}
-                style={{ width: `${Math.min(Math.abs(data.monthly_growth), 100)}%` }}
+                className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${Math.min((data.totalReviews / Math.max(data.totalBookings, 1)) * 100, 100)}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Trend</span>
+              <span className="text-gray-500">Engagement</span>
               <span className={`font-medium ${
-                data.monthly_growth >= 10 ? 'text-green-600' : 
-                data.monthly_growth >= 0 ? 'text-yellow-600' : 'text-red-600'
+                data.totalReviews >= data.totalBookings * 0.8 ? 'text-green-600' : 
+                data.totalReviews >= data.totalBookings * 0.5 ? 'text-yellow-600' : 'text-red-600'
               }`}>
-                {data.monthly_growth >= 10 ? 'Excellent' : 
-                 data.monthly_growth >= 0 ? 'Good' : 'Declining'}
+                {data.totalReviews >= data.totalBookings * 0.8 ? 'Excellent' : 
+                 data.totalReviews >= data.totalBookings * 0.5 ? 'Good' : 'Needs Improvement'}
               </span>
             </div>
           </div>

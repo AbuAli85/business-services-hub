@@ -16,7 +16,7 @@ import {
 import { 
   Calendar, 
   User, 
-  DollarSign, 
+  Wallet, 
   Clock,
   Filter,
   Search,
@@ -207,7 +207,7 @@ export function PremiumRecentBookings({ bookings, className }: PremiumRecentBook
                           
                           <div className="flex items-center space-x-2">
                             <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <DollarSign className="h-4 w-4 text-purple-600" />
+                              <Wallet className="h-4 w-4 text-purple-600" />
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">{booking.total_amount} {booking.currency || 'OMR'}</p>

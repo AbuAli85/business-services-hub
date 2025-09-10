@@ -1,31 +1,31 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { CollapsibleSidebar } from '@/components/dashboard/collapsible-sidebar'
+import { Topbar } from '@/components/dashboard/topbar'
+import { EnhancedClientKPIGrid, EnhancedClientPerformanceMetrics } from '@/components/dashboard/enhanced-client-kpi-cards'
+import { AdvancedClientSpendingChart } from '@/components/dashboard/advanced-client-spending-chart'
+import { PremiumClientBookings } from '@/components/dashboard/premium-client-bookings'
+import { EliteServiceSuggestions } from '@/components/dashboard/elite-service-suggestions'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { 
-  Calendar, 
-  Clock, 
-  User, 
-  Package, 
-  MessageSquare, 
-  Plus,
-  Eye,
+  RefreshCw, 
+  AlertCircle,
   Search,
-  CheckCircle,
-  TrendingUp,
-  Wallet,
-  MapPin,
-  ArrowRight,
-  Target
+  Plus,
+  MessageSquare,
+  Target,
+  Zap,
+  Calendar,
+  Star,
+  TrendingUp
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import { toast } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 
 interface ClientStats {
   totalBookings: number
@@ -83,15 +83,19 @@ interface UpcomingBooking {
 }
 
 export default function ClientDashboard() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  
+  // Dashboard data
   const [stats, setStats] = useState<ClientStats | null>(null)
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([])
   const [upcomingBookings, setUpcomingBookings] = useState<UpcomingBooking[]>([])
   const [serviceSuggestions, setServiceSuggestions] = useState<ServiceSuggestion[]>([])
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [userProfile, setUserProfile] = useState<any>(null)
-  const router = useRouter()
 
   useEffect(() => {
     checkUserAndFetchData()
@@ -111,12 +115,10 @@ export default function ClientDashboard() {
         // Subscribe to real-time booking updates
         const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, (update) => {
           if (update.eventType === 'INSERT') {
-            // New booking - refresh data
             fetchRecentBookings(user.id)
             fetchUpcomingBookings(user.id)
             fetchClientStats(user.id)
           } else if (update.eventType === 'UPDATE') {
-            // Booking updated - refresh data
             fetchRecentBookings(user.id)
             fetchUpcomingBookings(user.id)
             fetchClientStats(user.id)
@@ -127,10 +129,8 @@ export default function ClientDashboard() {
         // Subscribe to real-time service suggestions
         const suggestionsSubscription = await realtimeManager.subscribeToServiceSuggestions(user.id, (update) => {
           if (update.eventType === 'INSERT') {
-            // New suggestion - refresh data
             fetchServiceSuggestions(user.id)
           } else if (update.eventType === 'UPDATE') {
-            // Suggestion updated - refresh data
             fetchServiceSuggestions(user.id)
           }
         })
@@ -140,16 +140,14 @@ export default function ClientDashboard() {
         const messageSubscription = await realtimeManager.subscribeToMessages(user.id, (update) => {
           if (update.eventType === 'INSERT') {
             // New message - refresh data if needed
-            // This could trigger a notification or refresh conversations
           }
         })
         subscriptionKeys.push(`messages:${user.id}`)
 
-        // Subscribe to general service updates (for favorites)
+        // Subscribe to general service updates
         const serviceSubscription = await realtimeManager.subscribeToServices('', (update) => {
           if (update.eventType === 'INSERT' || update.eventType === 'UPDATE') {
             // Service updated - refresh favorites
-            // fetchFavoriteServices(user.id) // This line is removed as per the edit hint
           }
         })
         subscriptionKeys.push('services:')
@@ -161,7 +159,6 @@ export default function ClientDashboard() {
 
     return () => {
       if (currentUserId) {
-        // Unsubscribe from all channels
         subscriptionKeys.forEach(key => {
           realtimeManager.unsubscribe(key)
         })
@@ -171,11 +168,13 @@ export default function ClientDashboard() {
 
   const checkUserAndFetchData = async () => {
     try {
+      setLoading(true)
+      setError(null)
+
       const supabase = await getSupabaseClient()
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
       if (userError || !user) {
-        console.error('User authentication error:', userError)
         router.push('/auth/sign-in')
         return
       }
@@ -183,13 +182,11 @@ export default function ClientDashboard() {
       // Check if user is a client
       const userRole = user.user_metadata?.role
       if (userRole !== 'client') {
-        console.log('User is not a client, redirecting to main dashboard')
         router.push('/dashboard')
         return
       }
 
       setUser(user)
-      setUserRole(userRole)
       
       // Fetch user profile for name display
       await fetchUserProfile(user.id)
@@ -204,10 +201,10 @@ export default function ClientDashboard() {
         ])
       } catch (fetchError) {
         console.error('Error fetching user data:', fetchError)
-        // Continue with loading state even if some data fails
       }
     } catch (error) {
       console.error('Error loading client data:', error)
+      setError('Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
@@ -218,7 +215,6 @@ export default function ClientDashboard() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Get bookings count and spending
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('status, amount, currency, created_at')
@@ -226,7 +222,6 @@ export default function ClientDashboard() {
 
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError)
-        // Set default stats if bookings can't be fetched
         setStats({
           totalBookings: 0,
           activeBookings: 0,
@@ -248,11 +243,10 @@ export default function ClientDashboard() {
         ?.filter(b => ['completed', 'in_progress'].includes(b.status))
         .reduce((sum, b) => {
           const subtotal = b.amount || 0
-          const vatAmount = subtotal * 0.05 // Default 5% VAT
+          const vatAmount = subtotal * 0.05
           return sum + subtotal + vatAmount
         }, 0) || 0
 
-      // Get monthly spending
       const currentMonth = new Date().getMonth()
       const currentYear = new Date().getFullYear()
       const monthlyBookings = bookings?.filter(b => {
@@ -264,11 +258,10 @@ export default function ClientDashboard() {
       
       const monthlySpent = monthlyBookings.reduce((sum, b) => {
         const subtotal = b.amount || 0
-        const vatAmount = subtotal * 0.05 // Default 5% VAT
+        const vatAmount = subtotal * 0.05
         return sum + subtotal + vatAmount
       }, 0)
 
-      // Get ratings and reviews from the 'reviews' table (not 'service_reviews')
       const { data: reviews, error: reviewsError } = await supabase
         .from('reviews')
         .select('rating')
@@ -283,9 +276,6 @@ export default function ClientDashboard() {
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
         : 0
 
-      // Since favorite_providers table doesn't exist, we'll set this to 0 for now
-      const favoriteProviders = 0
-
       setStats({
         totalBookings,
         activeBookings,
@@ -294,11 +284,10 @@ export default function ClientDashboard() {
         monthlySpent,
         averageRating,
         totalReviews,
-        favoriteProviders
+        favoriteProviders: 0
       })
     } catch (error) {
       console.error('Error fetching client stats:', error)
-      // Set default stats if there's an error
       setStats({
         totalBookings: 0,
         activeBookings: 0,
@@ -338,20 +327,12 @@ export default function ClientDashboard() {
       }
 
       if (!bookings || bookings.length === 0) {
-        console.log('No recent bookings found')
         setRecentBookings([])
         return
       }
 
-      console.log('Raw recent bookings:', bookings)
-      
-      // Fetch service information separately
       const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
-      console.log('Service IDs to fetch:', serviceIds)
-      
-      // Fetch provider information separately
       const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-      console.log('Provider IDs to fetch:', providerIds)
       
       if (serviceIds.length > 0 && providerIds.length > 0) {
         const [servicesResponse, providersResponse] = await Promise.all([
@@ -365,35 +346,20 @@ export default function ClientDashboard() {
             .in('id', providerIds)
         ])
 
-        if (servicesResponse.error) {
-          console.error('Error fetching services:', servicesResponse.error)
-        }
-        if (providersResponse.error) {
-          console.error('Error fetching providers:', providersResponse.error)
-        }
-
-        console.log('Fetched services:', servicesResponse.data)
-        console.log('Fetched providers:', providersResponse.data)
-
         const enrichedBookings = bookings.map((b: any) => {
           const service = servicesResponse.data?.find(s => s.id === b.service_id)
           const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-          console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
-          console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
           return {
             ...b,
             service_title: service?.title || 'Unknown Service',
             provider_name: provider?.full_name || 'Unknown Provider',
             provider_company: provider?.company_name || 'Unknown Company',
-            amount: b.subtotal + (b.subtotal * 0.05) // Default 5% VAT
+            amount: b.subtotal + (b.subtotal * 0.05)
           }
         })
 
-        console.log('Enriched recent bookings:', enrichedBookings)
         setRecentBookings(enrichedBookings)
       } else {
-        console.log('No service or provider IDs found in recent bookings')
-        // If no IDs, still set the bookings with default info
         const enrichedBookings = bookings.map((b: any) => ({
           ...b,
           service_title: 'Unknown Service',
@@ -434,20 +400,12 @@ export default function ClientDashboard() {
       }
 
       if (!bookings || bookings.length === 0) {
-        console.log('No upcoming bookings found')
         setUpcomingBookings([])
         return
       }
 
-      console.log('Raw upcoming bookings:', bookings)
-      
-      // Fetch service information separately
       const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
-      console.log('Service IDs to fetch:', serviceIds)
-      
-      // Fetch provider information separately
       const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-      console.log('Provider IDs to fetch:', providerIds)
       
       if (serviceIds.length > 0 && providerIds.length > 0) {
         const [servicesResponse, providersResponse] = await Promise.all([
@@ -461,36 +419,22 @@ export default function ClientDashboard() {
             .in('id', providerIds)
         ])
 
-        if (servicesResponse.error) {
-          console.error('Error fetching services:', servicesResponse.error)
-        }
-        if (providersResponse.error) {
-          console.error('Error fetching providers:', providersResponse.error)
-        }
-
-        console.log('Fetched services:', servicesResponse.data)
-        console.log('Fetched providers:', providersResponse.data)
-
         const enrichedBookings = bookings.map((b: any) => {
           const service = servicesResponse.data?.find(s => s.id === b.service_id)
           const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-          console.log(`Booking ${b.id}: service_id=${b.service_id}, found service:`, service)
-          console.log(`Booking ${b.id}: provider_id=${b.provider_id}, found provider:`, provider)
           return {
             ...b,
             service_title: service?.title || 'Unknown Service',
             provider_name: provider?.full_name || 'Unknown Provider',
             provider_company: provider?.company_name || 'Unknown Company',
-            scheduled_date: b.created_at, // Use created_at as fallback since scheduled_date doesn't exist
-            scheduled_time: 'TBD', // This field doesn't exist in the schema
-            location: 'TBD' // This field doesn't exist in the schema
+            scheduled_date: b.created_at,
+            scheduled_time: 'TBD',
+            location: 'TBD'
           }
         })
 
-        console.log('Enriched upcoming bookings:', enrichedBookings)
         setUpcomingBookings(enrichedBookings)
       } else {
-        console.log('No service or provider IDs found in upcoming bookings')
         const enrichedBookings = bookings.map((b: any) => ({
           ...b,
           service_title: 'Unknown Service',
@@ -558,396 +502,214 @@ export default function ClientDashboard() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const config = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
-      approved: { color: 'bg-blue-100 text-blue-800', label: 'Approved' },
-      in_progress: { color: 'bg-purple-100 text-purple-800', label: 'In Progress' },
-      completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
-      cancelled: { color: 'bg-red-100 text-red-800', label: 'Cancelled' },
-      declined: { color: 'bg-gray-100 text-gray-800', label: 'Declined' }
-    }
+  const handleRefresh = async () => {
+    if (!user?.id) return
     
-    const statusConfig = config[status as keyof typeof config] || config.pending
-    return <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-  }
-
-  const getPriorityBadge = (priority: string) => {
-    const config = {
-      low: { color: 'bg-gray-100 text-gray-800', label: 'Low' },
-      medium: { color: 'bg-blue-100 text-blue-800', label: 'Medium' },
-      high: { color: 'bg-orange-100 text-orange-800', label: 'High' },
-      urgent: { color: 'bg-red-100 text-red-800', label: 'Urgent' }
+    try {
+      setRefreshing(true)
+      await Promise.all([
+        fetchClientStats(user.id),
+        fetchRecentBookings(user.id),
+        fetchUpcomingBookings(user.id),
+        fetchServiceSuggestions(user.id)
+      ])
+      toast.success('Dashboard refreshed')
+    } catch (err) {
+      console.error('Error refreshing dashboard:', err)
+      toast.error('Failed to refresh dashboard')
+    } finally {
+      setRefreshing(false)
     }
-    
-    const priorityConfig = config[priority as keyof typeof config] || config.medium
-    return <Badge className={priorityConfig.color}>{priorityConfig.label}</Badge>
   }
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading dashboard...</p>
+      <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <CollapsibleSidebar 
+          collapsed={sidebarCollapsed} 
+          setCollapsed={setSidebarCollapsed} 
+        />
+        
+        <div className="flex flex-col flex-1">
+          <Topbar 
+            title="Client Dashboard" 
+            subtitle="Loading your dashboard..." 
+          />
+          
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="flex items-center justify-center h-64">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                  <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
+                  <p className="text-sm text-gray-600">Preparing your client insights...</p>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <CollapsibleSidebar 
+          collapsed={sidebarCollapsed} 
+          setCollapsed={setSidebarCollapsed} 
+        />
+        
+        <div className="flex flex-col flex-1">
+          <Topbar 
+            title="Client Dashboard" 
+            subtitle="Error loading dashboard" 
+          />
+          
+          <main className="flex-1 overflow-y-auto p-6">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardContent className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="h-8 w-8 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+                  <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
+                  <Button onClick={checkUserAndFetchData} variant="outline" className="bg-white hover:bg-gray-50">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </main>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Client Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Welcome back{userProfile?.full_name ? `, ${userProfile.full_name}` : ''}! Here's your booking overview
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => router.push('/services')}>
-            <Search className="h-4 w-4 mr-2" />
-            Browse Services
-          </Button>
-          <Button onClick={() => router.push('/dashboard/bookings/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Book New Service
-          </Button>
-        </div>
-      </div>
+    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Sidebar */}
+      <CollapsibleSidebar 
+        collapsed={sidebarCollapsed} 
+        setCollapsed={setSidebarCollapsed} 
+      />
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wallet Balance</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats?.totalSpent || 0, 'OMR')}</div>
-            <p className="text-xs text-muted-foreground">
-              +{formatCurrency(stats?.monthlySpent || 0, 'OMR')} this month
-            </p>
-          </CardContent>
-        </Card>
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1">
+        {/* Topbar */}
+        <Topbar 
+          title="Client Dashboard" 
+          subtitle={`Welcome back${userProfile?.full_name ? `, ${userProfile.full_name}` : ''}! Here's your booking overview`}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeBookings || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.totalBookings || 0} total bookings
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.completedBookings || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.totalBookings ? ((stats.completedBookings / stats.totalBookings) * 100).toFixed(1) : 0}% success rate
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rating</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.totalReviews || 0} reviews given
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Upcoming Bookings & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active Bookings */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-              <span>Active Bookings</span>
-            </CardTitle>
-            <CardDescription>Your services currently in progress</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {upcomingBookings.length === 0 ? (
-              <div className="text-center py-6">
-                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No active bookings</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => router.push('/dashboard/bookings/create')}
-                >
-                  Book a Service
-                </Button>
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Your Service Hub
+                </h1>
+                <p className="text-gray-600 mt-2">Discover, book, and manage your professional services</p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {upcomingBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="font-medium">{booking.service_title}</h4>
-                        {getStatusBadge(booking.status)}
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
-                          <span>{booking.provider_name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>{formatDate(booking.scheduled_date)}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{booking.scheduled_time}</span>
-                        </div>
-                        {booking.location && (
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>{booking.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                  </div>
-                ))}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/dashboard/bookings')}
-                >
-                  View All Bookings
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Notifications & Updates */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-              <span>Notifications & Updates</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm font-medium">New Service Suggestions</span>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-gray-700">Live</span>
                 </div>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  {serviceSuggestions.length}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm font-medium">Active Bookings</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  {stats?.activeBookings || 0}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-200">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span className="text-sm font-medium">Messages</span>
-                </div>
-                <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                  New
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="pt-2 border-t">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => router.push('/dashboard/messages')}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                View All Messages
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Bookings & Favorite Services */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Bookings</CardTitle>
-            <CardDescription>Your latest service requests</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentBookings.length === 0 ? (
-              <div className="text-center py-6">
-                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No recent bookings</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-sm">{booking.service_title}</h4>
-                        {getStatusBadge(booking.status)}
-                      </div>
-                      <div className="flex items-center space-x-4 text-xs text-gray-600">
-                        <span>{booking.provider_name}</span>
-                        {booking.provider_company && (
-                          <span className="text-gray-500">({booking.provider_company})</span>
-                        )}
-                        <span className="font-medium">{formatCurrency(booking.amount, 'OMR')}</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
                 <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/dashboard/bookings')}
+                  onClick={handleRefresh} 
+                  disabled={refreshing}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80"
                 >
-                  View All Bookings
+                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Suggested Services */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Suggested Services</span>
-            </CardTitle>
-            <CardDescription>Services recommended by providers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {serviceSuggestions.length === 0 ? (
-              <div className="text-center py-6">
-                <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No service suggestions yet</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => router.push('/dashboard/services')}
-                >
-                  Browse Services
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {serviceSuggestions.map((suggestion) => (
-                  <div key={suggestion.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50 border-green-200">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-sm">{suggestion.suggested_service.title}</h4>
-                        {getPriorityBadge(suggestion.priority)}
-                      </div>
-                      <div className="flex items-center space-x-4 text-xs text-gray-600">
-                        <span>by {suggestion.provider.full_name}</span>
-                        <span className="font-medium">{formatCurrency(suggestion.suggested_service.base_price, 'OMR')}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{suggestion.suggestion_reason}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/services/${suggestion.suggested_service.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/services')}
-                >
-                  Browse All Services
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Service Discovery */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Service Discovery</CardTitle>
-          <CardDescription>Find services that match your needs</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="text-center p-6 border rounded-lg">
-              <Search className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Browse Services</h3>
-              <p className="text-gray-600 mb-4">Explore all available services</p>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/services')}
-              >
-                Browse Services
-              </Button>
-            </div>
-            
-            <div className="text-center p-6 border rounded-lg">
-              <Target className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="font-semibold text-lg mb-2">Contact Providers</h3>
-              <p className="text-gray-600 mb-4">Get personalized recommendations from providers</p>
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/dashboard/messages')}
-              >
-                Contact Providers
-              </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* KPI Grid */}
+          <section className="mb-8">
+            <EnhancedClientKPIGrid data={stats} />
+          </section>
+
+          {/* Performance Metrics */}
+          <section className="mb-8">
+            <EnhancedClientPerformanceMetrics data={stats} />
+          </section>
+
+          {/* Spending Chart */}
+          <section className="mb-8">
+            <AdvancedClientSpendingChart data={stats} />
+          </section>
+
+          {/* Bookings + Service Suggestions */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <PremiumClientBookings 
+              recentBookings={recentBookings} 
+              upcomingBookings={upcomingBookings} 
+            />
+            <EliteServiceSuggestions suggestions={serviceSuggestions} />
+          </section>
+
+          {/* Quick Actions */}
+          <section className="mb-8">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
+                    <p className="text-gray-600">Find and book services easily</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <Zap className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button 
+                    onClick={() => router.push('/services')}
+                    className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">Browse Services</div>
+                      <div className="text-sm opacity-90">Find what you need</div>
+                    </div>
+                  </Button>
+                  <Button 
+                    onClick={() => router.push('/dashboard/bookings/create')}
+                    className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">Book Service</div>
+                      <div className="text-sm opacity-90">Start new project</div>
+                    </div>
+                  </Button>
+                  <Button 
+                    onClick={() => router.push('/dashboard/messages')}
+                    className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">Messages</div>
+                      <div className="text-sm opacity-90">Contact providers</div>
+                    </div>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        </main>
+      </div>
     </div>
   )
 }

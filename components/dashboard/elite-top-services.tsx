@@ -18,7 +18,7 @@ import {
   TrendingUp, 
   Eye, 
   Calendar,
-  DollarSign,
+  Wallet,
   Award,
   Target,
   Zap,
@@ -155,7 +155,7 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div className="flex items-center space-x-2">
                           <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                            <DollarSign className="h-4 w-4 text-green-600" />
+                            <Wallet className="h-4 w-4 text-green-600" />
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">
