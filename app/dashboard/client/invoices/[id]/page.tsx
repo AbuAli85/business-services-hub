@@ -222,17 +222,17 @@ export default function ClientInvoiceDetailsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-2xl">Invoice #{invoice.invoice_number}</CardTitle>
+                    <CardTitle className="text-2xl">Invoice #{invoice.invoice_number || 'N/A'}</CardTitle>
                     <CardDescription className="text-lg">
-                      {invoice.service_title}
+                      {invoice.service_title || 'Service'}
                     </CardDescription>
                   </div>
                   <div className="text-right">
                     <div className="text-3xl font-bold text-gray-900">
-                      {formatCurrency(invoice.total_amount, invoice.currency)}
+                      {formatCurrency(invoice.amount, invoice.currency)}
                     </div>
                     <div className="text-sm text-gray-600">
-                      Due: {formatDate(invoice.due_date)}
+                      Due: {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -245,8 +245,8 @@ export default function ClientInvoiceDetailsPage() {
                       Bill To
                     </h4>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <div className="font-medium">{invoice.client_name}</div>
-                      <div>{invoice.client_email}</div>
+                      <div className="font-medium">{invoice.client_name || 'Client'}</div>
+                      <div>{invoice.client_email || 'N/A'}</div>
                     </div>
                   </div>
                   <div>
@@ -255,8 +255,8 @@ export default function ClientInvoiceDetailsPage() {
                       Service Provider
                     </h4>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <div className="font-medium">{invoice.provider_name}</div>
-                      <div>{invoice.provider_email}</div>
+                      <div className="font-medium">{invoice.provider_name || 'Provider'}</div>
+                      <div>{invoice.provider_email || 'N/A'}</div>
                       {invoice.company_name && (
                         <div className="text-xs text-gray-500">{invoice.company_name}</div>
                       )}
@@ -275,7 +275,7 @@ export default function ClientInvoiceDetailsPage() {
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-semibold text-gray-900">Service</h4>
-                    <p className="text-gray-600">{invoice.service_title}</p>
+                    <p className="text-gray-600">{invoice.service_title || 'Service'}</p>
                     {invoice.service_description && (
                       <p className="text-sm text-gray-500 mt-1">{invoice.service_description}</p>
                     )}
@@ -343,17 +343,13 @@ export default function ClientInvoiceDetailsPage() {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-medium">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">VAT ({invoice.vat_percent}%)</span>
-                    <span className="font-medium">{formatCurrency(invoice.vat_amount, invoice.currency)}</span>
+                    <span className="text-gray-600">Amount</span>
+                    <span className="font-medium">{formatCurrency(invoice.amount, invoice.currency)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-semibold">
                     <span>Total</span>
-                    <span>{formatCurrency(invoice.total_amount, invoice.currency)}</span>
+                    <span>{formatCurrency(invoice.amount, invoice.currency)}</span>
                   </div>
                 </div>
               </CardContent>

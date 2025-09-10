@@ -23,10 +23,18 @@ export interface InvoiceData {
   pdf_url?: string
   payment_terms?: string
   notes?: string
-  subtotal: number
-  vat_percent: number
-  vat_amount: number
-  total_amount: number
+  subtotal?: number
+  vat_percent?: number
+  vat_amount?: number
+  total_amount?: number
+  paid_at?: string
+  payment_method?: string
+  booking?: {
+    id: string
+    scheduled_date?: string
+    status: string
+    requirements?: any
+  }
 }
 
 export interface BookingData {
