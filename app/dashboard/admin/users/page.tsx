@@ -67,7 +67,9 @@ export default function AdminUsersPage() {
       const res = await fetch('/api/admin/users', { cache: 'no-store', headers })
       if (!res.ok) throw new Error(`Request failed: ${res.status}`)
       const json = await res.json()
-      const apiUsers: AdminUser[] = (json.users || []).map((u: any) => ({
+      const apiUsers: AdminUser[] = (json.users || []).map((u: any) => {
+        const normStatus: 'active'|'inactive'|'suspended' = u.status === 'approved' ? 'active' : (u.status === 'suspended' ? 'suspended' : 'inactive')
+        return {
         id: u.id,
         email: u.email,
         full_name: u.full_name,
@@ -76,11 +78,11 @@ export default function AdminUsersPage() {
         company_name: u.company_name || undefined,
         created_at: u.created_at,
         last_sign_in: u.last_sign_in || undefined,
-        status: (u.status || 'active') as any,
+        status: normStatus,
         is_verified: !!u.is_verified,
         two_factor_enabled: !!u.two_factor_enabled,
         permissions: []
-      }))
+      }})
       setUsers(apiUsers)
     } catch (error) {
       console.error('Error fetching users:', error)
@@ -151,9 +153,14 @@ export default function AdminUsersPage() {
   const handleEdit = async (u: AdminUser) => {
     const newRole = prompt('Set role (admin, manager, provider, client):', u.role)
     if (!newRole) return
-    const newStatus = prompt('Set status (approved, pending, suspended):', (u.status as any) || 'approved')
+    const newStatus = prompt('Set status (active, inactive, suspended):', u.status)
     try {
-      await callAdminUpdate(u.id, { role: newRole, status: newStatus })
+      let backendStatus: string | undefined = undefined
+      if (newStatus) {
+        const s = newStatus.toLowerCase()
+        backendStatus = s === 'active' || s === 'approved' ? 'approved' : (s === 'suspended' ? 'suspended' : 'pending')
+      }
+      await callAdminUpdate(u.id, { role: newRole, status: backendStatus })
       await fetchUsers()
       alert('User updated')
     } catch (e: any) {
