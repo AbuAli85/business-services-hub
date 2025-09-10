@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (metaRole !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     // Counts from common tables; ignore errors individually
-    async function count(table: string, col: string = 'id') {
+    const count = async (table: string, col: string = 'id') => {
       try {
         const { count } = await admin.from(table).select(col, { count: 'exact', head: true }).eq('client_id', userId)
         return count || 0
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       }
     }
     // Some tables use different foreign keys; try provider_id as well
-    async function countAny(table: string) {
+    const countAny = async (table: string) => {
       const asClient = await count(table, 'id')
       try {
         const { count } = await admin.from(table).select('id', { count: 'exact', head: true }).eq('provider_id', userId)

@@ -14,6 +14,7 @@ export default function AdminUserDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [stats, setStats] = useState<{bookings:number;messages:number;invoices:number;notifications:number}|null>(null)
+  const [emailActionLoading, setEmailActionLoading] = useState(false)
 
   useEffect(() => {
     load()
@@ -60,6 +61,25 @@ export default function AdminUserDetailsPage() {
       alert(e.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function emailAction(action: 'resend_verification'|'send_reset'|'invite') {
+    try {
+      setEmailActionLoading(true)
+      const headers = await authHeaders()
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(params.id)}/email`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action, email: user?.email })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Email action failed')
+      alert(`${action.replace('_',' ')} link generated`)
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setEmailActionLoading(false)
     }
   }
 
@@ -155,8 +175,9 @@ export default function AdminUserDetailsPage() {
           <CardContent className="space-y-2 text-sm">
             <div>Email verified: {user.is_verified ? 'Yes' : 'No'}</div>
             <div>Two-factor: {user.two_factor_enabled ? 'Enabled' : 'Disabled'}</div>
-            <div className="pt-2">
-              <Button variant="outline" size="sm" onClick={()=>alert('Password reset link will be sent via your provider setup.')}>Send reset password</Button>
+            <div className="pt-2 flex gap-2">
+              <Button variant="outline" size="sm" onClick={()=>emailAction('send_reset')} disabled={emailActionLoading}>Send reset password</Button>
+              <Button variant="outline" size="sm" onClick={()=>emailAction('resend_verification')} disabled={emailActionLoading}>Resend verification</Button>
             </div>
           </CardContent>
         </Card>
