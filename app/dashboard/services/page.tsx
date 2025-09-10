@@ -173,6 +173,7 @@ export default function ServicesPage() {
 
   const checkUserAndLoadServices = async () => {
     try {
+      setLoading(true)
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -1066,7 +1067,17 @@ export default function ServicesPage() {
         </Card>
 
         {/* Enhanced Services Grid */}
-        {services.length === 0 ? (
+        {loading ? (
+          <Card className="card-glass border-0 shadow-xl">
+            <CardContent className="text-center py-16">
+              <div className="flex items-center justify-center mb-4">
+                <div className="h-6 w-6 mr-3 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                <h3 className="text-xl font-semibold text-gray-900">Loading services…</h3>
+              </div>
+              <p className="text-gray-600">Please wait while we fetch the latest services.</p>
+            </CardContent>
+          </Card>
+        ) : services.length === 0 ? (
           <Card className="card-glass border-0 shadow-xl">
             <CardContent className="text-center py-16">
               <div className="relative">
