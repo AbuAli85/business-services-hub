@@ -16,6 +16,7 @@ export default function AdminToolsPage() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null)
   const [userStatus, setUserStatus] = useState<string>('approved')
   const [userRole, setUserRole] = useState<string>('client')
+  const [inviteEmail, setInviteEmail] = useState('')
 
   const [bookingId, setBookingId] = useState('')
   const [bookingAction, setBookingAction] = useState<'approve'|'decline'|'reschedule'|'complete'|'cancel'>('approve')
@@ -71,6 +72,28 @@ export default function AdminToolsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed')
       toast.success('User updated')
+      loadUsers()
+    } catch (e: any) {
+      toast.error(e.message)
+    }
+  }
+
+  async function inviteUser() {
+    try {
+      if (!inviteEmail) return toast.error('Enter email to invite')
+      const supaMod = await import('@supabase/supabase-js')
+      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const { data: { session } } = await supa.auth.getSession()
+      if (!session?.access_token) throw new Error('Please sign in again (no session)')
+      const res = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ email: inviteEmail })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to invite')
+      toast.success('Invitation sent')
+      setInviteEmail('')
       loadUsers()
     } catch (e: any) {
       toast.error(e.message)
@@ -152,6 +175,10 @@ export default function AdminToolsPage() {
               </div>
             </div>
             <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input placeholder="Invite email" value={inviteEmail} onChange={(e)=>setInviteEmail(e.target.value)} />
+                <Button onClick={inviteUser}>Invite</Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
                   <div className="text-xs text-gray-500 mb-1">Status</div>
