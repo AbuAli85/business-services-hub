@@ -32,7 +32,7 @@ interface RecentBooking {
   title: string
   description: string
   status: string
-  start_date: string
+  scheduled_date: string
   end_date: string
   total_amount: number
   currency: string
@@ -152,7 +152,7 @@ export function RecentBookings({ bookings, className }: RecentBookingsProps) {
                           
                           <div className="flex items-center space-x-2">
                             <Calendar className="h-3 w-3" />
-                            <span>{safeFormatDate(booking.start_date, 'dd MMM yyyy')}</span>
+                            <span>{safeFormatDate(booking.scheduled_date, 'dd MMM yyyy')}</span>
                           </div>
                           
                           <div className="flex items-center space-x-2">

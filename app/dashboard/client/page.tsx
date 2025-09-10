@@ -324,7 +324,8 @@ export default function ClientDashboard() {
           subtotal,
           currency,
           created_at,
-          start_date,
+          start_time,
+          scheduled_date,
           total_amount
         `)
         .or(`client_id.eq.${userId},user_id.eq.${userId}`)
@@ -368,7 +369,7 @@ export default function ClientDashboard() {
             provider_name: provider?.full_name || 'Unknown Provider',
             provider_company: provider?.company_name || 'Unknown Company',
             amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
-            scheduled_date: b.start_date || b.created_at
+            scheduled_date: b.scheduled_date || b.start_time || b.created_at
           }
         })
 
@@ -380,7 +381,7 @@ export default function ClientDashboard() {
           provider_name: 'Unknown Provider',
           provider_company: 'Unknown Company',
           amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
-          scheduled_date: b.start_date || b.created_at
+          scheduled_date: b.scheduled_date || b.start_time || b.created_at
         }))
         setRecentBookings(enrichedBookings)
       }
@@ -401,7 +402,9 @@ export default function ClientDashboard() {
           service_id,
           provider_id,
           status,
-          created_at
+          created_at,
+          start_time,
+          scheduled_date
         `)
         .eq('client_id', userId)
         .in('status', ['paid', 'in_progress'])
@@ -442,8 +445,8 @@ export default function ClientDashboard() {
             service_title: service?.title || 'Unknown Service',
             provider_name: provider?.full_name || 'Unknown Provider',
             provider_company: provider?.company_name || 'Unknown Company',
-            scheduled_date: b.created_at,
-            scheduled_time: 'TBD',
+            scheduled_date: b.scheduled_date || b.start_time || b.created_at,
+            scheduled_time: b.start_time ? new Date(b.start_time).toLocaleTimeString() : 'TBD',
             location: 'TBD'
           }
         })
@@ -455,8 +458,8 @@ export default function ClientDashboard() {
           service_title: 'Unknown Service',
           provider_name: 'Unknown Provider',
           provider_company: 'Unknown Company',
-          scheduled_date: b.created_at,
-          scheduled_time: 'TBD',
+          scheduled_date: b.scheduled_date || b.start_time || b.created_at,
+          scheduled_time: b.start_time ? new Date(b.start_time).toLocaleTimeString() : 'TBD',
           location: 'TBD'
         }))
         setUpcomingBookings(enrichedBookings)
