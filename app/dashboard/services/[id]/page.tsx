@@ -79,7 +79,15 @@ export default function ServiceDetailPage() {
         .single()
 
       if (error) throw error
-      setService(data)
+      
+      // Ensure requirements and deliverables are arrays
+      const serviceData = {
+        ...data,
+        requirements: Array.isArray(data.requirements) ? data.requirements : [],
+        deliverables: Array.isArray(data.deliverables) ? data.deliverables : []
+      }
+      
+      setService(serviceData)
     } catch (error) {
       console.error('Error loading service:', error)
       toast.error('Failed to load service')
