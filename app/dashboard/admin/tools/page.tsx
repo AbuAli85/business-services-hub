@@ -17,6 +17,7 @@ export default function AdminToolsPage() {
   const [userStatus, setUserStatus] = useState<string>('approved')
   const [userRole, setUserRole] = useState<string>('client')
   const [inviteEmail, setInviteEmail] = useState('')
+  const [syncLoading, setSyncLoading] = useState(false)
 
   const [bookingId, setBookingId] = useState('')
   const [bookingAction, setBookingAction] = useState<'approve'|'decline'|'reschedule'|'complete'|'cancel'>('approve')
@@ -100,6 +101,25 @@ export default function AdminToolsPage() {
     }
   }
 
+  async function syncUsers() {
+    try {
+      setSyncLoading(true)
+      const supaMod = await import('@supabase/supabase-js')
+      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const { data: { session } } = await supa.auth.getSession()
+      if (!session?.access_token) throw new Error('Please sign in again (no session)')
+      const res = await fetch('/api/admin/users/sync', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Sync failed')
+      toast.success(`Synced: +${data.inserted} inserted, ${data.updated} updated`)
+      loadUsers()
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
   async function updateBooking() {
     if (!bookingId) return toast.error('Enter booking id')
     try {
@@ -162,6 +182,7 @@ export default function AdminToolsPage() {
           <div className="flex gap-2">
             <Input placeholder="Search email/name/role" value={query} onChange={(e)=>setQuery(e.target.value)} />
             <Button onClick={loadUsers} disabled={loadingUsers}>{loadingUsers ? 'Loading...' : 'Refresh'}</Button>
+            <Button onClick={syncUsers} disabled={syncLoading}>{syncLoading ? 'Syncing...' : 'Sync users'}</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
