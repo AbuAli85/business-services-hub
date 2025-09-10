@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       if (status !== undefined) update.status = status
       if (role !== undefined) update.role = role
 
-      const { error: profErr } = await supabase
+      const { error: profErr } = await admin
         .from('profiles')
         .update(update)
         .eq('id', user_id)
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
       if (role !== undefined) {
         // Upsert user_roles if table exists
-        const { error: roleErr } = await supabase
+        const { error: roleErr } = await admin
           .from('user_roles')
           .upsert({ user_id, role })
 

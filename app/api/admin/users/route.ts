@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role.ilike.%${q}%`)
     const { data: rows, error: pErr } = await query
     if (pErr) return NextResponse.json({ error: 'Failed to fetch users', details: pErr.message }, { status: 500 })
-    const profileUsers = (rows || []).map(u => ({
+    const profileUsers = ((rows || []).map(u => ({
       id: u.id,
       email: u.email,
       full_name: u.full_name || (u.email ? u.email.split('@')[0] : 'User'),
@@ -56,13 +56,13 @@ export async function GET(req: NextRequest) {
       phone: u.phone || null,
       company_name: u.company_name || null,
       created_at: u.created_at,
-      last_sign_in: null,
+      last_sign_in: null as string | null,
       status: u.status || 'active',
-      is_verified: null,
-      two_factor_enabled: null
-    }))
+      is_verified: null as boolean | null,
+      two_factor_enabled: null as boolean | null
+    })) as any[])
     // Try to merge with auth users to include any without profiles
-    let merged = [...profileUsers]
+    let merged: any[] = [...profileUsers]
     try {
       const { data: authList, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 }) as any
       if (!listErr && authList?.users?.length) {
@@ -83,10 +83,10 @@ export async function GET(req: NextRequest) {
             phone: null,
             company_name: null,
             created_at: au.created_at,
-            last_sign_in: (au.last_sign_in_at as string) || null,
+            last_sign_in: au.last_sign_in_at ? String(au.last_sign_in_at) : null,
             status: 'pending',
-            is_verified: (au.email_confirmed_at as string) ? true : false,
-            two_factor_enabled: (au.factors?.length || 0) > 0
+            is_verified: !!au.email_confirmed_at,
+            two_factor_enabled: Array.isArray((au as any).factors) && (au as any).factors.length > 0
           })
         }
         // Sort by created_at desc
