@@ -143,13 +143,19 @@ export default function ClientInvoicesPage() {
 
       if (error) {
         console.error('Error fetching invoices:', error)
+        console.error('User ID:', userId)
         toast.error('Failed to fetch invoices')
         return
       }
 
+      console.log('✅ Fetched invoices:', invoices?.length || 0)
       setInvoices(invoices || [])
       setFilteredInvoices(invoices || [])
       calculateStats(invoices || [])
+      
+      if (!invoices || invoices.length === 0) {
+        console.log('ℹ️ No invoices found for user:', userId)
+      }
     } catch (error) {
       console.error('Error fetching invoices:', error)
       toast.error('Failed to fetch invoices')

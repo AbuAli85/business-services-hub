@@ -129,7 +129,23 @@ export default function ClientInvoiceDetailsPage() {
 
       if (error) {
         console.error('Error fetching invoice:', error)
-        toast.error('Invoice not found')
+        console.error('Invoice ID:', params.id)
+        console.error('User ID:', user.id)
+        
+        // Check if invoice exists but doesn't belong to user
+        const { data: anyInvoice } = await supabase
+          .from('invoices')
+          .select('id, client_id')
+          .eq('id', params.id)
+          .single()
+        
+        if (anyInvoice) {
+          console.error('Invoice exists but belongs to different client:', anyInvoice.client_id)
+          toast.error('You do not have permission to view this invoice')
+        } else {
+          toast.error('Invoice not found')
+        }
+        
         router.push('/dashboard/client/invoices')
         return
       }
