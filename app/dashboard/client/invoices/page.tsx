@@ -159,7 +159,7 @@ export default function ClientInvoicesPage() {
     const pending = invoices.filter(inv => inv.status === 'issued').length
     const overdue = invoices.filter(inv => {
       if (inv.status !== 'issued') return false
-      return new Date(inv.due_date) < new Date()
+      return inv.due_date && new Date(inv.due_date) < new Date()
     }).length
 
     const totalAmount = invoices.reduce((sum, inv) => sum + (inv.total_amount || inv.amount || 0), 0)
