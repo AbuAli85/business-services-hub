@@ -25,6 +25,8 @@ export default function AdminToolsPage() {
   const [emailTo, setEmailTo] = useState('')
   const [emailSubject, setEmailSubject] = useState('Test email')
   const [emailHtml, setEmailHtml] = useState('<b>Hello from Admin Tools</b>')
+  const [events, setEvents] = useState<any[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(false)
 
   async function loadUsers() {
     try {
@@ -102,6 +104,21 @@ export default function AdminToolsPage() {
       toast.success('Email sent')
     } catch (e: any) {
       toast.error(e.message)
+    }
+  }
+
+  async function loadEmailEvents() {
+    try {
+      setLoadingEvents(true)
+      const token = (await (await import('@supabase/supabase-js')).createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.getSession()).data.session?.access_token
+      const res = await fetch('/api/admin/email-events?limit=100', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to load events')
+      setEvents(data.events || [])
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setLoadingEvents(false)
     }
   }
 
@@ -197,6 +214,44 @@ export default function AdminToolsPage() {
             <Button onClick={sendTestEmail}>Send</Button>
           </div>
           <Textarea value={emailHtml} onChange={(e)=>setEmailHtml(e.target.value)} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Email Events</CardTitle>
+            <Button onClick={loadEmailEvents} disabled={loadingEvents}>{loadingEvents ? 'Loading...' : 'Refresh'}</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-auto border rounded">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left p-2">Time</th>
+                  <th className="text-left p-2">Email</th>
+                  <th className="text-left p-2">Status</th>
+                  <th className="text-left p-2">Type</th>
+                  <th className="text-left p-2">Provider ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((e:any) => (
+                  <tr key={e.id} className="border-t">
+                    <td className="p-2">{new Date(e.created_at || e.sent_at).toLocaleString()}</td>
+                    <td className="p-2">{e.email}</td>
+                    <td className="p-2">{e.status}</td>
+                    <td className="p-2">{e.notification_type}</td>
+                    <td className="p-2">{e.provider_message_id || '-'}</td>
+                  </tr>
+                ))}
+                {events.length===0 && (
+                  <tr><td className="p-3 text-gray-500" colSpan={5}>No events yet</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
