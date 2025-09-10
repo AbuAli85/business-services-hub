@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the PDF content as a blob
-    return new NextResponse(pdfContent, {
+    return new NextResponse(pdfContent as any, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="invoice-${invoiceId}.pdf"`,
