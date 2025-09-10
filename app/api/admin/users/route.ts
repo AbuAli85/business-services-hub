@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role.ilike.%${q}%`)
     const { data: rows, error: pErr } = await query
     if (pErr) return NextResponse.json({ error: 'Failed to fetch users', details: pErr.message }, { status: 500 })
-    const users = (rows || []).map(u => ({
+    const profileUsers = (rows || []).map(u => ({
       id: u.id,
       email: u.email,
       full_name: u.full_name || (u.email ? u.email.split('@')[0] : 'User'),
@@ -61,7 +61,39 @@ export async function GET(req: NextRequest) {
       is_verified: null,
       two_factor_enabled: null
     }))
-    return NextResponse.json({ users })
+    // Try to merge with auth users to include any without profiles
+    let merged = [...profileUsers]
+    try {
+      const { data: authList, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 }) as any
+      if (!listErr && authList?.users?.length) {
+        const seen = new Set(merged.map(u => u.id))
+        for (const au of authList.users) {
+          if (q) {
+            const s = q.toLowerCase()
+            const em = (au.email || '').toLowerCase()
+            const name = ((au.user_metadata?.full_name as string) || '').toLowerCase()
+            if (!(em.includes(s) || name.includes(s))) continue
+          }
+          if (seen.has(au.id)) continue
+          merged.push({
+            id: au.id,
+            email: au.email,
+            full_name: (au.user_metadata?.full_name as string) || (au.email ? au.email.split('@')[0] : 'User'),
+            role: (au.user_metadata?.role as string) || 'client',
+            phone: null,
+            company_name: null,
+            created_at: au.created_at,
+            last_sign_in: (au.last_sign_in_at as string) || null,
+            status: 'pending',
+            is_verified: (au.email_confirmed_at as string) ? true : false,
+            two_factor_enabled: (au.factors?.length || 0) > 0
+          })
+        }
+        // Sort by created_at desc
+        merged.sort((a, b) => (new Date(b.created_at).getTime()) - (new Date(a.created_at).getTime()))
+      }
+    } catch {}
+    return NextResponse.json({ users: merged })
   } catch (e: any) {
     console.error('❌ Admin users API unexpected error:', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
