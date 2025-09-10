@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
+  Wallet, 
   Calendar, 
   Clock, 
   User, 
@@ -453,89 +453,115 @@ export default function ProviderDashboardById() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{getDashboardTitle()}</h1>
-          <p className="text-gray-600 mt-2">{getWelcomeMessage()}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
+        {/* Enhanced Header */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10 rounded-3xl -m-4"></div>
+          <div className="relative bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/30 shadow-2xl p-6 sm:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <User className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{getDashboardTitle()}</h1>
+                    <p className="text-gray-600 mt-1">{getWelcomeMessage()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" onClick={() => router.push('/dashboard/provider/create-service')} className="h-12 px-6">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Service
+                </Button>
+                <Button onClick={() => router.push('/dashboard/bookings')} className="h-12 px-6">
+                  <Eye className="h-4 w-4 mr-2" />
+                  View All Bookings
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/provider/create-service')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Service
-          </Button>
-          <Button onClick={() => router.push('/dashboard/bookings')}>
-            <Eye className="h-4 w-4 mr-2" />
-            View All Bookings
-          </Button>
+
+        {/* Enhanced Key Metrics */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50/40 via-gray-50/30 to-slate-100/40 rounded-3xl -m-4"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+          <div className="relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-100 hover:shadow-xl transition-all duration-300">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full -translate-y-10 translate-x-10"></div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                  <CardTitle className="text-sm font-medium text-gray-700">Total Earnings</CardTitle>
+                  <Wallet className="h-5 w-5 text-green-600" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                  <div className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.totalEarnings || 0)}</div>
+                  <p className="text-xs text-green-600 font-medium">
+                    +{formatCurrency(stats?.monthlyEarnings || 0)} this month
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100 hover:shadow-xl transition-all duration-300">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full -translate-y-10 translate-x-10"></div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                  <CardTitle className="text-sm font-medium text-gray-700">Active Bookings</CardTitle>
+                  <Clock className="h-5 w-5 text-blue-600" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                  <div className="text-2xl font-bold text-gray-900">{stats?.pendingBookings || 0}</div>
+                  <p className="text-xs text-blue-600 font-medium">
+                    {stats?.totalBookings || 0} total bookings
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-50 to-violet-100 hover:shadow-xl transition-all duration-300">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-400/20 to-violet-500/20 rounded-full -translate-y-10 translate-x-10"></div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                  <CardTitle className="text-sm font-medium text-gray-700">Active Services</CardTitle>
+                  <Package className="h-5 w-5 text-purple-600" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                  <div className="text-2xl font-bold text-gray-900">{stats?.activeServices || 0}</div>
+                  <p className="text-xs text-purple-600 font-medium">
+                    {stats?.totalServices || 0} total services
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-100 hover:shadow-xl transition-all duration-300">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full -translate-y-10 translate-x-10"></div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+                  <CardTitle className="text-sm font-medium text-gray-700">Rating</CardTitle>
+                  <Star className="h-5 w-5 text-amber-600" />
+                </CardHeader>
+                <CardContent className="relative z-10">
+                  <div className="text-2xl font-bold text-gray-900">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
+                  <p className="text-xs text-amber-600 font-medium">
+                    {stats?.totalReviews || 0} reviews
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats?.totalEarnings || 0)}</div>
-            <p className="text-xs text-muted-foreground">
-              +{formatCurrency(stats?.monthlyEarnings || 0)} this month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.pendingBookings || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.totalBookings || 0} total bookings
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Services</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeServices || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.totalServices || 0} total services
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rating</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.averageRating?.toFixed(1) || '0.0'}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats?.totalReviews || 0} reviews
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Response & Completion Rates */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
-            <CardDescription>Your response and completion rates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        {/* Enhanced Performance Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+          {/* Response & Completion Rates */}
+          <div className="lg:col-span-2 relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-indigo-50/30 to-blue-100/40 rounded-3xl -m-4"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+            <Card className="relative border-0 shadow-lg bg-white/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900">Performance Metrics</CardTitle>
+                <CardDescription className="text-gray-600">Your response and completion rates</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Response Rate</span>
@@ -580,12 +606,15 @@ export default function ProviderDashboardById() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          {/* Enhanced Quick Actions */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-50/40 via-pink-50/30 to-purple-100/40 rounded-3xl -m-4"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+            <Card className="relative border-0 shadow-lg bg-white/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
             <Button 
               variant="outline" 
               className="w-full justify-start"
@@ -618,18 +647,22 @@ export default function ProviderDashboardById() {
               <Settings className="h-4 w-4 mr-2" />
               Profile Settings
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-      {/* Recent Bookings & Top Services */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Bookings</CardTitle>
-            <CardDescription>Latest booking requests and updates</CardDescription>
-          </CardHeader>
+        {/* Enhanced Recent Bookings & Top Services */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+          {/* Recent Bookings */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-50/40 via-emerald-50/30 to-green-100/40 rounded-3xl -m-4"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+            <Card className="relative border-0 shadow-lg bg-white/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900">Recent Bookings</CardTitle>
+                <CardDescription className="text-gray-600">Latest booking requests and updates</CardDescription>
+              </CardHeader>
           <CardContent>
             {recentBookings.length === 0 ? (
               <div className="text-center py-6">
@@ -672,12 +705,15 @@ export default function ProviderDashboardById() {
           </CardContent>
         </Card>
 
-        {/* Top Performing Services */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Performing Services</CardTitle>
-            <CardDescription>Your most successful services</CardDescription>
-          </CardHeader>
+          {/* Top Performing Services */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-100/40 rounded-3xl -m-4"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+            <Card className="relative border-0 shadow-lg bg-white/80 backdrop-blur-md">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900">Top Performing Services</CardTitle>
+                <CardDescription className="text-gray-600">Your most successful services</CardDescription>
+              </CardHeader>
           <CardContent>
             {topServices.length === 0 ? (
               <div className="text-center py-6">
@@ -719,26 +755,31 @@ export default function ProviderDashboardById() {
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Earnings Chart Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Earnings Overview</CardTitle>
-          <CardDescription>Your earnings over time</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Earnings chart will be displayed here</p>
-              <p className="text-sm text-gray-500">Coming soon with advanced analytics</p>
-            </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Enhanced Earnings Chart Placeholder */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/40 via-purple-50/30 to-indigo-100/40 rounded-3xl -m-4"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+          <Card className="relative border-0 shadow-lg bg-white/80 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900">Earnings Overview</CardTitle>
+              <CardDescription className="text-gray-600">Your earnings over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                <div className="text-center">
+                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 font-medium">Earnings chart will be displayed here</p>
+                  <p className="text-sm text-gray-500">Coming soon with advanced analytics</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
       {/* Goals & Achievements */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -817,6 +858,7 @@ export default function ProviderDashboardById() {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   )
