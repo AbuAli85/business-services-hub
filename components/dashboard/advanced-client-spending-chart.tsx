@@ -262,15 +262,15 @@ export function AdvancedClientSpendingChart({ data, className }: AdvancedClientS
 
   return (
     <Card className={`border-0 shadow-xl bg-white/80 backdrop-blur-sm ${className}`}>
-      <CardHeader className="pb-6">
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-4 sm:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Spending Analytics</CardTitle>
-            <p className="text-gray-600 mt-1">Track your service spending and booking patterns</p>
+            <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">Spending Analytics</CardTitle>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Track your service spending and booking patterns</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Wallet className="h-5 w-5" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+              <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="font-semibold">Total: {formatCurrency(data.totalSpent)}</span>
             </div>
             <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
@@ -319,45 +319,45 @@ export function AdvancedClientSpendingChart({ data, className }: AdvancedClientS
         </div>
       </CardHeader>
       
-      <CardContent>
-        <div className="h-80">
+      <CardContent className="p-4 sm:p-6">
+        <div className="h-64 sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
             {renderChart()}
           </ResponsiveContainer>
         </div>
         
         {/* Enhanced Summary Stats */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-4 gap-6 pt-8 border-t border-gray-100">
-          <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl border border-green-200">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Wallet className="h-6 w-6 text-white" />
+        <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 pt-6 sm:pt-8 border-t border-gray-100">
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl sm:rounded-2xl border border-green-200">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
+              <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <p className="text-2xl font-bold text-green-700">{formatCurrency(data.totalSpent)}</p>
-            <p className="text-sm text-green-600 font-medium">Total Spent</p>
+            <p className="text-lg sm:text-2xl font-bold text-green-700">{formatCurrency(data.totalSpent)}</p>
+            <p className="text-xs sm:text-sm text-green-600 font-medium">Total Spent</p>
           </div>
           
-          <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-sky-100 rounded-2xl border border-blue-200">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-sky-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <TrendingUp className="h-6 w-6 text-white" />
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-sky-100 rounded-xl sm:rounded-2xl border border-blue-200">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-sky-600 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
+              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <p className="text-2xl font-bold text-blue-700">{formatCurrency(avgSpending)}</p>
-            <p className="text-sm text-blue-600 font-medium">Monthly Average</p>
+            <p className="text-lg sm:text-2xl font-bold text-blue-700">{formatCurrency(avgSpending)}</p>
+            <p className="text-xs sm:text-sm text-blue-600 font-medium">Monthly Average</p>
           </div>
           
-          <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl border border-purple-200">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Target className="h-6 w-6 text-white" />
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-purple-50 to-violet-100 rounded-xl sm:rounded-2xl border border-purple-200">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
+              <Target className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <p className="text-2xl font-bold text-purple-700">{formatCurrency(maxSpending)}</p>
-            <p className="text-sm text-purple-600 font-medium">Peak Month</p>
+            <p className="text-lg sm:text-2xl font-bold text-purple-700">{formatCurrency(maxSpending)}</p>
+            <p className="text-xs sm:text-sm text-purple-600 font-medium">Peak Month</p>
           </div>
           
-          <div className="text-center p-6 bg-gradient-to-br from-orange-50 to-amber-100 rounded-2xl border border-orange-200">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Calendar className="h-6 w-6 text-white" />
+          <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-orange-50 to-amber-100 rounded-xl sm:rounded-2xl border border-orange-200">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg sm:rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
+              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <p className="text-2xl font-bold text-orange-700">{data.totalBookings}</p>
-            <p className="text-sm text-orange-600 font-medium">Total Bookings</p>
+            <p className="text-lg sm:text-2xl font-bold text-orange-700">{data.totalBookings}</p>
+            <p className="text-xs sm:text-sm text-orange-600 font-medium">Total Bookings</p>
           </div>
         </div>
       </CardContent>

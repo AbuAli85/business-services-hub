@@ -556,7 +556,7 @@ export default function ClientDashboard() {
   }
 
   if (error || !stats) {
-    return (
+  return (
       <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <CollapsibleSidebar 
           collapsed={sidebarCollapsed} 
@@ -575,13 +575,13 @@ export default function ClientDashboard() {
                 <div className="text-center">
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <AlertCircle className="h-8 w-8 text-red-600" />
-                  </div>
+        </div>
                   <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
                   <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
                   <Button onClick={checkUserAndFetchData} variant="outline" className="bg-white hover:bg-gray-50">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Try Again
-                  </Button>
+          </Button>
                 </div>
               </CardContent>
             </Card>
@@ -610,35 +610,36 @@ export default function ClientDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Welcome Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Your Service Hub
                 </h1>
-                <p className="text-gray-600 mt-2">Discover, book, and manage your professional services</p>
+                <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Discover, book, and manage your professional services</p>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
+                <div className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-gray-700">Live</span>
-                </div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">Live</span>
+                  </div>
                 <Button 
                   onClick={handleRefresh} 
                   disabled={refreshing}
-                  variant="outline"
+                  variant="outline" 
                   size="sm"
-                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80"
+                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80 text-xs sm:text-sm"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                  <span className="sm:hidden">{refreshing ? '...' : '↻'}</span>
                 </Button>
               </div>
-            </div>
-          </div>
-
+                </div>
+              </div>
+              
           {/* KPI Grid */}
           <section className="mb-8">
             <EnhancedClientKPIGrid data={stats} />
@@ -655,7 +656,7 @@ export default function ClientDashboard() {
           </section>
 
           {/* Bookings + Service Suggestions */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
             <PremiumClientBookings 
               recentBookings={recentBookings} 
               upcomingBookings={upcomingBookings} 
@@ -664,49 +665,49 @@ export default function ClientDashboard() {
           </section>
 
           {/* Quick Actions */}
-          <section className="mb-8">
+          <section className="mb-6 sm:mb-8">
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-8">
-                <div className="flex items-center justify-between mb-6">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
-                    <p className="text-gray-600">Find and book services easily</p>
-                  </div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Quick Actions</h3>
+                    <p className="text-sm sm:text-base text-gray-600">Find and book services easily</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button 
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg sm:rounded-xl flex items-center justify-center">
+                    <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              <Button 
                     onClick={() => router.push('/services')}
-                    className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="h-14 sm:h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <div className="text-center">
-                      <div className="text-lg font-semibold">Browse Services</div>
-                      <div className="text-sm opacity-90">Find what you need</div>
+                      <div className="text-base sm:text-lg font-semibold">Browse Services</div>
+                      <div className="text-xs sm:text-sm opacity-90">Find what you need</div>
                     </div>
-                  </Button>
-                  <Button 
+                    </Button>
+                <Button 
                     onClick={() => router.push('/dashboard/bookings/create')}
-                    className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="h-14 sm:h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     <div className="text-center">
-                      <div className="text-lg font-semibold">Book Service</div>
-                      <div className="text-sm opacity-90">Start new project</div>
+                      <div className="text-base sm:text-lg font-semibold">Book Service</div>
+                      <div className="text-xs sm:text-sm opacity-90">Start new project</div>
                     </div>
                   </Button>
-                  <Button 
+                    <Button
                     onClick={() => router.push('/dashboard/messages')}
-                    className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
+                    className="h-14 sm:h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
                     <div className="text-center">
-                      <div className="text-lg font-semibold">Messages</div>
-                      <div className="text-sm opacity-90">Contact providers</div>
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                      <div className="text-base sm:text-lg font-semibold">Messages</div>
+                      <div className="text-xs sm:text-sm opacity-90">Contact providers</div>
+                  </div>
+                </Button>
+              </div>
+          </CardContent>
+        </Card>
           </section>
         </main>
       </div>
