@@ -927,17 +927,19 @@ export function ProfessionalMilestoneSystem({
       const supabase = await getSupabaseClient()
       
       const userId = (await supabase.auth.getUser()).data.user?.id
-      const actionData = {
+      const commentData = {
         task_id: selectedTask.id,
-        action_type: actionType,
-        content: actionText,
-        created_by: userId,
+        user_id: userId,
+        // Preserve the action type context inside the comment body
+        comment: `[${actionType.toUpperCase()}] ${actionText}`,
+        // Treat non-comment actions as internal notes by default
+        is_internal: actionType !== 'comment',
         created_at: new Date().toISOString()
       }
 
       const { error } = await supabase
-        .from('task_actions')
-        .insert(actionData)
+        .from('task_comments')
+        .insert(commentData)
 
       if (error) throw error
 
