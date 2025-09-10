@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
-import { smartInvoiceService, InvoiceData } from '@/lib/smart-invoice-service'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +27,43 @@ import {
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
+
+interface InvoiceData {
+  id: string
+  booking_id: string
+  client_id: string
+  provider_id: string
+  amount: number
+  currency: string
+  status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'
+  invoice_number?: string
+  service_title?: string
+  service_description?: string
+  client_name?: string
+  client_email?: string
+  provider_name?: string
+  provider_email?: string
+  company_name?: string
+  company_logo?: string
+  due_date?: string
+  created_at: string
+  updated_at: string
+  pdf_url?: string
+  payment_terms?: string
+  notes?: string
+  subtotal?: number
+  vat_percent?: number
+  vat_amount?: number
+  total_amount?: number
+  paid_at?: string
+  payment_method?: string
+  booking?: {
+    id: string
+    scheduled_date?: string
+    status: string
+    requirements?: any
+  }
+}
 
 export default function ClientInvoiceDetailsPage() {
   const router = useRouter()
@@ -69,7 +105,6 @@ export default function ClientInvoiceDetailsPage() {
           *,
           booking:bookings(
             id,
-            service_title,
             scheduled_date,
             status,
             requirements
