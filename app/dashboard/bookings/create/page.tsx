@@ -764,11 +764,25 @@ export default function CreateBookingPage() {
                   </div>
                 )}
                 
-                <div className="pt-3 border-t">
-                  <Button variant="outline" size="sm" className="w-full">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Contact Provider
+                <div className="pt-3 border-t grid grid-cols-3 gap-2">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="w-full col-span-2"
+                  >
+                    <a href={`/dashboard/messages?to=${selectedService.provider.id}`}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Contact Provider
+                    </a>
                   </Button>
+                  {selectedService.provider.email && (
+                    <Button asChild variant="outline" size="sm" className="w-full" title="Email">
+                      <a href={`mailto:${selectedService.provider.email}?subject=Booking inquiry: ${encodeURIComponent(selectedService.title)}`}>
+                        <Mail className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
