@@ -307,7 +307,7 @@ export default function ServiceDetailPage() {
           )}
 
           {/* Requirements */}
-          {service.requirements && service.requirements.length > 0 && (
+          {Array.isArray(service.requirements) && service.requirements.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Requirements</CardTitle>

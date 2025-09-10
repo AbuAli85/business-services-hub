@@ -70,7 +70,19 @@ export async function GET(
       provider = null
     }
 
-    return NextResponse.json({ service: { ...serviceRow, provider } })
+    // Ensure all array fields are properly initialized
+    const sanitizedService = {
+      ...serviceRow,
+      provider,
+      requirements: Array.isArray(serviceRow.requirements) ? serviceRow.requirements : [],
+      deliverables: Array.isArray(serviceRow.deliverables) ? serviceRow.deliverables : [],
+      service_packages: Array.isArray(serviceRow.service_packages) ? serviceRow.service_packages.map((pkg: any) => ({
+        ...pkg,
+        features: Array.isArray(pkg.features) ? pkg.features : []
+      })) : []
+    }
+
+    return NextResponse.json({ service: sanitizedService })
   } catch (error) {
     console.error('API error:', error)
     return NextResponse.json(

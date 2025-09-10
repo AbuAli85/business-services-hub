@@ -45,13 +45,13 @@ export function RequirementsSelector({
           return
         }
 
-        const formattedOptions: SelectOption[] = requirements.map(item => ({
+        const formattedOptions: SelectOption[] = Array.isArray(requirements) ? requirements.map(item => ({
           id: item.id,
           value: item.requirement,
           label: item.requirement,
           description: item.description,
           isCustom: item.is_custom
-        }))
+        })) : []
 
         setOptions(formattedOptions)
       } catch (error) {

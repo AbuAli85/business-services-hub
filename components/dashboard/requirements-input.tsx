@@ -97,7 +97,7 @@ export function RequirementsInput({
       </div>
 
       {/* Display requirements */}
-      {requirements.length > 0 && (
+      {Array.isArray(requirements) && requirements.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-slate-700">
             Added Requirements ({requirements.length})
