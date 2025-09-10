@@ -23,6 +23,8 @@ export interface RecentBooking {
   created_at: string
   client_name: string
   client_email: string
+  client_id: string
+  provider_id: string
   service_title: string
   milestone_count: number
   completed_milestones: number
@@ -165,6 +167,7 @@ export class ProviderDashboardService {
         currency,
         created_at,
         client_id,
+        provider_id,
         service_id
       `)
       .eq('provider_id', providerId)
@@ -185,6 +188,8 @@ export class ProviderDashboardService {
       created_at: booking.created_at,
       client_name: 'Client', // Simplified for now
       client_email: 'client@example.com',
+      client_id: booking.client_id || '',
+      provider_id: booking.provider_id || '',
       service_title: 'Service', // Simplified for now
       milestone_count: 0, // Will be populated separately if needed
       completed_milestones: 0

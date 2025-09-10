@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { getSupabaseClient } from '@/lib/supabase'
+import { Eye, User, Building2 } from 'lucide-react'
 
 export default function AdminUserDetailsPage() {
   const params = useParams() as { id: string }
@@ -105,6 +106,29 @@ export default function AdminUserDetailsPage() {
       <div className="flex items-center justify-between">
         <Button variant="outline" onClick={()=>router.push('/dashboard/admin/users')}>Back</Button>
         <div className="flex gap-2">
+          {/* Profile View Buttons */}
+          {user.role === 'client' && (
+            <Button 
+              variant="outline" 
+              onClick={() => router.push(`/dashboard/client/${user.id}`)}
+              className="flex items-center gap-2"
+            >
+              <User className="h-4 w-4" />
+              View Client Profile
+            </Button>
+          )}
+          {user.role === 'provider' && (
+            <Button 
+              variant="outline" 
+              onClick={() => router.push(`/dashboard/provider/${user.id}`)}
+              className="flex items-center gap-2"
+            >
+              <Building2 className="h-4 w-4" />
+              View Provider Profile
+            </Button>
+          )}
+          
+          {/* Admin Actions */}
           <Button variant="outline" onClick={()=>update({ status: user.status==='active' ? 'suspended' : 'approved' })} disabled={saving}>
             {user.status==='active' ? 'Suspend' : 'Activate'}
           </Button>

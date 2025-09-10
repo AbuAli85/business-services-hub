@@ -431,6 +431,44 @@ export default function DashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Access Section */}
+        <div className="mb-8">
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-gray-900">Quick Access</CardTitle>
+              <CardDescription>Navigate to different sections of the platform</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => router.push('/dashboard/client')}
+                  className="h-16 flex flex-col items-center justify-center space-y-2 hover:bg-blue-50"
+                >
+                  <Users className="h-6 w-6 text-blue-600" />
+                  <span className="text-sm font-medium">Client Dashboard</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => router.push('/dashboard/provider')}
+                  className="h-16 flex flex-col items-center justify-center space-y-2 hover:bg-green-50"
+                >
+                  <Package className="h-6 w-6 text-green-600" />
+                  <span className="text-sm font-medium">Provider Dashboard</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => router.push('/dashboard/admin/users')}
+                  className="h-16 flex flex-col items-center justify-center space-y-2 hover:bg-purple-50"
+                >
+                  <Settings className="h-6 w-6 text-purple-600" />
+                  <span className="text-sm font-medium">Admin Panel</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {!dashboardData ? (
           <div className="text-center py-12">
             <div className="max-w-md mx-auto">

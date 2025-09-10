@@ -23,7 +23,9 @@ import {
   Eye,
   CheckCircle,
   AlertCircle,
-  XCircle
+  XCircle,
+  Building2,
+  ExternalLink
 } from 'lucide-react'
 import { safeFormatDate } from '@/lib/date-utils'
 
@@ -39,6 +41,8 @@ interface RecentBooking {
   created_at: string
   client_name: string
   client_email: string
+  client_id: string
+  provider_id: string
   service_title: string
   milestone_count: number
   completed_milestones: number
@@ -183,9 +187,36 @@ export function RecentBookings({ bookings, className }: RecentBookingsProps) {
                         )}
                       </div>
                       
-                      <div className="ml-4 flex-shrink-0">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
+                      <div className="ml-4 flex-shrink-0 flex items-center space-x-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          asChild
+                          title="View Client Profile"
+                        >
+                          <Link href={`/dashboard/client/${booking.client_id}`}>
+                            <User className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          asChild
+                          title="View Provider Profile"
+                        >
+                          <Link href={`/dashboard/provider/${booking.provider_id}`}>
+                            <Building2 className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          asChild
+                          title="View Booking Details"
+                        >
+                          <Link href={`/dashboard/bookings/${booking.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
                         </Button>
                       </div>
                     </div>
