@@ -184,13 +184,13 @@ export default function ProviderDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           {/* Welcome Section with Enhanced Design */}
           <div className="mb-8 sm:mb-10">
             <div className="relative">
               {/* Background Pattern */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-3xl -m-4 sm:-m-6 lg:-m-8"></div>
-              <div className="relative bg-white/70 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-6 sm:p-8">
+              <div className="relative bg-white/70 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-4">
@@ -206,20 +206,20 @@ export default function ProviderDashboard() {
                     </div>
                     
                     {/* Quick Stats Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-4 sm:mt-6">
+                      <div className="text-center p-2 sm:p-3 bg-white/60 rounded-xl border border-white/30">
                         <div className="text-lg sm:text-xl font-bold text-blue-600">{stats?.total_earnings ? formatCurrency(stats.total_earnings) : 'OMR 0'}</div>
                         <div className="text-xs text-gray-600">Total Earnings</div>
                       </div>
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                      <div className="text-center p-2 sm:p-3 bg-white/60 rounded-xl border border-white/30">
                         <div className="text-lg sm:text-xl font-bold text-green-600">{stats?.active_bookings || 0}</div>
                         <div className="text-xs text-gray-600">Active Bookings</div>
                       </div>
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                      <div className="text-center p-2 sm:p-3 bg-white/60 rounded-xl border border-white/30">
                         <div className="text-lg sm:text-xl font-bold text-purple-600">{stats?.active_services || 0}</div>
                         <div className="text-xs text-gray-600">Active Services</div>
                       </div>
-                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                      <div className="text-center p-2 sm:p-3 bg-white/60 rounded-xl border border-white/30">
                         <div className="text-lg sm:text-xl font-bold text-orange-600">{stats?.avg_rating ? stats.avg_rating.toFixed(1) : 'N/A'}</div>
                         <div className="text-xs text-gray-600">Avg Rating</div>
                       </div>
@@ -248,7 +248,7 @@ export default function ProviderDashboard() {
           </div>
 
           {/* KPI Grid */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-slate-50/30 to-gray-50/30 rounded-2xl -m-2"></div>
               <div className="relative">
@@ -258,7 +258,7 @@ export default function ProviderDashboard() {
           </section>
 
           {/* Performance Metrics */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 to-indigo-50/30 rounded-2xl -m-2"></div>
               <div className="relative">
@@ -268,7 +268,7 @@ export default function ProviderDashboard() {
           </section>
 
           {/* Earnings Chart */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-green-50/30 to-emerald-50/30 rounded-2xl -m-2"></div>
               <div className="relative">
@@ -278,7 +278,7 @@ export default function ProviderDashboard() {
           </section>
 
           {/* Recent Bookings + Top Services */}
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-8 sm:gap-10 mb-10 sm:mb-12">
+          <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-50/30 to-pink-50/30 rounded-2xl -m-2"></div>
               <div className="relative">
@@ -294,7 +294,7 @@ export default function ProviderDashboard() {
           </section>
 
           {/* Monthly Goals & Achievements */}
-          <section className="mb-10 sm:mb-12">
+          <section className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-50/30 to-purple-50/30 rounded-2xl -m-2"></div>
               <div className="relative">
@@ -307,7 +307,7 @@ export default function ProviderDashboard() {
           <section className="mb-8">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-gray-50/30 to-slate-50/30 rounded-2xl -m-2"></div>
-              <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6 sm:p-8">
+              <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-4">
@@ -320,13 +320,13 @@ export default function ProviderDashboard() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                       <Button 
                         onClick={() => router.push('/dashboard/services/create')}
-                        className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                        className="h-14 sm:h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
                       >
                         <div className="text-center">
-                          <div className="text-base font-semibold">Add Service</div>
+                          <div className="text-sm sm:text-base font-semibold">Add Service</div>
                           <div className="text-xs opacity-90">Create new offering</div>
                         </div>
                       </Button>
@@ -335,7 +335,7 @@ export default function ProviderDashboard() {
                         className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
                       >
                         <div className="text-center">
-                          <div className="text-base font-semibold">View Bookings</div>
+                          <div className="text-sm sm:text-base font-semibold">View Bookings</div>
                           <div className="text-xs opacity-90">Manage orders</div>
                         </div>
                       </Button>
@@ -344,7 +344,7 @@ export default function ProviderDashboard() {
                         className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
                       >
                         <div className="text-center">
-                          <div className="text-base font-semibold">Analytics</div>
+                          <div className="text-sm sm:text-base font-semibold">Analytics</div>
                           <div className="text-xs opacity-90">View insights</div>
                         </div>
                       </Button>
@@ -353,7 +353,7 @@ export default function ProviderDashboard() {
                         className="h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
                       >
                         <div className="text-center">
-                          <div className="text-base font-semibold">Messages</div>
+                          <div className="text-sm sm:text-base font-semibold">Messages</div>
                           <div className="text-xs opacity-90">Client communication</div>
                         </div>
                       </Button>
