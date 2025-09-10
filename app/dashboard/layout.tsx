@@ -25,6 +25,7 @@ import {
   Bell
 } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
+import { UserLogo } from '@/components/ui/user-logo'
 
 interface UserProfile {
   id: string
@@ -53,6 +54,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [userLogoUrl, setUserLogoUrl] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -99,16 +101,36 @@ export default function DashboardLayout({
           if (profile?.company_id) {
             const { data: company } = await supabase
               .from('companies')
-              .select('name')
+              .select('name, logo_url')
               .eq('id', profile.company_id)
               .maybeSingle()
             
             if (company?.name) {
               companyName = company.name
             }
+            if (company?.logo_url) {
+              setUserLogoUrl(company.logo_url)
+            }
           }
         } catch (error) {
           console.warn('Could not fetch company name:', error)
+        }
+      }
+
+      // Fetch client logo if user is a client
+      if (userRole === 'client') {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('logo_url')
+            .eq('id', session.user.id)
+            .maybeSingle()
+          
+          if (profile?.logo_url) {
+            setUserLogoUrl(profile.logo_url)
+          }
+        } catch (error) {
+          console.warn('Could not fetch client logo:', error)
         }
       }
       
@@ -288,7 +310,21 @@ export default function DashboardLayout({
         <div className="flex flex-col h-screen">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
-            <PlatformLogo size="md" variant="full" />
+            <div className="flex items-center space-x-3">
+              {userLogoUrl ? (
+                <img
+                  src={userLogoUrl}
+                  alt="Company Logo"
+                  className="w-8 h-8 object-contain"
+                />
+              ) : (
+                <PlatformLogo size="sm" variant="icon" />
+              )}
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">BusinessHub</h1>
+                <p className="text-xs text-gray-500">Services Platform</p>
+              </div>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
@@ -337,7 +373,26 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* User Logo Background */}
+        {userLogoUrl && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-10 right-10 w-32 h-32 opacity-5">
+              <img
+                src={userLogoUrl}
+                alt="Company Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="absolute bottom-10 left-10 w-24 h-24 opacity-3">
+              <img
+                src={userLogoUrl}
+                alt="Company Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        )}
         {/* Top Header */}
         <header className="bg-white shadow-sm border-b px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">

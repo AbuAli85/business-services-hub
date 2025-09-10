@@ -39,6 +39,7 @@ import {
   Upload
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { LogoUpload } from '@/components/ui/logo-upload'
 
 interface ProviderProfile {
   id: string
@@ -460,6 +461,33 @@ export default function ProfilePage() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Logo Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="h-5 w-5" />
+            Company Logo
+          </CardTitle>
+          <CardDescription>
+            Upload your company logo to personalize your dashboard and sign-in experience
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LogoUpload
+            currentLogoUrl={userRole === 'provider' ? company?.logo_url : profile?.logo_url}
+            onLogoChange={(logoUrl) => {
+              if (userRole === 'provider') {
+                setCompany(prev => prev ? { ...prev, logo_url: logoUrl } : null)
+              } else {
+                setProfile(prev => prev ? { ...prev, logo_url: logoUrl } : null)
+              }
+            }}
+            userId={profile?.id || ''}
+            userRole={userRole as 'provider' | 'client'}
+          />
         </CardContent>
       </Card>
 

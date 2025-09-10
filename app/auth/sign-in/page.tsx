@@ -11,6 +11,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
+import { UserLogo } from '@/components/ui/user-logo'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -155,11 +156,17 @@ export default function SignInPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <PlatformLogo size="lg" variant="full" />
+            <div className="w-16 h-16 flex items-center justify-center">
+              <UserLogo 
+                email={email} 
+                className="w-full h-full object-contain"
+                showFallback={true}
+              />
+            </div>
           </div>
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in to your Business Services Hub account
+            {email ? `Sign in to your ${email} account` : 'Sign in to your Business Services Hub account'}
           </CardDescription>
           
           {/* Security Notice */}
