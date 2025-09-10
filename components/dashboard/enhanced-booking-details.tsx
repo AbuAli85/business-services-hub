@@ -1839,7 +1839,15 @@ export default function EnhancedBookingDetails({
               {isProvider && (
                 <Button
                   variant="outline"
-                  onClick={() => setShowQuickActions(!showQuickActions)}
+                  onClick={() => {
+                    if (!booking) return
+                    // Route providers to the progress tracking view for this booking
+                    try {
+                      router.push(`/dashboard/bookings/${booking.id}?tab=progress`)
+                    } catch {
+                      setShowQuickActions(!showQuickActions)
+                    }
+                  }}
                   className="border-blue-200 text-blue-700 hover:bg-blue-50"
                 >
                   <Zap className="h-4 w-4 mr-2" />
