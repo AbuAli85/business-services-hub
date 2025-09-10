@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     if (USE_RESEND) {
       const resend = await getResend()
       if (!resend) return NextResponse.json({ error: 'Resend not available' }, { status: 500 })
-      const { error } = await resend.emails.send({
+      const { error, data } = await resend.emails.send({
         from,
         to: body.to,
         subject: body.subject,
@@ -51,9 +51,13 @@ export async function POST(req: Request) {
       } as any)
       if (error) {
         console.error('Resend error:', error)
-        return NextResponse.json({ error: 'Failed to send email via Resend' }, { status: 500 })
+        return NextResponse.json({ 
+          error: 'Failed to send email via Resend',
+          details: typeof error === 'string' ? error : (error?.message || error?.name || error),
+          from
+        }, { status: 502 })
       }
-      return NextResponse.json({ success: true, provider: 'resend' })
+      return NextResponse.json({ success: true, provider: 'resend', id: (data as any)?.id })
     }
 
     // Fallback to SendGrid
