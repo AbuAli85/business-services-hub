@@ -21,6 +21,7 @@ import {
   Target,
   Zap
 } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 export default function ProviderDashboard() {
