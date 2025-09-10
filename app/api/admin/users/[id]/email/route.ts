@@ -23,9 +23,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     if (action === 'resend_verification') {
       if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
-      const { data, error } = await admin.auth.admin.generateLink({ type: 'signup', email })
+      // Use magic link as a verification re-send surrogate
+      const { data, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-      return NextResponse.json({ success: true, linkType: 'signup', data })
+      return NextResponse.json({ success: true, linkType: 'magiclink', data })
     }
 
     if (action === 'send_reset') {
