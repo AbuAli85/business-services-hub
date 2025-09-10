@@ -1,6 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 
+function generateSimplePDF(invoice: any): Buffer {
+  // Simple PDF generation - in production, use a proper PDF library like puppeteer or jsPDF
+  const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<<
+/Length 200
+>>
+stream
+BT
+/F1 12 Tf
+100 700 Td
+(Invoice #${invoice.id || 'N/A'}) Tj
+0 -20 Td
+(Amount: ${invoice.amount || 0} ${invoice.currency || 'OMR'}) Tj
+0 -20 Td
+(Status: ${invoice.status || 'N/A'}) Tj
+0 -20 Td
+(Created: ${invoice.created_at || 'N/A'}) Tj
+ET
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000204 00000 n 
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+454
+%%EOF`
+
+  return Buffer.from(pdfContent, 'utf-8')
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { invoiceId } = await request.json()
@@ -27,26 +92,10 @@ export async function POST(request: NextRequest) {
       .from('invoices')
       .select(`
         *,
-        bookings:booking_id (
+        booking:bookings(
           id,
-          title,
           subtotal,
-          currency,
-          services:service_id (
-            title,
-            description
-          )
-        ),
-        clients:client_id (
-          full_name,
-          email,
-          phone
-        ),
-        providers:provider_id (
-          full_name,
-          email,
-          phone,
-          company_name
+          currency
         )
       `)
       .eq('id', invoiceId)
@@ -56,24 +105,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
-    // For now, we'll create a simple PDF URL placeholder
-    // In a real implementation, you would generate an actual PDF using a library like puppeteer or jsPDF
-    const pdfUrl = `/api/invoices/pdf/${invoiceId}.pdf`
+    // Generate a simple PDF content (in a real implementation, use a PDF library)
+    const pdfContent = generateSimplePDF(invoice)
     
     // Update the invoice with the PDF URL
+    const pdfUrl = `/api/invoices/pdf/${invoiceId}.pdf`
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ pdf_url: pdfUrl })
       .eq('id', invoiceId)
 
     if (updateError) {
-      return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 })
+      console.warn('Failed to update invoice with PDF URL:', updateError)
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      pdfUrl,
-      message: 'PDF generated successfully' 
+    // Return the PDF content as a blob
+    return new NextResponse(pdfContent, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="invoice-${invoiceId}.pdf"`,
+      },
     })
 
   } catch (error) {

@@ -60,9 +60,7 @@ interface InvoiceData {
   payment_method?: string
   booking?: {
     id: string
-    scheduled_date?: string
     status: string
-    requirements?: any
   }
 }
 
@@ -129,7 +127,6 @@ export default function ClientInvoicesPage() {
           *,
           booking:bookings(
             id,
-            scheduled_date,
             status
           )
         `)
@@ -289,13 +286,15 @@ export default function ClientInvoicesPage() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `invoice-${invoice.invoice_number}.pdf`
+        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
         toast.success('Invoice downloaded')
       } else {
+        const errorData = await response.json()
+        console.error('PDF generation error:', errorData)
         toast.error('Failed to download invoice')
       }
     } catch (error) {
