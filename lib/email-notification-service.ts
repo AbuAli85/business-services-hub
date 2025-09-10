@@ -47,8 +47,10 @@ class EmailNotificationService {
       // Generate email content
       const emailContent = this.generateEmailContent(notification, templateStyle)
       
-      // Send email via API route
-      const response = await fetch('/api/send-email', {
+      // Send email via API route (absolute URL for server-side)
+      const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || ''
+      const endpoint = base ? `${base}/api/notifications/email` : '/api/notifications/email'
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,8 +60,8 @@ class EmailNotificationService {
           subject: emailContent.subject,
           html: emailContent.html,
           text: emailContent.text,
-          from: process.env.NEXT_PUBLIC_EMAIL_FROM_ADDRESS || 'onboarding@resend.dev',
-          replyTo: process.env.NEXT_PUBLIC_EMAIL_REPLY_TO_ADDRESS || 'noreply@resend.dev',
+          from: process.env.SEND_FROM || process.env.RESEND_FROM || process.env.NEXT_PUBLIC_EMAIL_FROM_ADDRESS || 'onboarding@resend.dev',
+          replyTo: process.env.NEXT_PUBLIC_EMAIL_REPLY_TO_ADDRESS || process.env.SEND_FROM || 'noreply@resend.dev',
           notificationId: notification.id,
           notificationType: notification.type,
           userId: notification.user_id,

@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './supabase'
+import { getSupabaseClient, getSupabaseAdminClient } from './supabase'
 import { 
   Notification, 
   NotificationType, 
@@ -26,9 +26,18 @@ export class NotificationService {
   }
 
   private async getSupabase() {
-    if (!this.supabase) {
-      this.supabase = await getSupabaseClient()
+    if (this.supabase) return this.supabase
+    // On the server, prefer service-role client to bypass RLS for system notifications
+    const isServer = typeof window === 'undefined'
+    if (isServer) {
+      try {
+        this.supabase = getSupabaseAdminClient()
+        return this.supabase
+      } catch {
+        // Fallback to anon if admin not available
+      }
     }
+    this.supabase = await getSupabaseClient()
     return this.supabase
   }
 
