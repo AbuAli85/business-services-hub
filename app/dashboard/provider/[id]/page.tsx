@@ -562,49 +562,50 @@ export default function ProviderDashboardById() {
                 <CardDescription className="text-gray-600">Your response and completion rates</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Response Rate</span>
-                <span className="text-sm text-gray-600">{stats?.responseRate?.toFixed(1)}%</span>
-              </div>
-              <Progress value={stats?.responseRate || 0} className="h-2" />
-              <p className="text-xs text-gray-500 mt-1">
-                Responding to {(stats?.totalBookings || 0) - (stats?.pendingBookings || 0)} out of {stats?.totalBookings || 0} bookings
-              </p>
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Response Rate</span>
+                    <span className="text-sm text-gray-600">{stats?.responseRate?.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={stats?.responseRate || 0} className="h-2" />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Responding to {(stats?.totalBookings || 0) - (stats?.pendingBookings || 0)} out of {stats?.totalBookings || 0} bookings
+                  </p>
+                </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Completion Rate</span>
-                <span className="text-sm text-gray-600">{stats?.completionRate?.toFixed(1)}%</span>
-              </div>
-              <Progress value={stats?.completionRate || 0} className="h-2" />
-              <p className="text-xs text-gray-500 mt-1">
-                Completed {stats?.completedBookings} out of {stats?.totalBookings} bookings
-              </p>
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Completion Rate</span>
+                    <span className="text-sm text-gray-600">{stats?.completionRate?.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={stats?.completionRate || 0} className="h-2" />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Completed {stats?.completedBookings} out of {stats?.totalBookings} bookings
+                  </p>
+                </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Monthly Growth</span>
-                <span className="text-sm text-green-600">
-                  +{stats?.monthlyEarnings ? ((stats.monthlyEarnings / stats.totalEarnings) * 100).toFixed(1) : 0}%
-                </span>
-              </div>
-              <div className="h-2 bg-gray-200 rounded-full">
-                <div 
-                  className="h-2 bg-green-500 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${stats?.monthlyEarnings && stats.totalEarnings ? (stats.monthlyEarnings / stats.totalEarnings) * 100 : 0}%` 
-                  }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {formatCurrency(stats?.monthlyEarnings || 0)} earned this month
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Monthly Growth</span>
+                    <span className="text-sm text-green-600">
+                      +{stats?.monthlyEarnings ? ((stats.monthlyEarnings / stats.totalEarnings) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full">
+                    <div 
+                      className="h-2 bg-green-500 rounded-full transition-all duration-300"
+                      style={{ 
+                        width: `${stats?.monthlyEarnings && stats.totalEarnings ? (stats.monthlyEarnings / stats.totalEarnings) * 100 : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatCurrency(stats?.monthlyEarnings || 0)} earned this month
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Enhanced Quick Actions */}
           <div className="relative">
@@ -615,38 +616,38 @@ export default function ProviderDashboardById() {
                 <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/provider/create-service')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Service
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/bookings')}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              Manage Bookings
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/messages')}
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              View Messages
-            </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push('/dashboard/profile')}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Profile Settings
-            </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => router.push('/dashboard/provider/create-service')}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Service
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => router.push('/dashboard/bookings')}
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Manage Bookings
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => router.push('/dashboard/messages')}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  View Messages
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => router.push('/dashboard/profile')}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Profile Settings
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -663,47 +664,48 @@ export default function ProviderDashboardById() {
                 <CardTitle className="text-lg font-semibold text-gray-900">Recent Bookings</CardTitle>
                 <CardDescription className="text-gray-600">Latest booking requests and updates</CardDescription>
               </CardHeader>
-          <CardContent>
-            {recentBookings.length === 0 ? (
-              <div className="text-center py-6">
-                <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No recent bookings</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="font-medium text-sm">{booking.service_title}</h4>
-                        {getStatusBadge(booking.status)}
+              <CardContent>
+                {recentBookings.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No recent bookings</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentBookings.map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 className="font-medium text-sm">{booking.service_title}</h4>
+                            {getStatusBadge(booking.status)}
+                          </div>
+                          <div className="flex items-center space-x-4 text-xs text-gray-600">
+                            <span>{booking.client_name}</span>
+                            <span>{formatDate(booking.scheduled_date)}</span>
+                            <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="flex items-center space-x-4 text-xs text-gray-600">
-                        <span>{booking.client_name}</span>
-                        <span>{formatDate(booking.scheduled_date)}</span>
-                        <span className="font-medium">{formatCurrency(booking.amount, booking.currency)}</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => router.push('/dashboard/bookings')}
                     >
-                      <Eye className="h-4 w-4" />
+                      View All Bookings
                     </Button>
                   </div>
-                ))}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/dashboard/bookings')}
-                >
-                  View All Bookings
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Top Performing Services */}
           <div className="relative">
@@ -714,47 +716,47 @@ export default function ProviderDashboardById() {
                 <CardTitle className="text-lg font-semibold text-gray-900">Top Performing Services</CardTitle>
                 <CardDescription className="text-gray-600">Your most successful services</CardDescription>
               </CardHeader>
-          <CardContent>
-            {topServices.length === 0 ? (
-              <div className="text-center py-6">
-                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No services yet</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {topServices.map((service) => (
-                  <div key={service.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm">{service.title}</h4>
-                      <div className="flex items-center space-x-1">
-                        {getRatingStars(service.average_rating)}
-                        <span className="text-xs text-gray-600 ml-1">
-                          ({service.average_rating.toFixed(1)})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-                      <div>
-                        <span className="font-medium">{service.total_bookings}</span> bookings
-                      </div>
-                      <div>
-                        <span className="font-medium">{formatCurrency(service.total_revenue)}</span> revenue
-                      </div>
-                      <div>
-                        <span className="font-medium">{service.completion_rate.toFixed(1)}%</span> completion
-                      </div>
-                    </div>
+              <CardContent>
+                {topServices.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No services yet</p>
                   </div>
-                ))}
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => router.push('/dashboard/services')}
-                >
-                  Manage Services
-                </Button>
-              </div>
-            )}
+                ) : (
+                  <div className="space-y-4">
+                    {topServices.map((service) => (
+                      <div key={service.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-sm">{service.title}</h4>
+                          <div className="flex items-center space-x-1">
+                            {getRatingStars(service.average_rating)}
+                            <span className="text-xs text-gray-600 ml-1">
+                              ({service.average_rating.toFixed(1)})
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                          <div>
+                            <span className="font-medium">{service.total_bookings}</span> bookings
+                          </div>
+                          <div>
+                            <span className="font-medium">{formatCurrency(service.total_revenue)}</span> revenue
+                          </div>
+                          <div>
+                            <span className="font-medium">{service.completion_rate.toFixed(1)}%</span> completion
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => router.push('/dashboard/services')}
+                    >
+                      Manage Services
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -781,83 +783,84 @@ export default function ProviderDashboardById() {
           </Card>
         </div>
 
-      {/* Goals & Achievements */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Target className="h-5 w-5" />
-              <span>Monthly Goals</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Earnings Target</span>
-                <span className="text-sm text-gray-600">
-                  {formatCurrency(stats?.monthlyEarnings || 0)} / {formatCurrency(5000)}
-                </span>
+        {/* Goals & Achievements */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Target className="h-5 w-5" />
+                <span>Monthly Goals</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Earnings Target</span>
+                  <span className="text-sm text-gray-600">
+                    {formatCurrency(stats?.monthlyEarnings || 0)} / {formatCurrency(5000)}
+                  </span>
+                </div>
+                <Progress 
+                  value={stats?.monthlyEarnings ? Math.min((stats.monthlyEarnings / 5000) * 100, 100) : 0} 
+                  className="h-2" 
+                />
               </div>
-              <Progress 
-                value={stats?.monthlyEarnings ? Math.min((stats.monthlyEarnings / 5000) * 100, 100) : 0} 
-                className="h-2" 
-              />
-            </div>
-            
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Bookings Target</span>
-                <span className="text-sm text-gray-600">
-                  {stats?.totalBookings || 0} / 20
-                </span>
+              
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Bookings Target</span>
+                  <span className="text-sm text-gray-600">
+                    {stats?.totalBookings || 0} / 20
+                  </span>
+                </div>
+                <Progress 
+                  value={stats?.totalBookings ? Math.min((stats.totalBookings / 20) * 100, 100) : 0} 
+                  className="h-2" 
+                />
               </div>
-              <Progress 
-                value={stats?.totalBookings ? Math.min((stats.totalBookings / 20) * 100, 100) : 0} 
-                className="h-2" 
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Award className="h-5 w-5" />
-              <span>Achievements</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {stats?.totalEarnings && stats.totalEarnings >= 1000 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>First $1K earned</span>
-              </div>
-            )}
-            {stats?.totalBookings && stats.totalBookings >= 10 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>10+ bookings completed</span>
-              </div>
-            )}
-            {stats?.averageRating && stats.averageRating >= 4.5 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>4.5+ star rating achieved</span>
-              </div>
-            )}
-            {stats?.responseRate && stats.responseRate >= 90 && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>90%+ response rate</span>
-              </div>
-            )}
-            {(!stats?.totalEarnings || stats.totalEarnings < 1000) && (
-              <div className="text-sm text-gray-500">
-                Complete more bookings to unlock achievements!
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Award className="h-5 w-5" />
+                <span>Achievements</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {stats?.totalEarnings && stats.totalEarnings >= 1000 && (
+                <div className="flex items-center space-x-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>First $1K earned</span>
+                </div>
+              )}
+              {stats?.totalBookings && stats.totalBookings >= 10 && (
+                <div className="flex items-center space-x-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>10+ bookings completed</span>
+                </div>
+              )}
+              {stats?.averageRating && stats.averageRating >= 4.5 && (
+                <div className="flex items-center space-x-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>4.5+ star rating achieved</span>
+                </div>
+              )}
+              {stats?.responseRate && stats.responseRate >= 90 && (
+                <div className="flex items-center space-x-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>90%+ response rate</span>
+                </div>
+              )}
+              {(!stats?.totalEarnings || stats.totalEarnings < 1000) && (
+                <div className="text-sm text-gray-500">
+                  Complete more bookings to unlock achievements!
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
