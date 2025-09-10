@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +47,7 @@ interface AdminUser {
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -127,6 +129,47 @@ export default function AdminUsersPage() {
     
     return matchesSearch && matchesRole && matchesStatus
   })
+
+  async function callAdminUpdate(userId: string, payload: any) {
+    const supabase = await getSupabaseClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+    const res = await fetch('/api/admin/user-update', { method: 'POST', headers, body: JSON.stringify({ user_id: userId, ...payload }) })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data?.error || 'Update failed')
+  }
+
+  const handleView = (u: AdminUser) => {
+    router.push(`/dashboard/admin/users/${u.id}`)
+  }
+
+  const handlePermissions = (u: AdminUser) => {
+    router.push(`/dashboard/admin/permissions?userId=${encodeURIComponent(u.id)}`)
+  }
+
+  const handleEdit = async (u: AdminUser) => {
+    const newRole = prompt('Set role (admin, manager, provider, client):', u.role)
+    if (!newRole) return
+    const newStatus = prompt('Set status (approved, pending, suspended):', (u.status as any) || 'approved')
+    try {
+      await callAdminUpdate(u.id, { role: newRole, status: newStatus })
+      await fetchUsers()
+      alert('User updated')
+    } catch (e: any) {
+      alert(e.message)
+    }
+  }
+
+  const handleToggleActive = async (u: AdminUser) => {
+    const nextStatus = (u.status === 'active') ? 'suspended' : 'approved'
+    try {
+      await callAdminUpdate(u.id, { status: nextStatus })
+      await fetchUsers()
+    } catch (e: any) {
+      alert(e.message)
+    }
+  }
 
   if (loading) {
     return (
@@ -455,6 +498,7 @@ export default function AdminUsersPage() {
                       variant="outline" 
                       size="sm"
                       className="hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700"
+                      onClick={() => handleView(user)}
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       View
@@ -463,6 +507,7 @@ export default function AdminUsersPage() {
                       variant="outline" 
                       size="sm"
                       className="hover:bg-green-50 hover:border-green-200 hover:text-green-700"
+                      onClick={() => handleEdit(user)}
                     >
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
@@ -471,6 +516,7 @@ export default function AdminUsersPage() {
                       variant="outline" 
                       size="sm" 
                       className="hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700"
+                      onClick={() => handlePermissions(user)}
                     >
                       <Key className="h-4 w-4 mr-1" />
                       Permissions
@@ -479,6 +525,7 @@ export default function AdminUsersPage() {
                       variant="outline" 
                       size="sm" 
                       className="hover:bg-orange-50 hover:border-orange-200 hover:text-orange-700"
+                      onClick={() => handleToggleActive(user)}
                     >
                       {user.status === 'active' ? <Lock className="h-4 w-4 mr-1" /> : <Unlock className="h-4 w-4 mr-1" />}
                       {user.status === 'active' ? 'Suspend' : 'Activate'}
