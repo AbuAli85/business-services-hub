@@ -84,7 +84,17 @@ export default function ServiceDetail() {
           throw new Error(body?.error || `Failed to load service (${res.status})`)
         }
         const data = await res.json()
-        setService(data?.service ?? null)
+        const serviceData = data?.service ?? null
+        
+        // Ensure service_packages have proper structure
+        if (serviceData?.service_packages) {
+          serviceData.service_packages = serviceData.service_packages.map((pkg: any) => ({
+            ...pkg,
+            features: Array.isArray(pkg.features) ? pkg.features : []
+          }))
+        }
+        
+        setService(serviceData)
         // determine ownership if possible
         try {
           const supabase2 = await getSupabaseClient()
@@ -363,29 +373,65 @@ export default function ServiceDetail() {
                 </div>
 
                 {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
-                  <Card className="border-0 shadow-lg">
-                    <CardHeader>
-                      <CardTitle>Packages</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {service.service_packages.map((pkg) => (
-                          <button
-                            type="button"
-                            key={pkg.id}
-                            onClick={() => setSelectedPackageId(pkg.id)}
-                            className={`text-left rounded-lg border p-4 transition ${selectedPackageId === pkg.id ? 'border-blue-600 ring-2 ring-blue-100' : 'hover:border-gray-400'}`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="font-semibold">{pkg.name}</div>
-                              <div className="text-gray-900">{pkg.price} {service.currency || 'OMR'}</div>
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-100/40 rounded-3xl -m-4"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+                    <Card className="relative border-0 shadow-xl bg-white/80 backdrop-blur-md">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-xl">
+                          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
+                            <Package className="h-4 w-4 text-white" />
+                          </div>
+                          Service Packages
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {service.service_packages.map((pkg) => (
+                            <div
+                              key={pkg.id}
+                              onClick={() => setSelectedPackageId(pkg.id)}
+                              className={`relative group cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${
+                                selectedPackageId === pkg.id 
+                                  ? 'border-blue-500 ring-4 ring-blue-100 bg-blue-50/50' 
+                                  : 'border-gray-200 hover:border-orange-300 hover:shadow-lg bg-white/80 backdrop-blur-sm'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="font-semibold text-lg text-gray-900">{pkg.name}</div>
+                                <div className="text-xl font-bold text-gray-900 bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">
+                                  {pkg.price} {service.currency || 'OMR'}
+                                </div>
+                              </div>
+                              {pkg.description && (
+                                <div className="text-sm text-gray-600 mb-4">{pkg.description}</div>
+                              )}
+                              {Array.isArray(pkg.features) && pkg.features.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Features</div>
+                                  <ul className="space-y-1">
+                                    {pkg.features.map((feature, index) => (
+                                      <li key={index} className="flex items-center gap-2 text-sm text-gray-700">
+                                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
+                                        {feature}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {selectedPackageId === pkg.id && (
+                                <div className="absolute top-4 right-4">
+                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <CheckCircle className="h-4 w-4 text-white" />
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            {pkg.description && <div className="mt-2 text-sm text-gray-600">{pkg.description}</div>}
-                          </button>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
 
                 {/* Enhanced Booking-only widgets */}
