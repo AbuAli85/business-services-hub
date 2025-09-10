@@ -19,12 +19,15 @@ export async function POST(req: NextRequest) {
     const { data: tokenUser, error: tokenErr } = await admin.auth.getUser(token)
     if (tokenErr || !tokenUser?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const userId = tokenUser.user.id
-    const { data: me } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single()
-    if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const metaRole = (tokenUser.user.user_metadata as any)?.role
+    if (metaRole !== 'admin') {
+      const { data: me } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+      if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     // Update profile status/role if provided
     if (status !== undefined || role !== undefined) {
