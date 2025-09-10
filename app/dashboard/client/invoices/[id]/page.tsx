@@ -96,6 +96,21 @@ export default function ClientInvoiceDetailsPage() {
   const fetchInvoice = async () => {
     try {
       setLoading(true)
+      
+      if (!user?.id) {
+        console.error('User ID not available')
+        toast.error('Authentication required')
+        router.push('/auth/sign-in')
+        return
+      }
+
+      if (!params.id) {
+        console.error('Invoice ID not available')
+        toast.error('Invalid invoice ID')
+        router.push('/dashboard/client/invoices')
+        return
+      }
+
       const supabase = await getSupabaseClient()
       
       const { data: invoiceData, error } = await supabase
@@ -109,7 +124,7 @@ export default function ClientInvoiceDetailsPage() {
           )
         `)
         .eq('id', params.id)
-        .eq('client_id', user?.id)
+        .eq('client_id', user.id)
         .single()
 
       if (error) {

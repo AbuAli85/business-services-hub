@@ -119,6 +119,14 @@ export default function ClientInvoicesPage() {
   const fetchInvoices = async (userId: string) => {
     try {
       setLoading(true)
+      
+      if (!userId) {
+        console.error('User ID not available')
+        toast.error('Authentication required')
+        router.push('/auth/sign-in')
+        return
+      }
+
       const supabase = await getSupabaseClient()
       
       const { data: invoices, error } = await supabase
