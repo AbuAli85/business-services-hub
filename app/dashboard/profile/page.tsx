@@ -60,6 +60,7 @@ interface ProviderProfile {
   portfolio_url?: string
   linkedin_url?: string
   website_url?: string
+  logo_url?: string
 }
 
 interface Company {
