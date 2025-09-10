@@ -107,6 +107,8 @@ export default function CreateServicePage() {
   const [serviceTitles, setServiceTitles] = useState<ServiceTitle[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
   const [loadingCategories, setLoadingCategories] = useState(true)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<CreateServiceFormData>({
     category_id: '',
@@ -345,6 +347,16 @@ export default function CreateServicePage() {
     }
   }
 
+  const handleCoverChange = (file: File | null) => {
+    setCoverFile(file)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setCoverPreview(url)
+    } else {
+      setCoverPreview(null)
+    }
+  }
+
   const handleDeliverablesChange = (deliverables: string[]) => {
     setFormData(prev => ({
       ...prev,
@@ -413,6 +425,31 @@ export default function CreateServicePage() {
         serviceTitle = selectedTitle?.title || formData.service_title
       }
 
+      // Optionally upload cover image first
+      let coverImageUrl: string | undefined
+      if (coverFile) {
+        try {
+          const fileExt = coverFile.name.split('.').pop()
+          const fileName = `cover_${Date.now()}.${fileExt}`
+          const filePath = `${user.id}/${fileName}`
+
+          const { error: uploadError } = await supabase.storage
+            .from('service-images')
+            .upload(filePath, coverFile, {
+              cacheControl: '3600',
+              upsert: true
+            })
+          if (uploadError) throw uploadError
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('service-images')
+            .getPublicUrl(filePath)
+          coverImageUrl = publicUrl
+        } catch (e) {
+          console.warn('Cover image upload failed, proceeding without it:', e)
+        }
+      }
+
       // Create service
       const serviceData = {
         title: serviceTitle,
@@ -424,7 +461,8 @@ export default function CreateServicePage() {
         provider_id: user.id,
         company_id: formData.company_id,
         duration: formData.duration,
-        deliverables: formData.deliverables
+        deliverables: formData.deliverables,
+        cover_image_url: coverImageUrl
       }
 
       const { data: service, error: serviceError } = await supabase
@@ -528,6 +566,28 @@ export default function CreateServicePage() {
   // Step components
   const renderStep1 = () => (
     <div className="space-y-6">
+      {/* Cover Image */}
+      <div>
+        <Label className="text-sm font-medium text-slate-700 mb-2 block">Cover Image</Label>
+        <div className="flex items-center gap-4">
+          <div className="w-40 h-24 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border">
+            {coverPreview ? (
+              <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover" />
+            ) : (
+              <Building2 className="h-8 w-8 text-gray-400" />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              onChange={(e) => handleCoverChange(e.target.files?.[0] || null)}
+            />
+            <p className="text-xs text-gray-500">PNG, JPG, or WEBP up to 5MB. Shown as service cover.</p>
+          </div>
+        </div>
+      </div>
+
       {/* Category Selection */}
       <div>
         <Label htmlFor="category_id" className="text-sm font-medium text-slate-700 mb-2 block">
