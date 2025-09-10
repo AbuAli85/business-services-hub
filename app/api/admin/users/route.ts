@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
     // Simpler: list users from profiles only (avoids auth DB dependency)
     const url = new URL(req.url)
     const q = (url.searchParams.get('q') || '').trim()
-    let query = supabase
+    // Use admin client for profiles read to bypass RLS when authorized
+    let query = admin
       .from('profiles')
       .select('id, email, full_name, role, phone, company_name, status, created_at')
       .order('created_at', { ascending: false })
