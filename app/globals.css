@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .opacity-2 {
+    opacity: 0.02;
+  }
+  .opacity-3 {
+    opacity: 0.03;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

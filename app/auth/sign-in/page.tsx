@@ -155,8 +155,8 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 flex items-center justify-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-24 h-24 flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200 p-3">
               <UserLogo 
                 email={email} 
                 className="w-full h-full object-contain"

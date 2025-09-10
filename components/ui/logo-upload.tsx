@@ -157,7 +157,7 @@ export function LogoUpload({
 
           {/* Logo Preview */}
           <div className="flex justify-center">
-            <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+            <div className="relative w-40 h-40 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50 shadow-sm">
               {previewUrl ? (
                 <div className="relative w-full h-full">
                   <img
@@ -169,17 +169,18 @@ export function LogoUpload({
                     type="button"
                     variant="destructive"
                     size="sm"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                    className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 shadow-lg"
                     onClick={removeLogo}
                     disabled={uploading}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               ) : (
                 <div className="text-center">
-                  <ImageIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-xs text-gray-500">No logo uploaded</p>
+                  <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 font-medium">No logo uploaded</p>
+                  <p className="text-xs text-gray-400 mt-1">Click to upload your logo</p>
                 </div>
               )}
             </div>
