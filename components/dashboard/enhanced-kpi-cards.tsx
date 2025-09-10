@@ -65,8 +65,8 @@ function EnhancedKPICard({
   }
 
   const cardContent = (
-    <Card className={`h-36 hover:shadow-2xl transition-all duration-300 border-0 shadow-lg group hover:-translate-y-1 ${className}`}>
-      <CardContent className="p-6 h-full flex flex-col justify-between relative overflow-hidden">
+    <Card className={`h-32 sm:h-36 hover:shadow-2xl transition-all duration-300 border-0 shadow-lg group hover:-translate-y-1 ${className}`}>
+      <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white to-transparent rounded-full -translate-y-16 translate-x-16"></div>
@@ -132,19 +132,19 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Key Performance Indicators</h2>
-          <p className="text-gray-600">Your business metrics at a glance</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Key Performance Indicators</h2>
+          <p className="text-sm sm:text-base text-gray-600">Your business metrics at a glance</p>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
+        <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span>Live data</span>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <EnhancedKPICard
           title="Total Earnings"
           value={formatCurrency(data.total_earnings)}
@@ -190,19 +190,19 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
 export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
   return (
     <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-      <CardContent className="p-8">
-        <div className="flex items-center justify-between mb-8">
+      <CardContent className="p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-2 sm:gap-4">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900">Performance Analytics</h3>
-            <p className="text-gray-600 mt-1">Track your business performance over time</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Performance Analytics</h3>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Track your business performance over time</p>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <Target className="h-4 w-4" />
+          <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
+            <Target className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Last 30 days</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">

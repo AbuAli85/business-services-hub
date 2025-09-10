@@ -183,30 +183,31 @@ export default function ProviderDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Welcome Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   Business Overview
                 </h1>
-                <p className="text-gray-600 mt-2">Monitor your performance and grow your business</p>
+                <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Monitor your performance and grow your business</p>
               </div>
               <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
+                <div className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-gray-700">Live</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">Live</span>
                 </div>
                 <Button 
                   onClick={handleRefresh} 
                   disabled={refreshing}
                   variant="outline"
                   size="sm"
-                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80"
+                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80 text-xs sm:text-sm"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                  <span className="sm:hidden">{refreshing ? '...' : '↻'}</span>
                 </Button>
               </div>
             </div>
