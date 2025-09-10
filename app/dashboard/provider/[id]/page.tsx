@@ -859,7 +859,6 @@ export default function ProviderDashboardById() {
           </CardContent>
         </Card>
       </div>
-      </div>
     </div>
   )
 }
