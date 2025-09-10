@@ -125,7 +125,7 @@ export default function ProviderServiceDetailPage() {
           .select('requirement, order_index')
           .eq('service_id', id)
           .order('order_index', { ascending: true })
-        setRequirements((reqRows || []).map(r => r.requirement))
+        setRequirements(Array.isArray(reqRows) ? reqRows.map(r => r.requirement) : [])
 
         // Milestones
         const { data: msRows } = await supabase
