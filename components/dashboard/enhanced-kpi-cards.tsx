@@ -67,11 +67,15 @@ function EnhancedKPICard({
   const cardContent = (
     <Card className={`h-32 sm:h-36 hover:shadow-2xl transition-all duration-300 border-0 shadow-lg group hover:-translate-y-1 ${className}`}>
       <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
+        {/* Enhanced Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white to-transparent rounded-full -translate-y-16 translate-x-16"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-white to-transparent rounded-full translate-y-12 -translate-x-12"></div>
+          <div className="absolute top-1/2 left-1/2 w-16 h-16 bg-gradient-to-br from-white/30 to-transparent rounded-full -translate-x-8 -translate-y-8"></div>
         </div>
+        
+        {/* Animated Border */}
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-4">
@@ -189,14 +193,25 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
 
 export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
   return (
-    <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-      <CardContent className="p-4 sm:p-6 lg:p-8">
+    <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full -translate-y-20 translate-x-20"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-purple-100 to-pink-100 rounded-full translate-y-16 -translate-x-16"></div>
+      </div>
+      
+      <CardContent className="p-4 sm:p-6 lg:p-8 relative z-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-2 sm:gap-4">
-          <div>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Performance Analytics</h3>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Track your business performance over time</p>
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <Target className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Performance Analytics</h3>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Track your business performance over time</p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
+          <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 bg-gray-100/50 px-3 py-1 rounded-full">
             <Target className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Last 30 days</span>
           </div>
@@ -215,9 +230,9 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
                 {(data.response_rate * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out"
+                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
                 style={{ width: `${Math.min(data.response_rate * 100, 100)}%` }}
               />
             </div>
@@ -245,9 +260,9 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
                 {(data.completion_rate * 100).toFixed(1)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-700 ease-out"
+                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
                 style={{ width: `${Math.min(data.completion_rate * 100, 100)}%` }}
               />
             </div>
@@ -275,9 +290,9 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
                 {data.monthly_growth >= 0 ? '+' : ''}{data.monthly_growth.toFixed(1)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className={`h-3 rounded-full transition-all duration-700 ease-out ${
+                className={`h-3 rounded-full transition-all duration-700 ease-out shadow-sm ${
                   data.monthly_growth >= 0 
                     ? 'bg-gradient-to-r from-green-500 to-green-600' 
                     : 'bg-gradient-to-r from-red-500 to-red-600'
