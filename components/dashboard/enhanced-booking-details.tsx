@@ -1841,12 +1841,8 @@ export default function EnhancedBookingDetails({
                   variant="outline"
                   onClick={() => {
                     if (!booking) return
-                    // Route providers to the progress tracking view for this booking
-                    try {
-                      router.push(`/dashboard/bookings/${booking.id}?tab=progress`)
-                    } catch {
-                      setShowQuickActions(!showQuickActions)
-                    }
+                    // Only 'overview' and 'messages' tabs exist here. Send to messages.
+                    router.push(`/dashboard/bookings/${booking.id}?tab=messages`)
                   }}
                   className="border-blue-200 text-blue-700 hover:bg-blue-50"
                 >
