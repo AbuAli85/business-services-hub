@@ -220,7 +220,7 @@ export default function ProviderDashboard() {
                         <div className="text-xs text-gray-600">Active Services</div>
                       </div>
                       <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
-                        <div className="text-lg sm:text-xl font-bold text-orange-600">{stats?.average_rating ? stats.average_rating.toFixed(1) : 'N/A'}</div>
+                        <div className="text-lg sm:text-xl font-bold text-orange-600">{stats?.avg_rating ? stats.avg_rating.toFixed(1) : 'N/A'}</div>
                         <div className="text-xs text-gray-600">Avg Rating</div>
                       </div>
                     </div>
