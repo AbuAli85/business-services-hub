@@ -216,9 +216,9 @@ export default function ClientInvoicesPage() {
     // Search filter
     if (search) {
       filtered = filtered.filter(invoice =>
-        invoice.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
-        invoice.service_title.toLowerCase().includes(search.toLowerCase()) ||
-        invoice.provider_name.toLowerCase().includes(search.toLowerCase())
+        (invoice.invoice_number || '').toLowerCase().includes(search.toLowerCase()) ||
+        (invoice.service_title || '').toLowerCase().includes(search.toLowerCase()) ||
+        (invoice.provider_name || '').toLowerCase().includes(search.toLowerCase())
       )
     }
 
@@ -488,7 +488,7 @@ export default function ClientInvoicesPage() {
                             <span className="font-medium">Provider:</span> {invoice.provider_name}
                           </div>
                           <div>
-                            <span className="font-medium">Due Date:</span> {formatDate(invoice.due_date)}
+                            <span className="font-medium">Due Date:</span> {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
                           </div>
                           <div>
                             <span className="font-medium">Amount:</span> 
