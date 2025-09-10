@@ -9,7 +9,7 @@ import {
   Trash2, 
   Eye, 
   Calendar, 
-  DollarSign, 
+  Wallet, 
   Star,
   MoreVertical
 } from 'lucide-react'
@@ -164,7 +164,7 @@ export default function EnhancedServiceCard({
         {/* Stats Row */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="flex items-center text-sm text-gray-600">
-            <DollarSign className="h-4 w-4 mr-2 text-green-600" />
+            <Wallet className="h-4 w-4 mr-2 text-green-600" />
             <span className="font-medium">
               {service.base_price} {service.currency || 'OMR'}
             </span>

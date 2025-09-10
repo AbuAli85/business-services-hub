@@ -16,7 +16,7 @@ import {
 import { 
   Calendar, 
   User, 
-  DollarSign, 
+  Wallet, 
   Clock,
   Filter,
   Search,
@@ -156,7 +156,7 @@ export function RecentBookings({ bookings, className }: RecentBookingsProps) {
                           </div>
                           
                           <div className="flex items-center space-x-2">
-                            <DollarSign className="h-3 w-3" />
+                            <Wallet className="h-3 w-3" />
                             <span>{booking.total_amount} {booking.currency}</span>
                           </div>
                           

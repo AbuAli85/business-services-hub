@@ -314,7 +314,9 @@ export default function ClientDashboard() {
           status,
           subtotal,
           currency,
-          created_at
+          created_at,
+          start_date,
+          total_amount
         `)
         .or(`client_id.eq.${userId},user_id.eq.${userId}`)
         .order('created_at', { ascending: false })
@@ -354,7 +356,8 @@ export default function ClientDashboard() {
             service_title: service?.title || 'Unknown Service',
             provider_name: provider?.full_name || 'Unknown Provider',
             provider_company: provider?.company_name || 'Unknown Company',
-            amount: b.subtotal + (b.subtotal * 0.05)
+            amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
+            scheduled_date: b.start_date || b.created_at
           }
         })
 
@@ -365,7 +368,8 @@ export default function ClientDashboard() {
           service_title: 'Unknown Service',
           provider_name: 'Unknown Provider',
           provider_company: 'Unknown Company',
-          amount: b.subtotal + (b.subtotal * 0.05)
+          amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
+          scheduled_date: b.start_date || b.created_at
         }))
         setRecentBookings(enrichedBookings)
       }
@@ -610,7 +614,7 @@ export default function ClientDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           {/* Welcome Section with Enhanced Design */}
           <div className="mb-8 sm:mb-10">
             <div className="relative">

@@ -116,15 +116,20 @@ export function PremiumClientBookings({ recentBookings, upcomingBookings, classN
   )
 
   return (
-    <Card className={`border-0 shadow-xl bg-white/80 backdrop-blur-sm ${className}`}>
-      <CardHeader className="pb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-bold text-gray-900">Your Bookings</CardTitle>
-            <p className="text-gray-600 mt-1">Track your service requests and upcoming appointments</p>
+    <Card className={`border-0 shadow-xl bg-white/80 backdrop-blur-sm h-full ${className}`}>
+      <CardHeader className="pb-4 sm:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">Your Bookings</CardTitle>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Track your service requests and upcoming appointments</p>
+            </div>
           </div>
           <Link href="/dashboard/bookings">
-            <Button variant="outline" size="sm" className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80">
+            <Button variant="outline" size="sm" className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80 text-xs sm:text-sm">
               View All
             </Button>
           </Link>
@@ -188,7 +193,7 @@ export function PremiumClientBookings({ recentBookings, upcomingBookings, classN
                 
                 return (
                   <Link key={booking.id} href={`/dashboard/bookings/${booking.id}`}>
-                    <div className={`group p-6 border border-gray-200 rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer bg-white/60 backdrop-blur-sm hover:bg-white/80 border-l-4 ${getPriorityColor(booking.status)}`}>
+                    <div className={`group p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer bg-white/60 backdrop-blur-sm hover:bg-white/80 border-l-4 ${getPriorityColor(booking.status)}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-3 mb-3">
@@ -282,7 +287,7 @@ export function PremiumClientBookings({ recentBookings, upcomingBookings, classN
                 
                 return (
                   <Link key={booking.id} href={`/dashboard/bookings/${booking.id}`}>
-                    <div className={`group p-6 border border-gray-200 rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer bg-white/60 backdrop-blur-sm hover:bg-white/80 border-l-4 ${getPriorityColor(booking.status)}`}>
+                    <div className={`group p-4 sm:p-6 border border-gray-200 rounded-xl sm:rounded-2xl hover:shadow-xl transition-all duration-300 cursor-pointer bg-white/60 backdrop-blur-sm hover:bg-white/80 border-l-4 ${getPriorityColor(booking.status)}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-3 mb-3">
