@@ -29,21 +29,13 @@ interface TopService {
   id: string
   title: string
   description: string
-  category: string
-  status: string
-  base_price: number
+  price: number
   currency: string
-  cover_image_url?: string
-  created_at: string
-  updated_at?: string
-  provider_id: string
-  views_count?: number
-  total_bookings?: number
-  total_earnings?: number
-  rating?: number
-  tags?: string[]
-  duration?: string
-  deliverables?: string[]
+  status: string
+  booking_count: number
+  total_earnings: number
+  avg_rating: number
+  completion_rate: number
 }
 
 interface EliteTopServicesProps {
@@ -59,18 +51,18 @@ const statusColors = {
 }
 
 export function EliteTopServices({ services, className }: EliteTopServicesProps) {
-  const [sortBy, setSortBy] = useState<'earnings' | 'bookings' | 'rating' | 'views'>('earnings')
+  const [sortBy, setSortBy] = useState<'earnings' | 'bookings' | 'rating' | 'completion'>('earnings')
 
   const sortedServices = [...services].sort((a, b) => {
     switch (sortBy) {
       case 'earnings':
-        return (b.total_earnings || 0) - (a.total_earnings || 0)
+        return b.total_earnings - a.total_earnings
       case 'bookings':
-        return (b.total_bookings || 0) - (a.total_bookings || 0)
+        return b.booking_count - a.booking_count
       case 'rating':
-        return (b.rating || 0) - (a.rating || 0)
-      case 'views':
-        return (b.views_count || 0) - (a.views_count || 0)
+        return b.avg_rating - a.avg_rating
+      case 'completion':
+        return b.completion_rate - a.completion_rate
       default:
         return 0
     }
@@ -111,7 +103,7 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                 <SelectItem value="earnings">Total Earnings</SelectItem>
                 <SelectItem value="bookings">Bookings Count</SelectItem>
                 <SelectItem value="rating">Rating</SelectItem>
-                <SelectItem value="views">Views</SelectItem>
+                <SelectItem value="completion">Completion Rate</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -139,11 +131,7 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                          {service.cover_image_url ? (
-                            <img src={service.cover_image_url} alt={service.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <Building2 className="h-6 w-6 text-white" />
-                          )}
+                          <Building2 className="h-6 w-6 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
@@ -159,7 +147,7 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                         <div className="flex items-center space-x-1 text-yellow-500">
                           <Star className="h-4 w-4 fill-current" />
                           <span className="text-sm font-medium text-gray-900">
-                            {service.rating ? service.rating.toFixed(1) : 'N/A'}
+                            {service.avg_rating ? service.avg_rating.toFixed(1) : 'N/A'}
                           </span>
                         </div>
                       </div>
@@ -171,7 +159,7 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                           </div>
                           <div>
                             <p className="font-semibold text-gray-900">
-                              {formatCurrency(service.total_earnings || 0, service.currency)}
+                              {formatCurrency(service.total_earnings, service.currency)}
                             </p>
                             <p className="text-xs text-gray-500">Earnings</p>
                           </div>
@@ -182,7 +170,7 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                             <Calendar className="h-4 w-4 text-blue-600" />
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{service.total_bookings || 0}</p>
+                            <p className="font-semibold text-gray-900">{service.booking_count}</p>
                             <p className="text-xs text-gray-500">Bookings</p>
                           </div>
                         </div>
@@ -192,8 +180,8 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                             <Eye className="h-4 w-4 text-purple-600" />
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{service.views_count || 0}</p>
-                            <p className="text-xs text-gray-500">Views</p>
+                            <p className="font-semibold text-gray-900">{Math.round(service.completion_rate * 100)}%</p>
+                            <p className="text-xs text-gray-500">Completion</p>
                           </div>
                         </div>
                         
@@ -202,8 +190,8 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                             <Target className="h-4 w-4 text-orange-600" />
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{service.category}</p>
-                            <p className="text-xs text-gray-500">Category</p>
+                            <p className="font-semibold text-gray-900">{service.status}</p>
+                            <p className="text-xs text-gray-500">Status</p>
                           </div>
                         </div>
                       </div>
@@ -215,25 +203,18 @@ export function EliteTopServices({ services, className }: EliteTopServicesProps)
                             <TrendingUp className="h-4 w-4 text-green-500" />
                             <span>Rank #{index + 1}</span>
                           </div>
-                          {service.tags && service.tags.length > 0 && (
-                            <div className="flex items-center space-x-1">
-                              {service.tags.slice(0, 2).map((tag, tagIndex) => (
-                                <Badge key={tagIndex} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                              {service.tags.length > 2 && (
-                                <span className="text-xs text-gray-500">+{service.tags.length - 2} more</span>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center space-x-1">
+                            <Badge variant="outline" className="text-xs">
+                              {service.status}
+                            </Badge>
+                          </div>
                         </div>
                         
                         <div className="flex items-center space-x-2">
                           <div className="text-right">
                             <p className="text-xs text-gray-500">Base Price</p>
                             <p className="text-sm font-semibold text-gray-900">
-                              {formatCurrency(service.base_price, service.currency)}
+                              {formatCurrency(service.price, service.currency)}
                             </p>
                           </div>
                         </div>
