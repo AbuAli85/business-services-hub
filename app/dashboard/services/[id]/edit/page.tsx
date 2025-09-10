@@ -395,7 +395,7 @@ export default function EditServicePage() {
                   </Button>
                 </div>
                 <div className="space-y-1">
-                  {formData.requirements.map((requirement, index) => (
+                  {Array.isArray(formData.requirements) && formData.requirements.map((requirement, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                       <span className="text-sm">{requirement}</span>
                       <Button

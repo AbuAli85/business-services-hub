@@ -102,7 +102,7 @@ export function RequirementsInput({
           <h4 className="text-sm font-medium text-slate-700">
             Added Requirements ({requirements.length})
           </h4>
-          {requirements.map((requirement, index) => (
+          {Array.isArray(requirements) && requirements.map((requirement, index) => (
             <div key={index} className="flex gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
               <div className="flex-1">
                 <Textarea

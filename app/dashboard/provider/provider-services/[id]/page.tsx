@@ -298,7 +298,7 @@ export default function ProviderServiceDetailPage() {
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Client Requirements</Label>
                     <ul className="mt-2 list-disc list-inside text-gray-700 space-y-1">
-                      {requirements.map((r, i) => (
+                      {Array.isArray(requirements) && requirements.map((r, i) => (
                         <li key={i}>{r}</li>
                       ))}
                     </ul>

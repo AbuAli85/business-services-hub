@@ -479,12 +479,12 @@ export default function CreateServicePage() {
 
       // Create service requirements
       if (formData.requirements.length > 0) {
-        const requirementsData = formData.requirements.map((requirement, index) => ({
+        const requirementsData = Array.isArray(formData.requirements) ? formData.requirements.map((requirement, index) => ({
           service_id: service.id,
           requirement,
           is_required: true,
           order_index: index + 1
-        }))
+        })) : []
 
         const { error: requirementsError } = await supabase
           .from('service_requirements')
@@ -980,7 +980,7 @@ export default function CreateServicePage() {
             <div>
               <Label className="text-sm font-medium text-slate-500">Requirements ({formData.requirements.length})</Label>
               <div className="flex flex-wrap gap-2 mt-2">
-                {formData.requirements.map((requirement, index) => (
+                {Array.isArray(formData.requirements) && formData.requirements.map((requirement, index) => (
                   <Badge key={index} variant="secondary" className="bg-green-50 text-green-700 border-green-200">
                     {requirement}
                   </Badge>

@@ -314,7 +314,7 @@ export default function ServiceDetailPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {service.requirements.map((requirement, index) => (
+                  {Array.isArray(service.requirements) && service.requirements.map((requirement, index) => (
                     <li key={index} className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-blue-600" />
                       <span className="text-gray-700">{requirement}</span>
