@@ -185,7 +185,7 @@ export default function AdminServicesPage() {
         .from('services')
         .update({ 
           approval_status: 'rejected',
-          status: 'inactive',
+          status: 'archived',
           updated_at: new Date().toISOString()
         })
         .eq('id', serviceId)
