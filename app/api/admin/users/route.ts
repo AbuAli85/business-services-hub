@@ -19,6 +19,20 @@ export async function GET(req: NextRequest) {
 
     const supabase = await getSupabaseClient()
 
+    // Require authenticated admin
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+    if ((me?.role || 'client') !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Fetch auth users (service role)
     const { data: authList, error: authError } = await admin.auth.admin.listUsers()
     if (authError) {

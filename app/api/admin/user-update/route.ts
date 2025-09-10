@@ -12,6 +12,20 @@ export async function POST(req: NextRequest) {
     const admin = getSupabaseAdminClient()
     const supabase = await getSupabaseClient()
 
+    // Require authenticated admin
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+    if ((me?.role || 'client') !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     // Update profile status/role if provided
     if (status !== undefined || role !== undefined) {
       const update: any = {}

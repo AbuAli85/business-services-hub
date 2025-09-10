@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
+import { RoleGuard } from '@/components/role-guard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -103,6 +104,7 @@ export default function AdminToolsPage() {
   }
 
   return (
+    <RoleGuard allow={['admin']} redirect="/dashboard">
     <div className="p-4 space-y-6">
       <Card>
         <CardHeader>
@@ -196,6 +198,7 @@ export default function AdminToolsPage() {
         </CardContent>
       </Card>
     </div>
+    </RoleGuard>
   )
 }
 
