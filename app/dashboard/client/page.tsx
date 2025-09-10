@@ -181,7 +181,12 @@ export default function ClientDashboard() {
 
       // Check if user is a client
       const userRole = user.user_metadata?.role
+      console.log('User role:', userRole)
+      console.log('User ID:', user.id)
+      console.log('User metadata:', user.user_metadata)
+      
       if (userRole !== 'client') {
+        console.log('User is not a client, redirecting to dashboard')
         router.push('/dashboard')
         return
       }
@@ -213,12 +218,15 @@ export default function ClientDashboard() {
 
   const fetchClientStats = async (userId: string) => {
     try {
+      console.log('Fetching client stats for user:', userId)
       const supabase = await getSupabaseClient()
       
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('status, amount, currency, created_at')
         .eq('client_id', userId)
+
+      console.log('Client stats query result:', { bookings, error: bookingsError })
 
       if (bookingsError) {
         console.error('Error fetching bookings:', bookingsError)
@@ -303,6 +311,7 @@ export default function ClientDashboard() {
 
   const fetchRecentBookings = async (userId: string) => {
     try {
+      console.log('Fetching recent bookings for user:', userId)
       const supabase = await getSupabaseClient()
       
       const { data: bookings, error: bookingsError } = await supabase
@@ -321,6 +330,8 @@ export default function ClientDashboard() {
         .or(`client_id.eq.${userId},user_id.eq.${userId}`)
         .order('created_at', { ascending: false })
         .limit(5)
+
+      console.log('Bookings query result:', { bookings, error: bookingsError })
 
       if (bookingsError) {
         console.error('Error fetching recent bookings:', bookingsError)
