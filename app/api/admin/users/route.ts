@@ -36,58 +36,31 @@ export async function GET(req: NextRequest) {
       if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Fetch auth users (service role)
-    const { data: authList, error: authError } = await admin.auth.admin.listUsers()
-    if (authError) {
-      // Log full error server-side for diagnostics
-      console.error('❌ listUsers failed:', {
-        message: authError.message,
-        name: (authError as any)?.name,
-        status: (authError as any)?.status,
-        code: (authError as any)?.code
-      })
-      const clientMessage = authError.message?.includes('Database error')
-        ? 'Auth database unavailable'
-        : 'Failed to list auth users'
-      return NextResponse.json({ error: clientMessage }, { status: 502 })
-    }
-
-    const authUsers = authList?.users || []
-    const ids = authUsers.map(u => u.id)
-
-    // Fetch profiles for those ids
-    let profiles: any[] = []
-    if (ids.length) {
-      const { data: p, error: pErr } = await supabase
-        .from('profiles')
-        .select('id, full_name, role, phone, company_name, status, created_at')
-        .in('id', ids)
-      if (pErr) {
-        return NextResponse.json({ error: 'Failed to fetch profiles', details: pErr.message }, { status: 500 })
-      }
-      profiles = p || []
-    }
-
-    const profileById = new Map(profiles.map(p => [p.id, p]))
-
-    const merged = authUsers.map(u => {
-      const prof = profileById.get(u.id) || {}
-      return {
-        id: u.id,
-        email: u.email,
-        full_name: prof.full_name || u.user_metadata?.full_name || u.email?.split('@')[0] || 'User',
-        role: prof.role || u.user_metadata?.role || 'client',
-        phone: prof.phone || null,
-        company_name: prof.company_name || null,
-        created_at: u.created_at,
-        last_sign_in: u.last_sign_in_at,
-        status: prof.status || 'active',
-        is_verified: !!u.email_confirmed_at,
-        two_factor_enabled: !!u.phone_confirmed_at // placeholder
-      }
-    })
-
-    return NextResponse.json({ users: merged })
+    // Simpler: list users from profiles only (avoids auth DB dependency)
+    const url = new URL(req.url)
+    const q = (url.searchParams.get('q') || '').trim()
+    let query = supabase
+      .from('profiles')
+      .select('id, email, full_name, role, phone, company_name, status, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role.ilike.%${q}%`)
+    const { data: rows, error: pErr } = await query
+    if (pErr) return NextResponse.json({ error: 'Failed to fetch users', details: pErr.message }, { status: 500 })
+    const users = (rows || []).map(u => ({
+      id: u.id,
+      email: u.email,
+      full_name: u.full_name || (u.email ? u.email.split('@')[0] : 'User'),
+      role: u.role || 'client',
+      phone: u.phone || null,
+      company_name: u.company_name || null,
+      created_at: u.created_at,
+      last_sign_in: null,
+      status: u.status || 'active',
+      is_verified: null,
+      two_factor_enabled: null
+    }))
+    return NextResponse.json({ users })
   } catch (e: any) {
     console.error('❌ Admin users API unexpected error:', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
