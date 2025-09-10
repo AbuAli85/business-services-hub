@@ -410,7 +410,7 @@ export default function ClientInvoiceDetailsPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Due Date</span>
-                    <span className="font-medium">{formatDate(invoice.due_date)}</span>
+                    <span className="font-medium">{invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}</span>
                   </div>
                   {invoice.paid_at && (
                     <div className="flex items-center justify-between">
