@@ -610,104 +610,183 @@ export default function ClientDashboard() {
         />
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {/* Welcome Section */}
-          <div className="mb-6 sm:mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Your Service Hub
-                </h1>
-                <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Discover, book, and manage your professional services</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-white/20">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-700">Live</span>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          {/* Welcome Section with Enhanced Design */}
+          <div className="mb-8 sm:mb-10">
+            <div className="relative">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-3xl -m-4 sm:-m-6 lg:-m-8"></div>
+              <div className="relative bg-white/70 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-6 sm:p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <Star className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                          Your Service Hub
+                        </h1>
+                        <p className="text-gray-600 mt-1 text-sm sm:text-base lg:text-lg">Discover, book, and manage your professional services</p>
+                      </div>
+                    </div>
+                    
+                    {/* Quick Stats Row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                        <div className="text-lg sm:text-xl font-bold text-blue-600">{stats?.totalSpent ? formatCurrency(stats.totalSpent) : 'OMR 0'}</div>
+                        <div className="text-xs text-gray-600">Total Spent</div>
+                      </div>
+                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                        <div className="text-lg sm:text-xl font-bold text-green-600">{stats?.activeBookings || 0}</div>
+                        <div className="text-xs text-gray-600">Active Bookings</div>
+                      </div>
+                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                        <div className="text-lg sm:text-xl font-bold text-purple-600">{stats?.completedBookings || 0}</div>
+                        <div className="text-xs text-gray-600">Completed</div>
+                      </div>
+                      <div className="text-center p-3 bg-white/60 rounded-xl border border-white/30">
+                        <div className="text-lg sm:text-xl font-bold text-orange-600">{stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}</div>
+                        <div className="text-xs text-gray-600">Avg Rating</div>
+                      </div>
+                    </div>
                   </div>
-                <Button 
-                  onClick={handleRefresh} 
-                  disabled={refreshing}
-                  variant="outline" 
-                  size="sm"
-                  className="bg-white/60 backdrop-blur-sm border-white/20 hover:bg-white/80 text-xs sm:text-sm"
-                >
-                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-                  <span className="sm:hidden">{refreshing ? '...' : '↻'}</span>
-                </Button>
-              </div>
+                  
+                  <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 lg:space-y-3 lg:space-x-0 xl:space-y-0 xl:space-x-3">
+                    <div className="flex items-center space-x-2 px-4 py-2 bg-green-100/80 backdrop-blur-sm rounded-full border border-green-200/50">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-green-700">Live Dashboard</span>
+                    </div>
+                    <Button 
+                      onClick={handleRefresh} 
+                      disabled={refreshing}
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/80 backdrop-blur-sm border-white/40 hover:bg-white/90 text-sm shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                      {refreshing ? 'Refreshing...' : 'Refresh Data'}
+                    </Button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
               
           {/* KPI Grid */}
-          <section className="mb-8">
-            <EnhancedClientKPIGrid data={stats} />
+          <section className="mb-10 sm:mb-12">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-50/30 to-gray-50/30 rounded-2xl -m-2"></div>
+              <div className="relative">
+                <EnhancedClientKPIGrid data={stats} />
+              </div>
+            </div>
           </section>
 
           {/* Performance Metrics */}
-          <section className="mb-8">
-            <EnhancedClientPerformanceMetrics data={stats} />
+          <section className="mb-10 sm:mb-12">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 to-indigo-50/30 rounded-2xl -m-2"></div>
+              <div className="relative">
+                <EnhancedClientPerformanceMetrics data={stats} />
+              </div>
+            </div>
           </section>
 
           {/* Spending Chart */}
-          <section className="mb-8">
-            <AdvancedClientSpendingChart data={stats} />
+          <section className="mb-10 sm:mb-12">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-50/30 to-emerald-50/30 rounded-2xl -m-2"></div>
+              <div className="relative">
+                <AdvancedClientSpendingChart data={stats} />
+              </div>
+            </div>
           </section>
 
           {/* Bookings + Service Suggestions */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
-            <PremiumClientBookings 
-              recentBookings={recentBookings} 
-              upcomingBookings={upcomingBookings} 
-            />
-            <EliteServiceSuggestions suggestions={serviceSuggestions} />
+          <section className="grid grid-cols-1 xl:grid-cols-2 gap-8 sm:gap-10 mb-10 sm:mb-12">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/30 to-pink-50/30 rounded-2xl -m-2"></div>
+              <div className="relative">
+                <PremiumClientBookings 
+                  recentBookings={recentBookings} 
+                  upcomingBookings={upcomingBookings} 
+                />
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-50/30 to-amber-50/30 rounded-2xl -m-2"></div>
+              <div className="relative">
+                <EliteServiceSuggestions suggestions={serviceSuggestions} />
+              </div>
+            </div>
           </section>
 
-          {/* Quick Actions */}
-          <section className="mb-6 sm:mb-8">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-              <CardContent className="p-4 sm:p-6 lg:p-8">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Quick Actions</h3>
-                    <p className="text-sm sm:text-base text-gray-600">Find and book services easily</p>
-                </div>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg sm:rounded-xl flex items-center justify-center">
-                    <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              <Button 
-                    onClick={() => router.push('/services')}
-                    className="h-14 sm:h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <div className="text-center">
-                      <div className="text-base sm:text-lg font-semibold">Browse Services</div>
-                      <div className="text-xs sm:text-sm opacity-90">Find what you need</div>
+          {/* Quick Actions & Insights */}
+          <section className="mb-8">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-50/30 to-slate-50/30 rounded-2xl -m-2"></div>
+              <div className="relative bg-white/80 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6 sm:p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <Target className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Quick Actions</h3>
+                        <p className="text-gray-600 text-sm sm:text-base">Find and book services easily</p>
+                      </div>
                     </div>
-                    </Button>
-                <Button 
-                    onClick={() => router.push('/dashboard/bookings/create')}
-                    className="h-14 sm:h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <div className="text-center">
-                      <div className="text-base sm:text-lg font-semibold">Book Service</div>
-                      <div className="text-xs sm:text-sm opacity-90">Start new project</div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <Button 
+                        onClick={() => router.push('/services')}
+                        className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        <div className="text-center">
+                          <div className="text-base font-semibold">Browse Services</div>
+                          <div className="text-xs opacity-90">Find what you need</div>
+                        </div>
+                      </Button>
+                      <Button 
+                        onClick={() => router.push('/dashboard/bookings/create')}
+                        className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        <div className="text-center">
+                          <div className="text-base font-semibold">Book Service</div>
+                          <div className="text-xs opacity-90">Start new project</div>
+                        </div>
+                      </Button>
+                      <Button 
+                        onClick={() => router.push('/dashboard/messages')}
+                        className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        <div className="text-center">
+                          <div className="text-base font-semibold">Messages</div>
+                          <div className="text-xs opacity-90">Contact providers</div>
+                        </div>
+                      </Button>
                     </div>
-                  </Button>
-                    <Button
-                    onClick={() => router.push('/dashboard/messages')}
-                    className="h-14 sm:h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                    >
-                    <div className="text-center">
-                      <div className="text-base sm:text-lg font-semibold">Messages</div>
-                      <div className="text-xs sm:text-sm opacity-90">Contact providers</div>
                   </div>
-                </Button>
+                  
+                  <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 lg:space-y-4 lg:space-x-0 xl:space-y-0 xl:space-x-4">
+                    <div className="text-center lg:text-left">
+                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+                        {stats?.totalBookings || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Total Bookings</div>
+                    </div>
+                    <div className="text-center lg:text-left">
+                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+                        {stats?.totalReviews || 0}
+                      </div>
+                      <div className="text-sm text-gray-600">Reviews Given</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-          </CardContent>
-        </Card>
+            </div>
           </section>
         </main>
       </div>
