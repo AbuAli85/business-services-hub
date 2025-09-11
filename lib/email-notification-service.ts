@@ -27,7 +27,7 @@ class EmailNotificationService {
         .from('user_email_preferences')
         .select('*')
         .eq('user_id', notification.user_id)
-        .single()
+        .maybeSingle()
 
       if (!preferences?.email_enabled) {
         console.log(`Email notifications disabled for user ${notification.user_id}`)
