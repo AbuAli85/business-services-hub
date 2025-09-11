@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
 
 function generateSimplePDF(invoice: any): Buffer {
-  // Create a modern, professional PDF using jsPDF
+  // Create a high-end, professional PDF using jsPDF
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -26,151 +26,218 @@ function generateSimplePDF(invoice: any): Buffer {
   // Create a new PDF document
   const doc = new jsPDF('p', 'mm', 'a4')
   
-  // Set up colors
-  const primaryColor = [44, 90, 160] // Blue
-  const secondaryColor = [108, 117, 125] // Gray
-  const accentColor = [40, 167, 69] // Green
+  // Set up premium colors
+  const primaryColor = [25, 25, 35] // Dark navy
+  const accentColor = [0, 123, 255] // Professional blue
+  const successColor = [40, 167, 69] // Green
+  const lightGray = [248, 249, 250]
+  const darkGray = [73, 80, 87]
+  const borderGray = [220, 220, 220]
   
-  // Header Section
+  // Premium header with gradient effect
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(0, 0, 210, 40, 'F')
+  doc.rect(0, 0, 210, 50, 'F')
+  
+  // Add subtle pattern to header
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(0, 0, 210, 8, 'F')
+  
+  // Company logo area (placeholder for future logo integration)
+  doc.setFillColor(255, 255, 255)
+  doc.rect(20, 15, 30, 20, 'F')
+  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.setLineWidth(2)
+  doc.rect(20, 15, 30, 20, 'S')
   
   // Company name in header
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(24)
+  doc.setFontSize(28)
   doc.setFont('helvetica', 'bold')
-  doc.text('Business Services Hub', 20, 25)
+  doc.text('Business Services Hub', 60, 30)
   
-  // Tagline
-  doc.setFontSize(12)
+  // Tagline with premium styling
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
-  doc.text('Professional Services & Solutions', 20, 32)
+  doc.text('Professional Services & Solutions', 60, 36)
   
-  // Invoice title
-  doc.setTextColor(0, 0, 0)
-  doc.setFontSize(36)
+  // Premium invoice title with accent
+  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.setFontSize(42)
   doc.setFont('helvetica', 'bold')
-  doc.text('INVOICE', 20, 60)
+  doc.text('INVOICE', 20, 70)
   
-  // Invoice number
-  doc.setFontSize(16)
+  // Invoice number with premium styling
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(20, 75, 60, 12, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text(invoiceNumber, 25, 83)
+  
+  // Premium invoice details box
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
+  doc.rect(120, 55, 80, 60, 'F')
+  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.setLineWidth(2)
+  doc.rect(120, 55, 80, 60, 'S')
+  
+  // Invoice details with premium typography
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('INVOICE DATE', 125, 65)
   doc.setFont('helvetica', 'normal')
-  doc.text(invoiceNumber, 20, 70)
+  doc.text(createdDate, 125, 70)
   
-  // Invoice details box
-  doc.setFillColor(248, 249, 250)
-  doc.rect(120, 50, 80, 50, 'F')
-  doc.setDrawColor(220, 220, 220)
-  doc.rect(120, 50, 80, 50, 'S')
-  
-  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Invoice Date:', 125, 60)
+  doc.text('DUE DATE', 125, 80)
   doc.setFont('helvetica', 'normal')
-  doc.text(createdDate, 125, 65)
+  doc.text(dueDate, 125, 85)
   
   doc.setFont('helvetica', 'bold')
-  doc.text('Due Date:', 125, 75)
+  doc.text('STATUS', 125, 95)
   doc.setFont('helvetica', 'normal')
-  doc.text(dueDate, 125, 80)
+  doc.text(invoice.status.toUpperCase(), 125, 100)
   
-  doc.setFont('helvetica', 'bold')
-  doc.text('Status:', 125, 90)
-  doc.setFont('helvetica', 'normal')
-  doc.text(invoice.status.toUpperCase(), 125, 95)
-  
-  // Bill To section
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text('BILL TO:', 20, 120)
-  
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
-  doc.text(invoice.booking?.client?.full_name || 'Client Name', 20, 130)
-  doc.text(invoice.booking?.client?.company?.name || 'Client Company', 20, 135)
-  doc.text(invoice.booking?.client?.email || 'client@email.com', 20, 140)
-  
-  // From section
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text('FROM:', 20, 160)
-  
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Business Services Hub', 20, 170)
-  doc.text('123 Business Street, Suite 100', 20, 175)
-  doc.text('City, State 12345', 20, 180)
-  doc.text('info@businessservices.com', 20, 185)
-  
-  // Services section
-  doc.setFontSize(18)
-  doc.setFont('helvetica', 'bold')
-  doc.text('FOR SERVICES RENDERED', 20, 210)
-  
-  // Table header
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(20, 220, 170, 15, 'F')
-  
+  // Premium client information section
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(20, 120, 80, 8, 'F')
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('DESCRIPTION', 25, 230)
-  doc.text('QTY', 120, 230)
-  doc.text('UNIT PRICE', 150, 230)
-  doc.text('TOTAL', 180, 230)
+  doc.text('BILL TO', 25, 126)
   
-  // Table row
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text(invoice.booking?.client?.full_name || 'Client Name', 20, 140)
+  doc.setFont('helvetica', 'normal')
+  doc.text(invoice.booking?.client?.company?.name || 'Client Company', 20, 145)
+  doc.text(invoice.booking?.client?.email || 'client@email.com', 20, 150)
+  
+  // Premium company information section
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(110, 120, 80, 8, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('FROM', 115, 126)
+  
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Business Services Hub', 110, 140)
+  doc.setFont('helvetica', 'normal')
+  doc.text('123 Business Street, Suite 100', 110, 145)
+  doc.text('City, State 12345', 110, 150)
+  doc.text('info@businessservices.com', 110, 155)
+  
+  // Premium services section header
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  doc.rect(20, 170, 170, 8, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('SERVICES RENDERED', 25, 176)
+  
+  // Premium table with enhanced styling
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(20, 185, 170, 20, 'F')
+  
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('DESCRIPTION', 25, 197)
+  doc.text('QTY', 120, 197)
+  doc.text('UNIT PRICE', 150, 197)
+  doc.text('TOTAL', 180, 197)
+  
+  // Table row with premium styling
+  doc.setFillColor(255, 255, 255)
+  doc.rect(20, 205, 170, 20, 'F')
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
+  doc.rect(20, 205, 170, 20, 'S')
+  
   doc.setTextColor(0, 0, 0)
   doc.setFont('helvetica', 'normal')
-  doc.text(invoice.booking?.service?.title || 'Professional Service', 25, 245)
-  doc.text('1', 120, 245)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 150, 245)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 180, 245)
+  doc.text(invoice.booking?.service?.title || 'Professional Service', 25, 217)
+  doc.text('1', 120, 217)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 150, 217)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 180, 217)
   
-  // Total section
-  doc.setFillColor(248, 249, 250)
-  doc.rect(120, 260, 70, 40, 'F')
-  doc.setDrawColor(220, 220, 220)
-  doc.rect(120, 260, 70, 40, 'S')
-  
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Subtotal:', 125, 275)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 275)
-  
-  doc.text('Tax (0%):', 125, 285)
-  doc.text(`0.00 ${invoice.currency}`, 160, 285)
-  
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text('TOTAL:', 125, 295)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 295)
-  
-  // Payment information
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text('PAYMENT INFORMATION', 20, 320)
-  
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Payment Methods: Credit Card, Bank Transfer, PayPal', 20, 330)
-  doc.text('Payment Terms: Net 30 days from invoice date', 20, 335)
-  doc.text('Questions: billing@businessservices.com', 20, 340)
-  
-  // Thank you message
-  doc.setFontSize(14)
-  doc.setFont('helvetica', 'bold')
-  doc.text('Thank you for your business!', 20, 360)
-  
-  // Footer line
-  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  // Premium total section with enhanced design
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
+  doc.rect(120, 235, 70, 50, 'F')
+  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
   doc.setLineWidth(2)
-  doc.line(20, 380, 190, 380)
+  doc.rect(120, 235, 70, 50, 'S')
   
-  // Footer text
+  // Total section header
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(120, 235, 70, 12, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TOTAL SUMMARY', 125, 243)
+  
+  // Financial breakdown
+  doc.setTextColor(0, 0, 0)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('Business Services Hub | 123 Business Street, Suite 100 | info@businessservices.com', 20, 390)
+  doc.text('Subtotal:', 125, 255)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 255)
+  
+  doc.text('Tax (0%):', 125, 265)
+  doc.text(`0.00 ${invoice.currency}`, 160, 265)
+  
+  // Total with premium styling
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  doc.rect(120, 270, 70, 15, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.text('TOTAL:', 125, 280)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 280)
+  
+  // Premium payment information section
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(20, 300, 170, 8, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PAYMENT INFORMATION', 25, 306)
+  
+  // Payment details with premium styling
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Payment Methods: Credit Card, Bank Transfer, PayPal', 20, 320)
+  doc.text('Payment Terms: Net 30 days from invoice date', 20, 325)
+  doc.text('Questions: billing@businessservices.com', 20, 330)
+  
+  // Premium thank you section
+  doc.setFillColor(successColor[0], successColor[1], successColor[2])
+  doc.rect(20, 340, 170, 15, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Thank you for your business!', 25, 350)
+  
+  // Premium footer with enhanced design
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  doc.rect(0, 365, 210, 27, 'F')
+  
+  // Footer content
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Business Services Hub | 123 Business Street, Suite 100 | info@businessservices.com', 20, 375)
+  doc.text('This invoice was generated electronically and is valid without signature.', 20, 382)
+  
+  // Add subtle border around entire document
+  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.setLineWidth(1)
+  doc.rect(5, 5, 200, 282, 'S')
   
   // Convert to buffer
   const pdfBuffer = doc.output('arraybuffer')
