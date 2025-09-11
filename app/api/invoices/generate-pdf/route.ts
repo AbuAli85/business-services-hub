@@ -323,42 +323,28 @@ export async function POST(request: NextRequest) {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Fetch invoice with all related data
+    // Fetch invoice with explicit relationships to avoid postgrest ambiguity
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
         *,
+        client:profiles!invoices_client_id_fkey(
+          id,
+          full_name,
+          email,
+          company:companies(id, name, address)
+        ),
+        provider:profiles!invoices_provider_id_fkey(
+          id,
+          full_name,
+          email,
+          company:companies(id, name, address, phone, email, logo_url)
+        ),
         booking:bookings(
           id,
-          service:services(
-            title,
-            description,
-            price,
-            provider:profiles(
-              id,
-              full_name,
-              email,
-              company:companies(
-                id,
-                name,
-                address,
-                phone,
-                email,
-                logo_url
-              )
-            )
-          ),
-          client:profiles(
-            id,
-            full_name,
-            email,
-            company:companies(
-              id,
-              name,
-              address
-            )
-          )
-        )
+          service:services(title, description, price)
+        ),
+        invoice_items(*)
       `)
       .eq('id', invoiceId)
       .single()
@@ -382,13 +368,18 @@ export async function POST(request: NextRequest) {
       amount: invoice.amount,
       currency: invoice.currency,
       status: invoice.status,
-      company: invoice.booking?.service?.provider?.company?.name,
-      client: invoice.booking?.client?.full_name,
+      company: (invoice.provider as any)?.company?.name,
+      client: (invoice.client as any)?.full_name,
       service: invoice.booking?.service?.title
     })
 
     // Generate PDF with the enhanced template
-    const pdfBuffer = generateSimplePDF(invoice)
+    const pdfBuffer = generateSimplePDF({
+      ...invoice,
+      booking: invoice.booking,
+      // For PDF template: expose provider.company under booking.service.provider.company if missing
+      bookingForPdf: undefined
+    })
     
     console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
 
