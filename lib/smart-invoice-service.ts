@@ -174,7 +174,7 @@ export class SmartInvoiceService {
       console.log('✅ Invoice created successfully:', invoice.id)
 
       // Send notifications
-      await this.sendInvoiceNotifications(invoice)
+      await this.sendInvoiceNotifications(invoice, booking)
 
       return invoice
 
@@ -205,47 +205,26 @@ export class SmartInvoiceService {
   /**
    * Send notifications to client and provider
    */
-  private async sendInvoiceNotifications(invoice: InvoiceData): Promise<void> {
+  private async sendInvoiceNotifications(invoice: InvoiceData, booking: any): Promise<void> {
     try {
-      // Send notification to client
-      await this.supabase
-        .from('notifications')
-        .insert({
-          user_id: invoice.client_id,
-          type: 'invoice_issued',
-          title: 'New Invoice Issued',
-          message: `Invoice ${invoice.invoice_number} has been issued for ${invoice.service_title}`,
-          payload: {
-            invoice_id: invoice.id,
-            invoice_number: invoice.invoice_number,
-            amount: invoice.total_amount,
-            currency: invoice.currency,
-            due_date: invoice.due_date,
-            service_title: invoice.service_title
-          }
-        })
-
-      // Send notification to provider
-      await this.supabase
-        .from('notifications')
-        .insert({
-          user_id: invoice.provider_id,
-          type: 'invoice_created',
-          title: 'Invoice Created',
-          message: `Invoice ${invoice.invoice_number} has been created for ${invoice.service_title}`,
-          payload: {
-            invoice_id: invoice.id,
-            invoice_number: invoice.invoice_number,
-            amount: invoice.total_amount,
-            currency: invoice.currency,
-            client_name: invoice.client_name
-          }
-        })
-
-      console.log('✅ Invoice notifications sent')
+      const { triggerInvoiceCreated } = await import('./notification-triggers-simple')
+      
+      await triggerInvoiceCreated(booking.id, {
+        client_id: invoice.client_id,
+        provider_id: invoice.provider_id,
+        invoice_id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        booking_title: booking.title || 'Service Booking',
+        amount: invoice.amount,
+        currency: invoice.currency,
+        due_date: invoice.due_date
+      })
+      
+      console.log('✅ Invoice notifications sent successfully')
 
     } catch (error) {
-      console.error('❌ Error sending invoice notifications:', error)
+      console.warn('⚠️ Failed to send invoice notifications:', error)
+      // Non-blocking - don't fail invoice creation if notifications fail
     }
   }
 

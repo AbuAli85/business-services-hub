@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
     // Log successful profile creation
     console.log('Profile created successfully:', data)
 
+    // Send welcome notification to new user
+    try {
+      await triggerUserRegistered(userId, {
+        user_name: fullName || userEmail,
+        user_email: userEmail,
+        role: role
+      })
+    } catch (notificationError) {
+      console.warn('Failed to send user registration notification:', notificationError)
+      // Non-blocking - don't fail profile creation if notifications fail
+    }
+
     // Log the successful attempt in the webhook tracking table
     await supabase
       .from('profile_creation_webhooks')

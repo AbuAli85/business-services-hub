@@ -62,6 +62,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Send notification to provider about new review
+    try {
+      // Get client profile for notification
+      const { data: clientProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', client_id)
+        .single()
+
+      await triggerReviewReceived(booking_id || 'unknown', {
+        review_id: review.id,
+        reviewer_id: client_id,
+        reviewer_name: clientProfile?.full_name || 'Client',
+        provider_id: provider_id,
+        provider_name: 'Service Provider', // Will be updated with actual provider name
+        rating: rating,
+        comment: comment
+      })
+    } catch (notificationError) {
+      console.warn('Failed to send review notification:', notificationError)
+      // Non-blocking - don't fail the review creation if notifications fail
+    }
+
     return NextResponse.json({ review })
   } catch (error) {
     console.error('Error in reviews API:', error)

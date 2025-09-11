@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdminClient } from '@/lib/supabase'
+import { triggerMilestoneCompleted } from '@/lib/notification-triggers-simple'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -173,6 +174,32 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const res = NextResponse.json({ error: mErr.message }, { status: 500 })
       Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
       return res
+    }
+    
+    // Send notification about milestone creation
+    try {
+      // Get booking details for notification
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('client_id, provider_id, title')
+        .eq('id', bookingId)
+        .single()
+      
+      if (booking) {
+        // Notify both client and provider about new milestone
+        const notifyUserId = user.id === booking.client_id ? booking.provider_id : booking.client_id
+        
+        await triggerMilestoneCompleted(bookingId, {
+          milestone_id: milestone.id,
+          milestone_title: milestone.title,
+          completed_by: user.id,
+          completed_by_name: user.email || 'User',
+          project_name: booking.title || 'Project'
+        })
+      }
+    } catch (notificationError) {
+      console.warn('Failed to send milestone notification:', notificationError)
+      // Non-blocking - don't fail milestone creation if notifications fail
     }
     
     const res = NextResponse.json({ milestone })

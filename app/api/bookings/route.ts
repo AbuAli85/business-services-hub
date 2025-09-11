@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
     // Create notification for provider
     await supabase.from('notifications').insert({
       user_id: service.provider_id,
-      type: 'booking',
+      type: 'booking_created',
       title: 'New Booking Request',
       message: `New booking request for ${service.title} from ${clientProfile?.full_name || 'Client'}`,
       data: { 
@@ -705,24 +705,24 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'Only provider can decline' }, { status: 403 })
         }
         updates = { status: 'declined', approval_status: 'rejected', decline_reason: reason || null }
-        notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking' }
+        notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking_cancelled' }
         console.log('Decline updates:', updates)
         break
       case 'reschedule':
         if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
         if (!isProvider && !isClient) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         updates = { scheduled_date, status: 'rescheduled' }
-        notification = { user_id: isProvider ? booking.client_id : booking.provider_id, title: 'Reschedule Proposed', message: `New time proposed: ${new Date(scheduled_date).toLocaleString()}`, type: 'booking' }
+        notification = { user_id: isProvider ? booking.client_id : booking.provider_id, title: 'Reschedule Proposed', message: `New time proposed: ${new Date(scheduled_date).toLocaleString()}`, type: 'booking_updated' }
         break
       case 'complete':
         if (!isProvider) return NextResponse.json({ error: 'Only provider can complete' }, { status: 403 })
         updates = { status: 'completed', operational_status: 'done' }
-        notification = { user_id: booking.client_id, title: 'Service Completed', message: 'Your booking was marked completed', type: 'booking' }
+        notification = { user_id: booking.client_id, title: 'Service Completed', message: 'Your booking was marked completed', type: 'booking_completed' }
         break
       case 'cancel':
         if (!isClient) return NextResponse.json({ error: 'Only client can cancel' }, { status: 403 })
         updates = { status: 'cancelled', operational_status: 'cancelled', cancel_reason: reason || null }
-        notification = { user_id: booking.provider_id, title: 'Booking Cancelled', message: reason ? `Cancelled: ${reason}` : 'Client cancelled booking', type: 'booking' }
+        notification = { user_id: booking.provider_id, title: 'Booking Cancelled', message: reason ? `Cancelled: ${reason}` : 'Client cancelled booking', type: 'booking_cancelled' }
         break
     }
 

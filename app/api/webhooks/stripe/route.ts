@@ -209,10 +209,10 @@ async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent, supaba
   if (client_id) {
     await supabase.from('notifications').insert({
       user_id: client_id,
-      type: 'payment',
+      type: 'payment_failed',
       title: 'Payment Cancelled',
       message: `Payment cancelled for ${service_title}`,
-      metadata: { booking_id },
+      data: { booking_id },
       priority: 'medium'
     })
   }
