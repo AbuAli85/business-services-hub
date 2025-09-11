@@ -314,18 +314,36 @@ export default function MessagesPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Create message directly with Supabase client (handles auth automatically)
       const { data: message, error } = await supabase
         .from('messages')
         .insert({
           content: newMessage.trim(),
           sender_id: user.id,
           receiver_id: selectedConversation.participant_id,
-          booking_id: selectedConversation.booking_id
+          subject: `Message from ${user?.user_metadata?.full_name || 'User'}`,
+          booking_id: selectedConversation.booking_id,
+          message_type: 'general',
+          read: false
         })
         .select('*')
         .single()
 
       if (error) throw error
+
+      // Manually trigger notification since we're not using API route
+      try {
+        const { triggerMessageReceived } = await import('@/lib/notification-triggers-simple')
+        await triggerMessageReceived(selectedConversation.participant_id, {
+          message_id: message.id,
+          sender_id: user.id,
+          sender_name: user?.user_metadata?.full_name || 'User'
+        })
+        console.log('✅ Message notification triggered')
+      } catch (notificationError) {
+        console.warn('Failed to send message notification:', notificationError)
+        // Non-blocking - don't fail the message if notifications fail
+      }
 
       setMessages(prev => [...prev, message])
       setNewMessage('')
@@ -334,10 +352,13 @@ export default function MessagesPage() {
       setConversations(prev => 
         prev.map(conv => 
           conv.id === selectedConversation.participant_id
-            ? { ...conv, last_message: newMessage.trim(), last_message_time: new Date().toISOString() }
+            ? { ...conv, last_message: message.content, last_message_time: message.created_at }
             : conv
         )
       )
+
+      toast.success('Message sent successfully')
+      
     } catch (error) {
       console.error('Error sending message:', error)
       toast.error('Failed to send message')

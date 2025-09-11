@@ -247,6 +247,7 @@ export default function CreateBookingPage() {
         bookingData.notes = (bookingData.notes || '') + '\n\n[Direct booking - no package selected. Provider will contact to discuss specific requirements and pricing.]'
       }
 
+      // Create booking directly with Supabase client (handles auth automatically)
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert(bookingData)
@@ -254,6 +255,26 @@ export default function CreateBookingPage() {
         .single()
 
       if (error) throw error
+
+      // Manually trigger notification since we're not using API route
+      try {
+        const { triggerBookingCreated } = await import('@/lib/notification-triggers-simple')
+        await triggerBookingCreated(booking.id, {
+          client_id: user.id,
+          client_name: user?.user_metadata?.full_name || 'Client',
+          provider_id: selectedService.provider.id,
+          provider_name: selectedService.provider.full_name,
+          service_name: selectedService.title,
+          booking_title: booking.title,
+          scheduled_date: booking.scheduled_date,
+          total_amount: booking.amount,
+          currency: booking.currency
+        })
+        console.log('✅ Booking notification triggered')
+      } catch (notificationError) {
+        console.warn('Failed to send booking notification:', notificationError)
+        // Non-blocking - don't fail the booking if notifications fail
+      }
 
       toast.success('Booking created successfully!')
       router.push(`/dashboard/bookings/${booking.id}`)
