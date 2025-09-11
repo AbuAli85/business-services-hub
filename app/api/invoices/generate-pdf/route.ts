@@ -70,13 +70,17 @@ export async function POST(request: NextRequest) {
   try {
     const { invoiceId } = await request.json()
     
+    console.log('🔍 PDF generation request for invoice:', invoiceId)
+    
     if (!invoiceId) {
+      console.error('❌ No invoice ID provided')
       return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 })
     }
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     if (!uuidRegex.test(invoiceId)) {
+      console.error('❌ Invalid invoice ID format:', invoiceId)
       return NextResponse.json({ error: 'Invalid invoice ID format' }, { status: 400 })
     }
 
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
     
     // Check if this is a virtual invoice (starts with 'virtual-')
     if (invoiceId.startsWith('virtual-')) {
-      // For virtual invoices, we'll create a simple PDF URL
+      console.log('📄 Generating virtual invoice PDF')
       const pdfUrl = `/api/invoices/pdf/${invoiceId}.pdf`
       return NextResponse.json({ 
         success: true, 
@@ -92,6 +96,8 @@ export async function POST(request: NextRequest) {
         message: 'Virtual invoice PDF generated successfully' 
       })
     }
+    
+    console.log('🔍 Fetching invoice from database...')
     
     // Get the invoice details from database
     const { data: invoice, error: invoiceError } = await supabase
@@ -107,9 +113,20 @@ export async function POST(request: NextRequest) {
       .eq('id', invoiceId)
       .single()
 
-    if (invoiceError || !invoice) {
+    if (invoiceError) {
+      console.error('❌ Database error:', invoiceError)
+      return NextResponse.json({ 
+        error: 'Database error', 
+        details: invoiceError.message 
+      }, { status: 500 })
+    }
+
+    if (!invoice) {
+      console.error('❌ Invoice not found in database:', invoiceId)
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
+
+    console.log('✅ Invoice found:', invoice.id, invoice.invoice_number)
 
     // Generate a simple PDF content (in a real implementation, use a PDF library)
     const pdfContent = generateSimplePDF(invoice)

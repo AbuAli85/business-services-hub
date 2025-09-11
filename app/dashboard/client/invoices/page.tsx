@@ -320,6 +320,8 @@ export default function ClientInvoicesPage() {
 
   const handleDownloadInvoice = async (invoice: InvoiceData) => {
     try {
+      console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
+      
       // Generate PDF and download
       const response = await fetch('/api/invoices/generate-pdf', {
         method: 'POST',
@@ -327,8 +329,12 @@ export default function ClientInvoicesPage() {
         body: JSON.stringify({ invoiceId: invoice.id })
       })
 
+      console.log('📊 PDF generation response status:', response.status)
+
       if (response.ok) {
         const blob = await response.blob()
+        console.log('✅ PDF blob created, size:', blob.size, 'bytes')
+        
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -337,14 +343,14 @@ export default function ClientInvoicesPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
-        toast.success('Invoice downloaded')
+        toast.success('Invoice downloaded successfully')
       } else {
         const errorData = await response.json()
-        console.error('PDF generation error:', errorData)
-        toast.error('Failed to download invoice')
+        console.error('❌ PDF generation error:', errorData)
+        toast.error(`Failed to download invoice: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error downloading invoice:', error)
+      console.error('❌ Error downloading invoice:', error)
       toast.error('Failed to download invoice')
     }
   }
