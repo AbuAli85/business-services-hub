@@ -35,6 +35,7 @@ export default function SignUpPage() {
     meetsRequirements: false
   })
   const [captchaToken, setCaptchaToken] = useState<string>('')
+  const [captchaKey, setCaptchaKey] = useState<number>(0)
   const router = useRouter()
 
   const handleInputChange = (field: string, value: string) => {
@@ -137,6 +138,8 @@ export default function SignUpPage() {
         } else {
           toast.error(`Signup failed: ${error.message}`)
         }
+        setCaptchaToken('')
+        setCaptchaKey(k => k + 1)
         return
       }
 
@@ -425,7 +428,7 @@ export default function SignUpPage() {
 
           {/* hCaptcha */}
           <div className="mt-2">
-            <HCaptcha onVerify={setCaptchaToken} theme="light" />
+            <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
           </div>
           
           <div className="mt-4 text-center text-xs text-muted-foreground">

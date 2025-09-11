@@ -21,6 +21,7 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false)
   const [attempts, setAttempts] = useState(0)
   const [captchaToken, setCaptchaToken] = useState<string>('')
+  const [captchaKey, setCaptchaKey] = useState<number>(0)
   const router = useRouter()
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -44,6 +45,8 @@ export default function SignInPage() {
 
       if (error) {
         setAttempts(prev => prev + 1)
+        setCaptchaToken('')
+        setCaptchaKey(k => k + 1)
         
         // Handle specific error cases for production
         if (error.message.includes('Email not confirmed')) {
@@ -76,6 +79,8 @@ export default function SignInPage() {
       }
     } catch (err) {
       setAttempts(prev => prev + 1)
+      setCaptchaToken('')
+      setCaptchaKey(k => k + 1)
       toast.error('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
@@ -205,7 +210,7 @@ export default function SignInPage() {
 
             {/* hCaptcha */}
             <div className="mt-2">
-              <HCaptcha onVerify={setCaptchaToken} theme="light" />
+              <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
             </div>
             
             <div className="space-y-2">
