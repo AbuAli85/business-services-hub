@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { CollapsibleSidebar } from '@/components/dashboard/collapsible-sidebar'
-import { Topbar } from '@/components/dashboard/topbar'
+// Layout-level sidebar and header are provided by app/dashboard/layout.tsx
 import { EnhancedKPIGrid, EnhancedPerformanceMetrics } from '@/components/dashboard/enhanced-kpi-cards'
 import { AdvancedEarningsChart } from '@/components/dashboard/advanced-earnings-chart'
 import { PremiumRecentBookings } from '@/components/dashboard/premium-recent-bookings'
@@ -30,7 +29,7 @@ export default function ProviderDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // Sidebar and header are provided by the shared dashboard layout
   
   // Dashboard data
   const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
@@ -98,93 +97,62 @@ export default function ProviderDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <CollapsibleSidebar 
-          collapsed={sidebarCollapsed} 
-          setCollapsed={setSidebarCollapsed} 
-        />
-        
-        <div className="flex flex-col flex-1">
-          <Topbar 
-            title="Provider Dashboard" 
-            subtitle="Loading your dashboard..." 
-          />
-          
-          <main className="flex-1 overflow-y-auto p-6">
-      <div className="flex items-center justify-center h-64">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-                  <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
-                  <p className="text-sm text-gray-600">Preparing your business insights...</p>
-                </div>
+      <main className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
+                <p className="text-sm text-gray-600">Preparing your business insights...</p>
               </div>
             </div>
-          </main>
+          </div>
         </div>
-      </div>
+      </main>
     )
   }
 
   if (error || !stats) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <CollapsibleSidebar 
-          collapsed={sidebarCollapsed} 
-          setCollapsed={setSidebarCollapsed} 
-        />
-        
-        <div className="flex flex-col flex-1">
-          <Topbar 
-            title="Provider Dashboard" 
-            subtitle="Error loading dashboard" 
-          />
-          
-          <main className="flex-1 overflow-y-auto p-6">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-        <CardContent className="flex items-center justify-center h-64">
-          <div className="text-center">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="h-8 w-8 text-red-600" />
-                  </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-                  <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
-                  <Button onClick={loadUserAndData} variant="outline" className="bg-white hover:bg-gray-50">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-          </main>
+      <main className="p-6">
+        <div className="max-w-3xl mx-auto">
+          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <CardContent className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="h-8 w-8 text-red-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
+                <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
+                <Button onClick={loadUserAndData} variant="outline" className="bg-white hover:bg-gray-50">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Sidebar */}
-      <CollapsibleSidebar 
-        collapsed={sidebarCollapsed} 
-        setCollapsed={setSidebarCollapsed} 
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-col flex-1">
-        {/* Topbar */}
-        <Topbar 
-          title="Provider Dashboard" 
-          subtitle="Welcome back! Here's what's happening with your business." 
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-        />
-
-        {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+    <main className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Provider Dashboard</h1>
+            <p className="text-gray-600">Welcome back! Here's what's happening with your business.</p>
+          </div>
+          <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
           {/* Welcome Section with Enhanced Design */}
           <div className="mb-10 sm:mb-12">
             <div className="relative">
@@ -391,8 +359,7 @@ export default function ProviderDashboard() {
         </div>
           </section>
 
-        </main>
       </div>
-    </div>
+    </main>
   )
 }
