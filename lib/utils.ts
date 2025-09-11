@@ -6,15 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number, currency: string = 'OMR'): string {
-  if (currency === 'OMR') {
-    return `OMR ${amount.toFixed(2)}`
-  }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount)
+  // Always display with ISO currency code prefix to avoid $/symbol usage
+  const normalizedCurrency = (currency || 'OMR').toUpperCase()
+  const fixed = Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+  return `${normalizedCurrency} ${fixed}`
 }
 
 export function formatDate(date: string | Date): string {

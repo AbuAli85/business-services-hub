@@ -421,12 +421,12 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 h-[calc(100vh-120px)]">
-      <div className="flex h-full space-x-6 bg-white rounded-lg shadow-sm border">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6 h-[calc(100vh-120px)]">
+      <div className="flex h-full gap-4 sm:gap-6 bg-white/60 backdrop-blur rounded-2xl shadow-xl border border-gray-100">
         {/* Conversations Sidebar */}
-        <div className="w-80 flex flex-col border-r border-gray-200">
+        <div className="w-72 sm:w-80 flex flex-col border-r border-gray-200 rounded-l-2xl overflow-hidden">
           {/* Enhanced Header */}
-          <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-6 text-white">
+          <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-6 text-white sticky top-0 z-10">
             <h1 className="text-2xl font-bold mb-1">Messages</h1>
             <p className="text-violet-100 text-sm mb-3">Stay connected with your clients and providers</p>
             <div className="flex items-center space-x-4 text-xs">
@@ -442,7 +442,7 @@ export default function MessagesPage() {
           </div>
 
           {/* Search and Filters */}
-          <div className="p-4 space-y-3 border-b border-gray-200">
+          <div className="p-4 space-y-3 border-b border-gray-200 bg-white sticky top-[96px] z-10">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -478,9 +478,9 @@ export default function MessagesPage() {
               filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  className={`p-4 border-b border-gray-100 cursor-pointer transition-all hover:bg-gray-50 ${
+                  className={`p-4 border-b border-gray-100 cursor-pointer transition-all hover:bg-gray-50/80 hover:shadow-inner ${
                     selectedConversation?.id === conversation.id
-                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                      ? 'bg-blue-50/80 ring-1 ring-blue-200'
                       : ''
                   }`}
                   onClick={() => setSelectedConversation(conversation)}
@@ -543,11 +543,11 @@ export default function MessagesPage() {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col border rounded-lg">
+        <div className="flex-1 flex flex-col border border-gray-100 rounded-2xl bg-white overflow-hidden">
           {selectedConversation ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white">
+              <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-12 w-12">
@@ -601,7 +601,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50">
                 {messages.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -614,7 +614,7 @@ export default function MessagesPage() {
                       key={message.id}
                       className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-xs lg:max-w-md ${
+                      <div className={`max-w-sm md:max-w-md lg:max-w-xl ${
                         message.sender_id === user.id ? 'order-2' : 'order-1'
                       }`}>
                         <div className={`p-4 rounded-2xl shadow-sm ${
@@ -640,7 +640,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t bg-white">
+              <div className="p-4 sm:p-5 border-t bg-white sticky bottom-0">
                 <div className="flex items-end space-x-3">
                   <div className="flex-1">
                     <Textarea
