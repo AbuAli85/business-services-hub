@@ -664,10 +664,13 @@ export default function CompanyPage() {
         return
       }
 
-      // Update profile with company_id
+      // Update profile with company_id and company_name
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ company_id: company.id })
+        .update({ 
+          company_id: company.id,
+          company_name: company.name
+        })
         .eq('id', user.id)
 
       if (profileError) {

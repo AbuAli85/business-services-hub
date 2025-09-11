@@ -191,10 +191,13 @@ export default function OnboardingPage() {
             return
           }
 
-          // Update profile with company_id
+          // Update profile with company_id and company_name
           const { error: profileUpdateError } = await supabase
             .from('profiles')
-            .update({ company_id: company.id })
+            .update({ 
+              company_id: company.id,
+              company_name: formData.companyName
+            })
             .eq('id', user.id)
 
           if (profileUpdateError) {
