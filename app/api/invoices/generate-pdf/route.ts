@@ -41,17 +41,29 @@ function generateSimplePDF(invoice: any): Uint8Array {
   const textGray = [71, 85, 105] // Slate-600
   const borderGray = [226, 232, 240] // Slate-200
 
-  // Get company information from the invoice data
-  const companyName = invoice.booking?.service?.provider?.company?.name || 'Business Services Hub'
+  // Get company information from the invoice data (support both nested booking path and top-level provider)
+  const companyName =
+    invoice.booking?.service?.provider?.company?.name ||
+    (invoice.provider as any)?.company?.name ||
+    'Business Services Hub'
   const companyTagline = 'Professional Services & Solutions'
-  const companyAddress = invoice.booking?.service?.provider?.company?.address || '123 Business Street, Suite 100\nCity, State 12345'
-  const companyPhone = invoice.booking?.service?.provider?.company?.phone || '(555) 555-5555'
-  const companyEmail = invoice.booking?.service?.provider?.company?.email || 'info@businessservices.com'
+  const companyAddress =
+    invoice.booking?.service?.provider?.company?.address ||
+    (invoice.provider as any)?.company?.address ||
+    '123 Business Street, Suite 100\nCity, State 12345'
+  const companyPhone =
+    invoice.booking?.service?.provider?.company?.phone ||
+    (invoice.provider as any)?.company?.phone ||
+    '(555) 555-5555'
+  const companyEmail =
+    invoice.booking?.service?.provider?.company?.email ||
+    (invoice.provider as any)?.company?.email ||
+    'info@businessservices.com'
 
   // Get client information from the invoice data
-  const clientName = invoice.booking?.client?.full_name || 'Client Name'
-  const clientCompany = invoice.booking?.client?.company?.name || 'Client Company'
-  const clientEmail = invoice.booking?.client?.email || 'client@email.com'
+  const clientName = (invoice.client as any)?.full_name || invoice.booking?.client?.full_name || 'Client Name'
+  const clientCompany = (invoice.client as any)?.company?.name || invoice.booking?.client?.company?.name || 'Client Company'
+  const clientEmail = (invoice.client as any)?.email || invoice.booking?.client?.email || 'client@email.com'
 
   // Get service information from the invoice data
   const serviceTitle = invoice.booking?.service?.title || 'Professional Service'
@@ -343,8 +355,7 @@ export async function POST(request: NextRequest) {
         booking:bookings(
           id,
           service:services(title, description, price)
-        ),
-        invoice_items(*)
+        )
       `)
       .eq('id', invoiceId)
       .single()
@@ -373,13 +384,21 @@ export async function POST(request: NextRequest) {
       service: invoice.booking?.service?.title
     })
 
+    // Fetch invoice_items via a separate query (no FK relationship in cache)
+    const { data: items, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoice.id)
+
+    if (itemsError) {
+      console.warn('⚠️ Could not load invoice_items; continuing without items:', itemsError.message)
+    }
+
+    // Attach items to invoice for generator compatibility
+    const invoiceForPdf = { ...invoice, invoice_items: items || [] }
+
     // Generate PDF with the enhanced template
-    const pdfBuffer = generateSimplePDF({
-      ...invoice,
-      booking: invoice.booking,
-      // For PDF template: expose provider.company under booking.service.provider.company if missing
-      bookingForPdf: undefined
-    })
+    const pdfBuffer = generateSimplePDF(invoiceForPdf)
     
     console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
 
