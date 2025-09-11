@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from 'react-hot-toast'
+import { ErrorBoundary } from '@/components/error-boundary'
+import '@/lib/error-handler'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,8 +35,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster position="top-right" />
+          <ErrorBoundary>
+            {children}
+            <Toaster position="top-right" />
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>

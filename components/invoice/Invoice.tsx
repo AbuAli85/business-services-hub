@@ -72,7 +72,10 @@ export default function Invoice({
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      // Use safe removal to prevent DOM errors
+      if (a.parentNode) {
+        a.parentNode.removeChild(a)
+      }
     } catch (error) {
       console.error('Error downloading PDF:', error)
     }

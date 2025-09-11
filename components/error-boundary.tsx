@@ -9,7 +9,7 @@ interface ErrorBoundaryState {
 
 interface ErrorBoundaryProps {
   children: React.ReactNode
-  fallback?: React.ComponentType<{ error?: Error; resetError: () => void }>
+  fallback?: React.ComponentType<{ error: Error; resetError: () => void }>
 }
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -24,6 +24,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    
+    // Log specific DOM-related errors
+    if (error.name === 'InvalidNodeTypeError') {
+      console.warn('DOM manipulation error detected - likely from third-party script')
+    }
   }
 
   resetError = () => {
@@ -32,44 +37,29 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        const FallbackComponent = this.props.fallback
-        return <FallbackComponent error={this.state.error} resetError={this.resetError} />
-      }
-
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-medium text-gray-900 text-center mb-2">
-              Something went wrong
-            </h2>
-            <p className="text-sm text-gray-600 text-center mb-4">
-              We encountered an error while loading this page. Please try refreshing.
-            </p>
-            <div className="flex space-x-3">
-              <button
-                onClick={this.resetError}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Try Again
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                Refresh Page
-              </button>
-            </div>
-          </div>
-        </div>
-      )
+      const FallbackComponent = this.props.fallback || DefaultErrorFallback
+      return <FallbackComponent error={this.state.error!} resetError={this.resetError} />
     }
 
     return this.props.children
   }
+}
+
+function DefaultErrorFallback({ error, resetError }: { error: Error; resetError: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-8 bg-red-50 border border-red-200 rounded-lg">
+      <h2 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
+      <p className="text-red-600 mb-4 text-center">
+        {error.name === 'InvalidNodeTypeError' 
+          ? 'A display error occurred. This is usually caused by browser extensions.'
+          : 'An unexpected error occurred.'}
+      </p>
+      <button
+        onClick={resetError}
+        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  )
 }
