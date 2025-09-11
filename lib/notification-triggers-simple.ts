@@ -190,11 +190,18 @@ export async function triggerMessageReceived(recipientId: string, data: {
   sender_name: string
   message_preview?: string
 }) {
-  await notificationTriggerService.triggerMessageReceived(recipientId, {
-    message_id: data.message_id,
-    sender_id: data.sender_id,
-    sender_name: data.sender_name
-  })
+  console.log('🔔 triggerMessageReceived called:', { recipientId, data });
+  try {
+    await notificationTriggerService.triggerMessageReceived(recipientId, {
+      message_id: data.message_id,
+      sender_id: data.sender_id,
+      sender_name: data.sender_name
+    });
+    console.log('✅ triggerMessageReceived completed successfully');
+  } catch (error) {
+    console.error('❌ triggerMessageReceived failed:', error);
+    throw error;
+  }
 }
 
 export async function triggerTaskCreated(bookingId: string, data: {
@@ -315,11 +322,23 @@ export async function triggerReviewReceived(bookingId: string, data: {
   rating: number
   comment?: string
 }) {
-  // Notify provider about new review
-  await notificationTriggerService.triggerClientFeedback(data.provider_id, {
-    project_id: bookingId,
-    project_name: `Booking ${bookingId}`,
-    actor_id: data.reviewer_id,
-    actor_name: data.reviewer_name
-  })
+  console.log('🔔 triggerReviewReceived called:', { bookingId, data });
+  try {
+    // Notify provider about new review
+    await notificationTriggerService.triggerReviewReceived(data.provider_id, {
+      review_id: data.review_id,
+      reviewer_id: data.reviewer_id,
+      reviewer_name: data.reviewer_name,
+      provider_id: data.provider_id,
+      provider_name: data.provider_name,
+      rating: data.rating,
+      comment: data.comment || '',
+      service_name: `Booking ${bookingId}`,
+      booking_id: bookingId
+    });
+    console.log('✅ triggerReviewReceived completed successfully');
+  } catch (error) {
+    console.error('❌ triggerReviewReceived failed:', error);
+    throw error;
+  }
 }
