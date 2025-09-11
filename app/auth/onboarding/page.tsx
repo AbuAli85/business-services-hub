@@ -133,83 +133,81 @@ export default function OnboardingPage() {
         }
       }
 
-      if (role === 'provider') {
-        // Create company for provider
-        try {
-          // First, ensure the user has a profile
-          const { data: existingProfile, error: profileCheckError } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', user.id)
-            .single()
+      // Create company for both clients and providers
+      try {
+        // First, ensure the user has a profile
+        const { data: existingProfile, error: profileCheckError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single()
 
-          if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-            console.error('Error checking profile:', profileCheckError)
-            toast.error('Failed to verify user profile')
-            return
-          }
-
-          // If no profile exists, create one
-          if (!existingProfile) {
-            console.log('Creating missing profile for provider:', user.email)
-            const { error: profileCreateError } = await supabase
-              .from('profiles')
-              .insert({
-                id: user.id,
-                email: user.email,
-                full_name: user.user_metadata?.full_name || 'Provider',
-                role: 'provider',
-                phone: user.user_metadata?.phone || '',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-
-            if (profileCreateError) {
-              console.error('Profile creation error:', profileCreateError)
-              toast.error(`Profile creation failed: ${profileCreateError.message}`)
-              return
-            }
-            console.log('Profile created successfully for provider')
-          }
-
-          // Now create company
-          const { data: company, error: companyError } = await supabase
-            .from('companies')
-            .insert({
-              owner_id: user.id,
-              name: formData.companyName,
-              cr_number: formData.crNumber || null,
-              vat_number: formData.vatNumber || null,
-              description: formData.bio || null
-            })
-            .select()
-            .single()
-
-          if (companyError) {
-            console.error('Company creation error:', companyError)
-            toast.error(`Company creation failed: ${companyError.message}`)
-            return
-          }
-
-          // Update profile with company_id and company_name
-          const { error: profileUpdateError } = await supabase
-            .from('profiles')
-            .update({ 
-              company_id: company.id,
-              company_name: formData.companyName
-            })
-            .eq('id', user.id)
-
-          if (profileUpdateError) {
-            console.error('Profile update error:', profileUpdateError)
-            toast.error(`Profile update failed: ${profileUpdateError.message}`)
-            return
-          }
-        } catch (error) {
-          console.error('Error creating company profile:', error)
-          toast.error('Failed to create company profile')
+        if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+          console.error('Error checking profile:', profileCheckError)
+          toast.error('Failed to verify user profile')
           return
         }
+
+        // If no profile exists, create one
+        if (!existingProfile) {
+          console.log(`Creating missing profile for ${role}:`, user.email)
+          const { error: profileCreateError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email,
+              full_name: user.user_metadata?.full_name || (role === 'provider' ? 'Provider' : 'Client'),
+              role: role,
+              phone: user.user_metadata?.phone || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+
+          if (profileCreateError) {
+            console.error('Profile creation error:', profileCreateError)
+            toast.error(`Profile creation failed: ${profileCreateError.message}`)
+            return
+          }
+          console.log(`Profile created successfully for ${role}`)
+        }
+
+        // Now create company for both clients and providers
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+            owner_id: user.id,
+            name: formData.companyName,
+            cr_number: formData.crNumber || null,
+            vat_number: formData.vatNumber || null,
+            description: formData.bio || null
+          })
+          .select()
+          .single()
+
+        if (companyError) {
+          console.error('Company creation error:', companyError)
+          toast.error(`Company creation failed: ${companyError.message}`)
+          return
+        }
+
+        // Update profile with company_id and company_name
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({ 
+            company_id: company.id,
+            company_name: formData.companyName
+          })
+          .eq('id', user.id)
+
+        if (profileUpdateError) {
+          console.error('Profile update error:', profileUpdateError)
+          toast.error(`Profile update failed: ${profileUpdateError.message}`)
+          return
+        }
+      } catch (error) {
+        console.error('Error creating company profile:', error)
+        toast.error('Failed to create company profile')
+        return
       }
 
       toast.success('Onboarding completed successfully!')

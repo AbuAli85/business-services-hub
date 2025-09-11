@@ -19,6 +19,7 @@ BEGIN
     full_name, 
     role, 
     phone,
+    company_name,
     created_at,
     updated_at
   ) VALUES (
@@ -27,6 +28,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'),
     COALESCE(NEW.raw_user_meta_data->>'role', 'client'),
     COALESCE(NEW.raw_user_meta_data->>'phone', ''),
+    COALESCE(NEW.raw_user_meta_data->>'company_name', ''),
     NOW(),
     NOW()
   );
@@ -66,6 +68,9 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 
 CREATE TRIGGER update_profiles_updated_at
     BEFORE UPDATE ON public.profiles

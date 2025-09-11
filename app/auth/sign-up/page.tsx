@@ -22,6 +22,7 @@ export default function SignUpPage() {
     confirmPassword: '',
     fullName: '',
     phone: '',
+    companyName: '',
     role: 'client' as 'client' | 'provider'
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -70,7 +71,7 @@ export default function SignUpPage() {
   }
 
   const validateForm = () => {
-    if (!formData.email || !formData.password || !formData.fullName || !formData.phone) {
+    if (!formData.email || !formData.password || !formData.fullName || !formData.phone || !formData.companyName) {
       toast.error('Please fill in all required fields')
       return false
     }
@@ -126,6 +127,7 @@ export default function SignUpPage() {
             role: formData.role,
             full_name: formData.fullName,
             phone: formData.phone,
+            company_name: formData.companyName,
           }
         }
       })
@@ -275,6 +277,20 @@ export default function SignUpPage() {
                 placeholder="Enter your phone number"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
+                required
+                disabled={loading}
+                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company Name *</Label>
+              <Input
+                id="companyName"
+                type="text"
+                placeholder="Enter your company name"
+                value={formData.companyName}
+                onChange={(e) => handleInputChange('companyName', e.target.value)}
                 required
                 disabled={loading}
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
