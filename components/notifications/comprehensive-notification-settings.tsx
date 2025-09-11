@@ -59,15 +59,13 @@ export function ComprehensiveNotificationSettings() {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('general')
 
-  const supabase = getSupabaseClient()
-
   useEffect(() => {
     loadSettings()
   }, [])
 
   const loadSettings = async () => {
     try {
-      const supabaseClient = await supabase
+      const supabaseClient = await getSupabaseClient()
       const { data: { user } } = await supabaseClient.auth.getUser()
       if (!user) return
 
@@ -145,7 +143,7 @@ export function ComprehensiveNotificationSettings() {
 
     try {
       setSaving(true)
-      const supabaseClient = await supabase
+      const supabaseClient = await getSupabaseClient()
       const { data: { user } } = await supabaseClient.auth.getUser()
       if (!user) return
 
