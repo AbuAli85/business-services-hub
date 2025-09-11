@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 function generateSimplePDF(invoice: any): Buffer {
-  // Create a simple but professional PDF using basic PDF structure
+  // Create a professional PDF using basic PDF structure with better formatting
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -22,7 +22,7 @@ function generateSimplePDF(invoice: any): Buffer {
       day: 'numeric'
     })
 
-  // Create a simple PDF structure
+  // Create a professional PDF structure with better spacing and formatting
   const pdfContent = `%PDF-1.4
 1 0 obj
 <<
@@ -48,6 +48,8 @@ endobj
 /Resources <<
   /Font <<
     /F1 5 0 R
+    /F2 6 0 R
+    /F3 7 0 R
   >>
 >>
 >>
@@ -55,85 +57,92 @@ endobj
 
 4 0 obj
 <<
-/Length 2000
+/Length 3000
 >>
 stream
 BT
-/F1 24 Tf
+/F1 28 Tf
 50 750 Td
 (Business Services Hub) Tj
-0 -30 Td
-/F1 18 Tf
+0 -25 Td
+/F2 14 Tf
 (Professional Services & Solutions) Tj
-0 -50 Td
-/F1 36 Tf
+0 -60 Td
+/F1 32 Tf
 (INVOICE) Tj
-0 -20 Td
-/F1 14 Tf
+0 -25 Td
+/F2 16 Tf
 (${invoiceNumber}) Tj
-0 -40 Td
-/F1 12 Tf
+0 -50 Td
+/F3 12 Tf
 (Invoice Date: ${createdDate}) Tj
-0 -15 Td
+0 -18 Td
 (Due Date: ${dueDate}) Tj
-0 -15 Td
+0 -18 Td
 (Status: ${invoice.status.toUpperCase()}) Tj
-0 -30 Td
-(BILL TO:) Tj
-0 -15 Td
-(${invoice.booking?.client?.full_name || 'Client Name'}) Tj
-0 -12 Td
-(${invoice.booking?.client?.company?.name || 'Client Company'}) Tj
-0 -12 Td
-(${invoice.booking?.client?.email || 'client@email.com'}) Tj
-0 -30 Td
-(FROM:) Tj
-0 -15 Td
-(Business Services Hub) Tj
-0 -12 Td
-(123 Business Street, Suite 100) Tj
-0 -12 Td
-(City, State 12345) Tj
-0 -12 Td
-(info@businessservices.com) Tj
-0 -30 Td
+0 -40 Td
 /F1 14 Tf
-(FOR SERVICES RENDERED) Tj
+(BILL TO:) Tj
 0 -20 Td
+/F3 12 Tf
+(${invoice.booking?.client?.full_name || 'Client Name'}) Tj
+0 -15 Td
+(${invoice.booking?.client?.company?.name || 'Client Company'}) Tj
+0 -15 Td
+(${invoice.booking?.client?.email || 'client@email.com'}) Tj
+0 -40 Td
+/F1 14 Tf
+(FROM:) Tj
+0 -20 Td
+/F3 12 Tf
+(Business Services Hub) Tj
+0 -15 Td
+(123 Business Street, Suite 100) Tj
+0 -15 Td
+(City, State 12345) Tj
+0 -15 Td
+(info@businessservices.com) Tj
+0 -50 Td
+/F1 16 Tf
+(FOR SERVICES RENDERED) Tj
+0 -30 Td
 /F1 12 Tf
 (DESCRIPTION) Tj
-400 0 Td
+300 0 Td
 (QTY) Tj
 50 0 Td
 (UNIT PRICE) Tj
 80 0 Td
 (TOTAL) Tj
--530 -20 Td
+-430 -25 Td
+/F3 12 Tf
 (${invoice.booking?.service?.title || 'Professional Service'}) Tj
-400 0 Td
+300 0 Td
 (1) Tj
 50 0 Td
 (${invoice.amount} ${invoice.currency}) Tj
 80 0 Td
 (${invoice.amount} ${invoice.currency}) Tj
--530 -30 Td
+-430 -40 Td
 /F1 14 Tf
 (Subtotal: ${invoice.amount} ${invoice.currency}) Tj
-0 -15 Td
+0 -20 Td
 (Tax (0%): 0.00 ${invoice.currency}) Tj
-0 -15 Td
-/F1 16 Tf
+0 -20 Td
+/F1 18 Tf
 (TOTAL: ${invoice.amount} ${invoice.currency}) Tj
-0 -40 Td
-/F1 12 Tf
+0 -50 Td
+/F1 14 Tf
 (PAYMENT INFORMATION) Tj
-0 -15 Td
+0 -20 Td
+/F3 12 Tf
 (Payment Methods: Credit Card, Bank Transfer, PayPal) Tj
-0 -12 Td
+0 -15 Td
 (Payment Terms: Net 30 days from invoice date) Tj
-0 -12 Td
+0 -15 Td
 (Questions: billing@businessservices.com) Tj
-0 -30 Td
+0 -40 Td
+/F1 14 Tf
 (Thank you for your business!) Tj
 ET
 endstream
@@ -143,25 +152,43 @@ endobj
 <<
 /Type /Font
 /Subtype /Type1
+/BaseFont /Helvetica-Bold
+>>
+endobj
+
+6 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica-Oblique
+>>
+endobj
+
+7 0 obj
+<<
+/Type /Font
+/Subtype /Type1
 /BaseFont /Helvetica
 >>
 endobj
 
 xref
-0 6
+0 8
 0000000000 65535 f 
 0000000009 00000 n 
 0000000058 00000 n 
 0000000115 00000 n 
 0000000204 00000 n 
 0000002500 00000 n 
+0000002600 00000 n 
+0000002700 00000 n 
 trailer
 <<
-/Size 6
+/Size 8
 /Root 1 0 R
 >>
 startxref
-2600
+3600
 %%EOF`
 
   return Buffer.from(pdfContent, 'utf-8')
