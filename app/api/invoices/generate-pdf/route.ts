@@ -63,16 +63,20 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setLineWidth(1)
   doc.rect(22, 22, 31, 21, 'S')
   
+  // Get company information from the invoice data
+  const companyName = invoice.booking?.service?.provider?.company?.name || 'Business Services Hub'
+  const companyTagline = 'Professional Services & Solutions'
+  
   // Premium company branding
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(32)
   doc.setFont('helvetica', 'bold')
-  doc.text('Business Services Hub', 65, 32)
+  doc.text(companyName, 65, 32)
   
   // Sophisticated tagline
   doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
-  doc.text('Professional Services & Solutions', 65, 38)
+  doc.text(companyTagline, 65, 38)
   
   // Add premium separator line
   doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
@@ -157,14 +161,19 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.rect(20, 137, 85, 25, 'S')
   
+  // Get client information from the invoice data
+  const clientName = invoice.booking?.client?.full_name || 'Client Name'
+  const clientCompany = invoice.booking?.client?.company?.name || 'Client Company'
+  const clientEmail = invoice.booking?.client?.email || 'client@email.com'
+  
   doc.setTextColor(0, 0, 0)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text(invoice.booking?.client?.full_name || 'Client Name', 25, 147)
+  doc.text(clientName, 25, 147)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
-  doc.text(invoice.booking?.client?.company?.name || 'Client Company', 25, 152)
-  doc.text(invoice.booking?.client?.email || 'client@email.com', 25, 157)
+  doc.text(clientCompany, 25, 152)
+  doc.text(clientEmail, 25, 157)
   
   // Premium company information section
   doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
@@ -180,15 +189,21 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.rect(115, 137, 85, 25, 'S')
   
+  // Get provider company information from the invoice data
+  const providerCompanyName = invoice.booking?.service?.provider?.company?.name || 'Business Services Hub'
+  const providerAddress = '123 Business Street, Suite 100'
+  const providerCity = 'City, State 12345'
+  const providerEmail = invoice.booking?.service?.provider?.email || 'info@businessservices.com'
+  
   doc.setTextColor(0, 0, 0)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Business Services Hub', 120, 147)
+  doc.text(providerCompanyName, 120, 147)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
-  doc.text('123 Business Street, Suite 100', 120, 152)
-  doc.text('City, State 12345', 120, 157)
-  doc.text('info@businessservices.com', 120, 162)
+  doc.text(providerAddress, 120, 152)
+  doc.text(providerCity, 120, 157)
+  doc.text(providerEmail, 120, 162)
   
   // Ultra-premium services section header
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -231,13 +246,20 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.line(150, 215, 150, 240)
   doc.line(180, 215, 180, 240)
   
+  // Get service information from the invoice data
+  const serviceTitle = invoice.booking?.service?.title || 'Professional Service'
+  const serviceDescription = invoice.booking?.service?.description || 'High-quality professional service delivered with excellence'
+  const serviceQuantity = 1
+  const servicePrice = invoice.amount || 0
+  const serviceTotal = servicePrice * serviceQuantity
+  
   doc.setTextColor(0, 0, 0)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
-  doc.text(invoice.booking?.service?.title || 'Professional Service', 30, 227)
-  doc.text('1', 125, 227)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 155, 227)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 185, 227)
+  doc.text(serviceTitle, 30, 227)
+  doc.text(serviceQuantity.toString(), 125, 227)
+  doc.text(`${servicePrice} ${invoice.currency}`, 155, 227)
+  doc.text(`${serviceTotal} ${invoice.currency}`, 185, 227)
   
   // Ultra-premium total section with sophisticated design
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
@@ -259,15 +281,21 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setFont('helvetica', 'bold')
   doc.text('TOTAL SUMMARY', 125, 260)
   
+  // Calculate financial breakdown
+  const subtotal = invoice.subtotal || invoice.amount || 0
+  const taxRate = invoice.tax_rate || 0
+  const taxAmount = invoice.tax_amount || (subtotal * taxRate / 100)
+  const total = invoice.total_amount || (subtotal + taxAmount)
+  
   // Financial breakdown with premium typography
   doc.setTextColor(0, 0, 0)
   doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
   doc.text('Subtotal:', 125, 275)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 275)
+  doc.text(`${subtotal.toFixed(2)} ${invoice.currency}`, 160, 275)
   
-  doc.text('Tax (0%):', 125, 285)
-  doc.text(`0.00 ${invoice.currency}`, 160, 285)
+  doc.text(`Tax (${taxRate}%):`, 125, 285)
+  doc.text(`${taxAmount.toFixed(2)} ${invoice.currency}`, 160, 285)
   
   // Premium total with sophisticated styling
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -276,7 +304,7 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
   doc.text('TOTAL:', 125, 302)
-  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 302)
+  doc.text(`${total.toFixed(2)} ${invoice.currency}`, 160, 302)
   
   // Ultra-premium payment information section
   doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
@@ -310,13 +338,13 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
   doc.rect(0, 395, 210, 4, 'F')
   
-  // Footer content with premium typography
+  // Footer content with premium typography using actual company data
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('Business Services Hub | 123 Business Street, Suite 100 | info@businessservices.com', 20, 405)
+  doc.text(`${providerCompanyName} | ${providerAddress} | ${providerEmail}`, 20, 405)
   doc.text('This invoice was generated electronically and is valid without signature.', 20, 412)
-  doc.text('© 2024 Business Services Hub. All rights reserved.', 20, 419)
+  doc.text(`© 2024 ${providerCompanyName}. All rights reserved.`, 20, 419)
   
   // Add sophisticated border around entire document
   doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
@@ -440,7 +468,23 @@ export async function POST(request: NextRequest) {
       amount: invoice.amount,
       currency: invoice.currency,
       status: invoice.status,
-      invoice_number: invoice.invoice_number
+      invoice_number: invoice.invoice_number,
+      subtotal: invoice.subtotal,
+      tax_rate: invoice.tax_rate,
+      tax_amount: invoice.tax_amount,
+      total_amount: invoice.total_amount
+    })
+    
+    console.log('📄 Booking data:', {
+      booking_id: invoice.booking?.id,
+      service_title: invoice.booking?.service?.title,
+      service_description: invoice.booking?.service?.description,
+      client_name: invoice.booking?.client?.full_name,
+      client_email: invoice.booking?.client?.email,
+      client_company: invoice.booking?.client?.company?.name,
+      provider_name: invoice.booking?.service?.provider?.full_name,
+      provider_email: invoice.booking?.service?.provider?.email,
+      provider_company: invoice.booking?.service?.provider?.company?.name
     })
 
     try {
