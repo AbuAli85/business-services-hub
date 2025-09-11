@@ -94,6 +94,11 @@ export interface NotificationData {
   // Review related
   review_id?: string
   rating?: number
+  reviewer_id?: string
+  reviewer_name?: string
+  provider_id?: string
+  provider_name?: string
+  comment?: string
   
   // Document related
   document_id?: string
