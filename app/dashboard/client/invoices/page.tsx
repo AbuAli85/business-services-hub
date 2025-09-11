@@ -24,7 +24,9 @@ import {
   Plus,
   TrendingUp,
   CreditCard,
-  Receipt
+  Receipt,
+  User,
+  Building2
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -127,7 +129,23 @@ export default function ClientInvoicesPage() {
         return
       }
 
+      console.log('🔍 Fetching invoices for user:', userId)
       const supabase = await getSupabaseClient()
+      
+      // First, let's try a simple query to see if we can access the table
+      const { data: testData, error: testError } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('client_id', userId)
+        .limit(1)
+
+      if (testError) {
+        console.error('❌ Test query failed:', testError)
+        toast.error(`Database error: ${testError.message}`)
+        return
+      }
+
+      console.log('✅ Test query successful, fetching full data...')
       
       const { data: invoices, error } = await supabase
         .from('invoices')
@@ -135,30 +153,44 @@ export default function ClientInvoicesPage() {
           *,
           booking:bookings(
             id,
-            status
+            status,
+            requirements
           )
         `)
         .eq('client_id', userId)
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching invoices:', error)
-        console.error('User ID:', userId)
-        toast.error('Failed to fetch invoices')
+        console.error('❌ Error fetching invoices:', error)
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        toast.error(`Failed to fetch invoices: ${error.message}`)
         return
       }
 
-      console.log('✅ Fetched invoices:', invoices?.length || 0)
+      console.log('✅ Successfully fetched invoices:', invoices?.length || 0)
+      
+      if (invoices && invoices.length > 0) {
+        console.log('📄 Sample invoice:', invoices[0])
+      }
+      
       setInvoices(invoices || [])
       setFilteredInvoices(invoices || [])
       calculateStats(invoices || [])
       
       if (!invoices || invoices.length === 0) {
         console.log('ℹ️ No invoices found for user:', userId)
+        // Don't show toast for empty results to avoid spam
+      } else {
+        toast.success(`Found ${invoices.length} invoice${invoices.length === 1 ? '' : 's'}`)
       }
     } catch (error) {
-      console.error('Error fetching invoices:', error)
-      toast.error('Failed to fetch invoices')
+      console.error('❌ Unexpected error fetching invoices:', error)
+      toast.error('An unexpected error occurred while fetching invoices')
     } finally {
       setLoading(false)
     }
@@ -317,6 +349,12 @@ export default function ClientInvoicesPage() {
     }
   }
 
+  const handlePayInvoice = (invoice: InvoiceData) => {
+    // Navigate to payment page
+    toast.success('Payment functionality coming soon!')
+    // router.push(`/dashboard/client/invoices/${invoice.id}/pay`)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -405,16 +443,31 @@ export default function ClientInvoicesPage() {
         {/* Filters */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Filter Invoices</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filter Invoices
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Search</label>
+                <label className="text-sm font-medium mb-2 block">Search Invoices</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search invoices..."
+                    placeholder="Search by invoice number, provider, or amount..."
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="pl-10"
@@ -423,14 +476,14 @@ export default function ClientInvoicesPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Status</label>
+                <label className="text-sm font-medium mb-2 block">Status Filter</label>
                 <Select value={statusFilter} onValueChange={handleStatusFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="issued">Pending</SelectItem>
+                    <SelectItem value="issued">Issued (Pending)</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
@@ -452,6 +505,30 @@ export default function ClientInvoicesPage() {
                 </Select>
               </div>
             </div>
+            
+            {(searchTerm || statusFilter !== 'all' || dateFilter !== 'all') && (
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-sm text-gray-600">Active filters:</span>
+                {searchTerm && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Search: "{searchTerm}"
+                    <button onClick={() => handleSearch('')} className="ml-1 hover:text-red-500">×</button>
+                  </Badge>
+                )}
+                {statusFilter !== 'all' && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Status: {statusFilter}
+                    <button onClick={() => handleStatusFilter('all')} className="ml-1 hover:text-red-500">×</button>
+                  </Badge>
+                )}
+                {dateFilter !== 'all' && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Date: {dateFilter}
+                    <button onClick={() => handleDateFilter('all')} className="ml-1 hover:text-red-500">×</button>
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -480,66 +557,118 @@ export default function ClientInvoicesPage() {
             ) : (
               <div className="space-y-4">
                 {filteredInvoices.map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {invoice.service_title}
-                          </h3>
-                          {getStatusBadge(invoice.status, invoice.due_date)}
+                  <div key={invoice.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-2">
+                              <Receipt className="h-5 w-5 text-blue-600" />
+                              <h3 className="text-xl font-bold text-gray-900">
+                                {invoice.service_title || 'Service Invoice'}
+                              </h3>
+                            </div>
+                            {getStatusBadge(invoice.status, invoice.due_date)}
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-gray-400" />
+                              <div>
+                                <span className="text-sm text-gray-500">Invoice #</span>
+                                <p className="font-semibold text-gray-900">{invoice.invoice_number || 'N/A'}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-gray-400" />
+                              <div>
+                                <span className="text-sm text-gray-500">Provider</span>
+                                <p className="font-semibold text-gray-900">{invoice.provider_name || 'N/A'}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <div>
+                                <span className="text-sm text-gray-500">Due Date</span>
+                                <p className="font-semibold text-gray-900">
+                                  {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-gray-400" />
+                              <div>
+                                <span className="text-sm text-gray-500">Amount</span>
+                                <p className="font-bold text-xl text-gray-900">
+                                  {formatCurrency(invoice.total_amount || invoice.amount, invoice.currency)}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-gray-400" />
+                              <div>
+                                <span className="text-sm text-gray-500">Created</span>
+                                <p className="font-semibold text-gray-900">{formatDate(invoice.created_at)}</p>
+                              </div>
+                            </div>
+                            
+                            {invoice.booking && (
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-gray-400" />
+                                <div>
+                                  <span className="text-sm text-gray-500">Booking Status</span>
+                                  <p className="font-semibold text-gray-900 capitalize">{invoice.booking.status}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">Invoice #:</span> {invoice.invoice_number}
-                          </div>
-                          <div>
-                            <span className="font-medium">Provider:</span> {invoice.provider_name}
-                          </div>
-                          <div>
-                            <span className="font-medium">Due Date:</span> {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
-                          </div>
-                          <div>
-                            <span className="font-medium">Amount:</span> 
-                            <span className="font-semibold text-lg text-gray-900 ml-2">
-                              {formatCurrency(invoice.total_amount || invoice.amount, invoice.currency)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="font-medium">Created:</span> {formatDate(invoice.created_at)}
-                          </div>
-                          <div>
-                            <span className="font-medium">Status:</span> {invoice.status}
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewInvoice(invoice)}
-                          className="flex items-center gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownloadInvoice(invoice)}
-                          className="flex items-center gap-2"
-                        >
-                          <Download className="h-4 w-4" />
-                          PDF
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewInvoice(invoice)}
+                              className="flex items-center gap-2 hover:bg-blue-50"
+                            >
+                              <Eye className="h-4 w-4" />
+                              View Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadInvoice(invoice)}
+                              className="flex items-center gap-2 hover:bg-green-50"
+                            >
+                              <Download className="h-4 w-4" />
+                              Download PDF
+                            </Button>
+                          </div>
+                          
+                          {invoice.status === 'issued' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handlePayInvoice(invoice)}
+                              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              Pay Now
+                            </Button>
+                          )}
+                          
+                          {invoice.status === 'paid' && (
+                            <div className="flex items-center gap-2 text-green-600 text-sm">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="font-medium">Payment Completed</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
                 ))}
               </div>
             )}
