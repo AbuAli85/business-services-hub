@@ -77,29 +77,13 @@ export default function ClientInvoiceDetailsPage() {
 
   const checkUserAndFetchInvoice = async () => {
     try {
+      setLoading(true)
+      
       const supabase = await getSupabaseClient()
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
       if (userError || !user) {
-        router.push('/auth/sign-in')
-        return
-      }
-
-      setUser(user)
-      await fetchInvoice()
-    } catch (error) {
-      console.error('Error checking user:', error)
-      router.push('/auth/sign-in')
-    }
-  }
-
-  const fetchInvoice = async () => {
-    try {
-      setLoading(true)
-      
-      if (!user?.id) {
-        console.error('User ID not available')
-        toast.error('Authentication required')
+        console.error('Authentication error:', userError)
         router.push('/auth/sign-in')
         return
       }
@@ -111,8 +95,9 @@ export default function ClientInvoiceDetailsPage() {
         return
       }
 
-      const supabase = await getSupabaseClient()
-      
+      console.log('🔍 Fetching invoice for user:', user.id, 'invoice:', params.id)
+      setUser(user)
+
       const { data: invoiceData, error } = await supabase
         .from('invoices')
         .select(`
@@ -131,29 +116,31 @@ export default function ClientInvoiceDetailsPage() {
         console.error('Error fetching invoice:', error)
         console.error('Invoice ID:', params.id)
         console.error('User ID:', user.id)
-        
+
         // Check if invoice exists but doesn't belong to user
         const { data: anyInvoice } = await supabase
           .from('invoices')
           .select('id, client_id')
           .eq('id', params.id)
           .single()
-        
+
         if (anyInvoice) {
           console.error('Invoice exists but belongs to different client:', anyInvoice.client_id)
           toast.error('You do not have permission to view this invoice')
         } else {
           toast.error('Invoice not found')
         }
-        
+
         router.push('/dashboard/client/invoices')
         return
       }
 
+      console.log('✅ Invoice fetched successfully:', invoiceData.id)
       setInvoice(invoiceData)
     } catch (error) {
-      console.error('Error fetching invoice:', error)
+      console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
+      router.push('/dashboard/client/invoices')
     } finally {
       setLoading(false)
     }
