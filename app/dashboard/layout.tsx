@@ -56,6 +56,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const [userLogoUrl, setUserLogoUrl] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
@@ -64,6 +65,39 @@ export default function DashboardLayout({
     checkUser()
     fetchNotifications()
   }, [])
+
+  // Realtime notifications table stream
+  useEffect(() => {
+    if (!user?.id) return
+    ;(async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const channel = supabase
+          .channel(`notifications-${user.id}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, (payload: any) => {
+            const n = payload.new
+            const item: any = {
+              id: n.id,
+              type: n.type || 'system',
+              title: n.title,
+              message: n.message,
+              is_read: n.is_read ?? n.read ?? false,
+              created_at: n.created_at,
+              priority: n.priority || 'low'
+            }
+            setNotifications(prev => [item, ...prev].slice(0, 20) as any)
+            setUnreadCount(prev => prev + 1)
+            toast.success(item.title + (item.message ? `: ${item.message}` : ''), { duration: 3000 })
+          })
+          .subscribe()
+        return () => {
+          try { supabase.removeChannel(channel) } catch {}
+        }
+      } catch (e) {
+        console.warn('Realtime notifications channel failed', e)
+      }
+    })()
+  }, [user?.id])
 
   // Realtime notifications for new messages
   useEffect(() => {
@@ -185,37 +219,23 @@ export default function DashboardLayout({
 
   const fetchNotifications = async () => {
     try {
-      // Mock notifications for now
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'booking',
-          title: 'New Booking Request',
-          message: 'Ahmed Al-Rashid requested your Digital Marketing service',
-          is_read: false,
-          created_at: new Date(Date.now() - 1800000).toISOString(),
-          priority: 'high'
-        },
-        {
-          id: '2',
-          type: 'payment',
-          title: 'Payment Received',
-          message: 'OMR 250 received for Digital Marketing Campaign',
-          is_read: false,
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-          priority: 'medium'
-        },
-        {
-          id: '3',
-          type: 'message',
-          title: 'New Message',
-          message: 'Fatima Al-Zahra sent you a message',
-          is_read: true,
-          created_at: new Date(Date.now() - 7200000).toISOString(),
-          priority: 'low'
-        }
-      ]
-      setNotifications(mockNotifications)
+      const supabase = await getSupabaseClient()
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, type, title, message, read, is_read, created_at, priority')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      const items: any[] = (data || []).map((n: any) => ({
+        id: n.id,
+        type: (n.type || 'system') as any,
+        title: n.title,
+        message: n.message,
+        is_read: n.is_read ?? n.read ?? false,
+        created_at: n.created_at,
+        priority: (n.priority || 'low') as any
+      }))
+      setNotifications(items as any)
+      setUnreadCount(items.filter((n: any)=> !n.is_read).length)
     } catch (error) {
       console.error('Error fetching notifications:', error)
     }
