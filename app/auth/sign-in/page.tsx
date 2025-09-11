@@ -12,6 +12,7 @@ import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
+import { HCaptcha } from '@/components/ui/hcaptcha'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -19,6 +20,7 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [attempts, setAttempts] = useState(0)
+  const [captchaToken, setCaptchaToken] = useState<string>('')
   const router = useRouter()
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -37,6 +39,7 @@ export default function SignInPage() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken }
       })
 
       if (error) {
@@ -111,7 +114,8 @@ export default function SignInPage() {
       const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email
+        email: email,
+        options: { captchaToken }
       })
 
       if (error) {
@@ -136,7 +140,8 @@ export default function SignInPage() {
       setLoading(true)
       const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+        captchaToken
       })
 
       if (error) {
@@ -196,6 +201,11 @@ export default function SignInPage() {
                 disabled={loading}
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            {/* hCaptcha */}
+            <div className="mt-2">
+              <HCaptcha onVerify={setCaptchaToken} theme="light" />
             </div>
             
             <div className="space-y-2">

@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { EmailVerificationModal } from '@/components/ui/email-verification-modal'
 import { PlatformLogo } from '@/components/ui/platform-logo'
+import { HCaptcha } from '@/components/ui/hcaptcha'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -33,6 +34,7 @@ export default function SignUpPage() {
     feedback: '',
     meetsRequirements: false
   })
+  const [captchaToken, setCaptchaToken] = useState<string>('')
   const router = useRouter()
 
   const handleInputChange = (field: string, value: string) => {
@@ -82,6 +84,11 @@ export default function SignUpPage() {
       return false
     }
 
+    if (!captchaToken) {
+      toast.error('Please complete the captcha')
+      return false
+    }
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
@@ -113,6 +120,7 @@ export default function SignUpPage() {
         email: formData.email,
         password: formData.password,
         options: {
+          captchaToken,
           data: {
             role: formData.role,
             full_name: formData.fullName,
@@ -168,7 +176,8 @@ export default function SignUpPage() {
       const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: registeredEmail
+        email: registeredEmail,
+        options: { captchaToken }
       })
 
       if (error) {
@@ -412,6 +421,11 @@ export default function SignUpPage() {
             <Link href="/auth/sign-in" className="text-blue-600 hover:underline font-medium">
               Sign in
             </Link>
+          </div>
+
+          {/* hCaptcha */}
+          <div className="mt-2">
+            <HCaptcha onVerify={setCaptchaToken} theme="light" />
           </div>
           
           <div className="mt-4 text-center text-xs text-muted-foreground">
