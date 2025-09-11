@@ -191,13 +191,10 @@ export async function POST(request: NextRequest) {
 
     // Send notification to receiver about new message
     try {
-      await triggerMessageReceived(message.id, {
-        receiver_id: receiver_id,
+      await triggerMessageReceived(receiver_id, {
+        message_id: message.id,
         sender_id: user.id,
-        sender_name: messageWithProfiles.sender.full_name,
-        subject: subject,
-        content: content,
-        booking_id: booking_id
+        sender_name: messageWithProfiles.sender.full_name
       })
     } catch (notificationError) {
       console.warn('Failed to send message notification:', notificationError)
