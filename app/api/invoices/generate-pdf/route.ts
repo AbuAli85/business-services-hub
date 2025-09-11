@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import puppeteer from 'puppeteer'
 
-function generateSimplePDF(invoice: any): Buffer {
+async function generatePDF(invoice: any): Promise<Buffer> {
   // Professional HTML invoice template
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-US', {
@@ -451,7 +452,38 @@ function generateSimplePDF(invoice: any): Buffer {
 </html>
   `
 
-  return Buffer.from(htmlContent, 'utf-8')
+  try {
+    // Launch Puppeteer
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    })
+    
+    const page = await browser.newPage()
+    
+    // Set content and wait for it to load
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' })
+    
+    // Generate PDF
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    })
+    
+    await browser.close()
+    
+    return pdfBuffer
+  } catch (error) {
+    console.error('PDF generation error:', error)
+    // Fallback to HTML content if PDF generation fails
+    return Buffer.from(htmlContent, 'utf-8')
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -565,8 +597,8 @@ export async function POST(request: NextRequest) {
     })
 
     try {
-      // Generate a simple PDF content (in a real implementation, use a PDF library)
-      const pdfContent = generateSimplePDF(invoice)
+      // Generate professional PDF using Puppeteer
+      const pdfContent = await generatePDF(invoice)
       
       console.log('✅ PDF content generated, size:', pdfContent.length, 'bytes')
       
@@ -584,11 +616,11 @@ export async function POST(request: NextRequest) {
         console.log('✅ PDF URL updated successfully')
       }
 
-      // Return the HTML content (for now, in production convert to PDF)
-      return new NextResponse(pdfContent as any, {
+      // Return the actual PDF content
+      return new NextResponse(pdfContent, {
         headers: {
-          'Content-Type': 'text/html',
-          'Content-Disposition': `inline; filename="invoice-${invoice.invoice_number || invoiceId}.html"`,
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="invoice-${invoice.invoice_number || invoiceId}.pdf"`,
         },
       })
     } catch (pdfError) {
