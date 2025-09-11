@@ -217,15 +217,16 @@ export default function SettingsPage() {
         .from('user_notifications')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows found - use default settings
-          console.log('No notification settings found, using defaults')
-          return
-        }
         console.error('Error loading notification settings:', error)
+        return
+      }
+
+      if (!data) {
+        // No rows found - use default settings
+        console.log('No notification settings found, using defaults')
         return
       }
 
@@ -278,15 +279,16 @@ export default function SettingsPage() {
         .from('user_security')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows found - use default settings
-          console.log('No security settings found, using defaults')
-          return
-        }
         console.error('Error loading security settings:', error)
+        return
+      }
+
+      if (!data) {
+        // No rows found - use default settings
+        console.log('No security settings found, using defaults')
         return
       }
 
