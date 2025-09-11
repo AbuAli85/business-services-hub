@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
 
-function generateSimplePDF(invoice: any): Buffer {
+function generateSimplePDF(invoice: any): Uint8Array {
   // Create an ultra-premium, high-end PDF using jsPDF matching the enhanced template
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-US', {
@@ -297,7 +297,8 @@ function generateSimplePDF(invoice: any): Buffer {
   doc.setLineWidth(1)
   doc.rect(6, 6, 198, 288, 'S')
   
-  return doc.output('arraybuffer') as Buffer
+  const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
+  return new Uint8Array(arrayBuffer)
 }
 
 export async function POST(request: NextRequest) {
