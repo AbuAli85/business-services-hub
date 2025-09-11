@@ -68,6 +68,14 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
+  // Quick reply suggestions for faster responses
+  const quickReplies = [
+    'Thanks! I will check and get back to you.',
+    'Can you please share more details?',
+    'Let’s schedule a quick call to discuss.',
+    'Received. Working on it now.'
+  ]
+
   useEffect(() => {
     checkUserAndFetchData()
   }, [])
@@ -420,6 +428,45 @@ export default function MessagesPage() {
     )
   }
 
+  // Helpers for nicer chat formatting
+  const isSameDay = (a: string, b: string) => {
+    const da = new Date(a)
+    const db = new Date(b)
+    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
+  }
+
+  const renderMessagesWithSeparators = () => {
+    let lastDate: string | null = null
+    return messages.map((message, index) => {
+      const showSeparator = !lastDate || !isSameDay(lastDate, message.created_at)
+      lastDate = message.created_at
+      return (
+        <div key={message.id}>
+          {showSeparator && (
+            <div className="my-6 flex items-center justify-center">
+              <span className="text-xs text-gray-500 bg-white border border-gray-200 rounded-full px-3 py-1 shadow-sm">
+                {formatDate(message.created_at)}
+              </span>
+            </div>
+          )}
+          <div className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-sm md:max-w-md lg:max-w-xl ${message.sender_id === user.id ? 'order-2' : 'order-1'}`}>
+              <div className={`p-4 rounded-2xl shadow-sm ${message.sender_id === user.id ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' : 'bg-white text-gray-900 border border-gray-200'}`}>
+                <p className="leading-relaxed">{message.content || message.message}</p>
+              </div>
+              <div className={`text-xs text-gray-400 mt-2 ${message.sender_id === user.id ? 'text-right' : 'text-left'}`}>
+                {formatTime(message.created_at)}
+                {message.sender_id === user.id && message.read_at && (
+                  <span className="ml-2 text-blue-500">✓ Read</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    })
+  }
+
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6 h-[calc(100vh-120px)]">
       <div className="flex h-full gap-4 sm:gap-6 bg-white/60 backdrop-blur rounded-2xl shadow-xl border border-gray-100">
@@ -562,6 +609,10 @@ export default function MessagesPage() {
                         {selectedConversation.participant_name}
                       </h3>
                       <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <span className="inline-flex items-center">
+                          <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                          Online
+                        </span>
                         <Badge 
                           variant="outline" 
                           className={`px-2 py-1 rounded-full ${
@@ -609,32 +660,7 @@ export default function MessagesPage() {
                     <p className="text-gray-400 text-sm">Start the conversation by sending a message!</p>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-sm md:max-w-md lg:max-w-xl ${
-                        message.sender_id === user.id ? 'order-2' : 'order-1'
-                      }`}>
-                        <div className={`p-4 rounded-2xl shadow-sm ${
-                          message.sender_id === user.id
-                            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-                            : 'bg-white text-gray-900 border border-gray-200'
-                        }`}>
-                          <p className="leading-relaxed">{message.content || message.message}</p>
-                        </div>
-                        <div className={`text-xs text-gray-400 mt-2 ${
-                          message.sender_id === user.id ? 'text-right' : 'text-left'
-                        }`}>
-                          {formatTime(message.created_at)}
-                          {message.sender_id === user.id && message.read_at && (
-                            <span className="ml-2 text-blue-500">✓ Read</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                  renderMessagesWithSeparators()
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -651,6 +677,19 @@ export default function MessagesPage() {
                       rows={1}
                       className="resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     />
+                    {/* Quick replies */}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {quickReplies.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setNewMessage(prev => prev ? `${prev} ${t}` : t)}
+                          className="text-xs px-3 py-1 rounded-full border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-600"
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   
                   <div className="flex items-center space-x-2">
