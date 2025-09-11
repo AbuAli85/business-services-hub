@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 function generateSimplePDF(invoice: any): Buffer {
   // Simple PDF generation - in production, use a proper PDF library like puppeteer or jsPDF
@@ -84,7 +84,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid invoice ID format' }, { status: 400 })
     }
 
-    const supabase = await getSupabaseClient()
+    // Create Supabase client with service role for API access
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Missing Supabase credentials')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     // Check if this is a virtual invoice (starts with 'virtual-')
     if (invoiceId.startsWith('virtual-')) {
@@ -115,9 +124,16 @@ export async function POST(request: NextRequest) {
 
     if (invoiceError) {
       console.error('❌ Database error:', invoiceError)
+      console.error('❌ Error details:', {
+        message: invoiceError.message,
+        details: invoiceError.details,
+        hint: invoiceError.hint,
+        code: invoiceError.code
+      })
       return NextResponse.json({ 
         error: 'Database error', 
-        details: invoiceError.message 
+        details: invoiceError.message,
+        code: invoiceError.code
       }, { status: 500 })
     }
 
@@ -127,28 +143,48 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Invoice found:', invoice.id, invoice.invoice_number)
-
-    // Generate a simple PDF content (in a real implementation, use a PDF library)
-    const pdfContent = generateSimplePDF(invoice)
-    
-    // Update the invoice with the PDF URL
-    const pdfUrl = `/api/invoices/pdf/${invoiceId}.pdf`
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({ pdf_url: pdfUrl })
-      .eq('id', invoiceId)
-
-    if (updateError) {
-      console.warn('Failed to update invoice with PDF URL:', updateError)
-    }
-
-    // Return the PDF content as a blob
-    return new NextResponse(pdfContent as any, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="invoice-${invoiceId}.pdf"`,
-      },
+    console.log('📄 Invoice data:', {
+      id: invoice.id,
+      amount: invoice.amount,
+      currency: invoice.currency,
+      status: invoice.status,
+      invoice_number: invoice.invoice_number
     })
+
+    try {
+      // Generate a simple PDF content (in a real implementation, use a PDF library)
+      const pdfContent = generateSimplePDF(invoice)
+      
+      console.log('✅ PDF content generated, size:', pdfContent.length, 'bytes')
+      
+      // Update the invoice with the PDF URL (optional, don't fail if this doesn't work)
+      const pdfUrl = `/api/invoices/pdf/${invoiceId}.pdf`
+      const { error: updateError } = await supabase
+        .from('invoices')
+        .update({ pdf_url: pdfUrl })
+        .eq('id', invoiceId)
+
+      if (updateError) {
+        console.warn('⚠️ Failed to update invoice with PDF URL:', updateError)
+        // Don't fail the request if PDF URL update fails
+      } else {
+        console.log('✅ PDF URL updated successfully')
+      }
+
+      // Return the PDF content as a blob
+      return new NextResponse(pdfContent as any, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="invoice-${invoice.invoice_number || invoiceId}.pdf"`,
+        },
+      })
+    } catch (pdfError) {
+      console.error('❌ PDF generation error:', pdfError)
+      return NextResponse.json({ 
+        error: 'PDF generation failed', 
+        details: pdfError instanceof Error ? pdfError.message : 'Unknown error'
+      }, { status: 500 })
+    }
 
   } catch (error) {
     console.error('Error generating PDF:', error)
