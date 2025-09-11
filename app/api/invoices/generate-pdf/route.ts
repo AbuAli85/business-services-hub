@@ -478,7 +478,7 @@ async function generatePDF(invoice: any): Promise<Buffer> {
     
     await browser.close()
     
-    return pdfBuffer
+    return Buffer.from(pdfBuffer)
   } catch (error) {
     console.error('PDF generation error:', error)
     // Fallback to HTML content if PDF generation fails
