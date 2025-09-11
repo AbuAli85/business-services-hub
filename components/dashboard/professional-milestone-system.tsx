@@ -166,7 +166,7 @@ export function ProfessionalMilestoneSystem({
             id, title, description, status, priority, start_date, due_date,
             actual_start_date, actual_end_date, estimated_hours, actual_hours,
             progress_percentage, critical_path, risk_level, assigned_to, created_by,
-            milestone_id, phase_id, created_at, updated_at
+            milestone_id, phase_id, created_at, updated_at, order_index
           )
         `)
         .eq('booking_id', bookingId)
@@ -176,7 +176,17 @@ export function ProfessionalMilestoneSystem({
         console.error('Error loading milestones:', milestonesError)
         setMilestones([])
       } else {
-        const milestones = milestonesData || []
+        const milestones = (milestonesData || []).map((m: any) => ({
+          ...m,
+          tasks: (m.tasks || []).sort((a: any, b: any) => {
+            const ao = a.order_index ?? 0
+            const bo = b.order_index ?? 0
+            if (ao !== bo) return ao - bo
+            const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+            return ad - bd
+          })
+        }))
         
         // Calculate and update progress for each milestone
         for (const milestone of milestones) {
@@ -195,13 +205,25 @@ export function ProfessionalMilestoneSystem({
               id, title, description, status, priority, start_date, due_date,
               actual_start_date, actual_end_date, estimated_hours, actual_hours,
               progress_percentage, critical_path, risk_level, assigned_to, created_by,
-              milestone_id, phase_id, created_at, updated_at
+              milestone_id, phase_id, created_at, updated_at, order_index
             )
           `)
           .eq('booking_id', bookingId)
           .order('order_index', { ascending: true })
         
-        setMilestones(updatedMilestones || [])
+        const normalizedUpdated = (updatedMilestones || []).map((m: any) => ({
+          ...m,
+          tasks: (m.tasks || []).sort((a: any, b: any) => {
+            const ao = a.order_index ?? 0
+            const bo = b.order_index ?? 0
+            if (ao !== bo) return ao - bo
+            const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+            return ad - bd
+          })
+        }))
+
+        setMilestones(normalizedUpdated)
       }
       
       // Load comments

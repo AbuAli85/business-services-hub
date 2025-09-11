@@ -17,7 +17,7 @@ export class ProgressDataService {
         .from('milestones')
         .select(`
           *,
-          tasks (*)
+          tasks (* )
         `)
         .eq('booking_id', bookingId)
         .order('order_index', { ascending: true })
@@ -53,20 +53,33 @@ export class ProgressDataService {
         throw bookingProgressError
       }
 
+      // Ensure tasks are consistently ordered
+      const normalizedMilestones = (milestones || []).map((m: any) => ({
+        ...m,
+        tasks: (m.tasks || []).sort((a: any, b: any) => {
+          const ao = a.order_index ?? 0
+          const bo = b.order_index ?? 0
+          if (ao !== bo) return ao - bo
+          const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+          const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+          return ad - bd
+        })
+      }))
+
       // Calculate statistics
-      const totalTasks = milestones?.reduce((sum, m) => sum + (m.tasks?.length || 0), 0) || 0
-      const completedTasks = milestones?.reduce((sum, m) => 
+      const totalTasks = normalizedMilestones?.reduce((sum: number, m: any) => sum + (m.tasks?.length || 0), 0) || 0
+      const completedTasks = normalizedMilestones?.reduce((sum: number, m: any) => 
         sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0) || 0
-      const totalEstimatedHours = milestones?.reduce((sum, m) => 
+      const totalEstimatedHours = normalizedMilestones?.reduce((sum: number, m: any) => 
         sum + (m.estimated_hours || 0) + (m.tasks?.reduce((taskSum: number, t: any) => taskSum + (t.estimated_hours || 0), 0) || 0), 0) || 0
       const totalActualHours = timeEntries?.reduce((sum, te) => sum + te.duration_hours, 0) || 0
-      const overdueTasks = milestones?.reduce((sum, m) => 
+      const overdueTasks = normalizedMilestones?.reduce((sum: number, m: any) => 
         sum + (m.tasks?.filter((t: any) => t.is_overdue).length || 0), 0) || 0
 
       const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
       // Transform due_date to end_date for frontend compatibility
-      const transformedMilestones = milestones?.map(milestone => ({
+      const transformedMilestones = normalizedMilestones?.map((milestone: any) => ({
         ...milestone,
         end_date: milestone.due_date,
         tasks: milestone.tasks?.map((task: Task) => ({

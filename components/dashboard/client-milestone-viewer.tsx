@@ -103,13 +103,25 @@ export function ClientMilestoneViewer({
         .from('milestones')
         .select(`
           *,
-          tasks (*)
+          tasks (* )
         `)
         .eq('booking_id', bookingId)
         .order('order_index', { ascending: true })
 
       if (milestonesError) throw milestonesError
-      setMilestones(milestonesData || [])
+      const normalized = (milestonesData || []).map(m => ({
+        ...m,
+        tasks: (m.tasks || []).sort((a: any, b: any) => {
+          const ao = a.order_index ?? 0
+          const bo = b.order_index ?? 0
+          if (ao !== bo) return ao - bo
+          const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+          const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+          return ad - bd
+        })
+      }))
+
+      setMilestones(normalized)
 
       // Load comments (with fallback if table doesn't exist)
       try {

@@ -38,7 +38,7 @@ export function MilestoneDashboardIntegration({
           .from('milestones')
           .select(`
             *,
-            tasks (*)
+            tasks (* )
           `)
           .eq('booking_id', bookingId)
           .order('order_index', { ascending: true })
@@ -47,7 +47,20 @@ export function MilestoneDashboardIntegration({
           throw new Error(`Failed to load milestones: ${milestonesError.message}`)
         }
         
-        setMilestones(milestonesData || [])
+        // Ensure tasks are consistently sorted and present
+        const normalized = (milestonesData || []).map(m => ({
+          ...m,
+          tasks: (m.tasks || []).sort((a: any, b: any) => {
+            const ao = a.order_index ?? 0
+            const bo = b.order_index ?? 0
+            if (ao !== bo) return ao - bo
+            const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+            const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+            return ad - bd
+          })
+        }))
+
+        setMilestones(normalized)
 
         // Load comments from Supabase
         try {
