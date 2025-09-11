@@ -264,11 +264,16 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       setMessages(prev => [...prev, newMsg])
       setNewMessage('')
       
-      // Update booking last_message_at
-      await supabase
-        .from('bookings')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', bookingId)
+      // Update booking last_message_at (non-blocking)
+      try {
+        await supabase
+          .from('bookings')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', bookingId)
+      } catch (updateError) {
+        console.warn('Failed to update last_message_at:', updateError)
+        // Non-blocking - don't fail the message if this update fails
+      }
 
       toast.success('Message sent!')
     } catch (error) {
