@@ -1841,8 +1841,8 @@ export default function EnhancedBookingDetails({
                   variant="outline"
                   onClick={() => {
                     if (!booking) return
-                    // Only 'overview' and 'messages' tabs exist here. Send to messages.
-                    router.push(`/dashboard/bookings/${booking.id}?tab=messages`)
+                    // Redirect providers to the dedicated milestones management page
+                    router.push(`/dashboard/bookings/${booking.id}/milestones`)
                   }}
                   className="border-blue-200 text-blue-700 hover:bg-blue-50"
                 >
