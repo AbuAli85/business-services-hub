@@ -61,6 +61,31 @@ interface InvoiceData {
     id: string
     status: string
     requirements?: any
+    service?: {
+      id: string
+      title: string
+      description: string
+      provider?: {
+        id: string
+        full_name: string
+        email: string
+        company?: {
+          id: string
+          name: string
+          logo_url?: string
+        }
+      }
+    }
+    client?: {
+      id: string
+      full_name: string
+      email: string
+      company?: {
+        id: string
+        name: string
+        logo_url?: string
+      }
+    }
   }
 }
 
@@ -105,7 +130,32 @@ export default function ClientInvoiceDetailsPage() {
           booking:bookings(
             id,
             status,
-            requirements
+            requirements,
+            service:services(
+              id,
+              title,
+              description,
+              provider:profiles!services_provider_id_fkey(
+                id,
+                full_name,
+                email,
+                company:companies(
+                  id,
+                  name,
+                  logo_url
+                )
+              )
+            ),
+            client:profiles!bookings_client_id_fkey(
+              id,
+              full_name,
+              email,
+              company:companies(
+                id,
+                name,
+                logo_url
+              )
+            )
           )
         `)
         .eq('id', params.id)
@@ -234,10 +284,52 @@ export default function ClientInvoiceDetailsPage() {
     )
   }
 
+  // Helper function to get display values
+  const getClientName = () => {
+    return invoice.booking?.client?.full_name || 
+           invoice.booking?.client?.company?.name || 
+           invoice.client_name || 
+           'Client Information'
+  }
+
+  const getProviderName = () => {
+    return invoice.booking?.service?.provider?.full_name || 
+           invoice.booking?.service?.provider?.company?.name || 
+           invoice.provider_name || 
+           'Service Provider'
+  }
+
+  const getServiceTitle = () => {
+    return invoice.booking?.service?.title || 
+           invoice.service_title || 
+           'Professional Service'
+  }
+
+  const getServiceDescription = () => {
+    return invoice.booking?.service?.description || 
+           invoice.service_description || 
+           'High-quality professional service delivered with excellence'
+  }
+
+  const getDueDate = () => {
+    if (invoice.due_date) {
+      return formatDate(invoice.due_date)
+    }
+    // Calculate due date as 30 days from creation if not set
+    const createdDate = new Date(invoice.created_at)
+    const dueDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+    return formatDate(dueDate.toISOString())
+  }
+
+  const formatInvoiceNumber = (invoiceNumber?: string) => {
+    if (!invoiceNumber) return `INV-${invoice.id.slice(-8).toUpperCase()}`
+    return invoiceNumber.startsWith('INV-') ? invoiceNumber : `INV-${invoiceNumber}`
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -245,24 +337,30 @@ export default function ClientInvoiceDetailsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.back()}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 hover:bg-gray-100"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                Back to Invoices
               </Button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Invoice Details</h1>
-                <p className="text-gray-600 mt-1">Invoice #{invoice.invoice_number}</p>
+                <p className="text-gray-600 mt-1">{formatInvoiceNumber(invoice.invoice_number)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               {getStatusBadge(invoice.status, invoice.due_date)}
-              <Button onClick={handleDownloadInvoice} className="flex items-center gap-2">
+              <Button 
+                onClick={handleDownloadInvoice} 
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              >
                 <Download className="h-4 w-4" />
                 Download PDF
               </Button>
               {invoice.status === 'issued' && (
-                <Button onClick={handlePayInvoice} className="flex items-center gap-2">
+                <Button 
+                  onClick={handlePayInvoice} 
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                >
                   <CreditCard className="h-4 w-4" />
                   Pay Now
                 </Button>
@@ -276,74 +374,84 @@ export default function ClientInvoiceDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Invoice Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Invoice Header */}
-            <Card>
-              <CardHeader>
+            {/* Professional Invoice Header */}
+            <Card className="shadow-lg border-0 bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-8">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-2xl">Invoice #{invoice.invoice_number || 'N/A'}</CardTitle>
-                    <CardDescription className="text-lg">
-                      {invoice.service_title || 'Service'}
+                    <CardTitle className="text-3xl font-bold text-white">
+                      {formatInvoiceNumber(invoice.invoice_number)}
+                    </CardTitle>
+                    <CardDescription className="text-blue-100 text-lg mt-2">
+                      {getServiceTitle()}
                     </CardDescription>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold text-gray-900">
+                    <div className="text-4xl font-bold text-white">
                       {formatCurrency(invoice.amount, invoice.currency)}
                     </div>
-                    <div className="text-sm text-gray-600">
-                      Due: {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
+                    <div className="text-blue-100 text-lg">
+                      Due: {getDueDate()}
                     </div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Bill To
-                    </h4>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div className="font-medium">{invoice.client_name || 'Client'}</div>
-                      <div>{invoice.client_email || 'N/A'}</div>
+              <CardContent className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-lg">Bill To</h4>
+                        <p className="text-gray-600 font-medium text-base">{getClientName()}</p>
+                        <p className="text-gray-500 text-sm">
+                          {invoice.booking?.client?.email || 'client@example.com'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Service Provider
-                    </h4>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div className="font-medium">{invoice.provider_name || 'Provider'}</div>
-                      <div>{invoice.provider_email || 'N/A'}</div>
-                      {invoice.company_name && (
-                        <div className="text-xs text-gray-500">{invoice.company_name}</div>
-                      )}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <Building2 className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-lg">Service Provider</h4>
+                        <p className="text-gray-600 font-medium text-base">{getProviderName()}</p>
+                        <p className="text-gray-500 text-sm">
+                          {invoice.booking?.service?.provider?.email || 'provider@example.com'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Service Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Service Details</CardTitle>
+            {/* Professional Service Details */}
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="bg-gray-50 border-b">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <Receipt className="h-6 w-6 text-blue-600" />
+                  Service Details
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Service</h4>
-                    <p className="text-gray-600">{invoice.service_title || 'Service'}</p>
-                    {invoice.service_description && (
-                      <p className="text-sm text-gray-500 mt-1">{invoice.service_description}</p>
-                    )}
+              <CardContent className="p-8">
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                    <h4 className="font-bold text-gray-900 text-lg mb-2">{getServiceTitle()}</h4>
+                    <p className="text-gray-700 leading-relaxed">{getServiceDescription()}</p>
                   </div>
                   
                   {invoice.booking?.requirements && (
-                    <div>
-                      <h4 className="font-semibold text-gray-900">Requirements</h4>
-                      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    <div className="bg-gray-50 p-6 rounded-lg border">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-gray-600" />
+                        Project Requirements
+                      </h4>
+                      <div className="text-sm text-gray-700 bg-white p-4 rounded border">
                         {typeof invoice.booking.requirements === 'string' 
                           ? invoice.booking.requirements 
                           : JSON.stringify(invoice.booking.requirements, null, 2)
@@ -380,83 +488,85 @@ export default function ClientInvoiceDetailsPage() {
             )}
           </div>
 
-          {/* Payment Summary */}
+          {/* Professional Payment Summary */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5" />
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <Receipt className="h-6 w-6" />
                   Payment Summary
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Amount</span>
-                    <span className="font-medium">{formatCurrency(invoice.amount, invoice.currency)}</span>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600 font-medium">Service Amount</span>
+                    <span className="font-bold text-lg">{formatCurrency(invoice.amount, invoice.currency)}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span>Total</span>
-                    <span>{formatCurrency(invoice.amount, invoice.currency)}</span>
+                  <div className="flex justify-between items-center py-3 bg-gray-50 px-4 rounded-lg">
+                    <span className="text-gray-900 font-bold text-lg">Total Amount</span>
+                    <span className="font-bold text-2xl text-green-600">{formatCurrency(invoice.amount, invoice.currency)}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Payment Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
+            {/* Professional Payment Status */}
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="bg-gray-50 border-b">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <DollarSign className="h-6 w-6 text-blue-600" />
                   Payment Status
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Status</span>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-gray-600 font-medium">Payment Status</span>
                     {getStatusBadge(invoice.status, invoice.due_date)}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Invoice Date</span>
-                    <span className="font-medium">{formatDate(invoice.created_at)}</span>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-gray-600 font-medium">Invoice Date</span>
+                    <span className="font-semibold text-gray-900">{formatDate(invoice.created_at)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Due Date</span>
-                    <span className="font-medium">{invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}</span>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-gray-600 font-medium">Due Date</span>
+                    <span className="font-semibold text-gray-900">{getDueDate()}</span>
                   </div>
                   {invoice.paid_at && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Paid Date</span>
-                      <span className="font-medium">{formatDate(invoice.paid_at)}</span>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-gray-600 font-medium">Paid Date</span>
+                      <span className="font-semibold text-green-600">{formatDate(invoice.paid_at)}</span>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
+            {/* Professional Actions */}
+            <Card className="shadow-lg border-0 bg-white">
+              <CardHeader className="bg-gray-50 border-b">
+                <CardTitle className="flex items-center gap-3 text-xl">
+                  <FileText className="h-6 w-6 text-blue-600" />
+                  Quick Actions
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="p-6 space-y-4">
                 <Button 
                   onClick={handleDownloadInvoice} 
-                  className="w-full flex items-center gap-2"
+                  className="w-full flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold"
                 >
-                  <Download className="h-4 w-4" />
-                  Download PDF
+                  <Download className="h-5 w-5" />
+                  Download PDF Invoice
                 </Button>
                 
                 {invoice.status === 'issued' && (
                   <Button 
                     onClick={handlePayInvoice} 
-                    className="w-full flex items-center gap-2"
-                    variant="default"
+                    className="w-full flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold"
                   >
-                    <CreditCard className="h-4 w-4" />
+                    <CreditCard className="h-5 w-5" />
                     Pay Now
                   </Button>
                 )}
@@ -464,9 +574,9 @@ export default function ClientInvoiceDetailsPage() {
                 <Button 
                   onClick={() => router.push('/dashboard/client/invoices')} 
                   variant="outline"
-                  className="w-full"
+                  className="w-full py-3 text-lg font-semibold border-2 hover:bg-gray-50"
                 >
-                  Back to Invoices
+                  ← Back to All Invoices
                 </Button>
               </CardContent>
             </Card>
