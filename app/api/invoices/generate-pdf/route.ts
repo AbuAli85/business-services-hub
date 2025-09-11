@@ -32,229 +32,261 @@ function generateSimplePDF(invoice: any): Buffer {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      line-height: 1.6; 
-      color: #2c3e50; 
+      line-height: 1.4; 
+      color: #333; 
       background: #fff;
-      padding: 0;
+      padding: 20px;
     }
     .invoice-container {
       max-width: 800px;
       margin: 0 auto;
       background: #fff;
-      box-shadow: 0 0 30px rgba(0,0,0,0.1);
-      border-radius: 12px;
-      overflow: hidden;
+      border: 1px solid #e0e0e0;
     }
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #2c5aa0;
       color: white;
-      padding: 50px 40px;
-      text-align: center;
+      padding: 30px;
+      position: relative;
     }
-    .company-logo {
-      font-size: 42px;
-      font-weight: 800;
-      margin-bottom: 15px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100px;
+      height: 100%;
+      background: linear-gradient(45deg, #1e3a8a, #3b82f6);
+      clip-path: polygon(0 0, 100% 0, 80% 100%, 0% 100%);
     }
-    .company-tagline {
-      font-size: 18px;
-      opacity: 0.95;
-      font-weight: 300;
-    }
-    .invoice-title {
-      background: #f8f9fa;
-      padding: 40px;
-      border-bottom: 4px solid #667eea;
-    }
-    .invoice-title h1 {
-      font-size: 48px;
-      color: #2c3e50;
-      margin-bottom: 15px;
-      font-weight: 700;
-      text-align: center;
-    }
-    .invoice-number {
-      font-size: 24px;
-      color: #7f8c8d;
-      text-align: center;
-      font-weight: 500;
-    }
-    .content {
-      padding: 50px 40px;
-    }
-    .invoice-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 30px;
-      margin-bottom: 50px;
-    }
-    .detail-section {
-      background: #f8f9fa;
-      padding: 25px;
-      border-radius: 12px;
-      border-left: 5px solid #667eea;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    .detail-section h3 {
-      color: #2c3e50;
-      margin-bottom: 20px;
-      font-size: 20px;
-      font-weight: 600;
-      border-bottom: 2px solid #ecf0f1;
-      padding-bottom: 10px;
-    }
-    .detail-item {
-      margin-bottom: 12px;
+    .header-content {
+      position: relative;
+      z-index: 2;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .detail-label {
-      font-weight: 600;
-      color: #7f8c8d;
-      font-size: 14px;
+    .company-info h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 5px;
     }
-    .detail-value {
-      color: #2c3e50;
-      font-weight: 500;
+    .company-info p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .invoice-title {
       text-align: right;
     }
-    .service-section {
-      margin: 50px 0;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      padding: 40px;
-      border-radius: 15px;
-      border: 1px solid #dee2e6;
-    }
-    .service-title {
+    .invoice-title h2 {
       font-size: 28px;
-      color: #2c3e50;
-      margin-bottom: 25px;
-      text-align: center;
       font-weight: 700;
+      margin-bottom: 5px;
     }
-    .service-description {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      border-left: 6px solid #667eea;
-      margin-bottom: 30px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .service-description h3 {
-      color: #2c3e50;
-      margin-bottom: 15px;
-      font-size: 22px;
-      font-weight: 600;
-    }
-    .service-description p {
-      color: #5a6c7d;
-      line-height: 1.8;
+    .invoice-number {
       font-size: 16px;
-    }
-    .amount-section {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 50px;
-      border-radius: 15px;
-      text-align: center;
-      margin: 50px 0;
-    }
-    .amount-label {
-      font-size: 22px;
-      margin-bottom: 15px;
-      opacity: 0.95;
-      font-weight: 500;
-    }
-    .amount-value {
-      font-size: 64px;
-      font-weight: 800;
-      margin-bottom: 15px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    .amount-currency {
-      font-size: 28px;
       opacity: 0.9;
-      font-weight: 600;
     }
-    .status-section {
-      text-align: center;
-      margin: 40px 0;
+    .main-content {
+      padding: 40px 30px;
     }
-    .status-badge {
-      display: inline-block;
-      padding: 15px 35px;
-      border-radius: 30px;
+    .invoice-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+    .bill-to, .from {
+      background: #f8f9fa;
+      padding: 20px;
+      border-left: 4px solid #2c5aa0;
+    }
+    .section-title {
+      font-size: 14px;
       font-weight: 700;
+      color: #2c5aa0;
+      margin-bottom: 15px;
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
+    }
+    .contact-info {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .contact-info p {
+      margin-bottom: 5px;
+    }
+    .contact-info strong {
+      color: #333;
+    }
+    .invoice-meta {
+      background: #f8f9fa;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 4px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+    }
+    .meta-item {
+      text-align: center;
+    }
+    .meta-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+    .meta-value {
       font-size: 16px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      font-weight: 600;
+      color: #333;
     }
-    .status-issued {
-      background: linear-gradient(135deg, #3498db, #2980b9);
-      color: white;
+    .services-section {
+      margin: 30px 0;
     }
-    .status-paid {
-      background: linear-gradient(135deg, #27ae60, #2ecc71);
-      color: white;
+    .services-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #2c5aa0;
     }
-    .status-overdue {
-      background: linear-gradient(135deg, #e74c3c, #c0392b);
+    .services-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    .services-table th {
+      background: #2c5aa0;
       color: white;
+      padding: 15px 10px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .services-table td {
+      padding: 15px 10px;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 14px;
+    }
+    .services-table tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    .text-right {
+      text-align: right;
+    }
+    .text-center {
+      text-align: center;
+    }
+    .total-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 30px;
+    }
+    .total-box {
+      background: #2c5aa0;
+      color: white;
+      padding: 20px 30px;
+      border-radius: 4px;
+      min-width: 250px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .total-row.final {
+      font-size: 18px;
+      font-weight: 700;
+      border-top: 2px solid rgba(255,255,255,0.3);
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+    .payment-info {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 4px;
+      margin-bottom: 30px;
+    }
+    .payment-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c5aa0;
+      margin-bottom: 15px;
+    }
+    .payment-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .payment-item {
+      font-size: 14px;
+    }
+    .payment-item strong {
+      color: #333;
+    }
+    .notes-section {
+      margin: 30px 0;
+    }
+    .notes-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c5aa0;
+      margin-bottom: 15px;
+    }
+    .notes-content {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 4px;
+      border-left: 4px solid #2c5aa0;
+      font-size: 14px;
+      line-height: 1.6;
     }
     .footer {
-      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+      background: #333;
       color: white;
-      padding: 50px 40px;
+      padding: 30px;
       text-align: center;
     }
     .footer h3 {
-      margin-bottom: 20px;
-      font-size: 28px;
-      font-weight: 700;
+      font-size: 20px;
+      margin-bottom: 15px;
     }
     .footer p {
-      margin-bottom: 10px;
-      opacity: 0.9;
-      font-size: 16px;
-    }
-    .payment-info {
-      background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
-      padding: 30px;
-      border-radius: 12px;
-      margin: 30px 0;
-      border: 1px solid #bdc3c7;
-    }
-    .payment-info h4 {
-      color: #2c3e50;
-      margin-bottom: 20px;
-      font-size: 20px;
-      font-weight: 600;
-    }
-    .payment-info p {
-      margin-bottom: 10px;
-      color: #5a6c7d;
-      font-size: 15px;
-    }
-    .terms {
-      margin-top: 40px;
-      padding-top: 30px;
-      border-top: 2px solid #ecf0f1;
       font-size: 14px;
-      color: #7f8c8d;
-      line-height: 1.8;
+      opacity: 0.8;
+      margin-bottom: 5px;
     }
-    .terms h4 {
-      color: #2c3e50;
-      margin-bottom: 15px;
-      font-size: 16px;
+    .status-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .status-issued {
+      background: #3498db;
+      color: white;
+    }
+    .status-paid {
+      background: #27ae60;
+      color: white;
+    }
+    .status-overdue {
+      background: #e74c3c;
+      color: white;
     }
     @media print {
       body { padding: 0; }
-      .invoice-container { box-shadow: none; }
+      .invoice-container { border: none; }
     }
   </style>
 </head>
@@ -262,127 +294,150 @@ function generateSimplePDF(invoice: any): Buffer {
   <div class="invoice-container">
     <!-- Header -->
     <div class="header">
-      <div class="company-logo">Business Services Hub</div>
-      <div class="company-tagline">Professional Services & Solutions</div>
+      <div class="header-content">
+        <div class="company-info">
+          <h1>Business Services Hub</h1>
+          <p>Professional Services & Solutions</p>
+        </div>
+        <div class="invoice-title">
+          <h2>INVOICE</h2>
+          <div class="invoice-number">${invoiceNumber}</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Invoice Title -->
-    <div class="invoice-title">
-      <h1>INVOICE</h1>
-      <div class="invoice-number">${invoiceNumber}</div>
-    </div>
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Invoice Meta Information -->
+      <div class="invoice-meta">
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-label">Invoice Date</div>
+            <div class="meta-value">${createdDate}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Due Date</div>
+            <div class="meta-value">${dueDate}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Status</div>
+            <div class="meta-value">
+              <span class="status-badge status-${invoice.status}">${invoice.status.toUpperCase()}</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Invoice ID</div>
+            <div class="meta-value">${invoice.id.slice(-8).toUpperCase()}</div>
+          </div>
+        </div>
+      </div>
 
-    <!-- Content -->
-    <div class="content">
-      <!-- Invoice Details -->
+      <!-- Bill To / From Information -->
       <div class="invoice-details">
-        <div class="detail-section">
-          <h3>📋 Invoice Information</h3>
-          <div class="detail-item">
-            <span class="detail-label">Invoice Date:</span>
-            <span class="detail-value">${createdDate}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Due Date:</span>
-            <span class="detail-value">${dueDate}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Invoice ID:</span>
-            <span class="detail-value">${invoice.id}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Status:</span>
-            <span class="detail-value">${invoice.status.toUpperCase()}</span>
+        <div class="bill-to">
+          <div class="section-title">Bill To:</div>
+          <div class="contact-info">
+            <p><strong>${invoice.booking?.client?.full_name || 'Client Name'}</strong></p>
+            <p>${invoice.booking?.client?.company?.name || 'Client Company'}</p>
+            <p>${invoice.booking?.client?.email || 'client@email.com'}</p>
+            <p>123 Client Street, Any City, State 12345</p>
           </div>
         </div>
-
-        <div class="detail-section">
-          <h3>🏢 Service Provider</h3>
-          <div class="detail-item">
-            <span class="detail-label">Company:</span>
-            <span class="detail-value">Business Services Hub</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Email:</span>
-            <span class="detail-value">info@businessservices.com</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Phone:</span>
-            <span class="detail-value">+1 (555) 123-4567</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Website:</span>
-            <span class="detail-value">www.businessservices.com</span>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h3>👤 Client Information</h3>
-          <div class="detail-item">
-            <span class="detail-label">Client:</span>
-            <span class="detail-value">${invoice.booking?.client?.full_name || 'Client Name'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Email:</span>
-            <span class="detail-value">${invoice.booking?.client?.email || 'client@email.com'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Company:</span>
-            <span class="detail-value">${invoice.booking?.client?.company?.name || 'Client Company'}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Booking ID:</span>
-            <span class="detail-value">${invoice.booking_id || 'N/A'}</span>
+        <div class="from">
+          <div class="section-title">From:</div>
+          <div class="contact-info">
+            <p><strong>Business Services Hub</strong></p>
+            <p>123 Business Street, Suite 100</p>
+            <p>City, State 12345</p>
+            <p>info@businessservices.com</p>
+            <p>+1 (555) 123-4567</p>
           </div>
         </div>
       </div>
 
-      <!-- Service Section -->
-      <div class="service-section">
-        <h2 class="service-title">🎯 Service Details</h2>
-        <div class="service-description">
-          <h3>${invoice.booking?.service?.title || 'Professional Service'}</h3>
-          <p>${invoice.booking?.service?.description || 'High-quality professional service delivered with excellence and attention to detail. Our team ensures complete satisfaction and timely delivery of all project requirements.'}</p>
+      <!-- Services Section -->
+      <div class="services-section">
+        <h3 class="services-title">For Services Rendered</h3>
+        <table class="services-table">
+          <thead>
+            <tr>
+              <th>DESCRIPTION</th>
+              <th class="text-center">QTY</th>
+              <th class="text-right">UNIT PRICE</th>
+              <th class="text-right">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <strong>${invoice.booking?.service?.title || 'Professional Service'}</strong><br>
+                <span style="color: #666; font-size: 12px;">${invoice.booking?.service?.description || 'High-quality professional service delivered with excellence and attention to detail.'}</span>
+              </td>
+              <td class="text-center">1</td>
+              <td class="text-right">${invoice.amount} ${invoice.currency}</td>
+              <td class="text-right"><strong>${invoice.amount} ${invoice.currency}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Total Section -->
+      <div class="total-section">
+        <div class="total-box">
+          <div class="total-row">
+            <span>Subtotal:</span>
+            <span>${invoice.amount} ${invoice.currency}</span>
+          </div>
+          <div class="total-row">
+            <span>Tax (0%):</span>
+            <span>0.00 ${invoice.currency}</span>
+          </div>
+          <div class="total-row final">
+            <span>TOTAL:</span>
+            <span>${invoice.amount} ${invoice.currency}</span>
+          </div>
         </div>
-      </div>
-
-      <!-- Amount Section -->
-      <div class="amount-section">
-        <div class="amount-label">💰 Total Amount Due</div>
-        <div class="amount-value">${invoice.amount}</div>
-        <div class="amount-currency">${invoice.currency}</div>
-      </div>
-
-      <!-- Status Section -->
-      <div class="status-section">
-        <span class="status-badge status-${invoice.status}">${invoice.status.toUpperCase()}</span>
       </div>
 
       <!-- Payment Information -->
       <div class="payment-info">
-        <h4>💳 Payment Information</h4>
-        <p><strong>Payment Methods:</strong> Credit Card, Bank Transfer, PayPal, Digital Wallet</p>
-        <p><strong>Payment Terms:</strong> Net 30 days from invoice date</p>
-        <p><strong>Late Payment:</strong> 1.5% monthly service charge on overdue amounts</p>
-        <p><strong>Questions:</strong> Contact us at billing@businessservices.com or call +1 (555) 123-4567</p>
-        <p><strong>Support:</strong> Available 24/7 for all payment-related inquiries</p>
+        <h4 class="payment-title">Payment Information</h4>
+        <div class="payment-details">
+          <div class="payment-item">
+            <strong>Payment Methods:</strong><br>
+            Credit Card, Bank Transfer, PayPal
+          </div>
+          <div class="payment-item">
+            <strong>Payment Terms:</strong><br>
+            Net 30 days from invoice date
+          </div>
+          <div class="payment-item">
+            <strong>Late Payment:</strong><br>
+            1.5% monthly service charge
+          </div>
+          <div class="payment-item">
+            <strong>Questions:</strong><br>
+            billing@businessservices.com
+          </div>
+        </div>
       </div>
 
-      <!-- Terms -->
-      <div class="terms">
-        <h4>📋 Terms & Conditions</h4>
-        <p>Payment is due within 30 days of invoice date. Late payments may incur additional charges as specified above. All services are subject to our standard terms and conditions. For questions regarding this invoice, please contact our billing department immediately. We appreciate your business and look forward to continuing our professional relationship.</p>
-        <p><strong>Thank you for choosing Business Services Hub for your professional needs!</strong></p>
+      <!-- Notes Section -->
+      <div class="notes-section">
+        <h4 class="notes-title">Notes</h4>
+        <div class="notes-content">
+          <p>Payment is due within 30 days of invoice date. Late payments may incur additional charges as specified above. All services are subject to our standard terms and conditions.</p>
+          <p><strong>Thank you for your business!</strong></p>
+        </div>
       </div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <h3>Thank you for your business! 🙏</h3>
-      <p><strong>Business Services Hub</strong></p>
+      <h3>Business Services Hub</h3>
       <p>123 Business Street, Suite 100, City, State 12345</p>
-      <p>📞 Phone: +1 (555) 123-4567 | 📧 Email: info@businessservices.com</p>
-      <p>🌐 Website: www.businessservices.com</p>
+      <p>Phone: +1 (555) 123-4567 | Email: info@businessservices.com</p>
+      <p>Website: www.businessservices.com</p>
       <p>Generated on ${new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
