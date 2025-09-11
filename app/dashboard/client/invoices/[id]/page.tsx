@@ -190,7 +190,15 @@ export default function ClientInvoiceDetailsPage() {
   }
 
   const getStatusBadge = (status: string, dueDate?: string) => {
-    const isOverdue = status === 'issued' && dueDate && new Date(dueDate) < new Date()
+    // Calculate due date as 30 days from creation if not set
+    const calculatedDueDate = dueDate || (() => {
+      if (invoice) {
+        const createdDate = new Date(invoice.created_at)
+        return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      }
+      return null
+    })()
+    const isOverdue = status === 'issued' && calculatedDueDate && new Date(calculatedDueDate) < new Date()
     
     if (isOverdue) {
       return <Badge variant="destructive" className="flex items-center gap-1"><AlertCircle className="h-3 w-3" />Overdue</Badge>

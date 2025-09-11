@@ -120,7 +120,12 @@ export const fetchInvoiceData = async (invoiceId: string): Promise<Invoice | nul
       id: invoice.id,
       invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`,
       issued_date: invoice.created_at,
-      due_date: invoice.due_date,
+      due_date: invoice.due_date || (() => {
+        // Calculate due date as 30 days from creation if not set
+        const createdDate = new Date(invoice.created_at)
+        const dueDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+        return dueDate.toISOString()
+      })(),
       subtotal: invoice.amount || 0,
       tax_rate: 0, // Default to 0% tax - you can add this to your invoices table
       tax_amount: 0,

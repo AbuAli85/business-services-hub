@@ -205,7 +205,12 @@ export default function ClientInvoicesPage() {
     const pending = invoices.filter(inv => inv.status === 'issued').length
     const overdue = invoices.filter(inv => {
       if (inv.status !== 'issued') return false
-      return inv.due_date && new Date(inv.due_date) < new Date()
+      // Calculate due date as 30 days from creation if not set
+      const dueDate = inv.due_date || (() => {
+        const createdDate = new Date(inv.created_at)
+        return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      })()
+      return new Date(dueDate) < new Date()
     }).length
 
     const totalAmount = invoices.reduce((sum, inv) => sum + (inv.total_amount || inv.amount || 0), 0)
@@ -298,7 +303,12 @@ export default function ClientInvoicesPage() {
   }
 
   const getStatusBadge = (status: string, dueDate?: string) => {
-    const isOverdue = status === 'issued' && dueDate && new Date(dueDate) < new Date()
+    // Calculate due date as 30 days from creation if not set
+    const calculatedDueDate = dueDate || (() => {
+      // This will be calculated per invoice in the component
+      return null
+    })()
+    const isOverdue = status === 'issued' && calculatedDueDate && new Date(calculatedDueDate) < new Date()
     
     if (isOverdue) {
       return <Badge variant="destructive" className="flex items-center gap-1"><AlertCircle className="h-3 w-3" />Overdue</Badge>
@@ -635,7 +645,11 @@ export default function ClientInvoicesPage() {
                               <div>
                                 <span className="text-sm text-gray-500">Due Date</span>
                                 <p className="font-semibold text-gray-900">
-                                  {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
+                                  {invoice.due_date ? formatDate(invoice.due_date) : (() => {
+                                    const createdDate = new Date(invoice.created_at)
+                                    const dueDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+                                    return formatDate(dueDate.toISOString())
+                                  })()}
                                 </p>
                               </div>
                             </div>
