@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { jsPDF } from 'jspdf'
 
 function generateSimplePDF(invoice: any): Buffer {
-  // Create a professional PDF using basic PDF structure with better formatting
+  // Create a modern, professional PDF using jsPDF
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -22,176 +23,158 @@ function generateSimplePDF(invoice: any): Buffer {
       day: 'numeric'
     })
 
-  // Create a professional PDF structure with better spacing and formatting
-  const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-  /Font <<
-    /F1 5 0 R
-    /F2 6 0 R
-    /F3 7 0 R
-  >>
->>
->>
-endobj
-
-4 0 obj
-<<
-/Length 3000
->>
-stream
-BT
-/F1 28 Tf
-50 750 Td
-(Business Services Hub) Tj
-0 -25 Td
-/F2 14 Tf
-(Professional Services & Solutions) Tj
-0 -60 Td
-/F1 32 Tf
-(INVOICE) Tj
-0 -25 Td
-/F2 16 Tf
-(${invoiceNumber}) Tj
-0 -50 Td
-/F3 12 Tf
-(Invoice Date: ${createdDate}) Tj
-0 -18 Td
-(Due Date: ${dueDate}) Tj
-0 -18 Td
-(Status: ${invoice.status.toUpperCase()}) Tj
-0 -40 Td
-/F1 14 Tf
-(BILL TO:) Tj
-0 -20 Td
-/F3 12 Tf
-(${invoice.booking?.client?.full_name || 'Client Name'}) Tj
-0 -15 Td
-(${invoice.booking?.client?.company?.name || 'Client Company'}) Tj
-0 -15 Td
-(${invoice.booking?.client?.email || 'client@email.com'}) Tj
-0 -40 Td
-/F1 14 Tf
-(FROM:) Tj
-0 -20 Td
-/F3 12 Tf
-(Business Services Hub) Tj
-0 -15 Td
-(123 Business Street, Suite 100) Tj
-0 -15 Td
-(City, State 12345) Tj
-0 -15 Td
-(info@businessservices.com) Tj
-0 -50 Td
-/F1 16 Tf
-(FOR SERVICES RENDERED) Tj
-0 -30 Td
-/F1 12 Tf
-(DESCRIPTION) Tj
-300 0 Td
-(QTY) Tj
-50 0 Td
-(UNIT PRICE) Tj
-80 0 Td
-(TOTAL) Tj
--430 -25 Td
-/F3 12 Tf
-(${invoice.booking?.service?.title || 'Professional Service'}) Tj
-300 0 Td
-(1) Tj
-50 0 Td
-(${invoice.amount} ${invoice.currency}) Tj
-80 0 Td
-(${invoice.amount} ${invoice.currency}) Tj
--430 -40 Td
-/F1 14 Tf
-(Subtotal: ${invoice.amount} ${invoice.currency}) Tj
-0 -20 Td
-(Tax (0%): 0.00 ${invoice.currency}) Tj
-0 -20 Td
-/F1 18 Tf
-(TOTAL: ${invoice.amount} ${invoice.currency}) Tj
-0 -50 Td
-/F1 14 Tf
-(PAYMENT INFORMATION) Tj
-0 -20 Td
-/F3 12 Tf
-(Payment Methods: Credit Card, Bank Transfer, PayPal) Tj
-0 -15 Td
-(Payment Terms: Net 30 days from invoice date) Tj
-0 -15 Td
-(Questions: billing@businessservices.com) Tj
-0 -40 Td
-/F1 14 Tf
-(Thank you for your business!) Tj
-ET
-endstream
-endobj
-
-5 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica-Bold
->>
-endobj
-
-6 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica-Oblique
->>
-endobj
-
-7 0 obj
-<<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
-endobj
-
-xref
-0 8
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000204 00000 n 
-0000002500 00000 n 
-0000002600 00000 n 
-0000002700 00000 n 
-trailer
-<<
-/Size 8
-/Root 1 0 R
->>
-startxref
-3600
-%%EOF`
-
-  return Buffer.from(pdfContent, 'utf-8')
+  // Create a new PDF document
+  const doc = new jsPDF('p', 'mm', 'a4')
+  
+  // Set up colors
+  const primaryColor = [44, 90, 160] // Blue
+  const secondaryColor = [108, 117, 125] // Gray
+  const accentColor = [40, 167, 69] // Green
+  
+  // Header Section
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  doc.rect(0, 0, 210, 40, 'F')
+  
+  // Company name in header
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(24)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Business Services Hub', 20, 25)
+  
+  // Tagline
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Professional Services & Solutions', 20, 32)
+  
+  // Invoice title
+  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(36)
+  doc.setFont('helvetica', 'bold')
+  doc.text('INVOICE', 20, 60)
+  
+  // Invoice number
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'normal')
+  doc.text(invoiceNumber, 20, 70)
+  
+  // Invoice details box
+  doc.setFillColor(248, 249, 250)
+  doc.rect(120, 50, 80, 50, 'F')
+  doc.setDrawColor(220, 220, 220)
+  doc.rect(120, 50, 80, 50, 'S')
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Invoice Date:', 125, 60)
+  doc.setFont('helvetica', 'normal')
+  doc.text(createdDate, 125, 65)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.text('Due Date:', 125, 75)
+  doc.setFont('helvetica', 'normal')
+  doc.text(dueDate, 125, 80)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.text('Status:', 125, 90)
+  doc.setFont('helvetica', 'normal')
+  doc.text(invoice.status.toUpperCase(), 125, 95)
+  
+  // Bill To section
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('BILL TO:', 20, 120)
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text(invoice.booking?.client?.full_name || 'Client Name', 20, 130)
+  doc.text(invoice.booking?.client?.company?.name || 'Client Company', 20, 135)
+  doc.text(invoice.booking?.client?.email || 'client@email.com', 20, 140)
+  
+  // From section
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('FROM:', 20, 160)
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Business Services Hub', 20, 170)
+  doc.text('123 Business Street, Suite 100', 20, 175)
+  doc.text('City, State 12345', 20, 180)
+  doc.text('info@businessservices.com', 20, 185)
+  
+  // Services section
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.text('FOR SERVICES RENDERED', 20, 210)
+  
+  // Table header
+  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  doc.rect(20, 220, 170, 15, 'F')
+  
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('DESCRIPTION', 25, 230)
+  doc.text('QTY', 120, 230)
+  doc.text('UNIT PRICE', 150, 230)
+  doc.text('TOTAL', 180, 230)
+  
+  // Table row
+  doc.setTextColor(0, 0, 0)
+  doc.setFont('helvetica', 'normal')
+  doc.text(invoice.booking?.service?.title || 'Professional Service', 25, 245)
+  doc.text('1', 120, 245)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 150, 245)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 180, 245)
+  
+  // Total section
+  doc.setFillColor(248, 249, 250)
+  doc.rect(120, 260, 70, 40, 'F')
+  doc.setDrawColor(220, 220, 220)
+  doc.rect(120, 260, 70, 40, 'S')
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Subtotal:', 125, 275)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 275)
+  
+  doc.text('Tax (0%):', 125, 285)
+  doc.text(`0.00 ${invoice.currency}`, 160, 285)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.text('TOTAL:', 125, 295)
+  doc.text(`${invoice.amount} ${invoice.currency}`, 160, 295)
+  
+  // Payment information
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PAYMENT INFORMATION', 20, 320)
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Payment Methods: Credit Card, Bank Transfer, PayPal', 20, 330)
+  doc.text('Payment Terms: Net 30 days from invoice date', 20, 335)
+  doc.text('Questions: billing@businessservices.com', 20, 340)
+  
+  // Thank you message
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Thank you for your business!', 20, 360)
+  
+  // Footer line
+  doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
+  doc.setLineWidth(2)
+  doc.line(20, 380, 190, 380)
+  
+  // Footer text
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Business Services Hub | 123 Business Street, Suite 100 | info@businessservices.com', 20, 390)
+  
+  // Convert to buffer
+  const pdfBuffer = doc.output('arraybuffer')
+  return Buffer.from(pdfBuffer)
 }
 
 export async function POST(request: NextRequest) {
