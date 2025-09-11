@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import Invoice from '@/components/invoice/Invoice'
 
 interface InvoiceData {
   id: string
@@ -95,6 +96,8 @@ export default function ClientInvoicesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
+  const [showProfessionalView, setShowProfessionalView] = useState(false)
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
 
   useEffect(() => {
     checkUserAndFetchData()
@@ -361,6 +364,16 @@ export default function ClientInvoicesPage() {
     // router.push(`/dashboard/client/invoices/${invoice.id}/pay`)
   }
 
+  const handleViewProfessionalInvoice = (invoice: InvoiceData) => {
+    setSelectedInvoiceId(invoice.id)
+    setShowProfessionalView(true)
+  }
+
+  const handleCloseProfessionalView = () => {
+    setShowProfessionalView(false)
+    setSelectedInvoiceId(null)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -374,6 +387,30 @@ export default function ClientInvoicesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Professional Invoice View Modal */}
+      {showProfessionalView && selectedInvoiceId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">Professional Invoice View</h2>
+              <Button
+                onClick={handleCloseProfessionalView}
+                variant="outline"
+                size="sm"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="p-4">
+              <Invoice 
+                invoiceId={selectedInvoiceId}
+                showPrintButton={true}
+                onPrint={() => window.print()}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -634,7 +671,7 @@ export default function ClientInvoicesPage() {
                         </div>
 
                         <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Button
                               variant="outline"
                               size="sm"
@@ -643,6 +680,15 @@ export default function ClientInvoicesPage() {
                             >
                               <Eye className="h-4 w-4" />
                               View Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewProfessionalInvoice(invoice)}
+                              className="flex items-center gap-2 hover:bg-purple-50"
+                            >
+                              <FileText className="h-4 w-4" />
+                              Professional View
                             </Button>
                             <Button
                               variant="outline"
