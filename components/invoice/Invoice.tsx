@@ -132,11 +132,15 @@ export default function Invoice({
       <div className="flex justify-between items-start border-b border-gray-300 pb-6 mb-6">
         <div className="flex-1">
           {/* Company Logo */}
-          {invoice.company.logo_url && (
+          {invoice.company.logo_url && !invoice.company.logo_url.includes('/logo.png') && (
             <img
               src={invoice.company.logo_url}
               alt="Company Logo"
               className="w-16 h-16 object-contain mb-4"
+              onError={(e) => {
+                // Hide the image if it fails to load
+                e.currentTarget.style.display = 'none'
+              }}
             />
           )}
           

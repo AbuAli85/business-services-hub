@@ -142,7 +142,7 @@ export const fetchInvoiceData = async (invoiceId: string): Promise<Invoice | nul
         address: (provider?.company as any)?.address || '123 Business Street, Suite 100\nCity, State 12345',
         phone: (provider?.company as any)?.phone || '(555) 555-5555',
         email: (provider?.company as any)?.email || 'info@businessservices.com',
-        logo_url: (provider?.company as any)?.logo_url || '/logo.png'
+        logo_url: (provider?.company as any)?.logo_url || null
       },
       client: {
         id: client?.id || '',

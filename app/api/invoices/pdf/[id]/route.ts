@@ -3,8 +3,9 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 function generateInvoiceHTML(invoice: any) {
   const logoUrl = invoice.providers?.company_logo_url || invoice.providers?.logo_url
-  const brandBlock = logoUrl
-    ? `<img src="${logoUrl}" alt="Logo" style="height:40px;object-fit:contain;"/>`
+  // Only use logo if it's a valid URL and not the placeholder logo.png
+  const brandBlock = logoUrl && !logoUrl.includes('/logo.png') && logoUrl.startsWith('http')
+    ? `<img src="${logoUrl}" alt="Logo" style="height:40px;object-fit:contain;" onerror="this.style.display='none'"/>`
     : `<div style="font-size:18px;font-weight:700;color:#2563EB;">${invoice.providers?.company_name || 'BusinessHub Provider'}</div>`
 
   return `
