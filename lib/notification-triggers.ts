@@ -731,6 +731,39 @@ export class NotificationTriggerService {
 
     return notificationService.createFromTemplate(userId, 'system_announcement', data, template)
   }
+
+  // Review notifications
+  async triggerReviewReceived(
+    userId: string,
+    reviewData: {
+      review_id: string
+      reviewer_id: string
+      reviewer_name: string
+      provider_id: string
+      provider_name: string
+      rating: number
+      comment: string
+      service_name?: string
+      booking_id?: string
+    }
+  ) {
+    const template = getNotificationTemplate('client_feedback') // Using client feedback as base
+    const data: NotificationData = {
+      review_id: reviewData.review_id,
+      reviewer_id: reviewData.reviewer_id,
+      reviewer_name: reviewData.reviewer_name,
+      provider_id: reviewData.provider_id,
+      provider_name: reviewData.provider_name,
+      rating: reviewData.rating,
+      comment: reviewData.comment,
+      service_name: reviewData.service_name,
+      booking_id: reviewData.booking_id,
+      actor_id: reviewData.reviewer_id,
+      actor_name: reviewData.reviewer_name
+    }
+
+    return notificationService.createFromTemplate(userId, 'client_feedback', data, template)
+  }
 }
 
 // Export singleton instance
