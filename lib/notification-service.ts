@@ -53,6 +53,38 @@ export class NotificationService {
   ): Promise<Notification> {
     const supabase = await this.getSupabase()
     
+    // Check if user wants this type of notification
+    const shouldSend = await this.shouldSendNotification(userId, type)
+    if (!shouldSend) {
+      console.log(`Notification skipped for user ${userId}, type ${type} disabled`)
+      // Still create the notification but don't send email
+      const notification: Omit<Notification, 'id' | 'created_at' | 'updated_at'> = {
+        user_id: userId,
+        type,
+        title,
+        message,
+        data: data || {},
+        read: false,
+        priority,
+        expires_at: expiresAt,
+        action_url: this.generateActionUrl(type, data),
+        action_label: this.getActionLabel(type)
+      }
+
+      const { data: result, error } = await supabase
+        .from('notifications')
+        .insert(notification)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating notification:', error)
+        throw new Error('Failed to create notification')
+      }
+
+      return result
+    }
+    
     const notification: Omit<Notification, 'id' | 'created_at' | 'updated_at'> = {
       user_id: userId,
       type,
@@ -270,9 +302,9 @@ export class NotificationService {
       .from('notification_settings')
       .select('*')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    if (error) {
       console.error('Error fetching notification settings:', error)
       throw new Error('Failed to fetch notification settings')
     }
@@ -511,6 +543,100 @@ export class NotificationService {
     } catch (error) {
       console.error('Error sending email notification:', error)
       return false
+    }
+  }
+
+  // Check if notification should be sent based on user preferences
+  private async shouldSendNotification(userId: string, type: NotificationType): Promise<boolean> {
+    try {
+      const supabase = await this.getSupabase()
+      
+      // Get user notification settings
+      const { data: settings } = await supabase
+        .from('notification_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      // If no settings found, use defaults (send all notifications)
+      if (!settings) {
+        return true
+      }
+
+      // Check global email notifications setting
+      if (!settings.email_notifications) {
+        return false
+      }
+
+      // Check specific notification type settings
+      const typeMapping: Record<NotificationType, keyof typeof settings> = {
+        // Task notifications
+        task_created: 'task_notifications',
+        task_updated: 'task_notifications',
+        task_completed: 'task_notifications',
+        task_overdue: 'task_notifications',
+        task_assigned: 'task_notifications',
+        task_comment: 'task_notifications',
+        
+        // Milestone notifications
+        milestone_created: 'milestone_notifications',
+        milestone_updated: 'milestone_notifications',
+        milestone_completed: 'milestone_notifications',
+        milestone_overdue: 'milestone_notifications',
+        milestone_approved: 'milestone_notifications',
+        milestone_rejected: 'milestone_notifications',
+        
+        // Booking notifications
+        booking_created: 'booking_notifications',
+        booking_updated: 'booking_notifications',
+        booking_cancelled: 'booking_notifications',
+        booking_confirmed: 'booking_notifications',
+        booking_approved: 'booking_notifications',
+        booking_reminder: 'booking_notifications',
+        booking_completed: 'booking_notifications',
+        
+        // Payment notifications
+        payment_received: 'payment_notifications',
+        payment_failed: 'payment_notifications',
+        
+        // Invoice notifications
+        invoice_created: 'invoice_notifications',
+        invoice_overdue: 'invoice_notifications',
+        invoice_paid: 'invoice_notifications',
+        
+        // Request notifications
+        request_created: 'system_notifications',
+        request_updated: 'system_notifications',
+        request_approved: 'system_notifications',
+        request_rejected: 'system_notifications',
+        
+        // Message notifications
+        message_received: 'message_notifications',
+        
+        // Document notifications
+        document_uploaded: 'document_notifications',
+        document_approved: 'document_notifications',
+        document_rejected: 'document_notifications',
+        
+        // System notifications
+        system_announcement: 'system_notifications',
+        maintenance_scheduled: 'system_notifications',
+        deadline_approaching: 'system_notifications',
+        project_delayed: 'system_notifications',
+        client_feedback: 'system_notifications',
+        team_mention: 'system_notifications'
+      }
+
+      const settingKey = typeMapping[type]
+      if (settingKey && settings[settingKey] === false) {
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error checking notification preferences:', error)
+      // Default to sending notification if there's an error
+      return true
     }
   }
 }

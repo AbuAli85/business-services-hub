@@ -1,320 +1,278 @@
-import { createNotification } from './notification-service'
-import { NotificationType, NotificationData } from '@/types/notifications'
+import { notificationTriggerService } from './notification-triggers'
 
-/**
- * Simple notification triggers for the most important events
- * This file contains only the triggers that are actually being used
- */
-
-// ============================================================================
-// BOOKING EVENTS
-// ============================================================================
-
-export async function triggerBookingCreated(bookingId: string, bookingData: {
+// Simplified trigger functions for easy importing
+export async function triggerBookingCreated(bookingId: string, data: {
   client_id: string
   client_name: string
   provider_id: string
   provider_name: string
   service_name: string
   booking_title: string
-  scheduled_date?: string
-  total_amount?: number
-  currency?: string
+  scheduled_date: string
+  total_amount: number
+  currency: string
 }) {
-  const notifications = []
-
   // Notify client
-  notifications.push(createNotification(
-    bookingData.client_id,
-    'booking_created',
-    'Booking Confirmed',
-    `Your booking for "${bookingData.service_name}" has been created successfully!`,
-    {
-      booking_id: bookingId,
-      booking_title: bookingData.booking_title,
-      service_name: bookingData.service_name,
-      scheduled_date: bookingData.scheduled_date,
-      amount: bookingData.total_amount,
-      currency: bookingData.currency,
-      actor_id: bookingData.client_id,
-      actor_name: bookingData.client_name
-    },
-    'high'
-  ))
+  await notificationTriggerService.triggerBookingCreated(data.client_id, {
+    booking_id: bookingId,
+    booking_title: data.booking_title,
+    service_name: data.service_name,
+    actor_id: data.client_id,
+    actor_name: data.client_name
+  })
 
   // Notify provider
-  notifications.push(createNotification(
-    bookingData.provider_id,
-    'booking_created',
-    'New Booking Received',
-    `You have a new booking for "${bookingData.service_name}" from ${bookingData.client_name}`,
-    {
-      booking_id: bookingId,
-      booking_title: bookingData.booking_title,
-      service_name: bookingData.service_name,
-      scheduled_date: bookingData.scheduled_date,
-      amount: bookingData.total_amount,
-      currency: bookingData.currency,
-      actor_id: bookingData.client_id,
-      actor_name: bookingData.client_name
-    },
-    'high'
-  ))
-
-  return Promise.all(notifications)
+  await notificationTriggerService.triggerBookingCreated(data.provider_id, {
+    booking_id: bookingId,
+    booking_title: data.booking_title,
+    service_name: data.service_name,
+    actor_id: data.client_id,
+    actor_name: data.client_name
+  })
 }
 
-export async function triggerBookingApproved(bookingId: string, bookingData: {
+export async function triggerBookingApproved(bookingId: string, data: {
   client_id: string
   client_name: string
   provider_id: string
   provider_name: string
   service_name: string
   booking_title: string
-  scheduled_date?: string
-  total_amount?: number
-  currency?: string
+  scheduled_date: string
+  total_amount: number
+  currency: string
 }) {
-  const notifications = []
-
   // Notify client about approval
-  notifications.push(createNotification(
-    bookingData.client_id,
-    'booking_approved',
-    'Booking Approved!',
-    `Great news! Your booking for "${bookingData.service_name}" has been approved by ${bookingData.provider_name}.`,
-    {
-      booking_id: bookingId,
-      booking_title: bookingData.booking_title,
-      service_name: bookingData.service_name,
-      scheduled_date: bookingData.scheduled_date,
-      amount: bookingData.total_amount,
-      currency: bookingData.currency,
-      actor_id: bookingData.provider_id,
-      actor_name: bookingData.provider_name
-    },
-    'high'
-  ))
-
-  // Notify provider about their approval action
-  notifications.push(createNotification(
-    bookingData.provider_id,
-    'booking_approved',
-    'Booking Approved Successfully',
-    `You have approved the booking for "${bookingData.service_name}" from ${bookingData.client_name}.`,
-    {
-      booking_id: bookingId,
-      booking_title: bookingData.booking_title,
-      service_name: bookingData.service_name,
-      scheduled_date: bookingData.scheduled_date,
-      amount: bookingData.total_amount,
-      currency: bookingData.currency,
-      actor_id: bookingData.client_id,
-      actor_name: bookingData.client_name
-    },
-    'medium'
-  ))
-
-  return Promise.all(notifications)
+  await notificationTriggerService.triggerBookingConfirmed(data.client_id, {
+    booking_id: bookingId,
+    booking_title: data.booking_title,
+    service_name: data.service_name,
+    actor_id: data.provider_id,
+    actor_name: data.provider_name
+  })
 }
 
-// ============================================================================
-// SERVICE EVENTS
-// ============================================================================
+export async function triggerBookingCancelled(bookingId: string, data: {
+  client_id: string
+  client_name: string
+  provider_id: string
+  provider_name: string
+  service_name: string
+  booking_title: string
+  reason?: string
+}) {
+  // Notify both parties about cancellation
+  await notificationTriggerService.triggerBookingCancelled(data.client_id, {
+    booking_id: bookingId,
+    booking_title: data.booking_title,
+    service_name: data.service_name,
+    actor_id: data.client_id,
+    actor_name: data.client_name
+  })
 
-export async function triggerServiceCreated(serviceId: string, serviceData: { title: string; provider_id: string; provider_name: string }) {
-  return createNotification(
-    serviceData.provider_id,
-    'system_announcement',
-    'Service Created',
-    `Your service "${serviceData.title}" has been created and is now live!`,
-    {
-      entity_id: serviceId,
-      entity_type: 'service',
-      service_name: serviceData.title,
-      actor_id: serviceData.provider_id,
-      actor_name: serviceData.provider_name
-    },
-    'medium'
-  )
+  await notificationTriggerService.triggerBookingCancelled(data.provider_id, {
+    booking_id: bookingId,
+    booking_title: data.booking_title,
+    service_name: data.service_name,
+    actor_id: data.client_id,
+    actor_name: data.client_name
+  })
 }
 
-// ============================================================================
-// PAYMENT EVENTS
-// ============================================================================
-
-export async function triggerPaymentReceived(paymentId: string, paymentData: {
-  booking_id: string
+export async function triggerPaymentReceived(bookingId: string, data: {
   client_id: string
   provider_id: string
   amount: number
   currency: string
-  payment_method: string
-  transaction_id: string
-  service_name: string
+  booking_title: string
+  payment_method?: string
 }) {
-  const notifications = []
+  // Notify provider about payment received
+  await notificationTriggerService.triggerPaymentReceived(data.provider_id, {
+    payment_id: `payment_${Date.now()}`,
+    amount: data.amount,
+    currency: data.currency,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
 
-  // Notify client
-  notifications.push(createNotification(
-    paymentData.client_id,
-    'payment_received',
-    'Payment Processed',
-    `Your payment of ${paymentData.amount} ${paymentData.currency} for "${paymentData.service_name}" has been processed successfully.`,
-    {
-      payment_id: paymentId,
-      booking_id: paymentData.booking_id,
-      amount: paymentData.amount,
-      currency: paymentData.currency,
-      payment_method: paymentData.payment_method,
-      transaction_id: paymentData.transaction_id,
-      service_name: paymentData.service_name
-    },
-    'high'
-  ))
-
-  // Notify provider
-  notifications.push(createNotification(
-    paymentData.provider_id,
-    'payment_received',
-    'Payment Received',
-    `You have received a payment of ${paymentData.amount} ${paymentData.currency} for "${paymentData.service_name}".`,
-    {
-      payment_id: paymentId,
-      booking_id: paymentData.booking_id,
-      amount: paymentData.amount,
-      currency: paymentData.currency,
-      payment_method: paymentData.payment_method,
-      transaction_id: paymentData.transaction_id,
-      service_name: paymentData.service_name
-    },
-    'high'
-  ))
-
-  return Promise.all(notifications)
+  // Notify client about payment confirmation
+  await notificationTriggerService.triggerPaymentReceived(data.client_id, {
+    payment_id: `payment_${Date.now()}`,
+    amount: data.amount,
+    currency: data.currency,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
 }
 
-export async function triggerPaymentFailed(paymentId: string, paymentData: {
-  booking_id: string
+export async function triggerPaymentFailed(bookingId: string, data: {
   client_id: string
   provider_id: string
   amount: number
   currency: string
-  error_message: string
-  service_name: string
+  booking_title: string
+  reason?: string
 }) {
-  const notifications = []
+  // Notify both parties about payment failure
+  await notificationTriggerService.triggerPaymentFailed(data.client_id, {
+    payment_id: `payment_${Date.now()}`,
+    amount: data.amount,
+    currency: data.currency,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
 
-  // Notify client
-  notifications.push(createNotification(
-    paymentData.client_id,
-    'payment_failed',
-    'Payment Failed',
-    `Your payment of ${paymentData.amount} ${paymentData.currency} for "${paymentData.service_name}" failed. Please try again.`,
-    {
-      payment_id: paymentId,
-      booking_id: paymentData.booking_id,
-      amount: paymentData.amount,
-      currency: paymentData.currency,
-      service_name: paymentData.service_name,
-      metadata: { error_message: paymentData.error_message }
-    },
-    'urgent'
-  ))
-
-  // Notify provider
-  notifications.push(createNotification(
-    paymentData.provider_id,
-    'payment_failed',
-    'Payment Failed',
-    `Payment of ${paymentData.amount} ${paymentData.currency} for "${paymentData.service_name}" failed.`,
-    {
-      payment_id: paymentId,
-      booking_id: paymentData.booking_id,
-      amount: paymentData.amount,
-      currency: paymentData.currency,
-      service_name: paymentData.service_name,
-      metadata: { error_message: paymentData.error_message }
-    },
-    'high'
-  ))
-
-  return Promise.all(notifications)
+  await notificationTriggerService.triggerPaymentFailed(data.provider_id, {
+    payment_id: `payment_${Date.now()}`,
+    amount: data.amount,
+    currency: data.currency,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
 }
 
-// ============================================================================
-// MESSAGE EVENTS
-// ============================================================================
+export async function triggerInvoiceCreated(bookingId: string, data: {
+  client_id: string
+  provider_id: string
+  invoice_id: string
+  invoice_number: string
+  booking_title: string
+  amount: number
+  currency: string
+  due_date: string
+}) {
+  // Notify client about new invoice
+  await notificationTriggerService.triggerInvoiceCreated(data.client_id, {
+    invoice_id: data.invoice_id,
+    invoice_number: data.invoice_number,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
 
-export async function triggerMessageReceived(messageId: string, messageData: {
-  receiver_id: string
+  // Notify provider about invoice creation
+  await notificationTriggerService.triggerInvoiceCreated(data.provider_id, {
+    invoice_id: data.invoice_id,
+    invoice_number: data.invoice_number,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
+}
+
+export async function triggerInvoiceOverdue(bookingId: string, data: {
+  client_id: string
+  provider_id: string
+  invoice_id: string
+  invoice_number: string
+  booking_title: string
+  due_date: string
+}) {
+  // Notify client about overdue invoice
+  await notificationTriggerService.triggerInvoiceOverdue(data.client_id, {
+    invoice_id: data.invoice_id,
+    invoice_number: data.invoice_number,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
+
+  // Notify provider about overdue invoice
+  await notificationTriggerService.triggerInvoiceOverdue(data.provider_id, {
+    invoice_id: data.invoice_id,
+    invoice_number: data.invoice_number,
+    booking_id: bookingId,
+    booking_title: data.booking_title
+  })
+}
+
+export async function triggerMessageReceived(recipientId: string, data: {
+  message_id: string
   sender_id: string
   sender_name: string
-  subject: string
-  content: string
-  booking_id?: string
+  message_preview?: string
 }) {
-  return createNotification(
-    messageData.receiver_id,
-    'message_received',
-    `New Message from ${messageData.sender_name}`,
-    messageData.subject,
-    {
-      message_id: messageId,
-      sender_id: messageData.sender_id,
-      sender_name: messageData.sender_name,
-      booking_id: messageData.booking_id,
-      metadata: { content_preview: messageData.content.substring(0, 100) }
-    },
-    'medium'
-  )
+  await notificationTriggerService.triggerMessageReceived(recipientId, {
+    message_id: data.message_id,
+    sender_id: data.sender_id,
+    sender_name: data.sender_name
+  })
 }
 
-// ============================================================================
-// REVIEW EVENTS
-// ============================================================================
-
-export async function triggerReviewReceived(reviewId: string, reviewData: {
-  provider_id: string
-  client_id: string
-  client_name: string
-  rating: number
-  service_name: string
-  booking_id: string
+export async function triggerTaskCreated(bookingId: string, data: {
+  task_id: string
+  task_title: string
+  milestone_id: string
+  milestone_title: string
+  assigned_to: string
+  assigned_to_name: string
+  created_by: string
+  created_by_name: string
+  project_name: string
 }) {
-  return createNotification(
-    reviewData.provider_id,
-    'client_feedback',
-    'New Review Received',
-    `You received a ${reviewData.rating}-star review from ${reviewData.client_name} for "${reviewData.service_name}"`,
-    {
-      review_id: reviewId,
-      booking_id: reviewData.booking_id,
-      service_name: reviewData.service_name,
-      actor_id: reviewData.client_id,
-      actor_name: reviewData.client_name,
-      metadata: { rating: reviewData.rating }
-    },
-    'medium'
-  )
+  // Notify assignee
+  await notificationTriggerService.triggerTaskCreated(data.assigned_to, {
+    task_id: data.task_id,
+    task_title: data.task_title,
+    milestone_id: data.milestone_id,
+    milestone_title: data.milestone_title,
+    booking_id: bookingId,
+    project_name: data.project_name,
+    actor_id: data.created_by,
+    actor_name: data.created_by_name
+  })
 }
 
-// ============================================================================
-// USER EVENTS
-// ============================================================================
+export async function triggerTaskCompleted(bookingId: string, data: {
+  task_id: string
+  task_title: string
+  milestone_id: string
+  milestone_title: string
+  completed_by: string
+  completed_by_name: string
+  project_name: string
+}) {
+  // Notify project stakeholders about task completion
+  await notificationTriggerService.triggerTaskCompleted(data.completed_by, {
+    task_id: data.task_id,
+    task_title: data.task_title,
+    milestone_id: data.milestone_id,
+    milestone_title: data.milestone_title,
+    booking_id: bookingId,
+    project_name: data.project_name,
+    actor_id: data.completed_by,
+    actor_name: data.completed_by_name
+  })
+}
 
-export async function triggerUserRegistered(userId: string, userData: { email: string; full_name: string }) {
-  return createNotification(
-    userId,
-    'system_announcement',
-    'Welcome to Business Services Hub!',
-    `Welcome ${userData.full_name}! Your account has been created successfully.`,
-    {
-      actor_id: userId,
-      actor_name: userData.full_name,
-      entity_type: 'user',
-      entity_id: userId
-    },
-    'medium'
-  )
+export async function triggerMilestoneCompleted(bookingId: string, data: {
+  milestone_id: string
+  milestone_title: string
+  completed_by: string
+  completed_by_name: string
+  project_name: string
+}) {
+  // Notify project stakeholders about milestone completion
+  await notificationTriggerService.triggerMilestoneCompleted(data.completed_by, {
+    milestone_id: data.milestone_id,
+    milestone_title: data.milestone_title,
+    booking_id: bookingId,
+    project_name: data.project_name,
+    actor_id: data.completed_by,
+    actor_name: data.completed_by_name
+  })
+}
+
+export async function triggerDocumentUploaded(bookingId: string, data: {
+  document_id: string
+  document_name: string
+  uploaded_by: string
+  uploaded_by_name: string
+  project_name: string
+}) {
+  // Notify project stakeholders about document upload
+  await notificationTriggerService.triggerDocumentUploaded(data.uploaded_by, {
+    document_id: data.document_id,
+    document_name: data.document_name,
+    actor_id: data.uploaded_by,
+    actor_name: data.uploaded_by_name
+  })
 }

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { ComprehensiveNotificationSettings } from '@/components/notifications/comprehensive-notification-settings'
 
 interface UserProfile {
   id: string
@@ -752,103 +753,7 @@ export default function SettingsPage() {
 
       {/* Notifications Tab */}
       {activeTab === 'notifications' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notification Preferences</CardTitle>
-            <CardDescription>Choose how and when you want to be notified</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-900">Email Notifications</h3>
-                  <p className="text-sm text-gray-500">Receive notifications via email</p>
-                </div>
-                <Switch
-                  checked={notifications.email_notifications}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, email_notifications: checked }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-900">Push Notifications</h3>
-                  <p className="text-sm text-gray-500">Receive push notifications in your browser</p>
-                </div>
-                <Switch
-                  checked={notifications.push_notifications}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, push_notifications: checked }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-900">SMS Notifications</h3>
-                  <p className="text-sm text-gray-500">Receive notifications via text message</p>
-                </div>
-                <Switch
-                  checked={notifications.sms_notifications}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, sms_notifications: checked }))}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Notification Types</h3>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Booking Updates</h4>
-                  <p className="text-sm text-gray-500">Get notified about booking status changes</p>
-                </div>
-                <Switch
-                  checked={notifications.booking_updates}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, booking_updates: checked }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Payment Notifications</h4>
-                  <p className="text-sm text-gray-500">Get notified about payment activities</p>
-                </div>
-                <Switch
-                  checked={notifications.payment_notifications}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, payment_notifications: checked }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Marketing Emails</h4>
-                  <p className="text-sm text-gray-500">Receive promotional and marketing content</p>
-                </div>
-                <Switch
-                  checked={notifications.marketing_emails}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, marketing_emails: checked }))}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Weekly Reports</h4>
-                  <p className="text-sm text-gray-500">Receive weekly summary reports</p>
-                </div>
-                <Switch
-                  checked={notifications.weekly_reports}
-                  onCheckedChange={(checked) => setNotifications(prev => ({ ...prev, weekly_reports: checked }))}
-                />
-              </div>
-            </div>
-
-            <Button onClick={handleNotificationUpdate} disabled={saving} className="w-full">
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Notification Settings'}
-            </Button>
-          </CardContent>
-        </Card>
+        <ComprehensiveNotificationSettings />
       )}
 
       {/* Security Tab */}
