@@ -172,7 +172,7 @@ export default function SettingsPage() {
           company_name: data.company_name || '',
           website: data.website || '',
           location: data.location || '',
-          timezone: data.timezone || 'UTC',
+          timezone: data.timezone || 'Asia/Muscat',
           language: data.language || 'en',
           role: data.role || 'client'
         })
@@ -705,6 +705,7 @@ export default function SettingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="Asia/Muscat">Muscat (Oman)</SelectItem>
                     <SelectItem value="America/New_York">Eastern Time</SelectItem>
                     <SelectItem value="America/Chicago">Central Time</SelectItem>
                     <SelectItem value="America/Denver">Mountain Time</SelectItem>
