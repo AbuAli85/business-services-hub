@@ -61,8 +61,9 @@ export function LogoUpload({
       
       // Create unique filename
       const fileExt = file.name.split('.').pop()
-      const fileName = `${userId}-logo-${Date.now()}.${fileExt}`
-      const filePath = `logos/${fileName}`
+      const fileName = `logo-${Date.now()}.${fileExt}`
+      // RLS policy requires the first folder to be the auth.uid()
+      const filePath = `${userId}/${fileName}`
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage

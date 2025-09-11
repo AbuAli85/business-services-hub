@@ -6,6 +6,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { realtimeManager } from '@/lib/realtime'
+import toast from 'react-hot-toast'
 import { 
   Home, 
   Briefcase, 
@@ -62,6 +64,36 @@ export default function DashboardLayout({
     checkUser()
     fetchNotifications()
   }, [])
+
+  // Realtime notifications for new messages
+  useEffect(() => {
+    if (!user?.id) return
+    let subscriptionKey: string | null = null
+    ;(async () => {
+      try {
+        const sub = await realtimeManager.subscribeToMessages(user.id, (update: any) => {
+          if (update.eventType === 'INSERT') {
+            const msg = update.new
+            toast.success('New message received', { id: `msg-${msg.id}`, duration: 3000 })
+            // Optionally fire browser notification
+            if (typeof window !== 'undefined' && 'Notification' in window) {
+              if (Notification.permission === 'granted') {
+                new Notification('New message', { body: msg.message || msg.content || 'You have a new message.' })
+              } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission()
+              }
+            }
+          }
+        })
+        subscriptionKey = `messages:${user.id}`
+      } catch (e) {
+        console.warn('Realtime notifications setup failed', e)
+      }
+    })()
+    return () => {
+      if (subscriptionKey) realtimeManager.unsubscribe(subscriptionKey)
+    }
+  }, [user?.id])
 
   const checkUser = async () => {
     try {
