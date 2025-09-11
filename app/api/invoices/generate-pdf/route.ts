@@ -617,7 +617,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Return the actual PDF content
-      return new NextResponse(pdfContent, {
+      return new NextResponse(pdfContent as any, {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="invoice-${invoice.invoice_number || invoiceId}.pdf"`,
