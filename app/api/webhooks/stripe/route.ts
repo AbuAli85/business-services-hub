@@ -125,15 +125,12 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, supabas
 
   // Send payment notifications to both client and provider
   try {
-    await triggerPaymentReceived(paymentIntent.id, {
-      booking_id: booking_id,
+    await triggerPaymentReceived(booking_id, {
       client_id: client_id,
       provider_id: provider_id,
       amount: paymentIntent.amount / 100,
       currency: paymentIntent.currency.toUpperCase(),
-      payment_method: 'stripe',
-      transaction_id: paymentIntent.id,
-      service_name: service_title
+      booking_title: service_title
     })
   } catch (notificationError) {
     console.warn('Failed to send payment notifications:', notificationError)
@@ -169,14 +166,12 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent, supabas
 
   // Send payment failure notification
   try {
-    await triggerPaymentFailed(paymentIntent.id, {
-      booking_id: booking_id,
+    await triggerPaymentFailed(booking_id, {
       client_id: client_id,
       provider_id: paymentIntent.metadata.provider_id,
       amount: paymentIntent.amount / 100,
       currency: paymentIntent.currency.toUpperCase(),
-      error_message: 'Payment processing failed',
-      service_name: service_title
+      booking_title: service_title
     })
   } catch (notificationError) {
     console.warn('Failed to send payment failure notification:', notificationError)

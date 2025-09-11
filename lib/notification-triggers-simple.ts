@@ -305,3 +305,21 @@ export async function triggerUserRegistered(userId: string, data: {
     actor_name: data.user_name
   })
 }
+
+export async function triggerReviewReceived(bookingId: string, data: {
+  review_id: string
+  reviewer_id: string
+  reviewer_name: string
+  provider_id: string
+  provider_name: string
+  rating: number
+  comment?: string
+}) {
+  // Notify provider about new review
+  await notificationTriggerService.triggerClientFeedback(data.provider_id, {
+    project_id: bookingId,
+    project_name: `Booking ${bookingId}`,
+    actor_id: data.reviewer_id,
+    actor_name: data.reviewer_name
+  })
+}
