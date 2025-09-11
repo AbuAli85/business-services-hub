@@ -310,10 +310,13 @@ export default function SettingsPage() {
     setSaving(true)
     try {
       const supabase = await getSupabaseClient()
+      const { data: userData } = await supabase.auth.getUser()
+      const sessionEmail = userData?.user?.email || ''
       
       // Build update payload only with columns that exist in DB to avoid 400s
       const candidate: Record<string, any> = {
         id: profile.id,
+        email: profile.email || sessionEmail,
         full_name: profile.full_name,
         phone: profile.phone,
         bio: profile.bio,
