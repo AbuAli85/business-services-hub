@@ -31,6 +31,7 @@ import {
   NotificationStats 
 } from '@/types/notifications'
 import { notificationService } from '@/lib/notification-service'
+import { useRealtimeNotifications } from '@/hooks/use-realtime-notifications'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -40,29 +41,55 @@ interface NotificationCenterProps {
 }
 
 export function NotificationCenter({ userId, className = '' }: NotificationCenterProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const { notifications, loading, error, refresh } = useRealtimeNotifications({ userId })
   const [stats, setStats] = useState<NotificationStats | null>(null)
-  const [loading, setLoading] = useState(true)
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([])
   const [filters, setFilters] = useState<NotificationFilters>({})
   const [showFilters, setShowFilters] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
 
   useEffect(() => {
-    loadNotifications()
     loadStats()
-  }, [userId, filters])
+  }, [userId])
+
+  // Filter notifications based on active tab and filters
+  const filteredNotifications = React.useMemo(() => {
+    let filtered = notifications
+
+    // Apply tab filter
+    if (activeTab === 'unread') {
+      filtered = filtered.filter(n => !n.read)
+    } else if (activeTab === 'urgent') {
+      filtered = filtered.filter(n => n.priority === 'urgent')
+    } else if (activeTab === 'recent') {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      filtered = filtered.filter(n => new Date(n.created_at) > oneDayAgo)
+    }
+
+    // Apply additional filters
+    if (filters.type) {
+      filtered = filtered.filter(n => n.type === filters.type)
+    }
+    if (filters.priority) {
+      filtered = filtered.filter(n => n.priority === filters.priority)
+    }
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase()
+      filtered = filtered.filter(n => 
+        n.title.toLowerCase().includes(searchLower) || 
+        n.message.toLowerCase().includes(searchLower)
+      )
+    }
+
+    return filtered
+  }, [notifications, activeTab, filters])
 
   const loadNotifications = async () => {
     try {
-      setLoading(true)
-      const data = await notificationService.getNotifications(userId, filters)
-      setNotifications(data)
+      await refresh()
     } catch (error) {
       console.error('Error loading notifications:', error)
       toast.error('Failed to load notifications')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -78,9 +105,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       await notificationService.markAsRead(notificationId)
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-      )
+      // The real-time subscription will automatically update the notification
       loadStats()
     } catch (error) {
       console.error('Error marking notification as read:', error)
@@ -91,7 +116,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead(userId)
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      // The real-time subscription will automatically update the notifications
       loadStats()
       toast.success('All notifications marked as read')
     } catch (error) {
@@ -103,7 +128,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
   const handleDeleteNotification = async (notificationId: string) => {
     try {
       await notificationService.deleteNotification(notificationId)
-      setNotifications(prev => prev.filter(n => n.id !== notificationId))
+      // The real-time subscription will automatically remove the notification
       loadStats()
       toast.success('Notification deleted')
     } catch (error) {
@@ -121,17 +146,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
         notification_ids: selectedNotifications
       })
       
-      if (action === 'delete') {
-        setNotifications(prev => prev.filter(n => !selectedNotifications.includes(n.id)))
-      } else {
-        setNotifications(prev => 
-          prev.map(n => 
-            selectedNotifications.includes(n.id) 
-              ? { ...n, read: action === 'mark_read' }
-              : n
-          )
-        )
-      }
+      // The real-time subscription will automatically update the notifications
       
       setSelectedNotifications([])
       loadStats()
@@ -152,7 +167,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedNotifications(notifications.map(n => n.id))
+      setSelectedNotifications(filteredNotifications.map(n => n.id))
     } else {
       setSelectedNotifications([])
     }
@@ -178,11 +193,6 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
     }
   }
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (activeTab === 'unread') return !notification.read
-    if (activeTab === 'urgent') return notification.priority === 'urgent'
-    return true
-  })
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -193,8 +203,22 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
           <p className="text-gray-600">
             {stats ? `${stats.unread} unread of ${stats.total} total` : 'Loading...'}
           </p>
+          {error && (
+            <p className="text-sm text-red-600 mt-1">
+              ⚠️ Real-time updates unavailable - {error}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadNotifications}
+            disabled={loading}
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -399,9 +423,23 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
           {/* Notifications List */}
           <div className="space-y-2">
-            {loading ? (
+            {error ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <div className="text-red-500 mb-2">
+                    <AlertTriangle className="h-8 w-8 mx-auto" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Error loading notifications</h3>
+                  <p className="text-gray-600 mb-4">{error}</p>
+                  <Button onClick={loadNotifications} variant="outline">
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-gray-600">Loading notifications...</span>
               </div>
             ) : filteredNotifications.length === 0 ? (
               <Card>
