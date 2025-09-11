@@ -716,12 +716,12 @@ export async function PATCH(request: NextRequest) {
         break
       case 'complete':
         if (!isProvider) return NextResponse.json({ error: 'Only provider can complete' }, { status: 403 })
-        updates = { status: 'completed', operational_status: 'done' }
+        updates = { status: 'completed', operational_status: 'approved' }
         notification = { user_id: booking.client_id, title: 'Service Completed', message: 'Your booking was marked completed', type: 'booking_completed' }
         break
       case 'cancel':
         if (!isClient) return NextResponse.json({ error: 'Only client can cancel' }, { status: 403 })
-        updates = { status: 'cancelled', operational_status: 'cancelled', cancel_reason: reason || null }
+        updates = { status: 'cancelled', operational_status: 'rejected', cancel_reason: reason || null }
         notification = { user_id: booking.provider_id, title: 'Booking Cancelled', message: reason ? `Cancelled: ${reason}` : 'Client cancelled booking', type: 'booking_cancelled' }
         break
     }
