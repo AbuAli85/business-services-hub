@@ -12,6 +12,7 @@ create table if not exists public.notifications (
   title text not null,
   message text,
   data jsonb default '{}'::jsonb,
+  action_url text,
   read boolean default false,
   created_at timestamp with time zone default now()
 );
@@ -46,6 +47,9 @@ begin
   v_message := coalesce(new.title, 'A new document request has been created');
   -- Notify the requested_from user (the client)
   perform public.fn_create_notification(new.requested_from, 'document_request_created', v_title, v_message, jsonb_build_object('request_id', new.id, 'booking_id', new.booking_id));
+  update public.notifications set action_url = '/dashboard/bookings/' || new.booking_id || '/milestones' where id in (
+    select id from public.notifications where user_id = new.requested_from order by created_at desc limit 1
+  );
   return new;
 end;$$;
 
@@ -66,6 +70,10 @@ begin
     -- Notify both parties on status changes
     perform public.fn_create_notification(new.requested_from, 'document_request_status_changed', v_title, v_message, jsonb_build_object('request_id', new.id, 'booking_id', new.booking_id, 'status', new.status));
     perform public.fn_create_notification(new.requested_by, 'document_request_status_changed', v_title, v_message, jsonb_build_object('request_id', new.id, 'booking_id', new.booking_id, 'status', new.status));
+    -- add deep link
+    update public.notifications set action_url = '/dashboard/bookings/' || new.booking_id || '/milestones' where id in (
+      select id from public.notifications where user_id in (new.requested_from, new.requested_by) order by created_at desc limit 2
+    );
   end if;
   return new;
 end;$$;
@@ -89,6 +97,9 @@ begin
   -- Notify provider by default
   if v_booking.provider_id is not null then
     perform public.fn_create_notification(v_booking.provider_id, 'document_uploaded', v_title, v_message, jsonb_build_object('document_id', new.id, 'booking_id', new.booking_id));
+    update public.notifications set action_url = '/dashboard/bookings/' || new.booking_id || '/milestones' where id in (
+      select id from public.notifications where user_id = v_booking.provider_id order by created_at desc limit 1
+    );
   end if;
   return new;
 end;$$;
