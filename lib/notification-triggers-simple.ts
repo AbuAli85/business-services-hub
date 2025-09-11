@@ -276,3 +276,32 @@ export async function triggerDocumentUploaded(bookingId: string, data: {
     actor_name: data.uploaded_by_name
   })
 }
+
+export async function triggerServiceCreated(serviceId: string, data: {
+  title: string
+  provider_id: string
+  provider_name: string
+}) {
+  // Notify provider about service creation
+  await notificationTriggerService.triggerServiceCreated(data.provider_id, {
+    service_id: serviceId,
+    service_title: data.title,
+    actor_id: data.provider_id,
+    actor_name: data.provider_name
+  })
+}
+
+export async function triggerUserRegistered(userId: string, data: {
+  user_name: string
+  user_email: string
+  role: string
+}) {
+  // Notify user about successful registration
+  await notificationTriggerService.triggerUserRegistered(userId, {
+    user_name: data.user_name,
+    user_email: data.user_email,
+    role: data.role,
+    actor_id: userId,
+    actor_name: data.user_name
+  })
+}

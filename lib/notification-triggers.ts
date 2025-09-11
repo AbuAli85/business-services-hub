@@ -681,6 +681,56 @@ export class NotificationTriggerService {
 
     return notificationService.createFromTemplate(userId, 'team_mention', data, template)
   }
+
+  // Service notifications
+  async triggerServiceCreated(
+    userId: string,
+    serviceData: {
+      service_id: string
+      service_title: string
+      actor_id: string
+      actor_name: string
+    }
+  ) {
+    const template = getNotificationTemplate('system_announcement') // Using system announcement as base
+    const data: NotificationData = {
+      metadata: {
+        message: `Service "${serviceData.service_title}" has been created successfully.`,
+        service_id: serviceData.service_id,
+        service_title: serviceData.service_title,
+        actor_id: serviceData.actor_id,
+        actor_name: serviceData.actor_name
+      }
+    }
+
+    return notificationService.createFromTemplate(userId, 'system_announcement', data, template)
+  }
+
+  // User registration notifications
+  async triggerUserRegistered(
+    userId: string,
+    userData: {
+      user_name: string
+      user_email: string
+      role: string
+      actor_id: string
+      actor_name: string
+    }
+  ) {
+    const template = getNotificationTemplate('system_announcement') // Using system announcement as base
+    const data: NotificationData = {
+      metadata: {
+        message: `Welcome to the platform! Your ${userData.role} account has been created successfully.`,
+        user_name: userData.user_name,
+        user_email: userData.user_email,
+        role: userData.role,
+        actor_id: userData.actor_id,
+        actor_name: userData.actor_name
+      }
+    }
+
+    return notificationService.createFromTemplate(userId, 'system_announcement', data, template)
+  }
 }
 
 // Export singleton instance

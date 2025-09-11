@@ -406,3 +406,6 @@ export function getNotificationTypesByCategory() {
     ] as NotificationType[]
   }
 }
+
+// Export the templates object for direct access
+export { notificationTemplates }
