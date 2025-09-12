@@ -1,34 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server'
-
-// Simple auth guard for dashboard routes using presence of Supabase auth cookies
-export function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl
-
-  // Protect all dashboard pages
-  if (pathname.startsWith('/dashboard')) {
-    const cookies = request.cookies
-
-    // Supabase can use different cookie keys depending on setup/version
-    const hasAuthCookie =
-      cookies.has('sb-access-token') ||
-      cookies.has('supabase-auth-token') ||
-      // Supabase v2 project-ref based cookie (JSON payload)
-      Array.from(cookies.getAll().values()).some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
-
-    if (!hasAuthCookie) {
-      const redirectTo = encodeURIComponent(`${pathname}${search || ''}`)
-      const signInUrl = new URL(`/auth/sign-in?redirect=${redirectTo}`, request.url)
-      return NextResponse.redirect(signInUrl)
-    }
-  }
-
-  return NextResponse.next()
-}
-
-export const config = {
-  matcher: ['/dashboard/:path*'],
-}
-
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -53,6 +22,7 @@ function rateLimit(key: string): boolean {
 }
 
 export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl
   const res = NextResponse.next()
 
   // CORS: only allow your app origin
@@ -73,7 +43,6 @@ export function middleware(req: NextRequest) {
   res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'")
 
   // Simple rate limit for API routes
-  const pathname = req.nextUrl.pathname
   if (pathname.startsWith('/api/')) {
     const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown'
     const key = `${pathname}:${ip}`
@@ -82,6 +51,21 @@ export function middleware(req: NextRequest) {
         status: 429,
         headers: { 'Content-Type': 'application/json' }
       })
+    }
+  }
+
+  // Auth guard for dashboard routes
+  if (pathname.startsWith('/dashboard')) {
+    const cookies = req.cookies
+    const hasAuthCookie =
+      cookies.has('sb-access-token') ||
+      cookies.has('supabase-auth-token') ||
+      Array.from(cookies.getAll().values()).some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
+
+    if (!hasAuthCookie) {
+      const redirectTo = encodeURIComponent(`${pathname}${search || ''}`)
+      const signInUrl = new URL(`/auth/sign-in?redirect=${redirectTo}`, req.url)
+      return NextResponse.redirect(signInUrl)
     }
   }
 
@@ -94,5 +78,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*']
+  matcher: ['/api/:path*', '/dashboard/:path*']
 }
