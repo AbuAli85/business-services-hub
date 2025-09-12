@@ -22,7 +22,7 @@ function rateLimit(key: string): boolean {
 }
 
 export function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl
+  const { pathname } = req.nextUrl
   const res = NextResponse.next()
 
   // CORS: only allow your app origin
@@ -54,20 +54,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  // Auth guard for dashboard routes
-  if (pathname.startsWith('/dashboard')) {
-    const cookies = req.cookies
-    const hasAuthCookie =
-      cookies.has('sb-access-token') ||
-      cookies.has('supabase-auth-token') ||
-      Array.from(cookies.getAll().values()).some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
-
-    if (!hasAuthCookie) {
-      const redirectTo = encodeURIComponent(`${pathname}${search || ''}`)
-      const signInUrl = new URL(`/auth/sign-in?redirect=${redirectTo}`, req.url)
-      return NextResponse.redirect(signInUrl)
-    }
-  }
+  // Note: dashboard auth redirects handled client-side to avoid cookie mismatch issues
 
   // Handle preflight quickly
   if (req.method === 'OPTIONS') {
@@ -78,5 +65,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/dashboard/:path*']
+  matcher: ['/api/:path*']
 }
