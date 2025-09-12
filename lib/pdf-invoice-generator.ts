@@ -302,8 +302,12 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   }
 
   // Company name and contact info - improved positioning
-  doc.setFontSize(20).setFont('helvetica', 'bold')
+  doc.setFontSize(18).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  // Ensure company name fits by using smaller font and better positioning
+  if (companyName.length > 20) {
+    doc.setFontSize(16)
+  }
   doc.text(companyName, 70, 22)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
@@ -420,6 +424,14 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   }
   if (clientEmail) {
     doc.text(clientEmail, 120, clientY)
+    clientY += 6
+  }
+  
+  // Add a note if no company info is available
+  if (!clientCompany && !clientAddress && !clientPhone) {
+    doc.setFontSize(8).setFont('helvetica', 'italic')
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+    doc.text('Individual Client', 120, clientY)
   }
 
   // === SERVICE TABLE ===
@@ -529,14 +541,14 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
   if (language === 'bilingual') {
-    doc.text(`${labels.total.en}:`, summaryX + 8, summaryY + 30)
-    renderArabicText(doc, `${labels.total.ar}:`, summaryX + summaryWidth - 8, summaryY + 30, { align: 'right' })
+    doc.text(`${labels.total.en}`, summaryX + 8, summaryY + 30)
+    renderArabicText(doc, `${labels.total.ar}`, summaryX + summaryWidth - 8, summaryY + 30, { align: 'right' })
   } else {
     const text = labels.total[language]
     if (language === 'ar') {
-      renderArabicText(doc, `${text}:`, summaryX + 8, summaryY + 30)
+      renderArabicText(doc, `${text}`, summaryX + 8, summaryY + 30)
     } else {
-      doc.text(`${text}:`, summaryX + 8, summaryY + 30)
+      doc.text(`${text}`, summaryX + 8, summaryY + 30)
     }
   }
   doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 30, { align: 'right' })
@@ -597,23 +609,13 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       }
     }
   } else {
-    // Default payment info with bilingual support
-    if (language === 'bilingual') {
-      doc.text('Bank Transfer to account details provided separately', 20, paymentY + 8)
-      doc.text('Bank Transfer to account details provided separately', 190, paymentY + 8, { align: 'right' })
-    } else {
-      doc.text('Bank Transfer to account details provided separately', 20, paymentY + 8)
-    }
+    // Default payment info - single instance
+    doc.text('Bank Transfer to account details provided separately', 20, paymentY + 8)
   }
   
   // Payment terms
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
-  if (language === 'bilingual') {
-    doc.text('Payment Terms:', 20, paymentY + 26)
-  } else {
-    doc.text('Payment Terms:', 20, paymentY + 26)
-  }
-  doc.text(`: ${paymentTerms}`, 80, paymentY + 26)
+  doc.text(`Payment Terms: ${paymentTerms}`, 20, paymentY + 26)
 
   // === FOOTER ===
   const footerY = summaryY + 85
