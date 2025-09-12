@@ -176,6 +176,13 @@ export class SmartInvoiceService {
       // Send notifications
       await this.sendInvoiceNotifications(invoice, booking)
 
+      // Send notification to client about new invoice
+      try {
+        await this.sendInvoiceNotificationToClient(invoice, booking)
+      } catch (notificationError) {
+        console.warn('⚠️ Failed to send invoice notification to client:', notificationError)
+      }
+
       return invoice
 
     } catch (error) {
@@ -200,6 +207,64 @@ export class SmartInvoiceService {
 
     const sequence = (count || 0) + 1
     return `INV-${year}${month}-${String(sequence).padStart(3, '0')}`
+  }
+
+  /**
+   * Send notification to client about new invoice
+   */
+  private async sendInvoiceNotificationToClient(invoice: InvoiceData, booking: any): Promise<void> {
+    try {
+      // Send email notification to client
+      if (invoice.client_email) {
+        await fetch('/api/notifications/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: invoice.client_email,
+            subject: `New Invoice: ${invoice.invoice_number}`,
+            text: `Dear ${invoice.client_name},\n\nA new invoice has been generated for your booking.\n\nInvoice Number: ${invoice.invoice_number}\nAmount: ${invoice.currency} ${invoice.amount}\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}\n\nPlease log in to your dashboard to view and pay the invoice.\n\nThank you for your business!`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">New Invoice Generated</h2>
+                <p>Dear ${invoice.client_name},</p>
+                <p>A new invoice has been generated for your booking.</p>
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                  <h3 style="margin: 0 0 10px 0; color: #333;">Invoice Details</h3>
+                  <p><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
+                  <p><strong>Amount:</strong> ${invoice.currency} ${invoice.amount}</p>
+                  <p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString()}</p>
+                  <p><strong>Service:</strong> ${invoice.service_title}</p>
+                </div>
+                <p>Please log in to your dashboard to view and pay the invoice.</p>
+                <p>Thank you for your business!</p>
+              </div>
+            `
+          })
+        })
+      }
+
+      // Create in-app notification
+      await this.supabase
+        .from('notifications')
+        .insert({
+          user_id: invoice.client_id,
+          type: 'invoice_created',
+          title: 'New Invoice Generated',
+          message: `Invoice ${invoice.invoice_number} has been generated for ${invoice.currency} ${invoice.amount}`,
+          data: {
+            invoice_id: invoice.id,
+            booking_id: invoice.booking_id,
+            amount: invoice.amount,
+            currency: invoice.currency
+          },
+          priority: 'normal'
+        })
+
+      console.log('✅ Invoice notification sent to client:', invoice.client_email)
+    } catch (error) {
+      console.error('❌ Error sending invoice notification to client:', error)
+      throw error
+    }
   }
 
   /**
