@@ -41,8 +41,7 @@ export async function POST(request: NextRequest) {
         booking:bookings(
           id,
           service:services(title, description, price)
-        ),
-        invoice_items(*)
+        )
       `)
       .eq('id', invoiceId)
       .single()

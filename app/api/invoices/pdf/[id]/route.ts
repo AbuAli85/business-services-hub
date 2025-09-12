@@ -10,11 +10,6 @@ export async function GET(
   console.log('📋 Params:', params)
   console.log('🔗 URL:', request.url)
   
-  // Simple test response to verify route is working
-  if (params.id === 'test') {
-    return NextResponse.json({ message: 'Route is working', params, url: request.url })
-  }
-  
   try {
     const invoiceId = params.id.replace('.pdf', '')
     console.log('🔍 GET /api/invoices/pdf/[id] called with ID:', invoiceId)
@@ -56,7 +51,7 @@ export async function GET(
       }
     }
     
-    // Get the invoice details from database
+    // Get the invoice details from database (without invoice_items relationship)
     console.log('🔍 Fetching full invoice details...')
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
@@ -77,8 +72,7 @@ export async function GET(
         booking:bookings(
           id,
           service:services(title, description, price)
-        ),
-        invoice_items(*)
+        )
       `)
       .eq('id', invoiceId)
       .single()
