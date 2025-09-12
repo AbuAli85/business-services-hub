@@ -54,7 +54,7 @@ export type NotificationType =
   | 'client_feedback'
   | 'team_mention'
 
-export type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent'
+export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
 
 export interface NotificationData {
   // Task related
