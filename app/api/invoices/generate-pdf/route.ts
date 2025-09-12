@@ -117,14 +117,24 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   doc.text(`Issued: ${createdDate}`, 135, 33)
   doc.text(`Due: ${dueDate}`, 135, 38)
 
-  // Status badge - positioned below invoice box to prevent overlap
+  // Enhanced status badge - colored pill style in top-right corner
   const status = invoice.status || 'pending'
-  const color = status === 'paid' ? success : status === 'overdue' ? warning : accent
+  const statusColors = {
+    paid: success,
+    pending: warning,
+    overdue: [220, 38, 38], // Red
+    draft: gray
+  }
+  const color = statusColors[status as keyof typeof statusColors] || accent
+  
+  // Rounded pill background
   doc.setFillColor(color[0], color[1], color[2])
-  doc.rect(130, 48, 35, 8, 'F')
+  doc.roundedRect(140, 42, 30, 8, 4, 4, 'F')
+  
+  // Status text
   doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(9).setFont('helvetica', 'bold')
-  doc.text(status.toUpperCase(), 135, 53)
+  doc.setFontSize(8).setFont('helvetica', 'bold')
+  doc.text(status.toUpperCase(), 155, 47, { align: 'center' })
 
   // === Two-Column Provider & Client Section ===
   // Provider section (left)
@@ -219,10 +229,10 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
       doc.text(line, colPositions.desc, currentY + (lineIndex * lineHeight))
     })
     
-    // Position quantity, rate, and amount at the top of the row
+    // Position quantity, rate, and amount at the top of the row with proper spacing
     doc.text(qty.toString(), colPositions.qty + colWidths.qty/2, y + 5, { align: 'center' })
-    doc.text(fmtCurrency(price), colPositions.rate + colWidths.rate, y + 5, { align: 'right' })
-    doc.text(fmtCurrency(amount), colPositions.amount + colWidths.amount, y + 5, { align: 'right' })
+    doc.text(fmtCurrency(price), colPositions.rate + colWidths.rate - 2, y + 5, { align: 'right' })
+    doc.text(fmtCurrency(amount), colPositions.amount + colWidths.amount - 2, y + 5, { align: 'right' })
     
     // Add description if available and not too long
     if (item.description && item.description !== item.title) {
@@ -260,18 +270,18 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   doc.setLineWidth(1)
   doc.rect(tableX, 110, tableWidth, y - 110)
 
-  // === Professional Totals Section ===
+  // === Enhanced Totals Section ===
   y += 15
   const totalsX = 120
   const totalsWidth = 70
-  const totalsHeight = 40
+  const totalsHeight = 50
 
-  // Totals box background
-  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(totalsX, y, totalsWidth, totalsHeight, 'F')
+  // Totals box background with enhanced styling
+  doc.setFillColor(248, 250, 252) // Very light gray
+  doc.roundedRect(totalsX, y, totalsWidth, totalsHeight, 4, 4, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(totalsX, y, totalsWidth, totalsHeight, 'S')
+  doc.roundedRect(totalsX, y, totalsWidth, totalsHeight, 4, 4, 'S')
 
   // Subtotal
   doc.setTextColor(gray[0], gray[1], gray[2])
@@ -284,52 +294,63 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
     doc.setFont('helvetica', 'normal').text(fmtCurrency(taxAmount), totalsX + 60, y + 25, { align: 'right' })
   }
 
-  // Total line with emphasis
+  // Discount line (if applicable)
+  const discountAmount = invoice.discount_amount || 0
+  if (discountAmount > 0) {
+    doc.setFont('helvetica', 'bold').text('Discount:', totalsX + 5, y + 35)
+    doc.setFont('helvetica', 'normal').text(`-${fmtCurrency(discountAmount)}`, totalsX + 60, y + 35, { align: 'right' })
+  }
+
+  // Separator line
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.line(totalsX + 5, y + 38, totalsX + totalsWidth - 5, y + 38)
+
+  // Total line with enhanced emphasis
   doc.setFillColor(primary[0], primary[1], primary[2])
-  doc.rect(totalsX, y + 30, totalsWidth, 10, 'F')
+  doc.roundedRect(totalsX, y + 40, totalsWidth, 10, 4, 4, 'F')
   doc.setTextColor(white[0], white[1], white[2])
   doc.setFontSize(14).setFont('helvetica', 'bold')
-  doc.text('TOTAL', totalsX + 5, y + 37)
-  doc.text(fmtCurrency(total), totalsX + 60, y + 37, { align: 'right' })
+  doc.text('TOTAL', totalsX + 5, y + 47)
+  doc.text(fmtCurrency(total), totalsX + 60, y + 47, { align: 'right' })
 
-  // === Professional Footer ===
+  // === Enhanced Footer ===
   // Top border line
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.line(20, 260, 190, 260)
+  doc.line(20, 270, 190, 270)
 
   // Footer background
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(0, 260, 210, 30, 'F')
+  doc.rect(0, 270, 210, 30, 'F')
 
-  // QR Code section (left)
+  // QR Code section (aligned with totals box)
   try {
     const qrText = invoice.payment_url || 
       `Invoice ${invoiceNumber}, Total: ${fmtCurrency(total)}`
     const qrDataUrl = await QRCode.toDataURL(qrText, { width: 100 })
-    doc.addImage(qrDataUrl, 'PNG', 20, 265, 25, 25)
+    doc.addImage(qrDataUrl, 'PNG', totalsX, 275, 25, 25)
     doc.setTextColor(gray[0], gray[1], gray[2])
     doc.setFontSize(8).setFont('helvetica', 'normal')
-    doc.text('Scan to Pay', 20, 295)
+    doc.text('Scan to Pay', totalsX + 2, 305)
   } catch (error) {
     console.warn('Failed to generate QR code:', error)
   }
 
-  // Thank you message (center-left)
+  // Thank you message (centered)
   doc.setTextColor(gray[0], gray[1], gray[2])
-  doc.setFontSize(10).setFont('helvetica', 'bold')
-  doc.text('Thank you for your business!', 50, 275)
+  doc.setFontSize(12).setFont('helvetica', 'bold')
+  doc.text('Thank you for your business!', 105, 285, { align: 'center' })
   
-  // Compliance information (right)
-  doc.setFontSize(8).setFont('helvetica', 'normal')
+  // Compliance information (bottom-right, smaller font)
+  doc.setFontSize(7).setFont('helvetica', 'normal')
   if (vatNumber) {
-    doc.text(`VAT No: ${vatNumber}`, 150, 275)
+    doc.text(`VAT: ${vatNumber}`, 150, 295, { align: 'right' })
   }
   if (crNumber) {
-    doc.text(`CR No: ${crNumber}`, 150, 280)
+    doc.text(`CR: ${crNumber}`, 150, 300, { align: 'right' })
   }
-  doc.text('This invoice was generated electronically', 150, 285)
-  doc.text('and is valid without signature.', 150, 290)
+  doc.text('This invoice is valid without signature', 150, 305, { align: 'right' })
   
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
