@@ -828,7 +828,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
                 <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
                   <Checkbox
                     checked={selectAll}
-                    onCheckedChange={setSelectAll}
+                    onCheckedChange={(checked) => setSelectAll(checked === true)}
                   />
                   <div className="flex-1 grid grid-cols-12 gap-4 text-sm font-medium text-gray-600">
                     <div className="col-span-3">Service</div>
@@ -850,7 +850,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
                           checked={selectedInvoices.has(invoice.id)}
                           onCheckedChange={(checked) => {
                             const newSelected = new Set(selectedInvoices)
-                            if (checked) {
+                            if (checked === true) {
                               newSelected.add(invoice.id)
                             } else {
                               newSelected.delete(invoice.id)
