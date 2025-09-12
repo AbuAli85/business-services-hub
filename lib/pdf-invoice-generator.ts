@@ -214,13 +214,15 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('Bill To', 120, yPos)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(clientName, 120, yPos + 8)
+
+  // Show company name if available, otherwise just client name
   if (clientCompany) {
-    doc.text(clientCompany, 120, yPos + 14)
-  } else {
-    // Show client name as company if no company name
+    doc.text(clientCompany, 120, yPos + 8)
     doc.text(clientName, 120, yPos + 14)
+  } else {
+    doc.text(clientName, 120, yPos + 8)
   }
+
   if (clientAddress) {
     doc.text(clientAddress, 120, yPos + 20)
   }
@@ -342,18 +344,30 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.setLineWidth(0.5)
   doc.rect(summaryX, summaryY, summaryWidth, 30, 'S')
 
+  // Calculate amounts safely
+  const safeSubtotal = invoice.invoice_items?.length
+    ? invoice.invoice_items.reduce((acc: number, item: any) => {
+        const qty = item.qty || 1
+        const price = item.price || item.rate || 0
+        return acc + qty * price
+      }, 0)
+    : subtotal
+
+  const safeTaxAmount = taxRate > 0 ? (safeSubtotal * taxRate / 100) : 0
+  const safeTotal = safeSubtotal + safeTaxAmount
+
   // Summary rows
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(10).setFont('helvetica', 'normal')
   
   // Subtotal row
   doc.text('Subtotal:', summaryX + 5, summaryY + 8)
-  doc.text(formatCurrency(subtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
+  doc.text(formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
   
-  // Tax row (if applicable)
+  // Tax row (only if > 0)
   if (taxRate > 0) {
     doc.text(`Tax (${taxRate}%):`, summaryX + 5, summaryY + 16)
-    doc.text(formatCurrency(taxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
+    doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
   }
   
   // Separator line
@@ -361,14 +375,14 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.setLineWidth(0.5)
   doc.line(summaryX + 5, summaryY + 20, summaryX + summaryWidth - 5, summaryY + 20)
   
-  // Total row (highlighted)
+  // Total row (highlighted with strong dark bar)
   doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 6, 'F')
+  doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 8, 'F')
   
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
-  doc.setFontSize(11).setFont('helvetica', 'bold')
-  doc.text('TOTAL:', summaryX + 8, summaryY + 26)
-  doc.text(formatCurrency(total, 'OMR'), summaryX + summaryWidth - 8, summaryY + 26, { align: 'right' })
+  doc.setFontSize(12).setFont('helvetica', 'bold')
+  doc.text('TOTAL:', summaryX + 8, summaryY + 28)
+  doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
 
   // === PAYMENT AND TERMS SECTION ===
   const paymentY = summaryY + 40
