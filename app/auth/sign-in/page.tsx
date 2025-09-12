@@ -167,11 +167,15 @@ export default function SignInPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-6">
             <div className="w-24 h-24 flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200 p-3">
-              <UserLogo 
-                email={email} 
-                className="w-full h-full object-contain"
-                showFallback={true}
-              />
+              {/^\S+@\S+\.\S+$/.test(email) ? (
+                <UserLogo 
+                  email={email} 
+                  className="w-full h-full object-contain"
+                  showFallback={true}
+                />
+              ) : (
+                <PlatformLogo className="w-full h-full object-contain" />
+              )}
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>

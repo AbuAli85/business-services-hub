@@ -19,7 +19,8 @@ export function UserLogo({ email, className = '', showFallback = true }: UserLog
   }, [email])
 
   const fetchUserLogo = async () => {
-    if (!email) {
+    // Only attempt lookup when email appears valid to avoid noisy 406s
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       setLoading(false)
       return
     }
