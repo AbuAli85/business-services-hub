@@ -47,7 +47,10 @@ function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
 }
 
 // Helper function for currency formatting
-function formatCurrency(value: number, currency = 'OMR'): string {
+function formatCurrency(value: number, currency = 'USD'): string {
+  if (currency === 'USD') {
+    return `$${value.toFixed(2)}`
+  }
   return new Intl.NumberFormat('en-OM', { 
     style: 'currency', 
     currency: currency,
@@ -130,7 +133,13 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   // === BILLING INFORMATION SECTIONS ===
   let yPos = 55
 
-  // Billing Information (Provider) - Left side
+  // Billing Information (Provider) - Left side with background
+  doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+  doc.rect(15, yPos - 5, 90, 40, 'F')
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.rect(15, yPos - 5, 90, 40, 'S')
+
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.text('Billing Information:', 20, yPos)
@@ -141,7 +150,13 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text(`Phone Number: ${companyPhone}`, 20, yPos + 20)
   doc.text(`Email: ${companyEmail}`, 20, yPos + 26)
 
-  // Bill To (Client) - Right side
+  // Bill To (Client) - Right side with matching background
+  doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+  doc.rect(115, yPos - 5, 90, 40, 'F')
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.rect(115, yPos - 5, 90, 40, 'S')
+
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.text('Bill To:', 120, yPos)
@@ -150,6 +165,9 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text(`Customer Name: ${clientName}`, 120, yPos + 8)
   if (clientCompany) {
     doc.text(`Company: ${clientCompany}`, 120, yPos + 14)
+  } else {
+    // Show client name as company if no company name
+    doc.text(`Company: ${clientName}`, 120, yPos + 14)
   }
   if (clientAddress) {
     doc.text(`Billing Address: ${clientAddress}`, 120, yPos + 20)
@@ -222,6 +240,11 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
       doc.rect(20, currentY, tableWidth, 8, 'F')
     }
 
+    // Row borders
+    doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+    doc.setLineWidth(0.3)
+    doc.rect(20, currentY, tableWidth, 8, 'S')
+
     // Row content
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
     doc.setFontSize(9).setFont('helvetica', 'normal')
@@ -236,8 +259,8 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
     }
     
     doc.text(String(qty), 125, currentY + 6)
-    doc.text(formatCurrency(price).replace('OMR', '$'), 150, currentY + 6)
-    doc.text(formatCurrency(amount).replace('OMR', '$'), 175, currentY + 6)
+    doc.text(formatCurrency(price, 'USD'), 150, currentY + 6)
+    doc.text(formatCurrency(amount, 'USD'), 175, currentY + 6)
 
     currentY += 8
   })
@@ -254,12 +277,12 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('Summary of Charges:', 25, summaryY + 8)
   
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(`Subtotal: ${formatCurrency(subtotal).replace('OMR', '$')}`, 25, summaryY + 14)
+  doc.text(`Subtotal: ${formatCurrency(subtotal, 'USD')}`, 25, summaryY + 14)
   if (taxRate > 0) {
-    doc.text(`Sales Tax (${taxRate}%): ${formatCurrency(taxAmount).replace('OMR', '$')}`, 25, summaryY + 18)
+    doc.text(`Sales Tax (${taxRate}%): ${formatCurrency(taxAmount, 'USD')}`, 25, summaryY + 18)
   }
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text(`Total Amount Due: ${formatCurrency(total).replace('OMR', '$')}`, 25, summaryY + 24)
+  doc.text(`Total Amount Due: ${formatCurrency(total, 'USD')}`, 25, summaryY + 24)
 
   // === PAYMENT AND TERMS SECTION ===
   const paymentY = summaryY + 30
@@ -301,14 +324,32 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('Authorized Signature', 20, footerY + 12)
   doc.text(companyName, 20, footerY + 16)
 
+  // QR Code section (right side)
+  try {
+    const qrText = invoice.payment_url || 
+      `Invoice ${invoiceNumber}, Total: ${formatCurrency(total, 'USD')}`
+    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 60 })
+    doc.addImage(qrDataUrl, 'PNG', 150, footerY, 20, 20)
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+    doc.setFontSize(8).setFont('helvetica', 'normal')
+    doc.text('Scan to Pay', 152, footerY + 23)
+  } catch (error) {
+    console.warn('Failed to generate QR code:', error)
+  }
+
+  // Compliance text
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  doc.setFontSize(8).setFont('helvetica', 'normal')
+  doc.text('This invoice is valid without signature', 20, footerY + 25)
+
   // Contact information footer bar
   doc.setFillColor(colors.darkBlue[0], colors.darkBlue[1], colors.darkBlue[2])
-  doc.rect(0, footerY + 25, 210, 10, 'F')
+  doc.rect(0, footerY + 30, 210, 10, 'F')
   
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(9).setFont('helvetica', 'normal')
-  doc.text(`📞 ${companyPhone}`, 20, footerY + 32)
-  doc.text(`✉️ ${companyEmail}`, 120, footerY + 32)
+  doc.text(`📞 ${companyPhone}`, 20, footerY + 37)
+  doc.text(`✉️ ${companyEmail}`, 120, footerY + 37)
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
