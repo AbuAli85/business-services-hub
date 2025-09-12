@@ -402,6 +402,19 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
 
+    // Store PDF URL in database (for future downloads)
+    const pdfUrl = `/api/invoices/pdf/${invoiceId}`
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ pdf_url: pdfUrl })
+      .eq('id', invoiceId)
+
+    if (updateError) {
+      console.warn('⚠️ Could not update PDF URL in database:', updateError.message)
+    } else {
+      console.log('✅ PDF URL stored in database')
+    }
+
     return new NextResponse(pdfBuffer as any, {
       status: 200,
       headers: {

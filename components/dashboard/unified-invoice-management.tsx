@@ -474,14 +474,57 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
       })
       
       if (response.ok) {
-        await fetchInvoices()
-        toast.success('PDF generated successfully')
+        // Get the PDF blob from the response
+        const blob = await response.blob()
+        
+        // Create a download link
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        
+        toast.success('PDF downloaded successfully')
       } else {
-        toast.error('Failed to generate PDF')
+        const errorData = await response.json()
+        console.error('PDF generation failed:', errorData)
+        toast.error(`Failed to generate PDF: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF')
+    }
+  }
+
+  const handleDownloadPDF = async (invoice: InvoiceRecord) => {
+    try {
+      // Try to download existing PDF first
+      const response = await fetch(`/api/invoices/pdf/${invoice.id}`, {
+        method: 'GET'
+      })
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        toast.success('PDF downloaded successfully')
+      } else {
+        // If no existing PDF, generate one
+        await handleGeneratePDF(invoice)
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error)
+      // Fallback to generating PDF
+      await handleGeneratePDF(invoice)
     }
   }
 
