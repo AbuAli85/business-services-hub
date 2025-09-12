@@ -102,6 +102,57 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   
   // Status mapping
   const status = invoice.status || 'pending'
+
+  // === HEADER SECTION ===
+  // Logo slot (40x20mm) - top-left
+  const logoUrl = invoice.provider?.company?.logo_url
+  if (logoUrl && (logoUrl.includes('.png') || logoUrl.includes('.jpg') || logoUrl.includes('.jpeg'))) {
+    // TODO: Implement actual logo fetching and rendering
+    // For now, show placeholder
+    doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+    doc.rect(20, 15, 40, 20, 'F')
+    doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+    doc.rect(20, 15, 40, 20, 'S')
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+    doc.setFontSize(8).setFont('helvetica', 'normal')
+    doc.text('LOGO', 35, 27, { align: 'center' })
+  } else {
+    // No logo - show company name in logo area
+    doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+    doc.rect(20, 15, 40, 20, 'F')
+    doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+    doc.rect(20, 15, 40, 20, 'S')
+    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+    doc.setFontSize(10).setFont('helvetica', 'bold')
+    doc.text(companyName.split(' ')[0], 25, 25)
+    doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
+  }
+
+  // Company name + tagline beside logo
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  doc.setFontSize(18).setFont('helvetica', 'bold')
+  doc.text(companyName, 70, 25)
+  doc.setFontSize(10).setFont('helvetica', 'normal')
+  doc.text('Professional Services & Solutions', 70, 32)
+
+  // Invoice Info Box - highlighted box (light gray with blue border) at top-right
+  doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+  doc.rect(130, 15, 70, 35, 'F')
+  doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
+  doc.setLineWidth(1.5)
+  doc.rect(130, 15, 70, 35, 'S')
+
+  // Invoice details in the box
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  doc.setFontSize(14).setFont('helvetica', 'bold')
+  doc.text('INVOICE', 195, 22, { align: 'right' })
+  
+  doc.setFontSize(10).setFont('helvetica', 'normal')
+  doc.text(`Invoice #: ${invoiceNumber}`, 195, 28, { align: 'right' })
+  doc.text(`Date: ${createdDate}`, 195, 34, { align: 'right' })
+  doc.text(`Due: ${dueDate}`, 195, 40, { align: 'right' })
+  
+  // Status badge
   const statusColors = {
     paid: colors.success,
     pending: colors.warning,
@@ -109,68 +160,58 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
     draft: colors.gray
   }
   const statusColor = statusColors[status as keyof typeof statusColors] || colors.gray
-
-  // === HEADER SECTION ===
-  // Main title "Invoice Service" - large and prominent
-  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.setFontSize(24).setFont('helvetica', 'bold')
-  doc.text('Invoice Service', 20, 25)
-
-  // Dark blue header bar with invoice details
-  doc.setFillColor(colors.darkBlue[0], colors.darkBlue[1], colors.darkBlue[2])
-  doc.rect(0, 30, 210, 15, 'F')
   
-  // Invoice details in white text on dark background
+  doc.setFillColor(statusColor[0], statusColor[1], statusColor[2])
+  doc.rect(135, 44, 25, 6, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
-  doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text(`Invoice Number: ${invoiceNumber}`, 20, 40)
-  doc.text(`Invoice Date: ${createdDate}`, 20, 46)
-  
-  // Company logo and name on the right
-  doc.setFontSize(18).setFont('helvetica', 'bold')
-  doc.text(companyName, 150, 40)
+  doc.setFontSize(8).setFont('helvetica', 'bold')
+  doc.text(status.toUpperCase(), 147, 48, { align: 'center' })
 
   // === BILLING INFORMATION SECTIONS ===
-  let yPos = 55
+  let yPos = 60
 
-  // Billing Information (Provider) - Left side with background
+  // Provider Card (From) - Left side with proper header
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(15, yPos - 5, 90, 40, 'F')
+  doc.rect(15, yPos - 5, 90, 45, 'F')
   doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
   doc.setLineWidth(0.5)
-  doc.rect(15, yPos - 5, 90, 40, 'S')
+  doc.rect(15, yPos - 5, 90, 45, 'S')
 
+  // Header "From" in bold
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('Billing Information:', 20, yPos)
+  doc.text('From', 20, yPos)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(`Company Name: ${companyName}`, 20, yPos + 8)
-  doc.text(`Company Address: ${companyAddress}`, 20, yPos + 14)
-  doc.text(`Phone Number: ${companyPhone}`, 20, yPos + 20)
-  doc.text(`Email: ${companyEmail}`, 20, yPos + 26)
+  doc.text(companyName, 20, yPos + 8)
+  doc.text(companyAddress, 20, yPos + 14)
+  doc.text(`${companyPhone} | ${companyEmail}`, 20, yPos + 20)
+  if (vatNumber) {
+    doc.text(`VAT: ${vatNumber}`, 20, yPos + 26)
+  }
+  if (crNumber) {
+    doc.text(`CR: ${crNumber}`, 20, yPos + 32)
+  }
 
-  // Bill To (Client) - Right side with matching background
+  // Client Card (Bill To) - Right side with matching header
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(115, yPos - 5, 90, 40, 'F')
+  doc.rect(115, yPos - 5, 90, 45, 'F')
   doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
   doc.setLineWidth(0.5)
-  doc.rect(115, yPos - 5, 90, 40, 'S')
+  doc.rect(115, yPos - 5, 90, 45, 'S')
 
+  // Header "Bill To" in bold
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('Bill To:', 120, yPos)
+  doc.text('Bill To', 120, yPos)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(`Customer Name: ${clientName}`, 120, yPos + 8)
+  doc.text(clientName, 120, yPos + 8)
   if (clientCompany) {
-    doc.text(`Company: ${clientCompany}`, 120, yPos + 14)
-  } else {
-    // Show client name as company if no company name
-    doc.text(`Company: ${clientName}`, 120, yPos + 14)
+    doc.text(clientCompany, 120, yPos + 14)
   }
   if (clientAddress) {
-    doc.text(`Billing Address: ${clientAddress}`, 120, yPos + 20)
+    doc.text(clientAddress, 120, yPos + 20)
   }
   if (clientPhone) {
     doc.text(`Phone: ${clientPhone}`, 120, yPos + 26)
@@ -180,7 +221,7 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   }
 
   // === SERVICE DETAILS TABLE ===
-  yPos = yPos + 40
+  yPos = yPos + 50
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.text('Service Details:', 20, yPos)
@@ -199,9 +240,9 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.setFontSize(10).setFont('helvetica', 'bold')
   doc.text('No', 22, tableY + 6)
   doc.text('Item Description', 40, tableY + 6)
-  doc.text('Hours/Units', 125, tableY + 6)
-  doc.text('Rate/Unit ($)', 150, tableY + 6)
-  doc.text('Total ($)', 175, tableY + 6)
+  doc.text('Qty', 125, tableY + 6)
+  doc.text('Rate ($)', 150, tableY + 6)
+  doc.text('Amount ($)', 175, tableY + 6)
 
   // Table rows
   let currentY = tableY + 8
@@ -237,55 +278,84 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
     // Alternating row background
     if (index % 2 === 0) {
       doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-      doc.rect(20, currentY, tableWidth, 8, 'F')
+      doc.rect(20, currentY, tableWidth, 10, 'F')
     }
 
     // Row borders
     doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
     doc.setLineWidth(0.3)
-    doc.rect(20, currentY, tableWidth, 8, 'S')
+    doc.rect(20, currentY, tableWidth, 10, 'S')
 
     // Row content
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
     doc.setFontSize(9).setFont('helvetica', 'normal')
-    doc.text(String(index + 1), 22, currentY + 6)
     
-    // Item description (with wrapping)
+    // No. column (left-aligned)
+    doc.text(String(index + 1), 22, currentY + 7)
+    
+    // Item description (with better wrapping)
     const description = item.title || item.description || 'Service Item'
     const descriptionLines = splitText(doc, description, 75)
-    doc.text(descriptionLines[0], 40, currentY + 6)
+    doc.text(descriptionLines[0], 40, currentY + 7)
     if (descriptionLines.length > 1) {
-      doc.text(descriptionLines[1], 40, currentY + 10)
+      doc.text(descriptionLines[1], 40, currentY + 11)
     }
     
-    doc.text(String(qty), 125, currentY + 6)
-    doc.text(formatCurrency(price, 'USD'), 150, currentY + 6)
-    doc.text(formatCurrency(amount, 'USD'), 175, currentY + 6)
+    // Qty column (center-aligned)
+    doc.text(String(qty), 137, currentY + 7, { align: 'center' })
+    
+    // Rate column (right-aligned)
+    doc.text(formatCurrency(price, 'USD'), 170, currentY + 7, { align: 'right' })
+    
+    // Amount column (right-aligned)
+    doc.text(formatCurrency(amount, 'USD'), 195, currentY + 7, { align: 'right' })
 
-    currentY += 8
+    currentY += 10
   })
 
   // === SUMMARY SECTION ===
-  // Dark blue summary box
-  const summaryY = currentY + 10
-  doc.setFillColor(colors.darkBlue[0], colors.darkBlue[1], colors.darkBlue[2])
-  doc.rect(20, summaryY, tableWidth, 20, 'F')
-
-  // Summary text
-  doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
-  doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('Summary of Charges:', 25, summaryY + 8)
+  // Right-aligned summary table
+  const summaryY = currentY + 15
+  const summaryWidth = 80
+  const summaryX = 110 // Right-aligned
   
+  // Summary table background
+  doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+  doc.rect(summaryX, summaryY, summaryWidth, 30, 'F')
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.rect(summaryX, summaryY, summaryWidth, 30, 'S')
+
+  // Summary rows
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(`Subtotal: ${formatCurrency(subtotal, 'USD')}`, 25, summaryY + 14)
+  
+  // Subtotal row
+  doc.text('Subtotal:', summaryX + 5, summaryY + 8)
+  doc.text(formatCurrency(subtotal, 'USD'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
+  
+  // Tax row (if applicable)
   if (taxRate > 0) {
-    doc.text(`Sales Tax (${taxRate}%): ${formatCurrency(taxAmount, 'USD')}`, 25, summaryY + 18)
+    doc.text(`Tax (${taxRate}%):`, summaryX + 5, summaryY + 16)
+    doc.text(formatCurrency(taxAmount, 'USD'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
   }
-  doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text(`Total Amount Due: ${formatCurrency(total, 'USD')}`, 25, summaryY + 24)
+  
+  // Separator line
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.line(summaryX + 5, summaryY + 20, summaryX + summaryWidth - 5, summaryY + 20)
+  
+  // Total row (highlighted)
+  doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 6, 'F')
+  
+  doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
+  doc.setFontSize(11).setFont('helvetica', 'bold')
+  doc.text('TOTAL:', summaryX + 8, summaryY + 26)
+  doc.text(formatCurrency(total, 'USD'), summaryX + summaryWidth - 8, summaryY + 26, { align: 'right' })
 
   // === PAYMENT AND TERMS SECTION ===
-  const paymentY = summaryY + 30
+  const paymentY = summaryY + 40
   
   // Payment Information (Left side)
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
@@ -293,14 +363,14 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('Payment Information:', 20, paymentY)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text('Payment Method: Credit Card', 20, paymentY + 8)
+  doc.text('Payment Method: Bank Transfer', 20, paymentY + 8)
   doc.text(`Due Date: ${dueDate}`, 20, paymentY + 14)
-  if (vatNumber) {
-    doc.text(`VAT Number: ${vatNumber}`, 20, paymentY + 20)
-  }
-  if (crNumber) {
-    doc.text(`CR Number: ${crNumber}`, 20, paymentY + 26)
-  }
+  
+  // Bank details for Oman clients
+  doc.text('Bank Details:', 20, paymentY + 22)
+  doc.text('Bank: Bank Muscat', 20, paymentY + 28)
+  doc.text('Account: 1234-5678-9012-3456', 20, paymentY + 34)
+  doc.text('IBAN: OM12345678901234567890', 20, paymentY + 40)
 
   // Terms and Conditions (Right side)
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
@@ -312,11 +382,12 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('• Late payments may incur additional charges.', 120, paymentY + 12)
   doc.text('• Please make checks payable to ' + companyName, 120, paymentY + 16)
   doc.text('• For questions, contact us at ' + companyEmail, 120, paymentY + 20)
+  doc.text('• This invoice is valid without signature', 120, paymentY + 24)
 
   // === FOOTER SECTION ===
-  const footerY = paymentY + 35
+  const footerY = paymentY + 50
   
-  // Date and signature line
+  // Date and signature line (left side)
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.text(`Date: ${createdDate}`, 20, footerY)
@@ -324,32 +395,39 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('Authorized Signature', 20, footerY + 12)
   doc.text(companyName, 20, footerY + 16)
 
-  // QR Code section (right side)
+  // QR Code section (left side, below signature)
   try {
     const qrText = invoice.payment_url || 
       `Invoice ${invoiceNumber}, Total: ${formatCurrency(total, 'USD')}`
-    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 60 })
-    doc.addImage(qrDataUrl, 'PNG', 150, footerY, 20, 20)
+    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 50 })
+    doc.addImage(qrDataUrl, 'PNG', 20, footerY + 20, 15, 15)
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
     doc.setFontSize(8).setFont('helvetica', 'normal')
-    doc.text('Scan to Pay', 152, footerY + 23)
+    doc.text('Scan to Pay', 22, footerY + 37)
   } catch (error) {
     console.warn('Failed to generate QR code:', error)
   }
 
-  // Compliance text
+  // Thank you message (centered)
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  doc.setFontSize(12).setFont('helvetica', 'bold')
+  doc.text('Thank you for your business!', 105, footerY + 25, { align: 'center' })
+
+  // Compliance text (right side)
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.setFontSize(8).setFont('helvetica', 'normal')
-  doc.text('This invoice is valid without signature', 20, footerY + 25)
+  doc.text('This invoice is valid without signature', 190, footerY + 8, { align: 'right' })
+  doc.text('VAT: ' + (vatNumber || 'N/A'), 190, footerY + 12, { align: 'right' })
+  doc.text('CR: ' + (crNumber || 'N/A'), 190, footerY + 16, { align: 'right' })
 
-  // Contact information footer bar
+  // Contact information footer bar (sleeker)
   doc.setFillColor(colors.darkBlue[0], colors.darkBlue[1], colors.darkBlue[2])
-  doc.rect(0, footerY + 30, 210, 10, 'F')
+  doc.rect(0, footerY + 40, 210, 8, 'F')
   
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
-  doc.setFontSize(9).setFont('helvetica', 'normal')
-  doc.text(`📞 ${companyPhone}`, 20, footerY + 37)
-  doc.text(`✉️ ${companyEmail}`, 120, footerY + 37)
+  doc.setFontSize(8).setFont('helvetica', 'normal')
+  doc.text(`📞 ${companyPhone}`, 20, footerY + 45)
+  doc.text(`✉️ ${companyEmail}`, 120, footerY + 45)
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
