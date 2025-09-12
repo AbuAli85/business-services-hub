@@ -71,13 +71,18 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   doc.setFillColor(primary[0], primary[1], primary[2])
   doc.rect(0, 0, 210, 50, 'F')
 
-  // Logo in top-left
-  if (companyLogoUrl) {
+  // Logo in top-left with file type validation
+  if (companyLogoUrl && (companyLogoUrl.endsWith('.png') || companyLogoUrl.endsWith('.jpg') || companyLogoUrl.endsWith('.jpeg'))) {
     try {
       const logoResponse = await fetch(companyLogoUrl)
-      const logoBuffer = await logoResponse.arrayBuffer()
-      const logoBase64 = Buffer.from(logoBuffer).toString('base64')
-      doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 20, 10, 40, 30)
+      if (logoResponse.ok) {
+        const logoBuffer = await logoResponse.arrayBuffer()
+        const logoBase64 = Buffer.from(logoBuffer).toString('base64')
+        const fileExtension = companyLogoUrl.split('.').pop()?.toUpperCase() || 'PNG'
+        doc.addImage(`data:image/${fileExtension.toLowerCase()};base64,${logoBase64}`, fileExtension, 20, 10, 40, 30)
+      } else {
+        throw new Error(`Logo fetch failed: ${logoResponse.status}`)
+      }
     } catch (error) {
       console.warn('Failed to load company logo:', error)
       // Fallback to text logo
@@ -118,14 +123,14 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   doc.text(`Issued: ${createdDate}`, 135, 33)
   doc.text(`Due: ${dueDate}`, 135, 38)
 
-  // Status badge
+  // Status badge - positioned below invoice box to prevent overlap
   const status = invoice.status || 'pending'
   const color = status === 'paid' ? success : status === 'overdue' ? warning : accent
   doc.setFillColor(color[0], color[1], color[2])
-  doc.rect(135, 40, 30, 8, 'F')
+  doc.rect(130, 48, 35, 8, 'F')
   doc.setTextColor(white[0], white[1], white[2])
   doc.setFontSize(9).setFont('helvetica', 'bold')
-  doc.text(status.toUpperCase(), 140, 45)
+  doc.text(status.toUpperCase(), 135, 53)
 
   // === Two-Column Provider & Client Section ===
   // Provider section (left)
@@ -155,15 +160,31 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   const tableWidth = 170
   const tableX = 20
   
+  // Dynamic column widths (percentage-based)
+  const colWidths = {
+    desc: 90,    // Description column width
+    qty: 20,     // Quantity column width
+    rate: 30,    // Rate column width
+    amount: 30   // Amount column width
+  }
+  
+  // Calculate column positions
+  const colPositions = {
+    desc: tableX + 5,
+    qty: tableX + colWidths.desc + 5,
+    rate: tableX + colWidths.desc + colWidths.qty + 5,
+    amount: tableX + colWidths.desc + colWidths.qty + colWidths.rate + 5
+  }
+  
   // Table header with professional styling
   doc.setFillColor(accent[0], accent[1], accent[2])
   doc.rect(tableX, y, tableWidth, 12, 'F')
   doc.setTextColor(white[0], white[1], white[2])
   doc.setFontSize(11).setFont('helvetica', 'bold')
-  doc.text('Description', tableX + 5, y + 8)
-  doc.text('Qty', tableX + 100, y + 8, { align: 'center' })
-  doc.text('Rate', tableX + 120, y + 8, { align: 'right' })
-  doc.text('Amount', tableX + 150, y + 8, { align: 'right' })
+  doc.text('Description', colPositions.desc, y + 8)
+  doc.text('Qty', colPositions.qty + colWidths.qty/2, y + 8, { align: 'center' })
+  doc.text('Rate', colPositions.rate + colWidths.rate, y + 8, { align: 'right' })
+  doc.text('Amount', colPositions.amount + colWidths.amount, y + 8, { align: 'right' })
 
   y += 15
   doc.setTextColor(gray[0], gray[1], gray[2])
@@ -182,32 +203,44 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
     const price = item.price || item.rate || 0
     const amount = qty * price
 
+    // Handle long descriptions with text wrapping
+    const itemTitle = item.title || 'Item'
+    const wrappedTitle = doc.splitTextToSize(itemTitle, colWidths.desc - 10)
+    
+    // Calculate dynamic row height based on wrapped text
+    const baseRowHeight = 12
+    const lineHeight = 5
+    const titleLines = wrappedTitle.length
+    const rowHeight = Math.max(baseRowHeight, titleLines * lineHeight)
+    
     // Alternating row colors
     if (index % 2 === 0) {
       doc.setFillColor(248, 250, 252) // Very light gray
-      doc.rect(tableX, y - 3, tableWidth, 12, 'F')
+      doc.rect(tableX, y - 3, tableWidth, rowHeight, 'F')
     }
 
-    // Handle long descriptions with text wrapping
-    const itemTitle = item.title || 'Item'
-    const wrappedTitle = doc.splitTextToSize(itemTitle, 85)
+    // Add item row with proper alignment and dynamic positioning
+    let currentY = y + 5
+    wrappedTitle.forEach((line: string, lineIndex: number) => {
+      doc.text(line, colPositions.desc, currentY + (lineIndex * lineHeight))
+    })
     
-    // Add item row with proper alignment
-    doc.text(wrappedTitle, tableX + 5, y + 5)
-    doc.text(qty.toString(), tableX + 100, y + 5, { align: 'center' })
-    doc.text(fmtCurrency(price), tableX + 120, y + 5, { align: 'right' })
-    doc.text(fmtCurrency(amount), tableX + 150, y + 5, { align: 'right' })
+    // Position quantity, rate, and amount at the top of the row
+    doc.text(qty.toString(), colPositions.qty + colWidths.qty/2, y + 5, { align: 'center' })
+    doc.text(fmtCurrency(price), colPositions.rate + colWidths.rate, y + 5, { align: 'right' })
+    doc.text(fmtCurrency(amount), colPositions.amount + colWidths.amount, y + 5, { align: 'right' })
     
     // Add description if available and not too long
     if (item.description && item.description !== item.title) {
-      y += 4
-      const wrappedDesc = doc.splitTextToSize(item.description, 85)
+      const wrappedDesc = doc.splitTextToSize(item.description, colWidths.desc - 10)
       doc.setFontSize(8)
-      doc.text(wrappedDesc, tableX + 5, y + 5)
+      wrappedDesc.forEach((line: string, lineIndex: number) => {
+        doc.text(line, colPositions.desc, currentY + (titleLines + lineIndex + 1) * lineHeight)
+      })
       doc.setFontSize(10)
     }
     
-    y += 12
+    y += rowHeight
     
     // Page break if needed
     if (y > 250) {
@@ -218,10 +251,10 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
       doc.rect(tableX, y, tableWidth, 12, 'F')
       doc.setTextColor(white[0], white[1], white[2])
       doc.setFontSize(11).setFont('helvetica', 'bold')
-      doc.text('Description', tableX + 5, y + 8)
-      doc.text('Qty', tableX + 100, y + 8, { align: 'center' })
-      doc.text('Rate', tableX + 120, y + 8, { align: 'right' })
-      doc.text('Amount', tableX + 150, y + 8, { align: 'right' })
+      doc.text('Description', colPositions.desc, y + 8)
+      doc.text('Qty', colPositions.qty + colWidths.qty/2, y + 8, { align: 'center' })
+      doc.text('Rate', colPositions.rate + colWidths.rate, y + 8, { align: 'right' })
+      doc.text('Amount', colPositions.amount + colWidths.amount, y + 8, { align: 'right' })
       y += 15
       doc.setTextColor(gray[0], gray[1], gray[2])
       doc.setFontSize(10).setFont('helvetica', 'normal')
@@ -321,6 +354,18 @@ export async function GET(
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    
+    // Check if PDF already exists in storage first
+    const { data: existingInvoice } = await supabase
+      .from('invoices')
+      .select('pdf_url, status')
+      .eq('id', invoiceId)
+      .single()
+
+    if (existingInvoice?.pdf_url && existingInvoice.pdf_url.includes('storage')) {
+      console.log('📄 Redirecting to existing PDF in storage:', existingInvoice.pdf_url)
+      return NextResponse.redirect(existingInvoice.pdf_url)
+    }
     
     // Get the invoice details from database
     const { data: invoice, error: invoiceError } = await supabase
