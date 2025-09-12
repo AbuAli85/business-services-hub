@@ -2,8 +2,8 @@ import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
 import { Buffer } from 'node:buffer'
 
-// Color palette
-const colors = {
+// Default color palette
+const defaultColors = {
   primary: [15, 23, 42] as [number, number, number],   // Navy
   accent: [59, 130, 246] as [number, number, number],  // Blue
   success: [16, 185, 129] as [number, number, number], // Green
@@ -13,6 +13,31 @@ const colors = {
   lightGray: [248, 250, 252] as [number, number, number],
   borderGray: [226, 232, 240] as [number, number, number],
   teal: [32, 201, 151] as [number, number, number],
+}
+
+// Function to get brand colors from provider data
+function getBrandColors(provider: any) {
+  const brandColors = provider?.company?.brand_colors
+  if (brandColors) {
+    return {
+      ...defaultColors,
+      primary: brandColors.primary ? hexToRgb(brandColors.primary) : defaultColors.primary,
+      accent: brandColors.accent ? hexToRgb(brandColors.accent) : defaultColors.accent,
+      success: brandColors.success ? hexToRgb(brandColors.success) : defaultColors.success,
+      warning: brandColors.warning ? hexToRgb(brandColors.warning) : defaultColors.warning,
+    }
+  }
+  return defaultColors
+}
+
+// Helper function to convert hex to RGB
+function hexToRgb(hex: string): [number, number, number] {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result ? [
+    parseInt(result[1], 16),
+    parseInt(result[2], 16),
+    parseInt(result[3], 16)
+  ] : [0, 0, 0]
 }
 
 // Currency formatter
@@ -39,6 +64,9 @@ function formatInvoiceNumber(invoiceId: string, invoiceNumber?: string): string 
 
 export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   const doc = new jsPDF('p', 'mm', 'a4')
+
+  // Get dynamic brand colors
+  const colors = getBrandColors(invoice.provider)
 
   // Invoice data
   const invoiceNumber = formatInvoiceNumber(invoice.id, invoice.invoice_number)
@@ -72,13 +100,62 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   const statusColor = statusColors[status as keyof typeof statusColors] || colors.accent
 
   // === HEADER ===
+  // Company logo (if available)
+  const logoUrl = invoice.provider?.company?.logo_url
+  if (logoUrl && (logoUrl.includes('.png') || logoUrl.includes('.jpg') || logoUrl.includes('.jpeg'))) {
+    try {
+      const logoResp = await fetch(logoUrl)
+      if (logoResp.ok) {
+        const logoBlob = await logoResp.blob()
+        const logoDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(logoBlob)
+        })
+        doc.addImage(logoDataUrl, 'PNG', 20, 15, 40, 20)
+      } else {
+        // Fallback to text if logo fails to load
+        doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+        doc.rect(20, 15, 40, 20, 'F')
+        doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+        doc.rect(20, 15, 40, 20, 'S')
+        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+        doc.setFontSize(10).setFont('helvetica', 'bold')
+        doc.text(companyName.split(' ')[0], 25, 25)
+        doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
+      }
+    } catch (error) {
+      console.warn('Failed to load company logo:', error)
+      // Fallback to text
+      doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+      doc.rect(20, 15, 40, 20, 'F')
+      doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+      doc.rect(20, 15, 40, 20, 'S')
+      doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+      doc.setFontSize(10).setFont('helvetica', 'bold')
+      doc.text(companyName.split(' ')[0], 25, 25)
+      doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
+    }
+  } else {
+    // No logo URL - show company name in logo area
+    doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+    doc.rect(20, 15, 40, 20, 'F')
+    doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+    doc.rect(20, 15, 40, 20, 'S')
+    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+    doc.setFontSize(10).setFont('helvetica', 'bold')
+    doc.text(companyName.split(' ')[0], 25, 25)
+    doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
+  }
+
+  // Company name and contact info
   doc.setFontSize(18).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text(companyName, 20, 20)
+  doc.text(companyName, 70, 20)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(companyAddress, 20, 27)
-  doc.text(`${companyPhone} | ${companyEmail}`, 20, 33)
+  doc.text(companyAddress, 70, 27)
+  doc.text(`${companyPhone} | ${companyEmail}`, 70, 33)
 
   // Invoice info box
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
@@ -158,6 +235,24 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   }]
 
   items.forEach((item: any, index: number) => {
+    // Check if we need a new page
+    if (currentY > 260) {
+      doc.addPage()
+      currentY = 20
+      
+      // Redraw table header on new page
+      doc.setFillColor(colors.teal[0], colors.teal[1], colors.teal[2])
+      doc.rect(20, currentY, tableWidth, 8, 'F')
+      doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
+      doc.setFontSize(10).setFont('helvetica', 'bold')
+      doc.text('No', 22, currentY + 6)
+      doc.text('Item Description', 40, currentY + 6)
+      doc.text('Qty', 125, currentY + 6)
+      doc.text('Rate (OMR)', 150, currentY + 6)
+      doc.text('Amount (OMR)', 175, currentY + 6)
+      currentY += 8
+    }
+
     const qty = item.qty || 1
     const price = item.price || item.rate || 0
     const amount = qty * price
