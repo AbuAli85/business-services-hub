@@ -107,7 +107,8 @@ export default function CreateBookingPage() {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        router.push('/auth/sign-in')
+        const currentPath = `/dashboard/bookings/create${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`
+        router.push(`/auth/sign-in?redirect=${encodeURIComponent(currentPath)}`)
         return
       }
 

@@ -1,3 +1,34 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+// Simple auth guard for dashboard routes using presence of Supabase auth cookies
+export function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl
+
+  // Protect all dashboard pages
+  if (pathname.startsWith('/dashboard')) {
+    const cookies = request.cookies
+
+    // Supabase can use different cookie keys depending on setup/version
+    const hasAuthCookie =
+      cookies.has('sb-access-token') ||
+      cookies.has('supabase-auth-token') ||
+      // Supabase v2 project-ref based cookie (JSON payload)
+      Array.from(cookies.getAll().values()).some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'))
+
+    if (!hasAuthCookie) {
+      const redirectTo = encodeURIComponent(`${pathname}${search || ''}`)
+      const signInUrl = new URL(`/auth/sign-in?redirect=${redirectTo}`, request.url)
+      return NextResponse.redirect(signInUrl)
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*'],
+}
+
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
