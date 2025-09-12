@@ -94,12 +94,10 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
       <div className={`flex items-center space-x-2 ${className}`}>
         <TooltipProvider>
           <Tooltip content={getTooltipContent()}>
-            <TooltipTrigger asChild>
-              <Badge className={`${getStatusColor()} text-xs border`}>
-                {getStatusIcon()}
-                <span className="ml-1">{getStatusText()}</span>
-              </Badge>
-            </TooltipTrigger>
+            <Badge className={`${getStatusColor()} text-xs border`}>
+              {getStatusIcon()}
+              <span className="ml-1">{getStatusText()}</span>
+            </Badge>
           </Tooltip>
         </TooltipProvider>
         
@@ -115,13 +113,11 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
   return (
     <TooltipProvider>
       <Tooltip content={getTooltipContent()}>
-        <TooltipTrigger asChild>
-          <div className={`inline-flex items-center ${className}`}>
-            <Badge className={`${getStatusColor()} text-xs border`}>
-              {getStatusIcon()}
-            </Badge>
-          </div>
-        </TooltipTrigger>
+        <div className={`inline-flex items-center ${className}`}>
+          <Badge className={`${getStatusColor()} text-xs border`}>
+            {getStatusIcon()}
+          </Badge>
+        </div>
       </Tooltip>
     </TooltipProvider>
   )
