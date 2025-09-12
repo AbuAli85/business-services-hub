@@ -102,6 +102,8 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   // === HEADER ===
   // Company logo (if available)
   const logoUrl = invoice.provider?.company?.logo_url
+  let logoLoaded = false
+  
   if (logoUrl && (logoUrl.includes('.png') || logoUrl.includes('.jpg') || logoUrl.includes('.jpeg'))) {
     try {
       const logoResp = await fetch(logoUrl)
@@ -113,39 +115,28 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
           reader.readAsDataURL(logoBlob)
         })
         doc.addImage(logoDataUrl, 'PNG', 20, 15, 40, 20)
-      } else {
-        // Fallback to text if logo fails to load
-        doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-        doc.rect(20, 15, 40, 20, 'F')
-        doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
-        doc.rect(20, 15, 40, 20, 'S')
-        doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-        doc.setFontSize(10).setFont('helvetica', 'bold')
-        doc.text(companyName.split(' ')[0], 25, 25)
-        doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
+        logoLoaded = true
       }
     } catch (error) {
       console.warn('Failed to load company logo:', error)
-      // Fallback to text
-      doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-      doc.rect(20, 15, 40, 20, 'F')
-      doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
-      doc.rect(20, 15, 40, 20, 'S')
-      doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-      doc.setFontSize(10).setFont('helvetica', 'bold')
-      doc.text(companyName.split(' ')[0], 25, 25)
-      doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
     }
-  } else {
-    // No logo URL - show company name in logo area
+  }
+  
+  // Logo fallback - always show something in logo area
+  if (!logoLoaded) {
     doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
     doc.rect(20, 15, 40, 20, 'F')
-    doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+    doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
     doc.rect(20, 15, 40, 20, 'S')
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-    doc.setFontSize(10).setFont('helvetica', 'bold')
-    doc.text(companyName.split(' ')[0], 25, 25)
-    doc.text(companyName.split(' ').slice(1).join(' '), 25, 30)
+    doc.setFontSize(8).setFont('helvetica', 'bold')
+    const words = companyName.split(' ')
+    if (words.length >= 2) {
+      doc.text(words[0], 25, 22)
+      doc.text(words.slice(1).join(' '), 25, 28)
+    } else {
+      doc.text(companyName, 25, 25)
+    }
   }
 
   // Company name and contact info
@@ -198,19 +189,30 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   // Bill To
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
   doc.rect(115, yPos - 5, 85, 50, 'F')
+  doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.rect(115, yPos - 5, 85, 50, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.text('Bill To', 120, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
+  
+  let clientY = yPos + 8
   if (clientCompany) {
-    doc.text(clientCompany, 120, yPos + 8)
-    doc.text(clientName, 120, yPos + 14)
-  } else {
-    doc.text(clientName, 120, yPos + 8)
+    doc.text(clientCompany, 120, clientY)
+    clientY += 6
   }
-  if (clientAddress) doc.text(clientAddress, 120, yPos + 20)
-  if (clientPhone) doc.text(clientPhone, 120, yPos + 26)
-  if (clientEmail) doc.text(clientEmail, 120, yPos + 32)
+  doc.text(clientName, 120, clientY)
+  clientY += 6
+  if (clientAddress) {
+    doc.text(clientAddress, 120, clientY)
+    clientY += 6
+  }
+  if (clientPhone) {
+    doc.text(clientPhone, 120, clientY)
+    clientY += 6
+  }
+  if (clientEmail) {
+    doc.text(clientEmail, 120, clientY)
+  }
 
   // === SERVICE TABLE ===
   yPos = yPos + 60
@@ -278,21 +280,26 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   const summaryX = 110
 
   const safeSubtotal = items.reduce((acc: number, i: any) => acc + (i.qty || 1) * (i.price || i.rate || 0), 0)
-  const taxRate = invoice.tax_rate || 0
-  const safeTaxAmount = taxRate > 0 ? (safeSubtotal * taxRate / 100) : 0
+  const taxRate = 5 // Fixed VAT rate (5%)
+  const safeTaxAmount = safeSubtotal * taxRate / 100
   const safeTotal = safeSubtotal + safeTaxAmount
 
+  // Summary box with proper styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(summaryX, summaryY, summaryWidth, 30, 'F')
-  doc.rect(summaryX, summaryY, summaryWidth, 30, 'S')
+  doc.rect(summaryX, summaryY, summaryWidth, 35, 'F')
+  doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
+  doc.rect(summaryX, summaryY, summaryWidth, 35, 'S')
+  
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  
+  // Subtotal
   doc.text('Subtotal:', summaryX + 5, summaryY + 8)
   doc.text(formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
-  if (safeTaxAmount > 0) {
-    doc.text(`Tax (${taxRate}%):`, summaryX + 5, summaryY + 16)
-    doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
-  }
+  
+  // VAT 5% - always show
+  doc.text(`VAT (5%):`, summaryX + 5, summaryY + 16)
+  doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
   doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 8, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
@@ -302,22 +309,39 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
 
   // === FOOTER ===
   const footerY = summaryY + 50
+  
+  // Divider line above footer
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.line(20, footerY - 5, 190, footerY - 5)
+  
+  // QR Code for payment
   try {
     const qrText = invoice.payment_url || `Invoice ${invoiceNumber}, Total: ${formatCurrency(safeTotal, 'OMR')}`
     const qrDataUrl = await QRCode.toDataURL(qrText, { width: 50 })
-    doc.addImage(qrDataUrl, 'PNG', 150, footerY, 20, 20)
+    doc.addImage(qrDataUrl, 'PNG', 20, footerY, 25, 25)
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.text('Scan to Pay', 152, footerY + 23)
+    doc.text('Scan to Pay', 22, footerY + 28)
   } catch {}
-  doc.setFontSize(10).setFont('helvetica', 'bold')
+  
+  // Thank you message (centered)
+  doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text('Thank you for your business!', 105, footerY + 30, { align: 'center' })
+  doc.text('Thank you for your business!', 105, footerY + 15, { align: 'center' })
+  
+  // Compliance information (right-aligned)
   doc.setFontSize(8).setFont('helvetica', 'normal')
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-  doc.text('This invoice is valid without signature', 20, footerY + 40)
-  if (vatNumber) doc.text(`VAT: ${vatNumber}`, 190, footerY + 8, { align: 'right' })
-  if (crNumber) doc.text(`CR: ${crNumber}`, 190, footerY + 12, { align: 'right' })
+  let complianceY = footerY + 5
+  if (vatNumber) {
+    doc.text(`VAT Number: ${vatNumber}`, 190, complianceY, { align: 'right' })
+    complianceY += 4
+  }
+  if (crNumber) {
+    doc.text(`CR Number: ${crNumber}`, 190, complianceY, { align: 'right' })
+    complianceY += 4
+  }
+  doc.text('This invoice is valid without signature', 190, complianceY, { align: 'right' })
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
