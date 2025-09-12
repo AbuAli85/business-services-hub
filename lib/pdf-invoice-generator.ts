@@ -183,7 +183,7 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text(companyAddress, 25, yPos + 14)
   doc.text(companyPhone, 25, yPos + 20)
   doc.text(companyEmail, 25, yPos + 26)
-  if (vatNumber) doc.text(`VAT: ${vatNumber}`, 25, yPos + 32)
+  if (vatNumber) doc.text(`VAT Reg. No: ${vatNumber}`, 25, yPos + 32)
   if (crNumber) doc.text(`CR: ${crNumber}`, 25, yPos + 38)
 
   // Bill To
@@ -307,8 +307,35 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text('TOTAL:', summaryX + 8, summaryY + 28)
   doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
 
+  // === PAYMENT INFORMATION ===
+  const paymentY = summaryY + 40
+  doc.setFontSize(10).setFont('helvetica', 'bold')
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  doc.text('Payment Information', 20, paymentY)
+  
+  doc.setFontSize(9).setFont('helvetica', 'normal')
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  
+  // Bank details (if available)
+  const bankName = invoice.provider?.company?.bank_name
+  const accountNumber = invoice.provider?.company?.account_number
+  const iban = invoice.provider?.company?.iban
+  
+  if (bankName || accountNumber || iban) {
+    if (bankName) doc.text(`Bank: ${bankName}`, 20, paymentY + 8)
+    if (accountNumber) doc.text(`Account: ${accountNumber}`, 20, paymentY + 14)
+    if (iban) doc.text(`IBAN: ${iban}`, 20, paymentY + 20)
+  } else {
+    // Default payment info
+    doc.text('Bank Transfer to account details provided separately', 20, paymentY + 8)
+  }
+  
+  // Payment terms
+  const paymentTerms = invoice.payment_terms || 'Due within 30 days'
+  doc.text(`Payment Terms: ${paymentTerms}`, 20, paymentY + 26)
+
   // === FOOTER ===
-  const footerY = summaryY + 50
+  const footerY = summaryY + 80
   
   // Divider line above footer
   doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
@@ -342,6 +369,8 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
     complianceY += 4
   }
   doc.text('This invoice is valid without signature', 190, complianceY, { align: 'right' })
+  complianceY += 4
+  doc.text('Generated electronically in compliance with Omani VAT regulations', 190, complianceY, { align: 'right' })
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
