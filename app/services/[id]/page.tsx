@@ -713,6 +713,7 @@ export default function ServiceDetail() {
                               className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder-white/70 focus:bg-white/20 focus:border-white/40 transition-all duration-200"
                               value={selectedPackageId}
                               onChange={(e) => setSelectedPackageId(e.target.value)}
+                              aria-label="Select package"
                             >
                               <option value="" className="bg-gray-800 text-white">No package</option>
                               {service.service_packages.map((pkg) => (
@@ -757,15 +758,20 @@ export default function ServiceDetail() {
                             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg h-12 text-lg font-semibold"
                             onClick={async () => {
                               if (!service?.id) return
+                              const redirectTarget = `/dashboard/bookings/create?service=${service.id}`
                               try {
                                 const supabase = await getSupabaseClient()
                                 const { data: { user } } = await supabase.auth.getUser()
-                                if (!user) {
-                                  router.push('/auth/sign-in')
+                                if (user) {
+                                  router.push(redirectTarget)
                                   return
                                 }
-                              } catch {}
-                              router.push(`/dashboard/bookings/create?service=${service.id}`)
+                                router.push(`/auth/sign-in?redirect=${encodeURIComponent(redirectTarget)}`)
+                                return
+                              } catch {
+                                router.push(`/auth/sign-in?redirect=${encodeURIComponent(redirectTarget)}`)
+                                return
+                              }
                             }}
                           >
                             {isAuthenticated ? (
