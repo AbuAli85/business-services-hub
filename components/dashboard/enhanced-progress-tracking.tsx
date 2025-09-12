@@ -159,7 +159,7 @@ export function EnhancedProgressTracking({
   const [showCreateMilestone, setShowCreateMilestone] = useState(false)
   const [showCreateTask, setShowCreateTask] = useState(false)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'overdue'>('all')
-  const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high' | 'urgent'>('all')
+  const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'normal' | 'high' | 'urgent'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'due_date' | 'priority' | 'progress' | 'title'>('due_date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -367,7 +367,7 @@ export function EnhancedProgressTracking({
           comparison = new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
           break
         case 'priority':
-          const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }
+          const priorityOrder = { urgent: 4, high: 3, normal: 2, low: 1 }
           comparison = (priorityOrder[a.priority as keyof typeof priorityOrder] || 0) - 
                       (priorityOrder[b.priority as keyof typeof priorityOrder] || 0)
           break
