@@ -213,14 +213,9 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   // Helper function to render bilingual text in two separate lines (for headers)
   const renderBilingualHeader = (key: keyof typeof labels, x: number, y: number, options: any = {}) => {
     if (language === 'bilingual') {
-      // Render English on the left
+      // Render English only (no duplication)
       doc.setFont('helvetica', 'normal')
       doc.text(labels[key].en, x, y, options)
-      
-      // Render English fallback on the right side (avoiding Arabic text processing)
-      const arabicX = x + 120 // More spacing for headers
-      doc.setFont('helvetica', 'normal')
-      doc.text(labels[key].en, arabicX, y, { ...options, align: 'right' })
     } else {
       // Render single language
       const text = labels[key][language]
@@ -314,10 +309,17 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.text(companyAddress, 70, 29)
-  // Truncate email if too long
+  // Better text wrapping for contact info
   const contactInfo = `${companyPhone} | ${companyEmail}`
-  const truncatedContact = contactInfo.length > 50 ? contactInfo.substring(0, 47) + '...' : contactInfo
-  doc.text(truncatedContact, 70, 35)
+  if (contactInfo.length > 45) {
+    // Split into two lines if too long
+    const phonePart = companyPhone
+    const emailPart = companyEmail
+    doc.text(phonePart, 70, 35)
+    doc.text(emailPart, 70, 41)
+  } else {
+    doc.text(contactInfo, 70, 35)
+  }
 
   // Invoice info box - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
@@ -608,7 +610,6 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
   if (language === 'bilingual') {
     doc.text('Payment Terms:', 20, paymentY + 26)
-    doc.text('Payment Terms:', 190, paymentY + 26, { align: 'right' })
   } else {
     doc.text('Payment Terms:', 20, paymentY + 26)
   }
@@ -629,16 +630,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     doc.addImage(qrDataUrl, 'PNG', 20, footerY, 30, 30)
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    if (language === 'bilingual') {
-      doc.text(labels.scanToPay.en, 25, footerY + 32)
-    } else {
-      const text = labels.scanToPay[language]
-      if (language === 'ar') {
-        doc.text(labels.scanToPay.en, 25, footerY + 32)
-      } else {
-        doc.text(text, 25, footerY + 32)
-      }
-    }
+    doc.text('Scan to Pay', 25, footerY + 32)
   } catch {}
   
   // Thank you message (centered) - improved positioning
@@ -706,10 +698,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text('_________________________', 20, complianceY + 8)
   doc.text('Date: _______________', 20, complianceY + 16)
   
-  // Add a professional note
-  doc.setFontSize(7).setFont('helvetica', 'italic')
-  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-  doc.text('This invoice is computer generated and does not require a signature', 20, complianceY + 24)
+  // Remove duplicate "Scan to Pay" text from signature section
+  
+  // Professional note (removed duplicate)
+  // Note: Compliance text already handled above
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
