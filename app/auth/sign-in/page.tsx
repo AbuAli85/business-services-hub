@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,8 @@ export default function SignInPage() {
   const [captchaToken, setCaptchaToken] = useState<string>('')
   const [captchaKey, setCaptchaKey] = useState<number>(0)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectParam = searchParams?.get('redirect') || ''
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,8 +76,9 @@ export default function SignInPage() {
         // Show success message
         toast.success('Signed in successfully!')
         
-        // Redirect to dashboard
-        router.push('/dashboard')
+        // Redirect back if provided, else dashboard
+        const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard'
+        router.replace(target)
       }
     } catch (err) {
       setAttempts(prev => prev + 1)
@@ -94,7 +97,7 @@ export default function SignInPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback${redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''}`
         }
       })
 
