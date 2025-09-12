@@ -314,7 +314,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.text(companyAddress, 70, 29)
-  doc.text(`${companyPhone} | ${companyEmail}`, 70, 35)
+  // Truncate email if too long
+  const contactInfo = `${companyPhone} | ${companyEmail}`
+  const truncatedContact = contactInfo.length > 50 ? contactInfo.substring(0, 47) + '...' : contactInfo
+  doc.text(truncatedContact, 70, 35)
 
   // Invoice info box - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
@@ -326,9 +329,8 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setFontSize(18).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
-    // Render English side-by-side (avoiding Arabic text processing)
-    doc.text(labels.invoice.en, 140, 25)
-    doc.text(labels.invoice.en, 195, 25, { align: 'right' })
+    // Render English centered in the box
+    doc.text(labels.invoice.en, 165, 25, { align: 'center' })
   } else {
     const text = labels.invoice[language]
     if (language === 'ar') {
@@ -353,14 +355,14 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text((status === 'pending' ? 'ISSUED' : status.toUpperCase()), 152.5, 52, { align: 'center' })
 
   // === BILLING INFO ===
-  let yPos = 65
+  let yPos = 70
 
   // From section - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(20, yPos - 5, 85, 50, 'F')
+  doc.rect(20, yPos - 5, 85, 55, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.setLineWidth(1.5)
-  doc.rect(20, yPos - 5, 85, 50, 'S')
+  doc.rect(20, yPos - 5, 85, 55, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   renderBilingualHeader('from', 25, yPos)
@@ -389,10 +391,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
 
   // Bill To section - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(115, yPos - 5, 85, 50, 'F')
+  doc.rect(115, yPos - 5, 85, 55, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.setLineWidth(1.5)
-  doc.rect(115, yPos - 5, 85, 50, 'S')
+  doc.rect(115, yPos - 5, 85, 55, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   renderBilingualHeader('billTo', 120, yPos)
@@ -604,7 +606,12 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   
   // Payment terms
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
-  renderBilingualText('paymentTerms', 20, paymentY + 26)
+  if (language === 'bilingual') {
+    doc.text('Payment Terms:', 20, paymentY + 26)
+    doc.text('Payment Terms:', 190, paymentY + 26, { align: 'right' })
+  } else {
+    doc.text('Payment Terms:', 20, paymentY + 26)
+  }
   doc.text(`: ${paymentTerms}`, 80, paymentY + 26)
 
   // === FOOTER ===
@@ -624,7 +631,6 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
     if (language === 'bilingual') {
       doc.text(labels.scanToPay.en, 25, footerY + 32)
-      doc.text(labels.scanToPay.en, 190, footerY + 32, { align: 'right' })
     } else {
       const text = labels.scanToPay[language]
       if (language === 'ar') {
@@ -640,7 +646,6 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
     doc.text(labels.thankYou.en, 105, footerY + 15, { align: 'center' })
-    doc.text(labels.thankYou.en, 105, footerY + 30, { align: 'center' })
   } else {
     const text = labels.thankYou[language]
     if (language === 'ar') {
@@ -663,12 +668,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     complianceY += 4
   }
   if (language === 'bilingual') {
-    // Render compliance text side-by-side
+    // Render compliance text on the left only
     doc.text(labels.validWithoutSignature.en, 20, complianceY)
-    doc.text(labels.validWithoutSignature.en, 190, complianceY, { align: 'right' })
     complianceY += 6
     doc.text(labels.omaniVatCompliance.en, 20, complianceY)
-    doc.text(labels.omaniVatCompliance.en, 190, complianceY, { align: 'right' })
     complianceY += 6
   } else {
     const validText = labels.validWithoutSignature[language]
@@ -692,7 +695,6 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   
   if (language === 'bilingual') {
     doc.text('Authorized Signature:', 20, complianceY)
-    doc.text('Authorized Signature:', 190, complianceY, { align: 'right' })
   } else if (language === 'ar') {
     doc.text('Authorized Signature:', 20, complianceY)
   } else {
