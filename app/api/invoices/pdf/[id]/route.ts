@@ -43,7 +43,7 @@ export async function GET(
 
     if (existingInvoice?.pdf_url && existingInvoice.pdf_url.includes('storage')) {
       // Check if we should regenerate using smart cache logic
-      const shouldRegenerate = shouldRegeneratePDF(existingInvoice)
+      const shouldRegenerate = shouldRegeneratePDF(existingInvoice.pdf_url)
       
       if (!shouldRegenerate) {
         console.log('📄 Redirecting to existing PDF in storage:', existingInvoice.pdf_url)

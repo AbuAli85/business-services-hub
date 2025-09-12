@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Invoice data fetched successfully')
 
     // Check if PDF should be regenerated using smart cache logic
-    const shouldRegenerate = shouldRegeneratePDF(invoice)
+    const shouldRegenerate = shouldRegeneratePDF(invoice.pdf_url)
 
     if (!shouldRegenerate && invoice.pdf_url) {
       console.log('📄 Using existing PDF:', invoice.pdf_url)
