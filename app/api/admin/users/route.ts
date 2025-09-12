@@ -3,6 +3,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdminClient, getSupabaseClient } from '@/lib/supabase'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     // Initialize clients with explicit error handling for env misconfig

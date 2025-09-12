@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdminClient } from '@/lib/supabase'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 type CleanupBody = {
   deleteTestNotifications?: boolean
   markOldNotificationsReadDays?: number
