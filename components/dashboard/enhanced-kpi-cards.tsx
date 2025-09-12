@@ -1,6 +1,8 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
   Tooltip,
@@ -127,7 +129,13 @@ interface KPIGridProps {
   }
 }
 
-export function EnhancedKPIGrid({ data }: KPIGridProps) {
+type Alerts = {
+  unreadMessages?: number
+  pendingBookings?: number
+  hasServices?: boolean
+}
+
+export function EnhancedKPIGrid({ data, alerts }: KPIGridProps & { alerts?: Alerts }) {
   const formatCurrency = (amount: number) => {
     return `OMR ${amount.toLocaleString('en-US', { 
       minimumFractionDigits: 2, 
@@ -137,18 +145,47 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Key Performance Indicators</h2>
-          <p className="text-sm sm:text-base text-gray-600">Your business metrics at a glance</p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Key Performance Indicators</h2>
+            <p className="text-sm sm:text-base text-gray-600">Your business metrics at a glance</p>
+          </div>
+          <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Live data</span>
+          </div>
         </div>
-        <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span>Live data</span>
+        {/* Quick Actions inside KPI header */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <Link href="/dashboard/services/create">
+            <Button className="w-full h-10 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0">Add Service</Button>
+          </Link>
+          <Link href="/dashboard/bookings">
+            <Button className="w-full h-10 sm:h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0">View Bookings</Button>
+          </Link>
+          <Link href="/dashboard/analytics">
+            <Button className="w-full h-10 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0">Analytics</Button>
+          </Link>
+          <Link href="/dashboard/messages">
+            <Button className="w-full h-10 sm:h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0">Messages</Button>
+          </Link>
+        </div>
+        {/* Smart Alerts */}
+        <div className="flex flex-wrap gap-2">
+          {alerts?.unreadMessages ? (
+            <span className="text-xs sm:text-sm px-2.5 py-1 rounded-full bg-orange-100 text-orange-800 border border-orange-200">{alerts.unreadMessages} unread messages</span>
+          ) : null}
+          {typeof alerts?.pendingBookings === 'number' && alerts.pendingBookings > 0 ? (
+            <span className="text-xs sm:text-sm px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">{alerts.pendingBookings} bookings need approval</span>
+          ) : null}
+          {alerts && alerts.hasServices === false ? (
+            <span className="text-xs sm:text-sm px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Add your first service to start earning</span>
+          ) : null}
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
         <EnhancedKPICard
           title="Total Earnings"
           value={formatCurrency(data.total_earnings)}
@@ -180,18 +217,29 @@ export function EnhancedKPIGrid({ data }: KPIGridProps) {
         
         <EnhancedKPICard
           title="Average Rating"
-          value={data.avg_rating ? `${data.avg_rating.toFixed(1)} ★` : 'N/A'}
+          value={data.avg_rating ? `${data.avg_rating.toFixed(1)} ★` : 'No Ratings Yet'}
           icon={Star}
           tooltip="Average rating from client reviews"
           className="bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-200"
           gradient="from-yellow-500 to-amber-600"
+        />
+
+        <EnhancedKPICard
+          title="Completion Rate"
+          value={`${(data.completion_rate * 100 || 0).toFixed(1)}%`}
+          icon={Award}
+          tooltip="Completed bookings over total bookings"
+          className="bg-gradient-to-br from-teal-50 to-emerald-100 border-teal-200"
+          gradient="from-teal-500 to-emerald-600"
         />
       </div>
     </div>
   )
 }
 
-export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
+type ServiceBreakdown = Array<{ service: string; completion_rate: number; response_rate?: number }>
+
+export function EnhancedPerformanceMetrics({ data, breakdown, insights }: KPIGridProps & { breakdown?: ServiceBreakdown; insights?: string[] }) {
   return (
     <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm relative overflow-hidden">
       {/* Background Pattern */}
@@ -312,6 +360,48 @@ export function EnhancedPerformanceMetrics({ data }: KPIGridProps) {
             </div>
           </div>
         </div>
+
+        {/* Service-level breakdown */}
+        {breakdown && breakdown.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-3 text-sm font-semibold text-gray-700">Service-level Breakdown</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {breakdown.map((b, i) => (
+                <div key={i} className="p-4 rounded-xl border border-gray-200 bg-white/70">
+                  <div className="text-sm font-medium text-gray-900 mb-2 truncate">{b.service}</div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Completion</span>
+                      <span className="font-semibold text-gray-900">{Math.round((b.completion_rate || 0) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 rounded-full bg-gradient-to-r from-green-500 to-green-600" style={{ width: `${Math.min((b.completion_rate || 0) * 100, 100)}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Response</span>
+                      <span className="font-semibold text-gray-900">{b.response_rate != null ? `${Math.round(b.response_rate * 100)}%` : '—'}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600" style={{ width: `${Math.min(((b.response_rate || 0) * 100), 100)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Insights */}
+        {insights && insights.length > 0 && (
+          <div className="mt-6">
+            <div className="text-sm font-semibold text-gray-700 mb-2">Insights</div>
+            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+              {insights.map((t, idx) => (
+                <li key={idx}>{t}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -18,11 +18,13 @@ interface AdvancedEarningsChartProps {
 
 export function AdvancedEarningsChart({ data, className }: AdvancedEarningsChartProps) {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar')
-  
-  const totalEarnings = data.reduce((sum, item) => sum + Number(item.earnings), 0)
-  const avgEarnings = data.length > 0 ? totalEarnings / data.length : 0
-  const maxEarnings = Math.max(...data.map(item => Number(item.earnings)), 0)
-  const totalBookings = data.reduce((sum, item) => sum + Number(item.booking_count), 0)
+
+  // Use last 6 months for visualization
+  const lastSix = (data || []).slice(-6)
+  const totalEarnings = lastSix.reduce((sum, item) => sum + Number(item.earnings), 0)
+  const avgEarnings = lastSix.length > 0 ? totalEarnings / lastSix.length : 0
+  const maxEarnings = Math.max(...lastSix.map(item => Number(item.earnings)), 0)
+  const totalBookings = lastSix.reduce((sum, item) => sum + Number(item.booking_count), 0)
 
   const formatCurrency = (amount: number) => {
     return `OMR ${amount.toLocaleString('en-US', { 
@@ -32,10 +34,20 @@ export function AdvancedEarningsChart({ data, className }: AdvancedEarningsChart
   }
 
   // Ensure we have data to display
-  const hasData = data && data.length > 0
-  const chartData = hasData ? data : [
+  const hasData = lastSix && lastSix.length > 0
+  const chartData = hasData ? lastSix : [
     { month_year: 'No Data', earnings: 0, booking_count: 0 }
   ]
+
+  // Projected vs Actual for current month
+  const now = new Date()
+  const currentMonthLabel = now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  const currentMonthEntry = (data || []).find(d => d.month_year === currentMonthLabel)
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const dayOfMonth = now.getDate()
+  const currentActual = Number(currentMonthEntry?.earnings || 0)
+  const dailyAvgSoFar = dayOfMonth > 0 ? currentActual / dayOfMonth : 0
+  const projected = Math.max(0, Math.round(dailyAvgSoFar * daysInMonth))
 
   const renderChart = () => {
     const commonProps = {
@@ -212,6 +224,10 @@ export function AdvancedEarningsChart({ data, className }: AdvancedEarningsChart
             <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
               <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="font-semibold">Total: {formatCurrency(totalEarnings)}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+              <Target className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="font-semibold">Projected vs Actual (this month): {formatCurrency(projected)} vs {formatCurrency(currentActual)}</span>
             </div>
             <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
               <button

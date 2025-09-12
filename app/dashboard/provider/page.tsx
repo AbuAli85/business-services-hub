@@ -220,13 +220,20 @@ export default function ProviderDashboard() {
           </div>
         </div>
 
-          {/* KPI Grid */}
+          {/* KPI Grid with Quick Actions and Smart Alerts */}
           <section className="mb-10 sm:mb-12">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-slate-50/40 via-gray-50/30 to-slate-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
-                <EnhancedKPIGrid data={stats} />
+                <EnhancedKPIGrid 
+                  data={stats} 
+                  alerts={{
+                    unreadMessages: undefined,
+                    pendingBookings: recentBookings.filter(b => b.status === 'pending').length,
+                    hasServices: (stats.active_services || 0) > 0
+                  }}
+                />
               </div>
             </div>
           </section>
@@ -237,7 +244,24 @@ export default function ProviderDashboard() {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-indigo-50/30 to-blue-100/40 rounded-3xl -m-4"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
               <div className="relative">
-                <EnhancedPerformanceMetrics data={stats} />
+                <EnhancedPerformanceMetrics 
+                  data={stats}
+                  breakdown={topServices.map(s => ({
+                    service: s.title,
+                    completion_rate: s.completion_rate || 0,
+                    response_rate: undefined,
+                  }))}
+                  insights={[
+                    ...topServices
+                      .filter(s => (s.completion_rate || 0) < 0.7)
+                      .slice(0, 2)
+                      .map(s => `Low completion rate for ${s.title} – improve delivery timelines.`),
+                    ...topServices
+                      .filter(s => (s.avg_rating || 0) < 3.5)
+                      .slice(0, 1)
+                      .map(s => `Satisfaction is below target for ${s.title} – collect feedback and optimize scope.`)
+                  ]}
+                />
               </div>
             </div>
           </section>
@@ -282,82 +306,7 @@ export default function ProviderDashboard() {
             </div>
           </section>
 
-          {/* Quick Actions & Insights */}
-          <section className="mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-50/40 via-slate-50/30 to-gray-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative bg-white/85 backdrop-blur-md rounded-2xl border border-white/30 shadow-2xl p-6 sm:p-8 lg:p-10">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <Target className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Quick Actions</h3>
-                        <p className="text-gray-600 text-sm sm:text-base">Manage your business efficiently</p>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                      <Button 
-                        onClick={() => router.push('/dashboard/services/create')}
-                        className="h-14 sm:h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-sm sm:text-base font-semibold">Add Service</div>
-                          <div className="text-xs opacity-90">Create new offering</div>
-                        </div>
-                      </Button>
-                      <Button 
-                        onClick={() => router.push('/dashboard/bookings')}
-                        className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-sm sm:text-base font-semibold">View Bookings</div>
-                          <div className="text-xs opacity-90">Manage orders</div>
-                        </div>
-                      </Button>
-                      <Button 
-                        onClick={() => router.push('/dashboard/analytics')}
-                        className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-sm sm:text-base font-semibold">Analytics</div>
-                          <div className="text-xs opacity-90">View insights</div>
-                        </div>
-                      </Button>
-                      <Button 
-                        onClick={() => router.push('/dashboard/messages')}
-                        className="h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-sm sm:text-base font-semibold">Messages</div>
-                          <div className="text-xs opacity-90">Client communication</div>
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 lg:space-y-4 lg:space-x-0 xl:space-y-0 xl:space-x-4">
-                    <div className="text-center lg:text-left">
-                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-                        {stats?.monthly_growth ? `+${stats.monthly_growth.toFixed(1)}%` : '+0%'}
-                      </div>
-                      <div className="text-sm text-gray-600">Monthly Growth</div>
-                    </div>
-                    <div className="text-center lg:text-left">
-                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-                        {stats?.response_rate ? `${stats.response_rate.toFixed(1)}%` : '0%'}
-                      </div>
-                      <div className="text-sm text-gray-600">Response Rate</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-        </div>
-          </section>
+          {/* Quick Actions removed (now inside KPI section) */}
 
       </div>
     </main>

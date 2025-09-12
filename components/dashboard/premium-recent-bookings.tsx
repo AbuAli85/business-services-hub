@@ -26,7 +26,9 @@ import {
   XCircle,
   TrendingUp,
   Star,
-  MoreHorizontal
+  MoreHorizontal,
+  MessageSquare,
+  FileText
 } from 'lucide-react'
 import { safeFormatDate } from '@/lib/date-utils'
 
@@ -254,9 +256,17 @@ export function PremiumRecentBookings({ bookings, className }: PremiumRecentBook
                       </div>
                       
                       <div className="ml-4 flex-shrink-0">
-                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link href={`/dashboard/bookings/${booking.id}`}>
+                            <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
+                          </Link>
+                          <Link href={`/dashboard/messages?bookingId=${booking.id}`}>
+                            <Button variant="ghost" size="sm"><MessageSquare className="h-4 w-4" /></Button>
+                          </Link>
+                          <Link href={`/dashboard/client/invoices/${booking.id}`}>
+                            <Button variant="ghost" size="sm"><FileText className="h-4 w-4" /></Button>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import AnimatedProgressRing from './animated-progress-ring'
 import { 
   Target, 
   Trophy, 
@@ -112,6 +112,14 @@ export function MonthlyGoals({ data, className }: MonthlyGoalsProps) {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Overall progress top */}
+          <div className="flex items-center gap-6 mb-6">
+            <AnimatedProgressRing progress={(completedGoals / totalGoals) * 100} />
+            <div>
+              <div className="text-lg font-bold text-gray-900">Overall Progress</div>
+              <p className="text-sm text-gray-600">{completedGoals} of {totalGoals} goals achieved</p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {achievements.map((goal) => {
               const isCompleted = goal.progress >= 100
@@ -119,73 +127,32 @@ export function MonthlyGoals({ data, className }: MonthlyGoalsProps) {
               
               return (
                 <div key={goal.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-3 rounded-xl ${goal.bgColor}`}>
-                        <Icon className={`h-5 w-5 ${goal.color}`} />
+                  <div className="flex items-center gap-4">
+                    <AnimatedProgressRing progress={Math.min(goal.progress, 100)} size={88} />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center space-x-2">
+                          <div className={`p-2 rounded-lg ${goal.bgColor}`}>
+                            <Icon className={`h-4 w-4 ${goal.color}`} />
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900">{goal.title}</p>
+                        </div>
+                        {isCompleted && <Trophy className="h-5 w-5 text-yellow-500" />}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{goal.title}</p>
-                        <p className="text-xs text-gray-500">
-                          {goal.current.toLocaleString()}{goal.unit} / {goal.target.toLocaleString()}{goal.unit}
-                        </p>
-                      </div>
-                    </div>
-                    {isCompleted && (
-                      <Trophy className="h-6 w-6 text-yellow-500" />
-                    )}
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 font-medium">Progress</span>
-                      <span className={`font-bold ${isCompleted ? 'text-green-600' : goal.color}`}>
-                        {goal.progress.toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className={`h-3 rounded-full transition-all duration-500 ${
-                          isCompleted 
-                            ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                            : `bg-gradient-to-r ${goal.color.replace('text-', 'from-').replace('-600', '-500')} to-${goal.color.replace('text-', '').replace('-600', '-600')}`
-                        }`}
-                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
-                      />
+                      <p className="text-xs text-gray-500">
+                        {goal.current.toLocaleString()}{goal.unit} / {goal.target.toLocaleString()}{goal.unit}
+                      </p>
+                      {isCompleted && (
+                        <div className="flex items-center space-x-2 text-sm text-green-600 mt-2">
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="font-medium">Goal achieved!</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  
-                  {isCompleted && (
-                    <div className="flex items-center space-x-2 text-sm text-green-600 mt-3">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="font-medium">Goal achieved!</span>
-                    </div>
-                  )}
                 </div>
               )
             })}
-          </div>
-          
-          {/* Overall Progress */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <span className="text-lg font-bold text-gray-900">Overall Progress</span>
-                <p className="text-sm text-gray-600">Monthly goal completion rate</p>
-              </div>
-              <span className="text-2xl font-bold text-gray-900">
-                {Math.round((completedGoals / totalGoals) * 100)}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-blue-600 h-4 rounded-full transition-all duration-500"
-                style={{ width: `${(completedGoals / totalGoals) * 100}%` }}
-              />
-            </div>
-            <p className="text-sm text-gray-600 mt-3">
-              {completedGoals} out of {totalGoals} goals completed this month
-            </p>
           </div>
         </CardContent>
       </Card>
