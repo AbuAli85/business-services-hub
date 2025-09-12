@@ -40,6 +40,71 @@ function hexToRgb(hex: string): [number, number, number] {
   ] : [0, 0, 0]
 }
 
+// Helper function to convert numbers to words (for amounts)
+function numberToWords(num: number): string {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+  
+  if (num === 0) return 'Zero'
+  
+  const convertHundreds = (n: number): string => {
+    let result = ''
+    if (n > 99) {
+      result += ones[Math.floor(n / 100)] + ' Hundred'
+      n %= 100
+      if (n > 0) result += ' '
+    }
+    if (n > 19) {
+      result += tens[Math.floor(n / 10)]
+      n %= 10
+      if (n > 0) result += ' ' + ones[n]
+    } else if (n > 9) {
+      result += teens[n - 10]
+    } else if (n > 0) {
+      result += ones[n]
+    }
+    return result
+  }
+  
+  let result = ''
+  if (num >= 1000000) {
+    result += convertHundreds(Math.floor(num / 1000000)) + ' Million'
+    num %= 1000000
+    if (num > 0) result += ' '
+  }
+  if (num >= 1000) {
+    result += convertHundreds(Math.floor(num / 1000)) + ' Thousand'
+    num %= 1000
+    if (num > 0) result += ' '
+  }
+  if (num > 0) {
+    result += convertHundreds(num)
+  }
+  
+  return result + ' Omani Rials Only'
+}
+
+// Bilingual labels
+const labels = {
+  invoice: { en: 'INVOICE', ar: 'فاتورة' },
+  from: { en: 'From', ar: 'من' },
+  billTo: { en: 'Bill To', ar: 'فاتورة إلى' },
+  vatReg: { en: 'VAT Reg. No', ar: 'رقم تسجيل ضريبة القيمة المضافة' },
+  cr: { en: 'CR', ar: 'س.ت' },
+  subtotal: { en: 'Subtotal', ar: 'المجموع الفرعي' },
+  vat: { en: 'VAT (5%)', ar: 'ضريبة القيمة المضافة (5%)' },
+  total: { en: 'TOTAL', ar: 'المجموع الكلي' },
+  paymentInfo: { en: 'Payment Information', ar: 'معلومات الدفع' },
+  bank: { en: 'Bank', ar: 'البنك' },
+  account: { en: 'Account', ar: 'الحساب' },
+  paymentTerms: { en: 'Payment Terms', ar: 'شروط الدفع' },
+  thankYou: { en: 'Thank you for your business!', ar: 'شكراً لتعاملكم معنا!' },
+  validWithoutSignature: { en: 'This invoice is valid without signature', ar: 'هذه الفاتورة صالحة بدون توقيع' },
+  omaniVatCompliance: { en: 'Generated electronically in compliance with Omani VAT regulations', ar: 'تم إنشاؤها إلكترونياً وفقاً لأنظمة ضريبة القيمة المضافة العمانية' },
+  scanToPay: { en: 'Scan to Pay', ar: 'امسح للدفع' }
+}
+
 // Currency formatter
 function formatCurrency(value: number, currency = 'OMR'): string {
   return new Intl.NumberFormat('en-OM', { 
@@ -62,11 +127,19 @@ function formatInvoiceNumber(invoiceId: string, invoiceNumber?: string): string 
   return `INV-${numericPart.padStart(8, '0')}`
 }
 
-export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
+export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar' | 'bilingual' = 'bilingual'): Promise<Uint8Array> {
   const doc = new jsPDF('p', 'mm', 'a4')
 
   // Get dynamic brand colors
   const colors = getBrandColors(invoice.provider)
+
+  // Helper function to get bilingual labels
+  const getLabel = (key: keyof typeof labels) => {
+    if (language === 'bilingual') {
+      return `${labels[key].en} / ${labels[key].ar}`
+    }
+    return labels[key][language]
+  }
 
   // Invoice data
   const invoiceNumber = formatInvoiceNumber(invoice.id, invoice.invoice_number)
@@ -156,7 +229,7 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.rect(130, 15, 70, 35, 'S')
 
   doc.setFontSize(16).setFont('helvetica', 'bold')
-  doc.text('INVOICE', 195, 22, { align: 'right' })
+  doc.text(getLabel('invoice'), 195, 22, { align: 'right' })
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.text(`Invoice #: ${invoiceNumber}`, 195, 28, { align: 'right' })
   doc.text(`Date: ${createdDate}`, 195, 34, { align: 'right' })
@@ -177,14 +250,14 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.rect(20, yPos - 5, 85, 45, 'F')
   doc.rect(20, yPos - 5, 85, 45, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('From', 25, yPos)
+  doc.text(getLabel('from'), 25, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.text(companyName, 25, yPos + 8)
   doc.text(companyAddress, 25, yPos + 14)
   doc.text(companyPhone, 25, yPos + 20)
   doc.text(companyEmail, 25, yPos + 26)
-  if (vatNumber) doc.text(`VAT Reg. No: ${vatNumber}`, 25, yPos + 32)
-  if (crNumber) doc.text(`CR: ${crNumber}`, 25, yPos + 38)
+  if (vatNumber) doc.text(`${getLabel('vatReg')}: ${vatNumber}`, 25, yPos + 32)
+  if (crNumber) doc.text(`${getLabel('cr')}: ${crNumber}`, 25, yPos + 38)
 
   // Bill To
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
@@ -192,7 +265,7 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.rect(115, yPos - 5, 85, 50, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('Bill To', 120, yPos)
+  doc.text(getLabel('billTo'), 120, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
   
   let clientY = yPos + 8
@@ -284,34 +357,41 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   const safeTaxAmount = safeSubtotal * taxRate / 100
   const safeTotal = safeSubtotal + safeTaxAmount
 
-  // Summary box with proper styling
+  // Summary box with proper styling using brand accent color
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
   doc.rect(summaryX, summaryY, summaryWidth, 35, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
+  doc.setLineWidth(2)
   doc.rect(summaryX, summaryY, summaryWidth, 35, 'S')
   
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   
   // Subtotal
-  doc.text('Subtotal:', summaryX + 5, summaryY + 8)
+  doc.text(`${getLabel('subtotal')}:`, summaryX + 5, summaryY + 8)
   doc.text(formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
   
   // VAT 5% - always show
-  doc.text(`VAT (5%):`, summaryX + 5, summaryY + 16)
+  doc.text(`${getLabel('vat')}:`, summaryX + 5, summaryY + 16)
   doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
   doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 8, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('TOTAL:', summaryX + 8, summaryY + 28)
+  doc.text(`${getLabel('total')}:`, summaryX + 8, summaryY + 28)
   doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
 
+  // Amount in words
+  const amountInWords = numberToWords(Math.round(safeTotal))
+  doc.setFontSize(8).setFont('helvetica', 'italic')
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  doc.text(`Amount in words: ${amountInWords}`, 20, summaryY + 40)
+
   // === PAYMENT INFORMATION ===
-  const paymentY = summaryY + 40
+  const paymentY = summaryY + 50
   doc.setFontSize(10).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text('Payment Information', 20, paymentY)
+  doc.text(getLabel('paymentInfo'), 20, paymentY)
   
   doc.setFontSize(9).setFont('helvetica', 'normal')
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
@@ -322,8 +402,8 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   const iban = invoice.provider?.company?.iban
   
   if (bankName || accountNumber || iban) {
-    if (bankName) doc.text(`Bank: ${bankName}`, 20, paymentY + 8)
-    if (accountNumber) doc.text(`Account: ${accountNumber}`, 20, paymentY + 14)
+    if (bankName) doc.text(`${getLabel('bank')}: ${bankName}`, 20, paymentY + 8)
+    if (accountNumber) doc.text(`${getLabel('account')}: ${accountNumber}`, 20, paymentY + 14)
     if (iban) doc.text(`IBAN: ${iban}`, 20, paymentY + 20)
   } else {
     // Default payment info
@@ -332,7 +412,7 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   
   // Payment terms
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
-  doc.text(`Payment Terms: ${paymentTerms}`, 20, paymentY + 26)
+  doc.text(`${getLabel('paymentTerms')}: ${paymentTerms}`, 20, paymentY + 26)
 
   // === FOOTER ===
   const footerY = summaryY + 80
@@ -348,13 +428,13 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
     doc.addImage(qrDataUrl, 'PNG', 20, footerY, 25, 25)
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.text('Scan to Pay', 22, footerY + 28)
+    doc.text(getLabel('scanToPay'), 22, footerY + 28)
   } catch {}
   
   // Thank you message (centered)
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text('Thank you for your business!', 105, footerY + 15, { align: 'center' })
+  doc.text(getLabel('thankYou'), 105, footerY + 15, { align: 'center' })
   
   // Compliance information (right-aligned)
   doc.setFontSize(8).setFont('helvetica', 'normal')
@@ -368,9 +448,21 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
     doc.text(`CR Number: ${crNumber}`, 190, complianceY, { align: 'right' })
     complianceY += 4
   }
-  doc.text('This invoice is valid without signature', 190, complianceY, { align: 'right' })
+  doc.text(getLabel('validWithoutSignature'), 190, complianceY, { align: 'right' })
   complianceY += 4
-  doc.text('Generated electronically in compliance with Omani VAT regulations', 190, complianceY, { align: 'right' })
+  doc.text(getLabel('omaniVatCompliance'), 190, complianceY, { align: 'right' })
+  
+  // Optional signature block
+  if (invoice.require_signature) {
+    complianceY += 8
+    doc.setFontSize(10).setFont('helvetica', 'bold')
+    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+    doc.text('Authorized Signature:', 20, complianceY)
+    doc.setFontSize(8).setFont('helvetica', 'normal')
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+    doc.text('_________________________', 20, complianceY + 8)
+    doc.text('Date: _______________', 20, complianceY + 16)
+  }
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
