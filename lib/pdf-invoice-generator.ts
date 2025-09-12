@@ -2,6 +2,9 @@ import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
 import { Buffer } from 'node:buffer'
 
+// Arabic font support - using a web-safe approach
+const ARABIC_FONT = 'Arial Unicode MS' // Fallback to system font that supports Arabic
+
 // Default color palette
 const defaultColors = {
   primary: [15, 23, 42] as [number, number, number],   // Navy
@@ -85,7 +88,25 @@ function numberToWords(num: number): string {
   return result + ' Omani Rials Only'
 }
 
-// Bilingual labels
+// Helper function to render Arabic text with proper RTL support
+function renderArabicText(doc: jsPDF, text: string, x: number, y: number, options: any = {}) {
+  // Check if text contains Arabic characters
+  const hasArabic = /[\u0600-\u06FF]/.test(text)
+  
+  if (hasArabic) {
+    // Use a font that supports Arabic
+    doc.setFont(ARABIC_FONT, 'normal')
+    // Set RTL alignment for Arabic text
+    const rtlOptions = { ...options, isInputRtl: true }
+    doc.text(text, x, y, rtlOptions)
+  } else {
+    // Use default font for English text
+    doc.setFont('helvetica', 'normal')
+    doc.text(text, x, y, options)
+  }
+}
+
+// Bilingual labels with improved layout
 const labels = {
   invoice: { en: 'INVOICE', ar: 'فاتورة' },
   from: { en: 'From', ar: 'من' },
@@ -133,12 +154,34 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   // Get dynamic brand colors
   const colors = getBrandColors(invoice.provider)
 
-  // Helper function to get bilingual labels
+  // Helper function to get bilingual labels with improved layout
   const getLabel = (key: keyof typeof labels) => {
     if (language === 'bilingual') {
       return `${labels[key].en} / ${labels[key].ar}`
     }
     return labels[key][language]
+  }
+
+  // Helper function to render bilingual text with proper positioning
+  const renderBilingualText = (key: keyof typeof labels, x: number, y: number, options: any = {}) => {
+    if (language === 'bilingual') {
+      // Render English on the left
+      doc.setFont('helvetica', 'normal')
+      doc.text(labels[key].en, x, y, options)
+      
+      // Render Arabic on the right with RTL support
+      const arabicX = x + 60 // Offset for Arabic text
+      renderArabicText(doc, labels[key].ar, arabicX, y, { ...options, align: 'right' })
+    } else {
+      // Render single language
+      const text = labels[key][language]
+      if (language === 'ar') {
+        renderArabicText(doc, text, x, y, options)
+      } else {
+        doc.setFont('helvetica', 'normal')
+        doc.text(text, x, y, options)
+      }
+    }
   }
 
   // Invoice data
@@ -229,7 +272,18 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.rect(130, 15, 70, 35, 'S')
 
   doc.setFontSize(16).setFont('helvetica', 'bold')
-  doc.text(getLabel('invoice'), 195, 22, { align: 'right' })
+  if (language === 'bilingual') {
+    // Render English and Arabic separately for better layout
+    doc.text(labels.invoice.en, 195, 22, { align: 'right' })
+    renderArabicText(doc, labels.invoice.ar, 195, 30, { align: 'right' })
+  } else {
+    const text = labels.invoice[language]
+    if (language === 'ar') {
+      renderArabicText(doc, text, 195, 22, { align: 'right' })
+    } else {
+      doc.text(text, 195, 22, { align: 'right' })
+    }
+  }
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.text(`Invoice #: ${invoiceNumber}`, 195, 28, { align: 'right' })
   doc.text(`Date: ${createdDate}`, 195, 34, { align: 'right' })
@@ -250,14 +304,28 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.rect(20, yPos - 5, 85, 45, 'F')
   doc.rect(20, yPos - 5, 85, 45, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text(getLabel('from'), 25, yPos)
+  renderBilingualText('from', 25, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.text(companyName, 25, yPos + 8)
   doc.text(companyAddress, 25, yPos + 14)
   doc.text(companyPhone, 25, yPos + 20)
   doc.text(companyEmail, 25, yPos + 26)
-  if (vatNumber) doc.text(`${getLabel('vatReg')}: ${vatNumber}`, 25, yPos + 32)
-  if (crNumber) doc.text(`${getLabel('cr')}: ${crNumber}`, 25, yPos + 38)
+  if (vatNumber) {
+    doc.setFontSize(10).setFont('helvetica', 'normal')
+    const vatLabel = language === 'ar' ? labels.vatReg.en : (language === 'bilingual' ? labels.vatReg.en : labels.vatReg[language])
+    doc.text(`${vatLabel}: ${vatNumber}`, 25, yPos + 32)
+    if (language === 'bilingual') {
+      renderArabicText(doc, `${labels.vatReg.ar}: ${vatNumber}`, 105, yPos + 32, { align: 'right' })
+    }
+  }
+  if (crNumber) {
+    doc.setFontSize(10).setFont('helvetica', 'normal')
+    const crLabel = language === 'ar' ? labels.cr.en : (language === 'bilingual' ? labels.cr.en : labels.cr[language])
+    doc.text(`${crLabel}: ${crNumber}`, 25, yPos + 38)
+    if (language === 'bilingual') {
+      renderArabicText(doc, `${labels.cr.ar}: ${crNumber}`, 105, yPos + 38, { align: 'right' })
+    }
+  }
 
   // Bill To
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
@@ -265,7 +333,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.rect(115, yPos - 5, 85, 50, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text(getLabel('billTo'), 120, yPos)
+  renderBilingualText('billTo', 120, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
   
   let clientY = yPos + 8
@@ -368,17 +436,27 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   
   // Subtotal
-  doc.text(`${getLabel('subtotal')}:`, summaryX + 5, summaryY + 8)
+  renderBilingualText('subtotal', summaryX + 5, summaryY + 8)
   doc.text(formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
   
   // VAT 5% - always show
-  doc.text(`${getLabel('vat')}:`, summaryX + 5, summaryY + 16)
+  renderBilingualText('vat', summaryX + 5, summaryY + 16)
   doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
   doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 8, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text(`${getLabel('total')}:`, summaryX + 8, summaryY + 28)
+  if (language === 'bilingual') {
+    doc.text(`${labels.total.en}:`, summaryX + 8, summaryY + 28)
+    renderArabicText(doc, `${labels.total.ar}:`, summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
+  } else {
+    const text = labels.total[language]
+    if (language === 'ar') {
+      renderArabicText(doc, `${text}:`, summaryX + 8, summaryY + 28)
+    } else {
+      doc.text(`${text}:`, summaryX + 8, summaryY + 28)
+    }
+  }
   doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
 
   // Amount in words
@@ -391,7 +469,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   const paymentY = summaryY + 50
   doc.setFontSize(10).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text(getLabel('paymentInfo'), 20, paymentY)
+  renderBilingualText('paymentInfo', 20, paymentY)
   
   doc.setFontSize(9).setFont('helvetica', 'normal')
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
@@ -402,8 +480,14 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   const iban = invoice.provider?.company?.iban
   
   if (bankName || accountNumber || iban) {
-    if (bankName) doc.text(`${getLabel('bank')}: ${bankName}`, 20, paymentY + 8)
-    if (accountNumber) doc.text(`${getLabel('account')}: ${accountNumber}`, 20, paymentY + 14)
+    if (bankName) {
+      renderBilingualText('bank', 20, paymentY + 8)
+      doc.text(`: ${bankName}`, 80, paymentY + 8)
+    }
+    if (accountNumber) {
+      renderBilingualText('account', 20, paymentY + 14)
+      doc.text(`: ${accountNumber}`, 80, paymentY + 14)
+    }
     if (iban) doc.text(`IBAN: ${iban}`, 20, paymentY + 20)
   } else {
     // Default payment info
@@ -412,7 +496,8 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   
   // Payment terms
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
-  doc.text(`${getLabel('paymentTerms')}: ${paymentTerms}`, 20, paymentY + 26)
+  renderBilingualText('paymentTerms', 20, paymentY + 26)
+  doc.text(`: ${paymentTerms}`, 80, paymentY + 26)
 
   // === FOOTER ===
   const footerY = summaryY + 80
@@ -428,13 +513,33 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     doc.addImage(qrDataUrl, 'PNG', 20, footerY, 25, 25)
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.text(getLabel('scanToPay'), 22, footerY + 28)
+    if (language === 'bilingual') {
+      doc.text(labels.scanToPay.en, 22, footerY + 28)
+      renderArabicText(doc, labels.scanToPay.ar, 190, footerY + 28, { align: 'right' })
+    } else {
+      const text = labels.scanToPay[language]
+      if (language === 'ar') {
+        renderArabicText(doc, text, 22, footerY + 28)
+      } else {
+        doc.text(text, 22, footerY + 28)
+      }
+    }
   } catch {}
   
   // Thank you message (centered)
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text(getLabel('thankYou'), 105, footerY + 15, { align: 'center' })
+  if (language === 'bilingual') {
+    doc.text(labels.thankYou.en, 105, footerY + 15, { align: 'center' })
+    renderArabicText(doc, labels.thankYou.ar, 105, footerY + 25, { align: 'center' })
+  } else {
+    const text = labels.thankYou[language]
+    if (language === 'ar') {
+      renderArabicText(doc, text, 105, footerY + 15, { align: 'center' })
+    } else {
+      doc.text(text, 105, footerY + 15, { align: 'center' })
+    }
+  }
   
   // Compliance information (right-aligned)
   doc.setFontSize(8).setFont('helvetica', 'normal')
@@ -448,21 +553,46 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     doc.text(`CR Number: ${crNumber}`, 190, complianceY, { align: 'right' })
     complianceY += 4
   }
-  doc.text(getLabel('validWithoutSignature'), 190, complianceY, { align: 'right' })
-  complianceY += 4
-  doc.text(getLabel('omaniVatCompliance'), 190, complianceY, { align: 'right' })
-  
-  // Optional signature block
-  if (invoice.require_signature) {
+  if (language === 'bilingual') {
+    doc.text(labels.validWithoutSignature.en, 190, complianceY, { align: 'right' })
+    renderArabicText(doc, labels.validWithoutSignature.ar, 190, complianceY + 4, { align: 'right' })
     complianceY += 8
-    doc.setFontSize(10).setFont('helvetica', 'bold')
-    doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-    doc.text('Authorized Signature:', 20, complianceY)
-    doc.setFontSize(8).setFont('helvetica', 'normal')
-    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.text('_________________________', 20, complianceY + 8)
-    doc.text('Date: _______________', 20, complianceY + 16)
+    doc.text(labels.omaniVatCompliance.en, 190, complianceY, { align: 'right' })
+    renderArabicText(doc, labels.omaniVatCompliance.ar, 190, complianceY + 4, { align: 'right' })
+    complianceY += 4
+  } else {
+    const validText = labels.validWithoutSignature[language]
+    const complianceText = labels.omaniVatCompliance[language]
+    if (language === 'ar') {
+      renderArabicText(doc, validText, 190, complianceY, { align: 'right' })
+      complianceY += 4
+      renderArabicText(doc, complianceText, 190, complianceY, { align: 'right' })
+    } else {
+      doc.text(validText, 190, complianceY, { align: 'right' })
+      complianceY += 4
+      doc.text(complianceText, 190, complianceY, { align: 'right' })
+    }
+    complianceY += 4
   }
+  
+  // Signature block - visible by default for Omani clients
+  complianceY += 8
+  doc.setFontSize(10).setFont('helvetica', 'bold')
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  
+  if (language === 'bilingual') {
+    doc.text('Authorized Signature:', 20, complianceY)
+    renderArabicText(doc, 'التوقيع المعتمد:', 190, complianceY, { align: 'right' })
+  } else if (language === 'ar') {
+    renderArabicText(doc, 'التوقيع المعتمد:', 20, complianceY)
+  } else {
+    doc.text('Authorized Signature:', 20, complianceY)
+  }
+  
+  doc.setFontSize(8).setFont('helvetica', 'normal')
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  doc.text('_________________________', 20, complianceY + 8)
+  doc.text('Date: _______________', 20, complianceY + 16)
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
