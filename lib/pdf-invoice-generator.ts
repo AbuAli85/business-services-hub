@@ -302,57 +302,65 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     }
   }
 
-  // Company name and contact info
-  doc.setFontSize(18).setFont('helvetica', 'bold')
+  // Company name and contact info - improved positioning
+  doc.setFontSize(20).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.text(companyName, 70, 20)
+  doc.text(companyName, 70, 22)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(companyAddress, 70, 27)
-  doc.text(`${companyPhone} | ${companyEmail}`, 70, 33)
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  doc.text(companyAddress, 70, 29)
+  doc.text(`${companyPhone} | ${companyEmail}`, 70, 35)
 
-  // Invoice info box
+  // Invoice info box - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(130, 15, 70, 35, 'F')
+  doc.rect(130, 15, 70, 40, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
-  doc.setLineWidth(1.5)
-  doc.rect(130, 15, 70, 35, 'S')
+  doc.setLineWidth(2)
+  doc.rect(130, 15, 70, 40, 'S')
 
-  doc.setFontSize(16).setFont('helvetica', 'bold')
+  doc.setFontSize(18).setFont('helvetica', 'bold')
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
     // Render English and Arabic side-by-side
-    doc.text(labels.invoice.en, 135, 22, { align: 'center' })
-    renderArabicText(doc, labels.invoice.ar, 195, 22, { align: 'right' })
+    doc.text(labels.invoice.en, 135, 25, { align: 'center' })
+    renderArabicText(doc, labels.invoice.ar, 195, 25, { align: 'right' })
   } else {
     const text = labels.invoice[language]
     if (language === 'ar') {
-      renderArabicText(doc, text, 195, 22, { align: 'right' })
+      renderArabicText(doc, text, 195, 25, { align: 'right' })
     } else {
-      doc.text(text, 195, 22, { align: 'right' })
+      doc.text(text, 195, 25, { align: 'right' })
     }
   }
+  
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(`Invoice #: ${invoiceNumber}`, 195, 28, { align: 'right' })
-  doc.text(`Date: ${createdDate}`, 195, 34, { align: 'right' })
-  doc.text(`Due: ${dueDate}`, 195, 40, { align: 'right' })
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  doc.text(`Invoice #: ${invoiceNumber}`, 195, 32, { align: 'right' })
+  doc.text(`Date: ${createdDate}`, 195, 38, { align: 'right' })
+  doc.text(`Due: ${dueDate}`, 195, 44, { align: 'right' })
 
-  // Status pill
+  // Status pill - improved positioning and styling
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2])
-  doc.roundedRect(135, 44, 30, 6, 3, 3, 'F')
+  doc.roundedRect(140, 48, 25, 6, 3, 3, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(8).setFont('helvetica', 'bold')
-  doc.text((status === 'pending' ? 'ISSUED' : status.toUpperCase()), 150, 48, { align: 'center' })
+  doc.text((status === 'pending' ? 'ISSUED' : status.toUpperCase()), 152.5, 52, { align: 'center' })
 
   // === BILLING INFO ===
-  let yPos = 60
+  let yPos = 65
 
-  // From
+  // From section - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(20, yPos - 5, 85, 45, 'F')
-  doc.rect(20, yPos - 5, 85, 45, 'S')
+  doc.rect(20, yPos - 5, 85, 50, 'F')
+  doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
+  doc.setLineWidth(1.5)
+  doc.rect(20, yPos - 5, 85, 50, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   renderBilingualHeader('from', 25, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.text(companyName, 25, yPos + 8)
   doc.text(companyAddress, 25, yPos + 14)
   doc.text(companyPhone, 25, yPos + 20)
@@ -374,14 +382,17 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     }
   }
 
-  // Bill To
+  // Bill To section - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
   doc.rect(115, yPos - 5, 85, 50, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
+  doc.setLineWidth(1.5)
   doc.rect(115, yPos - 5, 85, 50, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
+  doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   renderBilingualHeader('billTo', 120, yPos)
   doc.setFontSize(10).setFont('helvetica', 'normal')
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   
   let clientY = yPos + 8
   if (clientCompany) {
@@ -403,21 +414,22 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   }
 
   // === SERVICE TABLE ===
-  yPos = yPos + 60
+  yPos = yPos + 65
   const tableY = yPos + 8
   const tableWidth = 170
 
-  doc.setFillColor(colors.teal[0], colors.teal[1], colors.teal[2])
-  doc.rect(20, tableY, tableWidth, 8, 'F')
+  // Table header with improved styling
+  doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
+  doc.rect(20, tableY, tableWidth, 10, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(10).setFont('helvetica', 'bold')
-  doc.text('No', 22, tableY + 6)
-  doc.text('Item Description', 40, tableY + 6)
-  doc.text('Qty', 125, tableY + 6)
-  doc.text('Rate (OMR)', 150, tableY + 6)
-  doc.text('Amount (OMR)', 175, tableY + 6)
+  doc.text('No', 22, tableY + 7)
+  doc.text('Item Description', 40, tableY + 7)
+  doc.text('Qty', 125, tableY + 7)
+  doc.text('Rate (OMR)', 150, tableY + 7)
+  doc.text('Amount (OMR)', 175, tableY + 7)
 
-  let currentY = tableY + 8
+  let currentY = tableY + 10
   const items = invoice.invoice_items?.length ? invoice.invoice_items : [{
     title: 'Service Item',
     qty: 1,
@@ -431,35 +443,42 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       currentY = 20
       
       // Redraw table header on new page
-      doc.setFillColor(colors.teal[0], colors.teal[1], colors.teal[2])
-      doc.rect(20, currentY, tableWidth, 8, 'F')
+      doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
+      doc.rect(20, currentY, tableWidth, 10, 'F')
       doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
       doc.setFontSize(10).setFont('helvetica', 'bold')
-      doc.text('No', 22, currentY + 6)
-      doc.text('Item Description', 40, currentY + 6)
-      doc.text('Qty', 125, currentY + 6)
-      doc.text('Rate (OMR)', 150, currentY + 6)
-      doc.text('Amount (OMR)', 175, currentY + 6)
-      currentY += 8
+      doc.text('No', 22, currentY + 7)
+      doc.text('Item Description', 40, currentY + 7)
+      doc.text('Qty', 125, currentY + 7)
+      doc.text('Rate (OMR)', 150, currentY + 7)
+      doc.text('Amount (OMR)', 175, currentY + 7)
+      currentY += 10
     }
 
     const qty = item.qty || 1
     const price = item.price || item.rate || 0
     const amount = qty * price
+    
+    // Alternating row colors
     if (index % 2 === 0) {
       doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-      doc.rect(20, currentY, tableWidth, 10, 'F')
+      doc.rect(20, currentY, tableWidth, 12, 'F')
     }
-    doc.rect(20, currentY, tableWidth, 10, 'S')
+    
+    // Row border
+    doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+    doc.setLineWidth(0.5)
+    doc.rect(20, currentY, tableWidth, 12, 'S')
+    
     doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
     doc.setFontSize(9).setFont('helvetica', 'normal')
-    doc.text(String(index + 1), 22, currentY + 7)
+    doc.text(String(index + 1), 22, currentY + 8)
     const descriptionLines = splitText(doc, item.title || 'Service Item', 75)
-    doc.text(descriptionLines, 40, currentY + 7)
-    doc.text(String(qty), 137, currentY + 7, { align: 'center' })
-    doc.text(formatCurrency(price, 'OMR'), 170, currentY + 7, { align: 'right' })
-    doc.text(formatCurrency(amount, 'OMR'), 195, currentY + 7, { align: 'right' })
-    currentY += 10
+    doc.text(descriptionLines, 40, currentY + 8)
+    doc.text(String(qty), 137, currentY + 8, { align: 'center' })
+    doc.text(formatCurrency(price, 'OMR'), 170, currentY + 8, { align: 'right' })
+    doc.text(formatCurrency(amount, 'OMR'), 195, currentY + 8, { align: 'right' })
+    currentY += 12
   })
 
   // === SUMMARY ===
@@ -472,12 +491,12 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   const safeTaxAmount = safeSubtotal * taxRate / 100
   const safeTotal = safeSubtotal + safeTaxAmount
 
-  // Summary box with proper styling using brand accent color
+  // Summary box with improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(summaryX, summaryY, summaryWidth, 35, 'F')
+  doc.rect(summaryX, summaryY, summaryWidth, 40, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.setLineWidth(2)
-  doc.rect(summaryX, summaryY, summaryWidth, 35, 'S')
+  doc.rect(summaryX, summaryY, summaryWidth, 40, 'S')
   
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
@@ -486,25 +505,30 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   renderBilingualText('subtotal', summaryX + 5, summaryY + 8)
   doc.text(formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
   
-  // VAT 5% - always show
-  renderBilingualText('vat', summaryX + 5, summaryY + 16)
+  // VAT 5% - always show with clear labeling
+  doc.text('VAT (5%):', summaryX + 5, summaryY + 16)
+  if (language === 'bilingual') {
+    renderArabicText(doc, 'ضريبة القيمة المضافة (5%):', summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
+  }
   doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
+  
+  // Total with highlighted background
   doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 8, 'F')
+  doc.rect(summaryX + 5, summaryY + 22, summaryWidth - 10, 12, 'F')
   doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
   if (language === 'bilingual') {
-    doc.text(`${labels.total.en}:`, summaryX + 8, summaryY + 28)
-    renderArabicText(doc, `${labels.total.ar}:`, summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
+    doc.text(`${labels.total.en}:`, summaryX + 8, summaryY + 30)
+    renderArabicText(doc, `${labels.total.ar}:`, summaryX + summaryWidth - 8, summaryY + 30, { align: 'right' })
   } else {
     const text = labels.total[language]
     if (language === 'ar') {
-      renderArabicText(doc, `${text}:`, summaryX + 8, summaryY + 28)
+      renderArabicText(doc, `${text}:`, summaryX + 8, summaryY + 30)
     } else {
-      doc.text(`${text}:`, summaryX + 8, summaryY + 28)
+      doc.text(`${text}:`, summaryX + 8, summaryY + 30)
     }
   }
-  doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 28, { align: 'right' })
+  doc.text(formatCurrency(safeTotal, 'OMR'), summaryX + summaryWidth - 8, summaryY + 30, { align: 'right' })
 
   // Amount in words
   const amountInWords = numberToWords(Math.round(safeTotal))
@@ -577,38 +601,39 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text(`: ${paymentTerms}`, 80, paymentY + 26)
 
   // === FOOTER ===
-  const footerY = summaryY + 80
+  const footerY = summaryY + 85
   
   // Divider line above footer
   doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(1)
   doc.line(20, footerY - 5, 190, footerY - 5)
   
-  // QR Code for payment
+  // QR Code for payment - improved positioning
   try {
     const qrText = invoice.payment_url || `Invoice ${invoiceNumber}, Total: ${formatCurrency(safeTotal, 'OMR')}`
-    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 50 })
-    doc.addImage(qrDataUrl, 'PNG', 20, footerY, 25, 25)
+    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 60 })
+    doc.addImage(qrDataUrl, 'PNG', 20, footerY, 30, 30)
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
     if (language === 'bilingual') {
-      doc.text(labels.scanToPay.en, 22, footerY + 28)
-      renderArabicText(doc, labels.scanToPay.ar, 190, footerY + 28, { align: 'right' })
+      doc.text(labels.scanToPay.en, 25, footerY + 32)
+      renderArabicText(doc, labels.scanToPay.ar, 190, footerY + 32, { align: 'right' })
     } else {
       const text = labels.scanToPay[language]
       if (language === 'ar') {
-        renderArabicText(doc, text, 22, footerY + 28)
+        renderArabicText(doc, text, 25, footerY + 32)
       } else {
-        doc.text(text, 22, footerY + 28)
+        doc.text(text, 25, footerY + 32)
       }
     }
   } catch {}
   
-  // Thank you message (centered)
-  doc.setFontSize(12).setFont('helvetica', 'bold')
+  // Thank you message (centered) - improved positioning
+  doc.setFontSize(14).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
     doc.text(labels.thankYou.en, 105, footerY + 15, { align: 'center' })
-    renderArabicText(doc, labels.thankYou.ar, 105, footerY + 25, { align: 'center' })
+    renderArabicText(doc, labels.thankYou.ar, 105, footerY + 30, { align: 'center' })
   } else {
     const text = labels.thankYou[language]
     if (language === 'ar') {
@@ -653,8 +678,8 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     complianceY += 4
   }
   
-  // Signature block - visible by default for Omani clients
-  complianceY += 8
+  // Signature block - improved layout
+  complianceY += 10
   doc.setFontSize(10).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   
@@ -671,6 +696,11 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.text('_________________________', 20, complianceY + 8)
   doc.text('Date: _______________', 20, complianceY + 16)
+  
+  // Add a professional note
+  doc.setFontSize(7).setFont('helvetica', 'italic')
+  doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+  doc.text('This invoice is computer generated and does not require a signature', 20, complianceY + 24)
 
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
