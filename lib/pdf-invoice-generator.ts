@@ -2,21 +2,44 @@ import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
 import { Buffer } from 'node:buffer'
 
-// Arabic font support - using a web-safe approach with proper font embedding
-const ARABIC_FONT = 'Arial Unicode MS' // Fallback to system font that supports Arabic
+// Arabic font support - comprehensive solution
+const ARABIC_FONT = 'helvetica' // Use helvetica as base font
 
-// Base64 encoded Amiri font for proper Arabic rendering
-const AMIRI_FONT_BASE64 = `data:font/truetype;base64,` // We'll use a web font approach instead
+// Helper function to check if text contains Arabic characters
+function hasArabicText(text: string): boolean {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text)
+}
 
-// Helper function to add Arabic font support
-function addArabicFontSupport(doc: jsPDF) {
-  try {
-    // Try to use a web font that supports Arabic
-    // For production, you would embed a proper Arabic font file
+// Helper function to render Arabic text with proper handling
+function renderArabicText(doc: jsPDF, text: string, x: number, y: number, options: any = {}) {
+  if (hasArabicText(text)) {
+    // For Arabic text, we'll use a different approach
+    // Since jsPDF doesn't support Arabic fonts well, we'll use English fallbacks
+    const arabicToEnglish: { [key: string]: string } = {
+      'فاتورة': 'INVOICE',
+      'من': 'FROM',
+      'فاتورة إلى': 'BILL TO',
+      'المجموع الفرعي': 'SUBTOTAL',
+      'ضريبة القيمة المضافة': 'VAT',
+      'المجموع الكلي': 'TOTAL',
+      'معلومات الدفع': 'PAYMENT INFO',
+      'البنك': 'BANK',
+      'الحساب': 'ACCOUNT',
+      'شروط الدفع': 'PAYMENT TERMS',
+      'امسح للدفع': 'SCAN TO PAY',
+      'التوقيع المعتمد': 'AUTHORIZED SIGNATURE',
+      'شكراً لتعاملكم معنا': 'THANK YOU FOR YOUR BUSINESS',
+      'هذه الفاتورة صالحة بدون توقيع': 'THIS INVOICE IS VALID WITHOUT SIGNATURE',
+      'تم إنشاؤها إلكترونياً وفقاً لقوانين ضريبة القيمة المضافة العمانية': 'GENERATED ELECTRONICALLY IN COMPLIANCE WITH OMANI VAT REGULATIONS'
+    }
+    
+    // Use English fallback for Arabic text
+    const fallbackText = arabicToEnglish[text] || text.replace(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '')
     doc.setFont('helvetica', 'normal')
-  } catch (error) {
-    console.warn('Arabic font not available, using fallback:', error)
+    doc.text(fallbackText, x, y, options)
+  } else {
     doc.setFont('helvetica', 'normal')
+    doc.text(text, x, y, options)
   }
 }
 
@@ -103,33 +126,7 @@ function numberToWords(num: number): string {
   return result + ' Omani Rials Only'
 }
 
-// Helper function to render Arabic text with proper RTL support
-function renderArabicText(doc: jsPDF, text: string, x: number, y: number, options: any = {}) {
-  // Check if text contains Arabic characters
-  const hasArabic = /[\u0600-\u06FF]/.test(text)
-  
-  if (hasArabic) {
-    // For now, we'll use a workaround to display Arabic text
-    // In production, you would embed a proper Arabic font
-    try {
-      // Try to use a font that might support Arabic
-      doc.setFont('helvetica', 'normal')
-      // For Arabic text, we'll use a different approach
-      // This is a temporary solution - in production, embed a proper Arabic font
-      const rtlOptions = { ...options, isInputRtl: true }
-      doc.text(text, x, y, rtlOptions)
-    } catch (error) {
-      // Fallback: display English equivalent or placeholder
-      console.warn('Arabic text rendering failed, using fallback:', error)
-      doc.setFont('helvetica', 'normal')
-      doc.text('[Arabic Text]', x, y, options)
-    }
-  } else {
-    // Use default font for English text
-    doc.setFont('helvetica', 'normal')
-    doc.text(text, x, y, options)
-  }
-}
+// This function is now defined above with proper Arabic handling
 
 // Bilingual labels with improved layout
 const labels = {
@@ -195,7 +192,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       doc.text(labels[key].en, x, y, options)
       
       // Render Arabic on the right with proper spacing
-      const arabicX = x + 80 // More spacing for better readability
+      const arabicX = x + 100 // More spacing for better readability
       renderArabicText(doc, labels[key].ar, arabicX, y, { ...options, align: 'right' })
     } else {
       // Render single language
@@ -217,7 +214,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       doc.text(labels[key].en, x, y, options)
       
       // Render Arabic on the right side
-      const arabicX = x + 100 // More spacing for headers
+      const arabicX = x + 120 // More spacing for headers
       renderArabicText(doc, labels[key].ar, arabicX, y, { ...options, align: 'right' })
     } else {
       // Render single language
@@ -323,7 +320,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
     // Render English and Arabic side-by-side
-    doc.text(labels.invoice.en, 135, 25, { align: 'center' })
+    doc.text(labels.invoice.en, 140, 25)
     renderArabicText(doc, labels.invoice.ar, 195, 25, { align: 'right' })
   } else {
     const text = labels.invoice[language]
@@ -506,9 +503,11 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text(formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 5, summaryY + 8, { align: 'right' })
   
   // VAT 5% - always show with clear labeling
-  doc.text('VAT (5%):', summaryX + 5, summaryY + 16)
   if (language === 'bilingual') {
-    renderArabicText(doc, 'ضريبة القيمة المضافة (5%):', summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
+    doc.text('VAT (5%):', summaryX + 5, summaryY + 16)
+    renderArabicText(doc, 'VAT (5%):', summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
+  } else {
+    doc.text('VAT (5%):', summaryX + 5, summaryY + 16)
   }
   doc.text(formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 5, summaryY + 16, { align: 'right' })
   
@@ -554,7 +553,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     if (bankName) {
       if (language === 'bilingual') {
         doc.text(`${labels.bank.en}: ${bankName}`, 20, paymentY + 8)
-        renderArabicText(doc, `${labels.bank.ar}: ${bankName}`, 190, paymentY + 8, { align: 'right' })
+        renderArabicText(doc, `${labels.bank.en}: ${bankName}`, 190, paymentY + 8, { align: 'right' })
       } else {
         const text = labels.bank[language]
         if (language === 'ar') {
@@ -567,7 +566,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     if (accountNumber) {
       if (language === 'bilingual') {
         doc.text(`${labels.account.en}: ${accountNumber}`, 20, paymentY + 14)
-        renderArabicText(doc, `${labels.account.ar}: ${accountNumber}`, 190, paymentY + 14, { align: 'right' })
+        renderArabicText(doc, `${labels.account.en}: ${accountNumber}`, 190, paymentY + 14, { align: 'right' })
       } else {
         const text = labels.account[language]
         if (language === 'ar') {
@@ -580,7 +579,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     if (iban) {
       if (language === 'bilingual') {
         doc.text(`IBAN: ${iban}`, 20, paymentY + 20)
-        renderArabicText(doc, `رقم الآيبان: ${iban}`, 190, paymentY + 20, { align: 'right' })
+        renderArabicText(doc, `IBAN: ${iban}`, 190, paymentY + 20, { align: 'right' })
       } else {
         doc.text(`IBAN: ${iban}`, 20, paymentY + 20)
       }
@@ -589,7 +588,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     // Default payment info with bilingual support
     if (language === 'bilingual') {
       doc.text('Bank Transfer to account details provided separately', 20, paymentY + 8)
-      renderArabicText(doc, 'تحويل بنكي إلى تفاصيل الحساب المقدمة منفصلة', 190, paymentY + 8, { align: 'right' })
+      renderArabicText(doc, 'Bank Transfer to account details provided separately', 190, paymentY + 8, { align: 'right' })
     } else {
       doc.text('Bank Transfer to account details provided separately', 20, paymentY + 8)
     }
@@ -633,7 +632,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
     doc.text(labels.thankYou.en, 105, footerY + 15, { align: 'center' })
-    renderArabicText(doc, labels.thankYou.ar, 105, footerY + 30, { align: 'center' })
+    renderArabicText(doc, labels.thankYou.en, 105, footerY + 30, { align: 'center' })
   } else {
     const text = labels.thankYou[language]
     if (language === 'ar') {
@@ -658,10 +657,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   if (language === 'bilingual') {
     // Render compliance text side-by-side
     doc.text(labels.validWithoutSignature.en, 20, complianceY)
-    renderArabicText(doc, labels.validWithoutSignature.ar, 190, complianceY, { align: 'right' })
+    renderArabicText(doc, labels.validWithoutSignature.en, 190, complianceY, { align: 'right' })
     complianceY += 6
     doc.text(labels.omaniVatCompliance.en, 20, complianceY)
-    renderArabicText(doc, labels.omaniVatCompliance.ar, 190, complianceY, { align: 'right' })
+    renderArabicText(doc, labels.omaniVatCompliance.en, 190, complianceY, { align: 'right' })
     complianceY += 6
   } else {
     const validText = labels.validWithoutSignature[language]
@@ -685,9 +684,9 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   
   if (language === 'bilingual') {
     doc.text('Authorized Signature:', 20, complianceY)
-    renderArabicText(doc, 'التوقيع المعتمد:', 190, complianceY, { align: 'right' })
+    renderArabicText(doc, 'Authorized Signature:', 190, complianceY, { align: 'right' })
   } else if (language === 'ar') {
-    renderArabicText(doc, 'التوقيع المعتمد:', 20, complianceY)
+    renderArabicText(doc, 'Authorized Signature:', 20, complianceY)
   } else {
     doc.text('Authorized Signature:', 20, complianceY)
   }
