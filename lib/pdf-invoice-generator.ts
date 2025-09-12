@@ -192,8 +192,8 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       doc.setFont('helvetica', 'normal')
       doc.text(labels[key].en, x, y, options)
       
-      // Render English fallback on the right (avoiding Arabic text processing)
-      const arabicX = x + 100 // More spacing for better readability
+      // Render Arabic on the right (using English fallback for now)
+      const arabicX = x + 80
       doc.setFont('helvetica', 'normal')
       doc.text(labels[key].en, arabicX, y, { ...options, align: 'right' })
     } else {
@@ -213,9 +213,12 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   // Helper function to render bilingual text in two separate lines (for headers)
   const renderBilingualHeader = (key: keyof typeof labels, x: number, y: number, options: any = {}) => {
     if (language === 'bilingual') {
-      // Render English only (no duplication)
+      // Render English on the left
       doc.setFont('helvetica', 'normal')
       doc.text(labels[key].en, x, y, options)
+      // Render Arabic on the right (using English fallback for now)
+      const arabicX = x + 60
+      doc.text(labels[key].en, arabicX, y, { ...options, align: 'right' })
     } else {
       // Render single language
       const text = labels[key][language]
@@ -302,12 +305,13 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   }
 
   // Company name and contact info - improved positioning
-  doc.setFontSize(18).setFont('helvetica', 'bold')
+  doc.setFontSize(16).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   // Ensure company name fits by using smaller font and better positioning
-  if (companyName.length > 20) {
-    doc.setFontSize(16)
+  if (companyName.length > 25) {
+    doc.setFontSize(14)
   }
+  // Position company name to avoid truncation
   doc.text(companyName, 70, 22)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
@@ -315,7 +319,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text(companyAddress, 70, 29)
   // Better text wrapping for contact info
   const contactInfo = `${companyPhone} | ${companyEmail}`
-  if (contactInfo.length > 45) {
+  if (contactInfo.length > 40) {
     // Split into two lines if too long
     const phonePart = companyPhone
     const emailPart = companyEmail
@@ -335,8 +339,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.setFontSize(18).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   if (language === 'bilingual') {
-    // Render English centered in the box
-    doc.text(labels.invoice.en, 165, 25, { align: 'center' })
+    // Render English on the left
+    doc.text(labels.invoice.en, 140, 25)
+    // Render Arabic on the right (using English fallback for now)
+    doc.text(labels.invoice.en, 190, 25, { align: 'right' })
   } else {
     const text = labels.invoice[language]
     if (language === 'ar') {
@@ -361,14 +367,14 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text((status === 'pending' ? 'ISSUED' : status.toUpperCase()), 152.5, 52, { align: 'center' })
 
   // === BILLING INFO ===
-  let yPos = 70
+  let yPos = 75
 
   // From section - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(20, yPos - 5, 85, 55, 'F')
+  doc.rect(20, yPos - 5, 85, 60, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.setLineWidth(1.5)
-  doc.rect(20, yPos - 5, 85, 55, 'S')
+  doc.rect(20, yPos - 5, 85, 60, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   renderBilingualHeader('from', 25, yPos)
@@ -397,10 +403,10 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
 
   // Bill To section - improved styling
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(115, yPos - 5, 85, 55, 'F')
+  doc.rect(115, yPos - 5, 85, 60, 'F')
   doc.setDrawColor(colors.accent[0], colors.accent[1], colors.accent[2])
   doc.setLineWidth(1.5)
-  doc.rect(115, yPos - 5, 85, 55, 'S')
+  doc.rect(115, yPos - 5, 85, 60, 'S')
   doc.setFontSize(12).setFont('helvetica', 'bold')
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
   renderBilingualHeader('billTo', 120, yPos)
@@ -432,10 +438,18 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     doc.setFontSize(8).setFont('helvetica', 'italic')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
     doc.text('Individual Client', 120, clientY)
+    clientY += 6
+  }
+  
+  // Add a professional note
+  if (clientY < yPos + 45) {
+    doc.setFontSize(8).setFont('helvetica', 'normal')
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
+    doc.text('Client Information', 120, clientY)
   }
 
   // === SERVICE TABLE ===
-  yPos = yPos + 65
+  yPos = yPos + 70
   const tableY = yPos + 8
   const tableWidth = 170
 
