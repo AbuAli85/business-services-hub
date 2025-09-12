@@ -133,10 +133,10 @@ export class EmailNotificationService {
     const templateStyle = preferences.template_style || 'modern'
     const includeBranding = preferences.include_company_branding !== false
 
-    const priorityColors = {
+    const priorityColors: Record<import('@/types/notifications').NotificationPriority, string> = {
       urgent: '#ef4444',
       high: '#f59e0b',
-      medium: '#3b82f6',
+      normal: '#3b82f6',
       low: '#10b981'
     }
 
