@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
+import { Buffer } from 'node:buffer'
 
 async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   // Create an enterprise-grade professional PDF invoice
@@ -176,7 +177,19 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
     // Page break if needed
     if (y > 260) {
       doc.addPage()
-      y = 20
+      y = 40
+      // Redraw table header on new page
+      doc.setFillColor(accent[0], accent[1], accent[2])
+      doc.rect(20, y, 170, 10, 'F')
+      doc.setTextColor(white[0], white[1], white[2])
+      doc.setFontSize(10).setFont('helvetica', 'bold')
+      doc.text('Description', 25, y + 7)
+      doc.text('Qty', 120, y + 7)
+      doc.text('Rate', 140, y + 7)
+      doc.text('Amount', 160, y + 7)
+      y += 12
+      doc.setTextColor(gray[0], gray[1], gray[2])
+      doc.setFontSize(10).setFont('helvetica', 'normal')
     }
   })
 
@@ -222,7 +235,9 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
     const qrText = invoice.payment_url || 
       `Invoice ${invoiceNumber}, Total: ${fmtCurrency(total)}`
     const qrDataUrl = await QRCode.toDataURL(qrText, { width: 100 })
-    doc.addImage(qrDataUrl, 'PNG', 20, 250, 25, 25)
+    // Place QR code relative to last content position
+    const qrY = y + 20 > 240 ? 240 : y + 20
+    doc.addImage(qrDataUrl, 'PNG', 20, qrY, 25, 25)
   } catch (error) {
     console.warn('Failed to generate QR code:', error)
   }
@@ -292,6 +307,20 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Invoice data fetched successfully')
+
+    // Check if PDF already exists and is recent (within 24 hours)
+    const shouldRegenerate = !invoice.pdf_url || 
+      (invoice.updated_at && new Date(invoice.updated_at) < new Date(Date.now() - 24 * 60 * 60 * 1000))
+
+    if (!shouldRegenerate && invoice.pdf_url) {
+      console.log('📄 Using existing PDF:', invoice.pdf_url)
+      // Return existing PDF URL
+      return NextResponse.json({ 
+        pdf_url: invoice.pdf_url,
+        message: 'PDF already exists',
+        cached: true 
+      })
+    }
 
     // Fetch invoice_items
     const { data: items, error: itemsError } = await supabase
