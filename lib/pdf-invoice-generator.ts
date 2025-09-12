@@ -339,6 +339,22 @@ export async function generateProfessionalPDF(
   return new Uint8Array(doc.output('arraybuffer'))
 }
 
+// Helper function to check if PDF should be regenerated
+export function shouldRegeneratePDF(pdfUrl: string | null): boolean {
+  if (!pdfUrl) return true
+  
+  // Check if PDF is older than 24 hours
+  const pdfTimestamp = pdfUrl.match(/\?t=(\d+)/)
+  if (pdfTimestamp) {
+    const timestamp = parseInt(pdfTimestamp[1])
+    const now = Date.now()
+    const twentyFourHours = 24 * 60 * 60 * 1000
+    return (now - timestamp) > twentyFourHours
+  }
+  
+  return true
+}
+
 // Type definitions
 export interface InvoiceWithDetails {
   id: number
