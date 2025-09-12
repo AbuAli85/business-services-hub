@@ -93,16 +93,13 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
         <TooltipProvider>
-          <Tooltip>
+          <Tooltip content={getTooltipContent()}>
             <TooltipTrigger asChild>
               <Badge className={`${getStatusColor()} text-xs border`}>
                 {getStatusIcon()}
                 <span className="ml-1">{getStatusText()}</span>
               </Badge>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>{getTooltipContent()}</p>
-            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
         
@@ -117,7 +114,7 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
 
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip content={getTooltipContent()}>
         <TooltipTrigger asChild>
           <div className={`inline-flex items-center ${className}`}>
             <Badge className={`${getStatusColor()} text-xs border`}>
@@ -125,9 +122,6 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
             </Badge>
           </div>
         </TooltipTrigger>
-        <TooltipContent>
-          <p>{getTooltipContent()}</p>
-        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   )
