@@ -323,7 +323,7 @@ export default function MessagesPage() {
           receiver_id: selectedConversation.participant_id,
           subject: `Message from ${user?.user_metadata?.full_name || 'User'}`,
           booking_id: selectedConversation.booking_id,
-          message_type: 'general',
+          message_type: 'text',
           read: false
         })
         .select('*')

@@ -181,7 +181,7 @@ interface SmartSuggestion {
   title: string
   description: string
   action: string
-  priority: 'low' | 'medium' | 'high'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   estimated_impact: string
 }
 
@@ -1519,7 +1519,7 @@ export default function EnhancedBookingDetails({
           sender_id: user.id,
           receiver_id: user.id === booking.client.id ? booking.provider.id : booking.client.id,
           content: `📋 Booking #${booking.id.slice(0, 8)}: ${newMessage}`,
-          message_type: messageType,
+          message_type: 'text',
           booking_id: booking.id
         })
 
@@ -1557,7 +1557,7 @@ export default function EnhancedBookingDetails({
           sender_id: user.id,
           receiver_id: booking.provider.id,
           content: `🎯 [${requestTypes[showActionRequestModal as keyof typeof requestTypes]}] ${actionRequestText}`,
-          message_type: 'action_request',
+          message_type: 'system',
           booking_id: booking.id
         })
 

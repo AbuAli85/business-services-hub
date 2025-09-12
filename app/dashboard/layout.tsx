@@ -44,7 +44,7 @@ interface Notification {
   message: string
   is_read: boolean
   created_at: string
-  priority: 'low' | 'medium' | 'high'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
 }
 
 export default function DashboardLayout({
@@ -84,7 +84,7 @@ export default function DashboardLayout({
               message: n.message,
               is_read: n.is_read ?? n.read ?? false,
               created_at: n.created_at,
-              priority: n.priority || 'low'
+              priority: n.priority || 'normal'
             }
             setNotifications(prev => [item, ...prev].slice(0, 20) as any)
             setUnreadCount(prev => prev + 1)
@@ -233,7 +233,7 @@ export default function DashboardLayout({
         message: n.message,
         is_read: n.is_read ?? n.read ?? false,
         created_at: n.created_at,
-        priority: (n.priority || 'low') as any
+        priority: (n.priority || 'normal') as any
       }))
       setNotifications(items as any)
       setUnreadCount(items.filter((n: any)=> !n.is_read).length)
