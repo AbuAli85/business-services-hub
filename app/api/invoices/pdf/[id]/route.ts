@@ -21,6 +21,7 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   const white = [255, 255, 255]
   const gray = [71, 85, 105]
   const lightGray = [248, 250, 252]
+  const borderGray = [226, 232, 240] // Slate-200
 
   // Helper formatters
   const fmtCurrency = (value: number) => {
@@ -66,83 +67,105 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   // Set default font
   doc.setFont('helvetica')
   
-  // === Header ===
+  // === Professional Header ===
   doc.setFillColor(primary[0], primary[1], primary[2])
-  doc.rect(0, 0, 210, 40, 'F')
+  doc.rect(0, 0, 210, 50, 'F')
 
-  // Dynamic logo or placeholder
+  // Logo in top-left
   if (companyLogoUrl) {
     try {
       const logoResponse = await fetch(companyLogoUrl)
       const logoBuffer = await logoResponse.arrayBuffer()
       const logoBase64 = Buffer.from(logoBuffer).toString('base64')
-      doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 20, 15, 30, 15)
+      doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 20, 10, 40, 30)
     } catch (error) {
       console.warn('Failed to load company logo:', error)
       // Fallback to text logo
       doc.setTextColor(accent[0], accent[1], accent[2])
-      doc.setFontSize(14).setFont('helvetica', 'bold')
-      doc.text('LOGO', 25, 25)
+      doc.setFontSize(16).setFont('helvetica', 'bold')
+      doc.text('LOGO', 30, 30)
     }
   } else {
     // Text logo placeholder
     doc.setTextColor(accent[0], accent[1], accent[2])
-    doc.setFontSize(14).setFont('helvetica', 'bold')
-    doc.text('LOGO', 25, 25)
+    doc.setFontSize(16).setFont('helvetica', 'bold')
+    doc.text('LOGO', 30, 30)
   }
 
-  // Company Name & Contact
+  // Company Name & Tagline below logo
   doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(18).setFont('helvetica', 'bold')
-  doc.text(companyName, 60, 20)
-
+  doc.setFontSize(20).setFont('helvetica', 'bold')
+  doc.text(companyName, 70, 20)
+  doc.setFontSize(12).setFont('helvetica', 'normal')
+  doc.text('Professional Services & Solutions', 70, 26)
+  
+  // Company contact info
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(companyAddress, 60, 27)
-  doc.text(`${companyPhone} | ${companyEmail}`, 60, 33)
+  doc.text(companyAddress, 70, 32)
+  doc.text(`${companyPhone} | ${companyEmail}`, 70, 38)
 
-  // Invoice box
+  // Invoice info box - top right
   doc.setFillColor(white[0], white[1], white[2])
-  doc.rect(140, 10, 60, 25, 'F')
+  doc.rect(130, 10, 70, 35, 'F')
   doc.setDrawColor(accent[0], accent[1], accent[2])
-  doc.rect(140, 10, 60, 25, 'S')
+  doc.setLineWidth(1)
+  doc.rect(130, 10, 70, 35, 'S')
 
   doc.setTextColor(accent[0], accent[1], accent[2])
-  doc.setFontSize(16).setFont('helvetica', 'bold').text('INVOICE', 150, 20)
-  doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(`#${invoiceNumber}`, 150, 27)
-  doc.text(`Issued: ${createdDate}`, 150, 32)
-  doc.text(`Due: ${dueDate}`, 150, 37)
+  doc.setFontSize(18).setFont('helvetica', 'bold').text('INVOICE', 145, 20)
+  doc.setFontSize(11).setFont('helvetica', 'normal')
+  doc.text(`#${invoiceNumber}`, 135, 28)
+  doc.text(`Issued: ${createdDate}`, 135, 33)
+  doc.text(`Due: ${dueDate}`, 135, 38)
 
   // Status badge
   const status = invoice.status || 'pending'
   const color = status === 'paid' ? success : status === 'overdue' ? warning : accent
   doc.setFillColor(color[0], color[1], color[2])
-  doc.rect(140, 38, 25, 6, 'F')
+  doc.rect(135, 40, 30, 8, 'F')
   doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(8).setFont('helvetica', 'bold')
-  doc.text(status.toUpperCase(), 142, 42)
+  doc.setFontSize(9).setFont('helvetica', 'bold')
+  doc.text(status.toUpperCase(), 140, 45)
 
-  // === Client Section ===
+  // === Two-Column Provider & Client Section ===
+  // Provider section (left)
   doc.setTextColor(primary[0], primary[1], primary[2])
-  doc.setFontSize(12).setFont('helvetica', 'bold').text('Bill To:', 20, 60)
-
+  doc.setFontSize(12).setFont('helvetica', 'bold').text('From:', 20, 70)
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(clientName, 20, 68)
-  if (clientCompany) doc.text(clientCompany, 20, 74)
-  if (clientEmail) doc.text(clientEmail, 20, 80)
+  doc.text(companyName, 20, 78)
+  doc.text(companyAddress, 20, 84)
+  doc.text(`${companyPhone} | ${companyEmail}`, 20, 90)
 
-  // === Items Table ===
-  let y = 100
+  // Client section (right) with background
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
+  doc.rect(110, 65, 90, 30, 'F')
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
+  doc.setLineWidth(1)
+  doc.rect(110, 65, 90, 30, 'S')
+
+  doc.setTextColor(primary[0], primary[1], primary[2])
+  doc.setFontSize(12).setFont('helvetica', 'bold').text('Bill To:', 115, 75)
+  doc.setFontSize(10).setFont('helvetica', 'normal')
+  doc.text(clientName, 115, 83)
+  if (clientCompany) doc.text(clientCompany, 115, 89)
+  if (clientEmail) doc.text(clientEmail, 115, 95)
+
+  // === Professional Items Table ===
+  let y = 110
+  const tableWidth = 170
+  const tableX = 20
+  
+  // Table header with professional styling
   doc.setFillColor(accent[0], accent[1], accent[2])
-  doc.rect(20, y, 170, 10, 'F')
+  doc.rect(tableX, y, tableWidth, 12, 'F')
   doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(10).setFont('helvetica', 'bold')
-  doc.text('Description', 25, y + 7)
-  doc.text('Qty', 120, y + 7)
-  doc.text('Rate', 140, y + 7)
-  doc.text('Amount', 160, y + 7)
+  doc.setFontSize(11).setFont('helvetica', 'bold')
+  doc.text('Description', tableX + 5, y + 8)
+  doc.text('Qty', tableX + 100, y + 8, { align: 'center' })
+  doc.text('Rate', tableX + 120, y + 8, { align: 'right' })
+  doc.text('Amount', tableX + 150, y + 8, { align: 'right' })
 
-  y += 12
+  y += 15
   doc.setTextColor(gray[0], gray[1], gray[2])
   doc.setFontSize(10).setFont('helvetica', 'normal')
 
@@ -154,99 +177,132 @@ async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
     price: invoice.amount || 0,
   }]
 
-  items.forEach((item: any) => {
+  items.forEach((item: any, index: number) => {
     const qty = item.qty || 1
     const price = item.price || item.rate || 0
     const amount = qty * price
 
+    // Alternating row colors
+    if (index % 2 === 0) {
+      doc.setFillColor(248, 250, 252) // Very light gray
+      doc.rect(tableX, y - 3, tableWidth, 12, 'F')
+    }
+
     // Handle long descriptions with text wrapping
     const itemTitle = item.title || 'Item'
-    const wrappedTitle = doc.splitTextToSize(itemTitle, 90)
+    const wrappedTitle = doc.splitTextToSize(itemTitle, 85)
     
-    // Add item row
-    doc.text(wrappedTitle, 25, y)
-    doc.text(qty.toString(), 122, y)
-    doc.text(fmtCurrency(price), 140, y)
-    doc.text(fmtCurrency(amount), 160, y)
+    // Add item row with proper alignment
+    doc.text(wrappedTitle, tableX + 5, y + 5)
+    doc.text(qty.toString(), tableX + 100, y + 5, { align: 'center' })
+    doc.text(fmtCurrency(price), tableX + 120, y + 5, { align: 'right' })
+    doc.text(fmtCurrency(amount), tableX + 150, y + 5, { align: 'right' })
     
     // Add description if available and not too long
     if (item.description && item.description !== item.title) {
       y += 4
-      const wrappedDesc = doc.splitTextToSize(item.description, 90)
+      const wrappedDesc = doc.splitTextToSize(item.description, 85)
       doc.setFontSize(8)
-      doc.text(wrappedDesc, 25, y)
+      doc.text(wrappedDesc, tableX + 5, y + 5)
       doc.setFontSize(10)
     }
     
-    y += 8
+    y += 12
     
     // Page break if needed
-    if (y > 260) {
+    if (y > 250) {
       doc.addPage()
       y = 40
       // Redraw table header on new page
       doc.setFillColor(accent[0], accent[1], accent[2])
-      doc.rect(20, y, 170, 10, 'F')
+      doc.rect(tableX, y, tableWidth, 12, 'F')
       doc.setTextColor(white[0], white[1], white[2])
-      doc.setFontSize(10).setFont('helvetica', 'bold')
-      doc.text('Description', 25, y + 7)
-      doc.text('Qty', 120, y + 7)
-      doc.text('Rate', 140, y + 7)
-      doc.text('Amount', 160, y + 7)
-      y += 12
+      doc.setFontSize(11).setFont('helvetica', 'bold')
+      doc.text('Description', tableX + 5, y + 8)
+      doc.text('Qty', tableX + 100, y + 8, { align: 'center' })
+      doc.text('Rate', tableX + 120, y + 8, { align: 'right' })
+      doc.text('Amount', tableX + 150, y + 8, { align: 'right' })
+      y += 15
       doc.setTextColor(gray[0], gray[1], gray[2])
       doc.setFontSize(10).setFont('helvetica', 'normal')
     }
   })
 
-  // === Totals ===
-  y += 10
-  doc.setFont('helvetica', 'bold').text('Subtotal:', 140, y)
-  doc.setFont('helvetica', 'normal').text(fmtCurrency(subtotal), 185, y, { align: 'right' })
+  // Add table border
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
+  doc.setLineWidth(1)
+  doc.rect(tableX, 110, tableWidth, y - 110)
 
-  if (taxAmount > 0) {
-    y += 6
-    doc.setFont('helvetica', 'bold').text('Tax:', 140, y)
-    doc.setFont('helvetica', 'normal').text(fmtCurrency(taxAmount), 185, y, { align: 'right' })
-  }
+  // === Professional Totals Section ===
+  y += 15
+  const totalsX = 120
+  const totalsWidth = 70
+  const totalsHeight = 40
 
-  y += 8
-  doc.setFillColor(primary[0], primary[1], primary[2])
-  doc.rect(120, y - 5, 70, 10, 'F')
-  doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('TOTAL', 125, y + 2)
-  doc.text(fmtCurrency(total), 185, y + 2, { align: 'right' })
-
-  // === Footer ===
+  // Totals box background
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(0, 270, 210, 20, 'F')
+  doc.rect(totalsX, y, totalsWidth, totalsHeight, 'F')
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
+  doc.setLineWidth(1)
+  doc.rect(totalsX, y, totalsWidth, totalsHeight, 'S')
+
+  // Subtotal
   doc.setTextColor(gray[0], gray[1], gray[2])
-  doc.setFontSize(9).setFont('helvetica', 'normal')
-  doc.text('Thank you for your business!', 20, 278)
-  
-  // Add VAT/CR numbers if available
-  if (vatNumber) {
-    doc.text(`VAT No: ${vatNumber}`, 150, 278)
+  doc.setFontSize(11).setFont('helvetica', 'bold').text('Subtotal:', totalsX + 5, y + 15)
+  doc.setFont('helvetica', 'normal').text(fmtCurrency(subtotal), totalsX + 60, y + 15, { align: 'right' })
+
+  // Tax line
+  if (taxAmount > 0) {
+    doc.setFont('helvetica', 'bold').text(`Tax (${taxRate}%):`, totalsX + 5, y + 25)
+    doc.setFont('helvetica', 'normal').text(fmtCurrency(taxAmount), totalsX + 60, y + 25, { align: 'right' })
   }
-  if (crNumber) {
-    doc.text(`CR No: ${crNumber}`, 150, 283)
-  }
-  
-  // Add compliance text
-  doc.text('This invoice was generated electronically and is valid without signature.', 20, 285)
-  
-  // === QR Code ===
+
+  // Total line with emphasis
+  doc.setFillColor(primary[0], primary[1], primary[2])
+  doc.rect(totalsX, y + 30, totalsWidth, 10, 'F')
+  doc.setTextColor(white[0], white[1], white[2])
+  doc.setFontSize(14).setFont('helvetica', 'bold')
+  doc.text('TOTAL', totalsX + 5, y + 37)
+  doc.text(fmtCurrency(total), totalsX + 60, y + 37, { align: 'right' })
+
+  // === Professional Footer ===
+  // Top border line
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
+  doc.setLineWidth(1)
+  doc.line(20, 260, 190, 260)
+
+  // Footer background
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
+  doc.rect(0, 260, 210, 30, 'F')
+
+  // QR Code section (left)
   try {
     const qrText = invoice.payment_url || 
       `Invoice ${invoiceNumber}, Total: ${fmtCurrency(total)}`
     const qrDataUrl = await QRCode.toDataURL(qrText, { width: 100 })
-    // Place QR code relative to last content position
-    const qrY = y + 20 > 240 ? 240 : y + 20
-    doc.addImage(qrDataUrl, 'PNG', 20, qrY, 25, 25)
+    doc.addImage(qrDataUrl, 'PNG', 20, 265, 25, 25)
+    doc.setTextColor(gray[0], gray[1], gray[2])
+    doc.setFontSize(8).setFont('helvetica', 'normal')
+    doc.text('Scan to Pay', 20, 295)
   } catch (error) {
     console.warn('Failed to generate QR code:', error)
   }
+
+  // Thank you message (center-left)
+  doc.setTextColor(gray[0], gray[1], gray[2])
+  doc.setFontSize(10).setFont('helvetica', 'bold')
+  doc.text('Thank you for your business!', 50, 275)
+  
+  // Compliance information (right)
+  doc.setFontSize(8).setFont('helvetica', 'normal')
+  if (vatNumber) {
+    doc.text(`VAT No: ${vatNumber}`, 150, 275)
+  }
+  if (crNumber) {
+    doc.text(`CR No: ${crNumber}`, 150, 280)
+  }
+  doc.text('This invoice was generated electronically', 150, 285)
+  doc.text('and is valid without signature.', 150, 290)
   
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
