@@ -192,17 +192,17 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       doc.setFont('helvetica', 'normal')
       doc.text(labels[key].en, x, y, options)
       
-      // Render Arabic on the right (using English fallback for now)
+      // Render Arabic on the right
       const arabicX = x + 80
       doc.setFont('helvetica', 'normal')
-      doc.text(labels[key].en, arabicX, y, { ...options, align: 'right' })
+      doc.text(labels[key].ar, arabicX, y, { ...options, align: 'right' })
     } else {
       // Render single language
       const text = labels[key][language]
       if (language === 'ar') {
-        // For Arabic mode, use English fallback
+        // For Arabic mode, render Arabic text
         doc.setFont('helvetica', 'normal')
-        doc.text(labels[key].en, x, y, options)
+        doc.text(labels[key].ar, x, y, options)
       } else {
         doc.setFont('helvetica', 'normal')
         doc.text(text, x, y, options)
@@ -216,16 +216,16 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
       // Render English on the left
       doc.setFont('helvetica', 'normal')
       doc.text(labels[key].en, x, y, options)
-      // Render Arabic on the right (using English fallback for now)
+      // Render Arabic on the right
       const arabicX = x + 60
-      doc.text(labels[key].en, arabicX, y, { ...options, align: 'right' })
+      doc.text(labels[key].ar, arabicX, y, { ...options, align: 'right' })
     } else {
       // Render single language
       const text = labels[key][language]
       if (language === 'ar') {
-        // For Arabic mode, use English fallback
+        // For Arabic mode, render Arabic text
         doc.setFont('helvetica', 'normal')
-        doc.text(labels[key].en, x, y, options)
+        doc.text(labels[key].ar, x, y, options)
       } else {
         doc.setFont('helvetica', 'normal')
         doc.text(text, x, y, options)
@@ -341,13 +341,13 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   if (language === 'bilingual') {
     // Render English on the left
     doc.text(labels.invoice.en, 140, 25)
-    // Render Arabic on the right (using English fallback for now)
-    doc.text(labels.invoice.en, 190, 25, { align: 'right' })
+    // Render Arabic on the right
+    doc.text(labels.invoice.ar, 190, 25, { align: 'right' })
   } else {
     const text = labels.invoice[language]
     if (language === 'ar') {
-      // For Arabic mode, use English fallback
-      doc.text(labels.invoice.en, 195, 25, { align: 'right' })
+      // For Arabic mode, render Arabic text
+      doc.text(labels.invoice.ar, 195, 25, { align: 'right' })
     } else {
       doc.text(text, 195, 25, { align: 'right' })
     }
@@ -441,11 +441,15 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     clientY += 6
   }
   
-  // Add a professional note
+  // Add additional client information if available
   if (clientY < yPos + 45) {
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.text('Client Information', 120, clientY)
+    if (clientCompany || clientAddress || clientPhone) {
+      doc.text('Client Details', 120, clientY)
+    } else {
+      doc.text('Client Information', 120, clientY)
+    }
   }
 
   // === SERVICE TABLE ===
@@ -632,7 +636,7 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
   doc.text(`Payment Terms: ${paymentTerms}`, 20, paymentY + 26)
 
   // === FOOTER ===
-  const footerY = summaryY + 85
+  const footerY = summaryY + 90
   
   // Divider line above footer
   doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
@@ -646,7 +650,12 @@ export async function generateProfessionalPDF(invoice: any, language: 'en' | 'ar
     doc.addImage(qrDataUrl, 'PNG', 20, footerY, 30, 30)
     doc.setFontSize(8).setFont('helvetica', 'normal')
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.text('Scan to Pay', 25, footerY + 32)
+    if (language === 'bilingual') {
+      doc.text('Scan to Pay', 25, footerY + 32)
+      doc.text('امسح للدفع', 25, footerY + 38)
+    } else {
+      doc.text('Scan to Pay', 25, footerY + 32)
+    }
   } catch {}
   
   // Thank you message (centered) - improved positioning
