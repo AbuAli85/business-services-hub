@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import { SessionStatusIndicator } from '@/components/ui/session-status-indicator'
 
 export default function ProviderDashboard() {
   const router = useRouter()
@@ -148,10 +149,13 @@ export default function ProviderDashboard() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Provider Dashboard</h1>
             <p className="text-gray-600">Welcome back! Here's what's happening with your business.</p>
           </div>
-          <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div className="flex items-center space-x-3">
+            <SessionStatusIndicator showDetails={true} />
+            <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
           {/* Welcome Section with Enhanced Design */}
           <div className="mb-10 sm:mb-12">

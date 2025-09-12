@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
+import { SessionManager } from '@/components/ui/session-manager'
 
 interface UserProfile {
   id: string
@@ -346,7 +347,14 @@ export default function DashboardLayout({
   const navigationItems = getNavigationItems()
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <SessionManager
+      config={{
+        warningTime: 300, // 5 minutes
+        inactivityTimeout: 1800, // 30 minutes
+        checkInterval: 30 // 30 seconds
+      }}
+    >
+      <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div 
@@ -508,5 +516,6 @@ export default function DashboardLayout({
       
 
     </div>
+    </SessionManager>
   )
 }
