@@ -75,7 +75,7 @@ function generateSimplePDF(invoice: any): Uint8Array {
     
     for (const word of words) {
       const testLine = currentLine + (currentLine ? ' ' : '') + word
-      const textWidth = doc.getTextWidth(testLine) * (fontSize / doc.internal.getFontSize())
+      const textWidth = doc.getTextWidth(testLine)
       
       if (textWidth <= maxWidth) {
         currentLine = testLine
