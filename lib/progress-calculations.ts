@@ -157,7 +157,7 @@ export function getEstimatedCompletionDate(milestones: Milestone[]): Date | null
 /**
  * Get priority level for a milestone based on due date and progress
  */
-export function getMilestonePriority(milestone: Milestone): 'high' | 'medium' | 'low' {
+export function getMilestonePriority(milestone: Milestone): 'high' | 'normal' | 'low' {
   const isOverdue = isMilestoneOverdue(milestone)
   const daysUntilDue = milestone.due_date ? 
     Math.ceil((new Date(milestone.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 
@@ -165,14 +165,14 @@ export function getMilestonePriority(milestone: Milestone): 'high' | 'medium' | 
 
   if (isOverdue) return 'high'
   if (daysUntilDue <= 3) return 'high'
-  if (daysUntilDue <= 7) return 'medium'
+  if (daysUntilDue <= 7) return 'normal'
   return 'low'
 }
 
 /**
  * Get priority level for a task based on due date and status
  */
-export function getTaskPriority(task: Task): 'high' | 'medium' | 'low' {
+export function getTaskPriority(task: Task): 'high' | 'normal' | 'low' {
   const isOverdue = isTaskOverdue(task)
   const daysUntilDue = task.due_date ? 
     Math.ceil((new Date(task.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 
@@ -180,6 +180,6 @@ export function getTaskPriority(task: Task): 'high' | 'medium' | 'low' {
 
   if (isOverdue) return 'high'
   if (daysUntilDue <= 1) return 'high'
-  if (daysUntilDue <= 3) return 'medium'
+  if (daysUntilDue <= 3) return 'normal'
   return 'low'
 }

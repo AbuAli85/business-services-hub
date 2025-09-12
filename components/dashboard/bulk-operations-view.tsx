@@ -39,7 +39,7 @@ interface BulkOperationsViewProps {
 }
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
+type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
 type BulkAction = 'mark_complete' | 'mark_pending' | 'change_priority' | 'delete' | 'export'
 
 export function BulkOperationsView({
@@ -53,7 +53,7 @@ export function BulkOperationsView({
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [bulkAction, setBulkAction] = useState<BulkAction | ''>('')
-  const [newPriority, setNewPriority] = useState<TaskPriority>('medium')
+  const [newPriority, setNewPriority] = useState<TaskPriority>('normal')
   const [showFilters, setShowFilters] = useState(false)
 
   // Get all tasks from milestones
@@ -213,7 +213,7 @@ export function BulkOperationsView({
         return 'bg-red-100 text-red-800'
       case 'high':
         return 'bg-orange-100 text-orange-800'
-      case 'medium':
+      case 'normal':
         return 'bg-yellow-100 text-yellow-800'
       case 'low':
         return 'bg-green-100 text-green-800'
@@ -291,7 +291,7 @@ export function BulkOperationsView({
                     <SelectItem value="all">All Priorities</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
                     <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
@@ -353,7 +353,7 @@ export function BulkOperationsView({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
