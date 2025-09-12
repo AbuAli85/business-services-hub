@@ -81,10 +81,11 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   const vatNumber = invoice.provider?.company?.vat_number
   const crNumber = invoice.provider?.company?.cr_number
   
-  // Client information
+  // Client information with proper fallbacks
   const clientName = invoice.client?.full_name || 'Client Name'
-  const clientCompany = invoice.client?.company?.name
-  const clientEmail = invoice.client?.email
+  const clientCompany = invoice.client?.company?.name || invoice.client?.company_name || ''
+  const clientEmail = invoice.client?.email || ''
+  const clientAddress = invoice.client?.company?.address || invoice.client?.address || ''
   
   // Financial calculations
   const subtotal = invoice.subtotal || invoice.amount || 0
@@ -97,10 +98,20 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2])
   doc.rect(0, 0, 210, 50, 'F')
   
-  // Company name and tagline
-  doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
-  doc.setFontSize(20).setFont('helvetica', 'bold')
-  doc.text(companyName, 20, 25)
+  // Company logo area (left side)
+  const logoUrl = invoice.provider?.company?.logo_url
+  if (logoUrl && (logoUrl.includes('.png') || logoUrl.includes('.jpg') || logoUrl.includes('.jpeg'))) {
+    // TODO: Implement actual logo fetching and rendering
+    // For now, show company name in logo area
+    doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
+    doc.setFontSize(16).setFont('helvetica', 'bold')
+    doc.text(companyName, 20, 25)
+  } else {
+    // No logo available, show company name
+    doc.setTextColor(colors.white[0], colors.white[1], colors.white[2])
+    doc.setFontSize(20).setFont('helvetica', 'bold')
+    doc.text(companyName, 20, 25)
+  }
   
   doc.setFontSize(10).setFont('helvetica', 'normal')
   doc.text('Professional Services & Solutions', 20, 32)
@@ -145,23 +156,36 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text(status.toUpperCase(), 177, 42, { align: 'center' })
 
   // === Two-Column Provider & Client Section ===
-  // Provider section (left)
+  // Provider section (left) with background
+  doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+  doc.rect(15, 65, 90, 35, 'F')
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.rect(15, 65, 90, 35, 'S')
+  
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.setFontSize(12).setFont('helvetica', 'bold').text('From:', 20, 70)
+  doc.setFontSize(12).setFont('helvetica', 'bold').text('From:', 20, 75)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(companyName, 20, 78)
-  doc.text(companyAddress, 20, 84)
-  doc.text(`${companyPhone} | ${companyEmail}`, 20, 90)
+  doc.text(companyName, 20, 83)
+  doc.text(companyAddress, 20, 89)
+  doc.text(`${companyPhone} | ${companyEmail}`, 20, 95)
 
-  // Client section (right)
+  // Client section (right) with matching background
+  doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
+  doc.rect(115, 65, 90, 35, 'F')
+  doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
+  doc.setLineWidth(0.5)
+  doc.rect(115, 65, 90, 35, 'S')
+  
   doc.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2])
-  doc.setFontSize(12).setFont('helvetica', 'bold').text('Bill To:', 120, 70)
+  doc.setFontSize(12).setFont('helvetica', 'bold').text('Bill To:', 120, 75)
 
   doc.setFontSize(10).setFont('helvetica', 'normal')
-  doc.text(clientName, 120, 78)
-  if (clientCompany) doc.text(clientCompany, 120, 84)
-  if (clientEmail) doc.text(clientEmail, 120, 90)
+  doc.text(clientName, 120, 83)
+  if (clientCompany) doc.text(clientCompany, 120, 89)
+  if (clientAddress) doc.text(clientAddress, 120, 95)
+  if (clientEmail) doc.text(clientEmail, 120, 101)
 
   // === Items Table ===
   const tableX = 20
@@ -202,11 +226,27 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.setFontSize(10).setFont('helvetica', 'normal')
 
   // Support multiple invoice items or fallback to single service
-  const items = invoice.invoice_items?.length ? invoice.invoice_items : [{
-    title: invoice.booking?.service?.title || 'Service Item',
-    qty: 1,
-    price: invoice.amount || 0,
-  }]
+  let items = []
+  
+  if (invoice.invoice_items && invoice.invoice_items.length > 0) {
+    // Use actual invoice items
+    items = invoice.invoice_items
+  } else if (invoice.booking?.service?.title) {
+    // Fallback to service from booking
+    items = [{
+      title: invoice.booking.service.title,
+      description: invoice.booking.service.description,
+      qty: 1,
+      price: invoice.booking.service.price || invoice.amount || 0,
+    }]
+  } else {
+    // Last resort fallback
+    items = [{
+      title: 'Service Item',
+      qty: 1,
+      price: invoice.amount || 0,
+    }]
+  }
 
   items.forEach((item: any, index: number) => {
     const qty = item.qty || 1
@@ -325,8 +365,8 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   doc.text(formatCurrency(total), totalsX + totalsWidth - 5, y + 38, { align: 'right' })
 
   // === Fixed Footer Section ===
-  // Fixed positioning to prevent overlap
-  const footerY = 265
+  // Fixed positioning to prevent overlap - moved higher
+  const footerY = 250
   
   // Top border line
   doc.setDrawColor(colors.borderGray[0], colors.borderGray[1], colors.borderGray[2])
@@ -335,17 +375,17 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
 
   // Footer background
   doc.setFillColor(colors.lightGray[0], colors.lightGray[1], colors.lightGray[2])
-  doc.rect(0, footerY, 210, 25, 'F')
+  doc.rect(0, footerY, 210, 35, 'F')
 
-  // QR Code section (aligned with totals box)
+  // QR Code section (left side, smaller)
   try {
     const qrText = invoice.payment_url || 
       `Invoice ${invoiceNumber}, Total: ${formatCurrency(total)}`
-    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 80 })
-    doc.addImage(qrDataUrl, 'PNG', 20, footerY + 5, 20, 20)
+    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 60 })
+    doc.addImage(qrDataUrl, 'PNG', 20, footerY + 5, 15, 15)
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
-    doc.setFontSize(8).setFont('helvetica', 'normal')
-    doc.text('Scan to Pay', 25, footerY + 28)
+    doc.setFontSize(7).setFont('helvetica', 'normal')
+    doc.text('Scan to Pay', 22, footerY + 23)
   } catch (error) {
     console.warn('Failed to generate QR code:', error)
   }
@@ -353,17 +393,17 @@ export async function generateProfessionalPDF(invoice: any): Promise<Uint8Array>
   // Thank you message (centered)
   doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2])
   doc.setFontSize(12).setFont('helvetica', 'bold')
-  doc.text('Thank you for your business!', 105, footerY + 15, { align: 'center' })
+  doc.text('Thank you for your business!', 105, footerY + 12, { align: 'center' })
   
-  // Compliance information (right-aligned, smaller font)
-  doc.setFontSize(7).setFont('helvetica', 'normal')
+  // Compliance information (right side, properly spaced)
+  doc.setFontSize(6).setFont('helvetica', 'normal')
   if (vatNumber) {
-    doc.text(`VAT: ${vatNumber}`, 190, footerY + 10, { align: 'right' })
+    doc.text(`VAT: ${vatNumber}`, 190, footerY + 8, { align: 'right' })
   }
   if (crNumber) {
-    doc.text(`CR: ${crNumber}`, 190, footerY + 15, { align: 'right' })
+    doc.text(`CR: ${crNumber}`, 190, footerY + 12, { align: 'right' })
   }
-  doc.text('This invoice is valid without signature', 190, footerY + 20, { align: 'right' })
+  doc.text('This invoice is valid without signature', 190, footerY + 16, { align: 'right' })
   
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
