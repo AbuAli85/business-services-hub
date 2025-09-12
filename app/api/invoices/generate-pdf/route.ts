@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
+import QRCode from 'qrcode'
 
-function generateSimplePDF(invoice: any): Uint8Array {
+async function generateProfessionalPDF(invoice: any): Promise<Uint8Array> {
   // Create an enterprise-grade professional PDF invoice
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-GB')
@@ -32,15 +33,17 @@ function generateSimplePDF(invoice: any): Uint8Array {
     }
   }
 
-  // Get company information
-  const companyName = invoice.booking?.service?.provider?.company?.name || 
-    (invoice.provider as any)?.company?.name || 'Business Services Hub'
-  const companyAddress = invoice.booking?.service?.provider?.company?.address || 
-    (invoice.provider as any)?.company?.address || '123 Business Street, Suite 100, City, State 12345'
-  const companyPhone = invoice.booking?.service?.provider?.company?.phone || 
-    (invoice.provider as any)?.company?.phone || '(555) 555-5555'
-  const companyEmail = invoice.booking?.service?.provider?.company?.email || 
-    (invoice.provider as any)?.company?.email || 'info@businessservices.com'
+  // Get company information with proper fallbacks
+  const providerCompany = invoice.booking?.service?.provider?.company || 
+    (invoice.provider as any)?.company || {}
+  
+  const companyName = providerCompany.name || 'Business Services Hub'
+  const companyAddress = providerCompany.address || '123 Business Street, Suite 100, City, State 12345'
+  const companyPhone = providerCompany.phone || '(555) 555-5555'
+  const companyEmail = providerCompany.email || 'info@businessservices.com'
+  const companyLogoUrl = providerCompany.logo_url
+  const vatNumber = providerCompany.vat_number
+  const crNumber = providerCompany.cr_number
 
   // Get client information
   const clientName = (invoice.client as any)?.full_name || invoice.booking?.client?.full_name || 'Client Name'
@@ -60,10 +63,26 @@ function generateSimplePDF(invoice: any): Uint8Array {
   doc.setFillColor(primary[0], primary[1], primary[2])
   doc.rect(0, 0, 210, 40, 'F')
 
-  // Logo placeholder (can be enhanced with actual logo)
-  doc.setTextColor(accent[0], accent[1], accent[2])
-  doc.setFontSize(14).setFont('helvetica', 'bold')
-  doc.text('LOGO', 25, 25)
+  // Dynamic logo or placeholder
+  if (companyLogoUrl) {
+    try {
+      const logoResponse = await fetch(companyLogoUrl)
+      const logoBuffer = await logoResponse.arrayBuffer()
+      const logoBase64 = Buffer.from(logoBuffer).toString('base64')
+      doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 20, 15, 30, 15)
+    } catch (error) {
+      console.warn('Failed to load company logo:', error)
+      // Fallback to text logo
+      doc.setTextColor(accent[0], accent[1], accent[2])
+      doc.setFontSize(14).setFont('helvetica', 'bold')
+      doc.text('LOGO', 25, 25)
+    }
+  } else {
+    // Text logo placeholder
+    doc.setTextColor(accent[0], accent[1], accent[2])
+    doc.setFontSize(14).setFont('helvetica', 'bold')
+    doc.text('LOGO', 25, 25)
+  }
 
   // Company Name & Contact
   doc.setTextColor(white[0], white[1], white[2])
@@ -133,11 +152,32 @@ function generateSimplePDF(invoice: any): Uint8Array {
     const price = item.price || item.rate || 0
     const amount = qty * price
 
-    doc.text(item.title || 'Item', 25, y)
+    // Handle long descriptions with text wrapping
+    const itemTitle = item.title || 'Item'
+    const wrappedTitle = doc.splitTextToSize(itemTitle, 90)
+    
+    // Add item row
+    doc.text(wrappedTitle, 25, y)
     doc.text(qty.toString(), 122, y)
     doc.text(fmtCurrency(price), 140, y)
     doc.text(fmtCurrency(amount), 160, y)
+    
+    // Add description if available and not too long
+    if (item.description && item.description !== item.title) {
+      y += 4
+      const wrappedDesc = doc.splitTextToSize(item.description, 90)
+      doc.setFontSize(8)
+      doc.text(wrappedDesc, 25, y)
+      doc.setFontSize(10)
+    }
+    
     y += 8
+    
+    // Page break if needed
+    if (y > 260) {
+      doc.addPage()
+      y = 20
+    }
   })
 
   // === Totals ===
@@ -167,12 +207,24 @@ function generateSimplePDF(invoice: any): Uint8Array {
   doc.text('Thank you for your business!', 20, 278)
   
   // Add VAT/CR numbers if available
-  const providerCompany = (invoice.provider as any)?.company
-  if (providerCompany?.vat_number) {
-    doc.text(`VAT No: ${providerCompany.vat_number}`, 150, 278)
+  if (vatNumber) {
+    doc.text(`VAT No: ${vatNumber}`, 150, 278)
   }
-  if (providerCompany?.cr_number) {
-    doc.text(`CR No: ${providerCompany.cr_number}`, 150, 283)
+  if (crNumber) {
+    doc.text(`CR No: ${crNumber}`, 150, 283)
+  }
+  
+  // Add compliance text
+  doc.text('This invoice was generated electronically and is valid without signature.', 20, 285)
+  
+  // === QR Code ===
+  try {
+    const qrText = invoice.payment_url || 
+      `Invoice ${invoiceNumber}, Total: ${fmtCurrency(total)}`
+    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 100 })
+    doc.addImage(qrDataUrl, 'PNG', 20, 250, 25, 25)
+  } catch (error) {
+    console.warn('Failed to generate QR code:', error)
   }
   
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
@@ -254,8 +306,14 @@ export async function POST(request: NextRequest) {
     // Attach items to invoice
     const invoiceForPdf = { ...invoice, invoice_items: items || [] }
 
-    // Generate PDF
-    const pdfBuffer = generateSimplePDF(invoiceForPdf)
+    // Generate PDF with error handling
+    let pdfBuffer: Uint8Array
+    try {
+      pdfBuffer = await generateProfessionalPDF(invoiceForPdf)
+    } catch (pdfError) {
+      console.error('❌ Error generating PDF:', pdfError)
+      return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 })
+    }
     
     console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
 
