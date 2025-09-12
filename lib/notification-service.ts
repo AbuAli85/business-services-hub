@@ -48,7 +48,7 @@ export class NotificationService {
     title: string,
     message: string,
     data?: NotificationData,
-    priority: NotificationPriority = 'medium',
+    priority: NotificationPriority = 'normal',
     expiresAt?: string
   ): Promise<Notification> {
     const supabase = await this.getSupabase()
@@ -651,7 +651,7 @@ export async function createNotification(
   title: string,
   message: string,
   data?: NotificationData,
-  priority: NotificationPriority = 'medium',
+  priority: NotificationPriority = 'normal',
   expiresAt?: string
 ): Promise<Notification> {
   return notificationService.createNotification(userId, type, title, message, data, priority, expiresAt)

@@ -56,7 +56,7 @@ interface TimelineEvent {
   milestoneId?: string
   taskId?: string
   status: 'completed' | 'pending' | 'overdue' | 'in_progress'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   user?: string
   icon: React.ReactNode
   color: string
@@ -113,7 +113,7 @@ export function ProjectTimelineVisualization({
           milestoneId: milestone.id,
           status: milestone.status === 'completed' ? 'completed' : 
                  milestone.status === 'in_progress' ? 'in_progress' : 'pending',
-          priority: 'medium',
+          priority: 'normal',
           user: 'Team Member',
           icon: <Play className="h-4 w-4" />,
           color: 'text-blue-600 bg-blue-50',
@@ -170,7 +170,7 @@ export function ProjectTimelineVisualization({
                 milestoneId: milestone.id,
                 taskId: task.id,
                 status: 'completed',
-                priority: 'medium',
+                priority: 'normal',
                 user: 'Team Member',
                 icon: <CheckCircle className="h-4 w-4" />,
                 color: 'text-green-600 bg-green-50',

@@ -6,7 +6,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'task_created',
     title_template: 'New Task: {{task_title}}',
     message_template: 'A new task "{{task_title}}" has been created in {{milestone_title}} by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 168, // 7 days
     action_url_template: '/dashboard/bookings/{{booking_id}}/milestones',
     action_label: 'View Task'
@@ -15,7 +15,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'task_updated',
     title_template: 'Task Updated: {{task_title}}',
     message_template: 'Task "{{task_title}}" in {{milestone_title}} has been updated by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 72, // 3 days
     action_url_template: '/dashboard/bookings/{{booking_id}}/milestones',
     action_label: 'View Task'
@@ -51,7 +51,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'task_comment',
     title_template: 'New Comment on Task: {{task_title}}',
     message_template: '{{actor_name}} commented on task "{{task_title}}" in {{milestone_title}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 48, // 2 days
     action_url_template: '/dashboard/bookings/{{booking_id}}/milestones',
     action_label: 'View Task'
@@ -62,7 +62,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'milestone_created',
     title_template: 'New Milestone: {{milestone_title}}',
     message_template: 'A new milestone "{{milestone_title}}" has been created for {{project_name}} by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 168, // 7 days
     action_url_template: '/dashboard/bookings/{{booking_id}}/milestones',
     action_label: 'View Milestone'
@@ -71,7 +71,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'milestone_updated',
     title_template: 'Milestone Updated: {{milestone_title}}',
     message_template: 'Milestone "{{milestone_title}}" for {{project_name}} has been updated by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 72, // 3 days
     action_url_template: '/dashboard/bookings/{{booking_id}}/milestones',
     action_label: 'View Milestone'
@@ -127,7 +127,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'booking_updated',
     title_template: 'Booking Updated: {{booking_title}}',
     message_template: 'Booking "{{booking_title}}" for {{service_name}} has been updated by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 72, // 3 days
     action_url_template: '/dashboard/bookings/{{booking_id}}',
     action_label: 'View Booking'
@@ -163,7 +163,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'booking_reminder',
     title_template: 'Booking Reminder: {{booking_title}}',
     message_template: 'Reminder: Your booking "{{booking_title}}" for {{service_name}} is scheduled for {{scheduled_date}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 24, // 1 day
     action_url_template: '/dashboard/bookings/{{booking_id}}',
     action_label: 'View Booking'
@@ -232,7 +232,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'request_created',
     title_template: 'New Request: {{request_type}}',
     message_template: 'A new {{request_type}} request has been created by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 72, // 3 days
     action_url_template: '/dashboard/requests',
     action_label: 'View Request'
@@ -241,7 +241,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'request_updated',
     title_template: 'Request Updated: {{request_type}}',
     message_template: '{{request_type}} request has been updated by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 48, // 2 days
     action_url_template: '/dashboard/requests',
     action_label: 'View Request'
@@ -270,7 +270,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'message_received',
     title_template: 'New Message from {{sender_name}}',
     message_template: 'You have received a new message from {{sender_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 48, // 2 days
     action_url_template: '/dashboard/messages',
     action_label: 'View Message'
@@ -281,7 +281,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'document_uploaded',
     title_template: 'Document Uploaded: {{document_name}}',
     message_template: 'Document "{{document_name}}" has been uploaded by {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 72, // 3 days
     action_url_template: '/dashboard/documents',
     action_label: 'View Document'
@@ -310,7 +310,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'system_announcement',
     title_template: 'System Announcement',
     message_template: '{{message}}',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 168, // 7 days
     action_url_template: '/dashboard/notifications',
     action_label: 'View Details'
@@ -348,7 +348,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'client_feedback',
     title_template: 'Client Feedback: {{project_name}}',
     message_template: 'New feedback received for project "{{project_name}}" from {{actor_name}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 72, // 3 days
     action_url_template: '/dashboard/projects/{{project_id}}',
     action_label: 'View Project'
@@ -357,7 +357,7 @@ const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
     type: 'team_mention',
     title_template: 'You were mentioned',
     message_template: '{{actor_name}} mentioned you in {{entity_type}}.',
-    priority: 'medium',
+    priority: 'normal',
     default_expires_in_hours: 48, // 2 days
     action_url_template: '/dashboard/{{entity_type}}/{{entity_id}}',
     action_label: 'View Details'

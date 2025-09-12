@@ -444,7 +444,7 @@ function calculateTaskCompletionRates(milestones: Milestone[]) {
   const totalTasks = allTasks.length
   const completedTasks = allTasks.filter(t => t.status === 'completed').length
   
-  const byPriority = ['urgent', 'high', 'medium', 'low'].map(priority => {
+  const byPriority = ['urgent', 'high', 'normal', 'low'].map(priority => {
     const priorityTasks = allTasks.filter(t => t.priority === priority)
     const completed = priorityTasks.filter(t => t.status === 'completed').length
     return {

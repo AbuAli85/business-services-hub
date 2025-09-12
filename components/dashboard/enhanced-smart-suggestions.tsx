@@ -82,7 +82,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface SmartSuggestion {
   id: string
   type: 'overdue' | 'inactive' | 'payment' | 'follow_up' | 'milestone_approval' | 'task_due' | 'progress_slow' | 'time_tracking' | 'communication' | 'ai_suggestion'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   title: string
   description: string
   action: string
@@ -187,7 +187,7 @@ export function EnhancedSmartSuggestions({
         newSuggestions.push({
           id: `inactive-${milestone.id}`,
           type: 'inactive',
-          priority: 'medium',
+          priority: 'normal',
           title: 'Inactive Milestone',
           description: `"${milestone.title}" hasn't been updated in ${Math.floor((now.getTime() - new Date(milestone.updated_at).getTime()) / (1000 * 60 * 60 * 24))} days`,
           action: 'Update progress',
@@ -215,7 +215,7 @@ export function EnhancedSmartSuggestions({
         newSuggestions.push({
           id: `slow-progress-${milestone.id}`,
           type: 'progress_slow',
-          priority: 'medium',
+          priority: 'normal',
           title: 'Slow Progress',
           description: `"${milestone.title}" is behind schedule`,
           action: 'Review and adjust timeline',
@@ -298,7 +298,7 @@ export function EnhancedSmartSuggestions({
           newSuggestions.push({
             id: 'ai-priority-overload',
             type: 'ai_suggestion',
-            priority: 'medium',
+            priority: 'normal',
             title: 'AI Suggestion: Priority Overload',
             description: `You have ${urgentTasks.length} urgent tasks. Consider reassessing priorities.`,
             action: 'Review task priorities',

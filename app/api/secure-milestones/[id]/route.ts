@@ -150,7 +150,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         title,
         description: description || '',
         status: 'pending',
-        priority: priority || 'medium',
+        priority: priority || 'normal',
         start_date: start_date || new Date().toISOString().split('T')[0],
         due_date,
         estimated_hours: estimated_hours || 0,

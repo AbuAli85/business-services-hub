@@ -3,7 +3,7 @@
 
 -- Add priority column to progress_notifications
 ALTER TABLE progress_notifications 
-ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent'));
 
 -- Add other missing columns if needed
 ALTER TABLE progress_notifications 

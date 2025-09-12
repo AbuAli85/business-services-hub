@@ -8,7 +8,7 @@ export interface Milestone {
   description?: string
   due_date?: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   progress_percentage: number
   weight: number
   order_index: number
@@ -33,7 +33,7 @@ export interface Task {
   title: string
   description?: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   due_date?: string
   progress_percentage: number
   estimated_hours?: number

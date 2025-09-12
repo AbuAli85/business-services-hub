@@ -99,7 +99,7 @@ export function DocumentManager({
     category_id: '',
     is_required: true,
     due_date: '',
-    priority: 'medium',
+    priority: 'normal',
     milestone_id: milestoneId,
     task_id: taskId
   })
@@ -263,7 +263,7 @@ export function DocumentManager({
           category_id: '',
           is_required: true,
           due_date: '',
-          priority: 'medium',
+          priority: 'normal',
           milestone_id: milestoneId,
           task_id: taskId
         })
@@ -757,7 +757,7 @@ export function DocumentManager({
                         {r.description && <div className="text-xs text-gray-500 truncate max-w-[280px]">{r.description}</div>}
                       </td>
                       <td className="px-3 py-2"><Badge className={r.status==='approved'? 'bg-blue-100 text-blue-800': r.status==='rejected'? 'bg-red-100 text-red-800': 'bg-yellow-100 text-yellow-800'}>{r.status.replace('_',' ')}</Badge></td>
-                      <td className="px-3 py-2"><Badge className={r.priority==='urgent'? 'bg-red-100 text-red-800': r.priority==='high'? 'bg-orange-100 text-orange-800': r.priority==='medium'? 'bg-yellow-100 text-yellow-800': 'bg-green-100 text-green-800'}>{r.priority}</Badge></td>
+                      <td className="px-3 py-2"><Badge className={r.priority==='urgent'? 'bg-red-100 text-red-800': r.priority==='high'? 'bg-orange-100 text-orange-800': r.priority==='normal'? 'bg-yellow-100 text-yellow-800': 'bg-green-100 text-green-800'}>{r.priority}</Badge></td>
                       <td className="px-3 py-2">{r.category?.name || '-'}</td>
                       <td className="px-3 py-2">{r.requested_by_user?.full_name || 'Unknown'}</td>
                       <td className="px-3 py-2">{r.requested_from_user?.full_name || 'Unknown'}</td>

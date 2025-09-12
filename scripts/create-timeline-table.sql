@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.project_timeline (
   title text NOT NULL,
   description text,
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'on_hold')),
-  priority text NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  priority text NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   start_date date NOT NULL,
   end_date date NOT NULL,
   assigned_to text,

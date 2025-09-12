@@ -14,7 +14,7 @@ BEGIN
             description TEXT,
             status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
             progress_percentage INTEGER DEFAULT 0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
-            priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+            priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
             due_date TIMESTAMPTZ,
             completed_at TIMESTAMPTZ,
             is_overdue BOOLEAN DEFAULT FALSE,

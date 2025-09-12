@@ -35,7 +35,7 @@ interface ServiceSuggestion {
   suggested_service_id: string
   original_booking_id?: string
   suggestion_reason: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   status: 'pending' | 'viewed' | 'accepted' | 'declined' | 'expired'
   expires_at?: string
   created_at: string
@@ -82,7 +82,7 @@ export default function ServiceSuggestionsPage() {
     provider_id: '',
     suggested_service_id: '',
     suggestion_reason: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent'
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent'
   })
   const [creating, setCreating] = useState(false)
 
@@ -253,7 +253,7 @@ export default function ServiceSuggestionsPage() {
       client_id: 'client-1',
       suggested_service_id: 'service-2',
       suggestion_reason: 'Your business would benefit greatly from professional branding. A cohesive brand identity will help you stand out in the competitive market.',
-      priority: 'medium',
+      priority: 'normal',
       status: 'viewed',
       created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -279,7 +279,7 @@ export default function ServiceSuggestionsPage() {
       client_id: 'client-1',
       suggested_service_id: 'service-3',
       suggestion_reason: 'Given your expanding business operations, implementing a comprehensive social media strategy will help you engage with customers and build brand loyalty.',
-      priority: 'medium',
+      priority: 'normal',
       status: 'accepted',
       created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -383,7 +383,7 @@ export default function ServiceSuggestionsPage() {
         provider_id: '',
         suggested_service_id: '',
         suggestion_reason: '',
-        priority: 'medium'
+        priority: 'normal'
       })
       
       // Reload suggestions
@@ -441,12 +441,12 @@ export default function ServiceSuggestionsPage() {
   const getPriorityBadge = (priority: string) => {
     const priorityConfig = {
       low: { label: 'Low', variant: 'secondary' as const, color: 'text-gray-600' },
-      medium: { label: 'Medium', variant: 'default' as const, color: 'text-blue-600' },
+      normal: { label: 'Normal', variant: 'default' as const, color: 'text-blue-600' },
       high: { label: 'High', variant: 'default' as const, color: 'text-orange-600' },
       urgent: { label: 'Urgent', variant: 'destructive' as const, color: 'text-red-600' }
     }
 
-    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.medium
+    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.normal
     return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>
   }
 
@@ -640,14 +640,14 @@ export default function ServiceSuggestionsPage() {
                       <label className="text-sm font-medium">Priority</label>
                       <Select 
                         value={newSuggestion.priority} 
-                        onValueChange={(value: 'low' | 'medium' | 'high' | 'urgent') => setNewSuggestion(prev => ({ ...prev, priority: value }))}
+                        onValueChange={(value: 'low' | 'normal' | 'high' | 'urgent') => setNewSuggestion(prev => ({ ...prev, priority: value }))}
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="normal">Normal</SelectItem>
                           <SelectItem value="high">High</SelectItem>
                           <SelectItem value="urgent">Urgent</SelectItem>
                         </SelectContent>

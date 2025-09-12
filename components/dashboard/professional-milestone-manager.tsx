@@ -66,7 +66,7 @@ interface MilestoneFormData {
   title: string
   description: string
   due_date: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   estimated_hours: number
   weight: number
   order_index: number
@@ -76,7 +76,7 @@ interface TaskFormData {
   title: string
   description: string
   due_date: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   estimated_hours: number
   assigned_to?: string
 }
@@ -105,7 +105,7 @@ export function ProfessionalMilestoneManager({
     title: '',
     description: '',
     due_date: '',
-    priority: 'medium',
+    priority: 'normal',
     estimated_hours: 0,
     weight: 1,
     order_index: 0
@@ -115,7 +115,7 @@ export function ProfessionalMilestoneManager({
     title: '',
     description: '',
     due_date: '',
-    priority: 'medium',
+    priority: 'normal',
     estimated_hours: 0,
     assigned_to: ''
   })
@@ -322,7 +322,7 @@ export function ProfessionalMilestoneManager({
       title: '',
       description: '',
       due_date: '',
-      priority: 'medium',
+      priority: 'normal',
       estimated_hours: 0,
       weight: 1,
       order_index: milestones.length
@@ -334,7 +334,7 @@ export function ProfessionalMilestoneManager({
       title: '',
       description: '',
       due_date: '',
-      priority: 'medium',
+      priority: 'normal',
       estimated_hours: 0,
       assigned_to: ''
     })
@@ -392,7 +392,7 @@ export function ProfessionalMilestoneManager({
       case 'due_date':
         return new Date(a.due_date || '').getTime() - new Date(b.due_date || '').getTime()
       case 'priority':
-        const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }
+        const priorityOrder = { urgent: 4, high: 3, normal: 2, low: 1 }
         return (priorityOrder[b.priority as keyof typeof priorityOrder] || 0) - 
                (priorityOrder[a.priority as keyof typeof priorityOrder] || 0)
       case 'status':
@@ -606,7 +606,7 @@ export function ProfessionalMilestoneManager({
                 title: milestone.title,
                 description: milestone.description || '',
                 due_date: milestone.due_date || '',
-                priority: milestone.priority || 'medium',
+                priority: milestone.priority || 'normal',
                 estimated_hours: milestone.estimated_hours || 0,
                 weight: milestone.weight || 1,
                 order_index: milestone.order_index || 0
@@ -625,7 +625,7 @@ export function ProfessionalMilestoneManager({
                 title: task.title,
                 description: task.description || '',
                 due_date: task.due_date || '',
-                priority: task.priority || 'medium',
+                priority: task.priority || 'normal',
                 estimated_hours: task.estimated_hours || 0,
                 assigned_to: task.assigned_to || ''
               })
@@ -933,8 +933,8 @@ function MilestoneCard({
               <Badge className={getStatusColor(milestone.status)}>
                 {milestone.status.replace('_', ' ')}
               </Badge>
-              <Badge className={getPriorityColor(milestone.priority || 'medium')}>
-                {milestone.priority || 'medium'}
+              <Badge className={getPriorityColor(milestone.priority || 'normal')}>
+                {milestone.priority || 'normal'}
               </Badge>
               {isOverdue && (
                 <Badge className="bg-red-100 text-red-800">

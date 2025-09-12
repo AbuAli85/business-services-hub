@@ -331,7 +331,7 @@ export async function generateExcel(data: ExportData): Promise<Blob> {
   summarySheet.addRow(['TASK BREAKDOWN BY PRIORITY'])
   summarySheet.addRow(['Priority', 'Count'])
   summarySheet.addRow(['Low', data.tasks.filter(t => t.priority === 'low').length])
-  summarySheet.addRow(['Medium', data.tasks.filter(t => t.priority === 'medium').length])
+  summarySheet.addRow(['Normal', data.tasks.filter(t => t.priority === 'normal').length])
   summarySheet.addRow(['High', data.tasks.filter(t => t.priority === 'high').length])
   summarySheet.addRow(['Urgent', data.tasks.filter(t => t.priority === 'urgent').length])
 

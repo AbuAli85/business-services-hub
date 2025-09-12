@@ -227,7 +227,7 @@ async function testRealtime() {
             type: 'test',
             title: 'Real-time Test',
             message: 'Testing real-time functionality',
-            priority: 'medium'
+            priority: 'normal'
           }).then(() => {
             console.log('📤 Test notification sent')
           })

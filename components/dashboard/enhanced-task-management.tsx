@@ -133,7 +133,7 @@ interface EnhancedTaskManagementProps {
   filterStatus?: 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue'
   onFilterStatusChange?: (status: 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue') => void
   filterPriority?: 'all' | 'low' | 'medium' | 'high' | 'urgent'
-  onFilterPriorityChange?: (priority: 'all' | 'low' | 'medium' | 'high' | 'urgent') => void
+  onFilterPriorityChange?: (priority: 'all' | 'low' | 'normal' | 'high' | 'urgent') => void
   searchQuery?: string
   onSearchQueryChange?: (query: string) => void
   sortBy?: 'due_date' | 'priority' | 'progress' | 'title'
@@ -176,7 +176,7 @@ export function EnhancedTaskManagement({
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     estimated_hours: 0,
     due_date: '',
     tags: [] as string[],
@@ -215,7 +215,7 @@ export function EnhancedTaskManagement({
           comparison = aDate - bDate
           break
         case 'priority':
-          const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 }
+          const priorityOrder = { urgent: 4, high: 3, normal: 2, low: 1 }
           comparison = (priorityOrder[a.priority as keyof typeof priorityOrder] || 0) - 
                       (priorityOrder[b.priority as keyof typeof priorityOrder] || 0)
           break
@@ -259,7 +259,7 @@ export function EnhancedTaskManagement({
       setNewTask({
         title: '',
         description: '',
-        priority: 'medium',
+        priority: 'normal',
         estimated_hours: 0,
         due_date: '',
         tags: [],
@@ -594,9 +594,9 @@ export function EnhancedTaskManagement({
                             {getStatusIcon(task.status)}
                             <span className="ml-1 capitalize">{task.status.replace('_', ' ')}</span>
                           </Badge>
-                          <Badge className={getPriorityColor(task.priority || 'medium')}>
-                            {getPriorityIcon(task.priority || 'medium')}
-                            <span className="ml-1 capitalize">{task.priority || 'medium'}</span>
+                          <Badge className={getPriorityColor(task.priority || 'normal')}>
+                            {getPriorityIcon(task.priority || 'normal')}
+                            <span className="ml-1 capitalize">{task.priority || 'normal'}</span>
                           </Badge>
                           {overdue && (
                             <Badge variant="destructive">

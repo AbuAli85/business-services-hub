@@ -6,7 +6,7 @@ ALTER TABLE public.milestones
 ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 
 ALTER TABLE public.milestones 
-ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium';
+ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'normal';
 
 ALTER TABLE public.milestones 
 ADD COLUMN IF NOT EXISTS progress_percentage INTEGER DEFAULT 0;
@@ -54,7 +54,7 @@ CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled', 'on_hold')
 
 ALTER TABLE public.milestones 
 ADD CONSTRAINT milestones_priority_check 
-CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+CHECK (priority IN ('low', 'normal', 'high', 'urgent'));
 
 ALTER TABLE public.milestones 
 ADD CONSTRAINT milestones_progress_check 
@@ -74,7 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_milestones_overdue ON public.milestones(is_overdu
 UPDATE public.milestones 
 SET 
     status = COALESCE(status, 'pending'),
-    priority = COALESCE(priority, 'medium'),
+    priority = COALESCE(priority, 'normal'),
     progress_percentage = COALESCE(progress_percentage, 0),
     weight = COALESCE(weight, 1.0),
     is_overdue = COALESCE(is_overdue, FALSE)

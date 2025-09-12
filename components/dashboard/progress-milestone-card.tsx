@@ -25,7 +25,7 @@ interface Task {
   title: string;
   description: string;
   status: 'pending' | 'in_progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
+  priority: 'low' | 'normal' | 'high';
   estimated_hours: number;
   actual_hours: number;
   order_index: number;
@@ -50,7 +50,7 @@ interface MilestoneCardProps {
   onAddTask: (milestoneId: string, task: {
     title: string;
     description: string;
-    priority: 'low' | 'medium' | 'high';
+    priority: 'low' | 'normal' | 'high';
     estimated_hours: number;
     status: 'pending' | 'in_progress' | 'completed';
     actual_hours: number;
@@ -72,7 +72,7 @@ export default function ProgressMilestoneCard({
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
+    priority: 'normal' as 'low' | 'normal' | 'high',
     estimated_hours: 1
   });
 
@@ -114,7 +114,7 @@ export default function ProgressMilestoneCard({
       setNewTask({
         title: '',
         description: '',
-        priority: 'medium',
+        priority: 'normal',
         estimated_hours: 1
       });
       setShowAddTask(false);

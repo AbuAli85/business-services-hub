@@ -23,7 +23,7 @@ export interface DocumentRequest {
   is_required: boolean
   due_date?: string
   status: 'pending' | 'uploaded' | 'approved' | 'rejected' | 'overdue'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   created_at: string
   updated_at: string
   // Joined data
@@ -111,7 +111,7 @@ export interface DocumentRequestForm {
   category_id: string
   is_required: boolean
   due_date: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   milestone_id?: string
   task_id?: string
 }

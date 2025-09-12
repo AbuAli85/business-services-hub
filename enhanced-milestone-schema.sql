@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS milestone_template_tasks (
   title TEXT NOT NULL,
   description TEXT,
   estimated_hours INTEGER DEFAULT 0,
-  priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   order_index INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

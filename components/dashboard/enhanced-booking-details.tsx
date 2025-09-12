@@ -574,7 +574,7 @@ export default function EnhancedBookingDetails({
         title: 'Schedule Follow-up',
         description: '4 milestones due soon',
         action: 'Schedule meeting',
-        priority: 'medium',
+        priority: 'normal',
         estimated_impact: 'Better project tracking'
       },
       {
@@ -582,7 +582,7 @@ export default function EnhancedBookingDetails({
         title: 'Payment Reminder',
         description: 'Invoice due in 3 days',
         action: 'Send reminder',
-        priority: 'medium',
+        priority: 'normal',
         estimated_impact: 'Faster payment'
       }
     ]

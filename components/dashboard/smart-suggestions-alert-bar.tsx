@@ -10,7 +10,7 @@ interface Suggestion {
   type: 'progress_update' | 'follow_up' | 'payment_reminder' | 'overdue_task' | 'milestone_approval'
   title: string
   description: string
-  priority: 'high' | 'medium' | 'low'
+  priority: 'high' | 'normal' | 'low'
   actionRequired: boolean
   dueDate?: string
   metadata?: Record<string, any>
@@ -68,7 +68,7 @@ export function SmartSuggestionsAlertBar({
         type: 'payment_reminder',
         title: 'Payment Reminder',
         description: 'Invoice is due in 3 days',
-        priority: 'medium',
+        priority: 'normal',
         actionRequired: true,
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
       },
@@ -77,7 +77,7 @@ export function SmartSuggestionsAlertBar({
         type: 'follow_up',
         title: 'Schedule Follow-up',
         description: 'Milestone completed, schedule client review',
-        priority: 'medium',
+        priority: 'normal',
         actionRequired: false
       }
     ]

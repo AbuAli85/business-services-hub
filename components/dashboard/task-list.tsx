@@ -85,7 +85,7 @@ export function TaskList({
       description: 'Task description',
       status: 'pending',
       progress: 0,
-      priority: 'medium',
+      priority: 'normal',
       order_index: tasks.length
     };
     await onTaskCreate(milestoneId, newTask);

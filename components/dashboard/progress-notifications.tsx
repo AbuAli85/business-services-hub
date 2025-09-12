@@ -22,7 +22,7 @@ interface ProgressNotification {
   type: 'milestone_completed' | 'task_overdue' | 'progress_milestone' | 'velocity_change' | 'deadline_approaching'
   title: string
   message: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   timestamp: string
   action?: {
     label: string
@@ -100,7 +100,7 @@ export function ProgressNotifications({
         type: 'progress_milestone',
         title: '25% Complete! 🚀',
         message: 'Great start! You\'ve completed a quarter of the project',
-        priority: 'medium',
+        priority: 'normal',
         timestamp: new Date().toISOString(),
         action: {
           label: 'Keep Going',
@@ -113,7 +113,7 @@ export function ProgressNotifications({
         type: 'progress_milestone',
         title: 'Halfway There! 💪',
         message: 'Excellent work! You\'re halfway through the project',
-        priority: 'medium',
+        priority: 'normal',
         timestamp: new Date().toISOString(),
         action: {
           label: 'Push Forward',

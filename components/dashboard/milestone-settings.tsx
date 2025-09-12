@@ -48,7 +48,7 @@ export function MilestoneSettings({
 }: MilestoneSettingsProps) {
   const [settings, setSettings] = useState<MilestoneSettingsType>({
     // General Settings
-    default_priority: 'medium',
+    default_priority: 'normal',
     default_risk_level: 'low',
     auto_progress_calculation: true,
     critical_path_enabled: true,
@@ -138,7 +138,7 @@ export function MilestoneSettings({
   const handleReset = () => {
     if (confirm('Are you sure you want to reset all settings to default?')) {
       setSettings({
-        default_priority: 'medium',
+        default_priority: 'normal',
         default_risk_level: 'low',
         auto_progress_calculation: true,
         critical_path_enabled: true,

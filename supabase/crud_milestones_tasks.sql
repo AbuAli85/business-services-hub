@@ -81,7 +81,7 @@ CREATE OR REPLACE FUNCTION add_task(
   title text,
   due_date timestamptz DEFAULT NULL,
   description text DEFAULT NULL,
-  priority text DEFAULT 'medium',
+  priority text DEFAULT 'normal',
   estimated_hours numeric DEFAULT 0
 ) RETURNS uuid AS $$
 DECLARE 
@@ -96,7 +96,7 @@ BEGIN
   )
   VALUES (
     milestone_id, title, 'pending', due_date, COALESCE(description, ''),
-    COALESCE(priority, 'medium'), COALESCE(estimated_hours, 0),
+    COALESCE(priority, 'normal'), COALESCE(estimated_hours, 0),
     true, now(), now()
   )
   RETURNING id INTO new_id;

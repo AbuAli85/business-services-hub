@@ -112,7 +112,7 @@ export function useNotifications({
     title: string,
     message: string,
     data?: any,
-    priority: string = 'medium'
+    priority: string = 'normal'
   ) => {
     try {
       const notification = await notificationService.createNotification(

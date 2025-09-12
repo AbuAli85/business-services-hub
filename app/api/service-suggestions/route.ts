@@ -59,7 +59,7 @@ const CreateSuggestionSchema = z.object({
   suggested_service_id: z.string().uuid(),
   original_booking_id: z.string().uuid().optional(),
   suggestion_reason: z.string().min(1).max(500),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
   expires_at: z.string().datetime().optional()
 })
 
@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
         service_id: suggested_service_id,
         provider_id: profile.role === 'admin' ? service.provider_id : user.id
       },
-      priority: priority === 'urgent' ? 'high' : 'medium'
+      priority: priority === 'urgent' ? 'high' : 'normal'
     })
 
     return NextResponse.json({ 
@@ -589,7 +589,7 @@ export async function PATCH(request: NextRequest) {
         status,
         response_notes
       },
-      priority: 'medium'
+      priority: 'normal'
     })
 
     return NextResponse.json({ 

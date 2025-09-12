@@ -22,7 +22,7 @@ import toast from 'react-hot-toast'
 interface SmartSuggestion {
   id: string
   type: 'overdue' | 'inactive' | 'payment' | 'follow_up' | 'milestone_approval'
-  priority: 'low' | 'medium' | 'high'
+  priority: 'low' | 'normal' | 'high'
   title: string
   description: string
   action: string
@@ -86,7 +86,7 @@ export function SmartSuggestionsSidebar({
         newSuggestions.push({
           id: `inactive-${milestone.id}`,
           type: 'inactive',
-          priority: 'medium',
+          priority: 'normal',
           title: 'Inactive Milestone',
           description: `"${milestone.title}" hasn't been updated in ${Math.floor((now.getTime() - new Date(milestone.updated_at).getTime()) / (1000 * 60 * 60 * 24))} days`,
           action: 'Send update to client',
@@ -105,7 +105,7 @@ export function SmartSuggestionsSidebar({
           newSuggestions.push({
             id: 'review-completed',
             type: 'milestone_approval',
-            priority: 'medium',
+            priority: 'normal',
             title: 'Review Completed Tasks',
             description: `${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed and ready for review`,
             action: 'Review tasks',
@@ -149,7 +149,7 @@ export function SmartSuggestionsSidebar({
           newSuggestions.push({
             id: 'efficiency-warning',
             type: 'follow_up',
-            priority: 'medium',
+            priority: 'normal',
             title: 'Time Overrun',
             description: `Project is ${(efficiency - 100).toFixed(0)}% over estimated time`,
             action: 'Review timeline and scope',
@@ -207,7 +207,7 @@ export function SmartSuggestionsSidebar({
             {
               id: 'add-tasks',
               type: 'follow_up',
-              priority: 'medium',
+              priority: 'normal',
               title: '📋 Add More Tasks',
               description: `"${currentMilestone.title}" has ${totalTasks} task${totalTasks !== 1 ? 's' : ''} (${completedTasks} completed). Break it down further for better tracking.`,
               action: 'Add tasks',

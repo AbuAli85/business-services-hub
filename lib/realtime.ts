@@ -7,7 +7,7 @@ export interface Notification {
   title: string
   message: string
   metadata?: any
-  priority: 'low' | 'medium' | 'high'
+  priority: 'low' | 'normal' | 'high'
   read: boolean
   created_at: string
 }

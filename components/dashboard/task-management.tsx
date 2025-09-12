@@ -59,7 +59,7 @@ export function TaskManagement({
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     estimated_hours: 0,
     due_date: ''
   })
@@ -93,7 +93,7 @@ export function TaskManagement({
       setNewTask({
         title: '',
         description: '',
-        priority: 'medium',
+        priority: 'normal',
         estimated_hours: 0,
         due_date: ''
       })

@@ -17,7 +17,7 @@ export interface Task {
   updated_at: string;
   estimated_hours?: number;
   actual_hours?: number;
-  priority?: "low" | "medium" | "high" | "urgent";
+  priority?: "low" | "normal" | "high" | "urgent";
   assigned_to?: string;
   order_index: number;
   is_overdue?: boolean;
@@ -45,7 +45,7 @@ export interface Milestone {
   updated_at: string;
   estimated_hours?: number;
   actual_hours?: number;
-  priority?: "low" | "medium" | "high" | "urgent";
+  priority?: "low" | "normal" | "high" | "urgent";
   weight?: number;
   order_index: number;
   is_overdue?: boolean;
@@ -116,7 +116,7 @@ export interface TimelineItem {
   title: string;
   description?: string;
   status: TaskStatus;
-  priority: "low" | "medium" | "high" | "urgent";
+  priority: "low" | "normal" | "high" | "urgent";
   due_date: string;
   assigned_to?: string;
   progress_percentage: number;

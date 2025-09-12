@@ -90,7 +90,7 @@ const ensureStandardMilestones = useCallback(async () => {
           status: 'pending',
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           progress_percentage: 0,
-          priority: 'medium',
+          priority: 'normal',
           weight: 1,
           order_index: 0,
           editable: true

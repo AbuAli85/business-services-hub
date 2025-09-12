@@ -178,7 +178,7 @@ export function EnhancedMilestoneManagement({
     title: '',
     description: '',
     due_date: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     estimated_hours: 0
   })
   const [showAttachments, setShowAttachments] = useState<Record<string, boolean>>({})
@@ -212,7 +212,7 @@ export function EnhancedMilestoneManagement({
         title: '',
         description: '',
         due_date: '',
-        priority: 'medium',
+        priority: 'normal',
         estimated_hours: 0
       })
       onShowCreateMilestone(false)
@@ -456,9 +456,9 @@ export function EnhancedMilestoneManagement({
                             {getStatusIcon(milestone.status)}
                             <span className="ml-1 capitalize">{milestone.status.replace('_', ' ')}</span>
                           </Badge>
-                          <Badge className={getPriorityColor(milestone.priority || 'medium')}>
-                            {getPriorityIcon(milestone.priority || 'medium')}
-                            <span className="ml-1 capitalize">{milestone.priority || 'medium'}</span>
+                          <Badge className={getPriorityColor(milestone.priority || 'normal')}>
+                            {getPriorityIcon(milestone.priority || 'normal')}
+                            <span className="ml-1 capitalize">{milestone.priority || 'normal'}</span>
                           </Badge>
                           {overdue && (
                             <Badge variant="destructive">

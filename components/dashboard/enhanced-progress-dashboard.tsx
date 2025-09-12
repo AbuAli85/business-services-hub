@@ -30,7 +30,7 @@ interface Task {
   title: string;
   description: string;
   status: 'pending' | 'in_progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
+  priority: 'low' | 'normal' | 'high';
   estimated_hours: number;
   actual_hours: number;
   order_index: number;
@@ -67,7 +67,7 @@ interface ProgressDashboardProps {
   onAddTask: (milestoneId: string, task: {
     title: string;
     description: string;
-    priority: 'low' | 'medium' | 'high';
+    priority: 'low' | 'normal' | 'high';
     estimated_hours: number;
     status: 'pending' | 'in_progress' | 'completed';
     actual_hours: number;

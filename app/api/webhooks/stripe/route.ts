@@ -213,7 +213,7 @@ async function handlePaymentCanceled(paymentIntent: Stripe.PaymentIntent, supaba
       title: 'Payment Cancelled',
       message: `Payment cancelled for ${service_title}`,
       data: { booking_id },
-      priority: 'medium'
+      priority: 'normal'
     })
   }
 

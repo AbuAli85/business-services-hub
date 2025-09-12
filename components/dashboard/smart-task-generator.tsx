@@ -32,7 +32,7 @@ interface TaskTemplate {
   title: string
   description: string
   estimated_hours: number
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   category: string
   dependencies?: string[]
 }
@@ -50,7 +50,7 @@ export function SmartTaskGenerator({
     title: '',
     description: '',
     estimated_hours: 4,
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent'
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent'
   })
   const [showCustomForm, setShowCustomForm] = useState(false)
 
@@ -64,9 +64,9 @@ export function SmartTaskGenerator({
     if (title.includes('development') || title.includes('coding') || title.includes('programming')) {
       tasks.push(
         { title: 'Code review and quality check', description: 'Review code for best practices and quality', estimated_hours: 4, priority: 'high', category: 'development' },
-        { title: 'Unit testing implementation', description: 'Write and execute unit tests', estimated_hours: 6, priority: 'medium', category: 'development' },
+        { title: 'Unit testing implementation', description: 'Write and execute unit tests', estimated_hours: 6, priority: 'normal', category: 'development' },
         { title: 'Documentation update', description: 'Update technical documentation', estimated_hours: 3, priority: 'low', category: 'development' },
-        { title: 'Performance optimization', description: 'Optimize code performance and efficiency', estimated_hours: 5, priority: 'medium', category: 'development' }
+        { title: 'Performance optimization', description: 'Optimize code performance and efficiency', estimated_hours: 5, priority: 'normal', category: 'development' }
       )
     }
 
@@ -75,7 +75,7 @@ export function SmartTaskGenerator({
       tasks.push(
         { title: 'User research analysis', description: 'Analyze user feedback and requirements', estimated_hours: 4, priority: 'high', category: 'design' },
         { title: 'Wireframe creation', description: 'Create detailed wireframes', estimated_hours: 8, priority: 'high', category: 'design' },
-        { title: 'Prototype development', description: 'Build interactive prototype', estimated_hours: 12, priority: 'medium', category: 'design' },
+        { title: 'Prototype development', description: 'Build interactive prototype', estimated_hours: 12, priority: 'normal', category: 'design' },
         { title: 'Design system documentation', description: 'Document design patterns and components', estimated_hours: 4, priority: 'low', category: 'design' }
       )
     }
@@ -85,8 +85,8 @@ export function SmartTaskGenerator({
       tasks.push(
         { title: 'Market research', description: 'Research target audience and competitors', estimated_hours: 6, priority: 'high', category: 'marketing' },
         { title: 'Content strategy', description: 'Develop content marketing strategy', estimated_hours: 4, priority: 'high', category: 'marketing' },
-        { title: 'Social media planning', description: 'Plan social media campaigns', estimated_hours: 5, priority: 'medium', category: 'marketing' },
-        { title: 'Analytics setup', description: 'Set up tracking and analytics', estimated_hours: 3, priority: 'medium', category: 'marketing' }
+        { title: 'Social media planning', description: 'Plan social media campaigns', estimated_hours: 5, priority: 'normal', category: 'marketing' },
+        { title: 'Analytics setup', description: 'Set up tracking and analytics', estimated_hours: 3, priority: 'normal', category: 'marketing' }
       )
     }
 
@@ -94,7 +94,7 @@ export function SmartTaskGenerator({
     if (title.includes('testing') || title.includes('qa') || title.includes('quality')) {
       tasks.push(
         { title: 'Test plan creation', description: 'Create comprehensive test plan', estimated_hours: 4, priority: 'high', category: 'testing' },
-        { title: 'Automated testing setup', description: 'Set up automated testing pipeline', estimated_hours: 8, priority: 'medium', category: 'testing' },
+        { title: 'Automated testing setup', description: 'Set up automated testing pipeline', estimated_hours: 8, priority: 'normal', category: 'testing' },
         { title: 'Manual testing execution', description: 'Execute manual test cases', estimated_hours: 12, priority: 'high', category: 'testing' },
         { title: 'Bug tracking and resolution', description: 'Track and resolve identified issues', estimated_hours: 10, priority: 'high', category: 'testing' }
       )
@@ -104,9 +104,9 @@ export function SmartTaskGenerator({
     if (title.includes('planning') || title.includes('setup') || title.includes('initial')) {
       tasks.push(
         { title: 'Requirements gathering', description: 'Collect and document all requirements', estimated_hours: 6, priority: 'high', category: 'planning' },
-        { title: 'Resource allocation', description: 'Plan and allocate necessary resources', estimated_hours: 3, priority: 'medium', category: 'planning' },
-        { title: 'Timeline creation', description: 'Create detailed project timeline', estimated_hours: 4, priority: 'medium', category: 'planning' },
-        { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimated_hours: 3, priority: 'medium', category: 'planning' }
+        { title: 'Resource allocation', description: 'Plan and allocate necessary resources', estimated_hours: 3, priority: 'normal', category: 'planning' },
+        { title: 'Timeline creation', description: 'Create detailed project timeline', estimated_hours: 4, priority: 'normal', category: 'planning' },
+        { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimated_hours: 3, priority: 'normal', category: 'planning' }
       )
     }
 
@@ -114,7 +114,7 @@ export function SmartTaskGenerator({
     tasks.push(
       { title: 'Progress review meeting', description: 'Review progress with stakeholders', estimated_hours: 2, priority: 'low', category: 'general' },
       { title: 'Status update communication', description: 'Communicate status to team and clients', estimated_hours: 1, priority: 'low', category: 'general' },
-      { title: 'Milestone completion review', description: 'Review and validate milestone completion', estimated_hours: 2, priority: 'medium', category: 'general' }
+      { title: 'Milestone completion review', description: 'Review and validate milestone completion', estimated_hours: 2, priority: 'normal', category: 'general' }
     )
 
     // Filter out tasks that are similar to existing ones
@@ -162,7 +162,7 @@ export function SmartTaskGenerator({
       title: '',
       description: '',
       estimated_hours: 4,
-      priority: 'medium'
+      priority: 'normal'
     })
     setShowCustomForm(false)
   }

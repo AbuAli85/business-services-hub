@@ -9,7 +9,7 @@ ORDER BY ordinal_position;
 
 -- Add missing columns to notifications table
 ALTER TABLE notifications 
-ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent'));
 
 ALTER TABLE notifications 
 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE;

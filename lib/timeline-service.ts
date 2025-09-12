@@ -6,7 +6,7 @@ export interface TimelineItem {
   title: string;
   description: string;
   status: 'pending' | 'in_progress' | 'completed' | 'on_hold';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   due_date: string;
   assigned_to?: string;
   progress_percentage: number;

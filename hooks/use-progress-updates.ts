@@ -12,7 +12,7 @@ import {
 const transformMilestoneData = (milestoneData: any): Milestone => ({
   ...milestoneData,
   booking_id: milestoneData.booking_id || '',
-  priority: milestoneData.priority || 'medium',
+  priority: milestoneData.priority || 'normal',
   created_at: milestoneData.created_at || new Date().toISOString(),
   updated_at: milestoneData.updated_at || new Date().toISOString(),
   is_overdue: milestoneData.is_overdue || false,
@@ -271,7 +271,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
           title: task.title,
           due_date: (task.due_date as any) ?? null,
           description: (task as any).description ?? null,
-          priority: (task.priority as any) ?? 'medium',
+          priority: (task.priority as any) ?? 'normal',
           estimated_hours: (task.estimated_hours as any) ?? 0
         })
         data = res.data

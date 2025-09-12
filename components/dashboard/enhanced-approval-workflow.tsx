@@ -56,7 +56,7 @@ interface ApprovalRequest {
   milestoneId: string
   milestoneTitle: string
   status: 'pending' | 'approved' | 'rejected' | 'revision_required'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   submittedBy: string
   submittedAt: Date
   dueDate?: Date
@@ -127,12 +127,12 @@ export function EnhancedApprovalWorkflow({
         }
 
         // Calculate priority based on due date and progress
-        let priority: 'low' | 'medium' | 'high' | 'urgent' = 'medium'
+        let priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal'
         if (milestone.due_date) {
           const daysUntilDue = differenceInDays(new Date(milestone.due_date), new Date())
           if (daysUntilDue < 0) priority = 'urgent'
           else if (daysUntilDue < 3) priority = 'high'
-          else if (daysUntilDue < 7) priority = 'medium'
+          else if (daysUntilDue < 7) priority = 'normal'
           else priority = 'low'
         }
 

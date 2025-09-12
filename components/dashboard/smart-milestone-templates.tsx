@@ -40,12 +40,12 @@ interface MilestoneTemplate {
     title: string
     description: string
     estimatedDays: number
-    priority: 'low' | 'medium' | 'high' | 'urgent'
+    priority: 'low' | 'normal' | 'high' | 'urgent'
     tasks: {
       title: string
       description: string
       estimated_hours: number
-      priority: 'low' | 'medium' | 'high' | 'urgent'
+      priority: 'low' | 'normal' | 'high' | 'urgent'
     }[]
   }[]
   tags: string[]
@@ -75,7 +75,7 @@ const templates: MilestoneTemplate[] = [
         priority: 'high',
         tasks: [
           { title: 'Requirements analysis', description: 'Gather and document all requirements', estimated_hours: 8, priority: 'high' },
-          { title: 'Tech stack selection', description: 'Choose appropriate technologies', estimated_hours: 4, priority: 'medium' },
+          { title: 'Tech stack selection', description: 'Choose appropriate technologies', estimated_hours: 4, priority: 'normal' },
           { title: 'Project setup', description: 'Initialize repository and development environment', estimated_hours: 6, priority: 'high' },
           { title: 'Database design', description: 'Design database schema and relationships', estimated_hours: 8, priority: 'high' }
         ]
@@ -87,8 +87,8 @@ const templates: MilestoneTemplate[] = [
         priority: 'high',
         tasks: [
           { title: 'UI/UX design implementation', description: 'Convert designs to responsive components', estimated_hours: 24, priority: 'high' },
-          { title: 'Component development', description: 'Build reusable UI components', estimated_hours: 20, priority: 'medium' },
-          { title: 'State management setup', description: 'Implement state management solution', estimated_hours: 12, priority: 'medium' },
+          { title: 'Component development', description: 'Build reusable UI components', estimated_hours: 20, priority: 'normal' },
+          { title: 'State management setup', description: 'Implement state management solution', estimated_hours: 12, priority: 'normal' },
           { title: 'API integration', description: 'Connect frontend to backend APIs', estimated_hours: 16, priority: 'high' }
         ]
       },
@@ -101,17 +101,17 @@ const templates: MilestoneTemplate[] = [
           { title: 'API development', description: 'Build RESTful APIs and endpoints', estimated_hours: 20, priority: 'high' },
           { title: 'Database implementation', description: 'Set up database and migrations', estimated_hours: 12, priority: 'high' },
           { title: 'Authentication system', description: 'Implement user authentication and authorization', estimated_hours: 16, priority: 'high' },
-          { title: 'Security measures', description: 'Implement security best practices', estimated_hours: 8, priority: 'medium' }
+          { title: 'Security measures', description: 'Implement security best practices', estimated_hours: 8, priority: 'normal' }
         ]
       },
       {
         title: 'Testing & Deployment',
         description: 'Quality assurance, testing, and production deployment',
         estimatedDays: 10,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
-          { title: 'Unit testing', description: 'Write and execute unit tests', estimated_hours: 16, priority: 'medium' },
-          { title: 'Integration testing', description: 'Test system integration', estimated_hours: 12, priority: 'medium' },
+          { title: 'Unit testing', description: 'Write and execute unit tests', estimated_hours: 16, priority: 'normal' },
+          { title: 'Integration testing', description: 'Test system integration', estimated_hours: 12, priority: 'normal' },
           { title: 'Performance optimization', description: 'Optimize application performance', estimated_hours: 8, priority: 'low' },
           { title: 'Production deployment', description: 'Deploy to production environment', estimated_hours: 6, priority: 'high' }
         ]
@@ -138,8 +138,8 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'User research', description: 'Conduct user interviews and surveys', estimated_hours: 12, priority: 'high' },
           { title: 'Wireframing', description: 'Create app wireframes and user flows', estimated_hours: 16, priority: 'high' },
-          { title: 'Design system', description: 'Develop consistent design language', estimated_hours: 20, priority: 'medium' },
-          { title: 'Prototype development', description: 'Create interactive prototype', estimated_hours: 12, priority: 'medium' }
+          { title: 'Design system', description: 'Develop consistent design language', estimated_hours: 20, priority: 'normal' },
+          { title: 'Prototype development', description: 'Create interactive prototype', estimated_hours: 12, priority: 'normal' }
         ]
       },
       {
@@ -150,7 +150,7 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Navigation setup', description: 'Implement app navigation structure', estimated_hours: 8, priority: 'high' },
           { title: 'Core features', description: 'Develop main application features', estimated_hours: 40, priority: 'high' },
-          { title: 'Data management', description: 'Implement local and remote data handling', estimated_hours: 16, priority: 'medium' },
+          { title: 'Data management', description: 'Implement local and remote data handling', estimated_hours: 16, priority: 'normal' },
           { title: 'Push notifications', description: 'Set up push notification system', estimated_hours: 12, priority: 'low' }
         ]
       },
@@ -158,11 +158,11 @@ const templates: MilestoneTemplate[] = [
         title: 'Testing & Polish',
         description: 'Quality assurance and app store preparation',
         estimatedDays: 14,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Device testing', description: 'Test on multiple devices and screen sizes', estimated_hours: 20, priority: 'high' },
-          { title: 'Performance optimization', description: 'Optimize app performance and loading times', estimated_hours: 12, priority: 'medium' },
-          { title: 'App store preparation', description: 'Prepare app store listings and assets', estimated_hours: 8, priority: 'medium' },
+          { title: 'Performance optimization', description: 'Optimize app performance and loading times', estimated_hours: 12, priority: 'normal' },
+          { title: 'App store preparation', description: 'Prepare app store listings and assets', estimated_hours: 8, priority: 'normal' },
           { title: 'Beta testing', description: 'Conduct beta testing with users', estimated_hours: 16, priority: 'high' }
         ]
       }
@@ -188,8 +188,8 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Market research', description: 'Analyze target market and competitors', estimated_hours: 12, priority: 'high' },
           { title: 'Strategy development', description: 'Create comprehensive marketing strategy', estimated_hours: 10, priority: 'high' },
-          { title: 'Content calendar', description: 'Plan content schedule and themes', estimated_hours: 6, priority: 'medium' },
-          { title: 'Budget allocation', description: 'Allocate budget across channels', estimated_hours: 4, priority: 'medium' }
+          { title: 'Content calendar', description: 'Plan content schedule and themes', estimated_hours: 6, priority: 'normal' },
+          { title: 'Budget allocation', description: 'Allocate budget across channels', estimated_hours: 4, priority: 'normal' }
         ]
       },
       {
@@ -200,8 +200,8 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Blog content', description: 'Write SEO-optimized blog posts', estimated_hours: 16, priority: 'high' },
           { title: 'Social media content', description: 'Create social media posts and graphics', estimated_hours: 20, priority: 'high' },
-          { title: 'Video content', description: 'Produce promotional videos', estimated_hours: 24, priority: 'medium' },
-          { title: 'Email campaigns', description: 'Design email marketing campaigns', estimated_hours: 12, priority: 'medium' }
+          { title: 'Video content', description: 'Produce promotional videos', estimated_hours: 24, priority: 'normal' },
+          { title: 'Email campaigns', description: 'Design email marketing campaigns', estimated_hours: 12, priority: 'normal' }
         ]
       },
       {
@@ -212,7 +212,7 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'SEO optimization', description: 'Optimize website for search engines', estimated_hours: 16, priority: 'high' },
           { title: 'Social media launch', description: 'Launch social media campaigns', estimated_hours: 8, priority: 'high' },
-          { title: 'Paid advertising', description: 'Set up and launch paid ad campaigns', estimated_hours: 12, priority: 'medium' },
+          { title: 'Paid advertising', description: 'Set up and launch paid ad campaigns', estimated_hours: 12, priority: 'normal' },
           { title: 'Influencer outreach', description: 'Connect with relevant influencers', estimated_hours: 10, priority: 'low' }
         ]
       },
@@ -220,11 +220,11 @@ const templates: MilestoneTemplate[] = [
         title: 'Analytics & Optimization',
         description: 'Monitor performance and optimize campaigns',
         estimatedDays: 7,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Analytics setup', description: 'Configure tracking and analytics', estimated_hours: 6, priority: 'high' },
-          { title: 'Performance monitoring', description: 'Monitor campaign performance daily', estimated_hours: 14, priority: 'medium' },
-          { title: 'A/B testing', description: 'Test different campaign variations', estimated_hours: 8, priority: 'medium' },
+          { title: 'Performance monitoring', description: 'Monitor campaign performance daily', estimated_hours: 14, priority: 'normal' },
+          { title: 'A/B testing', description: 'Test different campaign variations', estimated_hours: 8, priority: 'normal' },
           { title: 'Optimization', description: 'Optimize based on performance data', estimated_hours: 10, priority: 'high' }
         ]
       }
@@ -250,8 +250,8 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Current state assessment', description: 'Analyze current business operations', estimated_hours: 12, priority: 'high' },
           { title: 'SWOT analysis', description: 'Identify strengths, weaknesses, opportunities, threats', estimated_hours: 8, priority: 'high' },
-          { title: 'Financial review', description: 'Review financial performance and metrics', estimated_hours: 10, priority: 'medium' },
-          { title: 'Market positioning', description: 'Analyze market position and competition', estimated_hours: 8, priority: 'medium' }
+          { title: 'Financial review', description: 'Review financial performance and metrics', estimated_hours: 10, priority: 'normal' },
+          { title: 'Market positioning', description: 'Analyze market position and competition', estimated_hours: 8, priority: 'normal' }
         ]
       },
       {
@@ -262,19 +262,19 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Strategic planning', description: 'Develop long-term business strategy', estimated_hours: 16, priority: 'high' },
           { title: 'Goal setting', description: 'Define SMART goals and KPIs', estimated_hours: 6, priority: 'high' },
-          { title: 'Resource planning', description: 'Plan resource allocation and requirements', estimated_hours: 8, priority: 'medium' },
-          { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimated_hours: 6, priority: 'medium' }
+          { title: 'Resource planning', description: 'Plan resource allocation and requirements', estimated_hours: 8, priority: 'normal' },
+          { title: 'Risk assessment', description: 'Identify and plan for potential risks', estimated_hours: 6, priority: 'normal' }
         ]
       },
       {
         title: 'Implementation Planning',
         description: 'Create detailed implementation plan and timeline',
         estimatedDays: 7,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Action plan creation', description: 'Create detailed step-by-step action plan', estimated_hours: 10, priority: 'high' },
-          { title: 'Timeline development', description: 'Develop realistic implementation timeline', estimated_hours: 6, priority: 'medium' },
-          { title: 'Success metrics', description: 'Define success metrics and measurement methods', estimated_hours: 4, priority: 'medium' },
+          { title: 'Timeline development', description: 'Develop realistic implementation timeline', estimated_hours: 6, priority: 'normal' },
+          { title: 'Success metrics', description: 'Define success metrics and measurement methods', estimated_hours: 4, priority: 'normal' },
           { title: 'Review and refinement', description: 'Review plan with stakeholders and refine', estimated_hours: 6, priority: 'high' }
         ]
       }
@@ -301,8 +301,8 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Store architecture', description: 'Plan store structure and navigation', estimated_hours: 8, priority: 'high' },
           { title: 'UI/UX design', description: 'Design store interface and user flows', estimated_hours: 16, priority: 'high' },
-          { title: 'Product catalog setup', description: 'Plan product categories and attributes', estimated_hours: 6, priority: 'medium' },
-          { title: 'Brand integration', description: 'Integrate brand identity and styling', estimated_hours: 8, priority: 'medium' }
+          { title: 'Product catalog setup', description: 'Plan product categories and attributes', estimated_hours: 6, priority: 'normal' },
+          { title: 'Brand integration', description: 'Integrate brand identity and styling', estimated_hours: 8, priority: 'normal' }
         ]
       },
       {
@@ -314,18 +314,18 @@ const templates: MilestoneTemplate[] = [
           { title: 'Product management', description: 'Build product catalog and management system', estimated_hours: 20, priority: 'high' },
           { title: 'Shopping cart', description: 'Implement cart and checkout functionality', estimated_hours: 16, priority: 'high' },
           { title: 'Payment integration', description: 'Integrate payment gateways', estimated_hours: 12, priority: 'high' },
-          { title: 'User accounts', description: 'Build user registration and login system', estimated_hours: 10, priority: 'medium' }
+          { title: 'User accounts', description: 'Build user registration and login system', estimated_hours: 10, priority: 'normal' }
         ]
       },
       {
         title: 'Testing & Launch',
         description: 'Quality assurance and store launch',
         estimatedDays: 7,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Payment testing', description: 'Test all payment methods and flows', estimated_hours: 8, priority: 'high' },
-          { title: 'Performance optimization', description: 'Optimize store speed and performance', estimated_hours: 6, priority: 'medium' },
-          { title: 'SEO setup', description: 'Configure SEO and meta tags', estimated_hours: 4, priority: 'medium' },
+          { title: 'Performance optimization', description: 'Optimize store speed and performance', estimated_hours: 6, priority: 'normal' },
+          { title: 'SEO setup', description: 'Configure SEO and meta tags', estimated_hours: 4, priority: 'normal' },
           { title: 'Launch preparation', description: 'Final testing and launch checklist', estimated_hours: 6, priority: 'high' }
         ]
       }
@@ -352,7 +352,7 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Content audit', description: 'Review existing content and identify gaps', estimated_hours: 8, priority: 'high' },
           { title: 'Strategy development', description: 'Create content marketing strategy', estimated_hours: 10, priority: 'high' },
-          { title: 'Content calendar', description: 'Plan content schedule and themes', estimated_hours: 6, priority: 'medium' },
+          { title: 'Content calendar', description: 'Plan content schedule and themes', estimated_hours: 6, priority: 'normal' },
           { title: 'SEO research', description: 'Research keywords and topics', estimated_hours: 8, priority: 'high' }
         ]
       },
@@ -364,19 +364,19 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Blog content', description: 'Write SEO-optimized blog posts', estimated_hours: 20, priority: 'high' },
           { title: 'Social media content', description: 'Create engaging social media posts', estimated_hours: 16, priority: 'high' },
-          { title: 'Visual content', description: 'Create graphics and visual assets', estimated_hours: 12, priority: 'medium' },
-          { title: 'Video content', description: 'Produce video content for various platforms', estimated_hours: 18, priority: 'medium' }
+          { title: 'Visual content', description: 'Create graphics and visual assets', estimated_hours: 12, priority: 'normal' },
+          { title: 'Video content', description: 'Produce video content for various platforms', estimated_hours: 18, priority: 'normal' }
         ]
       },
       {
         title: 'Distribution & Optimization',
         description: 'Distribute content and optimize performance',
         estimatedDays: 7,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Content distribution', description: 'Publish and promote content across channels', estimated_hours: 8, priority: 'high' },
-          { title: 'Performance tracking', description: 'Monitor content performance and engagement', estimated_hours: 6, priority: 'medium' },
-          { title: 'Optimization', description: 'Optimize content based on performance data', estimated_hours: 8, priority: 'medium' },
+          { title: 'Performance tracking', description: 'Monitor content performance and engagement', estimated_hours: 6, priority: 'normal' },
+          { title: 'Optimization', description: 'Optimize content based on performance data', estimated_hours: 8, priority: 'normal' },
           { title: 'Reporting', description: 'Create content performance reports', estimated_hours: 4, priority: 'low' }
         ]
       }
@@ -404,7 +404,7 @@ const templates: MilestoneTemplate[] = [
           { title: 'Requirements analysis', description: 'Identify analytics and reporting requirements', estimated_hours: 6, priority: 'high' },
           { title: 'Tool selection', description: 'Select appropriate analytics tools', estimated_hours: 4, priority: 'high' },
           { title: 'KPI definition', description: 'Define key performance indicators', estimated_hours: 6, priority: 'high' },
-          { title: 'Data mapping', description: 'Map data sources and flows', estimated_hours: 4, priority: 'medium' }
+          { title: 'Data mapping', description: 'Map data sources and flows', estimated_hours: 4, priority: 'normal' }
         ]
       },
       {
@@ -415,7 +415,7 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Tracking setup', description: 'Implement tracking codes and events', estimated_hours: 12, priority: 'high' },
           { title: 'Dashboard creation', description: 'Create analytics dashboards', estimated_hours: 16, priority: 'high' },
-          { title: 'Report automation', description: 'Set up automated reporting', estimated_hours: 8, priority: 'medium' },
+          { title: 'Report automation', description: 'Set up automated reporting', estimated_hours: 8, priority: 'normal' },
           { title: 'Data validation', description: 'Validate data accuracy and completeness', estimated_hours: 6, priority: 'high' }
         ]
       },
@@ -423,12 +423,12 @@ const templates: MilestoneTemplate[] = [
         title: 'Training & Optimization',
         description: 'Train team and optimize analytics setup',
         estimatedDays: 5,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
-          { title: 'Team training', description: 'Train team on analytics tools and reports', estimated_hours: 6, priority: 'medium' },
+          { title: 'Team training', description: 'Train team on analytics tools and reports', estimated_hours: 6, priority: 'normal' },
           { title: 'Process documentation', description: 'Document analytics processes and procedures', estimated_hours: 4, priority: 'low' },
           { title: 'Performance optimization', description: 'Optimize analytics performance', estimated_hours: 4, priority: 'low' },
-          { title: 'Continuous improvement', description: 'Set up continuous improvement processes', estimated_hours: 6, priority: 'medium' }
+          { title: 'Continuous improvement', description: 'Set up continuous improvement processes', estimated_hours: 6, priority: 'normal' }
         ]
       }
     ]
@@ -466,7 +466,7 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Technology selection', description: 'Select appropriate technologies and tools', estimated_hours: 16, priority: 'high' },
           { title: 'Change management plan', description: 'Develop change management strategy', estimated_hours: 20, priority: 'high' },
-          { title: 'Training programs', description: 'Design training and development programs', estimated_hours: 18, priority: 'medium' },
+          { title: 'Training programs', description: 'Design training and development programs', estimated_hours: 18, priority: 'normal' },
           { title: 'Risk mitigation', description: 'Identify and plan for implementation risks', estimated_hours: 12, priority: 'high' }
         ]
       },
@@ -474,12 +474,12 @@ const templates: MilestoneTemplate[] = [
         title: 'Execution & Monitoring',
         description: 'Execute transformation and monitor progress',
         estimatedDays: 14,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Implementation support', description: 'Support implementation execution', estimated_hours: 20, priority: 'high' },
-          { title: 'Progress monitoring', description: 'Monitor transformation progress', estimated_hours: 12, priority: 'medium' },
+          { title: 'Progress monitoring', description: 'Monitor transformation progress', estimated_hours: 12, priority: 'normal' },
           { title: 'Issue resolution', description: 'Address implementation issues', estimated_hours: 16, priority: 'high' },
-          { title: 'Success measurement', description: 'Measure transformation success', estimated_hours: 8, priority: 'medium' }
+          { title: 'Success measurement', description: 'Measure transformation success', estimated_hours: 8, priority: 'normal' }
         ]
       }
     ]
@@ -517,20 +517,20 @@ const templates: MilestoneTemplate[] = [
         tasks: [
           { title: 'Logo design', description: 'Create primary and secondary logos', estimated_hours: 16, priority: 'high' },
           { title: 'Color palette', description: 'Develop brand color palette', estimated_hours: 6, priority: 'high' },
-          { title: 'Typography', description: 'Select and customize brand typography', estimated_hours: 8, priority: 'medium' },
-          { title: 'Visual elements', description: 'Create supporting visual elements', estimated_hours: 12, priority: 'medium' }
+          { title: 'Typography', description: 'Select and customize brand typography', estimated_hours: 8, priority: 'normal' },
+          { title: 'Visual elements', description: 'Create supporting visual elements', estimated_hours: 12, priority: 'normal' }
         ]
       },
       {
         title: 'Brand Guidelines',
         description: 'Create comprehensive brand guidelines',
         estimatedDays: 5,
-        priority: 'medium',
+        priority: 'normal',
         tasks: [
           { title: 'Guidelines document', description: 'Create brand guidelines document', estimated_hours: 12, priority: 'high' },
-          { title: 'Usage examples', description: 'Create usage examples and applications', estimated_hours: 8, priority: 'medium' },
+          { title: 'Usage examples', description: 'Create usage examples and applications', estimated_hours: 8, priority: 'normal' },
           { title: 'Asset delivery', description: 'Prepare and deliver brand assets', estimated_hours: 6, priority: 'high' },
-          { title: 'Presentation', description: 'Present brand identity to stakeholders', estimated_hours: 4, priority: 'medium' }
+          { title: 'Presentation', description: 'Present brand identity to stakeholders', estimated_hours: 4, priority: 'normal' }
         ]
       }
     ]

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.action_requests (
     type VARCHAR(50) NOT NULL CHECK (type IN ('change_request', 'question', 'approval_needed', 'issue_report')),
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    priority VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    priority VARCHAR(20) NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved', 'rejected')),
     requested_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     assigned_to UUID REFERENCES public.profiles(id) ON DELETE SET NULL,

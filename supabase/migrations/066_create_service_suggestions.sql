@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.service_suggestions (
     suggested_service_id UUID NOT NULL REFERENCES public.services(id) ON DELETE CASCADE,
     original_booking_id UUID REFERENCES public.bookings(id) ON DELETE CASCADE,
     suggestion_reason TEXT,
-    priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'viewed', 'accepted', 'declined', 'expired')),
     expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

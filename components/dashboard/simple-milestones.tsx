@@ -155,7 +155,7 @@ export function SimpleMilestones({
       title: '',
       description: '',
       status: 'pending',
-      priority: 'medium',
+      priority: 'normal',
       estimated_hours: 1,
       milestone_id: milestoneId,
       order_index: 0
@@ -973,10 +973,10 @@ export function SimpleMilestones({
                           <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
                             <select
-                              value={newTask.task.priority || 'medium'}
+                              value={newTask.task.priority || 'normal'}
                               onChange={(e) => setNewTask({
                                 ...newTask,
-                                task: { ...newTask.task, priority: e.target.value as 'low' | 'medium' | 'high' }
+                                task: { ...newTask.task, priority: e.target.value as 'low' | 'normal' | 'high' }
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               aria-label="Select task priority"

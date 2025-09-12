@@ -35,7 +35,7 @@ export interface BookingMilestone {
   description: string
   due_date?: string
   status: MilestoneStatus
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   progress_percentage: number
   weight: number
   order_index: number
@@ -58,7 +58,7 @@ export interface BookingTask {
   title: string
   description?: string
   status: TaskStatus
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   due_date?: string
   assigned_to?: string
   completed_at?: string

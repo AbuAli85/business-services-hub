@@ -542,7 +542,7 @@ export class ProgressDataService {
           description: `Monthly progress milestone for ${booking.services?.title || 'service'}`,
           due_date: milestoneEndDate.toISOString(),
           status: i === 0 ? 'in_progress' : 'pending',
-          priority: 'medium',
+          priority: 'normal',
           progress: 0,
           order_index: i,
           estimated_hours: 0,

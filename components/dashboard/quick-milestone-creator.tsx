@@ -130,7 +130,7 @@ export function QuickMilestoneCreator({
             description: step.description,
             status: 'pending',
             progress: 0,
-            priority: 'medium',
+            priority: 'normal',
             order_index: i,
             created_by: user.id
           })

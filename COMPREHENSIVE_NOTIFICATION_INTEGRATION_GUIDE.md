@@ -527,7 +527,7 @@ async function testAllNotifications() {
     await triggerSystemAnnouncement(testUserId, {
       title: 'Test Announcement',
       message: 'This is a test system announcement',
-      priority: 'medium',
+      priority: 'normal',
       action_url: '/dashboard',
       action_label: 'View Dashboard'
     })

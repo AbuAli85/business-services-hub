@@ -10,7 +10,7 @@ BEGIN
         AND column_name = 'priority'
     ) THEN
         ALTER TABLE booking_notifications 
-        ADD COLUMN priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+        ADD COLUMN priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent'));
     END IF;
 END $$;
 
@@ -23,7 +23,7 @@ BEGIN
         AND column_name = 'priority'
     ) THEN
         ALTER TABLE user_notifications 
-        ADD COLUMN priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+        ADD COLUMN priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent'));
     END IF;
 END $$;
 
@@ -36,7 +36,7 @@ BEGIN
         AND column_name = 'priority'
     ) THEN
         ALTER TABLE progress_notifications 
-        ADD COLUMN priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+        ADD COLUMN priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent'));
     END IF;
 END $$;
 

@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS document_requests (
   description TEXT,
   category_id UUID REFERENCES document_categories(id) ON DELETE SET NULL,
   is_required BOOLEAN DEFAULT false,
-  priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'uploaded', 'approved', 'rejected', 'cancelled')),
   due_date TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

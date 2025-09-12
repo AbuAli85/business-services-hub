@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   message TEXT NOT NULL,
   data JSONB DEFAULT '{}',
   read BOOLEAN DEFAULT FALSE,
-  priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   expires_at TIMESTAMP WITH TIME ZONE,

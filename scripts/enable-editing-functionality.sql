@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION add_task_to_milestone(
   milestone_uuid uuid,
   task_title text,
   task_description text DEFAULT '',
-  task_priority text DEFAULT 'medium',
+  task_priority text DEFAULT 'normal',
   estimated_hours_val numeric DEFAULT 1.0
 )
 RETURNS uuid

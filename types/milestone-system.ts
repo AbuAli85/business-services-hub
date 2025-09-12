@@ -5,7 +5,7 @@ export interface Milestone {
   title: string
   description: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   start_date: string
   due_date: string
   actual_start_date?: string
@@ -29,7 +29,7 @@ export interface Task {
   title: string
   description: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   start_date: string
   due_date: string
   actual_start_date?: string
@@ -100,7 +100,7 @@ export interface MilestoneTemplateTask {
   title: string
   description: string
   estimated_hours: number
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
   order_index: number
   created_at: string
 }
@@ -174,7 +174,7 @@ export interface WorkflowStepExecution {
 
 export interface MilestoneSettings {
   // General Settings
-  default_priority: 'low' | 'medium' | 'high' | 'urgent'
+  default_priority: 'low' | 'normal' | 'high' | 'urgent'
   default_risk_level: 'low' | 'medium' | 'high' | 'critical'
   auto_progress_calculation: boolean
   critical_path_enabled: boolean

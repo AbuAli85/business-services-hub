@@ -106,7 +106,7 @@ export function MilestoneList({
       description: 'Task description',
       status: 'pending',
       progress: 0,
-      priority: 'medium',
+      priority: 'normal',
       order_index: milestones.find(m => m.id === milestoneId)?.tasks.length || 0
     };
     await onTaskCreate(milestoneId, newTask);

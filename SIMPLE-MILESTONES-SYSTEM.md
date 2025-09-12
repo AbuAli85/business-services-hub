@@ -32,7 +32,7 @@ interface SimpleTask {
   dueDate?: string
   isRecurring?: boolean
   recurringType?: 'monthly' | 'weekly' | 'daily'
-  priority?: 'low' | 'medium' | 'high'
+  priority?: 'low' | 'normal' | 'high'
   estimatedHours?: number
   actualHours?: number
 }

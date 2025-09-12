@@ -239,7 +239,7 @@ async function testPoliciesWithValidUser() {
           type: 'test',
           title: 'RLS Policy Test',
           message: 'Testing RLS policies with valid user',
-          priority: 'medium'
+          priority: 'normal'
         })
         .select()
         .single()
@@ -264,7 +264,7 @@ async function testPoliciesWithValidUser() {
         type: 'test',
         title: 'RLS Policy Test',
         message: 'Testing RLS policies with valid user',
-        priority: 'medium'
+        priority: 'normal'
       })
       .select()
       .single()

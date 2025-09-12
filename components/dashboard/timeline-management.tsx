@@ -45,7 +45,7 @@ export default function TimelineManagement({
     title: '',
     description: '',
     status: 'pending',
-    priority: 'medium',
+    priority: 'normal',
     created_at: new Date().toISOString(),
     due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     progress_percentage: 0,
@@ -133,7 +133,7 @@ export default function TimelineManagement({
         title: '',
         description: '',
         status: 'pending',
-        priority: 'medium',
+        priority: 'normal',
         created_at: new Date().toISOString(),
         due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         progress_percentage: 0,
@@ -243,7 +243,7 @@ export default function TimelineManagement({
                   Priority
                 </label>
                 <select
-                  value={newItem.priority || 'medium'}
+                  value={newItem.priority || 'normal'}
                   onChange={(e) => setNewItem({...newItem, priority: e.target.value as any})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   aria-label="Timeline item priority"
