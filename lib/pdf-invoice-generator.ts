@@ -93,14 +93,17 @@ function drawBox(doc: jsPDF, x: number, y: number, width: number, height: number
 }
 
 // Helper function to add professional text with proper styling
-function addText(doc: jsPDF, text: string, x: number, y: number, 
+function addText(doc: jsPDF, text: string | any, x: number, y: number, 
   style: keyof typeof typography = 'body', color: [number, number, number] = premiumColors.primary, 
   align: 'left' | 'center' | 'right' = 'left') {
+  // Ensure text is always a string
+  const textString = String(text || '')
+  
   const fontStyle = typography[style]
   doc.setFontSize(fontStyle.size)
   doc.setFont('helvetica', fontStyle.weight)
   doc.setTextColor(color[0], color[1], color[2])
-  doc.text(text, x, y, { align })
+  doc.text(textString, x, y, { align })
 }
 
 // Main PDF generation function
@@ -182,13 +185,13 @@ export async function generateProfessionalPDF(
   }
 
   // Company information
-  addText(doc, companyName, 60, 25, 'title', colors.primary)
-  addText(doc, companyAddress, 60, 32, 'body', premiumColors.darkGray)
-  addText(doc, `${companyPhone} | ${companyEmail}`, 60, 39, 'body', premiumColors.darkGray)
+  addText(doc, String(companyName), 60, 25, 'title', colors.primary)
+  addText(doc, String(companyAddress), 60, 32, 'body', premiumColors.darkGray)
+  addText(doc, `${String(companyPhone)} | ${String(companyEmail)}`, 60, 39, 'body', premiumColors.darkGray)
   
   // VAT Registration (if available)
   if (invoice.provider?.company?.vat_registration) {
-    addText(doc, `VAT Reg: ${invoice.provider.company.vat_registration}`, 60, 46, 'small', premiumColors.darkGray)
+    addText(doc, `VAT Reg: ${String(invoice.provider.company.vat_registration)}`, 60, 46, 'small', premiumColors.darkGray)
   }
 
   // Invoice details box
@@ -209,10 +212,10 @@ export async function generateProfessionalPDF(
   // From section
   drawBox(doc, 20, billingY, 85, 50, premiumColors.lightGray, colors.primary, 1)
   addText(doc, 'FROM', 25, billingY + 8, 'subheading', colors.primary)
-  addText(doc, companyName, 25, billingY + 16, 'body', premiumColors.darkGray)
-  addText(doc, companyAddress, 25, billingY + 22, 'body', premiumColors.darkGray)
-  addText(doc, companyPhone, 25, billingY + 28, 'body', premiumColors.darkGray)
-  addText(doc, companyEmail, 25, billingY + 34, 'body', premiumColors.darkGray)
+  addText(doc, String(companyName), 25, billingY + 16, 'body', premiumColors.darkGray)
+  addText(doc, String(companyAddress), 25, billingY + 22, 'body', premiumColors.darkGray)
+  addText(doc, String(companyPhone), 25, billingY + 28, 'body', premiumColors.darkGray)
+  addText(doc, String(companyEmail), 25, billingY + 34, 'body', premiumColors.darkGray)
   
   // Bill To section
   drawBox(doc, 115, billingY, 85, 50, premiumColors.lightGray, colors.primary, 1)
@@ -220,21 +223,21 @@ export async function generateProfessionalPDF(
   
   let clientY = billingY + 16
   if (clientCompany) {
-    addText(doc, clientCompany, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, String(clientCompany), 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
-  addText(doc, clientName, 120, clientY, 'body', premiumColors.darkGray)
+  addText(doc, String(clientName), 120, clientY, 'body', premiumColors.darkGray)
   clientY += 6
   if (clientAddress) {
-    addText(doc, clientAddress, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, String(clientAddress), 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientPhone) {
-    addText(doc, clientPhone, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, String(clientPhone), 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientEmail) {
-    addText(doc, clientEmail, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, String(clientEmail), 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   
@@ -265,7 +268,7 @@ export async function generateProfessionalPDF(
     
     drawBox(doc, 20, currentY, tableWidth, 12, rowColor, premiumColors.borderGray, 0.5)
     addText(doc, String(index + 1), colX[0], currentY + 8, 'body', premiumColors.darkGray, 'center')
-    addText(doc, item.description || 'Service Item', colX[1], currentY + 8, 'body', premiumColors.darkGray)
+    addText(doc, String(item.description || 'Service Item'), colX[1], currentY + 8, 'body', premiumColors.darkGray)
     addText(doc, String(item.quantity || 1), colX[2], currentY + 8, 'body', premiumColors.darkGray, 'center')
     addText(doc, formatCurrency(item.unit_price || 0, 'OMR'), colX[3], currentY + 8, 'body', premiumColors.darkGray, 'right')
     addText(doc, formatCurrency((item.unit_price || 0) * (item.quantity || 1), 'OMR'), colX[4], currentY + 8, 'body', premiumColors.darkGray, 'right')
@@ -302,9 +305,9 @@ export async function generateProfessionalPDF(
   const paymentY = summaryY + 60
   addText(doc, 'PAYMENT INFORMATION', 20, paymentY, 'subheading', colors.primary)
   
-  addText(doc, `Bank: ${bankName}`, 20, paymentY + 8, 'body', premiumColors.darkGray)
-  addText(doc, `Account: ${accountNumber}`, 20, paymentY + 14, 'body', premiumColors.darkGray)
-  addText(doc, `Payment Terms: ${paymentTerms}`, 20, paymentY + 20, 'body', premiumColors.darkGray)
+  addText(doc, `Bank: ${String(bankName)}`, 20, paymentY + 8, 'body', premiumColors.darkGray)
+  addText(doc, `Account: ${String(accountNumber)}`, 20, paymentY + 14, 'body', premiumColors.darkGray)
+  addText(doc, `Payment Terms: ${String(paymentTerms)}`, 20, paymentY + 20, 'body', premiumColors.darkGray)
 
   // === FOOTER ===
   const footerY = paymentY + 35
@@ -314,7 +317,7 @@ export async function generateProfessionalPDF(
   
   // QR Code
   try {
-    const qrText = invoice.payment_url || `Invoice ${invoiceNumber}, Total: ${formatCurrency(safeTotal, 'OMR')}`
+    const qrText = String(invoice.payment_url || `Invoice ${invoiceNumber}, Total: ${formatCurrency(safeTotal, 'OMR')}`)
     const qrDataUrl = await QRCode.toDataURL(qrText, { width: 60 })
     doc.addImage(qrDataUrl, 'PNG', 20, footerY, 30, 30)
     addText(doc, 'Scan to Pay', 25, footerY + 35, 'small', premiumColors.darkGray)
