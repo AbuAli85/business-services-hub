@@ -132,12 +132,12 @@ export async function generateProfessionalPDF(
   const companyEmail = invoice.provider?.company?.email || 'info@businessservices.com'
   const companyLogo = invoice.provider?.company?.logo_url
   
-  // Client information
-  const clientName = invoice.client?.name || 'Client Name'
-  const clientCompany = invoice.client?.company || ''
-  const clientAddress = invoice.client?.address || ''
-  const clientPhone = invoice.client?.phone || ''
-  const clientEmail = invoice.client?.email || ''
+  // Client information - ensure all are strings
+  const clientName = String(invoice.client?.name || 'Client Name')
+  const clientCompany = invoice.client?.company ? String(invoice.client.company) : ''
+  const clientAddress = invoice.client?.address ? String(invoice.client.address) : ''
+  const clientPhone = invoice.client?.phone ? String(invoice.client.phone) : ''
+  const clientEmail = invoice.client?.email ? String(invoice.client.email) : ''
   
   // Financial calculations
   const safeSubtotal = invoice.subtotal || 0
@@ -207,7 +207,7 @@ export async function generateProfessionalPDF(
   addText(doc, status.toUpperCase(), 147.5, 59, 'small', premiumColors.white, 'center')
 
   // === BILLING SECTIONS ===
-  const billingY = 75
+  const billingY = 80
   
   // From section
   drawBox(doc, 20, billingY, 85, 50, premiumColors.lightGray, colors.primary, 1)
@@ -247,7 +247,7 @@ export async function generateProfessionalPDF(
   }
 
   // === SERVICE TABLE ===
-  const tableY = billingY + 70
+  const tableY = billingY + 75
   const tableWidth = 170
   const colWidths = [15, 80, 20, 30, 25]
   const colX = [20, 35, 115, 135, 165]
@@ -262,7 +262,13 @@ export async function generateProfessionalPDF(
   
   // Table rows
   let currentY = tableY + 12
-  invoice.invoice_items?.forEach((item, index) => {
+  
+  // Check if there are invoice items, if not add a default service item
+  const items = invoice.invoice_items && invoice.invoice_items.length > 0 
+    ? invoice.invoice_items 
+    : [{ description: 'Professional Service', quantity: 1, unit_price: safeSubtotal || 0 }]
+  
+  items.forEach((item, index) => {
     const isEven = index % 2 === 0
     const rowColor = isEven ? premiumColors.white : premiumColors.lightGray
     
@@ -310,7 +316,7 @@ export async function generateProfessionalPDF(
   addText(doc, `Payment Terms: ${String(paymentTerms)}`, 20, paymentY + 20, 'body', premiumColors.darkGray)
 
   // === FOOTER ===
-  const footerY = paymentY + 35
+  const footerY = paymentY + 40
   
   // Divider line
   drawDivider(doc, footerY - 5)
@@ -318,26 +324,27 @@ export async function generateProfessionalPDF(
   // QR Code
   try {
     const qrText = String(invoice.payment_url || `Invoice ${invoiceNumber}, Total: ${formatCurrency(safeTotal, 'OMR')}`)
-    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 60 })
-    doc.addImage(qrDataUrl, 'PNG', 20, footerY, 30, 30)
-    addText(doc, 'Scan to Pay', 25, footerY + 35, 'small', premiumColors.darkGray)
+    const qrDataUrl = await QRCode.toDataURL(qrText, { width: 50 })
+    doc.addImage(qrDataUrl, 'PNG', 20, footerY, 25, 25)
+    addText(doc, 'Scan to Pay', 22, footerY + 30, 'small', premiumColors.darkGray)
   } catch (error) {
     // QR code generation failed, continue without it
   }
   
   // Thank you message
-  addText(doc, 'Thank you for your business!', 100, footerY + 15, 'heading', colors.primary, 'center')
+  addText(doc, 'Thank you for your business!', 100, footerY + 10, 'heading', colors.primary, 'center')
   
   // Compliance text
-  addText(doc, 'Generated electronically in compliance with Omani VAT regulations', 100, footerY + 25, 'small', premiumColors.darkGray, 'center')
+  addText(doc, 'Generated electronically in compliance with Omani VAT regulations', 100, footerY + 20, 'small', premiumColors.darkGray, 'center')
   
-  // Signature section
-  addText(doc, 'Authorized Signature:', 20, footerY + 40, 'body', colors.primary)
-  addText(doc, '_________________________', 20, footerY + 48, 'body', premiumColors.darkGray)
-  addText(doc, 'Date: _______________', 20, footerY + 56, 'body', premiumColors.darkGray)
+  // Signature section - improved positioning
+  const signatureY = footerY + 35
+  addText(doc, 'Authorized Signature:', 20, signatureY, 'body', colors.primary)
+  addText(doc, '_________________________', 20, signatureY + 8, 'body', premiumColors.darkGray)
+  addText(doc, 'Date: _______________', 20, signatureY + 16, 'body', premiumColors.darkGray)
   
   // Professional note
-  addText(doc, 'This invoice is valid without signature', 100, footerY + 50, 'small', premiumColors.darkGray, 'center')
+  addText(doc, 'This invoice is valid without signature', 100, signatureY + 8, 'small', premiumColors.darkGray, 'center')
 
   return new Uint8Array(doc.output('arraybuffer'))
 }
