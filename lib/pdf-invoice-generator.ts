@@ -134,11 +134,38 @@ export async function generateProfessionalPDF(
   
   // Client information - ensure all are strings with robust object handling
   const client = invoice.client || {}
-  const clientName = client.name ? String(client.name) : 'Client Name'
-  const clientCompany = client.company ? String(client.company) : ''
-  const clientAddress = client.address ? String(client.address) : ''
-  const clientPhone = client.phone ? String(client.phone) : ''
-  const clientEmail = client.email ? String(client.email) : ''
+  
+  // Helper function to safely convert to string
+  const safeString = (value: any): string => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string') return value
+    if (typeof value === 'object') {
+      // If it's an object, try to extract meaningful data
+      if (value.name) return String(value.name)
+      if (value.title) return String(value.title)
+      if (value.company) return String(value.company)
+      return '' // Return empty string for complex objects
+    }
+    return String(value)
+  }
+  
+  const clientName = safeString(client.name) || 'Client Name'
+  const clientCompany = safeString(client.company)
+  const clientAddress = safeString(client.address)
+  const clientPhone = safeString(client.phone)
+  const clientEmail = safeString(client.email)
+  
+  // Debug logging to help identify the issue
+  console.log('Client data debug:', {
+    originalClient: invoice.client,
+    processedClient: {
+      name: clientName,
+      company: clientCompany,
+      address: clientAddress,
+      phone: clientPhone,
+      email: clientEmail
+    }
+  })
   
   // Financial calculations - calculate from invoice items if subtotal is not provided
   let safeSubtotal = invoice.subtotal || 0
@@ -233,21 +260,27 @@ export async function generateProfessionalPDF(
   addText(doc, 'BILL TO', 120, billingY + 8, 'subheading', colors.primary)
   
   let clientY = billingY + 16
-  if (clientCompany && clientCompany !== '') {
+  
+  // Only display client company if it's a valid string and not empty
+  if (clientCompany && clientCompany !== '' && clientCompany !== '[object Object]') {
     addText(doc, clientCompany, 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
+  
+  // Always display client name
   addText(doc, clientName, 120, clientY, 'body', premiumColors.darkGray)
   clientY += 6
-  if (clientAddress && clientAddress !== '') {
+  
+  // Only display other fields if they're valid strings and not empty
+  if (clientAddress && clientAddress !== '' && clientAddress !== '[object Object]') {
     addText(doc, clientAddress, 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
-  if (clientPhone && clientPhone !== '') {
+  if (clientPhone && clientPhone !== '' && clientPhone !== '[object Object]') {
     addText(doc, clientPhone, 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
-  if (clientEmail && clientEmail !== '') {
+  if (clientEmail && clientEmail !== '' && clientEmail !== '[object Object]') {
     addText(doc, clientEmail, 120, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
@@ -260,8 +293,8 @@ export async function generateProfessionalPDF(
   // === SERVICE TABLE ===
   const tableY = billingY + 80
   const tableWidth = 170
-  const colWidths = [15, 70, 20, 35, 30]
-  const colX = [20, 40, 115, 140, 175]
+  const colWidths = [15, 60, 20, 35, 40]
+  const colX = [20, 40, 105, 130, 170]
   
   // Table header
   drawBox(doc, 20, tableY, tableWidth, 12, colors.primary, colors.primary, 0)
