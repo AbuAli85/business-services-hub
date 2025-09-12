@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { jsPDF } from 'jspdf'
 
 function generateSimplePDF(invoice: any): Uint8Array {
-  // Create an ultra-premium, high-end PDF using jsPDF matching the enhanced template
+  // Create a professional, clean PDF invoice
   const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -26,46 +26,35 @@ function generateSimplePDF(invoice: any): Uint8Array {
   // Create a new PDF document
   const doc = new jsPDF('p', 'mm', 'a4')
   
-  // Enhanced ultra-premium color palette matching the template
-  const primaryColor = [15, 23, 42] // Deep slate
-  const secondaryColor = [30, 41, 59] // Slate
-  const accentColor = [59, 130, 246] // Blue-500
-  const accentLight = [147, 197, 253] // Blue-300
-  const purpleColor = [147, 51, 234] // Purple-600
-  const indigoColor = [79, 70, 229] // Indigo-600
+  // Professional color palette
+  const primaryColor = [31, 41, 55] // Gray-800
+  const accentColor = [37, 99, 235] // Blue-600
+  const accentLight = [219, 234, 254] // Blue-100
   const successColor = [34, 197, 94] // Green-500
-  const warningColor = [251, 191, 36] // Amber-400
-  const lightGray = [248, 250, 252] // Slate-50
-  const mediumGray = [241, 245, 249] // Slate-100
-  const darkGray = [51, 65, 85] // Slate-700
-  const textGray = [71, 85, 105] // Slate-600
-  const borderGray = [226, 232, 240] // Slate-200
+  const warningColor = [245, 158, 11] // Amber-500
+  const lightGray = [249, 250, 251] // Gray-50
+  const darkGray = [17, 24, 39] // Gray-900
+  const textGray = [75, 85, 99] // Gray-600
+  const borderGray = [229, 231, 235] // Gray-200
+  const white = [255, 255, 255] // White
 
-  // Get company information from the invoice data (support both nested booking path and top-level provider)
-  const companyName =
-    invoice.booking?.service?.provider?.company?.name ||
-    (invoice.provider as any)?.company?.name ||
-    'Business Services Hub'
+  // Get company information
+  const companyName = invoice.booking?.service?.provider?.company?.name || 
+    (invoice.provider as any)?.company?.name || 'Business Services Hub'
   const companyTagline = 'Professional Services & Solutions'
-  const companyAddress =
-    invoice.booking?.service?.provider?.company?.address ||
-    (invoice.provider as any)?.company?.address ||
-    '123 Business Street, Suite 100\nCity, State 12345'
-  const companyPhone =
-    invoice.booking?.service?.provider?.company?.phone ||
-    (invoice.provider as any)?.company?.phone ||
-    '(555) 555-5555'
-  const companyEmail =
-    invoice.booking?.service?.provider?.company?.email ||
-    (invoice.provider as any)?.company?.email ||
-    'info@businessservices.com'
+  const companyAddress = invoice.booking?.service?.provider?.company?.address || 
+    (invoice.provider as any)?.company?.address || '123 Business Street, Suite 100, City, State 12345'
+  const companyPhone = invoice.booking?.service?.provider?.company?.phone || 
+    (invoice.provider as any)?.company?.phone || '(555) 555-5555'
+  const companyEmail = invoice.booking?.service?.provider?.company?.email || 
+    (invoice.provider as any)?.company?.email || 'info@businessservices.com'
 
-  // Get client information from the invoice data
+  // Get client information
   const clientName = (invoice.client as any)?.full_name || invoice.booking?.client?.full_name || 'Client Name'
   const clientCompany = (invoice.client as any)?.company?.name || invoice.booking?.client?.company?.name || 'Client Company'
   const clientEmail = (invoice.client as any)?.email || invoice.booking?.client?.email || 'client@email.com'
 
-  // Get service information from the invoice data
+  // Get service information
   const serviceTitle = invoice.booking?.service?.title || 'Professional Service'
   const serviceDescription = invoice.booking?.service?.description || 'High-quality professional service delivered with excellence'
   const serviceQuantity = 1
@@ -78,236 +67,251 @@ function generateSimplePDF(invoice: any): Uint8Array {
   const taxAmount = invoice.tax_amount || (subtotal * taxRate / 100)
   const total = invoice.total_amount || (subtotal + taxAmount)
   
-  // Create ultra-premium gradient header matching the enhanced template
+  // Helper function to split text into multiple lines
+  const splitText = (text: string, maxWidth: number, fontSize: number) => {
+    const words = text.split(' ')
+    const lines = []
+    let currentLine = ''
+    
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word
+      const textWidth = doc.getTextWidth(testLine) * (fontSize / doc.internal.getFontSize())
+      
+      if (textWidth <= maxWidth) {
+        currentLine = testLine
+      } else {
+        if (currentLine) {
+          lines.push(currentLine)
+          currentLine = word
+        } else {
+          lines.push(word)
+        }
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine)
+    }
+    
+    return lines
+  }
+
+  // Set default font
+  doc.setFont('helvetica')
+  
+  // Create clean header
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(0, 0, 210, 80, 'F')
+  doc.rect(0, 0, 210, 50, 'F')
   
-  // Add advanced gradient overlay
-  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.rect(0, 0, 210, 8, 'F')
-  
-  // Add purple accent
-  doc.setFillColor(purpleColor[0], purpleColor[1], purpleColor[2])
-  doc.rect(0, 6, 210, 2, 'F')
-  
-  // Enhanced company logo area with glass morphism effect
-  doc.setFillColor(255, 255, 255)
-  doc.rect(20, 25, 40, 30, 'F')
+  // Company logo area
+  doc.setFillColor(white[0], white[1], white[2])
+  doc.rect(20, 15, 30, 20, 'F')
   doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setLineWidth(4)
-  doc.rect(20, 25, 40, 30, 'S')
-  
-  // Add inner glow effect
-  doc.setDrawColor(accentLight[0], accentLight[1], accentLight[2])
   doc.setLineWidth(2)
-  doc.rect(22, 27, 36, 26, 'S')
+  doc.rect(20, 15, 30, 20, 'S')
   
-  // Add logo placeholder with enhanced styling
+  // Logo text
   doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text('LOGO', 35, 42)
+  doc.text('LOGO', 32, 28)
   
-  // Ultra-premium company branding
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(36)
-  doc.setFont('helvetica', 'bold')
-  doc.text(companyName, 70, 40)
-  
-  // Enhanced tagline
-  doc.setFontSize(14)
-  doc.setFont('helvetica', 'normal')
-  doc.text(companyTagline, 70, 48)
-  
-  // Company address
-  doc.setFontSize(10)
-  doc.text(companyAddress, 70, 56)
-  
-  // Contact information
-  doc.setFontSize(10)
-  doc.text(`${companyPhone} | ${companyEmail}`, 70, 64)
-  
-  // Ultra-premium invoice details box
-  doc.setFillColor(255, 255, 255)
-  doc.rect(120, 20, 80, 60, 'F')
-  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setLineWidth(3)
-  doc.rect(120, 20, 80, 60, 'S')
-  
-  // Add inner glow
-  doc.setDrawColor(accentLight[0], accentLight[1], accentLight[2])
-  doc.setLineWidth(1)
-  doc.rect(121, 21, 78, 58, 'S')
-  
-  // Invoice title with icon
-  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+  // Company name
+  doc.setTextColor(white[0], white[1], white[2])
   doc.setFontSize(24)
   doc.setFont('helvetica', 'bold')
-  doc.text('INVOICE', 140, 35)
+  doc.text(companyName, 60, 25)
+  
+  // Company tagline
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text(companyTagline, 60, 32)
+  
+  // Company contact info
+  doc.setFontSize(10)
+  const addressLines = splitText(companyAddress, 80, 10)
+  addressLines.forEach((line, index) => {
+    doc.text(line, 60, 38 + (index * 4))
+  })
+  
+  // Phone and email
+  doc.text(`${companyPhone} | ${companyEmail}`, 60, 38 + (addressLines.length * 4) + 4)
+  
+  // Invoice details box
+  doc.setFillColor(white[0], white[1], white[2])
+  doc.rect(130, 15, 70, 35, 'F')
+  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.setLineWidth(2)
+  doc.rect(130, 15, 70, 35, 'S')
+  
+  // Invoice title
+  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.text('INVOICE', 145, 25)
   
   // Invoice number
   doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
-  doc.text(invoiceNumber, 140, 42)
+  doc.text(`#${invoiceNumber}`, 135, 30)
   
-  // Invoice details
+  // Invoice dates
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text('Issued Date:', 125, 52)
+  doc.text('Issued:', 135, 36)
   doc.setFont('helvetica', 'normal')
-  doc.text(createdDate, 125, 58)
+  doc.text(createdDate, 135, 40)
   
   doc.setFont('helvetica', 'bold')
-  doc.text('Due Date:', 125, 66)
+  doc.text('Due:', 135, 44)
   doc.setFont('helvetica', 'normal')
-  doc.text(dueDate, 125, 72)
+  doc.text(dueDate, 135, 48)
   
   // Status badge
-  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.rect(125, 75, 30, 8, 'F')
-  doc.setTextColor(255, 255, 255)
+  const statusColor = invoice.status === 'paid' ? successColor : 
+                     invoice.status === 'overdue' ? warningColor : accentColor
+  doc.setFillColor(statusColor[0], statusColor[1], statusColor[2])
+  doc.rect(135, 50, 25, 8, 'F')
+  doc.setTextColor(white[0], white[1], white[2])
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')
-  doc.text(invoice.status.toUpperCase(), 130, 80)
+  doc.text(invoice.status.toUpperCase(), 140, 55)
   
-  // Premium "Bill To" section
+  // Bill To section
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('BILL TO:', 20, 110)
+  doc.text('Bill To:', 20, 75)
   
-  // Client information with enhanced styling
+  // Client information box
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(20, 115, 80, 40, 'F')
+  doc.rect(20, 80, 80, 30, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(20, 115, 80, 40, 'S')
+  doc.rect(20, 80, 80, 30, 'S')
   
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(14)
-  doc.setFont('helvetica', 'bold')
-  doc.text(clientName, 25, 125)
   doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text(clientName, 25, 88)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text(clientCompany, 25, 132)
-  doc.text(clientEmail, 25, 139)
+  doc.text(clientCompany, 25, 94)
+  doc.text(clientEmail, 25, 100)
   
-  // Premium services table
+  // Services section
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(18)
+  doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('SERVICES RENDERED', 20, 180)
+  doc.text('Services', 20, 125)
   
-  // Table header
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(20, 185, 170, 15, 'F')
+  // Services table header
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(20, 130, 170, 12, 'F')
   
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(12)
+  doc.setTextColor(white[0], white[1], white[2])
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.text('SERVICE DETAILS', 25, 195)
-  doc.text('QTY', 120, 195)
-  doc.text('UNIT PRICE', 140, 195)
-  doc.text('TOTAL', 160, 195)
+  doc.text('Description', 25, 138)
+  doc.text('Qty', 120, 138)
+  doc.text('Rate', 140, 138)
+  doc.text('Amount', 160, 138)
   
   // Service row
-  doc.setFillColor(255, 255, 255)
-  doc.rect(20, 200, 170, 25, 'F')
+  doc.setFillColor(white[0], white[1], white[2])
+  doc.rect(20, 142, 170, 20, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(20, 200, 170, 25, 'S')
+  doc.rect(20, 142, 170, 20, 'S')
   
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(11)
-  doc.setFont('helvetica', 'bold')
-  doc.text(serviceTitle, 25, 210)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.text(serviceDescription, 25, 216)
-  
-  // Quantity badge
-  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.rect(115, 205, 15, 15, 'F')
-  doc.setTextColor(255, 255, 255)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text(serviceQuantity.toString(), 120, 214)
-  
-  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(11)
+  doc.text(serviceTitle, 25, 150)
   doc.setFont('helvetica', 'normal')
-  doc.text(`${servicePrice.toFixed(2)} ${invoice.currency}`, 140, 210)
-  doc.text(`${serviceTotal.toFixed(2)} ${invoice.currency}`, 160, 210)
   
-  // Ultra-premium totals section
+  // Split service description if too long
+  const descLines = splitText(serviceDescription, 80, 10)
+  descLines.forEach((line, index) => {
+    doc.text(line, 25, 154 + (index * 4))
+  })
+  
+  // Quantity
+  doc.setFont('helvetica', 'bold')
+  doc.text(serviceQuantity.toString(), 120, 150)
+  
+  // Rate
+  doc.setFont('helvetica', 'normal')
+  doc.text(`${servicePrice.toFixed(2)} ${invoice.currency}`, 140, 150)
+  
+  // Amount
+  doc.setFont('helvetica', 'bold')
+  doc.text(`${serviceTotal.toFixed(2)} ${invoice.currency}`, 160, 150)
+  
+  // Totals section
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(120, 240, 70, 50, 'F')
+  doc.rect(120, 175, 70, 40, 'F')
   doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
   doc.setLineWidth(2)
-  doc.rect(120, 240, 70, 50, 'S')
+  doc.rect(120, 175, 70, 40, 'S')
   
   // Totals header
   doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.rect(120, 240, 70, 15, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(12)
+  doc.rect(120, 175, 70, 12, 'F')
+  doc.setTextColor(white[0], white[1], white[2])
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.text('TOTAL SUMMARY', 125, 250)
+  doc.text('TOTAL SUMMARY', 125, 183)
   
   // Financial breakdown
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(11)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('Subtotal:', 125, 265)
-  doc.text(`${subtotal.toFixed(2)} ${invoice.currency}`, 160, 265)
+  doc.text('Subtotal:', 125, 195)
+  doc.text(`${subtotal.toFixed(2)} ${invoice.currency}`, 160, 195)
   
   if (taxRate > 0) {
-    doc.text(`Tax (${taxRate}%):`, 125, 275)
-    doc.text(`${taxAmount.toFixed(2)} ${invoice.currency}`, 160, 275)
+    doc.text(`Tax (${taxRate}%):`, 125, 203)
+    doc.text(`${taxAmount.toFixed(2)} ${invoice.currency}`, 160, 203)
   }
   
-  // Premium total
+  // Total
   doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(120, 280, 70, 10, 'F')
-  doc.setTextColor(255, 255, 255)
+  doc.rect(120, 205, 70, 10, 'F')
+  doc.setTextColor(white[0], white[1], white[2])
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text('TOTAL:', 125, 287)
-  doc.text(`${total.toFixed(2)} ${invoice.currency}`, 160, 287)
+  doc.setFontSize(12)
+  doc.text('TOTAL:', 125, 212)
+  doc.text(`${total.toFixed(2)} ${invoice.currency}`, 160, 212)
   
-  // Ultra-premium footer
+  // Footer
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(0, 300, 210, 30, 'F')
+  doc.rect(0, 250, 210, 30, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(0, 300, 210, 30, 'S')
+  doc.rect(0, 250, 210, 30, 'S')
   
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(12)
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.text('Thank You for Your Business!', 20, 315)
-  doc.setFontSize(10)
+  doc.text('Thank you for your business!', 20, 265)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('This invoice was generated electronically and is valid without signature.', 20, 322)
+  doc.text('This invoice was generated electronically and is valid without signature.', 20, 270)
   
   doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setFontSize(12)
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.text('Business Services Hub', 150, 315)
-  doc.setFontSize(10)
+  doc.text('Business Services Hub', 150, 265)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('Professional Services & Solutions', 150, 322)
+  doc.text('Professional Services & Solutions', 150, 270)
   
-  // Sophisticated border around the entire document
+  // Clean border
   doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setLineWidth(3)
-  doc.rect(5, 5, 200, 290, 'S')
-  
-  // Add inner border for premium effect
-  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(6, 6, 198, 288, 'S')
+  doc.rect(10, 10, 190, 270, 'S')
   
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
@@ -335,7 +339,7 @@ export async function POST(request: NextRequest) {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Fetch invoice with explicit relationships to avoid postgrest ambiguity
+    // Fetch invoice with explicit relationships
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
@@ -374,17 +378,8 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Invoice data fetched successfully')
-    console.log('📄 Invoice details:', {
-      id: invoice.id,
-      amount: invoice.amount,
-      currency: invoice.currency,
-      status: invoice.status,
-      company: (invoice.provider as any)?.company?.name,
-      client: (invoice.client as any)?.full_name,
-      service: invoice.booking?.service?.title
-    })
 
-    // Fetch invoice_items via a separate query (no FK relationship in cache)
+    // Fetch invoice_items
     const { data: items, error: itemsError } = await supabase
       .from('invoice_items')
       .select('*')
@@ -394,15 +389,15 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ Could not load invoice_items; continuing without items:', itemsError.message)
     }
 
-    // Attach items to invoice for generator compatibility
+    // Attach items to invoice
     const invoiceForPdf = { ...invoice, invoice_items: items || [] }
 
-    // Generate PDF with the enhanced template
+    // Generate PDF
     const pdfBuffer = generateSimplePDF(invoiceForPdf)
     
     console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
 
-    // Store PDF URL in database (for future downloads)
+    // Store PDF URL in database
     const pdfUrl = `/api/invoices/pdf/${invoiceId}`
     const { error: updateError } = await supabase
       .from('invoices')
