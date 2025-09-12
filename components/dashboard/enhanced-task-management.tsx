@@ -132,7 +132,7 @@ interface EnhancedTaskManagementProps {
   onCommentAdd: (milestoneId: string, content: string) => Promise<void>
   filterStatus?: 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue'
   onFilterStatusChange?: (status: 'all' | 'pending' | 'in_progress' | 'completed' | 'overdue') => void
-  filterPriority?: 'all' | 'low' | 'medium' | 'high' | 'urgent'
+  filterPriority?: 'all' | 'low' | 'normal' | 'high' | 'urgent'
   onFilterPriorityChange?: (priority: 'all' | 'low' | 'normal' | 'high' | 'urgent') => void
   searchQuery?: string
   onSearchQueryChange?: (query: string) => void
@@ -371,7 +371,7 @@ export function EnhancedTaskManagement({
     switch (priority) {
       case 'urgent': return 'bg-red-100 text-red-800'
       case 'high': return 'bg-orange-100 text-orange-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
+      case 'normal': return 'bg-yellow-100 text-yellow-800'
       case 'low': return 'bg-green-100 text-green-800'
       default: return 'bg-gray-100 text-gray-800'
     }
@@ -394,7 +394,7 @@ export function EnhancedTaskManagement({
     switch (priority) {
       case 'urgent': return <AlertTriangle className="h-4 w-4" />
       case 'high': return <Flag className="h-4 w-4" />
-      case 'medium': return <Target className="h-4 w-4" />
+      case 'normal': return <Target className="h-4 w-4" />
       case 'low': return <Star className="h-4 w-4" />
       default: return <Target className="h-4 w-4" />
     }
@@ -480,7 +480,7 @@ export function EnhancedTaskManagement({
                   <SelectContent>
                     <SelectItem value="all">All Priority</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
@@ -846,7 +846,7 @@ export function EnhancedTaskManagement({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
                   </SelectContent>
