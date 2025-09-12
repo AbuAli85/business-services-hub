@@ -6,22 +6,45 @@ export async function GET(
   request: NextRequest, 
   { params }: { params: { id: string } }
 ) {
+  console.log('🚀 GET /api/invoices/pdf/[id] route called')
+  console.log('📋 Params:', params)
+  console.log('🔗 URL:', request.url)
+  
+  // Simple test response to verify route is working
+  if (params.id === 'test') {
+    return NextResponse.json({ message: 'Route is working', params, url: request.url })
+  }
+  
   try {
     const invoiceId = params.id.replace('.pdf', '')
+    console.log('🔍 GET /api/invoices/pdf/[id] called with ID:', invoiceId)
     
     // Use service role key for elevated permissions
     // SECURITY NOTE: This should be moved to Supabase Edge Functions for production
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Missing Supabase environment variables')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Check if PDF already exists in storage first
-    const { data: existingInvoice } = await supabase
+    console.log('🔍 Checking for existing invoice in database...')
+    const { data: existingInvoice, error: existingError } = await supabase
       .from('invoices')
       .select('pdf_url, status, updated_at, created_at')
       .eq('id', invoiceId)
       .single()
+
+    if (existingError) {
+      console.error('❌ Error fetching existing invoice:', existingError)
+      return NextResponse.json({ error: 'Database error', details: existingError.message }, { status: 500 })
+    }
+
+    console.log('📄 Existing invoice data:', existingInvoice)
 
     if (existingInvoice?.pdf_url && existingInvoice.pdf_url.includes('storage')) {
       // Check if we should regenerate using smart cache logic
@@ -34,6 +57,7 @@ export async function GET(
     }
     
     // Get the invoice details from database
+    console.log('🔍 Fetching full invoice details...')
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
@@ -59,9 +83,17 @@ export async function GET(
       .eq('id', invoiceId)
       .single()
 
-    if (invoiceError || !invoice) {
+    if (invoiceError) {
+      console.error('❌ Error fetching invoice details:', invoiceError)
+      return NextResponse.json({ error: 'Database error', details: invoiceError.message }, { status: 500 })
+    }
+
+    if (!invoice) {
+      console.error('❌ Invoice not found in database')
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
+
+    console.log('✅ Invoice found:', invoice.id, invoice.invoice_number)
 
     // Fetch invoice_items
     const { data: items, error: itemsError } = await supabase
@@ -78,10 +110,12 @@ export async function GET(
 
     let pdfBuffer: Uint8Array
     try {
+      console.log('🔍 Generating PDF...')
       pdfBuffer = await generateProfessionalPDF(invoiceForPdf)
+      console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes')
     } catch (pdfError) {
-      console.error('Error generating PDF:', pdfError)
-      return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 })
+      console.error('❌ Error generating PDF:', pdfError)
+      return NextResponse.json({ error: 'Failed to generate PDF', details: pdfError instanceof Error ? pdfError.message : 'Unknown error' }, { status: 500 })
     }
 
     const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
