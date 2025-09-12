@@ -26,16 +26,19 @@ function generateSimplePDF(invoice: any): Uint8Array {
   // Create a new PDF document
   const doc = new jsPDF('p', 'mm', 'a4')
   
-  // Professional color palette
-  const primaryColor = [31, 41, 55] // Gray-800
-  const accentColor = [37, 99, 235] // Blue-600
-  const accentLight = [219, 234, 254] // Blue-100
-  const successColor = [34, 197, 94] // Green-500
-  const warningColor = [245, 158, 11] // Amber-500
-  const lightGray = [249, 250, 251] // Gray-50
-  const darkGray = [17, 24, 39] // Gray-900
-  const textGray = [75, 85, 99] // Gray-600
-  const borderGray = [229, 231, 235] // Gray-200
+  // Enterprise color palette
+  const navyBlue = [15, 23, 42] // Navy-900
+  const darkBlue = [30, 41, 59] // Slate-800
+  const mediumBlue = [51, 65, 85] // Slate-700
+  const lightBlue = [71, 85, 105] // Slate-600
+  const accentBlue = [59, 130, 246] // Blue-500
+  const successGreen = [16, 185, 129] // Emerald-500
+  const warningOrange = [245, 158, 11] // Amber-500
+  const lightGray = [248, 250, 252] // Slate-50
+  const mediumGray = [241, 245, 249] // Slate-100
+  const darkGray = [15, 23, 42] // Slate-900
+  const textGray = [71, 85, 105] // Slate-600
+  const borderGray = [226, 232, 240] // Slate-200
   const white = [255, 255, 255] // White
 
   // Get company information
@@ -95,219 +98,238 @@ function generateSimplePDF(invoice: any): Uint8Array {
   // Set default font
   doc.setFont('helvetica')
   
-  // Create clean header
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(0, 0, 210, 50, 'F')
+  // Create enterprise header with gradient effect
+  doc.setFillColor(navyBlue[0], navyBlue[1], navyBlue[2])
+  doc.rect(0, 0, 210, 60, 'F')
   
-  // Company logo area
+  // Add subtle gradient overlay
+  doc.setFillColor(darkBlue[0], darkBlue[1], darkBlue[2])
+  doc.rect(0, 0, 210, 5, 'F')
+  
+  // Company logo area - professional design
   doc.setFillColor(white[0], white[1], white[2])
-  doc.rect(20, 15, 30, 20, 'F')
-  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setLineWidth(2)
-  doc.rect(20, 15, 30, 20, 'S')
+  doc.rect(20, 20, 35, 25, 'F')
+  doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
+  doc.setLineWidth(3)
+  doc.rect(20, 20, 35, 25, 'S')
   
-  // Logo text
-  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'bold')
-  doc.text('LOGO', 32, 28)
-  
-  // Company name
-  doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(24)
-  doc.setFont('helvetica', 'bold')
-  doc.text(companyName, 60, 25)
-  
-  // Company tagline
+  // Logo placeholder with professional styling
+  doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2])
   doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
-  doc.text(companyTagline, 60, 32)
+  doc.setFont('helvetica', 'bold')
+  doc.text('LOGO', 30, 35)
   
-  // Company contact info
-  doc.setFontSize(10)
-  const addressLines = splitText(companyAddress, 80, 10)
+  // Company branding section
+  doc.setTextColor(white[0], white[1], white[2])
+  doc.setFontSize(28)
+  doc.setFont('helvetica', 'bold')
+  doc.text(companyName, 65, 30)
+  
+  // Professional tagline
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'normal')
+  doc.text(companyTagline, 65, 37)
+  
+  // Company contact information - properly formatted
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'normal')
+  
+  // Address with proper line breaks
+  const addressLines = splitText(companyAddress, 90, 11)
   addressLines.forEach((line, index) => {
-    doc.text(line, 60, 38 + (index * 4))
+    doc.text(line, 65, 44 + (index * 5))
   })
   
-  // Phone and email
-  doc.text(`${companyPhone} | ${companyEmail}`, 60, 38 + (addressLines.length * 4) + 4)
+  // Contact details
+  const contactY = 44 + (addressLines.length * 5) + 3
+  doc.text(`Phone: ${companyPhone}`, 65, contactY)
+  doc.text(`Email: ${companyEmail}`, 65, contactY + 5)
   
-  // Invoice details box
+  // Professional invoice details panel
   doc.setFillColor(white[0], white[1], white[2])
-  doc.rect(130, 15, 70, 35, 'F')
-  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  doc.rect(140, 20, 60, 40, 'F')
+  doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
   doc.setLineWidth(2)
-  doc.rect(130, 15, 70, 35, 'S')
+  doc.rect(140, 20, 60, 40, 'S')
   
-  // Invoice title
-  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setFontSize(20)
+  // Invoice title with professional styling
+  doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2])
+  doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
-  doc.text('INVOICE', 145, 25)
+  doc.text('INVOICE', 155, 30)
   
   // Invoice number
   doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
-  doc.text(`#${invoiceNumber}`, 135, 30)
+  doc.text(`#${invoiceNumber}`, 145, 35)
   
-  // Invoice dates
+  // Invoice details with proper spacing
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
   doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text('Issued:', 135, 36)
+  doc.text('Issue Date:', 145, 42)
   doc.setFont('helvetica', 'normal')
-  doc.text(createdDate, 135, 40)
+  doc.text(createdDate, 145, 46)
   
   doc.setFont('helvetica', 'bold')
-  doc.text('Due:', 135, 44)
+  doc.text('Due Date:', 145, 50)
   doc.setFont('helvetica', 'normal')
-  doc.text(dueDate, 135, 48)
+  doc.text(dueDate, 145, 54)
   
-  // Status badge
-  const statusColor = invoice.status === 'paid' ? successColor : 
-                     invoice.status === 'overdue' ? warningColor : accentColor
+  // Professional status indicator
+  const statusColor = invoice.status === 'paid' ? successGreen : 
+                     invoice.status === 'overdue' ? warningOrange : accentBlue
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2])
-  doc.rect(135, 50, 25, 8, 'F')
+  doc.rect(145, 56, 30, 8, 'F')
   doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(8)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text(invoice.status.toUpperCase(), 140, 55)
+  doc.text(invoice.status.toUpperCase(), 150, 61)
   
-  // Bill To section
+  // Professional Bill To section
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(16)
+  doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('Bill To:', 20, 75)
+  doc.text('Bill To:', 20, 85)
   
-  // Client information box
+  // Client information with professional styling
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(20, 80, 80, 30, 'F')
+  doc.rect(20, 90, 85, 35, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(20, 80, 80, 30, 'S')
+  doc.rect(20, 90, 85, 35, 'S')
   
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.text(clientName, 25, 100)
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'normal')
+  doc.text(clientCompany, 25, 107)
+  doc.text(clientEmail, 25, 114)
+  
+  // Professional Services section
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Services Provided', 20, 140)
+  
+  // Professional services table
+  doc.setFillColor(navyBlue[0], navyBlue[1], navyBlue[2])
+  doc.rect(20, 145, 170, 15, 'F')
+  
+  doc.setTextColor(white[0], white[1], white[2])
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text(clientName, 25, 88)
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.text(clientCompany, 25, 94)
-  doc.text(clientEmail, 25, 100)
+  doc.text('Description', 25, 155)
+  doc.text('Qty', 120, 155)
+  doc.text('Unit Price', 140, 155)
+  doc.text('Total', 160, 155)
   
-  // Services section
-  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text('Services', 20, 125)
-  
-  // Services table header
-  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.rect(20, 130, 170, 12, 'F')
-  
-  doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(11)
-  doc.setFont('helvetica', 'bold')
-  doc.text('Description', 25, 138)
-  doc.text('Qty', 120, 138)
-  doc.text('Rate', 140, 138)
-  doc.text('Amount', 160, 138)
-  
-  // Service row
+  // Service row with professional styling
   doc.setFillColor(white[0], white[1], white[2])
-  doc.rect(20, 142, 170, 20, 'F')
+  doc.rect(20, 160, 170, 25, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(20, 142, 170, 20, 'S')
+  doc.rect(20, 160, 170, 25, 'S')
   
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(10)
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
-  doc.text(serviceTitle, 25, 150)
+  doc.text(serviceTitle, 25, 170)
   doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
   
-  // Split service description if too long
-  const descLines = splitText(serviceDescription, 80, 10)
+  // Service description with proper wrapping
+  const descLines = splitText(serviceDescription, 85, 10)
   descLines.forEach((line, index) => {
-    doc.text(line, 25, 154 + (index * 4))
+    doc.text(line, 25, 175 + (index * 4))
   })
   
-  // Quantity
+  // Quantity with professional styling
+  doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2])
+  doc.rect(115, 165, 15, 15, 'F')
+  doc.setTextColor(white[0], white[1], white[2])
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'bold')
-  doc.text(serviceQuantity.toString(), 120, 150)
+  doc.text(serviceQuantity.toString(), 120, 174)
   
-  // Rate
+  // Rate and Amount
+  doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
-  doc.text(`${servicePrice.toFixed(2)} ${invoice.currency}`, 140, 150)
-  
-  // Amount
+  doc.text(`${servicePrice.toFixed(2)} ${invoice.currency}`, 140, 170)
   doc.setFont('helvetica', 'bold')
-  doc.text(`${serviceTotal.toFixed(2)} ${invoice.currency}`, 160, 150)
+  doc.text(`${serviceTotal.toFixed(2)} ${invoice.currency}`, 160, 170)
   
-  // Totals section
-  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(120, 175, 70, 40, 'F')
-  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  // Professional totals section
+  doc.setFillColor(mediumGray[0], mediumGray[1], mediumGray[2])
+  doc.rect(120, 200, 70, 45, 'F')
+  doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
   doc.setLineWidth(2)
-  doc.rect(120, 175, 70, 40, 'S')
+  doc.rect(120, 200, 70, 45, 'S')
   
   // Totals header
-  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.rect(120, 175, 70, 12, 'F')
+  doc.setFillColor(navyBlue[0], navyBlue[1], navyBlue[2])
+  doc.rect(120, 200, 70, 15, 'F')
   doc.setTextColor(white[0], white[1], white[2])
-  doc.setFontSize(11)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('TOTAL SUMMARY', 125, 183)
+  doc.text('TOTAL SUMMARY', 125, 210)
   
-  // Financial breakdown
+  // Financial breakdown with professional spacing
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(10)
+  doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
-  doc.text('Subtotal:', 125, 195)
-  doc.text(`${subtotal.toFixed(2)} ${invoice.currency}`, 160, 195)
+  doc.text('Subtotal:', 125, 220)
+  doc.text(`${subtotal.toFixed(2)} ${invoice.currency}`, 160, 220)
   
   if (taxRate > 0) {
-    doc.text(`Tax (${taxRate}%):`, 125, 203)
-    doc.text(`${taxAmount.toFixed(2)} ${invoice.currency}`, 160, 203)
+    doc.text(`Tax (${taxRate}%):`, 125, 228)
+    doc.text(`${taxAmount.toFixed(2)} ${invoice.currency}`, 160, 228)
   }
   
-  // Total
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-  doc.rect(120, 205, 70, 10, 'F')
+  // Professional total with emphasis
+  doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2])
+  doc.rect(120, 235, 70, 10, 'F')
   doc.setTextColor(white[0], white[1], white[2])
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
-  doc.text('TOTAL:', 125, 212)
-  doc.text(`${total.toFixed(2)} ${invoice.currency}`, 160, 212)
+  doc.setFontSize(14)
+  doc.text('TOTAL:', 125, 242)
+  doc.text(`${total.toFixed(2)} ${invoice.currency}`, 160, 242)
   
-  // Footer
+  // Professional footer
   doc.setFillColor(lightGray[0], lightGray[1], lightGray[2])
-  doc.rect(0, 250, 210, 30, 'F')
+  doc.rect(0, 260, 210, 30, 'F')
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(0, 250, 210, 30, 'S')
+  doc.rect(0, 260, 210, 30, 'S')
   
   doc.setTextColor(darkGray[0], darkGray[1], darkGray[2])
-  doc.setFontSize(11)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Thank you for your business!', 20, 265)
-  doc.setFontSize(9)
+  doc.text('Thank you for your business!', 20, 275)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('This invoice was generated electronically and is valid without signature.', 20, 270)
+  doc.text('This invoice was generated electronically and is valid without signature.', 20, 280)
   
-  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
-  doc.setFontSize(11)
+  doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2])
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Business Services Hub', 150, 265)
-  doc.setFontSize(9)
+  doc.text('Business Services Hub', 150, 275)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('Professional Services & Solutions', 150, 270)
+  doc.text('Professional Services & Solutions', 150, 280)
   
-  // Clean border
-  doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2])
+  // Professional document border
+  doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
+  doc.setLineWidth(2)
+  doc.rect(10, 10, 190, 280, 'S')
+  
+  // Add subtle inner border
+  doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2])
   doc.setLineWidth(1)
-  doc.rect(10, 10, 190, 270, 'S')
+  doc.rect(11, 11, 188, 278, 'S')
   
   const arrayBuffer = doc.output('arraybuffer') as ArrayBuffer
   return new Uint8Array(arrayBuffer)
