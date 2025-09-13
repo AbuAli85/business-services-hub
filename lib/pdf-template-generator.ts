@@ -67,11 +67,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   yPosition += lineHeight + 2
 
   // Contact information with icons
+  const providerCompany = invoice.booking?.service?.provider?.company?.[0]
   const contactInfo = [
-    { icon: '📍', text: invoice.booking?.service?.provider?.company?.[0]?.address ?? 'PO. Box 354, PC. 133, Al Khuwair' },
-    { icon: '📞', text: invoice.booking?.service?.provider?.company?.[0]?.phone ?? invoice.booking?.service?.provider?.phone ?? '95153930' },
-    { icon: '✉️', text: invoice.booking?.service?.provider?.company?.[0]?.email ?? invoice.booking?.service?.provider?.email ?? 'luxsess2001@hotmail.com' },
-    { icon: '🌐', text: invoice.booking?.service?.provider?.company?.[0]?.website ?? 'https://thesmartpro.io' }
+    { icon: '📍', text: providerCompany?.address ?? 'PO. Box 354, PC. 133, Al Khuwair' },
+    { icon: '📞', text: providerCompany?.phone ?? invoice.booking?.service?.provider?.phone ?? '95153930' },
+    { icon: '✉️', text: providerCompany?.email ?? invoice.booking?.service?.provider?.email ?? 'luxsess2001@hotmail.com' },
+    { icon: '🌐', text: providerCompany?.website ?? 'https://thesmartpro.io' }
   ]
 
   contactInfo.forEach(info => {
@@ -108,10 +109,14 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Bill To
   addText(doc, t('billTo', locale), billToX, yPosition, { size: 10, color: templateColors.primary })
 
+  // Client information
+  const client = invoice.booking?.client
+  const clientCompany = client?.company?.[0]
+  
   // Client name
   addText(
     doc,
-    invoice.booking?.client?.full_name ?? invoice.client_name ?? 'Fahad Alamri',
+    client?.full_name ?? 'Fahad Alamri',
     billToX, 
     yPosition + lineHeight, 
     { size: 8 }
@@ -120,7 +125,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company name
   addText(
     doc,
-    invoice.booking?.client?.company?.[0]?.name ?? 'Fahad Alamri\'s Company',
+    clientCompany?.name ?? 'Fahad Alamri\'s Company',
     billToX, 
     yPosition + lineHeight * 2, 
     { size: 8 }
@@ -129,7 +134,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company address
   addText(
     doc,
-    invoice.booking?.client?.company?.[0]?.address ?? 'Muscat, Oman',
+    clientCompany?.address ?? 'Muscat, Oman',
     billToX, 
     yPosition + lineHeight * 3, 
     { size: 8 }
@@ -138,7 +143,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client email
   addText(
     doc,
-    invoice.booking?.client?.company?.[0]?.email ?? invoice.booking?.client?.email ?? 'chairman@falconeyegroup.net',
+    clientCompany?.email ?? client?.email ?? 'chairman@falconeyegroup.net',
     billToX, 
     yPosition + lineHeight * 4, 
     { size: 8 }
@@ -146,8 +151,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Optional: phone & website if available
   let currentY = yPosition + lineHeight * 5
-  const clientPhone = invoice.booking?.client?.company?.[0]?.phone ?? invoice.booking?.client?.phone ?? '95153930'
-  const clientWebsite = invoice.booking?.client?.company?.[0]?.website ?? 'falconeyegroup.net'
+  const clientPhone = clientCompany?.phone ?? client?.phone ?? '95153930'
+  const clientWebsite = clientCompany?.website ?? 'falconeyegroup.net'
   
   addText(doc, `📞 ${clientPhone}`, billToX, currentY, { size: 8 })
   currentY += lineHeight

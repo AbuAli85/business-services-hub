@@ -31,13 +31,19 @@ export const layout: PDFLayout = {
   sidebarWidth: 40
 }
 
+// Safe text function to fix encoding issues
+export const safeText = (text?: string | null): string => {
+  if (!text) return ''
+  return text.normalize('NFC').replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters that cause encoding issues
+}
+
 // Currency formatting with locale support
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
   const currencyMap: Record<string, string> = {
     'USD': 'en-US',
     'EUR': 'en-EU',
     'GBP': 'en-GB',
-    'OMR': 'ar-OM',
+    'OMR': 'en-OM',
     'AED': 'ar-AE',
     'SAR': 'ar-SA'
   }
@@ -96,10 +102,12 @@ export function addText(
     doc.setTextColor(...templateColors.text)
   }
   
+  const safeTextContent = safeText(text)
+  
   if (options.align) {
-    doc.text(text, x, y, { align: options.align })
+    doc.text(safeTextContent, x, y, { align: options.align })
   } else {
-    doc.text(text, x, y)
+    doc.text(safeTextContent, x, y)
   }
 }
 
