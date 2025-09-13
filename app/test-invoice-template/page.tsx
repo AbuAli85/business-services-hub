@@ -18,7 +18,7 @@ const sampleInvoice: Invoice = {
   total: 770,
   status: 'sent',
   currency: 'USD',
-  notes: 'Thank you for your business!',
+  notes: 'Thank you for your business! Payment is due within 30 days of invoice date.',
   company_id: '1',
   client_id: '1',
   created_at: '2023-11-09T00:00:00Z',

@@ -64,6 +64,10 @@ interface InvoiceData {
         company?: {
           id: string
           name: string
+          address?: string
+          phone?: string
+          email?: string
+          website?: string
           logo_url?: string
         }
       }
@@ -75,19 +79,22 @@ interface InvoiceData {
       company?: {
         id: string
         name: string
+        address?: string
+        phone?: string
+        email?: string
+        website?: string
         logo_url?: string
       }
     }
   }
 }
 
-export default function InvoiceTemplatePage() {
+export default function ClientInvoiceTemplatePage() {
   const router = useRouter()
   const params = useParams()
   const [invoice, setInvoice] = useState<InvoiceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin'>('client')
 
   useEffect(() => {
     checkUserAndFetchInvoice()
@@ -109,19 +116,15 @@ export default function InvoiceTemplatePage() {
       if (!params.id) {
         console.error('Invoice ID not available')
         toast.error('Invalid invoice ID')
-        router.push('/dashboard/invoices')
+        router.push('/dashboard/client/invoices')
         return
       }
 
-      console.log('🔍 Fetching invoice for user:', user.id, 'invoice:', params.id)
+      console.log('🔍 Fetching invoice for client:', user.id, 'invoice:', params.id)
       setUser(user)
-      
-      // Get user role
-      const role = user.user_metadata?.role || 'client'
-      setUserRole(role as 'client' | 'provider' | 'admin')
 
-      // Build query based on user role
-      let query = supabase
+      // Client can only see their own invoices
+      const { data: invoiceData, error } = await supabase
         .from('invoices')
         .select(`
           *,
@@ -165,21 +168,13 @@ export default function InvoiceTemplatePage() {
           )
         `)
         .eq('id', params.id)
-
-      // Add role-based filtering
-      if (role === 'client') {
-        query = query.eq('client_id', user.id)
-      } else if (role === 'provider') {
-        query = query.eq('provider_id', user.id)
-      }
-      // Admin can see all invoices
-
-      const { data: invoiceData, error } = await query.single()
+        .eq('client_id', user.id) // Only client's own invoices
+        .single()
 
       if (error) {
         console.error('Error fetching invoice:', error)
         toast.error('Invoice not found')
-        router.push('/dashboard/invoices')
+        router.push('/dashboard/client/invoices')
         return
       }
 
@@ -188,7 +183,7 @@ export default function InvoiceTemplatePage() {
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
-      router.push('/dashboard/invoices')
+      router.push('/dashboard/client/invoices')
     } finally {
       setLoading(false)
     }
@@ -284,7 +279,7 @@ export default function InvoiceTemplatePage() {
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Invoice not found</h3>
           <p className="text-gray-600 mb-4">The invoice you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => router.push('/dashboard/invoices')}>
+          <Button onClick={() => router.push('/dashboard/client/invoices')}>
             Back to Invoices
           </Button>
         </div>
@@ -364,7 +359,8 @@ export default function InvoiceTemplatePage() {
                 Download PDF
               </Button>
               
-              {userRole === 'client' && invoice.status === 'issued' && (
+              {/* Pay Now button - only for clients */}
+              {invoice.status === 'issued' && (
                 <Button 
                   onClick={handlePayInvoice} 
                   className="flex items-center gap-2 bg-green-600 hover:bg-green-700"

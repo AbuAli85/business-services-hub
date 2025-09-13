@@ -957,7 +957,12 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
                                   View Details
                                 </DropdownMenuItem>
                                 
-                                <DropdownMenuItem onClick={() => window.open(`/dashboard/invoices/template/${invoice.id}`, '_blank')}>
+                                <DropdownMenuItem onClick={() => {
+                                  const templateUrl = userRole === 'client' 
+                                    ? `/dashboard/client/invoices/template/${invoice.id}`
+                                    : `/dashboard/invoices/template/${invoice.id}`
+                                  window.open(templateUrl, '_blank')
+                                }}>
                                   <Layout className="h-4 w-4 mr-2" />
                                   View Template
                                 </DropdownMenuItem>
