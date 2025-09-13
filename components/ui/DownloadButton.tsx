@@ -11,7 +11,7 @@ interface DownloadButtonProps {
   children?: React.ReactNode
   className?: string
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
   disabled?: boolean
 }
 
@@ -20,7 +20,7 @@ export function DownloadButton({
   children = 'Download PDF',
   className,
   variant = 'default',
-  size = 'md',
+  size = 'default',
   disabled = false
 }: DownloadButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false)
@@ -66,7 +66,7 @@ interface InvoiceDownloadButtonProps {
   invoiceNumber?: string
   className?: string
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
 }
 
 export function InvoiceDownloadButton({
@@ -74,7 +74,7 @@ export function InvoiceDownloadButton({
   invoiceNumber,
   className,
   variant = 'default',
-  size = 'md'
+  size = 'default'
 }: InvoiceDownloadButtonProps) {
   const handleDownload = async () => {
     try {
