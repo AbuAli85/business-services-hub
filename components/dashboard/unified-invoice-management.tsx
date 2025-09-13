@@ -142,96 +142,52 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
   const fetchInvoices = async () => {
     try {
       setLoading(true)
-      const supabase = await getSupabaseClient()
       
-      let query = supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (userRole === 'client') {
-        query = query.eq('client_id', userId)
-      } else if (userRole === 'provider') {
-        query = query.eq('provider_id', userId)
+      // Use the proper API endpoint that includes all relationships
+      const response = await fetch(`/api/invoices?role=${userRole}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+      
+      const data = await response.json()
+      const invoicesData = data.invoices || []
+      
+      console.log('📊 Fetched invoices:', invoicesData.length, 'invoices')
+      
+      // Enrich invoice data with additional calculations
+      const enrichedInvoices = invoicesData.map((invoice: any) => {
+        // Calculate due date and overdue status
+        const dueDate = invoice.due_date || (() => {
+          const createdDate = new Date(invoice.created_at)
+          createdDate.setDate(createdDate.getDate() + 30) // 30 days default
+          return createdDate.toISOString()
+        })()
 
-      const { data: invoicesData, error } = await query
-      if (error) throw error
+        const isOverdue = invoice.status === 'issued' && new Date(dueDate) < new Date()
 
-      // Enrich invoice data
-      const enrichedInvoices = await Promise.all(
-        (invoicesData || []).map(async (invoice: any) => {
-          try {
-            // Get booking and service info
-            const { data: booking } = await supabase
-              .from('bookings')
-              .select('id, service_id')
-              .eq('id', invoice.booking_id)
-              .single()
-            
-            let serviceTitle = 'Service'
-            if (booking?.service_id) {
-              const { data: service } = await supabase
-                .from('services')
-                .select('title')
-                .eq('id', booking.service_id)
-                .single()
-              serviceTitle = service?.title || 'Service'
-            }
-            
-            // Get client and provider names
-            const { data: client } = await supabase
-              .from('profiles')
-              .select('full_name, email, phone')
-              .eq('id', invoice.client_id)
-              .single()
-            
-            const { data: provider } = await supabase
-              .from('profiles')
-              .select('full_name, email, phone, company_name')
-              .eq('id', invoice.provider_id)
-              .single()
-            
-            // Calculate due date and overdue status
-            const dueDate = invoice.due_date || (() => {
-              const createdDate = new Date(invoice.created_at)
-              createdDate.setDate(createdDate.getDate() + 14) // 14 days default
-              return createdDate.toISOString()
-            })()
-
-            const isOverdue = invoice.status === 'issued' && new Date(dueDate) < new Date()
-
-            return {
-              ...invoice,
-              serviceTitle,
-              clientName: client?.full_name || 'Unknown Client',
-              providerName: provider?.full_name || 'Unknown Provider',
-              clientEmail: client?.email,
-              providerEmail: provider?.email,
-              clientPhone: client?.phone,
-              providerPhone: provider?.phone,
-              providerCompany: provider?.company_name,
-              due_date: dueDate,
-              isOverdue,
-              invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`
-            }
-          } catch (error) {
-            console.error('Error enriching invoice:', error)
-            return {
-              ...invoice,
-              serviceTitle: 'Service',
-              clientName: 'Unknown Client',
-              providerName: 'Unknown Provider',
-              invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`
-            }
-          }
-        })
-      )
+        return {
+          ...invoice,
+          serviceTitle: invoice.service_title || 'Service',
+          clientName: invoice.client_name || 'Unknown Client',
+          providerName: invoice.provider_name || 'Unknown Provider',
+          clientEmail: invoice.client_email,
+          providerEmail: invoice.provider_email,
+          clientPhone: invoice.client_phone,
+          providerPhone: invoice.provider_phone,
+          providerCompany: invoice.company_name,
+          due_date: dueDate,
+          isOverdue,
+          invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`
+        }
+      })
       
       setInvoices(enrichedInvoices)
       calculateStats(enrichedInvoices)
+      
+      console.log('✅ Invoices loaded successfully:', enrichedInvoices.length)
     } catch (error) {
-      console.error('Error fetching invoices:', error)
+      console.error('❌ Error fetching invoices:', error)
       toast.error('Failed to fetch invoices')
     } finally {
       setLoading(false)
@@ -468,7 +424,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
 
   const handleGeneratePDF = async (invoice: InvoiceRecord) => {
     try {
-      const response = await fetch('/api/invoices/generate-pdf', {
+      const response = await fetch('/api/invoices/generate-template-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId: invoice.id })
