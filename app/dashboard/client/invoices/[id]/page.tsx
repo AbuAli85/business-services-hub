@@ -51,6 +51,36 @@ interface InvoiceData {
   total_amount?: number
   paid_at?: string
   payment_method?: string
+  provider?: {
+    id: string
+    full_name: string
+    email: string
+    phone?: string
+    company?: {
+      id: string
+      name: string
+      address?: string
+      phone?: string
+      email?: string
+      website?: string
+      logo_url?: string
+    }
+  }
+  client?: {
+    id: string
+    full_name: string
+    email: string
+    phone?: string
+    company?: {
+      id: string
+      name: string
+      address?: string
+      phone?: string
+      email?: string
+      website?: string
+      logo_url?: string
+    }
+  }
   booking?: {
     id: string
     status: string
@@ -59,35 +89,6 @@ interface InvoiceData {
       id: string
       title: string
       description: string
-      provider?: {
-        id: string
-        full_name: string
-        email: string
-        company?: {
-          id: string
-          name: string
-          address?: string
-          phone?: string
-          email?: string
-          website?: string
-          logo_url?: string
-        }
-      }
-    }
-    client?: {
-      id: string
-      full_name: string
-      email: string
-      phone?: string
-      company?: {
-        id: string
-        name: string
-        address?: string
-        phone?: string
-        email?: string
-        website?: string
-        logo_url?: string
-      }
     }
   }
 }
@@ -131,6 +132,36 @@ export default function ClientInvoiceDetailsPage() {
         .from('invoices')
         .select(`
           *,
+          provider:profiles!invoices_provider_id_fkey(
+            id,
+            full_name,
+            email,
+            phone,
+            company:companies(
+              id,
+              name,
+              address,
+              phone,
+              email,
+              website,
+              logo_url
+            )
+          ),
+          client:profiles!invoices_client_id_fkey(
+            id,
+            full_name,
+            email,
+            phone,
+            company:companies(
+              id,
+              name,
+              address,
+              phone,
+              email,
+              website,
+              logo_url
+            )
+          ),
           booking:bookings(
             id,
             status,
@@ -138,36 +169,7 @@ export default function ClientInvoiceDetailsPage() {
             service:services(
               id,
               title,
-              description,
-              provider:profiles!services_provider_id_fkey(
-                id,
-                full_name,
-                email,
-                company:companies(
-                  id,
-                  name,
-                  address,
-                  phone,
-                  email,
-                  website,
-                  logo_url
-                )
-              )
-            ),
-            client:profiles!bookings_client_id_fkey(
-              id,
-              full_name,
-              email,
-              phone,
-              company:companies(
-                id,
-                name,
-                address,
-                phone,
-                email,
-                website,
-                logo_url
-              )
+              description
             )
           )
         `)
@@ -199,6 +201,10 @@ export default function ClientInvoiceDetailsPage() {
       }
 
       console.log('✅ Invoice fetched successfully:', invoiceData.id)
+      console.log('🔍 Provider data:', invoiceData?.provider)
+      console.log('🔍 Provider company data:', invoiceData?.provider?.company)
+      console.log('🔍 Client data:', invoiceData?.client)
+      console.log('🔍 Client company data:', invoiceData?.client?.company)
       setInvoice(invoiceData)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
@@ -307,15 +313,15 @@ export default function ClientInvoiceDetailsPage() {
 
   // Helper function to get display values
   const getClientName = () => {
-    return invoice.booking?.client?.full_name || 
+    return invoice.client?.full_name || 
            invoice.client_name || 
-           invoice.booking?.client?.company?.name || 
+           invoice.client?.company?.name || 
            'Client Information'
   }
 
   const getProviderName = () => {
-    return invoice.booking?.service?.provider?.full_name || 
-           invoice.booking?.service?.provider?.company?.name || 
+    return invoice.provider?.full_name || 
+           invoice.provider?.company?.name || 
            invoice.provider_name || 
            'Service Provider'
   }
@@ -431,34 +437,34 @@ export default function ClientInvoiceDetailsPage() {
               status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
               currency: invoice.currency || 'USD',
               notes: invoice.notes,
-              company_id: invoice.booking?.service?.provider?.company?.id || '1',
+              company_id: invoice.provider?.company?.id || '1',
               client_id: invoice.client_id,
               created_at: invoice.created_at,
               updated_at: invoice.updated_at,
               company: {
-                id: invoice.booking?.service?.provider?.company?.id || '1',
-                name: invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name',
-                address: invoice.booking?.service?.provider?.company?.address || '123 Anywhere St., Any City, ST 12345',
-                phone: invoice.booking?.service?.provider?.company?.phone || '123-456-7890',
-                email: invoice.booking?.service?.provider?.company?.email || invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
-                website: invoice.booking?.service?.provider?.company?.website || 'reallygreatsite.com',
-                logo_url: invoice.booking?.service?.provider?.company?.logo_url || undefined,
+                id: invoice.provider?.company?.id || '1',
+                name: invoice.provider?.company?.name || invoice.company_name || 'Your Company Name',
+                address: invoice.provider?.company?.address || '123 Anywhere St., Any City, ST 12345',
+                phone: invoice.provider?.company?.phone || '123-456-7890',
+                email: invoice.provider?.company?.email || invoice.provider?.email || 'hello@reallygreatsite.com',
+                website: invoice.provider?.company?.website || 'reallygreatsite.com',
+                logo_url: invoice.provider?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               },
               client: {
                 id: invoice.client_id,
-                full_name: invoice.booking?.client?.full_name || invoice.client_name || 'Client Information',
-                email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
-                phone: invoice.booking?.client?.phone || '123-456-7890',
+                full_name: invoice.client?.full_name || invoice.client_name || 'Client Information',
+                email: invoice.client?.email || invoice.client_email || 'client@company.com',
+                phone: invoice.client?.phone || '123-456-7890',
                 company: {
-                  id: invoice.booking?.client?.company?.id || '2',
-                  name: invoice.booking?.client?.company?.name || invoice.client_name || 'Client Company',
-                  address: invoice.booking?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
-                  phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || '123-456-7890',
-                  email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
-                  website: invoice.booking?.client?.company?.website || 'clientcompany.com',
-                  logo_url: invoice.booking?.client?.company?.logo_url || undefined,
+                  id: invoice.client?.company?.id || '2',
+                  name: invoice.client?.company?.name || invoice.client_name || 'Client Company',
+                  address: invoice.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
+                  phone: invoice.client?.company?.phone || invoice.client?.phone || '123-456-7890',
+                  email: invoice.client?.company?.email || invoice.client?.email || invoice.client_email || 'client@company.com',
+                  website: invoice.client?.company?.website || 'clientcompany.com',
+                  logo_url: invoice.client?.company?.logo_url || undefined,
                   created_at: invoice.created_at,
                   updated_at: invoice.updated_at
                 },

@@ -26,6 +26,36 @@ export async function POST(request: NextRequest) {
       .from('invoices')
       .select(`
         *,
+        provider:profiles!invoices_provider_id_fkey(
+          id,
+          full_name,
+          email,
+          phone,
+          company:companies(
+            id,
+            name,
+            address,
+            phone,
+            email,
+            website,
+            logo_url
+          )
+        ),
+        client:profiles!invoices_client_id_fkey(
+          id,
+          full_name,
+          email,
+          phone,
+          company:companies(
+            id,
+            name,
+            address,
+            phone,
+            email,
+            website,
+            logo_url
+          )
+        ),
         booking:bookings(
           id,
           status,
@@ -33,37 +63,7 @@ export async function POST(request: NextRequest) {
           service:services(
             id,
             title,
-            description,
-            provider:profiles!services_provider_id_fkey(
-              id,
-              full_name,
-              email,
-              phone,
-              company:companies(
-                id,
-                name,
-                address,
-                phone,
-                email,
-                website,
-                logo_url
-              )
-            )
-          ),
-          client:profiles!bookings_client_id_fkey(
-            id,
-            full_name,
-            email,
-            phone,
-            company:companies(
-              id,
-              name,
-              address,
-              phone,
-              email,
-              website,
-              logo_url
-            )
+            description
           )
         )
       `)
@@ -84,6 +84,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Invoice data fetched successfully for template PDF')
+    console.log('🔍 PDF API - Provider data:', invoice?.provider)
+    console.log('🔍 PDF API - Provider company:', invoice?.provider?.company)
+    console.log('🔍 PDF API - Client data:', invoice?.client)
+    console.log('🔍 PDF API - Client company:', invoice?.client?.company)
 
     // Fetch invoice_items
     const { data: items, error: itemsError } = await supabase

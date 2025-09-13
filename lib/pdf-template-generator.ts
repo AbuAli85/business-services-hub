@@ -98,15 +98,15 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   yPosition = margin
 
   // Company information
-  addText(invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name', mainContentX, yPosition, typography.title)
+  addText(invoice.provider?.company?.name || invoice.company_name || 'Your Company Name', mainContentX, yPosition, typography.title)
   yPosition += 8
 
   // Contact information with icons
   const contactInfo = [
-    { icon: '📍', text: invoice.booking?.service?.provider?.company?.address || '123 Anywhere St., Any City, ST 12345' },
-    { icon: '📞', text: invoice.booking?.service?.provider?.company?.phone || '123-456-7890' },
-    { icon: '✉️', text: invoice.booking?.service?.provider?.company?.email || invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com' },
-    { icon: '🌐', text: invoice.booking?.service?.provider?.company?.website || 'reallygreatsite.com' }
+    { icon: '📍', text: invoice.provider?.company?.address || '123 Anywhere St., Any City, ST 12345' },
+    { icon: '📞', text: invoice.provider?.company?.phone || '123-456-7890' },
+    { icon: '✉️', text: invoice.provider?.company?.email || invoice.provider?.email || 'hello@reallygreatsite.com' },
+    { icon: '🌐', text: invoice.provider?.company?.website || 'reallygreatsite.com' }
   ]
 
   contactInfo.forEach(info => {
@@ -136,14 +136,14 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
 
   // Bill To
   addText('Bill To:', billToX, yPosition, { size: 10, color: templateColors.primary })
-  addText(invoice.booking?.client?.full_name || invoice.client_name || 'Client Name', billToX, yPosition + 6, { size: 8 })
-  if (invoice.booking?.client?.company?.name) {
-    addText(invoice.booking.client.company.name, billToX, yPosition + 10, { size: 8 })
+  addText(invoice.client?.full_name || invoice.client_name || 'Client Name', billToX, yPosition + 6, { size: 8 })
+  if (invoice.client?.company?.name) {
+    addText(invoice.client.company.name, billToX, yPosition + 10, { size: 8 })
   }
-  if (invoice.booking?.client?.company?.address) {
-    addText(invoice.booking.client.company.address, billToX, yPosition + 14, { size: 8 })
+  if (invoice.client?.company?.address) {
+    addText(invoice.client.company.address, billToX, yPosition + 14, { size: 8 })
   }
-  addText(invoice.booking?.client?.email || invoice.client_email || 'client@company.com', billToX, yPosition + 18, { size: 8 })
+  addText(invoice.client?.email || invoice.client_email || 'client@company.com', billToX, yPosition + 18, { size: 8 })
 
   yPosition += 30
 
