@@ -26,44 +26,45 @@ export async function POST(request: NextRequest) {
       .from('invoices')
       .select(`
         *,
-        provider:profiles!invoices_provider_id_fkey(
-          id,
-          full_name,
-          email,
-          phone,
-          company:companies(
-            id,
-            name,
-            address,
-            phone,
-            email,
-            website,
-            logo_url
-          )
-        ),
-        client:profiles!invoices_client_id_fkey(
-          id,
-          full_name,
-          email,
-          phone,
-          company:companies(
-            id,
-            name,
-            address,
-            phone,
-            email,
-            website,
-            logo_url
-          )
-        ),
+        invoice_items(*),
         booking:bookings(
           id,
           status,
           requirements,
+          client:profiles!bookings_client_id_fkey(
+            id,
+            full_name,
+            email,
+            phone,
+            company:companies(
+              id,
+              name,
+              address,
+              phone,
+              email,
+              website,
+              logo_url
+            )
+          ),
           service:services(
             id,
             title,
-            description
+            description,
+            provider:profiles!services_provider_id_fkey(
+              id,
+              full_name,
+              email,
+              phone,
+              company:companies(
+                id,
+                name,
+                address,
+                phone,
+                email,
+                website,
+                logo_url
+              )
+            )
           )
         )
       `)

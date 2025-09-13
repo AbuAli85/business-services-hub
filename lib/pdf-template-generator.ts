@@ -56,10 +56,13 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const mainContentX = 50
   yPosition = margin
 
-  // Company information
+  // Provider company information
+  const providerCompany = invoice.booking?.service?.provider?.company?.[0]
+  const providerName = providerCompany?.name ?? invoice.booking?.service?.provider?.full_name ?? 'Provider Name'
+  
   addText(
     doc,
-    invoice.booking?.service?.provider?.company?.[0]?.name ?? invoice.company_name ?? 'smartPRO', 
+    providerName, 
     mainContentX, 
     yPosition, 
     typography.title
@@ -67,12 +70,11 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   yPosition += lineHeight + 2
 
   // Contact information with icons
-  const providerCompany = invoice.booking?.service?.provider?.company?.[0]
   const contactInfo = [
-    { icon: '📍', text: providerCompany?.address ?? 'PO. Box 354, PC. 133, Al Khuwair' },
-    { icon: '📞', text: providerCompany?.phone ?? invoice.booking?.service?.provider?.phone ?? '95153930' },
-    { icon: '✉️', text: providerCompany?.email ?? invoice.booking?.service?.provider?.email ?? 'luxsess2001@hotmail.com' },
-    { icon: '🌐', text: providerCompany?.website ?? 'https://thesmartpro.io' }
+    { icon: '📍', text: providerCompany?.address ?? 'Address not provided' },
+    { icon: '📞', text: providerCompany?.phone ?? invoice.booking?.service?.provider?.phone ?? 'Phone not provided' },
+    { icon: '✉️', text: providerCompany?.email ?? invoice.booking?.service?.provider?.email ?? 'Email not provided' },
+    { icon: '🌐', text: providerCompany?.website ?? 'Website not provided' }
   ]
 
   contactInfo.forEach(info => {
@@ -180,18 +182,20 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   yPosition += rowHeight
 
-  // Table rows
-  const items = invoice.invoice_items || [{
-    id: '1',
-    product: invoice.booking?.service?.title ?? 'Website Development',
-    description: invoice.booking?.service?.description ?? 'Professional website development services',
-    qty: 1,
-    unit_price: invoice.subtotal ?? invoice.amount ?? 840,
-    total: invoice.subtotal ?? invoice.amount ?? 840,
-    invoice_id: invoice.id,
-    created_at: invoice.created_at,
-    updated_at: invoice.created_at
-  }]
+  // Table rows - use invoice_items if available, otherwise fallback to booking service
+  const items = invoice.invoice_items?.length
+    ? invoice.invoice_items
+    : [{
+        id: '1',
+        product: invoice.booking?.service?.title ?? 'Service',
+        description: invoice.booking?.service?.description ?? 'Service description',
+        qty: 1,
+        unit_price: invoice.subtotal ?? invoice.amount ?? 0,
+        total: invoice.total_amount ?? invoice.amount ?? 0,
+        invoice_id: invoice.id,
+        created_at: invoice.created_at,
+        updated_at: invoice.created_at
+      }]
 
   // Handle empty items
   if (items.length === 0) {
