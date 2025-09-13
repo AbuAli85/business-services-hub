@@ -56,6 +56,7 @@ const sampleInvoice: Invoice = {
   items: [
     {
       id: '1',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
@@ -66,6 +67,7 @@ const sampleInvoice: Invoice = {
     },
     {
       id: '2',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
@@ -76,6 +78,7 @@ const sampleInvoice: Invoice = {
     },
     {
       id: '3',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
@@ -86,6 +89,7 @@ const sampleInvoice: Invoice = {
     },
     {
       id: '4',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
@@ -96,6 +100,7 @@ const sampleInvoice: Invoice = {
     },
     {
       id: '5',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
@@ -106,6 +111,7 @@ const sampleInvoice: Invoice = {
     },
     {
       id: '6',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
@@ -116,6 +122,7 @@ const sampleInvoice: Invoice = {
     },
     {
       id: '7',
+      invoice_id: '1',
       product: 'Add a service',
       description: 'Professional service description',
       qty: 1,
