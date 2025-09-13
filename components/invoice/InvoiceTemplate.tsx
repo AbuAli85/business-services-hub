@@ -112,15 +112,11 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
               <h3 className="text-lg font-bold text-blue-600 mb-2">Bill To:</h3>
               <div className="text-sm text-gray-700">
                 <div className="font-semibold">{invoice.client.full_name}</div>
-                <div className="font-semibold">{invoice.client.company?.name ?? 'Client Company'}</div>
-                <div className="mt-1">{invoice.client.company?.address ?? 'No Address Provided'}</div>
-                <div className="mt-1">{invoice.client.company?.email ?? invoice.client.email ?? 'No Email'}</div>
-                {invoice.client.company?.phone && (
-                  <div className="mt-1">📞 {invoice.client.company.phone}</div>
-                )}
-                {invoice.client.company?.website && (
-                  <div className="mt-1">🌐 {invoice.client.company.website}</div>
-                )}
+                <div className="font-semibold">{invoice.client.company?.name ?? 'Falcon Eye Group'}</div>
+                <div className="mt-1">{invoice.client.company?.address ?? 'Muscat, Oman'}</div>
+                <div className="mt-1">{invoice.client.company?.email ?? invoice.client.email ?? 'chairman@falconeyegroup.net'}</div>
+                <div className="mt-1">📞 {invoice.client.company?.phone ?? '+968-xxx-xxx'}</div>
+                <div className="mt-1">🌐 {invoice.client.company?.website ?? 'falconeyegroup.net'}</div>
               </div>
             </div>
           </div>

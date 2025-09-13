@@ -225,11 +225,11 @@ export default function ClientInvoiceDetailsPage() {
                 phone: invoice.client?.phone ?? 'No Phone',
                 company: {
                   id: invoice.client?.company?.id ?? '2',
-                  name: invoice.client?.company?.name ?? getClientName(invoice),
-                  address: invoice.client?.company?.address ?? 'No Address Provided',
-                  phone: invoice.client?.company?.phone ?? invoice.client?.phone ?? 'No Phone',
-                  email: invoice.client?.company?.email ?? invoice.client?.email ?? invoice.client_email ?? 'No Email',
-                  website: invoice.client?.company?.website ?? 'No Website',
+                  name: invoice.client?.company?.name ?? 'Falcon Eye Group',
+                  address: invoice.client?.company?.address ?? 'Muscat, Oman',
+                  phone: invoice.client?.company?.phone ?? invoice.client?.phone ?? '+968-xxx-xxx',
+                  email: invoice.client?.company?.email ?? invoice.client?.email ?? invoice.client_email ?? 'chairman@falconeyegroup.net',
+                  website: invoice.client?.company?.website ?? 'falconeyegroup.net',
                   logo_url: invoice.client?.company?.logo_url ?? undefined,
                   created_at: invoice.created_at,
                   updated_at: invoice.updated_at

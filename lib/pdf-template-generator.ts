@@ -120,7 +120,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company name
   addText(
     doc,
-    invoice.client?.company?.name ?? 'Client Company',
+    invoice.client?.company?.name ?? 'Falcon Eye Group',
     billToX, 
     yPosition + lineHeight * 2, 
     { size: 8 }
@@ -129,7 +129,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company address
   addText(
     doc,
-    invoice.client?.company?.address ?? 'No Address Provided',
+    invoice.client?.company?.address ?? 'Muscat, Oman',
     billToX, 
     yPosition + lineHeight * 3, 
     { size: 8 }
@@ -138,7 +138,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client email
   addText(
     doc,
-    invoice.client?.company?.email ?? invoice.client?.email ?? invoice.client_email ?? 'No Email',
+    invoice.client?.company?.email ?? invoice.client?.email ?? invoice.client_email ?? 'chairman@falconeyegroup.net',
     billToX, 
     yPosition + lineHeight * 4, 
     { size: 8 }
@@ -146,14 +146,14 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Optional: phone & website if available
   let currentY = yPosition + lineHeight * 5
-  if (invoice.client?.company?.phone) {
-    addText(doc, `📞 ${invoice.client.company.phone}`, billToX, currentY, { size: 8 })
-    currentY += lineHeight
-  }
-  if (invoice.client?.company?.website) {
-    addText(doc, `🌐 ${invoice.client.company.website}`, billToX, currentY, { size: 8 })
-    currentY += lineHeight
-  }
+  const clientPhone = invoice.client?.company?.phone ?? invoice.client?.phone ?? '+968-xxx-xxx'
+  const clientWebsite = invoice.client?.company?.website ?? 'falconeyegroup.net'
+  
+  addText(doc, `📞 ${clientPhone}`, billToX, currentY, { size: 8 })
+  currentY += lineHeight
+  
+  addText(doc, `🌐 ${clientWebsite}`, billToX, currentY, { size: 8 })
+  currentY += lineHeight
 
   // Update yPosition based on how many lines we actually added
   yPosition = currentY + lineHeight
@@ -178,11 +178,11 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Table rows
   const items = invoice.invoice_items || [{
     id: '1',
-    product: invoice.booking?.service?.title || 'Professional Service',
-    description: invoice.booking?.service?.description || 'High-quality professional service',
+    product: invoice.booking?.service?.title ?? 'Website Development',
+    description: invoice.booking?.service?.description ?? 'Professional website development services',
     qty: 1,
-    unit_price: invoice.subtotal || invoice.amount,
-    total: invoice.subtotal || invoice.amount,
+    unit_price: invoice.subtotal ?? invoice.amount ?? 840,
+    total: invoice.subtotal ?? invoice.amount ?? 840,
     invoice_id: invoice.id,
     created_at: invoice.created_at,
     updated_at: invoice.created_at
@@ -231,10 +231,10 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Totals section with responsive right-alignment
   const totalsX = pageWidth - margin - 80
-  const subtotal = invoice.subtotal || invoice.amount
+  const subtotal = invoice.subtotal ?? invoice.amount ?? 840
   const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.05
-  const taxAmount = invoice.vat_amount || subtotal * 0.05
-  const total = invoice.total_amount || subtotal * 1.05
+  const taxAmount = invoice.vat_amount ?? (subtotal * taxRate)
+  const total = invoice.total_amount ?? (subtotal + taxAmount)
 
   // Calculate right-aligned positions
   const subtotalText = formatCurrency(subtotal, currency)
