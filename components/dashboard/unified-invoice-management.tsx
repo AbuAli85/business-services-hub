@@ -37,7 +37,8 @@ import {
   ChevronDown,
   Receipt,
   Plus,
-  Trash2
+  Trash2,
+  Layout
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -954,6 +955,11 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
                                 <DropdownMenuItem onClick={() => setSelectedInvoice(invoice)}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
+                                </DropdownMenuItem>
+                                
+                                <DropdownMenuItem onClick={() => window.open(`/dashboard/invoices/template/${invoice.id}`, '_blank')}>
+                                  <Layout className="h-4 w-4 mr-2" />
+                                  View Template
                                 </DropdownMenuItem>
                                 
                                 {invoice.pdf_url ? (

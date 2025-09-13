@@ -14,12 +14,10 @@ import {
   Clock,
   AlertCircle,
   XCircle,
-  Receipt,
-  DollarSign
+  Printer
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import Invoice from '@/components/invoice/Invoice'
 import InvoiceTemplate from '@/components/invoice/InvoiceTemplate'
 
 interface InvoiceData {
@@ -83,13 +81,12 @@ interface InvoiceData {
   }
 }
 
-export default function ClientInvoiceDetailsPage() {
+export default function InvoiceTemplatePage() {
   const router = useRouter()
   const params = useParams()
   const [invoice, setInvoice] = useState<InvoiceData | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [viewMode, setViewMode] = useState<'modern' | 'template'>('template')
 
   useEffect(() => {
     checkUserAndFetchInvoice()
@@ -111,7 +108,7 @@ export default function ClientInvoiceDetailsPage() {
       if (!params.id) {
         console.error('Invoice ID not available')
         toast.error('Invalid invoice ID')
-        router.push('/dashboard/client/invoices')
+        router.push('/dashboard/invoices')
         return
       }
 
@@ -154,29 +151,12 @@ export default function ClientInvoiceDetailsPage() {
           )
         `)
         .eq('id', params.id)
-        .eq('client_id', user.id)
         .single()
 
       if (error) {
         console.error('Error fetching invoice:', error)
-        console.error('Invoice ID:', params.id)
-        console.error('User ID:', user.id)
-
-        // Check if invoice exists but doesn't belong to user
-        const { data: anyInvoice } = await supabase
-          .from('invoices')
-          .select('id, client_id')
-          .eq('id', params.id)
-          .single()
-
-        if (anyInvoice) {
-          console.error('Invoice exists but belongs to different client:', anyInvoice.client_id)
-          toast.error('You do not have permission to view this invoice')
-        } else {
-          toast.error('Invoice not found')
-        }
-
-        router.push('/dashboard/client/invoices')
+        toast.error('Invoice not found')
+        router.push('/dashboard/invoices')
         return
       }
 
@@ -185,14 +165,13 @@ export default function ClientInvoiceDetailsPage() {
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
-      router.push('/dashboard/client/invoices')
+      router.push('/dashboard/invoices')
     } finally {
       setLoading(false)
     }
   }
 
   const getStatusBadge = (status: string, dueDate?: string) => {
-    // Calculate due date as 30 days from creation if not set
     const calculatedDueDate = dueDate || (() => {
       if (invoice) {
         const createdDate = new Date(invoice.created_at)
@@ -224,7 +203,7 @@ export default function ClientInvoiceDetailsPage() {
     try {
       console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
       
-      const response = await fetch('/api/invoices/generate-pdf', {
+      const response = await fetch('/api/invoices/generate-template-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId: invoice.id })
@@ -257,8 +236,11 @@ export default function ClientInvoiceDetailsPage() {
   }
 
   const handlePayInvoice = () => {
-    // Navigate to payment page
     router.push(`/dashboard/client/invoices/${invoice?.id}/pay`)
+  }
+
+  const handlePrint = () => {
+    window.print()
   }
 
   if (loading) {
@@ -279,7 +261,7 @@ export default function ClientInvoiceDetailsPage() {
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Invoice not found</h3>
           <p className="text-gray-600 mb-4">The invoice you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => router.push('/dashboard/client/invoices')}>
+          <Button onClick={() => router.push('/dashboard/invoices')}>
             Back to Invoices
           </Button>
         </div>
@@ -287,7 +269,7 @@ export default function ClientInvoiceDetailsPage() {
     )
   }
 
-  // Helper function to get display values
+  // Helper functions
   const getClientName = () => {
     return invoice.booking?.client?.full_name || 
            invoice.booking?.client?.company?.name || 
@@ -314,25 +296,15 @@ export default function ClientInvoiceDetailsPage() {
            'High-quality professional service delivered with excellence'
   }
 
-  const getDueDate = () => {
-    if (invoice.due_date) {
-      return formatDate(invoice.due_date)
-    }
-    // Calculate due date as 30 days from creation if not set
-    const createdDate = new Date(invoice.created_at)
-    const dueDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-    return formatDate(dueDate.toISOString())
-  }
-
   const formatInvoiceNumber = (invoiceNumber?: string) => {
     if (!invoiceNumber) return `INV-${invoice.id.slice(-8).toUpperCase()}`
     return invoiceNumber.startsWith('INV-') ? invoiceNumber : `INV-${invoiceNumber}`
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header - Hidden in print */}
+      <div className="bg-white shadow-sm border-b border-gray-200 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -346,32 +318,20 @@ export default function ClientInvoiceDetailsPage() {
                 Back to Invoices
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Invoice Details</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Invoice Template View</h1>
                 <p className="text-gray-600 mt-1">{formatInvoiceNumber(invoice.invoice_number)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               {getStatusBadge(invoice.status, invoice.due_date)}
               
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                <Button
-                  variant={viewMode === 'template' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('template')}
-                  className="text-xs"
-                >
-                  Template
-                </Button>
-                <Button
-                  variant={viewMode === 'modern' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('modern')}
-                  className="text-xs"
-                >
-                  Modern
-                </Button>
-              </div>
+              <Button 
+                onClick={handlePrint} 
+                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700"
+              >
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
               
               <Button 
                 onClick={handleDownloadInvoice} 
@@ -380,6 +340,7 @@ export default function ClientInvoiceDetailsPage() {
                 <Download className="h-4 w-4" />
                 Download PDF
               </Button>
+              
               {invoice.status === 'issued' && (
                 <Button 
                   onClick={handlePayInvoice} 
@@ -394,103 +355,69 @@ export default function ClientInvoiceDetailsPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Conditional Invoice Display */}
-        {viewMode === 'template' ? (
-          <InvoiceTemplate 
-            invoice={{
-              id: invoice.id,
-              invoice_number: formatInvoiceNumber(invoice.invoice_number),
-              issued_date: invoice.created_at,
-              due_date: invoice.due_date || (() => {
-                const createdDate = new Date(invoice.created_at)
-                return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
-              })(),
-              subtotal: invoice.subtotal || invoice.amount * 0.9,
-              tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.1,
-              tax_amount: invoice.vat_amount || invoice.amount * 0.1,
-              total: invoice.total_amount || invoice.amount,
-              status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
-              currency: invoice.currency || 'USD',
-              notes: invoice.notes,
-              company_id: invoice.booking?.service?.provider?.company?.id || '1',
-              client_id: invoice.client_id,
+      {/* Invoice Template */}
+      <div className="py-8">
+        <InvoiceTemplate 
+          invoice={{
+            id: invoice.id,
+            invoice_number: formatInvoiceNumber(invoice.invoice_number),
+            issued_date: invoice.created_at,
+            due_date: invoice.due_date || (() => {
+              const createdDate = new Date(invoice.created_at)
+              return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            })(),
+            subtotal: invoice.subtotal || invoice.amount * 0.9,
+            tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.1,
+            tax_amount: invoice.vat_amount || invoice.amount * 0.1,
+            total: invoice.total_amount || invoice.amount,
+            status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
+            currency: invoice.currency || 'USD',
+            notes: invoice.notes,
+            company_id: invoice.booking?.service?.provider?.company?.id || '1',
+            client_id: invoice.client_id,
+            created_at: invoice.created_at,
+            updated_at: invoice.updated_at,
+            company: {
+              id: invoice.booking?.service?.provider?.company?.id || '1',
+              name: invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name',
+              address: '123 Anywhere St., Any City, ST 12345',
+              phone: '123-456-7890',
+              email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
+              website: 'reallygreatsite.com',
+              logo_url: invoice.booking?.service?.provider?.company?.logo_url || undefined,
               created_at: invoice.created_at,
-              updated_at: invoice.updated_at,
+              updated_at: invoice.updated_at
+            },
+            client: {
+              id: invoice.client_id,
+              full_name: getClientName(),
+              email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
               company: {
-                id: invoice.booking?.service?.provider?.company?.id || '1',
-                name: invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name',
+                id: invoice.booking?.client?.company?.id || '2',
+                name: invoice.booking?.client?.company?.name || 'Client Company',
                 address: '123 Anywhere St., Any City, ST 12345',
-                phone: '123-456-7890',
-                email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
-                website: 'reallygreatsite.com',
-                logo_url: invoice.booking?.service?.provider?.company?.logo_url || undefined,
+                email: invoice.booking?.client?.email || 'client@company.com',
+                website: 'clientcompany.com',
+                logo_url: invoice.booking?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               },
-              client: {
-                id: invoice.client_id,
-                full_name: getClientName(),
-                email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
-                company: {
-                  id: invoice.booking?.client?.company?.id || '2',
-                  name: invoice.booking?.client?.company?.name || 'Client Company',
-                  address: '123 Anywhere St., Any City, ST 12345',
-                  email: invoice.booking?.client?.email || 'client@company.com',
-                  website: 'clientcompany.com',
-                  logo_url: invoice.booking?.client?.company?.logo_url || undefined,
-                  created_at: invoice.created_at,
-                  updated_at: invoice.updated_at
-                },
-                created_at: invoice.created_at,
-                updated_at: invoice.updated_at
-              },
-              items: [{
-                id: '1',
-                invoice_id: invoice.id,
-                product: getServiceTitle(),
-                description: getServiceDescription(),
-                qty: 1,
-                unit_price: invoice.subtotal || invoice.amount * 0.9,
-                total: invoice.subtotal || invoice.amount * 0.9,
-                created_at: invoice.created_at,
-                updated_at: invoice.updated_at
-              }]
-            }}
-            className="mb-8"
-          />
-        ) : (
-          <Invoice 
-            invoiceId={invoice.id}
-            className="mb-8"
-            showPrintButton={true}
-            onPrint={() => {
-              console.log('Print button clicked')
-              window.print()
-            }}
-          />
-        )}
-
-        {/* Additional Actions Section */}
-        <div className="mt-8 flex justify-center gap-4">
-          {invoice.status === 'issued' && (
-            <Button 
-              onClick={handlePayInvoice} 
-              className="flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-6 text-lg font-semibold"
-            >
-              <CreditCard className="h-5 w-5" />
-              Pay Now
-            </Button>
-          )}
-
-          <Button 
-            onClick={() => router.push('/dashboard/client/invoices')} 
-            variant="outline"
-            className="py-3 px-6 text-lg font-semibold border-2 hover:bg-gray-50"
-          >
-            ← Back to All Invoices
-          </Button>
-        </div>
+              created_at: invoice.created_at,
+              updated_at: invoice.updated_at
+            },
+            items: [{
+              id: '1',
+              invoice_id: invoice.id,
+              product: getServiceTitle(),
+              description: getServiceDescription(),
+              qty: 1,
+              unit_price: invoice.subtotal || invoice.amount * 0.9,
+              total: invoice.subtotal || invoice.amount * 0.9,
+              created_at: invoice.created_at,
+              updated_at: invoice.updated_at
+            }]
+          }}
+        />
       </div>
     </div>
   )

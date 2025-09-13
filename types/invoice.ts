@@ -1,4 +1,4 @@
-// Invoice-related TypeScript types
+// Invoice-related TypeScript types - Updated with phone field
 
 export interface Company {
   id: string
@@ -6,6 +6,7 @@ export interface Company {
   address: string
   phone?: string
   email?: string
+  website?: string
   logo_url?: string
   created_at?: string
   updated_at?: string
@@ -15,10 +16,16 @@ export interface Client {
   id: string
   full_name: string
   email: string
+  phone?: string
   company?: {
     id: string
     name: string
     address?: string
+    email?: string
+    website?: string
+    logo_url?: string
+    created_at?: string
+    updated_at?: string
   }
   created_at?: string
   updated_at?: string
