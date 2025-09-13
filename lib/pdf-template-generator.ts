@@ -53,24 +53,25 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const addText = (text: string, x: number, y: number, options: any = {}) => {
     doc.setFontSize(options.size || typography.body.size)
     doc.setFont('helvetica', options.weight || typography.body.weight)
-    doc.setTextColor(...(options.color || templateColors.text))
+    const color = options.color || templateColors.text
+    doc.setTextColor(color[0], color[1], color[2])
     doc.text(text, x, y)
   }
 
   // Helper function to add line
   const addLine = (x1: number, y1: number, x2: number, y2: number, color: number[] = templateColors.border) => {
-    doc.setDrawColor(...color)
+    doc.setDrawColor(color[0], color[1], color[2])
     doc.line(x1, y1, x2, y2)
   }
 
   // Helper function to add rectangle
   const addRect = (x: number, y: number, width: number, height: number, fillColor?: number[], strokeColor?: number[]) => {
     if (fillColor) {
-      doc.setFillColor(...fillColor)
+      doc.setFillColor(fillColor[0], fillColor[1], fillColor[2])
       doc.rect(x, y, width, height, 'F')
     }
     if (strokeColor) {
-      doc.setDrawColor(...strokeColor)
+      doc.setDrawColor(strokeColor[0], strokeColor[1], strokeColor[2])
       doc.rect(x, y, width, height, 'S')
     }
   }
