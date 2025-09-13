@@ -229,5 +229,5 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText('Terms & Conditions', termsX, footerY, { size: 8, color: templateColors.primary })
   addText('culpa ea sunt consequat velit ex ullamco commodo mollit consectetur ipsum magna enim amet elit elit mollit eu occaecat aute occaecat esse velit sint ullamco dolor consequat sint.', termsX, footerY + 6, { size: 6, color: templateColors.lightText })
 
-  return doc.output('arraybuffer') as Uint8Array
+  return new Uint8Array(doc.output('arraybuffer'))
 }
