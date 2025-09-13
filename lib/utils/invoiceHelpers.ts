@@ -6,9 +6,9 @@ import type { InvoiceData } from '@/lib/hooks/useInvoice'
 export function getClientName(invoice: InvoiceData | null): string {
   if (!invoice) return 'Client Information'
   
-  return invoice.client?.full_name || 
-         invoice.client_name || 
-         invoice.client?.company?.name || 
+  return invoice.client?.full_name ?? 
+         invoice.client_name ?? 
+         invoice.client?.company?.name ?? 
          'Client Information'
 }
 
@@ -18,9 +18,9 @@ export function getClientName(invoice: InvoiceData | null): string {
 export function getProviderName(invoice: InvoiceData | null): string {
   if (!invoice) return 'Service Provider'
   
-  return invoice.provider?.full_name || 
-         invoice.provider?.company?.name || 
-         invoice.provider_name || 
+  return invoice.provider?.full_name ?? 
+         invoice.provider?.company?.name ?? 
+         invoice.provider_name ?? 
          'Service Provider'
 }
 
@@ -30,8 +30,8 @@ export function getProviderName(invoice: InvoiceData | null): string {
 export function getServiceTitle(invoice: InvoiceData | null): string {
   if (!invoice) return 'Professional Service'
   
-  return invoice.booking?.service?.title || 
-         invoice.service_title || 
+  return invoice.booking?.service?.title ?? 
+         invoice.service_title ?? 
          'Professional Service'
 }
 
@@ -41,8 +41,8 @@ export function getServiceTitle(invoice: InvoiceData | null): string {
 export function getServiceDescription(invoice: InvoiceData | null): string {
   if (!invoice) return 'High-quality professional service'
   
-  return invoice.booking?.service?.description || 
-         invoice.service_description || 
+  return invoice.booking?.service?.description ?? 
+         invoice.service_description ?? 
          'High-quality professional service'
 }
 

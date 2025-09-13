@@ -59,7 +59,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Company information
   addText(
     doc,
-    invoice.provider?.company?.name || invoice.company_name || 'Your Company Name', 
+    invoice.provider?.company?.name ?? invoice.company_name ?? 'Your Company Name', 
     mainContentX, 
     yPosition, 
     typography.title
@@ -68,10 +68,10 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Contact information with icons
   const contactInfo = [
-    { icon: '📍', text: invoice.provider?.company?.address || '123 Anywhere St., Any City, ST 12345' },
-    { icon: '📞', text: invoice.provider?.company?.phone || '123-456-7890' },
-    { icon: '✉️', text: invoice.provider?.company?.email || invoice.provider?.email || 'hello@reallygreatsite.com' },
-    { icon: '🌐', text: invoice.provider?.company?.website || 'reallygreatsite.com' }
+    { icon: '📍', text: invoice.provider?.company?.address ?? 'No Address Provided' },
+    { icon: '📞', text: invoice.provider?.company?.phone ?? invoice.provider?.phone ?? 'No Phone' },
+    { icon: '✉️', text: invoice.provider?.company?.email ?? invoice.provider?.email ?? 'No Email' },
+    { icon: '🌐', text: invoice.provider?.company?.website ?? 'No Website' }
   ]
 
   contactInfo.forEach(info => {
@@ -107,16 +107,56 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Bill To
   addText(doc, t('billTo', locale), billToX, yPosition, { size: 10, color: templateColors.primary })
-  addText(doc, invoice.client?.full_name || invoice.client_name || 'Client Name', billToX, yPosition + lineHeight, { size: 8 })
-  if (invoice.client?.company?.name) {
-    addText(doc, invoice.client.company.name, billToX, yPosition + lineHeight * 2, { size: 8 })
-  }
-  if (invoice.client?.company?.address) {
-    addText(doc, invoice.client.company.address, billToX, yPosition + lineHeight * 3, { size: 8 })
-  }
-  addText(doc, invoice.client?.email || invoice.client_email || 'client@company.com', billToX, yPosition + lineHeight * 4, { size: 8 })
 
-  yPosition += lineHeight * 5
+  // Client name
+  addText(
+    doc,
+    invoice.client?.full_name ?? invoice.client_name ?? 'Client Name',
+    billToX, 
+    yPosition + lineHeight, 
+    { size: 8 }
+  )
+
+  // Client company name
+  addText(
+    doc,
+    invoice.client?.company?.name ?? 'Client Company',
+    billToX, 
+    yPosition + lineHeight * 2, 
+    { size: 8 }
+  )
+
+  // Client company address
+  addText(
+    doc,
+    invoice.client?.company?.address ?? 'No Address Provided',
+    billToX, 
+    yPosition + lineHeight * 3, 
+    { size: 8 }
+  )
+
+  // Client email
+  addText(
+    doc,
+    invoice.client?.company?.email ?? invoice.client?.email ?? invoice.client_email ?? 'No Email',
+    billToX, 
+    yPosition + lineHeight * 4, 
+    { size: 8 }
+  )
+
+  // Optional: phone & website if available
+  let currentY = yPosition + lineHeight * 5
+  if (invoice.client?.company?.phone) {
+    addText(doc, `📞 ${invoice.client.company.phone}`, billToX, currentY, { size: 8 })
+    currentY += lineHeight
+  }
+  if (invoice.client?.company?.website) {
+    addText(doc, `🌐 ${invoice.client.company.website}`, billToX, currentY, { size: 8 })
+    currentY += lineHeight
+  }
+
+  // Update yPosition based on how many lines we actually added
+  yPosition = currentY + lineHeight
 
   // Services table
   const tableX = mainContentX
