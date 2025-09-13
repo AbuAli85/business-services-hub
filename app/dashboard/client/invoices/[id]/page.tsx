@@ -1,413 +1,146 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getSupabaseClient } from '@/lib/supabase'
+import { ArrowLeft, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ViewModeToggle } from '@/components/ui/SegmentedControl'
+import { InvoiceStatusBadge } from '@/components/ui/StatusBadge'
+import { InvoiceDownloadButton } from '@/components/ui/DownloadButton'
+import { EmptyState, InvoiceNotFound, LoadingError } from '@/components/ui/EmptyState'
+import { useInvoice } from '@/lib/hooks/useInvoice'
 import { 
-  ArrowLeft,
-  Download, 
-  CreditCard,
-  FileText,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  XCircle,
-  Receipt,
-  DollarSign
-} from 'lucide-react'
+  getClientName, 
+  getProviderName, 
+  getServiceTitle, 
+  getServiceDescription,
+  formatInvoiceNumber,
+  canPayInvoice,
+  getInvoiceTotal,
+  getInvoiceSubtotal,
+  getInvoiceTaxAmount,
+  getInvoiceTaxRate
+} from '@/lib/utils/invoiceHelpers'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import toast from 'react-hot-toast'
 import Invoice from '@/components/invoice/Invoice'
 import InvoiceTemplate from '@/components/invoice/InvoiceTemplate'
-
-interface InvoiceData {
-  id: string
-  booking_id: string
-  client_id: string
-  provider_id: string
-  amount: number
-  currency: string
-  status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'
-  invoice_number?: string
-  service_title?: string
-  service_description?: string
-  client_name?: string
-  client_email?: string
-  provider_name?: string
-  provider_email?: string
-  company_name?: string
-  company_logo?: string
-  due_date?: string
-  created_at: string
-  updated_at: string
-  pdf_url?: string
-  payment_terms?: string
-  notes?: string
-  subtotal?: number
-  vat_percent?: number
-  vat_amount?: number
-  total_amount?: number
-  paid_at?: string
-  payment_method?: string
-  provider?: {
-    id: string
-    full_name: string
-    email: string
-    phone?: string
-    company?: {
-      id: string
-      name: string
-      address?: string
-      phone?: string
-      email?: string
-      website?: string
-      logo_url?: string
-    }
-  }
-  client?: {
-    id: string
-    full_name: string
-    email: string
-    phone?: string
-    company?: {
-      id: string
-      name: string
-      address?: string
-      phone?: string
-      email?: string
-      website?: string
-      logo_url?: string
-    }
-  }
-  booking?: {
-    id: string
-    status: string
-    requirements?: any
-    service?: {
-      id: string
-      title: string
-      description: string
-    }
-  }
-}
 
 export default function ClientInvoiceDetailsPage() {
   const router = useRouter()
   const params = useParams()
-  const [invoice, setInvoice] = useState<InvoiceData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const [viewMode, setViewMode] = useState<'modern' | 'template'>('template')
 
-  useEffect(() => {
-    checkUserAndFetchInvoice()
-  }, [params.id])
+  const { invoice, loading, error, refetch, user } = useInvoice(params.id as string, 'client')
 
-  const checkUserAndFetchInvoice = async () => {
-    try {
-      setLoading(true)
-      
-      const supabase = await getSupabaseClient()
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError || !user) {
-        console.error('Authentication error:', userError)
-        router.push('/auth/sign-in')
-        return
-      }
-
-      if (!params.id) {
-        console.error('Invoice ID not available')
-        toast.error('Invalid invoice ID')
-        router.push('/dashboard/client/invoices')
-        return
-      }
-
-      console.log('🔍 Fetching invoice for user:', user.id, 'invoice:', params.id)
-      setUser(user)
-
-      const { data: invoiceData, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          provider:profiles!invoices_provider_id_fkey(
-            id,
-            full_name,
-            email,
-            phone,
-            company:companies(
-              id,
-              name,
-              address,
-              phone,
-              email,
-              website,
-              logo_url
-            )
-          ),
-          client:profiles!invoices_client_id_fkey(
-            id,
-            full_name,
-            email,
-            phone,
-            company:companies(
-              id,
-              name,
-              address,
-              phone,
-              email,
-              website,
-              logo_url
-            )
-          ),
-          booking:bookings(
-            id,
-            status,
-            requirements,
-            service:services(
-              id,
-              title,
-              description
-            )
-          )
-        `)
-        .eq('id', params.id)
-        .eq('client_id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Error fetching invoice:', error)
-        console.error('Invoice ID:', params.id)
-        console.error('User ID:', user.id)
-
-        // Check if invoice exists but doesn't belong to user
-        const { data: anyInvoice } = await supabase
-          .from('invoices')
-          .select('id, client_id')
-          .eq('id', params.id)
-          .single()
-
-        if (anyInvoice) {
-          console.error('Invoice exists but belongs to different client:', anyInvoice.client_id)
-          toast.error('You do not have permission to view this invoice')
-        } else {
-          toast.error('Invoice not found')
-        }
-
-        router.push('/dashboard/client/invoices')
-        return
-      }
-
-      console.log('✅ Invoice fetched successfully:', invoiceData.id)
-      console.log('🔍 Provider data:', invoiceData?.provider)
-      console.log('🔍 Provider company data:', invoiceData?.provider?.company)
-      console.log('🔍 Client data:', invoiceData?.client)
-      console.log('🔍 Client company data:', invoiceData?.client?.company)
-      setInvoice(invoiceData)
-    } catch (error) {
-      console.error('Error in checkUserAndFetchInvoice:', error)
-      toast.error('Failed to fetch invoice')
-      router.push('/dashboard/client/invoices')
-    } finally {
-      setLoading(false)
-    }
+  const handleBack = () => {
+    router.push('/dashboard/client/invoices')
   }
 
-  const getStatusBadge = (status: string, dueDate?: string) => {
-    // Calculate due date as 30 days from creation if not set
-    const calculatedDueDate = dueDate || (() => {
-      if (invoice) {
-        const createdDate = new Date(invoice.created_at)
-        return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      }
-      return null
-    })()
-    const isOverdue = status === 'issued' && calculatedDueDate && new Date(calculatedDueDate) < new Date()
-    
-    if (isOverdue) {
-      return <Badge variant="destructive" className="flex items-center gap-1"><AlertCircle className="h-3 w-3" />Overdue</Badge>
-    }
-
-    switch (status) {
-      case 'paid':
-        return <Badge variant="default" className="flex items-center gap-1 bg-green-500"><CheckCircle className="h-3 w-3" />Paid</Badge>
-      case 'issued':
-        return <Badge variant="secondary" className="flex items-center gap-1"><Clock className="h-3 w-3" />Pending Payment</Badge>
-      case 'cancelled':
-        return <Badge variant="outline" className="flex items-center gap-1"><XCircle className="h-3 w-3" />Cancelled</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  const handleDownloadInvoice = async () => {
+  const handlePayNow = () => {
     if (!invoice) return
-
-    try {
-      console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
-      
-      const response = await fetch('/api/invoices/generate-template-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id })
-      })
-
-      console.log('📊 PDF generation response status:', response.status)
-
-      if (response.ok) {
-        const blob = await response.blob()
-        console.log('✅ PDF blob created, size:', blob.size, 'bytes')
-        
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        toast.success('Invoice downloaded successfully')
-      } else {
-        const errorData = await response.json()
-        console.error('❌ PDF generation error:', errorData)
-        toast.error(`Failed to download invoice: ${errorData.error || 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('❌ Error downloading invoice:', error)
-      toast.error('Failed to download invoice')
-    }
+    router.push(`/dashboard/client/invoices/${invoice.id}/pay`)
   }
 
-  const handlePayInvoice = () => {
-    // Navigate to payment page
-    router.push(`/dashboard/client/invoices/${invoice?.id}/pay`)
+  const handlePrint = () => {
+    window.print()
   }
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <FileText className="h-8 w-8 animate-pulse mx-auto mb-4 text-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading invoice...</p>
         </div>
       </div>
     )
   }
 
-  if (!invoice) {
+  // Error state
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Invoice not found</h3>
-          <p className="text-gray-600 mb-4">The invoice you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => router.push('/dashboard/client/invoices')}>
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Invoices
           </Button>
+          <LoadingError 
+            error={error} 
+            onRetry={refetch}
+          />
         </div>
       </div>
     )
   }
 
-  // Helper function to get display values
-  const getClientName = () => {
-    return invoice.client?.full_name || 
-           invoice.client_name || 
-           invoice.client?.company?.name || 
-           'Client Information'
-  }
-
-  const getProviderName = () => {
-    return invoice.provider?.full_name || 
-           invoice.provider?.company?.name || 
-           invoice.provider_name || 
-           'Service Provider'
-  }
-
-  const getServiceTitle = () => {
-    return invoice.booking?.service?.title || 
-           invoice.service_title || 
-           'Professional Service'
-  }
-
-  const getServiceDescription = () => {
-    return invoice.booking?.service?.description || 
-           invoice.service_description || 
-           'High-quality professional service delivered with excellence'
-  }
-
-  const getDueDate = () => {
-    if (invoice.due_date) {
-      return formatDate(invoice.due_date)
-    }
-    // Calculate due date as 30 days from creation if not set
-    const createdDate = new Date(invoice.created_at)
-    const dueDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-    return formatDate(dueDate.toISOString())
-  }
-
-  const formatInvoiceNumber = (invoiceNumber?: string) => {
-    if (!invoiceNumber) return `INV-${invoice.id.slice(-8).toUpperCase()}`
-    return invoiceNumber.startsWith('INV-') ? invoiceNumber : `INV-${invoiceNumber}`
+  // Not found state
+  if (!invoice) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <div className="max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Invoices
+          </Button>
+          <InvoiceNotFound onRetry={refetch} />
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.back()}
-                className="flex items-center gap-2 hover:bg-gray-100"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Invoices
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Invoice Details</h1>
-                <p className="text-gray-600 mt-1">{formatInvoiceNumber(invoice.invoice_number)}</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto p-4">
+        {/* Header */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Invoices
+          </Button>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Invoice {formatInvoiceNumber(invoice.invoice_number)}
+              </h1>
+              <div className="flex items-center gap-3 mt-2">
+                <InvoiceStatusBadge invoice={invoice} />
+                <span className="text-sm text-gray-600">
+                  Created {formatDate(invoice.created_at)}
+                </span>
               </div>
             </div>
+
             <div className="flex items-center gap-3">
-              {getStatusBadge(invoice.status, invoice.due_date)}
-              
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+              <ViewModeToggle
+                value={viewMode}
+                onChange={setViewMode}
+              />
+              <InvoiceDownloadButton
+                invoiceId={invoice.id}
+                invoiceNumber={invoice.invoice_number}
+                variant="outline"
+                size="sm"
+              />
+              {canPayInvoice(invoice, 'client') && (
                 <Button
-                  variant={viewMode === 'template' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('template')}
-                  className="text-xs"
-                >
-                  Template
-                </Button>
-                <Button
-                  variant={viewMode === 'modern' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('modern')}
-                  className="text-xs"
-                >
-                  Modern
-                </Button>
-              </div>
-              
-              <Button 
-                onClick={handleDownloadInvoice} 
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-              >
-                <Download className="h-4 w-4" />
-                Download PDF
-              </Button>
-              {invoice.status === 'issued' && (
-                <Button 
-                  onClick={handlePayInvoice} 
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                  onClick={handlePayNow}
+                  className="flex items-center gap-2"
                 >
                   <CreditCard className="h-4 w-4" />
                   Pay Now
@@ -416,10 +149,43 @@ export default function ClientInvoiceDetailsPage() {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Conditional Invoice Display */}
+        {/* Invoice Summary Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Invoice Summary</span>
+              <InvoiceStatusBadge invoice={invoice} size="sm" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Bill To</h4>
+                <p className="text-sm text-gray-600">{getClientName(invoice)}</p>
+                <p className="text-sm text-gray-600">{invoice.client?.email || invoice.client_email}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Service Provider</h4>
+                <p className="text-sm text-gray-600">{getProviderName(invoice)}</p>
+                <p className="text-sm text-gray-600">{invoice.provider?.email || invoice.provider_email}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Amount</h4>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(getInvoiceTotal(invoice), invoice.currency)}
+                </p>
+                {invoice.due_date && (
+                  <p className="text-sm text-gray-600">
+                    Due {formatDate(invoice.due_date)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Invoice Content */}
         {viewMode === 'template' ? (
           <InvoiceTemplate 
             invoice={{
@@ -430,10 +196,10 @@ export default function ClientInvoiceDetailsPage() {
                 const createdDate = new Date(invoice.created_at)
                 return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
               })(),
-              subtotal: invoice.subtotal || invoice.amount,
-              tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
-              tax_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
-              total: invoice.total_amount || (invoice.subtotal || invoice.amount) * 1.05,
+              subtotal: getInvoiceSubtotal(invoice),
+              tax_rate: getInvoiceTaxRate(invoice),
+              tax_amount: getInvoiceTaxAmount(invoice),
+              total: getInvoiceTotal(invoice),
               status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
               currency: invoice.currency || 'USD',
               notes: invoice.notes,
@@ -454,12 +220,12 @@ export default function ClientInvoiceDetailsPage() {
               },
               client: {
                 id: invoice.client_id,
-                full_name: invoice.client?.full_name || invoice.client_name || 'Client Information',
+                full_name: getClientName(invoice),
                 email: invoice.client?.email || invoice.client_email || 'client@company.com',
                 phone: invoice.client?.phone || '123-456-7890',
                 company: {
                   id: invoice.client?.company?.id || '2',
-                  name: invoice.client?.company?.name || invoice.client_name || 'Client Company',
+                  name: invoice.client?.company?.name || getClientName(invoice),
                   address: invoice.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
                   phone: invoice.client?.company?.phone || invoice.client?.phone || '123-456-7890',
                   email: invoice.client?.company?.email || invoice.client?.email || invoice.client_email || 'client@company.com',
@@ -474,11 +240,11 @@ export default function ClientInvoiceDetailsPage() {
               items: [{
                 id: '1',
                 invoice_id: invoice.id,
-                product: getServiceTitle(),
-                description: getServiceDescription(),
+                product: getServiceTitle(invoice),
+                description: getServiceDescription(invoice),
                 qty: 1,
-                unit_price: invoice.subtotal || invoice.amount,
-                total: invoice.subtotal || invoice.amount,
+                unit_price: getInvoiceSubtotal(invoice),
+                total: getInvoiceSubtotal(invoice),
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               }]
@@ -490,33 +256,9 @@ export default function ClientInvoiceDetailsPage() {
             invoiceId={invoice.id}
             className="mb-8"
             showPrintButton={true}
-            onPrint={() => {
-              console.log('Print button clicked')
-              window.print()
-            }}
+            onPrint={handlePrint}
           />
         )}
-
-        {/* Additional Actions Section */}
-        <div className="mt-8 flex justify-center gap-4">
-          {invoice.status === 'issued' && (
-            <Button 
-              onClick={handlePayInvoice} 
-              className="flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-6 text-lg font-semibold"
-            >
-              <CreditCard className="h-5 w-5" />
-              Pay Now
-            </Button>
-          )}
-
-          <Button 
-            onClick={() => router.push('/dashboard/client/invoices')} 
-            variant="outline"
-            className="py-3 px-6 text-lg font-semibold border-2 hover:bg-gray-50"
-          >
-            ← Back to All Invoices
-          </Button>
-        </div>
       </div>
     </div>
   )
