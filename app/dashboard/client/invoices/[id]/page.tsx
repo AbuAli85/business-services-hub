@@ -209,11 +209,11 @@ export default function ClientInvoiceDetailsPage() {
               updated_at: invoice.updated_at,
               company: {
                 id: invoice.provider?.company?.id ?? '1',
-                name: invoice.provider?.company?.name ?? invoice.company_name ?? 'Your Company Name',
-                address: invoice.provider?.company?.address ?? 'No Address Provided',
-                phone: invoice.provider?.company?.phone ?? invoice.provider?.phone ?? 'No Phone',
-                email: invoice.provider?.company?.email ?? invoice.provider?.email ?? 'No Email',
-                website: invoice.provider?.company?.website ?? 'No Website',
+                name: invoice.provider?.company?.name ?? 'Digital Morph',
+                address: invoice.provider?.company?.address ?? 'Muscat, Oman',
+                phone: invoice.provider?.company?.phone ?? invoice.provider?.phone ?? '+968-xxx-xxx',
+                email: invoice.provider?.company?.email ?? invoice.provider?.email ?? 'luxsess2001@hotmail.com',
+                website: invoice.provider?.company?.website ?? 'thedigitalmorph.com',
                 logo_url: invoice.provider?.company?.logo_url ?? undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
@@ -221,8 +221,8 @@ export default function ClientInvoiceDetailsPage() {
               client: {
                 id: invoice.client_id,
                 full_name: getClientName(invoice),
-                email: invoice.client?.email ?? invoice.client_email ?? 'No Email',
-                phone: invoice.client?.phone ?? 'No Phone',
+                email: invoice.client?.email ?? invoice.client_email ?? 'chairman@falconeyegroup.net',
+                phone: invoice.client?.phone ?? '+968-xxx-xxx',
                 company: {
                   id: invoice.client?.company?.id ?? '2',
                   name: invoice.client?.company?.name ?? 'Falcon Eye Group',

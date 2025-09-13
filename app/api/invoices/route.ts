@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const role = searchParams.get('role') || 'client'
+    const userId = searchParams.get('userId')
     
-    const supabase = await getSupabaseClient()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Build query based on user role
     let query = supabase
@@ -63,9 +66,9 @@ export async function GET(request: NextRequest) {
 
     // Apply role-based filtering
     if (role === 'client') {
-      query = query.eq('client_id', user.id)
+      query = query.eq('client_id', userId)
     } else if (role === 'provider') {
-      query = query.eq('provider_id', user.id)
+      query = query.eq('provider_id', userId)
     }
     // Admin can see all invoices (no additional filter)
 

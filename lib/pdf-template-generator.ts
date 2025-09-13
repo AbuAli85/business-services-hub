@@ -59,7 +59,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Company information
   addText(
     doc,
-    invoice.provider?.company?.name ?? invoice.company_name ?? 'Your Company Name', 
+    invoice.provider?.company?.name ?? invoice.company_name ?? 'Digital Morph', 
     mainContentX, 
     yPosition, 
     typography.title
@@ -68,10 +68,10 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Contact information with icons
   const contactInfo = [
-    { icon: '📍', text: invoice.provider?.company?.address ?? 'No Address Provided' },
-    { icon: '📞', text: invoice.provider?.company?.phone ?? invoice.provider?.phone ?? 'No Phone' },
-    { icon: '✉️', text: invoice.provider?.company?.email ?? invoice.provider?.email ?? 'No Email' },
-    { icon: '🌐', text: invoice.provider?.company?.website ?? 'No Website' }
+    { icon: '📍', text: invoice.provider?.company?.address ?? 'Muscat, Oman' },
+    { icon: '📞', text: invoice.provider?.company?.phone ?? invoice.provider?.phone ?? '+968-xxx-xxx' },
+    { icon: '✉️', text: invoice.provider?.company?.email ?? invoice.provider?.email ?? 'luxsess2001@hotmail.com' },
+    { icon: '🌐', text: invoice.provider?.company?.website ?? 'thedigitalmorph.com' }
   ]
 
   contactInfo.forEach(info => {

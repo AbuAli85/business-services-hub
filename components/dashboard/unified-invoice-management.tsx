@@ -144,7 +144,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
       setLoading(true)
       
       // Use the proper API endpoint that includes all relationships
-      const response = await fetch(`/api/invoices?role=${userRole}`)
+      const response = await fetch(`/api/invoices?role=${userRole}&userId=${userId}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
