@@ -1,24 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { generateTemplatePDF } from '@/lib/pdf-template-generator'
+import { generateMinimalPDF } from '@/lib/minimal-pdf-generator'
 
 export async function POST(request: NextRequest) {
   try {
-    const { invoiceId } = await request.json()
+    console.log('🔍 PDF API - Starting request processing')
+    
+    // Check environment variables first
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ PDF API - Missing environment variables')
+      return NextResponse.json({ 
+        error: 'Server configuration error',
+        details: 'Missing Supabase credentials'
+      }, { status: 500 })
+    }
+    
+    const body = await request.json()
+    console.log('🔍 PDF API - Request body:', body)
+    
+    const { invoiceId } = body
     
     if (!invoiceId) {
+      console.error('❌ PDF API - No invoice ID provided')
       return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 })
     }
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     if (!uuidRegex.test(invoiceId)) {
+      console.error('❌ PDF API - Invalid invoice ID format:', invoiceId)
       return NextResponse.json({ error: 'Invalid invoice ID format' }, { status: 400 })
     }
 
     console.log('🔍 Fetching invoice data for template PDF, ID:', invoiceId)
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -84,31 +100,47 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Invoice data fetched successfully for template PDF')
-    console.log('🔍 PDF API - Provider data:', invoice?.provider)
-    console.log('🔍 PDF API - Provider company:', invoice?.provider?.company)
-    console.log('🔍 PDF API - Client data:', invoice?.client)
-    console.log('🔍 PDF API - Client company:', invoice?.client?.company)
+    console.log('🔍 PDF API - Booking data:', invoice?.booking)
+    console.log('🔍 PDF API - Provider data:', invoice?.booking?.service?.provider)
+    console.log('🔍 PDF API - Provider company:', invoice?.booking?.service?.provider?.company)
+    console.log('🔍 PDF API - Client data:', invoice?.booking?.client)
+    console.log('🔍 PDF API - Client company:', invoice?.booking?.client?.company)
 
-    // Fetch invoice_items
-    const { data: items, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', invoice.id)
-
-    if (itemsError) {
-      console.warn('⚠️ Could not load invoice_items; continuing without items:', itemsError.message)
-    }
-
-    // Attach items to invoice
-    const invoiceForPdf = { ...invoice, invoice_items: items || [] }
+    // Generate template PDF directly (no invoice_items table exists)
+    const invoiceForPdf = { ...invoice }
 
     // Generate template PDF
     let pdfBuffer: Uint8Array
     try {
-      pdfBuffer = await generateTemplatePDF(invoiceForPdf)
+      console.log('🔍 PDF API - Starting PDF generation')
+      console.log('🔍 PDF API - Invoice ID:', invoiceForPdf.id)
+      console.log('🔍 PDF API - Booking exists:', !!invoiceForPdf.booking)
+      console.log('🔍 PDF API - Service exists:', !!invoiceForPdf.booking?.service)
+      console.log('🔍 PDF API - Provider exists:', !!invoiceForPdf.booking?.service?.provider)
+      console.log('🔍 PDF API - Client exists:', !!invoiceForPdf.booking?.client)
+      
+      pdfBuffer = await generateMinimalPDF(invoiceForPdf)
+      console.log('✅ PDF API - PDF generated successfully, size:', pdfBuffer.length)
     } catch (pdfError) {
-      console.error('❌ Error generating template PDF:', pdfError)
-      return NextResponse.json({ error: 'Failed to generate template PDF' }, { status: 500 })
+      console.error('❌ PDF generation error:', pdfError)
+      console.error('❌ PDF generation error stack:', pdfError instanceof Error ? pdfError.stack : 'No stack trace')
+      
+      // Return more detailed error information
+      const errorMessage = pdfError instanceof Error ? pdfError.message : 'Unknown PDF generation error'
+      const errorDetails = {
+        message: errorMessage,
+        invoiceId: invoiceForPdf.id,
+        hasBooking: !!invoiceForPdf.booking,
+        hasService: !!invoiceForPdf.booking?.service,
+        hasProvider: !!invoiceForPdf.booking?.service?.provider,
+        hasClient: !!invoiceForPdf.booking?.client
+      }
+      
+      return NextResponse.json({ 
+        error: 'Failed to generate template PDF', 
+        details: errorMessage,
+        debug: errorDetails
+      }, { status: 500 })
     }
     
     console.log('✅ Template PDF generated successfully, size:', pdfBuffer.length, 'bytes')

@@ -17,12 +17,15 @@ import {
 } from '@/lib/utils/pdfHelpers'
 
 export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array> {
-  const doc = new jsPDF('p', 'mm', 'a4')
-  const { pageWidth, pageHeight, margin, contentWidth, lineHeight, sidebarWidth } = layout
-  
-  let yPosition = margin
-  const currency = invoice.currency || 'USD'
-  const locale = currency === 'OMR' ? 'ar-OM' : 'en-US'
+  try {
+    console.log('🔍 PDF Generator - Starting with invoice:', invoice.id)
+    
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const { pageWidth, pageHeight, margin, contentWidth, lineHeight, sidebarWidth } = layout
+    
+    let yPosition = margin
+    const currency = invoice.currency || 'USD'
+    const locale = currency === 'OMR' ? 'ar-OM' : 'en-US'
 
   // Blue sidebar
   addRect(doc, 0, 0, sidebarWidth, pageHeight, templateColors.primary)
@@ -35,7 +38,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Try to add actual logo, fallback to placeholder
   const logoAdded = await addLogo(
     doc,
-    invoice.provider?.company?.logo_url,
+    invoice.booking?.service?.provider?.company?.[0]?.logo_url,
     logoX,
     logoY,
     logoSize,
@@ -296,4 +299,10 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   })
 
   return new Uint8Array(doc.output('arraybuffer'))
+  
+  } catch (error) {
+    console.error('❌ PDF Generator - Error:', error)
+    console.error('❌ PDF Generator - Stack:', error instanceof Error ? error.stack : 'No stack trace')
+    throw error
+  }
 }
