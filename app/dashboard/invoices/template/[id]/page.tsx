@@ -64,6 +64,10 @@ interface InvoiceData {
         company?: {
           id: string
           name: string
+          address?: string
+          phone?: string
+          email?: string
+          website?: string
           logo_url?: string
         }
       }
@@ -75,6 +79,10 @@ interface InvoiceData {
       company?: {
         id: string
         name: string
+        address?: string
+        phone?: string
+        email?: string
+        website?: string
         logo_url?: string
       }
     }
