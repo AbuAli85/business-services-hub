@@ -46,12 +46,42 @@ export interface Service {
   id: string
   title: string
   description: string
+  provider?: {
+    id: string
+    full_name: string
+    email: string
+    phone?: string
+    company?: Array<{
+      id: string
+      name: string
+      address?: string
+      phone?: string
+      email?: string
+      website?: string
+      logo_url?: string
+    }>
+  }
 }
 
 export interface Booking {
   id: string
   status: string
   requirements?: any
+  client?: {
+    id: string
+    full_name: string
+    email: string
+    phone?: string
+    company?: Array<{
+      id: string
+      name: string
+      address?: any
+      phone?: string
+      email?: string
+      website?: string
+      logo_url?: string
+    }>
+  }
   service?: Service
 }
 

@@ -68,10 +68,40 @@ export interface InvoiceData {
     id: string
     status: string
     requirements?: any
+    client?: {
+      id: string
+      full_name: string
+      email: string
+      phone?: string
+      company?: Array<{
+        id: string
+        name: string
+        address?: any
+        phone?: string
+        email?: string
+        website?: string
+        logo_url?: string
+      }>
+    }
     service?: {
       id: string
       title: string
       description: string
+      provider?: {
+        id: string
+        full_name: string
+        email: string
+        phone?: string
+        company?: Array<{
+          id: string
+          name: string
+          address?: string
+          phone?: string
+          email?: string
+          website?: string
+          logo_url?: string
+        }>
+      }
     }
   }
 }
@@ -185,7 +215,21 @@ export function useInvoice(invoiceId: string | undefined, role: UserRole): UseIn
       }
 
       console.log('🔍 Invoice data fetched:', JSON.stringify(invoiceData, null, 2))
-      setInvoice(invoiceData)
+      // Transform the data to match the expected structure
+      const transformedInvoice = {
+        ...invoiceData,
+        // Add the booking data at the top level for easier access
+        booking: {
+          ...invoiceData.booking,
+          client: invoiceData.booking?.client,
+          service: {
+            ...invoiceData.booking?.service,
+            provider: invoiceData.booking?.service?.provider
+          }
+        }
+      }
+      
+      setInvoice(transformedInvoice)
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch invoice'
       setError(errorMessage)

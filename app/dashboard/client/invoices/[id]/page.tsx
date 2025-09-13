@@ -104,7 +104,9 @@ export default function ClientInvoiceDetailsPage() {
     provider: invoice.provider,
     client: invoice.client,
     company: invoice.provider?.company,
-    clientCompany: invoice.client?.company
+    clientCompany: invoice.client?.company,
+    bookingProvider: invoice.booking?.service?.provider,
+    bookingClient: invoice.booking?.client
   })
 
   return (
@@ -216,29 +218,29 @@ export default function ClientInvoiceDetailsPage() {
               created_at: invoice.created_at,
               updated_at: invoice.updated_at,
               company: {
-                id: invoice.provider?.company?.id ?? '1',
-                name: invoice.provider?.company?.name ?? 'Digital Morph',
-                address: invoice.provider?.company?.address ?? 'Muscat, Oman',
-                phone: invoice.provider?.company?.phone ?? invoice.provider?.phone ?? '+968-xxx-xxx',
-                email: invoice.provider?.company?.email ?? invoice.provider?.email ?? 'luxsess2001@hotmail.com',
-                website: invoice.provider?.company?.website ?? 'thedigitalmorph.com',
-                logo_url: invoice.provider?.company?.logo_url ?? undefined,
+                id: invoice.booking?.service?.provider?.company?.[0]?.id ?? '1',
+                name: invoice.booking?.service?.provider?.company?.[0]?.name ?? 'smartPRO',
+                address: invoice.booking?.service?.provider?.company?.[0]?.address ?? 'PO. Box 354, PC. 133, Al Khuwair',
+                phone: invoice.booking?.service?.provider?.company?.[0]?.phone ?? invoice.booking?.service?.provider?.phone ?? '95153930',
+                email: invoice.booking?.service?.provider?.company?.[0]?.email ?? invoice.booking?.service?.provider?.email ?? 'luxsess2001@hotmail.com',
+                website: invoice.booking?.service?.provider?.company?.[0]?.website ?? 'https://thesmartpro.io',
+                logo_url: invoice.booking?.service?.provider?.company?.[0]?.logo_url ?? undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               },
               client: {
                 id: invoice.client_id,
-                full_name: getClientName(invoice),
-                email: invoice.client?.email ?? invoice.client_email ?? 'chairman@falconeyegroup.net',
-                phone: invoice.client?.phone ?? '+968-xxx-xxx',
+                full_name: invoice.booking?.client?.full_name ?? 'Fahad Alamri',
+                email: invoice.booking?.client?.email ?? 'chairman@falconeyegroup.net',
+                phone: invoice.booking?.client?.phone ?? '95153930',
                 company: {
-                  id: invoice.client?.company?.id ?? '2',
-                  name: invoice.client?.company?.name ?? 'Falcon Eye Group',
-                  address: invoice.client?.company?.address ?? 'Muscat, Oman',
-                  phone: invoice.client?.company?.phone ?? invoice.client?.phone ?? '+968-xxx-xxx',
-                  email: invoice.client?.company?.email ?? invoice.client?.email ?? invoice.client_email ?? 'chairman@falconeyegroup.net',
-                  website: invoice.client?.company?.website ?? 'falconeyegroup.net',
-                  logo_url: invoice.client?.company?.logo_url ?? undefined,
+                  id: invoice.booking?.client?.company?.[0]?.id ?? '2',
+                  name: invoice.booking?.client?.company?.[0]?.name ?? 'Fahad Alamri\'s Company',
+                  address: invoice.booking?.client?.company?.[0]?.address ?? 'Muscat, Oman',
+                  phone: invoice.booking?.client?.company?.[0]?.phone ?? invoice.booking?.client?.phone ?? '95153930',
+                  email: invoice.booking?.client?.company?.[0]?.email ?? invoice.booking?.client?.email ?? 'chairman@falconeyegroup.net',
+                  website: invoice.booking?.client?.company?.[0]?.website ?? 'falconeyegroup.net',
+                  logo_url: invoice.booking?.client?.company?.[0]?.logo_url ?? undefined,
                   created_at: invoice.created_at,
                   updated_at: invoice.updated_at
                 },
