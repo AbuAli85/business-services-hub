@@ -82,11 +82,17 @@ export function ViewModeToggle({ value, onChange, className }: ViewModeTogglePro
     { value: 'modern', label: 'Modern' }
   ]
 
+  const handleChange = (newValue: string) => {
+    if (newValue === 'template' || newValue === 'modern') {
+      onChange(newValue)
+    }
+  }
+
   return (
     <SegmentedControl
       options={options}
       value={value}
-      onChange={onChange}
+      onChange={handleChange}
       className={className}
       size="sm"
     />
