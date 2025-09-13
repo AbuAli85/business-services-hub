@@ -242,7 +242,7 @@ export default function ClientInvoiceDetailsPage() {
     try {
       console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
       
-      const response = await fetch('/api/invoices/generate-pdf', {
+      const response = await fetch('/api/invoices/generate-template-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invoiceId: invoice.id })

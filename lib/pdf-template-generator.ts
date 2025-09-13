@@ -98,15 +98,15 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   yPosition = margin
 
   // Company information
-  addText(invoice.provider?.company?.name || 'Your Company Name', mainContentX, yPosition, typography.title)
+  addText(invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name', mainContentX, yPosition, typography.title)
   yPosition += 8
 
   // Contact information with icons
   const contactInfo = [
-    { icon: '📍', text: invoice.provider?.company?.address || '123 Anywhere St., Any City, ST 12345' },
-    { icon: '📞', text: invoice.provider?.company?.phone || '123-456-7890' },
-    { icon: '✉️', text: invoice.provider?.email || 'hello@reallygreatsite.com' },
-    { icon: '🌐', text: invoice.provider?.company?.website || 'reallygreatsite.com' }
+    { icon: '📍', text: invoice.booking?.service?.provider?.company?.address || '123 Anywhere St., Any City, ST 12345' },
+    { icon: '📞', text: invoice.booking?.service?.provider?.company?.phone || '123-456-7890' },
+    { icon: '✉️', text: invoice.booking?.service?.provider?.company?.email || invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com' },
+    { icon: '🌐', text: invoice.booking?.service?.provider?.company?.website || 'reallygreatsite.com' }
   ]
 
   contactInfo.forEach(info => {
@@ -136,14 +136,14 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
 
   // Bill To
   addText('Bill To:', billToX, yPosition, { size: 10, color: templateColors.primary })
-  addText(invoice.client?.full_name || 'Client Name', billToX, yPosition + 6, { size: 8 })
-  if (invoice.client?.company?.name) {
-    addText(invoice.client.company.name, billToX, yPosition + 10, { size: 8 })
+  addText(invoice.booking?.client?.full_name || invoice.client_name || 'Client Name', billToX, yPosition + 6, { size: 8 })
+  if (invoice.booking?.client?.company?.name) {
+    addText(invoice.booking.client.company.name, billToX, yPosition + 10, { size: 8 })
   }
-  if (invoice.client?.company?.address) {
-    addText(invoice.client.company.address, billToX, yPosition + 14, { size: 8 })
+  if (invoice.booking?.client?.company?.address) {
+    addText(invoice.booking.client.company.address, billToX, yPosition + 14, { size: 8 })
   }
-  addText(invoice.client?.email || 'client@company.com', billToX, yPosition + 18, { size: 8 })
+  addText(invoice.booking?.client?.email || invoice.client_email || 'client@company.com', billToX, yPosition + 18, { size: 8 })
 
   yPosition += 30
 
@@ -168,8 +168,8 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     product: invoice.booking?.service?.title || 'Professional Service',
     description: invoice.booking?.service?.description || 'High-quality professional service',
     qty: 1,
-    unit_price: invoice.amount * 0.9,
-    total: invoice.amount * 0.9
+    unit_price: invoice.subtotal || invoice.amount,
+    total: invoice.subtotal || invoice.amount
   }]
 
   items.forEach((item: any, index: number) => {
@@ -196,10 +196,10 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
 
   // Totals section
   const totalsX = pageWidth - margin - 80
-  const subtotal = invoice.subtotal || invoice.amount * 0.9
-  const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.1
-  const taxAmount = invoice.vat_amount || invoice.amount * 0.1
-  const total = invoice.total_amount || invoice.amount
+  const subtotal = invoice.subtotal || invoice.amount
+  const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.05
+  const taxAmount = invoice.vat_amount || subtotal * 0.05
+  const total = invoice.total_amount || subtotal * 1.05
 
   addText('Subtotal', totalsX, yPosition, { size: 8 })
   addText(formatCurrency(subtotal, invoice.currency), totalsX + 50, yPosition, { size: 8 })
