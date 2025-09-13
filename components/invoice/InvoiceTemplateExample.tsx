@@ -56,6 +56,7 @@ export default function InvoiceTemplateExample() {
     items: [
       {
         id: '1',
+        invoice_id: '1',
         product: 'Web Development Service',
         description: 'Custom website development and design',
         qty: 1,
@@ -66,6 +67,7 @@ export default function InvoiceTemplateExample() {
       },
       {
         id: '2',
+        invoice_id: '1',
         product: 'SEO Optimization',
         description: 'Search engine optimization services',
         qty: 1,
@@ -76,6 +78,7 @@ export default function InvoiceTemplateExample() {
       },
       {
         id: '3',
+        invoice_id: '1',
         product: 'Content Management',
         description: 'Content creation and management',
         qty: 1,
@@ -86,6 +89,7 @@ export default function InvoiceTemplateExample() {
       },
       {
         id: '4',
+        invoice_id: '1',
         product: 'Digital Marketing',
         description: 'Social media and digital marketing',
         qty: 1,
@@ -96,6 +100,7 @@ export default function InvoiceTemplateExample() {
       },
       {
         id: '5',
+        invoice_id: '1',
         product: 'Analytics Setup',
         description: 'Google Analytics and tracking setup',
         qty: 1,
@@ -106,6 +111,7 @@ export default function InvoiceTemplateExample() {
       },
       {
         id: '6',
+        invoice_id: '1',
         product: 'Maintenance & Support',
         description: 'Ongoing website maintenance',
         qty: 1,
@@ -116,6 +122,7 @@ export default function InvoiceTemplateExample() {
       },
       {
         id: '7',
+        invoice_id: '1',
         product: 'Consultation Services',
         description: 'Business strategy consultation',
         qty: 1,
