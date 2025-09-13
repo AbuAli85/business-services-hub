@@ -10,6 +10,12 @@ interface InvoiceTemplateProps {
 }
 
 export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemplateProps) {
+  console.log('🔍 InvoiceTemplate received data:', {
+    company: invoice.company,
+    client: invoice.client,
+    fullInvoice: invoice
+  })
+  
   return (
     <div className={`max-w-4xl mx-auto bg-white shadow-lg ${className}`}>
       {/* Main Container with Blue Sidebar */}

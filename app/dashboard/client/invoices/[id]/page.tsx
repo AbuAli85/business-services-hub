@@ -106,7 +106,8 @@ export default function ClientInvoiceDetailsPage() {
     company: invoice.provider?.company,
     clientCompany: invoice.client?.company,
     bookingProvider: invoice.booking?.service?.provider,
-    bookingClient: invoice.booking?.client
+    bookingClient: invoice.booking?.client,
+    fullInvoice: invoice
   })
 
   return (
@@ -197,8 +198,8 @@ export default function ClientInvoiceDetailsPage() {
 
         {/* Invoice Content */}
         {viewMode === 'template' ? (
-          <InvoiceTemplate 
-            invoice={{
+          (() => {
+            const templateData = {
               id: invoice.id,
               invoice_number: formatInvoiceNumber(invoice.invoice_number),
               issued_date: invoice.created_at,
@@ -206,10 +207,10 @@ export default function ClientInvoiceDetailsPage() {
                 const createdDate = new Date(invoice.created_at)
                 return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
               })(),
-              subtotal: getInvoiceSubtotal(invoice),
-              tax_rate: getInvoiceTaxRate(invoice),
-              tax_amount: getInvoiceTaxAmount(invoice),
-              total: getInvoiceTotal(invoice),
+              subtotal: invoice.subtotal ?? invoice.amount ?? 840,
+              tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
+              tax_amount: invoice.vat_amount ?? (invoice.amount ?? 840) * 0.05,
+              total: invoice.total_amount ?? invoice.amount ?? 882,
               status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
               currency: invoice.currency || 'USD',
               notes: invoice.notes,
@@ -258,9 +259,11 @@ export default function ClientInvoiceDetailsPage() {
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               }]
-            }}
-            className="mb-8"
-          />
+            }
+            
+            console.log('🔍 Template data being passed:', templateData)
+            return <InvoiceTemplate invoice={templateData} className="mb-8" />
+          })()
         ) : (
           <Invoice 
             invoiceId={invoice.id}
