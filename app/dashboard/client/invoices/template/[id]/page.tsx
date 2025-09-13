@@ -385,10 +385,10 @@ export default function ClientInvoiceTemplatePage() {
               const createdDate = new Date(invoice.created_at)
               return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
             })(),
-            subtotal: invoice.subtotal || invoice.amount * 0.9,
-            tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.1,
-            tax_amount: invoice.vat_amount || invoice.amount * 0.1,
-            total: invoice.total_amount || invoice.amount,
+            subtotal: invoice.subtotal || invoice.amount,
+            tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
+            tax_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
+            total: invoice.total_amount || (invoice.subtotal || invoice.amount) * 1.05,
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: invoice.notes,
@@ -430,8 +430,8 @@ export default function ClientInvoiceTemplatePage() {
               product: getServiceTitle(),
               description: getServiceDescription(),
               qty: 1,
-              unit_price: invoice.subtotal || invoice.amount * 0.9,
-              total: invoice.subtotal || invoice.amount * 0.9,
+              unit_price: invoice.subtotal || invoice.amount,
+              total: invoice.subtotal || invoice.amount,
               created_at: invoice.created_at,
               updated_at: invoice.updated_at
             }]

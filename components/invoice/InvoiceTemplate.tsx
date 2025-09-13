@@ -204,7 +204,9 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
             <div className="w-80">
               <h4 className="text-sm font-bold text-blue-600 mb-2">Terms & Conditions</h4>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Payment is due within 30 days of invoice date. Late payments may incur a 1.5% monthly service charge. All services are provided subject to our standard terms of service. For questions regarding this invoice, please contact us at the provided contact information.
+                <strong>Payment Terms:</strong> Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in USD unless otherwise specified.<br/><br/>
+                <strong>Service Agreement:</strong> All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.<br/><br/>
+                <strong>Disputes:</strong> Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.
               </p>
             </div>
           </div>

@@ -76,6 +76,7 @@ interface InvoiceData {
       id: string
       full_name: string
       email: string
+      phone?: string
       company?: {
         id: string
         name: string
@@ -160,6 +161,7 @@ export default function InvoiceTemplatePage() {
               id,
               full_name,
               email,
+              phone,
               company:companies(
                 id,
                 name,
@@ -303,8 +305,8 @@ export default function InvoiceTemplatePage() {
   // Helper functions
   const getClientName = () => {
     return invoice.booking?.client?.full_name || 
-           invoice.booking?.client?.company?.name || 
            invoice.client_name || 
+           invoice.booking?.client?.company?.name || 
            'Client Information'
   }
 
@@ -397,10 +399,10 @@ export default function InvoiceTemplatePage() {
               const createdDate = new Date(invoice.created_at)
               return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
             })(),
-            subtotal: invoice.subtotal || invoice.amount * 0.9,
-            tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.1,
-            tax_amount: invoice.vat_amount || invoice.amount * 0.1,
-            total: invoice.total_amount || invoice.amount,
+            subtotal: invoice.subtotal || invoice.amount,
+            tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
+            tax_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
+            total: invoice.total_amount || (invoice.subtotal || invoice.amount) * 1.05,
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: invoice.notes,
@@ -421,13 +423,15 @@ export default function InvoiceTemplatePage() {
             },
             client: {
               id: invoice.client_id,
-              full_name: getClientName(),
+              full_name: invoice.booking?.client?.full_name || invoice.client_name || 'Client Information',
               email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
+              phone: invoice.booking?.client?.phone || '123-456-7890',
               company: {
                 id: invoice.booking?.client?.company?.id || '2',
-                name: invoice.booking?.client?.company?.name || 'Client Company',
+                name: invoice.booking?.client?.company?.name || invoice.client_name || 'Client Company',
                 address: invoice.booking?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
-                email: invoice.booking?.client?.email || 'client@company.com',
+                phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || '123-456-7890',
+                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
                 website: invoice.booking?.client?.company?.website || 'clientcompany.com',
                 logo_url: invoice.booking?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
@@ -442,8 +446,8 @@ export default function InvoiceTemplatePage() {
               product: getServiceTitle(),
               description: getServiceDescription(),
               qty: 1,
-              unit_price: invoice.subtotal || invoice.amount * 0.9,
-              total: invoice.subtotal || invoice.amount * 0.9,
+              unit_price: invoice.subtotal || invoice.amount,
+              total: invoice.subtotal || invoice.amount,
               created_at: invoice.created_at,
               updated_at: invoice.updated_at
             }]

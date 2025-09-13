@@ -227,7 +227,9 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   // Terms & Conditions
   const termsX = pageWidth - margin - 80
   addText('Terms & Conditions', termsX, footerY, { size: 8, color: templateColors.primary })
-  addText('Payment is due within 30 days of invoice date. Late payments may incur a 1.5% monthly service charge. All services are provided subject to our standard terms of service. For questions regarding this invoice, please contact us at the provided contact information.', termsX, footerY + 6, { size: 6, color: templateColors.lightText })
+  addText('Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in USD unless otherwise specified.', termsX, footerY + 6, { size: 6, color: templateColors.lightText })
+  addText('Service Agreement: All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.', termsX, footerY + 12, { size: 6, color: templateColors.lightText })
+  addText('Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.', termsX, footerY + 18, { size: 6, color: templateColors.lightText })
 
   return new Uint8Array(doc.output('arraybuffer'))
 }
