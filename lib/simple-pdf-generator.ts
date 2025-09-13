@@ -17,7 +17,7 @@ export async function generateSimplePDF(invoiceData: any): Promise<Uint8Array> {
     doc.setFont('helvetica')
     
     // Header
-    doc.setFillColor(...primaryColor)
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
     doc.rect(0, 0, pageWidth, 30, 'F')
     
     // Company name
@@ -28,7 +28,7 @@ export async function generateSimplePDF(invoiceData: any): Promise<Uint8Array> {
     doc.text(companyName, 20, 20)
     
     // Invoice title
-    doc.setTextColor(...textColor)
+    doc.setTextColor(textColor[0], textColor[1], textColor[2])
     doc.setFontSize(24)
     doc.setFont('helvetica', 'bold')
     doc.text('INVOICE', pageWidth - 60, 20)
@@ -44,7 +44,7 @@ export async function generateSimplePDF(invoiceData: any): Promise<Uint8Array> {
     doc.text(`Date: ${invoiceDate}`, pageWidth - 60, 35)
     
     // Provider info
-    doc.setTextColor(...textColor)
+    doc.setTextColor(textColor[0], textColor[1], textColor[2])
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     let yPos = 50
@@ -92,7 +92,7 @@ export async function generateSimplePDF(invoiceData: any): Promise<Uint8Array> {
     doc.rect(20, yPos, pageWidth - 40, 20, 'F')
     
     // Table headers
-    doc.setTextColor(...textColor)
+    doc.setTextColor(textColor[0], textColor[1], textColor[2])
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     doc.text('Description', 25, yPos + 12)
@@ -151,7 +151,7 @@ export async function generateSimplePDF(invoiceData: any): Promise<Uint8Array> {
     yPos = pageHeight - 30
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
-    doc.setTextColor(...lightTextColor)
+    doc.setTextColor(lightTextColor[0], lightTextColor[1], lightTextColor[2])
     doc.text('Thank you for your business!', 20, yPos)
     
     console.log('✅ Simple PDF generated successfully')
