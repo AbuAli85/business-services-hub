@@ -79,6 +79,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
+    console.log('📊 Raw invoices data:', JSON.stringify(invoices, null, 2))
+
     // Transform the data to match the expected format
     const transformedInvoices = (invoices || []).map((invoice: any) => ({
       ...invoice,
@@ -91,7 +93,11 @@ export async function GET(request: NextRequest) {
       provider_email: invoice.provider?.email || invoice.provider_email,
       provider_phone: invoice.provider?.phone || invoice.provider_phone,
       company_name: invoice.provider?.company?.name || invoice.company_name,
-      company_logo: invoice.provider?.company?.logo_url || invoice.company_logo
+      company_logo: invoice.provider?.company?.logo_url || invoice.company_logo,
+      // Include full provider and client objects for detailed access
+      provider: invoice.provider,
+      client: invoice.client,
+      booking: invoice.booking
     }))
 
     return NextResponse.json({ 

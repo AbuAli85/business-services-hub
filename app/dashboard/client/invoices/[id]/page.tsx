@@ -99,6 +99,14 @@ export default function ClientInvoiceDetailsPage() {
     )
   }
 
+  // Debug logging
+  console.log('🔍 Invoice data in component:', {
+    provider: invoice.provider,
+    client: invoice.client,
+    company: invoice.provider?.company,
+    clientCompany: invoice.client?.company
+  })
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto p-4">

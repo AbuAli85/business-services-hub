@@ -184,6 +184,7 @@ export function useInvoice(invoiceId: string | undefined, role: UserRole): UseIn
         throw new Error('Invoice not found')
       }
 
+      console.log('🔍 Invoice data fetched:', JSON.stringify(invoiceData, null, 2))
       setInvoice(invoiceData)
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch invoice'
