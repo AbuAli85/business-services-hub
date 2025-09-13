@@ -182,20 +182,18 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   yPosition += rowHeight
 
-  // Table rows - use invoice_items if available, otherwise fallback to booking service
-  const items = invoice.invoice_items?.length
-    ? invoice.invoice_items
-    : [{
-        id: '1',
-        product: invoice.booking?.service?.title ?? 'Service',
-        description: invoice.booking?.service?.description ?? 'Service description',
-        qty: 1,
-        unit_price: invoice.subtotal ?? invoice.amount ?? 0,
-        total: invoice.total_amount ?? invoice.amount ?? 0,
-        invoice_id: invoice.id,
-        created_at: invoice.created_at,
-        updated_at: invoice.created_at
-      }]
+  // Generate service items from booking data (invoice_items table doesn't exist)
+  const items = [{
+    id: '1',
+    product: invoice.booking?.service?.title ?? 'Service',
+    description: invoice.booking?.service?.description ?? 'Service description',
+    qty: 1,
+    unit_price: invoice.subtotal ?? invoice.amount ?? 0,
+    total: invoice.total_amount ?? invoice.amount ?? 0,
+    invoice_id: invoice.id,
+    created_at: invoice.created_at,
+    updated_at: invoice.created_at
+  }]
 
   // Handle empty items
   if (items.length === 0) {

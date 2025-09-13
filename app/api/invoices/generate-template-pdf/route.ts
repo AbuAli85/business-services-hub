@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
       .from('invoices')
       .select(`
         *,
-        invoice_items(*),
         booking:bookings(
           id,
           status,
