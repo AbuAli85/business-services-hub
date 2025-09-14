@@ -98,6 +98,7 @@ export default function ClientInvoiceTemplatePage() {
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
+    console.log('🔍 InvoiceTemplatePage useEffect triggered with params:', params)
     checkUserAndFetchInvoice()
   }, [params.id])
 
@@ -299,10 +300,11 @@ export default function ClientInvoiceTemplatePage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Invoice not found</h3>
-          <p className="text-gray-600 mb-4">The invoice you're looking for doesn't exist or you don't have access to it.</p>
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Invoice Not Found</h1>
+          <p className="text-gray-600 mb-4">The invoice you're looking for doesn't exist or you don't have permission to view it.</p>
           <Button onClick={() => router.push('/dashboard/client/invoices')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Invoices
           </Button>
         </div>
