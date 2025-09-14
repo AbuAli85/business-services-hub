@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
           full_name: "Fahad Alamri",
           email: "chairman@falconeyegroup.net",
           phone: "95153930",
-          company: [{
+          company: {
             id: "31741f22-7372-4f5f-9c3d-0fe7455b46dd",
             name: "falcon eye group",
             address: "PO. Box 762, PC. 122, Al Khuwair, Muscat Grand Mall, Oman",
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
             email: "chairman@falconeyegroup.net",
             website: "https://yourwebsite.com",
             logo_url: null
-          }]
+          }
         },
         service: {
           id: "770e8400-e29b-41d4-a716-446655440001",
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
             full_name: "fahad alamri",
             email: "luxsess2001@hotmail.com",
             phone: "95153930",
-            company: [{
+            company: {
               id: "4af8c59e-5f85-4428-95e8-a5f5b904a59c",
               name: "smartPRO",
               address: "PO. Box 354, PC. 133, Al Khuwair",
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
               email: "chairman@falconeyegroup.net",
               website: "https://thesmartpro.io",
               logo_url: "https://reootcngcptfogfozlmz.supabase.co/storage/v1/object/public/company-assets/company-logos/1755940991498-3gz3eqv6vrc.jpg"
-            }]
+            }
           }
         }
       }
