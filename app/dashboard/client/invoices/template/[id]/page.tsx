@@ -258,31 +258,6 @@ export default function ClientInvoiceTemplatePage() {
     try {
       const html2pdf = (await import('html2pdf.js')).default
 
-      // Clone the invoice node
-      const clone = src.cloneNode(true) as HTMLElement
-      clone.id = 'invoice-template-export'
-      clone.classList.add('pdf-sheet')
-      clone.style.position = 'absolute'
-      clone.style.left = '-9999px'
-      clone.style.top = '0'
-      document.body.appendChild(clone)
-
-      // Wait for images and fonts
-      await new Promise(resolve => {
-        const imgs = clone.querySelectorAll('img')
-        if (imgs.length === 0) return setTimeout(resolve, 500)
-
-        let loaded = 0
-        imgs.forEach(img => {
-          if (img.complete) loaded++
-          else {
-            img.onload = () => { if (++loaded === imgs.length) resolve(null) }
-            img.onerror = () => { if (++loaded === imgs.length) resolve(null) }
-          }
-        })
-        if (loaded === imgs.length) resolve(null)
-      })
-
       const opt = {
         margin: [0, 0, 0, 0],
         filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
@@ -291,24 +266,20 @@ export default function ClientInvoiceTemplatePage() {
           scale: 2,
           useCORS: true,
           backgroundColor: '#ffffff',
-          scrollY: 0
+          scrollY: 0,
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['css', 'avoid-all'] }
       }
 
       toast.loading('Generating PDF...')
-      await html2pdf().set(opt).from(clone).save()
+      await html2pdf().set(opt).from(src).save()
       toast.dismiss()
       toast.success('Invoice downloaded successfully!')
     } catch (err) {
       console.error('❌ PDF export failed:', err)
       toast.dismiss()
       toast.error('Failed to generate PDF')
-    } finally {
-      // Cleanup
-      const exportNode = document.getElementById('invoice-template-export')
-      if (exportNode) document.body.removeChild(exportNode)
     }
   }
 

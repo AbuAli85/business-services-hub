@@ -249,19 +249,39 @@
   background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
 }
 
-/* PDF-only sheet applied to the CLONED node during export */
+/* Force A4 dimensions and consistent look */
 .pdf-sheet {
   width: 210mm !important;
   min-height: 297mm !important;
-  background: #ffffff !important;
-  color: #000;
+  background: #fff !important;
   padding: 20mm;
   box-sizing: border-box;
-  font-family: 'Inter', sans-serif; /* ensure consistent font */
+  font-family: 'Inter', sans-serif;
+  color: #000;
+}
+
+/* Print-specific rules */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-template, #invoice-template * {
+    visibility: visible;
+  }
+  #invoice-template {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    background: #fff;
+    padding: 20mm;
+  }
 }
 
 /* ensure colors render in PDF/print */
-.pdf-sheet, .pdf-sheet * {
+.pdf-sheet, .pdf-sheet *,
+#print-area, #print-area * {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
