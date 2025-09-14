@@ -71,12 +71,19 @@ export default function ProviderInvoicesPage() {
       // Check if user is a provider
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role, provider_id')
+        .select('role, id')
         .eq('id', user.id)
         .single()
 
-      if (profileError || !profile || profile.role !== 'provider') {
-        console.error('❌ Not a provider:', profileError)
+      if (profileError || !profile) {
+        console.error('❌ Profile fetch error:', profileError)
+        toast.error('Failed to load user profile')
+        router.push('/dashboard/provider')
+        return
+      }
+
+      if (profile.role !== 'provider') {
+        console.error('❌ Not a provider. User role:', profile.role)
         toast.error('Access denied. Provider access required.')
         router.push('/dashboard/provider')
         return
@@ -103,7 +110,7 @@ export default function ProviderInvoicesPage() {
             service:services(title)
           )
         `)
-        .eq('provider_id', profile.provider_id)
+        .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
 
       if (invoiceError) {
