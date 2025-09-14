@@ -17,7 +17,7 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
   })
   
   return (
-    <div className={`max-w-4xl mx-auto bg-white shadow-lg ${className}`}>
+    <div className={`max-w-4xl mx-auto bg-white shadow-lg print:shadow-none ${className}`}>
       {/* Main Container with Blue Sidebar */}
       <div className="flex min-h-screen">
         {/* Blue Sidebar */}
@@ -53,9 +53,9 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 print:p-4">
           {/* Header Section */}
-          <div className="flex justify-between items-start mb-8">
+          <div className="flex justify-between items-start mb-8 print:mb-6">
             {/* Company Information */}
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
@@ -162,7 +162,7 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
               </thead>
               <tbody>
                 {invoice.items.map((item, idx) => (
-                  <tr key={item.id || idx} className="hover:bg-gray-50">
+                  <tr key={item.id || idx} className="hover:bg-gray-50 print:hover:bg-transparent">
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700">
                       {String(idx + 1).padStart(2, '0')}
                     </td>

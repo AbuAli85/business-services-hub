@@ -230,11 +230,21 @@ export default function ClientInvoiceTemplatePage() {
     }
 
     const opt = {
-      margin: [0, 0, 0, 0], // full-page
+      margin: [10, 10, 10, 10], // 10mm margins on all sides for professional spacing
       filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait',
+        compress: true
+      }
     }
 
     toast.loading('Generating PDF...')
