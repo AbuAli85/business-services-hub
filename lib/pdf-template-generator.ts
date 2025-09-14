@@ -139,7 +139,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Dates and Bill To section
   const datesX = mainContentX
-  const billToX = pageWidth - margin - 80
+  const billToX = pageWidth - margin - 100
 
   // Dates - use English format for better readability
   const formattedDate = formatDate(invoice.created_at, 'en-US')
@@ -197,6 +197,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const clientAddress = (clientCompany as any)?.address
   let addressText = 'Address not provided'
   
+  console.log('🔍 PDF Generator - Address extraction:', {
+    clientAddress: clientAddress,
+    clientAddressType: typeof clientAddress,
+    clientCompany: clientCompany
+  })
+  
   if (typeof clientAddress === 'string' && clientAddress.trim()) {
     addressText = clientAddress
   } else if (clientAddress && typeof clientAddress === 'object') {
@@ -214,6 +220,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       addressText = cleanAddress || 'Address not provided'
     }
   }
+  
+  console.log('🔍 PDF Generator - Final address text:', addressText)
   
   addText(
     doc,
@@ -236,6 +244,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   let currentY = yPosition + lineHeight * 5 + 4
   const clientPhone = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
   const clientWebsite = (clientCompany as any)?.website ?? 'Website not provided'
+  
+  console.log('🔍 PDF Generator - Website extraction:', {
+    clientWebsite: clientWebsite,
+    clientCompanyWebsite: (clientCompany as any)?.website,
+    clientCompany: clientCompany
+  })
   
   // Format phone number for better display
   let formattedPhone = clientPhone
@@ -278,8 +292,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const itemSubtotal = invoice.subtotal ?? 800
   const items = [{
     id: '1',
-    product: invoice.booking?.service?.title ?? (invoice as any).service_title ?? 'Professional Service',
-    description: invoice.booking?.service?.description ?? (invoice as any).service_description ?? 'High-quality professional service delivered with excellence',
+    product: invoice.booking?.service?.title ?? (invoice as any).service_title ?? 'Website Development',
+    description: invoice.booking?.service?.description ?? (invoice as any).service_description ?? 'Custom website development using modern technologies like React and Next.js. Perfect for businesses looking to establish their online presence.',
     qty: 1,
     unit_price: itemSubtotal,  // Unit price should be the subtotal
     total: itemSubtotal,       // Item total should also be the subtotal
@@ -287,6 +301,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     created_at: invoice.created_at,
     updated_at: invoice.created_at
   }]
+  
+  console.log('🔍 PDF Generator - Items data:', {
+    items: items,
+    itemSubtotal: itemSubtotal,
+    invoiceSubtotal: invoice.subtotal
+  })
 
   // Handle empty items
   if (items.length === 0) {
@@ -335,10 +355,20 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Totals section with responsive right-alignment
   const totalsX = pageWidth - margin - 80
-  const subtotal = itemSubtotal  // Use the same subtotal as the item
+  const subtotal = invoice.subtotal ?? 800  // Use invoice subtotal
   const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.05
   const taxAmount = invoice.vat_amount ?? (subtotal * taxRate)
-  const total = subtotal + taxAmount  // Calculate total properly
+  const total = invoice.total_amount ?? (subtotal + taxAmount)  // Use invoice total or calculate
+
+  console.log('🔍 PDF Generator - Totals calculation:', {
+    subtotal: subtotal,
+    taxRate: taxRate,
+    taxAmount: taxAmount,
+    total: total,
+    invoiceSubtotal: invoice.subtotal,
+    invoiceVatAmount: invoice.vat_amount,
+    invoiceTotal: invoice.total_amount
+  })
 
   // Calculate right-aligned positions
   const subtotalText = formatCurrency(subtotal, currency)
@@ -366,18 +396,19 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   addText(doc, t('totalAmountDue', locale), labelX, yPosition, { size: 16, weight: 'bold' })
   addRightAlignedText(doc, totalText, rightAlignX, yPosition, { size: 16, weight: 'bold' })
 
-  yPosition += lineHeight * 6
+  yPosition += lineHeight * 4
 
   // Footer section
-  const footerY = pageHeight - 40
+  const footerY = pageHeight - 60
 
-  // Signature area
-  addRect(doc, mainContentX, footerY, 60, 20, undefined, templateColors.border)
-  addText(doc, t('nameAndSignature', locale), mainContentX + 2, footerY + 12, { size: 8, color: templateColors.lightText })
+  // Signature area (left side)
+  addRect(doc, mainContentX, footerY, 80, 25, undefined, templateColors.border)
+  addText(doc, t('nameAndSignature', locale), mainContentX + 3, footerY + 15, { size: 9, color: templateColors.lightText })
 
-  // Terms & Conditions
-  const termsX = pageWidth - margin - 80
-  addText(doc, t('termsAndConditions', locale), termsX, footerY, { size: 8, color: templateColors.primary })
+  // Terms & Conditions (right side - more professional positioning)
+  const termsX = pageWidth - margin - 120
+  const termsWidth = 110
+  addText(doc, t('termsAndConditions', locale), termsX, footerY, { size: 10, color: templateColors.primary, weight: 'bold' })
   
   const termsText = [
     'Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in USD unless otherwise specified.',
@@ -385,15 +416,20 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     'Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
   ]
   
-  let termsY = footerY + 6
-  termsText.forEach(term => {
-    const wrappedTerms = wrapText(doc, term, 70)
+  let termsY = footerY + 8
+  termsText.forEach((term, index) => {
+    const wrappedTerms = wrapText(doc, term, termsWidth)
     if (Array.isArray(wrappedTerms)) {
       doc.text(wrappedTerms, termsX, termsY)
-      termsY += wrappedTerms.length * 3
+      termsY += wrappedTerms.length * 4
     } else {
       addText(doc, wrappedTerms, termsX, termsY, { size: 8 })
-      termsY += 3
+      termsY += 4
+    }
+    
+    // Add spacing between terms
+    if (index < termsText.length - 1) {
+      termsY += 2
     }
   })
 
