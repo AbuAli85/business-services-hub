@@ -186,17 +186,29 @@ export default function DashboardLayout({
         }
       }
 
-      // Fetch client logo if user is a client
-      if (userRole === 'client') {
+      // Fetch client/staff logo if user is a client or staff
+      if (userRole === 'client' || userRole === 'staff') {
         try {
-          const { data: profile } = await supabase
-            .from('profiles')
+          // First try to get logo from companies table (preferred)
+          const { data: company } = await supabase
+            .from('companies')
             .select('logo_url')
-            .eq('id', session.user.id)
+            .eq('owner_id', session.user.id)
             .maybeSingle()
           
-          if (profile?.logo_url) {
-            setUserLogoUrl(profile.logo_url)
+          if (company?.logo_url) {
+            setUserLogoUrl(company.logo_url)
+          } else {
+            // Fallback to profile logo_url if no company logo
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('logo_url')
+              .eq('id', session.user.id)
+              .maybeSingle()
+            
+            if (profile?.logo_url) {
+              setUserLogoUrl(profile.logo_url)
+            }
           }
         } catch (error) {
           console.warn('Could not fetch client logo:', error)
