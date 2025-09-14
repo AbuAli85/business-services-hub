@@ -146,8 +146,8 @@ export default function ProfilePage() {
         })
       }
 
-      // Fetch company data for providers
-      if (role === 'provider') {
+      // Fetch company data for both providers and clients
+      if (role === 'provider' || role === 'client') {
         const { data: companyData } = await supabase
           .from('companies')
           .select('*')
@@ -186,7 +186,7 @@ export default function ProfilePage() {
       if (profileData.portfolio_url) completion += 10
     }
     
-    if (role === 'provider' && company) {
+    if ((role === 'provider' || role === 'client') && company) {
       completion += 15
     }
     

@@ -172,6 +172,12 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         description: 'Browse available services'
       },
       { 
+        name: 'Company', 
+        href: '/dashboard/company', 
+        icon: Building2,
+        description: 'Manage your company profile'
+      },
+      { 
         name: 'My Invoices', 
         href: '/dashboard/client/invoices', 
         icon: Receipt,
@@ -188,6 +194,12 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         href: '/dashboard/services', 
         icon: Briefcase,
         description: 'Browse available services'
+      },
+      { 
+        name: 'Company', 
+        href: '/dashboard/company', 
+        icon: Building2,
+        description: 'Manage your company profile'
       },
       { 
         name: 'My Invoices', 
@@ -236,6 +248,12 @@ export function getQuickActions(user: User | null): NavigationItem[] {
         href: '/dashboard/services', 
         icon: Briefcase,
         description: 'Find services you need'
+      },
+      { 
+        name: 'Manage Company', 
+        href: '/dashboard/company', 
+        icon: Building2,
+        description: 'Update company information'
       },
       { 
         name: 'View Invoices', 
