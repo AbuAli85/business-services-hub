@@ -27,7 +27,7 @@ export const layout: PDFLayout = {
   pageHeight: 297,
   margin: 20,
   contentWidth: 190,
-  lineHeight: 6,
+  lineHeight: 8,
   sidebarWidth: 40
 }
 
