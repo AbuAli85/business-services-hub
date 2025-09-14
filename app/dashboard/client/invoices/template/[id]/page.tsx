@@ -256,193 +256,59 @@ export default function ClientInvoiceTemplatePage() {
     }
 
     try {
-      // Dynamic import to avoid SSR issues
       const html2pdf = (await import('html2pdf.js')).default
 
-      toast.loading('Preparing PDF...')
-
-      console.log('🔍 Original source element:', src)
-      console.log('🔍 Source innerHTML length:', src.innerHTML.length)
-      console.log('🔍 Source text content length:', src.textContent?.length || 0)
-
-      // Method 1: Direct capture of original element
-      console.log('🔍 Method 1: Direct capture of original element')
-      
-      const opt1 = {
-        margin: 0,
-        filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 1.5,
-          useCORS: true,
-          allowTaint: true,
-          scrollY: 0,
-          logging: true,
-          backgroundColor: '#ffffff',
-          width: 794,
-          height: 1123,
-          removeContainer: true,
-          foreignObjectRendering: true,
-          imageTimeout: 15000
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          compress: true
-        },
-        pagebreak: { mode: 'avoid-all' }
-      }
-
-      toast.loading('Generating PDF (Method 1)...')
-      
-      try {
-        await html2pdf()
-          .set(opt1)
-          .from(src)
-          .save()
-        
-        console.log('✅ PDF generated successfully with Method 1')
-        toast.dismiss()
-        toast.success('Invoice downloaded successfully!')
-        return
-      } catch (err) {
-        console.error('❌ Method 1 failed:', err)
-      }
-
-      // Method 2: Create a visible clone
-      console.log('🔍 Method 2: Creating visible clone')
-      
+      // Clone the invoice node
       const clone = src.cloneNode(true) as HTMLElement
       clone.id = 'invoice-template-export'
       clone.classList.add('pdf-sheet')
-      
-      // Make clone visible but off-screen
-      clone.style.position = 'fixed'
+      clone.style.position = 'absolute'
       clone.style.left = '-9999px'
       clone.style.top = '0'
-      clone.style.width = '210mm'
-      clone.style.minHeight = '297mm'
-      clone.style.zIndex = '9999'
-      clone.style.opacity = '1'
-      clone.style.visibility = 'visible'
-      clone.style.backgroundColor = '#ffffff'
-      
       document.body.appendChild(clone)
 
-      // Wait for clone to render
+      // Wait for images and fonts
       await new Promise(resolve => {
-        clone.offsetHeight // Force reflow
-        setTimeout(resolve, 1000)
+        const imgs = clone.querySelectorAll('img')
+        if (imgs.length === 0) return setTimeout(resolve, 500)
+
+        let loaded = 0
+        imgs.forEach(img => {
+          if (img.complete) loaded++
+          else {
+            img.onload = () => { if (++loaded === imgs.length) resolve(null) }
+            img.onerror = () => { if (++loaded === imgs.length) resolve(null) }
+          }
+        })
+        if (loaded === imgs.length) resolve(null)
       })
 
-      console.log('🔍 Clone created and rendered')
-      console.log('🔍 Clone text content length:', clone.textContent?.length || 0)
-
-      const opt2 = {
-        margin: 0,
+      const opt = {
+        margin: [0, 0, 0, 0],
         filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-          scale: 1.5,
-          useCORS: true,
-          allowTaint: true,
-          scrollY: 0,
-          logging: true,
-          backgroundColor: '#ffffff',
-          width: 794,
-          height: 1123,
-          removeContainer: true,
-          foreignObjectRendering: true,
-          imageTimeout: 15000
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          compress: true
-        },
-        pagebreak: { mode: 'avoid-all' }
-      }
-
-      toast.loading('Generating PDF (Method 2)...')
-      
-      try {
-        await html2pdf()
-          .set(opt2)
-          .from(clone)
-          .save()
-        
-        console.log('✅ PDF generated successfully with Method 2')
-        toast.dismiss()
-        toast.success('Invoice downloaded successfully!')
-        return
-      } catch (err) {
-        console.error('❌ Method 2 failed:', err)
-      }
-
-      // Method 3: Simple html2canvas approach
-      console.log('🔍 Method 3: Simple html2canvas approach')
-      
-      const html2canvas = (await import('html2canvas')).default
-      const jsPDF = (await import('jspdf')).default
-
-      toast.loading('Generating PDF (Method 3)...')
-
-      try {
-        const canvas = await html2canvas(src, {
           scale: 2,
           useCORS: true,
-          allowTaint: true,
           backgroundColor: '#ffffff',
-          width: 794,
-          height: 1123,
-          logging: true
-        })
-
-        const imgData = canvas.toDataURL('image/png')
-        const pdf = new jsPDF('p', 'mm', 'a4')
-        const imgWidth = 210
-        const pageHeight = 295
-        const imgHeight = (canvas.height * imgWidth) / canvas.width
-        let heightLeft = imgHeight
-
-        let position = 0
-
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight
-          pdf.addPage()
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-          heightLeft -= pageHeight
-        }
-
-        pdf.save(`invoice-${invoice.invoice_number || invoice.id}.pdf`)
-        
-        console.log('✅ PDF generated successfully with Method 3')
-        toast.dismiss()
-        toast.success('Invoice downloaded successfully!')
-        return
-      } catch (err) {
-        console.error('❌ Method 3 failed:', err)
+          scrollY: 0
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'avoid-all'] }
       }
 
-      // All methods failed
+      toast.loading('Generating PDF...')
+      await html2pdf().set(opt).from(clone).save()
       toast.dismiss()
-      toast.error('All PDF generation methods failed')
-      console.error('❌ All PDF generation methods failed')
-
-    } catch (error) {
-      console.error('❌ Failed to load PDF libraries:', error)
-      toast.error('Failed to load PDF generator')
+      toast.success('Invoice downloaded successfully!')
+    } catch (err) {
+      console.error('❌ PDF export failed:', err)
+      toast.dismiss()
+      toast.error('Failed to generate PDF')
     } finally {
-      // Clean up any clones
-      const existingClone = document.getElementById('invoice-template-export')
-      if (existingClone && document.body.contains(existingClone)) {
-        document.body.removeChild(existingClone)
-      }
+      // Cleanup
+      const exportNode = document.getElementById('invoice-template-export')
+      if (exportNode) document.body.removeChild(exportNode)
     }
   }
 

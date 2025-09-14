@@ -251,17 +251,13 @@
 
 /* PDF-only sheet applied to the CLONED node during export */
 .pdf-sheet {
-  width: 210mm !important;           /* A4 width */
-  min-height: 297mm !important;      /* A4 height */
-  margin: 0 !important;
-  padding: 12mm 14mm !important;     /* adjust if you want narrower/wider margins */
-  background: #fff !important;
-  box-sizing: border-box !important;
-  position: relative !important;
-  overflow: hidden !important;       /* prevent spill that causes extra page */
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;             /* Ensure full opacity for html2canvas */
+  width: 210mm !important;
+  min-height: 297mm !important;
+  background: #ffffff !important;
+  color: #000;
+  padding: 20mm;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif; /* ensure consistent font */
 }
 
 /* ensure colors render in PDF/print */
