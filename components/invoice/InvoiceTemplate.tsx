@@ -117,12 +117,33 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
             <div className="text-right">
               <h3 className="text-lg font-bold text-blue-600 mb-2">Bill To:</h3>
               <div className="text-sm text-gray-700">
-                <div className="font-semibold">{invoice.client.full_name}</div>
-                <div className="font-semibold">{invoice.client.company?.name ?? 'Client Company'}</div>
-                <div className="mt-1">{invoice.client.company?.address ?? 'Address not provided'}</div>
-                <div className="mt-1">{invoice.client.company?.email ?? invoice.client.email ?? 'Email not provided'}</div>
-                <div className="mt-1">📞 {invoice.client.company?.phone ?? invoice.client.phone ?? 'Phone not provided'}</div>
-                <div className="mt-1">🌐 {invoice.client.company?.website ?? 'Website not provided'}</div>
+                <div className="font-semibold">{String(invoice.client.full_name || 'Client Name')}</div>
+                <div className="font-semibold">{String(invoice.client.company?.name || 'Client Company')}</div>
+                <div className="mt-1">
+                  {(() => {
+                    const address = invoice.client.company?.address
+                    if (typeof address === 'string') {
+                      return address
+                    } else if (address && typeof address === 'object') {
+                      // Handle object address
+                      const addrObj = address as any
+                      if (addrObj.street) {
+                        let addr = addrObj.street
+                        if (addrObj.city) addr += `, ${addrObj.city}`
+                        if (addrObj.country) addr += `, ${addrObj.country}`
+                        return addr
+                      } else if (addrObj.address) {
+                        return addrObj.address
+                      } else {
+                        return Object.values(addrObj).filter(v => v && typeof v === 'string').join(', ') || 'Address not provided'
+                      }
+                    }
+                    return 'Address not provided'
+                  })()}
+                </div>
+                <div className="mt-1">{String(invoice.client.company?.email ?? invoice.client.email ?? 'Email not provided')}</div>
+                <div className="mt-1">📞 {String(invoice.client.company?.phone ?? invoice.client.phone ?? 'Phone not provided')}</div>
+                <div className="mt-1">🌐 {String(invoice.client.company?.website ?? 'Website not provided')}</div>
               </div>
             </div>
           </div>
@@ -146,10 +167,10 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
                       {String(idx + 1).padStart(2, '0')}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-sm text-gray-700">
-                      {item.product}
+                      {String(item.product || '')}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-center text-sm text-gray-700">
-                      {item.qty}
+                      {String(item.qty || 1)}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-right text-sm text-gray-700">
                       {formatCurrency(item.unit_price, invoice.currency)}
