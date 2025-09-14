@@ -100,8 +100,10 @@ export default function ProviderInvoicesPage() {
           status,
           created_at,
           due_date,
-          client_name,
-          service_title,
+          subtotal,
+          tax_amount,
+          total_amount,
+          notes,
           booking:bookings(
             client:profiles!bookings_client_id_fkey(
               full_name,
@@ -128,8 +130,8 @@ export default function ProviderInvoicesPage() {
         status: invoice.status,
         created_at: invoice.created_at,
         due_date: invoice.due_date,
-        client_name: invoice.client_name,
-        service_title: invoice.service_title,
+        client_name: invoice.booking?.client?.full_name || invoice.booking?.client?.company?.name,
+        service_title: invoice.booking?.service?.title,
         booking: invoice.booking ? {
           client: invoice.booking.client ? {
             full_name: invoice.booking.client.full_name,

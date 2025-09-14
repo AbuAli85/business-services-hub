@@ -149,7 +149,23 @@ export default function ProviderInvoiceTemplatePage() {
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select(`
-          *,
+          id,
+          booking_id,
+          provider_id,
+          client_id,
+          amount,
+          currency,
+          status,
+          invoice_number,
+          due_date,
+          subtotal,
+          tax_rate,
+          tax_amount,
+          total_amount,
+          notes,
+          payment_terms,
+          created_at,
+          updated_at,
           booking:bookings(
             id,
             status,
