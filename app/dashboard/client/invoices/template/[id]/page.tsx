@@ -277,6 +277,19 @@ export default function ClientInvoiceTemplatePage() {
       
       document.body.appendChild(clone)
 
+      // Debug: Check clone content
+      console.log('🔍 Original source element:', src)
+      console.log('🔍 Source innerHTML length:', src.innerHTML.length)
+      console.log('🔍 Clone element:', clone)
+      console.log('🔍 Clone innerHTML length:', clone.innerHTML.length)
+      console.log('🔍 Clone classes:', clone.className)
+      console.log('🔍 Clone styles:', {
+        position: clone.style.position,
+        width: clone.style.width,
+        height: clone.style.minHeight,
+        opacity: clone.style.opacity
+      })
+
       // 2. Wait for clone to be fully rendered
       await new Promise(resolve => {
         // Force a reflow to ensure the clone is rendered
@@ -315,7 +328,31 @@ export default function ClientInvoiceTemplatePage() {
         scrollWidth: clone.scrollWidth,
         scrollHeight: clone.scrollHeight
       })
+      
+      // Debug: Check if clone has content
+      const cloneText = clone.textContent || ''
+      const cloneHTML = clone.innerHTML
+      console.log('🔍 Clone text content length:', cloneText.length)
+      console.log('🔍 Clone HTML content length:', cloneHTML.length)
+      console.log('🔍 Clone first 500 chars of text:', cloneText.substring(0, 500))
+      
+      // Make clone temporarily visible for debugging
+      clone.style.opacity = '0.1'
+      clone.style.left = '0px'
+      clone.style.zIndex = '9999'
+      console.log('🔍 Clone made temporarily visible for debugging')
+      
+      // Wait a bit to see the clone
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Hide it again
+      clone.style.opacity = '0'
+      clone.style.left = '-9999px'
+      clone.style.zIndex = '-1'
 
+      // Try both approaches: clone and direct capture
+      console.log('🔍 Attempting PDF generation...')
+      
       const opt = {
         margin: 0,
         filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
@@ -326,7 +363,9 @@ export default function ClientInvoiceTemplatePage() {
           allowTaint: true,
           scrollY: 0,
           logging: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          width: 794, // A4 width in pixels at 96 DPI
+          height: 1123 // A4 height in pixels at 96 DPI
         },
         jsPDF: { 
           unit: 'mm', 
@@ -339,17 +378,35 @@ export default function ClientInvoiceTemplatePage() {
 
       toast.loading('Generating PDF...')
       
+      // First try with the clone
+      console.log('🔍 Trying PDF generation with clone...')
       html2pdf()
         .set(opt)
         .from(clone)
         .save()
         .then(() => {
+          console.log('✅ PDF generated successfully with clone')
           toast.dismiss()
           toast.success('Invoice downloaded successfully!')
         })
         .catch((err) => {
+          console.error('❌ PDF export error with clone:', err)
+          
+          // If clone fails, try with original element
+          console.log('🔍 Trying PDF generation with original element...')
+          return html2pdf()
+            .set(opt)
+            .from(src)
+            .save()
+        })
+        .then(() => {
+          console.log('✅ PDF generated successfully with original element')
           toast.dismiss()
-          console.error('❌ PDF export error:', err)
+          toast.success('Invoice downloaded successfully!')
+        })
+        .catch((err) => {
+          console.error('❌ PDF export error with original element:', err)
+          toast.dismiss()
           toast.error('Failed to generate PDF')
         })
         .finally(() => {
@@ -370,6 +427,24 @@ export default function ClientInvoiceTemplatePage() {
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleTestContent = () => {
+    const src = document.getElementById('invoice-template')
+    if (!src) {
+      toast.error('Invoice template not found')
+      return
+    }
+    
+    console.log('🔍 Testing invoice template content...')
+    console.log('🔍 Source element:', src)
+    console.log('🔍 Source innerHTML length:', src.innerHTML.length)
+    console.log('🔍 Source text content length:', src.textContent?.length || 0)
+    console.log('🔍 Source first 1000 chars:', src.textContent?.substring(0, 1000))
+    
+    // Show content in an alert for debugging
+    const content = src.textContent || 'No content found'
+    alert(`Invoice content (first 500 chars):\n\n${content.substring(0, 500)}...`)
   }
 
   if (loading) {
@@ -469,6 +544,13 @@ export default function ClientInvoiceTemplatePage() {
               >
                 <Download className="h-4 w-4" />
                 Download PDF
+              </Button>
+              
+              <Button 
+                onClick={handleTestContent} 
+                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600"
+              >
+                Test Content
               </Button>
               
               {/* Pay Now button - only for clients */}
