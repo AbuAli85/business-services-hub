@@ -249,6 +249,24 @@
   background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
 }
 
+/* A4 Page Size for Invoice Template */
+#invoice-template {
+  width: 210mm;     /* A4 width */
+  min-height: 297mm; /* A4 height */
+  margin: auto;
+  padding: 20mm;    /* Adjust to keep content readable */
+  background: white;
+  box-sizing: border-box;
+  overflow: hidden; /* Prevent content spillover */
+}
+
+/* Invoice Sidebar Styling */
+.invoice-sidebar {
+  background: #1e3a8a; /* Blue-900 */
+  height: 100%;
+  min-height: 100%;
+}
+
 /* Print stylesheet for PDF generation */
 @media print {
   body {
@@ -306,5 +324,10 @@
     color: black !important;
     box-shadow: none !important;
     border: none !important;
+    page-break-after: always;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    margin: 0 !important;
+    padding: 20mm !important;
   }
 }
