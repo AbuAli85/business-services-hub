@@ -133,7 +133,7 @@ export class SmartInvoiceService {
       const dueDate = new Date()
       dueDate.setDate(dueDate.getDate() + 30)
 
-      // Create invoice data
+      // Create invoice data with only fields that exist in the table
       const invoiceData = {
         booking_id: bookingId,
         client_id: booking.client_id,
@@ -142,21 +142,24 @@ export class SmartInvoiceService {
         currency: booking.currency || 'OMR',
         status: 'issued' as const,
         invoice_number: invoiceNumber,
-        service_title: booking.service?.title || 'Service',
-        service_description: booking.service?.description,
-        client_name: booking.client?.full_name || 'Client',
-        client_email: booking.client?.email || '',
-        provider_name: booking.service?.provider?.full_name || 'Provider',
-        provider_email: booking.service?.provider?.email || '',
-        company_name: booking.service?.provider?.company?.name,
-        company_logo: booking.service?.provider?.company?.logo_url,
         due_date: dueDate.toISOString(),
         subtotal,
-        vat_percent: vatPercent,
-        vat_amount: vatAmount,
+        tax_rate: vatPercent,
+        tax_amount: vatAmount,
         total_amount: totalAmount,
         payment_terms: 'Payment due within 30 days',
-        notes: `Invoice for ${booking.service?.title || 'Service'} - Booking #${bookingId.slice(0, 8)}`
+        notes: `Invoice for ${booking.service?.title || 'Service'} - Booking #${bookingId.slice(0, 8)}`,
+        // Add optional fields that might exist
+        ...(booking.service?.title && { service_title: booking.service.title }),
+        ...(booking.service?.description && { service_description: booking.service.description }),
+        ...(booking.client?.full_name && { client_name: booking.client.full_name }),
+        ...(booking.client?.email && { client_email: booking.client.email }),
+        ...(booking.service?.provider?.full_name && { provider_name: booking.service.provider.full_name }),
+        ...(booking.service?.provider?.email && { provider_email: booking.service.provider.email }),
+        ...(booking.service?.provider?.company?.name && { company_name: booking.service.provider.company.name }),
+        ...(booking.service?.provider?.company?.logo_url && { company_logo: booking.service.provider.company.logo_url }),
+        vat_percent: vatPercent,
+        vat_amount: vatAmount
       }
 
       // Insert invoice into database
