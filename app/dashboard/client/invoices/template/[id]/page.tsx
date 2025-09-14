@@ -132,11 +132,27 @@ export default function ClientInvoiceTemplatePage() {
       console.log('🔍 Fetching invoice for client:', user.id, 'invoice:', params.id)
       setUser(user)
 
-      // Client can only see their own invoices
+      // Client can only see their own invoices with proper relationships
       const { data: invoiceData, error } = await supabase
         .from('invoices')
         .select(`
-          *,
+          id,
+          booking_id,
+          provider_id,
+          client_id,
+          amount,
+          currency,
+          status,
+          invoice_number,
+          due_date,
+          subtotal,
+          tax_rate,
+          tax_amount,
+          total_amount,
+          notes,
+          payment_terms,
+          created_at,
+          updated_at,
           booking:bookings(
             id,
             status,
@@ -149,6 +165,8 @@ export default function ClientInvoiceTemplatePage() {
                 id,
                 full_name,
                 email,
+                phone,
+                role,
                 company:companies(
                   id,
                   name,
@@ -164,6 +182,8 @@ export default function ClientInvoiceTemplatePage() {
               id,
               full_name,
               email,
+              phone,
+              role,
               company:companies(
                 id,
                 name,
@@ -177,7 +197,7 @@ export default function ClientInvoiceTemplatePage() {
           )
         `)
         .eq('id', params.id)
-        .eq('client_id', user.id) // Only client's own invoices
+        .eq('client_id', user.id) // Ensure client can only access their own invoices
         .single()
 
       if (error) {
@@ -206,11 +226,18 @@ export default function ClientInvoiceTemplatePage() {
       }
 
       console.log('✅ Invoice fetched successfully:', invoiceData.id)
-      console.log('🔍 Provider company data:', invoiceData.booking?.service?.provider?.company)
-      console.log('🔍 Client company data:', invoiceData.booking?.client?.company)
-      console.log('🔍 Provider data:', invoiceData.booking?.service?.provider)
-      console.log('🔍 Service data:', invoiceData.booking?.service)
-      setInvoice(invoiceData)
+      // Helper to get booking data safely
+      const getBookingData = () => {
+        if (!invoiceData.booking) return null
+        return Array.isArray(invoiceData.booking) ? invoiceData.booking[0] : invoiceData.booking
+      }
+      
+      const booking = getBookingData()
+      console.log('🔍 Provider company data:', (booking as any)?.service?.provider?.company)
+      console.log('🔍 Client company data:', (booking as any)?.client?.company)
+      console.log('🔍 Provider data:', (booking as any)?.service?.provider)
+      console.log('🔍 Service data:', (booking as any)?.service)
+      setInvoice(invoiceData as any)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')

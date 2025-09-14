@@ -88,7 +88,7 @@ export default function ProviderInvoicesPage() {
         return
       }
 
-      // Fetch provider's invoices
+      // Fetch provider's invoices with proper relationships
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select(`
@@ -103,12 +103,39 @@ export default function ProviderInvoicesPage() {
           tax_amount,
           total_amount,
           notes,
+          provider_id,
+          client_id,
+          booking_id,
           booking:bookings(
+            id,
+            status,
             client:profiles!bookings_client_id_fkey(
+              id,
               full_name,
-              company:companies(name)
+              email,
+              phone,
+              role,
+              company:companies(
+                id,
+                name,
+                address,
+                phone,
+                email,
+                website
+              )
             ),
-            service:services(title)
+            service:services(
+              id,
+              title,
+              description,
+              provider:profiles!services_provider_id_fkey(
+                id,
+                full_name,
+                email,
+                phone,
+                role
+              )
+            )
           )
         `)
         .eq('provider_id', user.id)
