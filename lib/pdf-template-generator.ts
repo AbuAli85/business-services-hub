@@ -2,7 +2,6 @@ import { jsPDF } from 'jspdf'
 import type { Invoice } from '@/lib/types/pdf-generator'
 import {
   templateColors,
-  typography,
   layout,
   formatCurrency,
   formatDate,
@@ -18,429 +17,330 @@ import {
 
 export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array> {
   try {
-    console.log('🔍 PDF Generator - Starting with invoice:', invoice.id)
-    console.log('🔍 PDF Generator - Invoice data structure:', {
-      hasBooking: !!invoice.booking,
-      hasService: !!invoice.booking?.service,
-      hasProvider: !!invoice.booking?.service?.provider,
-      hasClient: !!invoice.booking?.client,
-      hasProviderCompany: !!invoice.booking?.service?.provider?.company,
-      hasClientCompany: !!invoice.booking?.client?.company
-    })
-    
     const doc = new jsPDF('p', 'mm', 'a4')
     const { pageWidth, pageHeight, margin, contentWidth, lineHeight, sidebarWidth } = layout
-    
-    let yPosition = margin
+
     const currency = invoice.currency || 'USD'
     const locale = currency === 'OMR' ? 'ar-OM' : 'en-US'
 
-  // Blue sidebar
-  addRect(doc, 0, 0, sidebarWidth, pageHeight, templateColors.primary)
-  
-  // Company logo area in sidebar
-  const logoSize = 20
-  const logoX = 10
-  const logoY = 20
-  
-  // Try to add actual logo, fallback to placeholder
-  try {
-    const logoUrl = Array.isArray(invoice.booking?.service?.provider?.company) 
-      ? (invoice.booking?.service?.provider?.company?.[0] as any)?.logo_url
-      : (invoice.booking?.service?.provider?.company as any)?.logo_url
-    
-    console.log('🔍 PDF Generator - Logo URL:', logoUrl)
-    
-    const logoAdded = await addLogo(
-      doc,
-      logoUrl,
-      logoX,
-      logoY,
-      logoSize,
-      logoSize
-    )
-    
-    if (!logoAdded) {
-      addRect(doc, logoX, logoY, logoSize, logoSize, templateColors.white)
-      addText(doc, 'LOGO', logoX + 2, logoY + 12, { size: 8, color: templateColors.primary })
-    }
-  } catch (logoError) {
-    console.warn('⚠️ PDF Generator - Logo handling failed:', logoError)
-    // Fallback to placeholder
-    addRect(doc, logoX, logoY, logoSize, logoSize, templateColors.white)
-    addText(doc, 'LOGO', logoX + 2, logoY + 12, { size: 8, color: templateColors.primary })
-  }
+    // ---- Sidebar (as in web) -------------------------------------------------
+    addRect(doc, 0, 0, sidebarWidth, pageHeight, templateColors.primary)
 
-  // Sidebar text
-  addText(doc, t('professionalServices', locale), 10, 50, { size: 8, color: templateColors.white })
-  addLine(doc, 10, 57, 30, 57, templateColors.white)
-  addText(doc, t('qualityExcellence', locale), 10, 65, { size: 6, color: templateColors.white })
-
-  // Main content area
-  const mainContentX = 50
-  yPosition = margin
-
-  // Provider company information
-  const providerCompany = Array.isArray(invoice.booking?.service?.provider?.company) 
-    ? invoice.booking?.service?.provider?.company?.[0] 
-    : invoice.booking?.service?.provider?.company
-  const providerName = providerCompany?.name ?? invoice.booking?.service?.provider?.full_name ?? 'Provider Name'
-  
-  try {
-    addText(
-      doc,
-      providerName, 
-      mainContentX, 
-      yPosition, 
-      { size: 22, weight: 'bold' }
-    )
-    yPosition += lineHeight + 6
-  } catch (textError) {
-    console.warn('⚠️ PDF Generator - Provider name text failed:', textError)
-    // Add fallback text
-    addText(doc, 'Provider Name', mainContentX, yPosition, { size: 22, weight: 'bold' })
-    yPosition += lineHeight + 6
-  }
-
-  // Contact information with icons
-  const contactInfo = [
-    { icon: '📍', text: (providerCompany as any)?.address ?? 'Address not provided' },
-    { icon: '📞', text: (providerCompany as any)?.phone ?? invoice.booking?.service?.provider?.phone ?? 'Phone not provided' },
-    { icon: '✉️', text: (providerCompany as any)?.email ?? invoice.booking?.service?.provider?.email ?? 'Email not provided' },
-    { icon: '🌐', text: (providerCompany as any)?.website ?? 'Website not provided' }
-  ]
-
-  contactInfo.forEach(info => {
+    // Sidebar logo
+    const sbLogoSize = 20, sbLogoX = 10, sbLogoY = 20
     try {
-      addText(doc, info.icon, mainContentX, yPosition, { size: 11 })
-      addText(doc, info.text, mainContentX + 8, yPosition, { size: 11, color: templateColors.lightText })
-      yPosition += lineHeight + 2
-    } catch (textError) {
-      console.warn('⚠️ PDF Generator - Text rendering failed:', textError)
-      // Continue with next item
-      yPosition += lineHeight + 2
-    }
-  })
-
-  yPosition += lineHeight
-
-  // Invoice title and number (right aligned)
-  const invoiceTitleX = pageWidth - margin - 60
-  addText(doc, t('invoice', locale), invoiceTitleX, margin, { size: 28, color: templateColors.primary, weight: 'bold' })
-  addText(
-    doc, 
-    `${t('invoiceNumber', locale)}: #${invoice.invoice_number || invoice.id.slice(-8)}`, 
-    invoiceTitleX, 
-    margin + lineHeight + 4, 
-    { size: 14, color: templateColors.text, weight: 'bold' }
-  )
-
-  yPosition = margin + 60
-
-  // Dates and Bill To section
-  const datesX = mainContentX
-  const billToX = pageWidth - margin - 100
-
-  // Dates - use English format for better readability
-  const formattedDate = formatDate(invoice.created_at, 'en-US')
-  addText(doc, `${t('date', locale)}: ${formattedDate}`, datesX, yPosition, { size: 10, weight: 'bold' })
-  if (invoice.due_date) {
-    addText(doc, `${t('dueDate', locale)}: ${formatDate(invoice.due_date, locale)}`, datesX, yPosition + lineHeight + 2, { size: 10, weight: 'bold' })
-  }
-
-  // Bill To
-  addText(doc, t('billTo', locale), billToX, yPosition, { size: 18, color: templateColors.primary, weight: 'bold' })
-
-  // Client information
-  const client = invoice.booking?.client
-  // Handle both array and object company structures
-  const clientCompany = Array.isArray(client?.company) 
-    ? client?.company?.[0] 
-    : client?.company
-  
-  console.log('🔍 PDF Generator - Raw client data:', {
-    client: client,
-    clientCompany: clientCompany,
-    clientCompanyType: typeof clientCompany,
-    isArray: Array.isArray(client?.company)
-  })
-  
-  // Debug client data
-  console.log('🔍 PDF Generator - Client data:', {
-    clientName: client?.full_name,
-    clientCompany: clientCompany,
-    clientCompanyName: (clientCompany as any)?.name,
-    clientAddress: (clientCompany as any)?.address,
-    clientWebsite: (clientCompany as any)?.website
-  })
-  
-  // Client name
-  addText(
-    doc,
-    client?.full_name ?? 'Client Name',
-    billToX, 
-    yPosition + lineHeight + 4, 
-    { size: 14, weight: 'bold' }
-  )
-
-  // Client company name
-  addText(
-    doc,
-    (clientCompany as any)?.name ?? client?.full_name + "'s Company",
-    billToX, 
-    yPosition + lineHeight * 2 + 4, 
-    { size: 14, weight: 'bold' }
-  )
-
-  // Client company address
-  // Client address - handle both string and object formats
-  const clientAddress = (clientCompany as any)?.address
-  let addressText = 'Address not provided'
-  
-  console.log('🔍 PDF Generator - Address extraction:', {
-    clientAddress: clientAddress,
-    clientAddressType: typeof clientAddress,
-    clientCompany: clientCompany
-  })
-  
-  if (typeof clientAddress === 'string' && clientAddress.trim()) {
-    addressText = clientAddress
-  } else if (clientAddress && typeof clientAddress === 'object') {
-    // Try to extract meaningful address parts from object
-    const addrObj = clientAddress as any
-    if (addrObj.street) {
-      addressText = addrObj.street
-      if (addrObj.city) addressText += `, ${addrObj.city}`
-      if (addrObj.country) addressText += `, ${addrObj.country}`
-    } else if (addrObj.address) {
-      addressText = addrObj.address
-    } else {
-      // Fallback to a clean string representation
-      const cleanAddress = Object.values(addrObj).filter(v => v && typeof v === 'string').join(', ')
-      addressText = cleanAddress || 'Address not provided'
-    }
-  } else if (clientAddress) {
-    // Handle any other truthy value
-    addressText = String(clientAddress)
-  }
-  
-  console.log('🔍 PDF Generator - Final address text:', addressText)
-  
-  addText(
-    doc,
-    addressText,
-    billToX, 
-    yPosition + lineHeight * 3 + 4, 
-    { size: 11 }
-  )
-
-  // Client email
-  addText(
-    doc,
-    (clientCompany as any)?.email ?? client?.email ?? 'Email not provided',
-    billToX, 
-    yPosition + lineHeight * 4 + 4, 
-    { size: 11 }
-  )
-
-  // Optional: phone & website if available
-  let currentY = yPosition + lineHeight * 5 + 4
-  const clientPhone = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
-  const clientWebsite = (clientCompany as any)?.website || (client as any)?.website || 'Website not provided'
-  
-  console.log('🔍 PDF Generator - Website extraction:', {
-    clientWebsite: clientWebsite,
-    clientCompanyWebsite: (clientCompany as any)?.website,
-    clientCompany: clientCompany
-  })
-  
-  // Format phone number for better display
-  let formattedPhone = clientPhone
-  if (clientPhone && clientPhone !== 'Phone not provided') {
-    // Add +968 prefix for Omani numbers if not already present
-    if (clientPhone.startsWith('9') && !clientPhone.startsWith('+968')) {
-      formattedPhone = `+968-${clientPhone}`
-    } else if (!clientPhone.startsWith('+')) {
-      formattedPhone = `+${clientPhone}`
-    }
-  }
-  
-  addText(doc, `📞 ${formattedPhone}`, billToX, currentY, { size: 11 })
-  currentY += lineHeight + 2
-  
-  addText(doc, `🌐 ${clientWebsite}`, billToX, currentY, { size: 11 })
-  currentY += lineHeight
-
-  // Update yPosition based on how many lines we actually added
-  yPosition = currentY + lineHeight + 15
-
-  // Services table - improved layout
-  const tableX = mainContentX
-  const tableWidth = contentWidth - 10
-  const colWidths = [15, 70, 20, 30, 30] // Better distribution
-  const colPositions = [tableX, tableX + colWidths[0], tableX + colWidths[0] + colWidths[1], tableX + colWidths[0] + colWidths[1] + colWidths[2], tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]]
-  const rowHeight = 25 // Increased for better description spacing
-
-  // Table headers
-  const headers = [t('item', locale), t('description', locale), t('qtyHour', locale), t('rate', locale), t('total', locale)]
-  addRect(doc, tableX, yPosition, tableWidth, rowHeight, templateColors.background, templateColors.border)
-  
-  headers.forEach((header, index) => {
-    addText(doc, header, colPositions[index] + 5, yPosition + 15, { size: 12, color: templateColors.primary, weight: 'bold' })
-  })
-
-  yPosition += rowHeight
-
-  // Generate service items from booking data (invoice_items table doesn't exist)
-  const itemSubtotal = invoice.subtotal ?? 800
-  const items = [{
-    id: '1',
-    product: invoice.booking?.service?.title ?? (invoice as any).service_title ?? 'Website Development',
-    description: invoice.booking?.service?.description ?? (invoice as any).service_description ?? 'Custom website development using modern technologies like React and Next.js. Perfect for businesses looking to establish their online presence.',
-    qty: 1,
-    unit_price: itemSubtotal,  // Unit price should be the subtotal
-    total: itemSubtotal,       // Item total should also be the subtotal
-    invoice_id: invoice.id,
-    created_at: invoice.created_at,
-    updated_at: invoice.created_at
-  }]
-  
-  console.log('🔍 PDF Generator - Items data:', {
-    items: items,
-    itemSubtotal: itemSubtotal,
-    invoiceSubtotal: invoice.subtotal
-  })
-
-  // Handle empty items
-  if (items.length === 0) {
-    const rowY = yPosition
-    addRect(doc, tableX, rowY, tableWidth, rowHeight, templateColors.background)
-    addLine(doc, tableX, rowY, tableX + tableWidth, rowY, templateColors.border)
-    addLine(doc, tableX, rowY + rowHeight, tableX + tableWidth, rowY + rowHeight, templateColors.border)
-    addText(doc, t('noServicesProvided', locale), colPositions[1] + 2, rowY + 6, { size: 8, color: templateColors.lightText })
-    yPosition += rowHeight
-  } else {
-    items.forEach((item: any, index: number) => {
-      const rowY = yPosition + (index * rowHeight)
-      
-      // Alternate row background
-      if (index % 2 === 0) {
-        addRect(doc, tableX, rowY, tableWidth, rowHeight, templateColors.background)
+      const logoUrl = Array.isArray(invoice.booking?.service?.provider?.company)
+        ? (invoice.booking?.service?.provider?.company?.[0] as any)?.logo_url
+        : (invoice.booking?.service?.provider?.company as any)?.logo_url
+      const ok = await addLogo(doc, logoUrl, sbLogoX, sbLogoY, sbLogoSize, sbLogoSize)
+      if (!ok) {
+        addRect(doc, sbLogoX, sbLogoY, sbLogoSize, sbLogoSize, templateColors.white)
+        addText(doc, 'LOGO', sbLogoX + 2, sbLogoY + 12, { size: 8, color: templateColors.primary })
       }
-      
-      // Row border
-      addLine(doc, tableX, rowY, tableX + tableWidth, rowY, templateColors.border)
-      addLine(doc, tableX, rowY + rowHeight, tableX + tableWidth, rowY + rowHeight, templateColors.border)
-      
-      // Row content - improved positioning
-      addText(doc, String(index + 1).padStart(2, '0'), colPositions[0] + 5, rowY + 12, { size: 12 })
-      
-      // Product name
-      addText(doc, item.product || 'Service', colPositions[1] + 5, rowY + 12, { size: 12, weight: 'bold' })
-      
-      // Description with better text wrapping and positioning
-      const wrappedDesc = wrapText(doc, item.description || '-', colWidths[1] - 15)
-      if (Array.isArray(wrappedDesc)) {
-        doc.text(wrappedDesc, colPositions[1] + 5, rowY + 15)
-      } else {
-        addText(doc, wrappedDesc, colPositions[1] + 5, rowY + 15, { size: 12 })
-      }
-      
-      addText(doc, String(item.qty || 1), colPositions[2] + 5, rowY + 12, { size: 12 })
-      addText(doc, formatCurrency(item.unit_price || 0, currency), colPositions[3] + 5, rowY + 12, { size: 12 })
-      addText(doc, formatCurrency(item.total || 0, currency), colPositions[4] + 5, rowY + 12, { size: 12, weight: 'bold' })
+    } catch {
+      addRect(doc, sbLogoX, sbLogoY, sbLogoSize, sbLogoSize, templateColors.white)
+      addText(doc, 'LOGO', sbLogoX + 2, sbLogoY + 12, { size: 8, color: templateColors.primary })
+    }
+
+    // Sidebar labels
+    addText(doc, t('professionalServices', locale), 10, 50, { size: 8, color: templateColors.white })
+    addLine(doc, 10, 57, 30, 57, templateColors.white)
+    addText(doc, t('qualityExcellence', locale), 10, 65, { size: 6, color: templateColors.white })
+
+    // ---- Header layout (match web) -------------------------------------------
+    const mainX = sidebarWidth + 10 // start of main content
+    const headerTop = margin
+    const rightBlockWidth = 95
+    const rightX = pageWidth - margin - rightBlockWidth
+
+    // Provider info (left)
+    const providerCompany = Array.isArray(invoice.booking?.service?.provider?.company)
+      ? invoice.booking?.service?.provider?.company?.[0]
+      : invoice.booking?.service?.provider?.company
+    const providerName =
+      providerCompany?.name ??
+      invoice.booking?.service?.provider?.full_name ??
+      'smartPRO'
+
+    let yLeft = headerTop
+    addText(doc, providerName, mainX, yLeft, { size: 20, weight: 'bold' })
+    yLeft += lineHeight + 2
+
+    const provAddress = (providerCompany as any)?.address ?? 'PO. Box 354, PC. 133, Al Khuwair'
+    const provPhone   = (providerCompany as any)?.phone   ?? (invoice.booking?.service?.provider as any)?.phone ?? '95153930'
+    const provEmail   = (providerCompany as any)?.email   ?? invoice.booking?.service?.provider?.email ?? 'info@example.com'
+    const provSite    = (providerCompany as any)?.website ?? 'https://thesmartpro.io'
+
+    const leftLines = [
+      `• ${provAddress}`,
+      `• ${provPhone}`,
+      `• ${provEmail}`,
+      `• ${provSite}`
+    ]
+    leftLines.forEach(l => {
+      addText(doc, l, mainX, yLeft, { size: 10, color: templateColors.lightText })
+      yLeft += lineHeight
     })
 
-    yPosition += (items.length * rowHeight)
-  }
-
-  yPosition += lineHeight * 3
-
-  // Totals section with responsive right-alignment
-  const totalsX = pageWidth - margin - 100
-  const subtotal = invoice.subtotal ?? 800  // Use invoice subtotal
-  const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.05
-  const taxAmount = invoice.vat_amount ?? (subtotal * taxRate)
-  const total = invoice.total_amount ?? (subtotal + taxAmount)  // Use invoice total or calculate
-
-  console.log('🔍 PDF Generator - Totals calculation:', {
-    subtotal: subtotal,
-    taxRate: taxRate,
-    taxAmount: taxAmount,
-    total: total,
-    invoiceSubtotal: invoice.subtotal,
-    invoiceVatAmount: invoice.vat_amount,
-    invoiceTotal: invoice.total_amount
-  })
-
-  // Calculate right-aligned positions
-  const subtotalText = formatCurrency(subtotal, currency)
-  const taxText = formatCurrency(taxAmount, currency)
-  const totalText = formatCurrency(total, currency)
-  
-  const rightAlignX = pageWidth - margin - 20
-  const labelX = rightAlignX - Math.max(
-    getTextWidth(doc, subtotalText, { size: 13 }),
-    getTextWidth(doc, taxText, { size: 13 }),
-    getTextWidth(doc, totalText, { size: 16, weight: 'bold' })
-  ) - 15
-
-  addText(doc, t('subtotal', locale), labelX, yPosition, { size: 13, weight: 'bold' })
-  addRightAlignedText(doc, subtotalText, rightAlignX, yPosition, { size: 13, weight: 'bold' })
-  yPosition += lineHeight + 3
-
-  addText(doc, `${t('tax', locale)} (${(taxRate * 100).toFixed(1)}%)`, labelX, yPosition, { size: 13, weight: 'bold' })
-  addRightAlignedText(doc, taxText, rightAlignX, yPosition, { size: 13, weight: 'bold' })
-  yPosition += lineHeight + 3
-
-  addLine(doc, labelX, yPosition, rightAlignX, yPosition, templateColors.border)
-  yPosition += lineHeight + 3
-
-  addText(doc, t('totalAmountDue', locale), labelX, yPosition, { size: 16, weight: 'bold' })
-  addRightAlignedText(doc, totalText, rightAlignX, yPosition, { size: 16, weight: 'bold' })
-
-  yPosition += lineHeight * 4
-
-  // Footer section
-  const footerY = pageHeight - 60
-
-  // Signature area (left side)
-  addRect(doc, mainContentX, footerY, 80, 25, undefined, templateColors.border)
-  addText(doc, t('nameAndSignature', locale), mainContentX + 3, footerY + 15, { size: 9, color: templateColors.lightText })
-
-  // Terms & Conditions (right side - more professional positioning)
-  const termsX = pageWidth - margin - 120
-  const termsWidth = 110
-  addText(doc, t('termsAndConditions', locale), termsX, footerY, { size: 10, color: templateColors.primary, weight: 'bold' })
-  
-  const termsText = [
-    `Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in ${currency} unless otherwise specified.`,
-    'Service Agreement: All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.',
-    'Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
-  ]
-  
-  let termsY = footerY + 8
-  termsText.forEach((term, index) => {
-    const wrappedTerms = wrapText(doc, term, termsWidth)
-    if (Array.isArray(wrappedTerms)) {
-      doc.text(wrappedTerms, termsX, termsY)
-      termsY += wrappedTerms.length * 4
-    } else {
-      addText(doc, wrappedTerms, termsX, termsY, { size: 8 })
-      termsY += 4
+    // Dates under provider
+    const createdTxt = `${t('date', locale)}: ${formatDate(invoice.created_at, 'en-US')}`
+    addText(doc, createdTxt, mainX, yLeft + 2, { size: 10 })
+    if (invoice.due_date) {
+      addText(doc, `${t('dueDate', locale)}: ${formatDate(invoice.due_date, 'en-US')}`, mainX, yLeft + 2 + lineHeight, { size: 10 })
     }
-    
-    // Add spacing between terms
-    if (index < termsText.length - 1) {
-      termsY += 2
-    }
-  })
+    const leftBlockBottom = yLeft + 2 + (invoice.due_date ? lineHeight : 0)
 
-  return new Uint8Array(doc.output('arraybuffer'))
-  
-  } catch (error) {
-    console.error('❌ PDF Generator - Error:', error)
-    console.error('❌ PDF Generator - Stack:', error instanceof Error ? error.stack : 'No stack trace')
-    throw error
+    // Invoice title & number (right, blue)
+    let yRight = headerTop
+    addText(doc, t('invoice', locale), rightX, yRight, {
+      size: 26, color: templateColors.primary, weight: 'bold'
+    })
+    yRight += lineHeight + 6
+    addText(
+      doc,
+      `${t('invoiceNumber', locale)}: #${invoice.invoice_number || invoice.id.slice(-8)}`,
+      rightX,
+      yRight,
+      { size: 12, weight: 'bold' }
+    )
+    yRight += lineHeight + 4
+
+    // Bill To (card on right)
+    addText(doc, t('billTo', locale), rightX, yRight, { size: 14, color: templateColors.primary, weight: 'bold' })
+    yRight += lineHeight + 2
+
+    const client = invoice.booking?.client
+    const clientCompany = Array.isArray(client?.company) ? client?.company?.[0] : client?.company
+    const clientName = client?.full_name ?? 'Client Name'
+    const clientCompanyName =
+      (clientCompany as any)?.name ?? (clientName ? `${clientName}'s Company` : 'Client Company')
+
+    // Compose address string (string or object)
+    const cAddr = (clientCompany as any)?.address
+    const addressText = (() => {
+      if (!cAddr) return 'Address not provided'
+      if (typeof cAddr === 'string') return cAddr.trim() || 'Address not provided'
+      if (typeof cAddr === 'object') {
+        const a: any = cAddr
+        const parts = [
+          a.street || a.line1 || a.address,
+          a.city,
+          a.region || a.state,
+          a.country,
+          a.postal_code || a.zip
+        ].filter(Boolean)
+        return parts.join(', ') || 'Address not provided'
+      }
+      return String(cAddr)
+    })()
+    const cEmail = (clientCompany as any)?.email ?? client?.email ?? 'Email not provided'
+    const cPhoneRaw = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
+    const cPhone = cPhoneRaw && cPhoneRaw !== 'Phone not provided'
+      ? (/^\+/.test(cPhoneRaw) ? cPhoneRaw : (cPhoneRaw.startsWith('9') ? `+968-${cPhoneRaw}` : `+${cPhoneRaw}`))
+      : 'Phone not provided'
+    const cWeb = (clientCompany as any)?.website || (client as any)?.website || 'Website not provided'
+
+    const billLines = [
+      clientName,
+      clientCompanyName,
+      addressText,
+      cEmail,
+      cPhone,
+      cWeb
+    ]
+
+    billLines.forEach((txt, i) => {
+      const isName = i <= 1
+      addText(
+        doc,
+        (i === 4 ? '• ' : i === 5 ? '• ' : '') + txt, // bullets for phone & website (like web)
+        rightX,
+        yRight,
+        { size: isName ? 12 : 10, weight: isName ? 'bold' : 'normal', color: isName ? templateColors.text : templateColors.lightText }
+      )
+      yRight += lineHeight
+    })
+
+    // Content start (below whichever is lower)
+    let y = Math.max(leftBlockBottom, yRight) + lineHeight
+
+    // ---- Items table (grid, centered headers) --------------------------------
+    const tableX = mainX
+    const tableW = pageWidth - margin - tableX
+    const cols = [15, 80, 25, 30, 30] as const
+    const colX = [
+      tableX,
+      tableX + cols[0],
+      tableX + cols[0] + cols[1],
+      tableX + cols[0] + cols[1] + cols[2],
+      tableX + cols[0] + cols[1] + cols[2] + cols[3]
+    ]
+    // Header row
+    const headerH = 12
+    addRect(doc, tableX, y, tableW, headerH, templateColors.background, templateColors.border)
+    const headers = [t('item', locale), t('description', locale), t('qtyHour', locale), t('rate', locale), t('total', locale)]
+    headers.forEach((h, i) => {
+      // center small columns
+      const baseX = i === 0 ? colX[i] + 2 : (i >= 2 ? colX[i] + cols[i] / 2 : colX[i] + 3)
+      const opts = { size: 11, color: templateColors.primary, weight: 'bold' } as const
+      if (i >= 2) {
+        // centered
+        const w = getTextWidth(doc, h, opts as any)
+        addText(doc, h, baseX - w / 2, y + 8, opts as any)
+      } else {
+        addText(doc, h, baseX, y + 8, opts as any)
+      }
+    })
+    // Vertical header lines
+    for (let i = 1; i < colX.length; i++) addLine(doc, colX[i], y, colX[i], y + headerH, templateColors.border)
+    addLine(doc, tableX, y + headerH, tableX + tableW, y + headerH, templateColors.border)
+    y += headerH
+
+    // Items
+    const fallbackSubtotal = invoice.subtotal ?? 800
+    const items = [
+      {
+        id: '1',
+        product: invoice.booking?.service?.title ?? (invoice as any).service_title ?? 'Website Development',
+        description:
+          invoice.booking?.service?.description ??
+          (invoice as any).service_description ??
+          'Custom website development using modern technologies like React and Next.js. Perfect for businesses looking to establish their online presence.',
+        qty: 1,
+        unit_price: fallbackSubtotal,
+        total: fallbackSubtotal
+      }
+    ]
+
+    const rowPadY = 6
+    items.forEach((it, idx) => {
+      // Wrap description to column width
+      const descWidth = cols[1] - 6
+      const descLines = wrapText(doc, it.description || '-', descWidth)
+      const linesCount = Array.isArray(descLines) ? descLines.length : 1
+      const rowH = Math.max(16, rowPadY + 8 + (linesCount - 1) * 5)
+
+      // Zebra row bg
+      if (idx % 2 === 0) addRect(doc, tableX, y, tableW, rowH, templateColors.background)
+
+      // Horizontal row borders
+      addLine(doc, tableX, y, tableX + tableW, y, templateColors.border)
+      addLine(doc, tableX, y + rowH, tableX + tableW, y + rowH, templateColors.border)
+
+      // Vertical grid lines
+      for (let i = 1; i < colX.length; i++) addLine(doc, colX[i], y, colX[i], y + rowH, templateColors.border)
+
+      // Cells
+      addText(doc, String(idx + 1).padStart(2, '0'), colX[0] + 3, y + 8, { size: 11 })
+
+      addText(doc, it.product || 'Service', colX[1] + 3, y + 8, { size: 11, weight: 'bold' })
+      if (Array.isArray(descLines)) {
+        doc.text(descLines as string[], colX[1] + 3, y + 8 + 5)
+      } else {
+        addText(doc, descLines as string, colX[1] + 3, y + 8 + 5, { size: 10 })
+      }
+
+      // Centered small columns
+      const centerCell = (text: string, colIndex: number, size = 11, bold = false) => {
+        const w = getTextWidth(doc, text, { size, weight: bold ? 'bold' : 'normal' } as any)
+        const cx = colX[colIndex] + cols[colIndex] / 2
+        addText(doc, text, cx - w / 2, y + 8, { size, weight: bold ? 'bold' : 'normal' })
+      }
+
+      centerCell(String(it.qty || 1), 2)
+      centerCell(formatCurrency(it.unit_price || 0, currency), 3)
+      centerCell(formatCurrency(it.total || 0, currency), 4, 11, true)
+
+      y += rowH
+    })
+
+    // Final bottom border of table
+    addLine(doc, tableX, y, tableX + tableW, y, templateColors.border)
+    y += lineHeight * 2
+
+    // ---- Totals (right stacked, bold Total) ----------------------------------
+    const subtotal = invoice.subtotal ?? items.reduce((s, i) => s + (i.total || 0), 0)
+    const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.05
+    const taxAmount = invoice.vat_amount ?? subtotal * taxRate
+    const grandTotal = invoice.total_amount ?? subtotal + taxAmount
+
+    const rightEdge = pageWidth - margin
+    const amountX = rightEdge - 5
+    const labelMaxW = Math.max(
+      getTextWidth(doc, t('subtotal', locale), { size: 12 } as any),
+      getTextWidth(doc, `${t('tax', locale)} (${(taxRate * 100).toFixed(1)}%)`, { size: 12 } as any),
+      getTextWidth(doc, t('totalAmountDue', locale), { size: 14, weight: 'bold' } as any)
+    )
+    const labelX = amountX - Math.max(
+      getTextWidth(doc, formatCurrency(subtotal, currency), { size: 12 } as any),
+      getTextWidth(doc, formatCurrency(taxAmount, currency), { size: 12 } as any),
+      getTextWidth(doc, formatCurrency(grandTotal, currency), { size: 14, weight: 'bold' } as any)
+    ) - 8 - labelMaxW
+
+    const drawTotalRow = (label: string, value: string, y0: number, big = false) => {
+      addText(doc, label, labelX, y0, { size: big ? 14 : 12, weight: big ? 'bold' : 'normal' })
+      addRightAlignedText(doc, value, amountX, y0, { size: big ? 14 : 12, weight: big ? 'bold' : 'normal' })
+    }
+
+    drawTotalRow(t('subtotal', locale), formatCurrency(subtotal, currency), y)
+    y += lineHeight + 2
+    drawTotalRow(`${t('tax', locale)} (${(taxRate * 100).toFixed(1)}%)`, formatCurrency(taxAmount, currency), y)
+    y += lineHeight + 2
+    addLine(doc, labelX, y, amountX, y, templateColors.border)
+    y += lineHeight + 2
+    drawTotalRow(t('totalAmountDue', locale), formatCurrency(grandTotal, currency), y, true)
+    y += lineHeight * 2
+
+    // ---- Footer: Signature (dashed) + Terms (bottom-left) --------------------
+    const footerTop = pageHeight - 60
+   // Signature dashed box on left
+const sigW = 90, sigH = 28
+
+// jsPDF sometimes has setLineDashPattern, but typings don't expose it
+const anyDoc = doc as any
+if (typeof anyDoc.setLineDashPattern === 'function') {
+  anyDoc.setLineDashPattern([1.5, 1.5], 0)
+  doc.rect(mainX, footerTop, sigW, sigH)
+  anyDoc.setLineDashPattern([], 0) // reset
+} else {
+  // fallback solid border
+  doc.rect(mainX, footerTop, sigW, sigH)
+}
+
+
+    // center caption
+    const cap = t('nameAndSignature', locale)
+    const capW = getTextWidth(doc, cap, { size: 10 } as any)
+    addText(doc, cap, mainX + sigW / 2 - capW / 2, footerTop + sigH / 2 + 3, { size: 10, color: templateColors.lightText })
+
+    // Terms & Conditions (bottom-right in your previous code; web shows bottom-left)
+    const termsX = mainX + sigW + 10
+    const termsWidth = pageWidth - margin - termsX
+    addText(doc, t('termsAndConditions', locale), termsX, footerTop, {
+      size: 11, color: templateColors.primary, weight: 'bold'
+    })
+
+    const terms = [
+      `Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in ${currency}.`,
+      'Service Agreement: All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.',
+      'Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
+    ]
+    let ty = footerTop + 7
+    terms.forEach((para, i) => {
+      const lines = wrapText(doc, para, termsWidth)
+      if (Array.isArray(lines)) {
+        doc.text(lines, termsX, ty)
+        ty += lines.length * 4
+      } else {
+        addText(doc, lines, termsX, ty, { size: 9 })
+        ty += 4
+      }
+      if (i < terms.length - 1) ty += 2
+    })
+
+    return new Uint8Array(doc.output('arraybuffer'))
+  } catch (err) {
+    console.error('PDF generation error', err)
+    throw err
   }
 }
