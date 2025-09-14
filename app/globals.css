@@ -251,20 +251,25 @@
 
 /* A4 Page Size for Invoice Template */
 #invoice-template {
-  width: 210mm;     /* A4 width */
-  min-height: 297mm; /* A4 height */
-  margin: auto;
-  padding: 20mm;    /* Adjust to keep content readable */
+  width: 210mm;
+  height: 297mm;   /* fixed height */
+  margin: 0 auto;
+  padding: 20mm;
   background: white;
   box-sizing: border-box;
-  overflow: hidden; /* Prevent content spillover */
+  position: relative;
+  overflow: hidden; /* prevents spill */
 }
 
 /* Invoice Sidebar Styling */
 .invoice-sidebar {
-  background: #1e3a8a; /* Blue-900 */
+  background: #1e3a8a; /* blue */
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 40mm; /* adjust width */
   height: 100%;
-  min-height: 100%;
 }
 
 /* Print stylesheet for PDF generation */

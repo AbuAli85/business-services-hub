@@ -19,9 +19,9 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
   return (
     <div className={`max-w-4xl mx-auto bg-white shadow-lg print:shadow-none ${className}`}>
       {/* Main Container with Blue Sidebar */}
-      <div className="flex h-full min-h-screen" style={{ height: '297mm', minHeight: '297mm' }}>
+      <div className="relative" style={{ height: '297mm', width: '210mm' }}>
         {/* Blue Sidebar */}
-        <div className="w-32 bg-blue-900 flex flex-col items-center py-8 invoice-sidebar" style={{ height: '100%', minHeight: '100%' }}>
+        <div className="invoice-sidebar flex flex-col items-center py-8">
           {/* Company Logo Area */}
           <div className="mb-8">
             {invoice.company.logo_url && !invoice.company.logo_url.includes('/logo.png') ? (
@@ -53,7 +53,7 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 p-8 print:p-4">
+        <div className="ml-40 p-8 print:p-4" style={{ marginLeft: '40mm' }}>
           {/* Header Section */}
           <div className="flex justify-between items-start mb-8 print:mb-6">
             {/* Company Information */}

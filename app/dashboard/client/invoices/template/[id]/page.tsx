@@ -236,16 +236,14 @@ export default function ClientInvoiceTemplatePage() {
       html2canvas: { 
         scale: 3, 
         useCORS: true, 
-        scrollY: 0,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
+        scrollY: 0
       },
       jsPDF: { 
         unit: 'mm', 
         format: 'a4', 
         orientation: 'portrait'
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak: { mode: ['avoid-all'] }
     }
 
     toast.loading('Generating PDF...')
