@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { generateMinimalPDF } from '@/lib/minimal-pdf-generator'
+import { generateTemplatePDF } from '@/lib/pdf-template-generator'
 
 export async function POST(request: NextRequest) {
   try {
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       console.log('🔍 PDF API - Provider exists:', !!invoiceForPdf.booking?.service?.provider)
       console.log('🔍 PDF API - Client exists:', !!invoiceForPdf.booking?.client)
       
-      pdfBuffer = await generateMinimalPDF(invoiceForPdf)
+      pdfBuffer = await generateTemplatePDF(invoiceForPdf)
       console.log('✅ PDF API - PDF generated successfully, size:', pdfBuffer.length)
     } catch (pdfError) {
       console.error('❌ PDF generation error:', pdfError)

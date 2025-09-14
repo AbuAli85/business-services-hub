@@ -36,9 +36,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const logoY = 20
   
   // Try to add actual logo, fallback to placeholder
+  const logoUrl = Array.isArray(invoice.booking?.service?.provider?.company) 
+    ? (invoice.booking?.service?.provider?.company?.[0] as any)?.logo_url
+    : (invoice.booking?.service?.provider?.company as any)?.logo_url
   const logoAdded = await addLogo(
     doc,
-    invoice.booking?.service?.provider?.company?.[0]?.logo_url,
+    logoUrl,
     logoX,
     logoY,
     logoSize,
@@ -60,7 +63,9 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   yPosition = margin
 
   // Provider company information
-  const providerCompany = invoice.booking?.service?.provider?.company?.[0]
+  const providerCompany = Array.isArray(invoice.booking?.service?.provider?.company) 
+    ? invoice.booking?.service?.provider?.company?.[0] 
+    : invoice.booking?.service?.provider?.company
   const providerName = providerCompany?.name ?? invoice.booking?.service?.provider?.full_name ?? 'Provider Name'
   
   addText(
@@ -74,10 +79,10 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Contact information with icons
   const contactInfo = [
-    { icon: '📍', text: providerCompany?.address ?? 'Address not provided' },
-    { icon: '📞', text: providerCompany?.phone ?? invoice.booking?.service?.provider?.phone ?? 'Phone not provided' },
-    { icon: '✉️', text: providerCompany?.email ?? invoice.booking?.service?.provider?.email ?? 'Email not provided' },
-    { icon: '🌐', text: providerCompany?.website ?? 'Website not provided' }
+    { icon: '📍', text: (providerCompany as any)?.address ?? 'Address not provided' },
+    { icon: '📞', text: (providerCompany as any)?.phone ?? invoice.booking?.service?.provider?.phone ?? 'Phone not provided' },
+    { icon: '✉️', text: (providerCompany as any)?.email ?? invoice.booking?.service?.provider?.email ?? 'Email not provided' },
+    { icon: '🌐', text: (providerCompany as any)?.website ?? 'Website not provided' }
   ]
 
   contactInfo.forEach(info => {
@@ -116,12 +121,14 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Client information
   const client = invoice.booking?.client
-  const clientCompany = client?.company?.[0]
+  const clientCompany = Array.isArray(client?.company) 
+    ? client?.company?.[0] 
+    : client?.company
   
   // Client name
   addText(
     doc,
-    client?.full_name ?? 'Fahad Alamri',
+    client?.full_name ?? 'Client Name',
     billToX, 
     yPosition + lineHeight, 
     { size: 8 }
@@ -130,7 +137,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company name
   addText(
     doc,
-    clientCompany?.name ?? 'Fahad Alamri\'s Company',
+    (clientCompany as any)?.name ?? 'Client Company',
     billToX, 
     yPosition + lineHeight * 2, 
     { size: 8 }
@@ -139,7 +146,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company address
   addText(
     doc,
-    clientCompany?.address ?? 'Muscat, Oman',
+    (clientCompany as any)?.address ?? 'Address not provided',
     billToX, 
     yPosition + lineHeight * 3, 
     { size: 8 }
@@ -148,7 +155,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client email
   addText(
     doc,
-    clientCompany?.email ?? client?.email ?? 'chairman@falconeyegroup.net',
+    (clientCompany as any)?.email ?? client?.email ?? 'Email not provided',
     billToX, 
     yPosition + lineHeight * 4, 
     { size: 8 }
@@ -156,8 +163,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Optional: phone & website if available
   let currentY = yPosition + lineHeight * 5
-  const clientPhone = clientCompany?.phone ?? client?.phone ?? '95153930'
-  const clientWebsite = clientCompany?.website ?? 'falconeyegroup.net'
+  const clientPhone = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
+  const clientWebsite = (clientCompany as any)?.website ?? 'Website not provided'
   
   addText(doc, `📞 ${clientPhone}`, billToX, currentY, { size: 8 })
   currentY += lineHeight
@@ -188,8 +195,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Generate service items from booking data (invoice_items table doesn't exist)
   const items = [{
     id: '1',
-    product: invoice.booking?.service?.title ?? 'Service',
-    description: invoice.booking?.service?.description ?? 'Service description',
+    product: invoice.booking?.service?.title ?? (invoice as any).service_title ?? 'Professional Service',
+    description: invoice.booking?.service?.description ?? (invoice as any).service_description ?? 'High-quality professional service delivered with excellence',
     qty: 1,
     unit_price: invoice.subtotal ?? invoice.amount ?? 0,
     total: invoice.total_amount ?? invoice.amount ?? 0,
@@ -241,7 +248,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Totals section with responsive right-alignment
   const totalsX = pageWidth - margin - 80
-  const subtotal = invoice.subtotal ?? invoice.amount ?? 840
+  const subtotal = invoice.subtotal ?? invoice.amount ?? 0
   const taxRate = invoice.vat_percent ? invoice.vat_percent / 100 : 0.05
   const taxAmount = invoice.vat_amount ?? (subtotal * taxRate)
   const total = invoice.total_amount ?? (subtotal + taxAmount)
