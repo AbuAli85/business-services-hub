@@ -229,43 +229,51 @@ export default function ClientInvoiceTemplatePage() {
       return
     }
 
-    // 1) Clone the node OFF-SCREEN
+    // 1. Clone the invoice template
     const clone = src.cloneNode(true) as HTMLElement
     clone.id = 'invoice-template-export'
     clone.classList.add('pdf-sheet')
-    clone.style.position = 'fixed'
-    clone.style.left = '-10000px'
+    clone.style.position = 'absolute'
+    clone.style.left = '-9999px'
     clone.style.top = '0'
+    clone.style.width = '210mm'
+    clone.style.minHeight = '297mm'
     document.body.appendChild(clone)
 
-    // 2) Export the clone
-    const opt = {
-      margin: 0,
-      filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
-      image: { type: 'jpeg', quality: 1 },
-      html2canvas: { scale: 3, useCORS: true, scrollY: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'avoid-all' }
-    }
+    // 2. Delay to allow styles/images to load
+    setTimeout(() => {
+      const opt = {
+        margin: 0,
+        filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          scrollY: 0, // prevents blank output
+          logging: true
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: 'avoid-all' }
+      }
 
-    toast.loading('Generating PDF...')
-    html2pdf()
-      .set(opt)
-      .from(clone)
-      .save()
-      .then(() => {
-        toast.dismiss()
-        toast.success('Invoice downloaded successfully!')
-      })
-      .catch((err) => {
-        toast.dismiss()
-        console.error('❌ PDF export error:', err)
-        toast.error('Failed to generate PDF')
-      })
-      .finally(() => {
-        // 3) Clean up
-        document.body.removeChild(clone)
-      })
+      toast.loading('Generating PDF...')
+      html2pdf()
+        .set(opt)
+        .from(clone)
+        .save()
+        .then(() => {
+          toast.dismiss()
+          toast.success('Invoice downloaded successfully!')
+        })
+        .catch((err) => {
+          toast.dismiss()
+          console.error('❌ PDF export error:', err)
+          toast.error('Failed to generate PDF')
+        })
+        .finally(() => {
+          document.body.removeChild(clone)
+        })
+    }, 500) // 👈 wait 0.5s before capture
   }
 
   const handlePayInvoice = () => {

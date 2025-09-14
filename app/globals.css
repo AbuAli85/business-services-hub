@@ -267,6 +267,19 @@
   print-color-adjust: exact;
 }
 
+/* Ensure images render correctly in PDFs */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* PDF-specific image optimization */
+.pdf-sheet img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
 /* Print stylesheet for PDF generation */
 @media print {
   body {
