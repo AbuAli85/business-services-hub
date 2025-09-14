@@ -220,7 +220,18 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const clientPhone = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
   const clientWebsite = (clientCompany as any)?.website ?? 'Website not provided'
   
-  addText(doc, `📞 ${clientPhone}`, billToX, currentY, { size: 10 })
+  // Format phone number for better display
+  let formattedPhone = clientPhone
+  if (clientPhone && clientPhone !== 'Phone not provided') {
+    // Add +968 prefix for Omani numbers if not already present
+    if (clientPhone.startsWith('9') && !clientPhone.startsWith('+968')) {
+      formattedPhone = `+968-${clientPhone}`
+    } else if (!clientPhone.startsWith('+')) {
+      formattedPhone = `+${clientPhone}`
+    }
+  }
+  
+  addText(doc, `📞 ${formattedPhone}`, billToX, currentY, { size: 10 })
   currentY += lineHeight
   
   addText(doc, `🌐 ${clientWebsite}`, billToX, currentY, { size: 10 })

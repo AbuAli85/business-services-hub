@@ -28,11 +28,11 @@ export async function GET(request: NextRequest) {
           phone: "95153930",
           company: [{
             id: "31741f22-7372-4f5f-9c3d-0fe7455b46dd",
-            name: "Fahad Alamri's Company",
-            address: "Muscat, Oman",
+            name: "falcon eye group",
+            address: "PO. Box 762, PC. 122, Al Khuwair, Muscat Grand Mall, Oman",
             phone: "95153930",
             email: "chairman@falconeyegroup.net",
-            website: "falconeyegroup.net",
+            website: "https://yourwebsite.com",
             logo_url: null
           }]
         },
