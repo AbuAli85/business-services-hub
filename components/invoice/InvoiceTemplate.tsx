@@ -17,9 +17,47 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
   })
   
   return (
-    <div className={`max-w-4xl mx-auto bg-white shadow-lg print:shadow-none ${className}`}>
+    <div className={`max-w-4xl mx-auto bg-white shadow-lg print:shadow-none relative ${className}`}>
+      {/* Logo Watermark - Professional and Subtle */}
+      {invoice.company.logo_url && !invoice.company.logo_url.includes('/logo.png') && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {/* Main centered watermark */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 opacity-5 print:opacity-3">
+            <img
+              src={invoice.company.logo_url}
+              alt="Company Logo Watermark"
+              className="w-full h-full object-contain filter grayscale"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+          {/* Additional subtle watermarks */}
+          <div className="absolute top-1/4 right-1/4 w-32 h-32 opacity-3 print:opacity-2">
+            <img
+              src={invoice.company.logo_url}
+              alt="Company Logo Watermark"
+              className="w-full h-full object-contain filter grayscale"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+          <div className="absolute bottom-1/4 left-1/4 w-24 h-24 opacity-3 print:opacity-2">
+            <img
+              src={invoice.company.logo_url}
+              alt="Company Logo Watermark"
+              className="w-full h-full object-contain filter grayscale"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+        </div>
+      )}
+      
       {/* Main Container with Blue Sidebar */}
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen relative z-10">
         {/* Blue Sidebar */}
         <div className="w-32 bg-blue-900 flex flex-col items-center py-8">
           {/* Company Logo Area */}

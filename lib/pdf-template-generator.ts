@@ -12,6 +12,7 @@ import {
   addRightAlignedText,
   getTextWidth,
   addLogo,
+  addWatermark,
   t
 } from '@/lib/utils/pdfHelpers'
 
@@ -383,6 +384,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       }
       if (i < terms.length - 1) ty += 4 // Increased spacing between paragraphs
   })
+
+  // Add watermark to PDF
+  const logoUrl = Array.isArray(invoice.booking?.service?.provider?.company)
+    ? (invoice.booking?.service?.provider?.company?.[0] as any)?.logo_url
+    : (invoice.booking?.service?.provider?.company as any)?.logo_url
+  await addWatermark(doc, logoUrl, pageWidth, pageHeight)
 
   return new Uint8Array(doc.output('arraybuffer'))
   } catch (err) {

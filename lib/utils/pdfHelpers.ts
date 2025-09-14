@@ -215,6 +215,55 @@ export async function addLogo(
   }
 }
 
+// Watermark helper - adds subtle logo watermark to PDF
+export async function addWatermark(
+  doc: jsPDF,
+  logoUrl: string | undefined,
+  pageWidth: number,
+  pageHeight: number
+): Promise<void> {
+  if (!logoUrl || logoUrl.includes('/logo.png')) {
+    return
+  }
+
+  try {
+    // Convert image to base64
+    const response = await fetch(logoUrl)
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const dataUrl = `data:image/png;base64,${base64}`
+    
+    // Save current graphics state
+    doc.saveGraphicsState()
+    
+    // Set opacity for watermark effect
+    doc.setGState(new (doc as any).GState({ opacity: 0.05 }))
+    
+    // Main centered watermark
+    const centerX = pageWidth / 2
+    const centerY = pageHeight / 2
+    const watermarkSize = 80
+    doc.addImage(
+      dataUrl, 
+      'PNG', 
+      centerX - watermarkSize / 2, 
+      centerY - watermarkSize / 2, 
+      watermarkSize, 
+      watermarkSize
+    )
+    
+    // Additional subtle watermarks
+    const smallSize = 20
+    doc.addImage(dataUrl, 'PNG', pageWidth - 60, 40, smallSize, smallSize)
+    doc.addImage(dataUrl, 'PNG', 20, pageHeight - 60, smallSize * 0.8, smallSize * 0.8)
+    
+    // Restore graphics state
+    doc.restoreGraphicsState()
+  } catch (error) {
+    console.warn('Failed to add watermark:', error)
+  }
+}
+
 // Translation dictionary
 export const translations = {
   en: {
