@@ -588,39 +588,51 @@ export default function ProviderInvoiceTemplatePage() {
               const booking = getBooking()
               const providerCompany = booking?.service?.provider?.company
               
-              console.log('🔍 Extracted provider company:', providerCompany)
+              // Handle case where company is an array
+              const companyData = Array.isArray(providerCompany) ? providerCompany[0] : providerCompany
+              
+              console.log('🔍 Extracted provider company:', companyData)
               
               return {
-                id: providerCompany?.id || '1',
-                name: providerCompany?.name || invoice.company_name || 'Your Company Name',
-                address: providerCompany?.address || '123 Anywhere St., Any City, ST 12345',
-                phone: providerCompany?.phone || '123-456-7890',
+                id: companyData?.id || '1',
+                name: companyData?.name || invoice.company_name || 'Your Company Name',
+                address: companyData?.address || '123 Anywhere St., Any City, ST 12345',
+                phone: companyData?.phone || '123-456-7890',
                 email: booking?.service?.provider?.email || 'hello@reallygreatsite.com',
-                website: providerCompany?.website || 'reallygreatsite.com',
-                logo_url: providerCompany?.logo_url || undefined,
+                website: companyData?.website || 'reallygreatsite.com',
+                logo_url: companyData?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               }
             })(),
-            client: {
-              id: invoice.client_id,
-              full_name: getClientName(),
-              email: getBooking()?.client?.email || invoice.client_email || 'client@company.com',
-              phone: getBooking()?.client?.phone || '+968-xxx-xxx',
-              company: {
-                id: getBooking()?.client?.company?.id || '2',
-                name: getBooking()?.client?.company?.name || 'Client Company',
-                address: getBooking()?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
-                phone: getBooking()?.client?.company?.phone || getBooking()?.client?.phone || '+968-xxx-xxx',
-                email: getBooking()?.client?.company?.email || getBooking()?.client?.email || 'client@company.com',
-                website: getBooking()?.client?.company?.website || 'clientcompany.com',
-                logo_url: getBooking()?.client?.company?.logo_url || undefined,
+            client: (() => {
+              const booking = getBooking()
+              const clientData = booking?.client
+              const clientCompany = clientData?.company
+              
+              // Handle case where company is an array
+              const companyData = Array.isArray(clientCompany) ? clientCompany[0] : clientCompany
+              
+              return {
+                id: invoice.client_id,
+                full_name: getClientName(),
+                email: clientData?.email || invoice.client_email || 'client@company.com',
+                phone: clientData?.phone || '+968-xxx-xxx',
+                company: {
+                  id: companyData?.id || '2',
+                  name: companyData?.name || 'Client Company',
+                  address: companyData?.address || '123 Anywhere St., Any City, ST 12345',
+                  phone: companyData?.phone || clientData?.phone || '+968-xxx-xxx',
+                  email: companyData?.email || clientData?.email || 'client@company.com',
+                  website: companyData?.website || 'clientcompany.com',
+                  logo_url: companyData?.logo_url || undefined,
+                  created_at: invoice.created_at,
+                  updated_at: invoice.updated_at
+                },
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
-              },
-              created_at: invoice.created_at,
-              updated_at: invoice.updated_at
-            },
+              }
+            })(),
             items: [{
               id: '1',
               invoice_id: invoice.id,

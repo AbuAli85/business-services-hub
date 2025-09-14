@@ -140,18 +140,42 @@ SET
     invoice_number = COALESCE(invoice_number, 'INV-' || UPPER(SUBSTRING(id::text, 1, 8)))
 WHERE total_amount IS NULL OR due_date IS NULL OR invoice_number IS NULL;
 
--- Add foreign key constraints to ensure data integrity
-ALTER TABLE public.invoices 
-ADD CONSTRAINT fk_invoices_booking 
-    FOREIGN KEY (booking_id) REFERENCES public.bookings(id) ON DELETE CASCADE;
+-- Add foreign key constraints to ensure data integrity (only if they don't exist)
+DO $$ 
+BEGIN
+    -- Add booking foreign key constraint if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_invoices_booking' 
+        AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE public.invoices 
+        ADD CONSTRAINT fk_invoices_booking 
+            FOREIGN KEY (booking_id) REFERENCES public.bookings(id) ON DELETE CASCADE;
+    END IF;
 
-ALTER TABLE public.invoices 
-ADD CONSTRAINT fk_invoices_provider 
-    FOREIGN KEY (provider_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    -- Add provider foreign key constraint if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_invoices_provider' 
+        AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE public.invoices 
+        ADD CONSTRAINT fk_invoices_provider 
+            FOREIGN KEY (provider_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
 
-ALTER TABLE public.invoices 
-ADD CONSTRAINT fk_invoices_client 
-    FOREIGN KEY (client_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    -- Add client foreign key constraint if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_invoices_client' 
+        AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE public.invoices 
+        ADD CONSTRAINT fk_invoices_client 
+            FOREIGN KEY (client_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Add comments for documentation
 COMMENT ON TABLE public.invoices IS 'Invoices table with secure RLS policies ensuring proper provider-client relationships';
@@ -160,17 +184,39 @@ COMMENT ON POLICY "Provider creates invoices" ON invoices IS 'Only providers can
 COMMENT ON POLICY "Secure invoice updates" ON invoices IS 'Providers can update their own invoices, clients have limited update access';
 COMMENT ON POLICY "Provider deletes invoices" ON invoices IS 'Only providers and admins can delete invoices';
 
--- Add validation to ensure provider and client are different
-ALTER TABLE public.invoices 
-ADD CONSTRAINT check_provider_client_different 
-    CHECK (provider_id != client_id);
+-- Add validation constraints (only if they don't exist)
+DO $$ 
+BEGIN
+    -- Add provider-client different constraint if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_provider_client_different' 
+        AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE public.invoices 
+        ADD CONSTRAINT check_provider_client_different 
+            CHECK (provider_id != client_id);
+    END IF;
 
--- Add validation to ensure invoice amount is positive
-ALTER TABLE public.invoices 
-ADD CONSTRAINT check_positive_amount 
-    CHECK (amount > 0);
+    -- Add positive amount constraint if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_positive_amount' 
+        AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE public.invoices 
+        ADD CONSTRAINT check_positive_amount 
+            CHECK (amount > 0);
+    END IF;
 
--- Add validation to ensure total_amount is not less than amount
-ALTER TABLE public.invoices 
-ADD CONSTRAINT check_total_amount_valid 
-    CHECK (total_amount IS NULL OR total_amount >= amount);
+    -- Add total amount valid constraint if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_total_amount_valid' 
+        AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE public.invoices 
+        ADD CONSTRAINT check_total_amount_valid 
+            CHECK (total_amount IS NULL OR total_amount >= amount);
+    END IF;
+END $$;
