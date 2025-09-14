@@ -259,51 +259,105 @@ export default function ClientInvoiceTemplatePage() {
       // Dynamic import to avoid SSR issues
       const html2pdf = (await import('html2pdf.js')).default
 
+      toast.loading('Preparing PDF...')
+
       // 1. Clone the invoice template
       const clone = src.cloneNode(true) as HTMLElement
       clone.id = 'invoice-template-export'
       clone.classList.add('pdf-sheet')
-      clone.style.position = 'absolute'
+      
+      // Position clone off-screen but visible for rendering
+      clone.style.position = 'fixed'
       clone.style.left = '-9999px'
       clone.style.top = '0'
       clone.style.width = '210mm'
       clone.style.minHeight = '297mm'
+      clone.style.zIndex = '-1'
+      clone.style.opacity = '0'
+      
       document.body.appendChild(clone)
 
-      // 2. Delay to allow styles/images to load
-      setTimeout(() => {
-        const opt = {
-          margin: 0,
-          filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
-          image: { type: 'jpeg', quality: 1 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            scrollY: 0, // prevents blank output
-            logging: true
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: 'avoid-all' }
+      // 2. Wait for clone to be fully rendered
+      await new Promise(resolve => {
+        // Force a reflow to ensure the clone is rendered
+        clone.offsetHeight
+        
+        // Wait for images to load
+        const images = clone.querySelectorAll('img')
+        if (images.length === 0) {
+          setTimeout(resolve, 1000) // Wait 1 second if no images
+        } else {
+          let loadedImages = 0
+          const totalImages = images.length
+          
+          const checkComplete = () => {
+            loadedImages++
+            if (loadedImages === totalImages) {
+              setTimeout(resolve, 500) // Additional 500ms after all images load
+            }
+          }
+          
+          images.forEach(img => {
+            if (img.complete) {
+              checkComplete()
+            } else {
+              img.onload = checkComplete
+              img.onerror = checkComplete
+            }
+          })
         }
+      })
 
-        toast.loading('Generating PDF...')
-        html2pdf()
-          .set(opt)
-          .from(clone)
-          .save()
-          .then(() => {
-            toast.dismiss()
-            toast.success('Invoice downloaded successfully!')
-          })
-          .catch((err) => {
-            toast.dismiss()
-            console.error('❌ PDF export error:', err)
-            toast.error('Failed to generate PDF')
-          })
-          .finally(() => {
+      console.log('🔍 Clone ready for PDF generation')
+      console.log('🔍 Clone dimensions:', {
+        width: clone.offsetWidth,
+        height: clone.offsetHeight,
+        scrollWidth: clone.scrollWidth,
+        scrollHeight: clone.scrollHeight
+      })
+
+      const opt = {
+        margin: 0,
+        filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          scrollY: 0,
+          logging: true,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: 'avoid-all' }
+      }
+
+      toast.loading('Generating PDF...')
+      
+      html2pdf()
+        .set(opt)
+        .from(clone)
+        .save()
+        .then(() => {
+          toast.dismiss()
+          toast.success('Invoice downloaded successfully!')
+        })
+        .catch((err) => {
+          toast.dismiss()
+          console.error('❌ PDF export error:', err)
+          toast.error('Failed to generate PDF')
+        })
+        .finally(() => {
+          // Clean up
+          if (document.body.contains(clone)) {
             document.body.removeChild(clone)
-          })
-      }, 500) // 👈 wait 0.5s before capture
+          }
+        })
     } catch (error) {
       console.error('❌ Failed to load html2pdf:', error)
       toast.error('Failed to load PDF generator')

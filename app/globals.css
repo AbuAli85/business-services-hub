@@ -251,14 +251,16 @@
 
 /* PDF-only sheet applied to the CLONED node during export */
 .pdf-sheet {
-  width: 210mm;           /* A4 width */
-  min-height: 297mm;      /* A4 height */
-  margin: 0;
-  padding: 12mm 14mm;     /* adjust if you want narrower/wider margins */
-  background: #fff;
-  box-sizing: border-box;
-  position: relative;
-  overflow: hidden;       /* prevent spill that causes extra page */
+  width: 210mm !important;           /* A4 width */
+  min-height: 297mm !important;      /* A4 height */
+  margin: 0 !important;
+  padding: 12mm 14mm !important;     /* adjust if you want narrower/wider margins */
+  background: #fff !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  overflow: hidden !important;       /* prevent spill that causes extra page */
+  display: block !important;
+  visibility: visible !important;
 }
 
 /* ensure colors render in PDF/print */
