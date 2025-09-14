@@ -91,7 +91,45 @@ interface InvoiceData {
         logo_url?: string
       }
     }
-  }
+  } | {
+    id: string
+    status: string
+    service?: {
+      id: string
+      title: string
+      description: string
+      provider?: {
+        id: string
+        full_name: string
+        email: string
+        phone: string
+        company?: {
+          id: string
+          name: string
+          address: string
+          phone: string
+          email: string
+          website: string
+          logo_url?: string
+        }
+      }
+    }
+    client?: {
+      id: string
+      full_name: string
+      email: string
+      phone: string
+      company?: {
+        id: string
+        name: string
+        address: string
+        phone: string
+        email: string
+        website: string
+        logo_url?: string
+      }
+    }
+  }[]
 }
 
 export default function ProviderInvoiceTemplatePage() {
@@ -224,14 +262,23 @@ export default function ProviderInvoiceTemplatePage() {
         return
       }
 
-      console.log('🔍 Provider company data:', invoiceData.booking?.service?.provider?.company)
-      console.log('🔍 Client company data:', invoiceData.booking?.client?.company)
-      console.log('🔍 Provider data:', invoiceData.booking?.service?.provider)
+      console.log('🔍 Provider company data:', Array.isArray(invoiceData.booking) ? invoiceData.booking[0]?.service?.provider?.company : invoiceData.booking?.service?.provider?.company)
+      console.log('🔍 Client company data:', Array.isArray(invoiceData.booking) ? invoiceData.booking[0]?.client?.company : invoiceData.booking?.client?.company)
+      console.log('🔍 Provider data:', Array.isArray(invoiceData.booking) ? invoiceData.booking[0]?.service?.provider : invoiceData.booking?.service?.provider)
 
       setInvoice(invoiceData)
+      
+      // Helper to get booking data safely
+      const getBookingData = () => {
+        if (!invoiceData.booking) return null
+        return Array.isArray(invoiceData.booking) ? invoiceData.booking[0] : invoiceData.booking
+      }
+      
+      const booking = getBookingData()
+      
       setEditData({
-        service_title: invoiceData.service_title || invoiceData.booking?.service?.title,
-        service_description: invoiceData.service_description || invoiceData.booking?.service?.description,
+        service_title: invoiceData.service_title || booking?.service?.title,
+        service_description: invoiceData.service_description || booking?.service?.description,
         notes: invoiceData.notes,
         payment_terms: invoiceData.payment_terms,
         subtotal: invoiceData.subtotal || invoiceData.amount,
@@ -254,9 +301,10 @@ export default function ProviderInvoiceTemplatePage() {
 
   const handleCancel = () => {
     setIsEditing(false)
+    const booking = getBooking()
     setEditData({
-      service_title: invoice?.service_title || invoice?.booking?.service?.title,
-      service_description: invoice?.service_description || invoice?.booking?.service?.description,
+      service_title: invoice?.service_title || booking?.service?.title,
+      service_description: invoice?.service_description || booking?.service?.description,
       notes: invoice?.notes,
       payment_terms: invoice?.payment_terms,
       subtotal: invoice?.subtotal || invoice?.amount,
@@ -383,31 +431,41 @@ export default function ProviderInvoiceTemplatePage() {
     }
   }
 
+  // Helper functions to safely access booking data
+  const getBooking = () => {
+    if (!invoice?.booking) return null
+    return Array.isArray(invoice.booking) ? invoice.booking[0] : invoice.booking
+  }
+
   const getClientName = () => {
-    return invoice?.booking?.client?.full_name || 
-           invoice?.booking?.client?.company?.name || 
+    const booking = getBooking()
+    return booking?.client?.full_name || 
+           booking?.client?.company?.name || 
            invoice?.client_name || 
            'Client Information'
   }
 
   const getProviderName = () => {
-    return invoice?.booking?.service?.provider?.full_name || 
-           invoice?.booking?.service?.provider?.company?.name || 
+    const booking = getBooking()
+    return booking?.service?.provider?.full_name || 
+           booking?.service?.provider?.company?.name || 
            invoice?.provider_name || 
            'Service Provider'
   }
 
   const getServiceTitle = () => {
+    const booking = getBooking()
     return editData.service_title || 
            invoice?.service_title || 
-           invoice?.booking?.service?.title || 
+           booking?.service?.title || 
            'Service Title'
   }
 
   const getServiceDescription = () => {
+    const booking = getBooking()
     return editData.service_description || 
            invoice?.service_description || 
-           invoice?.booking?.service?.description || 
+           booking?.service?.description || 
            'Service Description'
   }
 
@@ -604,9 +662,8 @@ export default function ProviderInvoiceTemplatePage() {
             created_at: invoice.created_at,
             updated_at: invoice.updated_at,
             company: (() => {
-              const providerCompany = Array.isArray(invoice.booking?.service?.provider?.company) 
-                ? invoice.booking?.service?.provider?.company?.[0] 
-                : invoice.booking?.service?.provider?.company
+              const booking = getBooking()
+              const providerCompany = booking?.service?.provider?.company
               
               console.log('🔍 Extracted provider company:', providerCompany)
               
@@ -615,7 +672,7 @@ export default function ProviderInvoiceTemplatePage() {
                 name: providerCompany?.name || invoice.company_name || 'Your Company Name',
                 address: providerCompany?.address || '123 Anywhere St., Any City, ST 12345',
                 phone: providerCompany?.phone || '123-456-7890',
-                email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
+                email: booking?.service?.provider?.email || 'hello@reallygreatsite.com',
                 website: providerCompany?.website || 'reallygreatsite.com',
                 logo_url: providerCompany?.logo_url || undefined,
                 created_at: invoice.created_at,
@@ -625,30 +682,16 @@ export default function ProviderInvoiceTemplatePage() {
             client: {
               id: invoice.client_id,
               full_name: getClientName(),
-              email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
-              phone: (invoice.booking?.client as any)?.phone || '+968-xxx-xxx',
+              email: getBooking()?.client?.email || invoice.client_email || 'client@company.com',
+              phone: getBooking()?.client?.phone || '+968-xxx-xxx',
               company: {
-                id: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.id 
-                  : invoice.booking?.client?.company?.id) || '2',
-                name: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.name 
-                  : invoice.booking?.client?.company?.name) || 'Client Company',
-                address: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.address 
-                  : invoice.booking?.client?.company?.address) || '123 Anywhere St., Any City, ST 12345',
-                phone: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.phone 
-                  : invoice.booking?.client?.company?.phone) || (invoice.booking?.client as any)?.phone || '+968-xxx-xxx',
-                email: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.email 
-                  : invoice.booking?.client?.company?.email) || invoice.booking?.client?.email || 'client@company.com',
-                website: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.website 
-                  : invoice.booking?.client?.company?.website) || 'clientcompany.com',
-                logo_url: (Array.isArray(invoice.booking?.client?.company) 
-                  ? invoice.booking?.client?.company?.[0]?.logo_url 
-                  : invoice.booking?.client?.company?.logo_url) || undefined,
+                id: getBooking()?.client?.company?.id || '2',
+                name: getBooking()?.client?.company?.name || 'Client Company',
+                address: getBooking()?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
+                phone: getBooking()?.client?.company?.phone || getBooking()?.client?.phone || '+968-xxx-xxx',
+                email: getBooking()?.client?.company?.email || getBooking()?.client?.email || 'client@company.com',
+                website: getBooking()?.client?.company?.website || 'clientcompany.com',
+                logo_url: getBooking()?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               },

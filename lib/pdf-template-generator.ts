@@ -116,7 +116,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     addText(doc, t('billTo', locale), rightX, yRight, { size: 14, color: templateColors.primary, weight: 'bold' })
     yRight += lineHeight + 2
 
-    const client = invoice.booking?.client
+  const client = invoice.booking?.client
     const clientCompany = Array.isArray(client?.company) ? client?.company?.[0] : client?.company
     const clientName = client?.full_name ?? 'Client Name'
     const clientCompanyName =
