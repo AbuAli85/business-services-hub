@@ -92,14 +92,14 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       providerName, 
       mainContentX, 
       yPosition, 
-      { size: 20, weight: 'bold' }
+      { size: 22, weight: 'bold' }
     )
-    yPosition += lineHeight + 4
+    yPosition += lineHeight + 6
   } catch (textError) {
     console.warn('⚠️ PDF Generator - Provider name text failed:', textError)
     // Add fallback text
-    addText(doc, 'Provider Name', mainContentX, yPosition, { size: 20, weight: 'bold' })
-    yPosition += lineHeight + 4
+    addText(doc, 'Provider Name', mainContentX, yPosition, { size: 22, weight: 'bold' })
+    yPosition += lineHeight + 6
   }
 
   // Contact information with icons
@@ -112,13 +112,13 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   contactInfo.forEach(info => {
     try {
-      addText(doc, info.icon, mainContentX, yPosition, { size: 10 })
-      addText(doc, info.text, mainContentX + 6, yPosition, { size: 10, color: templateColors.lightText })
-      yPosition += lineHeight
+      addText(doc, info.icon, mainContentX, yPosition, { size: 11 })
+      addText(doc, info.text, mainContentX + 8, yPosition, { size: 11, color: templateColors.lightText })
+      yPosition += lineHeight + 2
     } catch (textError) {
       console.warn('⚠️ PDF Generator - Text rendering failed:', textError)
       // Continue with next item
-      yPosition += lineHeight
+      yPosition += lineHeight + 2
     }
   })
 
@@ -126,16 +126,16 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Invoice title and number (right aligned)
   const invoiceTitleX = pageWidth - margin - 60
-  addText(doc, t('invoice', locale), invoiceTitleX, margin, { size: 24, color: templateColors.primary, weight: 'bold' })
+  addText(doc, t('invoice', locale), invoiceTitleX, margin, { size: 28, color: templateColors.primary, weight: 'bold' })
   addText(
     doc, 
     `${t('invoiceNumber', locale)}: #${invoice.invoice_number || invoice.id.slice(-8)}`, 
     invoiceTitleX, 
-    margin + lineHeight + 2, 
-    { size: 12, color: templateColors.text, weight: 'bold' }
+    margin + lineHeight + 4, 
+    { size: 14, color: templateColors.text, weight: 'bold' }
   )
 
-  yPosition = margin + 50
+  yPosition = margin + 60
 
   // Dates and Bill To section
   const datesX = mainContentX
@@ -143,13 +143,13 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Dates - use English format for better readability
   const formattedDate = formatDate(invoice.created_at, 'en-US')
-  addText(doc, `${t('date', locale)}: ${formattedDate}`, datesX, yPosition, { size: 8 })
+  addText(doc, `${t('date', locale)}: ${formattedDate}`, datesX, yPosition, { size: 10, weight: 'bold' })
   if (invoice.due_date) {
-    addText(doc, `${t('dueDate', locale)}: ${formatDate(invoice.due_date, locale)}`, datesX, yPosition + lineHeight, { size: 8 })
+    addText(doc, `${t('dueDate', locale)}: ${formatDate(invoice.due_date, locale)}`, datesX, yPosition + lineHeight + 2, { size: 10, weight: 'bold' })
   }
 
   // Bill To
-  addText(doc, t('billTo', locale), billToX, yPosition, { size: 16, color: templateColors.primary, weight: 'bold' })
+  addText(doc, t('billTo', locale), billToX, yPosition, { size: 18, color: templateColors.primary, weight: 'bold' })
 
   // Client information
   const client = invoice.booking?.client
@@ -157,6 +157,13 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const clientCompany = Array.isArray(client?.company) 
     ? client?.company?.[0] 
     : client?.company
+  
+  console.log('🔍 PDF Generator - Raw client data:', {
+    client: client,
+    clientCompany: clientCompany,
+    clientCompanyType: typeof clientCompany,
+    isArray: Array.isArray(client?.company)
+  })
   
   // Debug client data
   console.log('🔍 PDF Generator - Client data:', {
@@ -172,8 +179,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     doc,
     client?.full_name ?? 'Client Name',
     billToX, 
-    yPosition + lineHeight + 2, 
-    { size: 12, weight: 'bold' }
+    yPosition + lineHeight + 4, 
+    { size: 14, weight: 'bold' }
   )
 
   // Client company name
@@ -181,8 +188,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     doc,
     (clientCompany as any)?.name ?? 'Client Company',
     billToX, 
-    yPosition + lineHeight * 2 + 2, 
-    { size: 12, weight: 'bold' }
+    yPosition + lineHeight * 2 + 4, 
+    { size: 14, weight: 'bold' }
   )
 
   // Client company address
@@ -212,8 +219,8 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     doc,
     addressText,
     billToX, 
-    yPosition + lineHeight * 3 + 2, 
-    { size: 10 }
+    yPosition + lineHeight * 3 + 4, 
+    { size: 11 }
   )
 
   // Client email
@@ -221,12 +228,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     doc,
     (clientCompany as any)?.email ?? client?.email ?? 'Email not provided',
     billToX, 
-    yPosition + lineHeight * 4 + 2, 
-    { size: 10 }
+    yPosition + lineHeight * 4 + 4, 
+    { size: 11 }
   )
 
   // Optional: phone & website if available
-  let currentY = yPosition + lineHeight * 5 + 2
+  let currentY = yPosition + lineHeight * 5 + 4
   const clientPhone = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
   const clientWebsite = (clientCompany as any)?.website ?? 'Website not provided'
   
@@ -241,10 +248,10 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     }
   }
   
-  addText(doc, `📞 ${formattedPhone}`, billToX, currentY, { size: 10 })
-  currentY += lineHeight
+  addText(doc, `📞 ${formattedPhone}`, billToX, currentY, { size: 11 })
+  currentY += lineHeight + 2
   
-  addText(doc, `🌐 ${clientWebsite}`, billToX, currentY, { size: 10 })
+  addText(doc, `🌐 ${clientWebsite}`, billToX, currentY, { size: 11 })
   currentY += lineHeight
 
   // Update yPosition based on how many lines we actually added
@@ -252,17 +259,17 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
 
   // Services table
   const tableX = mainContentX
-  const tableWidth = contentWidth - 30
-  const colWidths = [15, 60, 20, 25, 25]
+  const tableWidth = contentWidth - 20
+  const colWidths = [15, 65, 20, 25, 25]
   const colPositions = [tableX, tableX + colWidths[0], tableX + colWidths[0] + colWidths[1], tableX + colWidths[0] + colWidths[1] + colWidths[2], tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]]
-  const rowHeight = 14
+  const rowHeight = 16
 
   // Table headers
   const headers = [t('item', locale), t('description', locale), t('qtyHour', locale), t('rate', locale), t('total', locale)]
   addRect(doc, tableX, yPosition, tableWidth, rowHeight, templateColors.background, templateColors.border)
   
   headers.forEach((header, index) => {
-    addText(doc, header, colPositions[index] + 2, yPosition + 8, { size: 11, color: templateColors.primary, weight: 'bold' })
+    addText(doc, header, colPositions[index] + 3, yPosition + 10, { size: 12, color: templateColors.primary, weight: 'bold' })
   })
 
   yPosition += rowHeight
@@ -303,22 +310,22 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       addLine(doc, tableX, rowY + rowHeight, tableX + tableWidth, rowY + rowHeight, templateColors.border)
       
       // Row content
-      addText(doc, String(index + 1).padStart(2, '0'), colPositions[0] + 2, rowY + 8, { size: 11 })
+      addText(doc, String(index + 1).padStart(2, '0'), colPositions[0] + 3, rowY + 10, { size: 12 })
       
       // Product name
-      addText(doc, item.product || 'Service', colPositions[1] + 2, rowY + 8, { size: 11, weight: 'bold' })
+      addText(doc, item.product || 'Service', colPositions[1] + 3, rowY + 10, { size: 12, weight: 'bold' })
       
       // Description with text wrapping
-      const wrappedDesc = wrapText(doc, item.description || '-', colWidths[1] - 4)
+      const wrappedDesc = wrapText(doc, item.description || '-', colWidths[1] - 6)
       if (Array.isArray(wrappedDesc)) {
-        doc.text(wrappedDesc, colPositions[1] + 2, rowY + 8)
+        doc.text(wrappedDesc, colPositions[1] + 3, rowY + 10)
       } else {
-        addText(doc, wrappedDesc, colPositions[1] + 2, rowY + 8, { size: 11 })
+        addText(doc, wrappedDesc, colPositions[1] + 3, rowY + 10, { size: 12 })
       }
       
-      addText(doc, String(item.qty || 1), colPositions[2] + 2, rowY + 8, { size: 11 })
-      addText(doc, formatCurrency(item.unit_price || 0, currency), colPositions[3] + 2, rowY + 8, { size: 11 })
-      addText(doc, formatCurrency(item.total || 0, currency), colPositions[4] + 2, rowY + 8, { size: 11, weight: 'bold' })
+      addText(doc, String(item.qty || 1), colPositions[2] + 3, rowY + 10, { size: 12 })
+      addText(doc, formatCurrency(item.unit_price || 0, currency), colPositions[3] + 3, rowY + 10, { size: 12 })
+      addText(doc, formatCurrency(item.total || 0, currency), colPositions[4] + 3, rowY + 10, { size: 12, weight: 'bold' })
     })
 
     yPosition += (items.length * rowHeight)
@@ -345,19 +352,19 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     getTextWidth(doc, totalText, { size: 10, weight: 'bold' })
   ) - 10
 
-  addText(doc, t('subtotal', locale), labelX, yPosition, { size: 12, weight: 'bold' })
-  addRightAlignedText(doc, subtotalText, rightAlignX, yPosition, { size: 12, weight: 'bold' })
-  yPosition += lineHeight
+  addText(doc, t('subtotal', locale), labelX, yPosition, { size: 13, weight: 'bold' })
+  addRightAlignedText(doc, subtotalText, rightAlignX, yPosition, { size: 13, weight: 'bold' })
+  yPosition += lineHeight + 2
 
-  addText(doc, `${t('tax', locale)} (${(taxRate * 100).toFixed(1)}%)`, labelX, yPosition, { size: 12, weight: 'bold' })
-  addRightAlignedText(doc, taxText, rightAlignX, yPosition, { size: 12, weight: 'bold' })
-  yPosition += lineHeight
+  addText(doc, `${t('tax', locale)} (${(taxRate * 100).toFixed(1)}%)`, labelX, yPosition, { size: 13, weight: 'bold' })
+  addRightAlignedText(doc, taxText, rightAlignX, yPosition, { size: 13, weight: 'bold' })
+  yPosition += lineHeight + 2
 
   addLine(doc, labelX, yPosition, rightAlignX, yPosition, templateColors.border)
-  yPosition += lineHeight
+  yPosition += lineHeight + 2
 
-  addText(doc, t('totalAmountDue', locale), labelX, yPosition, { size: 14, weight: 'bold' })
-  addRightAlignedText(doc, totalText, rightAlignX, yPosition, { size: 14, weight: 'bold' })
+  addText(doc, t('totalAmountDue', locale), labelX, yPosition, { size: 16, weight: 'bold' })
+  addRightAlignedText(doc, totalText, rightAlignX, yPosition, { size: 16, weight: 'bold' })
 
   yPosition += lineHeight * 6
 
