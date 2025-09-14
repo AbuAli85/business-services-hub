@@ -106,7 +106,7 @@ export default function ProviderInvoicesPage() {
           provider_id,
           client_id,
           booking_id,
-          booking:bookings(
+          booking:bookings!invoices_booking_id_fkey(
             id,
             status,
             client:profiles!bookings_client_id_fkey(

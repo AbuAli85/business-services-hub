@@ -153,7 +153,7 @@ export default function ClientInvoiceTemplatePage() {
           payment_terms,
           created_at,
           updated_at,
-          booking:bookings(
+          booking:bookings!invoices_booking_id_fkey(
             id,
             status,
             requirements,

@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
             logo_url
           )
         ),
-        booking:bookings(
+        booking:bookings!invoices_booking_id_fkey(
           id,
           status,
           requirements,

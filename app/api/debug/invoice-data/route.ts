@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       .from('invoices')
       .select(`
         *,
-        booking:bookings(
+        booking:bookings!invoices_booking_id_fkey(
           id,
           status,
           requirements,

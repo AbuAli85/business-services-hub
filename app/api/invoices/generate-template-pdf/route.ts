@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       .from('invoices')
       .select(`
         *,
-        booking:bookings(
+        booking:bookings!invoices_booking_id_fkey(
           id,
           status,
           requirements,

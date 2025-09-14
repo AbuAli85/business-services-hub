@@ -69,7 +69,7 @@ export async function GET(
           email,
           company:companies(id, name, address, phone, email, logo_url, vat_number, cr_number)
         ),
-        booking:bookings(
+        booking:bookings!invoices_booking_id_fkey(
           id,
           service:services(title, description, price)
         )

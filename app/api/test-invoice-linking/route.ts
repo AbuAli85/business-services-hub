@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         provider_id,
         client_id,
         booking_id,
-        booking:bookings(
+        booking:bookings!invoices_booking_id_fkey(
           id,
           status,
           provider:profiles!bookings_provider_id_fkey(
