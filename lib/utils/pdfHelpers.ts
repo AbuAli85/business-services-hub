@@ -32,15 +32,18 @@ export const layout: PDFLayout = {
 }
 
 // Safe text function to fix encoding issues
-export const safeText = (text?: string | null): string => {
+export const safeText = (text?: any): string => {
   if (!text) return ''
   
+  // Ensure text is always a string
+  const textString = String(text)
+  
   // Check if normalize is available, fallback to basic string cleaning
-  if (typeof text.normalize === 'function') {
-    return text.normalize('NFC').replace(/[^\x00-\x7F]/g, '')
+  if (typeof textString.normalize === 'function') {
+    return textString.normalize('NFC').replace(/[^\x00-\x7F]/g, '')
   } else {
     // Fallback for environments where normalize is not available
-    return text.replace(/[^\x00-\x7F]/g, '')
+    return textString.replace(/[^\x00-\x7F]/g, '')
   }
 }
 
@@ -152,26 +155,27 @@ export function addRect(
 }
 
 // Text wrapping helper
-export function wrapText(doc: jsPDF, text: string, maxWidth: number): string[] {
-  return doc.splitTextToSize(text || '', maxWidth)
+export function wrapText(doc: jsPDF, text: any, maxWidth: number): string[] {
+  const textString = String(text || '')
+  return doc.splitTextToSize(textString, maxWidth)
 }
 
 // Right-align text helper
 export function addRightAlignedText(
   doc: jsPDF,
-  text: string,
+  text: any,
   x: number,
   y: number,
   options: { size?: number; weight?: string; color?: [number, number, number] } = {}
 ) {
-  addText(doc, text, x, y, { ...options, align: 'right' })
+  addText(doc, String(text || ''), x, y, { ...options, align: 'right' })
 }
 
 // Calculate text width
-export function getTextWidth(doc: jsPDF, text: string, options: { size?: number; weight?: string } = {}): number {
+export function getTextWidth(doc: jsPDF, text: any, options: { size?: number; weight?: string } = {}): number {
   doc.setFontSize(options.size || typography.body.size)
   doc.setFont('helvetica', options.weight || typography.body.weight)
-  return doc.getTextWidth(text)
+  return doc.getTextWidth(String(text || ''))
 }
 
 // Logo/image helper

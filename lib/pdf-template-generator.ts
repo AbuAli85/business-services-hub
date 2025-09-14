@@ -267,7 +267,11 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       
       // Description with text wrapping
       const wrappedDesc = wrapText(doc, item.description || '-', colWidths[1] - 4)
-      doc.text(wrappedDesc, colPositions[1] + 2, rowY + 6)
+      if (Array.isArray(wrappedDesc)) {
+        doc.text(wrappedDesc, colPositions[1] + 2, rowY + 6)
+      } else {
+        addText(doc, wrappedDesc, colPositions[1] + 2, rowY + 6, { size: 8 })
+      }
       
       addText(doc, String(item.qty || 1), colPositions[2] + 2, rowY + 6, { size: 8 })
       addText(doc, formatCurrency(item.unit_price || 0, currency), colPositions[3] + 2, rowY + 6, { size: 8 })
@@ -334,8 +338,13 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   let termsY = footerY + 6
   termsText.forEach(term => {
     const wrappedTerms = wrapText(doc, term, 70)
-    doc.text(wrappedTerms, termsX, termsY)
-    termsY += wrappedTerms.length * 3
+    if (Array.isArray(wrappedTerms)) {
+      doc.text(wrappedTerms, termsX, termsY)
+      termsY += wrappedTerms.length * 3
+    } else {
+      addText(doc, wrappedTerms, termsX, termsY, { size: 8 })
+      termsY += 3
+    }
   })
 
   return new Uint8Array(doc.output('arraybuffer'))
