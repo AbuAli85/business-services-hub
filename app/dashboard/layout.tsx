@@ -24,8 +24,10 @@ import {
   BarChart3,
   FileText,
   DollarSign,
-  Bell
+  Bell,
+  Receipt
 } from 'lucide-react'
+import { getRoleBasedNavigation, getQuickActions, getInvoiceSubNavigation } from '@/components/navigation/role-based-navigation'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
 import { SessionManager } from '@/components/ui/session-manager'
@@ -269,48 +271,15 @@ export default function DashboardLayout({
   }
 
   const getNavigationItems = () => {
-    if (!user || !user.role) return []
+    return getRoleBasedNavigation(user)
+  }
 
-    const baseItems = [
-      { name: 'Dashboard', href: '/dashboard', icon: Home },
-      { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
-      { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
-      { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
-      { name: 'Profile', href: '/dashboard/profile', icon: User },
-      { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-    ]
+  const getQuickActionsItems = () => {
+    return getQuickActions(user)
+  }
 
-    if (user.role === 'admin') {
-      baseItems.splice(1, 0, 
-        { name: 'Services', href: '/dashboard/services', icon: Briefcase },
-        { name: 'Suggestions', href: '/dashboard/suggestions', icon: Package },
-        { name: 'Users', href: '/dashboard/admin/users', icon: Users },
-        { name: 'Permissions', href: '/dashboard/admin/permissions', icon: Settings },
-        { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
-        { name: 'Reports', href: '/dashboard/admin/reports', icon: FileText },
-        { name: 'Invoices', href: '/dashboard/admin/invoices', icon: DollarSign }
-      )
-    }
-
-    if (user.role === 'provider') {
-      baseItems.splice(1, 0, 
-        { name: 'My Services', href: `/dashboard/services`, icon: Building2 },
-        { name: 'Company', href: '/dashboard/company', icon: Building2 },
-        { name: 'Earnings', href: `/dashboard/provider/earnings`, icon: BarChart3 },
-        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
-      )
-      // Update dashboard link to use dynamic route
-      baseItems[0] = { name: 'Dashboard', href: `/dashboard/provider/${user.id}`, icon: Home }
-    }
-
-    if (user.role === 'client') {
-      baseItems.splice(1, 0, 
-        { name: 'Services', href: '/dashboard/services', icon: Briefcase },
-        { name: 'Invoices', href: `/dashboard/invoices`, icon: FileText }
-      )
-    }
-
-    return baseItems
+  const getInvoiceSubNavItems = () => {
+    return getInvoiceSubNavigation(user)
   }
 
   if (loading) {

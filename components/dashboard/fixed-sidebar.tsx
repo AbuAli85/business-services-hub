@@ -16,7 +16,8 @@ import {
   X,
   User,
   BarChart3,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react'
 
 interface FixedSidebarProps {
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'My Services', href: '/dashboard/services', icon: Briefcase },
   { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
   { name: 'Earnings', href: '/dashboard/provider/earnings', icon: DollarSign },
+  { name: 'My Invoices', href: '/dashboard/provider/invoices', icon: FileText },
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
