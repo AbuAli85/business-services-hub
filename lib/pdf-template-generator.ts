@@ -177,9 +177,30 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   )
 
   // Client company address
+  // Client address - handle both string and object formats
+  const clientAddress = (clientCompany as any)?.address
+  let addressText = 'Address not provided'
+  
+  if (typeof clientAddress === 'string' && clientAddress.trim()) {
+    addressText = clientAddress
+  } else if (clientAddress && typeof clientAddress === 'object') {
+    // Try to extract meaningful address parts from object
+    if (clientAddress.street) {
+      addressText = clientAddress.street
+      if (clientAddress.city) addressText += `, ${clientAddress.city}`
+      if (clientAddress.country) addressText += `, ${clientAddress.country}`
+    } else if (clientAddress.address) {
+      addressText = clientAddress.address
+    } else {
+      // Fallback to a clean string representation
+      const cleanAddress = Object.values(clientAddress).filter(v => v && typeof v === 'string').join(', ')
+      addressText = cleanAddress || 'Address not provided'
+    }
+  }
+  
   addText(
     doc,
-    (clientCompany as any)?.address ?? 'Address not provided',
+    addressText,
     billToX, 
     yPosition + lineHeight * 3, 
     { size: 8 }

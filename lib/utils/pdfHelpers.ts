@@ -49,23 +49,32 @@ export const safeText = (text?: any): string => {
 
 // Currency formatting with locale support
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  // Handle special currency codes that might not be supported by Intl.NumberFormat
+  if (currency === 'OMR') {
+    return `OMR ${amount.toFixed(2)}`
+  }
+  
   const currencyMap: Record<string, string> = {
     'USD': 'en-US',
     'EUR': 'en-EU',
     'GBP': 'en-GB',
-    'OMR': 'en-OM',
     'AED': 'ar-AE',
     'SAR': 'ar-SA'
   }
 
   const locale = currencyMap[currency] || 'en-US'
   
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount)
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount)
+  } catch (error) {
+    // Fallback for unsupported currencies
+    return `${currency} ${amount.toFixed(2)}`
+  }
 }
 
 // Date formatting with locale support
