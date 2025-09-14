@@ -195,7 +195,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Client company address
   // Client address - handle both string and object formats
   const clientAddress = (clientCompany as any)?.address
-  let addressText = (clientCompany as any)?.address || 'Address not provided'
+  let addressText = 'Address not provided'
   
   console.log('🔍 PDF Generator - Address extraction:', {
     clientAddress: clientAddress,
@@ -219,6 +219,9 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       const cleanAddress = Object.values(addrObj).filter(v => v && typeof v === 'string').join(', ')
       addressText = cleanAddress || 'Address not provided'
     }
+  } else if (clientAddress) {
+    // Handle any other truthy value
+    addressText = String(clientAddress)
   }
   
   console.log('🔍 PDF Generator - Final address text:', addressText)
@@ -243,7 +246,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   // Optional: phone & website if available
   let currentY = yPosition + lineHeight * 5 + 4
   const clientPhone = (clientCompany as any)?.phone ?? (client as any)?.phone ?? 'Phone not provided'
-  const clientWebsite = (clientCompany as any)?.website || 'Website not provided'
+  const clientWebsite = (clientCompany as any)?.website || (client as any)?.website || 'Website not provided'
   
   console.log('🔍 PDF Generator - Website extraction:', {
     clientWebsite: clientWebsite,
@@ -276,14 +279,14 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const tableWidth = contentWidth - 10
   const colWidths = [15, 70, 20, 30, 30] // Better distribution
   const colPositions = [tableX, tableX + colWidths[0], tableX + colWidths[0] + colWidths[1], tableX + colWidths[0] + colWidths[1] + colWidths[2], tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3]]
-  const rowHeight = 20 // Increased for better spacing
+  const rowHeight = 25 // Increased for better description spacing
 
   // Table headers
   const headers = [t('item', locale), t('description', locale), t('qtyHour', locale), t('rate', locale), t('total', locale)]
   addRect(doc, tableX, yPosition, tableWidth, rowHeight, templateColors.background, templateColors.border)
   
   headers.forEach((header, index) => {
-    addText(doc, header, colPositions[index] + 5, yPosition + 12, { size: 12, color: templateColors.primary, weight: 'bold' })
+    addText(doc, header, colPositions[index] + 5, yPosition + 15, { size: 12, color: templateColors.primary, weight: 'bold' })
   })
 
   yPosition += rowHeight
@@ -335,12 +338,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       // Product name
       addText(doc, item.product || 'Service', colPositions[1] + 5, rowY + 12, { size: 12, weight: 'bold' })
       
-      // Description with better text wrapping
-      const wrappedDesc = wrapText(doc, item.description || '-', colWidths[1] - 10)
+      // Description with better text wrapping and positioning
+      const wrappedDesc = wrapText(doc, item.description || '-', colWidths[1] - 15)
       if (Array.isArray(wrappedDesc)) {
-        doc.text(wrappedDesc, colPositions[1] + 5, rowY + 12)
+        doc.text(wrappedDesc, colPositions[1] + 5, rowY + 15)
       } else {
-        addText(doc, wrappedDesc, colPositions[1] + 5, rowY + 12, { size: 12 })
+        addText(doc, wrappedDesc, colPositions[1] + 5, rowY + 15, { size: 12 })
       }
       
       addText(doc, String(item.qty || 1), colPositions[2] + 5, rowY + 12, { size: 12 })
@@ -411,7 +414,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   addText(doc, t('termsAndConditions', locale), termsX, footerY, { size: 10, color: templateColors.primary, weight: 'bold' })
   
   const termsText = [
-    'Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in USD unless otherwise specified.',
+    `Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in ${currency} unless otherwise specified.`,
     'Service Agreement: All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.',
     'Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
   ]
