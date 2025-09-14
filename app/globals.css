@@ -261,6 +261,7 @@
   overflow: hidden !important;       /* prevent spill that causes extra page */
   display: block !important;
   visibility: visible !important;
+  opacity: 1 !important;             /* Ensure full opacity for html2canvas */
 }
 
 /* ensure colors render in PDF/print */

@@ -266,14 +266,15 @@ export default function ClientInvoiceTemplatePage() {
       clone.id = 'invoice-template-export'
       clone.classList.add('pdf-sheet')
       
-      // Position clone off-screen but visible for rendering
+      // Position clone off-screen but fully visible for html2canvas
       clone.style.position = 'fixed'
       clone.style.left = '-9999px'
       clone.style.top = '0'
       clone.style.width = '210mm'
       clone.style.minHeight = '297mm'
       clone.style.zIndex = '-1'
-      clone.style.opacity = '0'
+      clone.style.opacity = '1' // Fully visible for html2canvas
+      clone.style.visibility = 'visible' // Ensure it's visible
       
       document.body.appendChild(clone)
 
@@ -335,20 +336,6 @@ export default function ClientInvoiceTemplatePage() {
       console.log('🔍 Clone text content length:', cloneText.length)
       console.log('🔍 Clone HTML content length:', cloneHTML.length)
       console.log('🔍 Clone first 500 chars of text:', cloneText.substring(0, 500))
-      
-      // Make clone temporarily visible for debugging
-      clone.style.opacity = '0.1'
-      clone.style.left = '0px'
-      clone.style.zIndex = '9999'
-      console.log('🔍 Clone made temporarily visible for debugging')
-      
-      // Wait a bit to see the clone
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Hide it again
-      clone.style.opacity = '0'
-      clone.style.left = '-9999px'
-      clone.style.zIndex = '-1'
 
       // Try both approaches: clone and direct capture
       console.log('🔍 Attempting PDF generation...')
@@ -365,7 +352,10 @@ export default function ClientInvoiceTemplatePage() {
           logging: true,
           backgroundColor: '#ffffff',
           width: 794, // A4 width in pixels at 96 DPI
-          height: 1123 // A4 height in pixels at 96 DPI
+          height: 1123, // A4 height in pixels at 96 DPI
+          removeContainer: true, // Remove container after capture
+          foreignObjectRendering: true, // Better text rendering
+          imageTimeout: 15000 // Wait longer for images
         },
         jsPDF: { 
           unit: 'mm', 
