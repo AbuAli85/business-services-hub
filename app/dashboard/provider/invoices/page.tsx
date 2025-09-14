@@ -29,7 +29,6 @@ interface Invoice {
   status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled'
   created_at: string
   due_date?: string
-  client_name?: string
   service_title?: string
   booking?: {
     client?: {
@@ -130,7 +129,6 @@ export default function ProviderInvoicesPage() {
         status: invoice.status,
         created_at: invoice.created_at,
         due_date: invoice.due_date,
-        client_name: invoice.booking?.client?.full_name || invoice.booking?.client?.company?.name,
         service_title: invoice.booking?.service?.title,
         booking: invoice.booking ? {
           client: invoice.booking.client ? {
@@ -184,7 +182,6 @@ export default function ProviderInvoicesPage() {
   const getClientName = (invoice: Invoice) => {
     return invoice.booking?.client?.full_name || 
            invoice.booking?.client?.company?.name || 
-           invoice.client_name || 
            'Client'
   }
 

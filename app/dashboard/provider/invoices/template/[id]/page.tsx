@@ -37,7 +37,6 @@ interface InvoiceData {
   invoice_number?: string
   service_title?: string
   service_description?: string
-  client_name?: string
   client_email?: string
   provider_name?: string
   provider_email?: string
@@ -366,7 +365,6 @@ export default function ProviderInvoiceTemplatePage() {
     const booking = getBooking()
     return booking?.client?.full_name || 
            booking?.client?.company?.name || 
-           invoice?.client_name || 
            'Client Information'
   }
 
