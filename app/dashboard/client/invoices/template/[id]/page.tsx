@@ -223,33 +223,35 @@ export default function ClientInvoiceTemplatePage() {
   const handleDownloadInvoice = () => {
     if (!invoice) return
 
-    const element = document.getElementById('invoice-template')
-    if (!element) {
+    const src = document.getElementById('invoice-template')
+    if (!src) {
       toast.error('Invoice template not found')
       return
     }
 
+    // 1) Clone the node OFF-SCREEN
+    const clone = src.cloneNode(true) as HTMLElement
+    clone.id = 'invoice-template-export'
+    clone.classList.add('pdf-sheet')
+    clone.style.position = 'fixed'
+    clone.style.left = '-10000px'
+    clone.style.top = '0'
+    document.body.appendChild(clone)
+
+    // 2) Export the clone
     const opt = {
       margin: 0,
       filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
       image: { type: 'jpeg', quality: 1 },
-      html2canvas: { 
-        scale: 3, 
-        useCORS: true, 
-        scrollY: 0
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait'
-      },
-      pagebreak: { mode: ['avoid-all'] }
+      html2canvas: { scale: 3, useCORS: true, scrollY: 0 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'avoid-all' }
     }
 
     toast.loading('Generating PDF...')
     html2pdf()
       .set(opt)
-      .from(element)
+      .from(clone)
       .save()
       .then(() => {
         toast.dismiss()
@@ -259,6 +261,10 @@ export default function ClientInvoiceTemplatePage() {
         toast.dismiss()
         console.error('❌ PDF export error:', err)
         toast.error('Failed to generate PDF')
+      })
+      .finally(() => {
+        // 3) Clean up
+        document.body.removeChild(clone)
       })
   }
 

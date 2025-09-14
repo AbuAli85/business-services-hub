@@ -249,27 +249,22 @@
   background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
 }
 
-/* A4 Page Size for Invoice Template */
-#invoice-template {
-  width: 210mm;
-  height: 297mm;   /* fixed height */
-  margin: 0 auto;
-  padding: 20mm;
-  background: white;
+/* PDF-only sheet applied to the CLONED node during export */
+.pdf-sheet {
+  width: 210mm;           /* A4 width */
+  min-height: 297mm;      /* A4 height */
+  margin: 0;
+  padding: 12mm 14mm;     /* adjust if you want narrower/wider margins */
+  background: #fff;
   box-sizing: border-box;
   position: relative;
-  overflow: hidden; /* prevents spill */
+  overflow: hidden;       /* prevent spill that causes extra page */
 }
 
-/* Invoice Sidebar Styling */
-.invoice-sidebar {
-  background: #1e3a8a; /* blue */
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 40mm; /* adjust width */
-  height: 100%;
+/* ensure colors render in PDF/print */
+.pdf-sheet, .pdf-sheet * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* Print stylesheet for PDF generation */
