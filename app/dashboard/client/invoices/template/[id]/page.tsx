@@ -19,7 +19,7 @@ import {
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import InvoiceTemplate from '@/components/invoice/InvoiceTemplate'
-import html2pdf from 'html2pdf.js'
+// html2pdf will be imported dynamically to avoid SSR issues
 
 interface InvoiceData {
   id: string
@@ -246,7 +246,7 @@ export default function ClientInvoiceTemplatePage() {
     }
   }
 
-  const handleDownloadInvoice = () => {
+  const handleDownloadInvoice = async () => {
     if (!invoice) return
 
     const src = document.getElementById('invoice-template')
@@ -255,51 +255,59 @@ export default function ClientInvoiceTemplatePage() {
       return
     }
 
-    // 1. Clone the invoice template
-    const clone = src.cloneNode(true) as HTMLElement
-    clone.id = 'invoice-template-export'
-    clone.classList.add('pdf-sheet')
-    clone.style.position = 'absolute'
-    clone.style.left = '-9999px'
-    clone.style.top = '0'
-    clone.style.width = '210mm'
-    clone.style.minHeight = '297mm'
-    document.body.appendChild(clone)
+    try {
+      // Dynamic import to avoid SSR issues
+      const html2pdf = (await import('html2pdf.js')).default
 
-    // 2. Delay to allow styles/images to load
-    setTimeout(() => {
-      const opt = {
-        margin: 0,
-        filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          scrollY: 0, // prevents blank output
-          logging: true
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: 'avoid-all' }
-      }
+      // 1. Clone the invoice template
+      const clone = src.cloneNode(true) as HTMLElement
+      clone.id = 'invoice-template-export'
+      clone.classList.add('pdf-sheet')
+      clone.style.position = 'absolute'
+      clone.style.left = '-9999px'
+      clone.style.top = '0'
+      clone.style.width = '210mm'
+      clone.style.minHeight = '297mm'
+      document.body.appendChild(clone)
 
-      toast.loading('Generating PDF...')
-      html2pdf()
-        .set(opt)
-        .from(clone)
-        .save()
-        .then(() => {
-          toast.dismiss()
-          toast.success('Invoice downloaded successfully!')
-        })
-        .catch((err) => {
-          toast.dismiss()
-          console.error('❌ PDF export error:', err)
-          toast.error('Failed to generate PDF')
-        })
-        .finally(() => {
-          document.body.removeChild(clone)
-        })
-    }, 500) // 👈 wait 0.5s before capture
+      // 2. Delay to allow styles/images to load
+      setTimeout(() => {
+        const opt = {
+          margin: 0,
+          filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
+          image: { type: 'jpeg', quality: 1 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            scrollY: 0, // prevents blank output
+            logging: true
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: 'avoid-all' }
+        }
+
+        toast.loading('Generating PDF...')
+        html2pdf()
+          .set(opt)
+          .from(clone)
+          .save()
+          .then(() => {
+            toast.dismiss()
+            toast.success('Invoice downloaded successfully!')
+          })
+          .catch((err) => {
+            toast.dismiss()
+            console.error('❌ PDF export error:', err)
+            toast.error('Failed to generate PDF')
+          })
+          .finally(() => {
+            document.body.removeChild(clone)
+          })
+      }, 500) // 👈 wait 0.5s before capture
+    } catch (error) {
+      console.error('❌ Failed to load html2pdf:', error)
+      toast.error('Failed to load PDF generator')
+    }
   }
 
   const handlePayInvoice = () => {
