@@ -53,83 +53,7 @@ interface InvoiceData {
   vat_percent?: number
   vat_amount?: number
   total_amount?: number
-  booking?: {
-    id: string
-    status: string
-    service?: {
-      id: string
-      title: string
-      description: string
-      provider?: {
-        id: string
-        full_name: string
-        email: string
-        phone: string
-        company?: {
-          id: string
-          name: string
-          address: string
-          phone: string
-          email: string
-          website: string
-          logo_url?: string
-        }
-      }
-    }
-    client?: {
-      id: string
-      full_name: string
-      email: string
-      phone: string
-      company?: {
-        id: string
-        name: string
-        address: string
-        phone: string
-        email: string
-        website: string
-        logo_url?: string
-      }
-    }
-  } | {
-    id: string
-    status: string
-    service?: {
-      id: string
-      title: string
-      description: string
-      provider?: {
-        id: string
-        full_name: string
-        email: string
-        phone: string
-        company?: {
-          id: string
-          name: string
-          address: string
-          phone: string
-          email: string
-          website: string
-          logo_url?: string
-        }
-      }
-    }
-    client?: {
-      id: string
-      full_name: string
-      email: string
-      phone: string
-      company?: {
-        id: string
-        name: string
-        address: string
-        phone: string
-        email: string
-        website: string
-        logo_url?: string
-      }
-    }
-  }[]
+  booking?: any
 }
 
 export default function ProviderInvoiceTemplatePage() {
@@ -262,28 +186,29 @@ export default function ProviderInvoiceTemplatePage() {
         return
       }
 
-      console.log('🔍 Provider company data:', Array.isArray(invoiceData.booking) ? invoiceData.booking[0]?.service?.provider?.company : invoiceData.booking?.service?.provider?.company)
-      console.log('🔍 Client company data:', Array.isArray(invoiceData.booking) ? invoiceData.booking[0]?.client?.company : invoiceData.booking?.client?.company)
-      console.log('🔍 Provider data:', Array.isArray(invoiceData.booking) ? invoiceData.booking[0]?.service?.provider : invoiceData.booking?.service?.provider)
-
-      setInvoice(invoiceData)
-      
-      // Helper to get booking data safely
+      // Helper to get booking data safely for logging
       const getBookingData = () => {
         if (!invoiceData.booking) return null
         return Array.isArray(invoiceData.booking) ? invoiceData.booking[0] : invoiceData.booking
       }
       
-      const booking = getBookingData()
+      const bookingData = getBookingData()
+      console.log('🔍 Provider company data:', (bookingData as any)?.service?.provider?.company)
+      console.log('🔍 Client company data:', (bookingData as any)?.client?.company)
+      console.log('🔍 Provider data:', (bookingData as any)?.service?.provider)
+
+      setInvoice(invoiceData)
+      
+      const booking = bookingData
       
       setEditData({
-        service_title: invoiceData.service_title || booking?.service?.title,
-        service_description: invoiceData.service_description || booking?.service?.description,
+        service_title: (booking as any)?.service?.title,
+        service_description: (booking as any)?.service?.description,
         notes: invoiceData.notes,
         payment_terms: invoiceData.payment_terms,
         subtotal: invoiceData.subtotal || invoiceData.amount,
-        vat_percent: invoiceData.vat_percent,
-        vat_amount: invoiceData.vat_amount,
+        vat_percent: (invoiceData.tax_rate || 0) / 100, // Convert percentage to decimal
+        vat_amount: invoiceData.tax_amount,
         total_amount: invoiceData.total_amount || invoiceData.amount * 1.05
       })
     } catch (error) {
