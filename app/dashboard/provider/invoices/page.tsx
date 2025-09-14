@@ -88,7 +88,19 @@ export default function ProviderInvoicesPage() {
         return
       }
 
-      // Fetch provider's invoices with proper relationships
+      // First, let's check if there are more invoices with a simple query
+      console.log('🔍 Fetching invoices for provider:', user.id)
+      
+      // Simple query to get all invoices for this provider
+      const { data: simpleInvoices, error: simpleError } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, amount, status, created_at')
+        .eq('provider_id', user.id)
+        .order('created_at', { ascending: false })
+      
+      console.log('📊 Simple query count:', simpleInvoices?.length || 0)
+      console.log('📊 Simple invoices:', simpleInvoices)
+      
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select(`
@@ -141,6 +153,9 @@ export default function ProviderInvoicesPage() {
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
 
+      console.log('📊 Raw invoice data count:', invoiceData?.length || 0)
+      console.log('📊 Raw invoice data:', invoiceData)
+
       if (invoiceError) {
         console.error('❌ Invoice fetch error:', invoiceError)
         toast.error('Failed to load invoices')
@@ -169,6 +184,9 @@ export default function ProviderInvoicesPage() {
           } : undefined
         } : null
       }))
+      
+      console.log('📊 Mapped invoices count:', mappedInvoices.length)
+      console.log('📊 Mapped invoices:', mappedInvoices)
       
       setInvoices(mappedInvoices)
     } catch (error) {
