@@ -106,11 +106,16 @@ export default function ClientInvoiceTemplatePage() {
     try {
       setLoading(true)
       
+      console.log('🔍 Starting checkUserAndFetchInvoice with params:', params)
+      
       const supabase = await getSupabaseClient()
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
+      console.log('🔍 Auth check result:', { user: user?.id, error: userError?.message })
+      
       if (userError || !user) {
         console.error('Authentication error:', userError)
+        toast.error('Please sign in to view this invoice')
         router.push('/auth/sign-in')
         return
       }
@@ -121,6 +126,8 @@ export default function ClientInvoiceTemplatePage() {
         router.push('/dashboard/client/invoices')
         return
       }
+
+      console.log('🔍 Fetching invoice with ID:', params.id, 'for user:', user.id)
 
       console.log('🔍 Fetching invoice for client:', user.id, 'invoice:', params.id)
       setUser(user)
@@ -174,7 +181,25 @@ export default function ClientInvoiceTemplatePage() {
         .single()
 
       if (error) {
-        console.error('Error fetching invoice:', error)
+        console.error('❌ Error fetching invoice:', error)
+        console.error('❌ Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        
+        if (error.code === 'PGRST116') {
+          toast.error('Invoice not found or you don\'t have permission to view it')
+        } else {
+          toast.error(`Database error: ${error.message}`)
+        }
+        router.push('/dashboard/client/invoices')
+        return
+      }
+
+      if (!invoiceData) {
+        console.error('❌ No invoice data returned')
         toast.error('Invoice not found')
         router.push('/dashboard/client/invoices')
         return
