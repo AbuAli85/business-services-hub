@@ -179,6 +179,10 @@ export default function ClientInvoiceTemplatePage() {
       }
 
       console.log('✅ Invoice fetched successfully:', invoiceData.id)
+      console.log('🔍 Provider company data:', invoiceData.booking?.service?.provider?.company)
+      console.log('🔍 Client company data:', invoiceData.booking?.client?.company)
+      console.log('🔍 Provider data:', invoiceData.booking?.service?.provider)
+      console.log('🔍 Service data:', invoiceData.booking?.service)
       setInvoice(invoiceData)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
@@ -396,30 +400,52 @@ export default function ClientInvoiceTemplatePage() {
             client_id: invoice.client_id,
             created_at: invoice.created_at,
             updated_at: invoice.updated_at,
-            company: {
-              id: invoice.booking?.service?.provider?.company?.id || '1',
-              name: invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name',
-              address: invoice.booking?.service?.provider?.company?.address || '123 Anywhere St., Any City, ST 12345',
-              phone: invoice.booking?.service?.provider?.company?.phone || '123-456-7890',
-              email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
-              website: invoice.booking?.service?.provider?.company?.website || 'reallygreatsite.com',
-              logo_url: invoice.booking?.service?.provider?.company?.logo_url || undefined,
-              created_at: invoice.created_at,
-              updated_at: invoice.updated_at
-            },
+            company: (() => {
+              const providerCompany = Array.isArray(invoice.booking?.service?.provider?.company) 
+                ? invoice.booking?.service?.provider?.company?.[0] 
+                : invoice.booking?.service?.provider?.company
+              
+              console.log('🔍 Extracted provider company:', providerCompany)
+              
+              return {
+                id: providerCompany?.id || '1',
+                name: providerCompany?.name || invoice.company_name || 'Your Company Name',
+                address: providerCompany?.address || '123 Anywhere St., Any City, ST 12345',
+                phone: providerCompany?.phone || '123-456-7890',
+                email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
+                website: providerCompany?.website || 'reallygreatsite.com',
+                logo_url: providerCompany?.logo_url || undefined,
+                created_at: invoice.created_at,
+                updated_at: invoice.updated_at
+              }
+            })(),
             client: {
               id: invoice.client_id,
               full_name: getClientName(),
               email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
               phone: (invoice.booking?.client as any)?.phone || '+968-xxx-xxx',
               company: {
-                id: invoice.booking?.client?.company?.id || '2',
-                name: invoice.booking?.client?.company?.name || 'Client Company',
-                address: invoice.booking?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
-                phone: invoice.booking?.client?.company?.phone || (invoice.booking?.client as any)?.phone || '+968-xxx-xxx',
-                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'client@company.com',
-                website: invoice.booking?.client?.company?.website || 'clientcompany.com',
-                logo_url: invoice.booking?.client?.company?.logo_url || undefined,
+                id: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.id 
+                  : invoice.booking?.client?.company?.id) || '2',
+                name: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.name 
+                  : invoice.booking?.client?.company?.name) || 'Client Company',
+                address: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.address 
+                  : invoice.booking?.client?.company?.address) || '123 Anywhere St., Any City, ST 12345',
+                phone: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.phone 
+                  : invoice.booking?.client?.company?.phone) || (invoice.booking?.client as any)?.phone || '+968-xxx-xxx',
+                email: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.email 
+                  : invoice.booking?.client?.company?.email) || invoice.booking?.client?.email || 'client@company.com',
+                website: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.website 
+                  : invoice.booking?.client?.company?.website) || 'clientcompany.com',
+                logo_url: (Array.isArray(invoice.booking?.client?.company) 
+                  ? invoice.booking?.client?.company?.[0]?.logo_url 
+                  : invoice.booking?.client?.company?.logo_url) || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
               },
