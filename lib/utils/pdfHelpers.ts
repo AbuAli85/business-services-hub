@@ -34,7 +34,14 @@ export const layout: PDFLayout = {
 // Safe text function to fix encoding issues
 export const safeText = (text?: string | null): string => {
   if (!text) return ''
-  return text.normalize('NFC').replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters that cause encoding issues
+  
+  // Check if normalize is available, fallback to basic string cleaning
+  if (typeof text.normalize === 'function') {
+    return text.normalize('NFC').replace(/[^\x00-\x7F]/g, '')
+  } else {
+    // Fallback for environments where normalize is not available
+    return text.replace(/[^\x00-\x7F]/g, '')
+  }
 }
 
 // Currency formatting with locale support
@@ -181,27 +188,16 @@ export async function addLogo(
   }
 
   try {
-    // Convert image to base64
+    // Convert image to base64 using Node.js compatible method
     const response = await fetch(logoUrl)
-    const blob = await response.blob()
-    const reader = new FileReader()
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const dataUrl = `data:image/png;base64,${base64}`
     
-    return new Promise((resolve) => {
-      reader.onload = () => {
-        try {
-          const base64 = reader.result as string
-          doc.addImage(base64, 'PNG', x, y, width, height)
-          resolve(true)
-        } catch (error) {
-          console.warn('Failed to add logo:', error)
-          resolve(false)
-        }
-      }
-      reader.onerror = () => resolve(false)
-      reader.readAsDataURL(blob)
-    })
+    doc.addImage(dataUrl, 'PNG', x, y, width, height)
+    return true
   } catch (error) {
-    console.warn('Failed to fetch logo:', error)
+    console.warn('Failed to add logo:', error)
     return false
   }
 }

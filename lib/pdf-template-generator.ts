@@ -19,6 +19,14 @@ import {
 export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array> {
   try {
     console.log('🔍 PDF Generator - Starting with invoice:', invoice.id)
+    console.log('🔍 PDF Generator - Invoice data structure:', {
+      hasBooking: !!invoice.booking,
+      hasService: !!invoice.booking?.service,
+      hasProvider: !!invoice.booking?.service?.provider,
+      hasClient: !!invoice.booking?.client,
+      hasProviderCompany: !!invoice.booking?.service?.provider?.company,
+      hasClientCompany: !!invoice.booking?.client?.company
+    })
     
     const doc = new jsPDF('p', 'mm', 'a4')
     const { pageWidth, pageHeight, margin, contentWidth, lineHeight, sidebarWidth } = layout
@@ -36,19 +44,29 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const logoY = 20
   
   // Try to add actual logo, fallback to placeholder
-  const logoUrl = Array.isArray(invoice.booking?.service?.provider?.company) 
-    ? (invoice.booking?.service?.provider?.company?.[0] as any)?.logo_url
-    : (invoice.booking?.service?.provider?.company as any)?.logo_url
-  const logoAdded = await addLogo(
-    doc,
-    logoUrl,
-    logoX,
-    logoY,
-    logoSize,
-    logoSize
-  )
-  
-  if (!logoAdded) {
+  try {
+    const logoUrl = Array.isArray(invoice.booking?.service?.provider?.company) 
+      ? (invoice.booking?.service?.provider?.company?.[0] as any)?.logo_url
+      : (invoice.booking?.service?.provider?.company as any)?.logo_url
+    
+    console.log('🔍 PDF Generator - Logo URL:', logoUrl)
+    
+    const logoAdded = await addLogo(
+      doc,
+      logoUrl,
+      logoX,
+      logoY,
+      logoSize,
+      logoSize
+    )
+    
+    if (!logoAdded) {
+      addRect(doc, logoX, logoY, logoSize, logoSize, templateColors.white)
+      addText(doc, 'LOGO', logoX + 2, logoY + 12, { size: 8, color: templateColors.primary })
+    }
+  } catch (logoError) {
+    console.warn('⚠️ PDF Generator - Logo handling failed:', logoError)
+    // Fallback to placeholder
     addRect(doc, logoX, logoY, logoSize, logoSize, templateColors.white)
     addText(doc, 'LOGO', logoX + 2, logoY + 12, { size: 8, color: templateColors.primary })
   }
@@ -68,14 +86,23 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     : invoice.booking?.service?.provider?.company
   const providerName = providerCompany?.name ?? invoice.booking?.service?.provider?.full_name ?? 'Provider Name'
   
-  addText(
-    doc,
-    providerName, 
-    mainContentX, 
-    yPosition, 
-    typography.title
-  )
-  yPosition += lineHeight + 2
+  try {
+    addText(
+      doc,
+      providerName, 
+      mainContentX, 
+      yPosition, 
+      typography.title
+    )
+    yPosition += lineHeight + 2
+  } catch (textError) {
+    console.warn('⚠️ PDF Generator - Provider name text failed:', textError)
+    // Add fallback text
+    doc.setFontSize(typography.title.size)
+    doc.setFont('helvetica', typography.title.weight)
+    doc.text('Provider Name', mainContentX, yPosition)
+    yPosition += lineHeight + 2
+  }
 
   // Contact information with icons
   const contactInfo = [
@@ -86,9 +113,15 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   ]
 
   contactInfo.forEach(info => {
-    addText(doc, info.icon, mainContentX, yPosition, { size: 8 })
-    addText(doc, info.text, mainContentX + 6, yPosition, { size: 8, color: templateColors.lightText })
-    yPosition += lineHeight - 2
+    try {
+      addText(doc, info.icon, mainContentX, yPosition, { size: 8 })
+      addText(doc, info.text, mainContentX + 6, yPosition, { size: 8, color: templateColors.lightText })
+      yPosition += lineHeight - 2
+    } catch (textError) {
+      console.warn('⚠️ PDF Generator - Text rendering failed:', textError)
+      // Continue with next item
+      yPosition += lineHeight - 2
+    }
   })
 
   yPosition += lineHeight
