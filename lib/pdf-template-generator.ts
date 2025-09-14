@@ -143,8 +143,9 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
   const datesX = mainContentX
   const billToX = pageWidth - margin - 80
 
-  // Dates
-  addText(doc, `${t('date', locale)}: ${formatDate(invoice.created_at, locale)}`, datesX, yPosition, { size: 8 })
+  // Dates - use English format for better readability
+  const formattedDate = formatDate(invoice.created_at, 'en-US')
+  addText(doc, `${t('date', locale)}: ${formattedDate}`, datesX, yPosition, { size: 8 })
   if (invoice.due_date) {
     addText(doc, `${t('dueDate', locale)}: ${formatDate(invoice.due_date, locale)}`, datesX, yPosition + lineHeight, { size: 8 })
   }
@@ -185,15 +186,16 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     addressText = clientAddress
   } else if (clientAddress && typeof clientAddress === 'object') {
     // Try to extract meaningful address parts from object
-    if (clientAddress.street) {
-      addressText = clientAddress.street
-      if (clientAddress.city) addressText += `, ${clientAddress.city}`
-      if (clientAddress.country) addressText += `, ${clientAddress.country}`
-    } else if (clientAddress.address) {
-      addressText = clientAddress.address
+    const addrObj = clientAddress as any
+    if (addrObj.street) {
+      addressText = addrObj.street
+      if (addrObj.city) addressText += `, ${addrObj.city}`
+      if (addrObj.country) addressText += `, ${addrObj.country}`
+    } else if (addrObj.address) {
+      addressText = addrObj.address
     } else {
       // Fallback to a clean string representation
-      const cleanAddress = Object.values(clientAddress).filter(v => v && typeof v === 'string').join(', ')
+      const cleanAddress = Object.values(addrObj).filter(v => v && typeof v === 'string').join(', ')
       addressText = cleanAddress || 'Address not provided'
     }
   }
