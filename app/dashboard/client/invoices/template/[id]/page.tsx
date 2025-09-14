@@ -19,6 +19,7 @@ import {
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import InvoiceTemplate from '@/components/invoice/InvoiceTemplate'
+import html2pdf from 'html2pdf.js'
 
 interface InvoiceData {
   id: string
@@ -219,42 +220,37 @@ export default function ClientInvoiceTemplatePage() {
     }
   }
 
-  const handleDownloadInvoice = async () => {
+  const handleDownloadInvoice = () => {
     if (!invoice) return
 
-    try {
-      console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
-      
-      const response = await fetch('/api/invoices/generate-template-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id })
-      })
-
-      console.log('📊 PDF generation response status:', response.status)
-
-      if (response.ok) {
-        const blob = await response.blob()
-        console.log('✅ PDF blob created, size:', blob.size, 'bytes')
-        
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        toast.success('Invoice downloaded successfully')
-      } else {
-        const errorData = await response.json()
-        console.error('❌ PDF generation error:', errorData)
-        toast.error(`Failed to download invoice: ${errorData.error || 'Unknown error'}`)
-      }
-    } catch (error) {
-      console.error('❌ Error downloading invoice:', error)
-      toast.error('Failed to download invoice')
+    const element = document.getElementById('invoice-template')
+    if (!element) {
+      toast.error('Invoice template not found')
+      return
     }
+
+    const opt = {
+      margin: [0, 0, 0, 0], // full-page
+      filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+
+    toast.loading('Generating PDF...')
+    html2pdf()
+      .set(opt)
+      .from(element)
+      .save()
+      .then(() => {
+        toast.dismiss()
+        toast.success('Invoice downloaded successfully!')
+      })
+      .catch((err) => {
+        toast.dismiss()
+        console.error('❌ PDF export error:', err)
+        toast.error('Failed to generate PDF')
+      })
   }
 
   const handlePayInvoice = () => {
@@ -380,7 +376,8 @@ export default function ClientInvoiceTemplatePage() {
 
       {/* Invoice Template */}
       <div className="py-8">
-        <InvoiceTemplate 
+        <div id="invoice-template">
+          <InvoiceTemplate 
           invoice={{
             id: invoice.id,
             invoice_number: formatInvoiceNumber(invoice.invoice_number),
@@ -465,6 +462,7 @@ export default function ClientInvoiceTemplatePage() {
             }]
           }}
         />
+        </div>
       </div>
     </div>
   )

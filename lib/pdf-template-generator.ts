@@ -90,15 +90,16 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     }
     const leftBlockBottom = yLeft + 2 + (invoice.due_date ? lineHeight : 0)
 
-    // Invoice title & number (right, blue) - inline layout
+    // Invoice title & number (right, blue) - inline layout with dynamic spacing
     let yRight = headerTop
     const invoiceTitle = t('invoice', locale)
     const invoiceNumber = `${t('invoiceNumber', locale)}: #${invoice.invoice_number || invoice.id.slice(-8)}`
     
-    // Calculate positions for inline layout
+    // Calculate positions for inline layout with dynamic spacing
     const titleWidth = getTextWidth(doc, invoiceTitle, { size: 26, weight: 'bold' } as any)
     const numberWidth = getTextWidth(doc, invoiceNumber, { size: 12, weight: 'bold' } as any)
-    const totalWidth = titleWidth + 20 + numberWidth // 20pt gap between title and number
+    const gap = 12 // Dynamic gap for better spacing
+    const totalWidth = titleWidth + gap + numberWidth
     
     // Center the combined title+number block
     const startX = rightX + (rightBlockWidth - totalWidth) / 2
@@ -106,7 +107,7 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
     addText(doc, invoiceTitle, startX, yRight, {
       size: 26, color: templateColors.primary, weight: 'bold'
     })
-    addText(doc, invoiceNumber, startX + titleWidth + 20, yRight, {
+    addText(doc, invoiceNumber, startX + titleWidth + gap, yRight + 6, {
       size: 12, weight: 'bold'
     })
     yRight += lineHeight + 8
@@ -348,10 +349,13 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       doc.rect(mainX, footerTop, sigW, sigH)
     }
 
-    // center caption
+    // center caption with professional styling
     const cap = t('nameAndSignature', locale)
-    const capW = getTextWidth(doc, cap, { size: 11 } as any)
-    addText(doc, cap, mainX + sigW / 2 - capW / 2, footerTop + sigH / 2 + 3, { size: 11, color: templateColors.lightText })
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(...templateColors.lightText)
+    const capW = getTextWidth(doc, cap, { size: 10, weight: 'italic' } as any)
+    doc.text(cap, mainX + sigW / 2 - capW / 2, footerTop + sigH / 2 + 3)
 
     // Terms & Conditions (full-width below signature box for professional appearance)
     const termsX = mainX
@@ -372,12 +376,12 @@ export async function generateTemplatePDF(invoice: Invoice): Promise<Uint8Array>
       const lines = wrapText(doc, para, termsWidth)
       if (Array.isArray(lines)) {
         doc.text(lines, termsX, ty)
-        ty += lines.length * 4
+        ty += lines.length * 5 // Increased spacing for better readability
       } else {
         addText(doc, lines, termsX, ty, { size: 9 })
-        ty += 4
+        ty += 5 // Increased spacing for better readability
       }
-      if (i < terms.length - 1) ty += 3
+      if (i < terms.length - 1) ty += 4 // Increased spacing between paragraphs
   })
 
   return new Uint8Array(doc.output('arraybuffer'))
