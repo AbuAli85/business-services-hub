@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
+import { withCors, ok, created, badRequest, unauthorized, forbidden, handleOptions } from '@/lib/api-helpers'
 
 import { triggerServiceCreated } from '@/lib/notification-triggers-simple'
 // Validation schema for service creation
@@ -18,6 +19,10 @@ const CreateServiceSchema = z.object({
 
 // Validation schema for service updates
 const UpdateServiceSchema = CreateServiceSchema.partial()
+
+export async function OPTIONS(request: NextRequest) {
+  return handleOptions()
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,7 +75,7 @@ export async function GET(request: NextRequest) {
     
     if (error) {
       console.error('Error fetching services:', error)
-      return NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 })
+      return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
     }
     
     // Fetch provider information separately to avoid complex joins
@@ -105,7 +110,7 @@ export async function GET(request: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('status', status)
     
-    return NextResponse.json({
+    return ok({
       services: enrichedServices,
       pagination: {
         page,
@@ -117,7 +122,7 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Services API error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return withCors(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
 
@@ -128,7 +133,7 @@ export async function POST(request: NextRequest) {
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return unauthorized()
     }
     
     // Check if user is a provider
@@ -139,7 +144,7 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (profile?.role !== 'provider') {
-      return NextResponse.json({ error: 'Only providers can create services' }, { status: 403 })
+      return forbidden('Only providers can create services')
     }
     
     const body = await request.json()
@@ -147,10 +152,7 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validationResult = CreateServiceSchema.safeParse(body)
     if (!validationResult.success) {
-      return NextResponse.json({ 
-        error: 'Invalid request data', 
-        details: validationResult.error.errors 
-      }, { status: 400 })
+      return badRequest('Invalid request data', validationResult.error.errors)
     }
     
     const serviceData = validationResult.data
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
     
     if (createError) {
       console.error('Error creating service:', createError)
-      return NextResponse.json({ error: 'Failed to create service' }, { status: 500 })
+      return withCors(NextResponse.json({ error: 'Failed to create service' }, { status: 500 }))
     }
     
     // Send notification to provider about service creation
@@ -184,15 +186,15 @@ export async function POST(request: NextRequest) {
       // Non-blocking - don't fail the service creation if notifications fail
     }
     
-    return NextResponse.json({ 
+    return created({ 
       success: true,
       service,
       message: 'Service created successfully'
-    }, { status: 201 })
+    })
     
   } catch (error) {
     console.error('Service creation error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return withCors(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }
 
@@ -203,23 +205,20 @@ export async function PUT(request: NextRequest) {
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return unauthorized()
     }
     
     const body = await request.json()
     const { service_id, ...updateData } = body
     
     if (!service_id) {
-      return NextResponse.json({ error: 'Service ID is required' }, { status: 400 })
+      return badRequest('Service ID is required')
     }
     
     // Validate update data
     const validationResult = UpdateServiceSchema.safeParse(updateData)
     if (!validationResult.success) {
-      return NextResponse.json({ 
-        error: 'Invalid update data', 
-        details: validationResult.error.errors 
-      }, { status: 400 })
+      return badRequest('Invalid update data', validationResult.error.errors)
     }
     
     // Check if user owns the service or is admin
@@ -230,7 +229,7 @@ export async function PUT(request: NextRequest) {
       .single()
     
     if (!service) {
-      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+      return withCors(NextResponse.json({ error: 'Service not found' }, { status: 404 }))
     }
     
     const { data: profile } = await supabase
@@ -240,7 +239,7 @@ export async function PUT(request: NextRequest) {
       .single()
     
     if (service.provider_id !== user.id && profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return forbidden()
     }
     
     // Update service
@@ -256,10 +255,10 @@ export async function PUT(request: NextRequest) {
     
     if (updateError) {
       console.error('Error updating service:', updateError)
-      return NextResponse.json({ error: 'Failed to update service' }, { status: 500 })
+      return withCors(NextResponse.json({ error: 'Failed to update service' }, { status: 500 }))
     }
     
-    return NextResponse.json({ 
+    return ok({ 
       success: true,
       service: updatedService,
       message: 'Service updated successfully'
@@ -267,6 +266,6 @@ export async function PUT(request: NextRequest) {
     
   } catch (error) {
     console.error('Service update error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return withCors(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }

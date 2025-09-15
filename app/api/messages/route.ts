@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
+import { handleOptions, ok, badRequest, unauthorized, forbidden } from '@/lib/api-helpers'
 
 import { triggerMessageReceived } from '@/lib/notification-triggers-simple'
 // Force fresh deployment - Updated: 2024-12-27 15:30 UTC
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized', details: authError?.message || 'No user' }, { status: 401 })
+      return unauthorized('Unauthorized', authError?.message || 'No user')
     }
 
     // Ensure sender has a profile
@@ -79,10 +80,7 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validationResult = CreateMessageSchema.safeParse(body)
     if (!validationResult.success) {
-      return NextResponse.json({ 
-        error: 'Invalid request data', 
-        details: validationResult.error.errors 
-      }, { status: 400 })
+      return badRequest('Invalid request data', validationResult.error.errors)
     }
 
     const { receiver_id, content, subject, booking_id } = validationResult.data
@@ -127,12 +125,12 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (bookingError || !booking) {
-        return NextResponse.json({ error: 'Invalid booking' }, { status: 400 })
+        return badRequest('Invalid booking')
       }
 
       // Check if user is participant in the booking
       if (user.id !== booking.client_id && user.id !== booking.provider_id) {
-        return NextResponse.json({ error: 'Access denied to this booking' }, { status: 403 })
+        return forbidden('Access denied to this booking')
       }
     }
 
@@ -201,7 +199,7 @@ export async function POST(request: NextRequest) {
       // Non-blocking - don't fail the message creation if notifications fail
     }
 
-    return NextResponse.json({ 
+    return ok({ 
       success: true,
       message: messageWithProfiles,
       status: 'Message sent successfully'
@@ -287,12 +285,12 @@ export async function GET(request: NextRequest) {
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
         : 'Authentication failed'
-      return NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      return unauthorized('Authentication failed', errorMessage)
     }
     
     if (!user) {
       console.log('❌ No user found from any authentication method')
-      return NextResponse.json({ error: 'Unauthorized - No valid session found' }, { status: 401 })
+      return unauthorized('Unauthorized - No valid session found')
     }
 
     console.log('✅ User authenticated:', user.id)
@@ -415,7 +413,7 @@ export async function GET(request: NextRequest) {
     })
 
     console.log('✅ Returning messages with profiles, count:', messagesWithProfiles.length)
-    return NextResponse.json({ messages: messagesWithProfiles })
+    return ok({ messages: messagesWithProfiles })
 
   } catch (error) {
     console.error('❌ Unexpected error in GET method:', error)
@@ -433,13 +431,13 @@ export async function PATCH(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return unauthorized()
     }
 
     const { message_id } = await request.json()
 
     if (!message_id) {
-      return NextResponse.json({ error: 'Message ID required' }, { status: 400 })
+      return badRequest('Message ID required')
     }
 
     // Update message as read
@@ -454,12 +452,16 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update message' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    return ok({ success: true })
 
   } catch (error) {
     console.error('Error marking message as read:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return handleOptions()
 }
 
 // Diagnostic endpoint to test database connectivity
