@@ -8,11 +8,17 @@ export async function GET(request: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const projectRef = supabaseUrl?.match(/https?:\/\/([a-zA-Z0-9-]+)\.supabase\.co/)?.[1] || 'unknown'
     
-    // Get total count of invoices
+    // Get total count of invoices (two methods)
     const { count: totalCount, error: totalError } = await supabase
       .from('invoices')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
+
+    const { data: sampleInvoices, error: sampleError } = await supabase
+      .from('invoices')
+      .select('id')
+      .limit(5)
 
     if (totalError) {
       console.error('❌ Error getting total count:', totalError)
@@ -119,11 +125,19 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
+      env: {
+        supabaseUrl,
+        projectRef
+      },
       counts: {
         total: totalCount,
         provider: providerCount,
         basicQuery: allInvoices?.length || 0,
         fullQuery: fullInvoices?.length || 0
+      },
+      samples: {
+        invoiceIds: (sampleInvoices || []).map(r => r.id),
+        sampleError
       },
       allInvoices: allInvoices?.map(inv => ({
         id: inv.id,

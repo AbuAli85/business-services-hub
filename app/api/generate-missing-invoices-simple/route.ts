@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
         service_id
       `)
       .or('approval_status.eq.approved,status.in.(approved,in_progress,completed)')
-      .not('service_id', 'is', null)
 
     if (bookingsError) {
       console.error('❌ Error fetching approved bookings:', bookingsError)

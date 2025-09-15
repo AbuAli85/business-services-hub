@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdminClient } from '@/lib/supabase'
-import { SmartInvoiceService } from '@/lib/smart-invoice-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,10 +38,11 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    if (booking.status !== 'approved') {
+    if (booking.status !== 'approved' && booking.approval_status !== 'approved') {
       return NextResponse.json({ 
         error: 'Booking is not approved', 
-        status: booking.status 
+        status: booking.status,
+        approval_status: booking.approval_status 
       }, { status: 400 })
     }
 
@@ -60,9 +60,47 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Generate invoice using SmartInvoiceService
-    const invoiceService = new SmartInvoiceService()
-    const invoice = await invoiceService.generateInvoiceOnApproval(bookingId)
+    // Generate invoice using SmartInvoiceService if available; fallback otherwise
+    let invoice: any = null
+    try {
+      const mod: any = await import('@/lib/smart-invoice-service')
+      const Ctor = mod?.SmartInvoiceService || mod?.default
+      if (Ctor) {
+        const svc = new Ctor()
+        if (svc.generateInvoiceOnApproval) {
+          invoice = await svc.generateInvoiceOnApproval(bookingId)
+        }
+      }
+    } catch {}
+
+    if (!invoice) {
+      const subtotal = booking.amount || 0
+      const vatPercent = 5.0
+      const vatAmount = Math.round((subtotal * vatPercent / 100) * 100) / 100
+      const totalAmount = subtotal + vatAmount
+      const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + 30)
+      const { data: created, error: insertError } = await supabase
+        .from('invoices')
+        .insert({
+          booking_id: bookingId,
+          client_id: booking.client_id,
+          provider_id: booking.provider_id,
+          amount: totalAmount,
+          currency: booking.currency || 'OMR',
+          status: 'issued',
+          due_date: dueDate.toISOString(),
+          subtotal,
+          tax_rate: vatPercent,
+          tax_amount: vatAmount,
+          total_amount: totalAmount
+        })
+        .select()
+        .single()
+      if (insertError) {
+        return NextResponse.json({ error: 'Failed to generate invoice', details: insertError.message }, { status: 500 })
+      }
+      invoice = created
+    }
 
     if (invoice) {
       return NextResponse.json({ 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { SmartInvoiceService } from '@/lib/smart-invoice-service'
+// SmartInvoiceService may be exported differently across builds; resolve dynamically at runtime
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
         status
       `)
       .or('approval_status.eq.approved,status.in.(approved,in_progress,completed)')
-      .not('service_id', 'is', null) // Only bookings that are linked to a service
 
     if (bookingsError) {
       console.error('❌ Error fetching approved bookings:', bookingsError)
@@ -92,8 +91,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Generate invoices for each booking
-    const invoiceService = new SmartInvoiceService()
+    // Try to load SmartInvoiceService; fall back to simple insert if unavailable
+    let invoiceService: any = null
+    try {
+      const mod: any = await import('@/lib/smart-invoice-service')
+      const Ctor = mod?.SmartInvoiceService || mod?.default
+      if (Ctor) {
+        invoiceService = new Ctor()
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not load SmartInvoiceService, will use simple insert fallback')
+    }
     const results = []
     let successCount = 0
     let errorCount = 0
@@ -102,7 +110,38 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`🔧 Generating invoice for booking: ${booking.id} (${booking.title})`)
         
-        const invoice = await invoiceService.generateInvoiceOnApproval(booking.id)
+        let invoice: any = null
+        if (invoiceService?.generateInvoiceOnApproval) {
+          invoice = await invoiceService.generateInvoiceOnApproval(booking.id)
+        } else {
+          // Fallback: simple invoice insert using booking fields
+          const subtotal = booking.amount || 0
+          const vatPercent = 5.0
+          const vatAmount = Math.round((subtotal * vatPercent / 100) * 100) / 100
+          const totalAmount = subtotal + vatAmount
+          const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + 30)
+          const { data: created, error: insertError } = await supabase
+            .from('invoices')
+            .insert({
+              booking_id: booking.id,
+              client_id: booking.client_id,
+              provider_id: booking.provider_id,
+              amount: totalAmount,
+              currency: booking.currency || 'OMR',
+              status: 'issued',
+              due_date: dueDate.toISOString(),
+              subtotal,
+              tax_rate: vatPercent,
+              tax_amount: vatAmount,
+              total_amount: totalAmount
+            })
+            .select()
+            .single()
+          if (insertError) {
+            throw new Error(insertError.message)
+          }
+          invoice = created
+        }
         
         if (invoice) {
           successCount++
