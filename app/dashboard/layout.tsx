@@ -31,6 +31,8 @@ import { getRoleBasedNavigation, getQuickActions, getInvoiceSubNavigation } from
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
 import { SessionManager } from '@/components/ui/session-manager'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { logger } from '@/lib/logger'
 
 interface UserProfile {
   id: string
@@ -97,7 +99,7 @@ export default function DashboardLayout({
           try { supabase.removeChannel(channel) } catch {}
         }
       } catch (e) {
-        console.warn('Realtime notifications channel failed', e)
+        logger.warn('Realtime notifications channel failed', e)
       }
     })()
   }, [user?.id])
@@ -124,7 +126,7 @@ export default function DashboardLayout({
         })
         subscriptionKey = `messages:${user.id}`
       } catch (e) {
-        console.warn('Realtime notifications setup failed', e)
+        logger.warn('Realtime notifications setup failed', e)
       }
     })()
     return () => {
@@ -182,7 +184,7 @@ export default function DashboardLayout({
             }
           }
         } catch (error) {
-          console.warn('Could not fetch company name:', error)
+          logger.warn('Could not fetch company name:', error)
         }
       }
 
@@ -211,7 +213,7 @@ export default function DashboardLayout({
             }
           }
         } catch (error) {
-          console.warn('Could not fetch client logo:', error)
+          logger.warn('Could not fetch client logo:', error)
         }
       }
       
@@ -225,7 +227,7 @@ export default function DashboardLayout({
               // Production logging removed
       setUser(finalUser)
     } catch (error) {
-      console.error('Error checking user:', error)
+      logger.error('Error checking user:', error)
       router.push('/auth/sign-in')
     } finally {
       setLoading(false)
@@ -252,7 +254,7 @@ export default function DashboardLayout({
       setNotifications(items as any)
       setUnreadCount(items.filter((n: any)=> !n.is_read).length)
     } catch (error) {
-      console.error('Error fetching notifications:', error)
+      logger.error('Error fetching notifications:', error)
     }
   }
 
@@ -276,7 +278,7 @@ export default function DashboardLayout({
       await supabase.auth.signOut()
       router.push('/')
     } catch (error) {
-      console.error('Error signing out:', error)
+      logger.error('Error signing out:', error)
       // Force redirect even if signout fails
       router.push('/')
     }
@@ -490,7 +492,18 @@ export default function DashboardLayout({
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
           <div className="p-6">
-            {children}
+            <ErrorBoundary
+              showDetails={process.env.NODE_ENV === 'development'}
+              onError={(error, errorInfo) => {
+                logger.error('Dashboard page error:', {
+                  error: error.message,
+                  stack: error.stack,
+                  componentStack: errorInfo.componentStack
+                })
+              }}
+            >
+              {children}
+            </ErrorBoundary>
           </div>
         </main>
       </div>

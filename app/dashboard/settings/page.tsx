@@ -29,6 +29,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ComprehensiveNotificationSettings } from '@/components/notifications/comprehensive-notification-settings'
 
+import { logger } from '@/lib/logger'
 interface UserProfile {
   id: string
   email: string
@@ -102,7 +103,7 @@ export default function SettingsPage() {
         updated_at: new Date().toISOString()
       }))
     } catch (error) {
-      console.error(`Error saving to localStorage (${key}):`, error)
+      logger.error(`Error saving to localStorage (${key}):`, error)
     }
   }
 
@@ -117,7 +118,7 @@ export default function SettingsPage() {
         }
       }
     } catch (error) {
-      console.error(`Error loading from localStorage (${key}):`, error)
+      logger.error(`Error loading from localStorage (${key}):`, error)
     }
     return null
   }
@@ -142,7 +143,7 @@ export default function SettingsPage() {
       await loadNotificationSettings(user.id)
       await loadSecuritySettings(user.id)
     } catch (error) {
-      console.error('Error loading settings:', error)
+      logger.error('Error loading settings:', error)
       toast.error('Failed to load settings')
     } finally {
       setLoading(false)
@@ -179,7 +180,7 @@ export default function SettingsPage() {
         })
       }
     } catch (error) {
-      console.error('Error loading profile:', error)
+      logger.error('Error loading profile:', error)
     }
   }
 
@@ -196,7 +197,7 @@ export default function SettingsPage() {
 
       if (tableCheckError) {
         // Table doesn't exist - try to load from localStorage
-        console.log('Notification settings table not available, checking localStorage')
+        logger.debug('Notification settings table not available, checking localStorage')
         const localSettings = loadFromLocalStorage('user_notifications', userId)
         if (localSettings) {
           setNotifications({
@@ -208,7 +209,7 @@ export default function SettingsPage() {
             marketing_emails: localSettings.marketing_emails ?? false,
             weekly_reports: localSettings.weekly_reports ?? true
           })
-          console.log('Loaded notification settings from localStorage')
+          logger.debug('Loaded notification settings from localStorage')
         }
         return
       }
@@ -221,13 +222,13 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (error) {
-        console.error('Error loading notification settings:', error)
+        logger.error('Error loading notification settings:', error)
         return
       }
 
       if (!data) {
         // No rows found - use default settings
-        console.log('No notification settings found, using defaults')
+        logger.debug('No notification settings found, using defaults')
         return
       }
 
@@ -243,7 +244,7 @@ export default function SettingsPage() {
         })
       }
     } catch (error) {
-      console.error('Error loading notification settings:', error)
+      logger.error('Error loading notification settings:', error)
       // Keep default settings on any error
     }
   }
@@ -261,7 +262,7 @@ export default function SettingsPage() {
 
       if (tableCheckError) {
         // Table doesn't exist - try to load from localStorage
-        console.log('Security settings table not available, checking localStorage')
+        logger.debug('Security settings table not available, checking localStorage')
         const localSettings = loadFromLocalStorage('user_security', userId)
         if (localSettings) {
           setSecurity({
@@ -270,7 +271,7 @@ export default function SettingsPage() {
             login_notifications: localSettings.login_notifications ?? true,
             password_change_required: localSettings.password_change_required ?? false
           })
-          console.log('Loaded security settings from localStorage')
+          logger.debug('Loaded security settings from localStorage')
         }
         return
       }
@@ -283,13 +284,13 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (error) {
-        console.error('Error loading security settings:', error)
+        logger.error('Error loading security settings:', error)
         return
       }
 
       if (!data) {
         // No rows found - use default settings
-        console.log('No security settings found, using defaults')
+        logger.debug('No security settings found, using defaults')
         return
       }
 
@@ -302,7 +303,7 @@ export default function SettingsPage() {
         })
       }
     } catch (error) {
-      console.error('Error loading security settings:', error)
+      logger.error('Error loading security settings:', error)
       // Keep default security settings on any error
     }
   }
@@ -367,7 +368,7 @@ export default function SettingsPage() {
 
       toast.success('Profile updated successfully')
     } catch (error) {
-      console.error('Error updating profile:', error)
+      logger.error('Error updating profile:', error)
       toast.error('Failed to update profile')
     } finally {
       setSaving(false)
@@ -403,13 +404,13 @@ export default function SettingsPage() {
         })
 
       if (error) {
-        console.error('Error updating notification settings:', error)
+        logger.error('Error updating notification settings:', error)
         toast.error('Failed to update notification settings')
       } else {
         toast.success('Notification settings updated')
       }
     } catch (error) {
-      console.error('Error updating notifications:', error)
+      logger.error('Error updating notifications:', error)
       toast.error('Failed to update notification settings')
     } finally {
       setSaving(false)
@@ -445,13 +446,13 @@ export default function SettingsPage() {
         })
 
       if (error) {
-        console.error('Error updating security settings:', error)
+        logger.error('Error updating security settings:', error)
         toast.error('Failed to update security settings')
       } else {
         toast.success('Security settings updated')
       }
     } catch (error) {
-      console.error('Error updating security:', error)
+      logger.error('Error updating security:', error)
       toast.error('Failed to update security settings')
     } finally {
       setSaving(false)
@@ -486,7 +487,7 @@ export default function SettingsPage() {
         confirm_password: ''
       })
     } catch (error) {
-      console.error('Error updating password:', error)
+      logger.error('Error updating password:', error)
       toast.error('Failed to update password')
     } finally {
       setSaving(false)

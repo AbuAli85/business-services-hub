@@ -6,6 +6,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { logger } from '@/lib/logger'
 import { 
   TrendingUp, 
   Users, 
@@ -92,7 +93,7 @@ export default function EnhancedDashboardPage() {
         }
       }
     } catch (error) {
-      console.error('Auth check error:', error)
+      logger.error('Auth check error:', error)
       router.push('/auth/sign-in')
     }
   }
@@ -100,7 +101,7 @@ export default function EnhancedDashboardPage() {
   async function loadDashboardData() {
     try {
       if (!user?.id) {
-        console.log('User ID not available yet, skipping data load')
+        logger.debug('User ID not available yet, skipping data load')
         return
       }
 
@@ -188,7 +189,7 @@ export default function EnhancedDashboardPage() {
       setDashboardData(dashboardData)
       setLoading(false)
     } catch (error) {
-      console.error('Error loading dashboard data:', error)
+      logger.error('Error loading dashboard data:', error)
       setLoading(false)
     }
   }

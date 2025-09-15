@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import UnifiedInvoiceManagement from '@/components/dashboard/unified-invoice-management'
 
+import { logger } from '@/lib/logger'
 export default function ClientInvoicesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -26,7 +27,7 @@ export default function ClientInvoicesPage() {
 
       setUser(user)
     } catch (error) {
-      console.error('Error checking user:', error)
+      logger.error('Error checking user:', error)
       router.push('/auth/sign-in')
     } finally {
       setLoading(false)

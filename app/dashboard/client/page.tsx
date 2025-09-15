@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import { ClientDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
+import { logger } from '@/lib/logger'
 
 interface ClientStats {
   totalBookings: number
@@ -151,9 +153,9 @@ export default function ClientDashboard() {
         })
         subscriptionKeys.push('services:')
 
-      } catch (error) {
-        console.error('Error setting up realtime subscriptions:', error)
-      }
+        } catch (error) {
+          logger.warn('Error setting up realtime subscriptions:', error)
+        }
     })()
 
     return () => {
@@ -180,12 +182,12 @@ export default function ClientDashboard() {
 
       // Check if user is a client
       const userRole = user.user_metadata?.role
-      console.log('User role:', userRole)
-      console.log('User ID:', user.id)
-      console.log('User metadata:', user.user_metadata)
+      logger.debug('User role:', userRole)
+      logger.debug('User ID:', user.id)
+      logger.debug('User metadata:', user.user_metadata)
       
       if (userRole !== 'client') {
-        console.log('User is not a client, redirecting to dashboard')
+        logger.debug('User is not a client, redirecting to dashboard')
         router.push('/dashboard')
         return
       }
@@ -204,10 +206,10 @@ export default function ClientDashboard() {
           fetchServiceSuggestions(user.id)
         ])
       } catch (fetchError) {
-        console.error('Error fetching user data:', fetchError)
+        logger.error('Error fetching user data:', fetchError)
       }
     } catch (error) {
-      console.error('Error loading client data:', error)
+      logger.error('Error loading client data:', error)
       setError('Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
     } finally {
@@ -217,7 +219,7 @@ export default function ClientDashboard() {
 
   const fetchClientStats = async (userId: string) => {
     try {
-      console.log('Fetching client stats for user:', userId)
+      logger.debug('Fetching client stats for user:', userId)
       const supabase = await getSupabaseClient()
       
       const { data: bookings, error: bookingsError } = await supabase
@@ -225,10 +227,10 @@ export default function ClientDashboard() {
         .select('status, amount, currency, created_at')
         .eq('client_id', userId)
 
-      console.log('Client stats query result:', { bookings, error: bookingsError })
+      logger.debug('Client stats query result:', { bookings, error: bookingsError })
 
       if (bookingsError) {
-        console.error('Error fetching bookings:', bookingsError)
+        logger.error('Error fetching bookings:', bookingsError)
         setStats({
           totalBookings: 0,
           activeBookings: 0,
@@ -275,7 +277,7 @@ export default function ClientDashboard() {
         .eq('client_id', userId)
 
       if (reviewsError) {
-        console.error('Error fetching reviews:', reviewsError)
+        logger.error('Error fetching reviews:', reviewsError)
       }
 
       const totalReviews = reviews?.length || 0
@@ -294,7 +296,7 @@ export default function ClientDashboard() {
         favoriteProviders: 0
       })
     } catch (error) {
-      console.error('Error fetching client stats:', error)
+      logger.error('Error fetching client stats:', error)
       setStats({
         totalBookings: 0,
         activeBookings: 0,
@@ -310,7 +312,7 @@ export default function ClientDashboard() {
 
   const fetchRecentBookings = async (userId: string) => {
     try {
-      console.log('Fetching recent bookings for user:', userId)
+      logger.debug('Fetching recent bookings for user:', userId)
       const supabase = await getSupabaseClient()
       
       const { data: bookings, error: bookingsError } = await supabase
@@ -331,10 +333,10 @@ export default function ClientDashboard() {
         .order('created_at', { ascending: false })
         .limit(5)
 
-      console.log('Bookings query result:', { bookings, error: bookingsError })
+      logger.debug('Bookings query result:', { bookings, error: bookingsError })
 
       if (bookingsError) {
-        console.error('Error fetching recent bookings:', bookingsError)
+        logger.error('Error fetching recent bookings:', bookingsError)
         setRecentBookings([])
         return
       }
@@ -362,9 +364,9 @@ export default function ClientDashboard() {
         const enrichedBookings = bookings.map((b: any) => {
           const service = servicesResponse.data?.find(s => s.id === b.service_id)
           const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-          console.log('Booking data:', b)
-          console.log('Service data:', service)
-          console.log('Provider data:', provider)
+          logger.debug('Booking data:', b)
+          logger.debug('Service data:', service)
+          logger.debug('Provider data:', provider)
           return {
             ...b,
             service_title: service?.title || 'Unknown Service',
@@ -388,7 +390,7 @@ export default function ClientDashboard() {
         setRecentBookings(enrichedBookings)
       }
     } catch (error) {
-      console.error('Error fetching recent bookings:', error)
+      logger.error('Error fetching recent bookings:', error)
       setRecentBookings([])
     }
   }
@@ -414,7 +416,7 @@ export default function ClientDashboard() {
         .limit(3)
 
       if (bookingsError) {
-        console.error('Error fetching upcoming bookings:', bookingsError)
+        logger.error('Error fetching upcoming bookings:', bookingsError)
         setUpcomingBookings([])
         return
       }
@@ -467,7 +469,7 @@ export default function ClientDashboard() {
         setUpcomingBookings(enrichedBookings)
       }
     } catch (error) {
-      console.error('Error fetching upcoming bookings:', error)
+      logger.error('Error fetching upcoming bookings:', error)
       setUpcomingBookings([])
     }
   }
@@ -482,13 +484,13 @@ export default function ClientDashboard() {
         .single()
 
       if (error) {
-        console.error('Error fetching user profile:', error)
+        logger.error('Error fetching user profile:', error)
         return
       }
 
       setUserProfile(profile)
     } catch (error) {
-      console.error('Error fetching user profile:', error)
+      logger.error('Error fetching user profile:', error)
     }
   }
 
@@ -498,7 +500,7 @@ export default function ClientDashboard() {
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {
-        console.error('No access token available')
+        logger.error('No access token available')
         return
       }
 
@@ -510,14 +512,14 @@ export default function ClientDashboard() {
       })
 
       if (!response.ok) {
-        console.error('Failed to fetch service suggestions:', response.statusText)
+        logger.error('Failed to fetch service suggestions:', response.statusText)
         return
       }
 
       const data = await response.json()
       setServiceSuggestions(data.suggestions || [])
     } catch (error) {
-      console.error('Error fetching service suggestions:', error)
+      logger.error('Error fetching service suggestions:', error)
       setServiceSuggestions([])
     }
   }
@@ -535,7 +537,7 @@ export default function ClientDashboard() {
       ])
       toast.success('Dashboard refreshed')
     } catch (err) {
-      console.error('Error refreshing dashboard:', err)
+      logger.error('Error refreshing dashboard:', err)
       toast.error('Failed to refresh dashboard')
     } finally {
       setRefreshing(false)
@@ -588,8 +590,9 @@ export default function ClientDashboard() {
   }
 
   return (
-    <main className="p-3 sm:p-4 lg:p-6 xl:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <ClientDashboardErrorBoundary>
+      <main className="p-3 sm:p-4 lg:p-6 xl:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Client Dashboard</h1>
@@ -794,5 +797,6 @@ export default function ClientDashboard() {
         </div>
       </div>
     </main>
+    </ClientDashboardErrorBoundary>
   )
 }

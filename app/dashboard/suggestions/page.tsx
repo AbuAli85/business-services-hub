@@ -28,6 +28,7 @@ import { toast } from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase'
 import { formatDate, formatTime } from '@/lib/utils'
 
+import { logger } from '@/lib/logger'
 interface ServiceSuggestion {
   id: string
   provider_id: string
@@ -107,14 +108,14 @@ export default function ServiceSuggestionsPage() {
       // Check if user is an admin
       const userRole = user.user_metadata?.role
       if (userRole !== 'admin') {
-        console.log('User is not an admin, redirecting to dashboard')
+        logger.debug('User is not an admin, redirecting to dashboard')
         router.push('/dashboard')
         return
       }
 
       setUser(user)
     } catch (error) {
-      console.error('Auth check error:', error)
+      logger.error('Auth check error:', error)
       router.push('/auth/sign-in')
     }
   }
@@ -138,20 +139,20 @@ export default function ServiceSuggestionsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        console.error('API Error Response:', data)
+        logger.error('API Error Response:', data)
         const errorMessage = data.details || data.error || 'Failed to load suggestions'
         throw new Error(errorMessage)
       }
 
-      console.log('API Success Response:', data)
+      logger.debug('API Success Response:', data)
       setSuggestions(data.suggestions || [])
     } catch (error) {
-      console.error('Error loading suggestions:', error)
+      logger.error('Error loading suggestions:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to load service suggestions'
       
       // In development, don't show error toast if it's just an empty result
       if (!errorMessage.includes('fetch') && !errorMessage.includes('500')) {
-        console.log('API request succeeded but returned empty suggestions')
+        logger.debug('API request succeeded but returned empty suggestions')
       } else {
         toast.error(`Failed to load suggestions: ${errorMessage}`)
       }
@@ -170,13 +171,13 @@ export default function ServiceSuggestionsPage() {
         .order('full_name')
 
       if (error) {
-        console.error('Error loading clients:', error)
+        logger.error('Error loading clients:', error)
         return
       }
 
       setClients(clients || [])
     } catch (error) {
-      console.error('Error loading clients:', error)
+      logger.error('Error loading clients:', error)
     }
   }
 
@@ -190,13 +191,13 @@ export default function ServiceSuggestionsPage() {
         .order('full_name')
 
       if (error) {
-        console.error('Error loading providers:', error)
+        logger.error('Error loading providers:', error)
         return
       }
 
       setProviders(providers || [])
     } catch (error) {
-      console.error('Error loading providers:', error)
+      logger.error('Error loading providers:', error)
     }
   }
 
@@ -210,13 +211,13 @@ export default function ServiceSuggestionsPage() {
         .order('title')
 
       if (error) {
-        console.error('Error loading services:', error)
+        logger.error('Error loading services:', error)
         return
       }
 
       setServices(services || [])
     } catch (error) {
-      console.error('Error loading services:', error)
+      logger.error('Error loading services:', error)
     }
   }
   
@@ -338,7 +339,7 @@ export default function ServiceSuggestionsPage() {
 
       toast.success(`Suggestion ${status} successfully!`)
     } catch (error) {
-      console.error('Error responding to suggestion:', error)
+      logger.error('Error responding to suggestion:', error)
       toast.error('Failed to respond to suggestion')
     } finally {
       setRespondingTo(null)
@@ -389,7 +390,7 @@ export default function ServiceSuggestionsPage() {
       // Reload suggestions
       loadSuggestions()
     } catch (error) {
-      console.error('Error creating suggestion:', error)
+      logger.error('Error creating suggestion:', error)
       toast.error(`Failed to create suggestion: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setCreating(false)
@@ -434,7 +435,7 @@ export default function ServiceSuggestionsPage() {
           : suggestion
       ))
     } catch (error) {
-      console.error('Error marking as viewed:', error)
+      logger.error('Error marking as viewed:', error)
     }
   }
 

@@ -56,6 +56,7 @@ import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
 
+import { logger } from '@/lib/logger'
 interface Service {
   id: string
   title: string
@@ -159,7 +160,7 @@ export default function ServicesPage() {
         subscriptionKeys.push(`services:${user.id}`)
 
       } catch (error) {
-        console.error('Error setting up realtime subscriptions:', error)
+        logger.error('Error setting up realtime subscriptions:', error)
       }
     })()
 
@@ -182,10 +183,10 @@ export default function ServicesPage() {
         return
       }
 
-      console.log('User authenticated:', user.id, 'Role from metadata:', user.user_metadata?.role)
+      logger.debug('User authenticated:', user.id, 'Role from metadata:', user.user_metadata?.role)
       setUser(user)
       const role = user.user_metadata?.role || 'client'
-      console.log('Setting user role to:', role)
+      logger.debug('Setting user role to:', role)
       setUserRole(role)
       
       await Promise.all([
@@ -193,7 +194,7 @@ export default function ServicesPage() {
         fetchServiceStats()
       ])
     } catch (error) {
-      console.error('Error loading services:', error)
+      logger.error('Error loading services:', error)
       toast.error('Failed to load services')
     } finally {
       setLoading(false)
@@ -204,7 +205,7 @@ export default function ServicesPage() {
     try {
       // Guard clause: don't fetch if we don't have user role or user ID
       if (!userRole || !user?.id) {
-        console.log('fetchServices: Missing userRole or user ID, skipping')
+        logger.debug('fetchServices: Missing userRole or user ID, skipping')
         return
       }
 
@@ -224,20 +225,20 @@ export default function ServicesPage() {
         `)
 
       // Role-based filtering: Providers only see their own services, clients see only approved services
-      console.log('Current userRole:', userRole, 'User ID:', user?.id)
+      logger.debug('Current userRole:', userRole, 'User ID:', user?.id)
       if (userRole === 'provider' && user?.id) {
-        console.log('Filtering services for provider:', user.id)
+        logger.debug('Filtering services for provider:', user.id)
         query = query.eq('provider_id', user.id)
         
         // Double-check the query is correct
-        console.log('Query after filtering for provider:', user.id)
+        logger.debug('Query after filtering for provider:', user.id)
       } else if (userRole === 'provider' && !user?.id) {
-        console.log('Provider role but no user ID, skipping services fetch')
+        logger.debug('Provider role but no user ID, skipping services fetch')
         setServices([])
         return
       } else if (userRole === 'client') {
         // Clients should only see approved services, not pending ones
-        console.log('Filtering services for client - showing only approved services')
+        logger.debug('Filtering services for client - showing only approved services')
         query = query
           .eq('approval_status', 'approved')
           .eq('status', 'active')
@@ -292,16 +293,16 @@ export default function ServicesPage() {
              const { data: servicesData, error } = await query
 
        if (error) {
-         console.error('Error fetching services:', error)
+         logger.error('Error fetching services:', error)
          toast.error('Failed to fetch services')
          setServices([])
          return
        }
 
-       console.log(`Services fetched for ${userRole}:`, servicesData?.length || 0, 'services')
+       logger.debug(`Services fetched for ${userRole}:`, servicesData?.length || 0, 'services')
        if (servicesData && servicesData.length > 0) {
-         console.log('First service provider_id:', servicesData[0].provider_id)
-         console.log('First service approval_status:', servicesData[0].approval_status)
+         logger.debug('First service provider_id:', servicesData[0].provider_id)
+         logger.debug('First service approval_status:', servicesData[0].approval_status)
        }
 
       // Now try to enrich services with provider information
@@ -316,7 +317,7 @@ export default function ServicesPage() {
               .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
             if (providerError) {
-              console.warn(`Could not fetch provider for service ${service.id}:`, providerError)
+              logger.warn(`Could not fetch provider for service ${service.id}:`, providerError)
               return {
                 ...service,
                 provider: {
@@ -350,7 +351,7 @@ export default function ServicesPage() {
               company_industry: service.companies?.industry
             }
           } catch (error) {
-            console.warn(`Error enriching service ${service.id}:`, error)
+            logger.warn(`Error enriching service ${service.id}:`, error)
             return {
               ...service,
               provider: {
@@ -370,10 +371,10 @@ export default function ServicesPage() {
         })
       )
 
-      console.log('Enriched services:', enrichedServices)
+      logger.debug('Enriched services:', enrichedServices)
       setServices(enrichedServices)
     } catch (error) {
-      console.error('Error fetching services:', error)
+      logger.error('Error fetching services:', error)
       toast.error('Failed to fetch services')
       setServices([])
     }
@@ -383,7 +384,7 @@ export default function ServicesPage() {
     try {
       // Guard clause: don't fetch if we don't have user role or user ID
       if (!userRole || !user?.id) {
-        console.log('fetchServiceStats: Missing userRole or user ID, skipping')
+        logger.debug('fetchServiceStats: Missing userRole or user ID, skipping')
         return
       }
 
@@ -528,7 +529,7 @@ export default function ServicesPage() {
           }
         }
       } catch (error) {
-        console.warn('Error calculating revenue from bookings:', error)
+        logger.warn('Error calculating revenue from bookings:', error)
         totalRevenue = 0
       }
 
@@ -577,7 +578,7 @@ export default function ServicesPage() {
         averageRating
       })
     } catch (error) {
-      console.error('Error fetching service stats:', error)
+      logger.error('Error fetching service stats:', error)
       // Set default stats if there's an error
       setStats({
         totalServices: 0,

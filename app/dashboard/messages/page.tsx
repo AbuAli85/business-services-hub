@@ -29,6 +29,7 @@ import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { formatDate, formatTime } from '@/lib/utils'
 
+import { logger } from '@/lib/logger'
 interface Message {
   id: string
   content: string
@@ -106,7 +107,7 @@ export default function MessagesPage() {
         subscriptionKeys.push(`messages:${user.id}`)
 
       } catch (error) {
-        console.error('Error setting up realtime subscriptions:', error)
+        logger.error('Error setting up realtime subscriptions:', error)
       }
     })()
 
@@ -141,7 +142,7 @@ export default function MessagesPage() {
       setUser(user)
       await fetchConversations(user.id)
     } catch (error) {
-      console.error('Error loading messages:', error)
+      logger.error('Error loading messages:', error)
       toast.error('Failed to load messages')
     } finally {
       setLoading(false)
@@ -161,7 +162,7 @@ export default function MessagesPage() {
 
       if (error) throw error
 
-      console.log('Raw conversations data:', conversationsData)
+      logger.debug('Raw conversations data:', conversationsData)
 
       // Process conversations and fetch related data separately
       const conversationMap = new Map<string, Conversation>()
@@ -177,8 +178,8 @@ export default function MessagesPage() {
         if (msg.booking_id) bookingIds.add(msg.booking_id)
       })
       
-      console.log('Participant IDs:', Array.from(participantIds))
-      console.log('Booking IDs:', Array.from(bookingIds))
+      logger.debug('Participant IDs:', Array.from(participantIds))
+      logger.debug('Booking IDs:', Array.from(bookingIds))
       
       // Fetch participant profiles
       const { data: participants, error: participantError } = await supabase
@@ -187,10 +188,10 @@ export default function MessagesPage() {
         .in('id', Array.from(participantIds))
 
       if (participantError) {
-        console.error('Error fetching participants:', participantError)
+        logger.error('Error fetching participants:', participantError)
       }
 
-      console.log('Fetched participants:', participants)
+      logger.debug('Fetched participants:', participants)
       
       // Fetch booking information
       const { data: bookings, error: bookingError } = await supabase
@@ -199,10 +200,10 @@ export default function MessagesPage() {
         .in('id', Array.from(bookingIds))
 
       if (bookingError) {
-        console.error('Error fetching bookings:', bookingError)
+        logger.error('Error fetching bookings:', bookingError)
       }
 
-      console.log('Fetched bookings:', bookings)
+      logger.debug('Fetched bookings:', bookings)
       
       // Fetch service information for the bookings
       const serviceIds = Array.from(new Set(bookings?.map(b => b.service_id).filter(Boolean) || []))
@@ -215,13 +216,13 @@ export default function MessagesPage() {
           .in('id', serviceIds)
         
         if (servicesError) {
-          console.error('Error fetching services:', servicesError)
+          logger.error('Error fetching services:', servicesError)
         } else {
           services = servicesData || []
         }
       }
       
-      console.log('Fetched services:', services)
+      logger.debug('Fetched services:', services)
       
       // Process conversations
       conversationsData?.forEach((msg) => {
@@ -231,10 +232,10 @@ export default function MessagesPage() {
         const booking = bookings?.find(b => b.id === msg.booking_id)
         const service = services?.find(s => s.id === booking?.service_id)
         
-        console.log(`Processing message: sender=${msg.sender_id}, receiver=${msg.receiver_id}, participant=${participantId}`)
-        console.log(`Found participant:`, participant)
-        console.log(`Found booking:`, booking)
-        console.log(`Found service:`, service)
+        logger.debug(`Processing message: sender=${msg.sender_id}, receiver=${msg.receiver_id}, participant=${participantId}`)
+        logger.debug(`Found participant:`, participant)
+        logger.debug(`Found booking:`, booking)
+        logger.debug(`Found service:`, service)
         
         if (!conversationMap.has(participantId)) {
           conversationMap.set(participantId, {
@@ -262,10 +263,10 @@ export default function MessagesPage() {
       })
 
       const finalConversations = Array.from(conversationMap.values())
-      console.log('Final conversations:', finalConversations)
+      logger.debug('Final conversations:', finalConversations)
       setConversations(finalConversations)
     } catch (error) {
-      console.error('Error fetching conversations:', error)
+      logger.error('Error fetching conversations:', error)
       toast.error('Failed to load conversations')
     }
   }
@@ -282,13 +283,13 @@ export default function MessagesPage() {
 
       if (error) throw error
 
-      console.log('Fetched messages:', messagesData)
+      logger.debug('Fetched messages:', messagesData)
       setMessages(messagesData || [])
       
       // Mark messages as read
       markMessagesAsRead(conversationId)
     } catch (error) {
-      console.error('Error fetching messages:', error)
+      logger.error('Error fetching messages:', error)
       toast.error('Failed to load messages')
     }
   }
@@ -304,7 +305,7 @@ export default function MessagesPage() {
         .eq('receiver_id', user.id)
         .is('read_at', null)
     } catch (error) {
-      console.error('Error marking messages as read:', error)
+      logger.error('Error marking messages as read:', error)
     }
   }
 
@@ -339,9 +340,9 @@ export default function MessagesPage() {
           sender_id: user.id,
           sender_name: user?.user_metadata?.full_name || 'User'
         })
-        console.log('✅ Message notification triggered')
+        logger.debug('✅ Message notification triggered')
       } catch (notificationError) {
-        console.warn('Failed to send message notification:', notificationError)
+        logger.warn('Failed to send message notification:', notificationError)
         // Non-blocking - don't fail the message if notifications fail
       }
 
@@ -360,7 +361,7 @@ export default function MessagesPage() {
       toast.success('Message sent successfully')
       
     } catch (error) {
-      console.error('Error sending message:', error)
+      logger.error('Error sending message:', error)
       toast.error('Failed to send message')
     }
   }
@@ -411,7 +412,7 @@ export default function MessagesPage() {
       setMessages(prev => [...prev, message])
       toast.success('File sent successfully')
     } catch (error) {
-      console.error('Error uploading file:', error)
+      logger.error('Error uploading file:', error)
       toast.error('Failed to upload file')
     } finally {
       setUploading(false)

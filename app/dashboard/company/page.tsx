@@ -50,6 +50,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
+import { logger } from '@/lib/logger'
 interface Company {
   id: string
   owner_id?: string
@@ -136,13 +137,13 @@ export default function CompanyPage() {
   
   // Debug: Log form state changes
   useEffect(() => {
-    console.log('Form state changed:', form)
+    logger.debug('Form state changed:', form)
   }, [form])
   
   // Sync form with company data when company changes
   useEffect(() => {
     if (currentCompany && !editing && !creating) {
-      console.log('Syncing form with company data:', currentCompany)
+      logger.debug('Syncing form with company data:', currentCompany)
       setForm({
         name: currentCompany.name || '',
         description: currentCompany.description || '',
@@ -163,7 +164,7 @@ export default function CompanyPage() {
   // Clear form when creating a new company
   useEffect(() => {
     if (creating && !editing) {
-      console.log('Clearing form for new company creation')
+      logger.debug('Clearing form for new company creation')
       setForm({
         name: '',
         description: '',
@@ -279,13 +280,13 @@ export default function CompanyPage() {
         .single()
       
       if (error && error.code !== 'PGRST116') {
-        console.error('Error checking email conflict:', error)
+        logger.error('Error checking email conflict:', error)
         return false
       }
       
       return !!data
     } catch (error) {
-      console.error('Error checking email conflict:', error)
+      logger.error('Error checking email conflict:', error)
       return false
     }
   }
@@ -378,7 +379,7 @@ export default function CompanyPage() {
         })
 
       if (error) {
-        console.error('Error uploading logo:', error)
+        logger.error('Error uploading logo:', error)
         alert('Failed to upload logo. Please try again.')
         return null
       }
@@ -390,7 +391,7 @@ export default function CompanyPage() {
 
       return publicUrl
     } catch (error) {
-      console.error('Error uploading logo:', error)
+      logger.error('Error uploading logo:', error)
       alert('Failed to upload logo. Please try again.')
       return null
     } finally {
@@ -411,15 +412,15 @@ export default function CompanyPage() {
         .remove([`company-logos/${filePath}`])
       
       if (error) {
-        console.error('Error removing old logo:', error)
+        logger.error('Error removing old logo:', error)
       }
     } catch (error) {
-      console.error('Error removing old logo:', error)
+      logger.error('Error removing old logo:', error)
     }
   }
 
   useEffect(() => {
-    console.log('CompanyPage useEffect triggered')
+    logger.debug('CompanyPage useEffect triggered')
     fetchCompaniesData()
   }, [])
 
@@ -438,7 +439,7 @@ export default function CompanyPage() {
         .order('created_at', { ascending: false })
 
       if (companiesError) {
-        console.error('Error fetching companies:', companiesError)
+        logger.error('Error fetching companies:', companiesError)
         setError('Failed to load companies')
         return
       }
@@ -472,7 +473,7 @@ export default function CompanyPage() {
       await fetchCompanyStats(companiesData || [])
 
     } catch (error) {
-      console.error('Error fetching companies data:', error)
+      logger.error('Error fetching companies data:', error)
       setError('Failed to load companies data')
     } finally {
       setLoading(false)
@@ -508,7 +509,7 @@ export default function CompanyPage() {
         totalRevenue
       })
     } catch (error) {
-      console.error('Error fetching company stats:', error)
+      logger.error('Error fetching company stats:', error)
     }
   }
 
@@ -551,7 +552,7 @@ export default function CompanyPage() {
       toast.success('Company deleted successfully')
       await fetchCompaniesData()
     } catch (error) {
-      console.error('Error deleting company:', error)
+      logger.error('Error deleting company:', error)
       toast.error('Failed to delete company')
     }
   }
@@ -590,7 +591,7 @@ export default function CompanyPage() {
       toast.success('Company duplicated successfully')
       await fetchCompaniesData()
     } catch (error) {
-      console.error('Error duplicating company:', error)
+      logger.error('Error duplicating company:', error)
       toast.error('Failed to duplicate company')
     }
   }
@@ -617,14 +618,14 @@ export default function CompanyPage() {
         .single()
 
       if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        console.error('Error checking profile:', profileCheckError)
+        logger.error('Error checking profile:', profileCheckError)
         toast.error('Failed to verify user profile')
         return
       }
 
       // If no profile exists, create one
       if (!existingProfile) {
-        console.log('Creating missing profile for user:', user.email)
+        logger.debug('Creating missing profile for user:', user.email)
         const { error: profileCreateError } = await supabase
           .from('profiles')
           .insert({
@@ -638,11 +639,11 @@ export default function CompanyPage() {
           })
 
         if (profileCreateError) {
-          console.error('Profile creation error:', profileCreateError)
+          logger.error('Profile creation error:', profileCreateError)
           toast.error(`Profile creation failed: ${profileCreateError.message}`)
           return
         }
-        console.log('Profile created successfully')
+        logger.debug('Profile created successfully')
       }
 
       // Now create company with basic info
@@ -659,7 +660,7 @@ export default function CompanyPage() {
         .single()
 
       if (companyError) {
-        console.error('Company creation error:', companyError)
+        logger.error('Company creation error:', companyError)
         toast.error(`Company creation failed: ${companyError.message}`)
         return
       }
@@ -674,7 +675,7 @@ export default function CompanyPage() {
         .eq('id', user.id)
 
       if (profileError) {
-        console.error('Profile update error:', profileError)
+        logger.error('Profile update error:', profileError)
         toast.error(`Profile update failed: ${profileError.message}`)
         return
       }
@@ -686,7 +687,7 @@ export default function CompanyPage() {
       // Refresh company data
       await fetchCompaniesData()
     } catch (error) {
-      console.error('Error creating company:', error)
+      logger.error('Error creating company:', error)
       toast.error('Failed to create company')
     } finally {
       setCreating(false)
@@ -729,14 +730,14 @@ export default function CompanyPage() {
         .single()
 
       if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        console.error('Error checking profile:', profileCheckError)
+        logger.error('Error checking profile:', profileCheckError)
         setError('Failed to verify user profile')
         return
       }
 
       // If no profile exists, create one
       if (!existingProfile) {
-        console.log('Creating missing profile for user:', user.email)
+        logger.debug('Creating missing profile for user:', user.email)
         const { error: profileCreateError } = await supabase
           .from('profiles')
           .insert({
@@ -750,11 +751,11 @@ export default function CompanyPage() {
           })
 
         if (profileCreateError) {
-          console.error('Profile creation error:', profileCreateError)
+          logger.error('Profile creation error:', profileCreateError)
           setError(`Profile creation failed: ${profileCreateError.message}`)
           return
         }
-        console.log('Profile created successfully')
+        logger.debug('Profile created successfully')
       }
 
       // Upload logo if file is selected
@@ -775,7 +776,7 @@ export default function CompanyPage() {
         logo_url: logoUrl || null,
       }
 
-      console.log('Attempting to create company with minimal data:', companyData)
+      logger.debug('Attempting to create company with minimal data:', companyData)
 
       const { data: newCompany, error } = await supabase
         .from('companies')
@@ -784,8 +785,8 @@ export default function CompanyPage() {
         .single()
 
       if (error) {
-        console.error('Error creating company:', error)
-        console.error('Error details:', {
+        logger.error('Error creating company:', error)
+        logger.error('Error details:', {
           code: error.code,
           message: error.message,
           details: error.details,
@@ -795,7 +796,7 @@ export default function CompanyPage() {
         return
       }
 
-      console.log('Company created successfully:', newCompany)
+      logger.debug('Company created successfully:', newCompany)
 
       // Update user profile with company_id
       const { error: profileError } = await supabase
@@ -804,7 +805,7 @@ export default function CompanyPage() {
         .eq('id', user.id)
 
       if (profileError) {
-        console.error('Error updating profile:', profileError)
+        logger.error('Error updating profile:', profileError)
         setError('Company created but failed to link to profile')
       } else {
         setSuccess('Company created successfully!')
@@ -822,7 +823,7 @@ export default function CompanyPage() {
       // Refresh data
       await fetchCompaniesData()
     } catch (error) {
-      console.error('Error creating company:', error)
+      logger.error('Error creating company:', error)
       setError('An unexpected error occurred')
     } finally {
       setSubmitting(false)
@@ -894,7 +895,7 @@ export default function CompanyPage() {
       setEditing(false)
       setSuccess('Company updated successfully!')
     } catch (error) {
-      console.error('Error updating company:', error)
+      logger.error('Error updating company:', error)
       setError('An unexpected error occurred')
     } finally {
       setSubmitting(false)
@@ -1750,7 +1751,7 @@ export default function CompanyPage() {
                   <span>Form Completion</span>
                   <span>{(() => {
                     const formValues = Object.values(form);
-                    console.log('Form values:', formValues);
+                    logger.debug('Form values:', formValues);
                     const filledValues = formValues.filter(value => {
                       if (value === null || value === undefined) return false;
                       if (typeof value === 'string') return value.trim() !== '';

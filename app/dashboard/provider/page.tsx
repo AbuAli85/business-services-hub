@@ -23,6 +23,8 @@ import {
 import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { SessionStatusIndicator } from '@/components/ui/session-status-indicator'
+import { ProviderDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
+import { logger } from '@/lib/logger'
 
 export default function ProviderDashboard() {
   const router = useRouter()
@@ -59,7 +61,7 @@ export default function ProviderDashboard() {
       setUserId(user.id)
       await loadDashboardData(user.id)
     } catch (err) {
-      console.error('Error loading user and data:', err)
+      logger.error('Error loading user and data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
     } finally {
@@ -76,7 +78,7 @@ export default function ProviderDashboard() {
       setTopServices(data.topServices)
       setMonthlyEarnings(data.monthlyEarnings)
     } catch (err) {
-      console.error('Error loading dashboard data:', err)
+      logger.error('Error loading dashboard data:', err)
       throw err
     }
   }
@@ -89,7 +91,7 @@ export default function ProviderDashboard() {
       await loadDashboardData(userId)
       toast.success('Dashboard refreshed')
     } catch (err) {
-      console.error('Error refreshing dashboard:', err)
+      logger.error('Error refreshing dashboard:', err)
       toast.error('Failed to refresh dashboard')
     } finally {
       setRefreshing(false)
@@ -142,8 +144,9 @@ export default function ProviderDashboard() {
   }
 
   return (
-    <main className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <ProviderDashboardErrorBoundary>
+      <main className="p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Provider Dashboard</h1>
@@ -314,5 +317,6 @@ export default function ProviderDashboard() {
 
       </div>
     </main>
+    </ProviderDashboardErrorBoundary>
   )
 }

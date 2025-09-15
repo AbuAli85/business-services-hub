@@ -42,6 +42,7 @@ import { DatePickerWithRange } from '@/components/ui/date-range-picker'
 import { format, isWithinInterval, parseISO } from 'date-fns'
 import { realtimeManager } from '@/lib/realtime'
 
+import { logger } from '@/lib/logger'
 interface Booking {
   id: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'approved' | 'declined' | 'rescheduled'
@@ -74,7 +75,7 @@ interface SortConfig {
 }
 
 export default function BookingsPage() {
-  console.log('🚀 BookingsPage component rendering')
+  logger.debug('🚀 BookingsPage component rendering')
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
@@ -102,7 +103,7 @@ export default function BookingsPage() {
 
   // Load user and bookings
   useEffect(() => {
-    console.log('🔍 Bookings page useEffect triggered')
+    logger.debug('🔍 Bookings page useEffect triggered')
     loadUserAndBookings()
   }, [])
 
@@ -135,7 +136,7 @@ export default function BookingsPage() {
         subscriptionKeys.push('bookings:')
 
       } catch (error) {
-        console.error('Error setting up realtime subscriptions:', error)
+        logger.error('Error setting up realtime subscriptions:', error)
       }
     })()
 
@@ -153,7 +154,7 @@ export default function BookingsPage() {
   }, [bookings, searchQuery, statusFilter, priorityFilter, dateRange, amountRange, sortConfig])
 
   const loadUserAndBookings = async () => {
-    console.log('🔍 loadUserAndBookings function called')
+    logger.debug('🔍 loadUserAndBookings function called')
     try {
       const supabase = await getSupabaseClient()
       
@@ -313,14 +314,14 @@ export default function BookingsPage() {
       }
 
       if (error) {
-        console.error('Error loading bookings:', error)
+        logger.error('Error loading bookings:', error)
         toast.error('Failed to load bookings')
         return
       }
 
-      console.log('Raw bookings data:', bookingsData)
-      console.log('User ID:', user.id)
-      console.log('User role:', profile?.role)
+      logger.debug('Raw bookings data:', bookingsData)
+      logger.debug('User ID:', user.id)
+      logger.debug('User role:', profile?.role)
 
       // Load related data separately to avoid relationship conflicts
       const clientIds = Array.from(new Set(bookingsData?.map(b => b.client_id).filter(Boolean) || []))
@@ -412,7 +413,7 @@ export default function BookingsPage() {
       calculateEnhancedStats(transformedBookings)
       setLoading(false)
     } catch (error) {
-      console.error('Error:', error)
+      logger.error('Error:', error)
       toast.error('Failed to load bookings')
       setLoading(false)
     }
@@ -651,7 +652,7 @@ export default function BookingsPage() {
         year: 'numeric'
       })
     } catch (error) {
-      console.warn('Date formatting error:', error)
+      logger.warn('Date formatting error:', error)
       return 'Invalid date'
     }
   }

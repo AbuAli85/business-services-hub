@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 import UnifiedInvoiceManagement from '@/components/dashboard/unified-invoice-management'
 
+import { logger } from '@/lib/logger'
 export default function AdminInvoicesPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -18,14 +19,14 @@ export default function AdminInvoicesPage() {
       const { data: { user }, error } = await supabase.auth.getUser()
       
       if (error || !user) {
-        console.error('Error getting user:', error)
+        logger.error('Error getting user:', error)
         setLoading(false)
         return
       }
 
       setUser(user)
     } catch (error) {
-      console.error('Error checking user:', error)
+      logger.error('Error checking user:', error)
     } finally {
       setLoading(false)
     }

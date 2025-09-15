@@ -46,6 +46,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import toast from 'react-hot-toast'
 
+import { logger } from '@/lib/logger'
 interface InvoiceRecord {
   id: string
   booking_id: string
@@ -153,7 +154,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
       const data = await response.json()
       const invoicesData = data.invoices || []
       
-      console.log('📊 Fetched invoices:', invoicesData.length, 'invoices')
+      logger.debug('📊 Fetched invoices:', invoicesData.length, 'invoices')
       
       // Enrich invoice data with additional calculations
       const enrichedInvoices = invoicesData.map((invoice: any) => {
@@ -185,9 +186,9 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
       setInvoices(enrichedInvoices)
       calculateStats(enrichedInvoices)
       
-      console.log('✅ Invoices loaded successfully:', enrichedInvoices.length)
+      logger.debug('✅ Invoices loaded successfully:', enrichedInvoices.length)
     } catch (error) {
-      console.error('❌ Error fetching invoices:', error)
+      logger.error('❌ Error fetching invoices:', error)
       toast.error('Failed to fetch invoices')
     } finally {
       setLoading(false)
@@ -414,7 +415,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
             })
           })
         } catch (error) {
-          console.error('Error sending reminder:', error)
+          logger.error('Error sending reminder:', error)
         }
       }
     }
@@ -447,11 +448,11 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
         toast.success('PDF downloaded successfully')
       } else {
         const errorData = await response.json()
-        console.error('PDF generation failed:', errorData)
+        logger.error('PDF generation failed:', errorData)
         toast.error(`Failed to generate PDF: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      logger.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF')
     }
   }
@@ -479,7 +480,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
         await handleGeneratePDF(invoice)
       }
     } catch (error) {
-      console.error('Error downloading PDF:', error)
+      logger.error('Error downloading PDF:', error)
       // Fallback to generating PDF
       await handleGeneratePDF(invoice)
     }

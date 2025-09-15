@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 import UnifiedInvoiceManagement from '@/components/dashboard/unified-invoice-management'
 
+import { logger } from '@/lib/logger'
 export default function InvoicesPage() {
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin'>('client')
@@ -19,7 +20,7 @@ export default function InvoicesPage() {
       const { data: { user }, error } = await supabase.auth.getUser()
       
       if (error || !user) {
-        console.error('Error getting user:', error)
+        logger.error('Error getting user:', error)
         setLoading(false)
         return
       }
@@ -37,12 +38,12 @@ export default function InvoicesPage() {
         const role = roleFromProfile || (user.user_metadata?.role as 'client' | 'provider' | 'admin' | undefined) || 'client'
         setUserRole(role)
       } catch (profileErr) {
-        console.warn('Failed to load role from profiles, using metadata fallback:', profileErr)
+        logger.warn('Failed to load role from profiles, using metadata fallback:', profileErr)
         const role = (user.user_metadata?.role as 'client' | 'provider' | 'admin' | undefined) || 'client'
         setUserRole(role)
       }
     } catch (error) {
-      console.error('Error checking user:', error)
+      logger.error('Error checking user:', error)
     } finally {
       setLoading(false)
     }

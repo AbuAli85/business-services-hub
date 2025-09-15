@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { 
   Users, 
   Search, 
@@ -90,7 +91,7 @@ export default function AdminUsersPage() {
       }})
       setUsers(apiUsers)
     } catch (error) {
-      console.error('Error fetching users:', error)
+      logger.error('Error fetching users:', error)
     } finally {
       setLoading(false)
     }
@@ -400,8 +401,14 @@ export default function AdminUsersPage() {
           {/* Sorting & Pagination Controls */}
           <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Sort by</span>
-              <select className="border rounded px-2 py-1 text-sm" value={sortBy} onChange={(e)=>{setSortBy(e.target.value as any); setPage(1)}}>
+              <label htmlFor="sort-by-select" className="text-sm text-gray-500">Sort by</label>
+              <select 
+                id="sort-by-select"
+                className="border rounded px-2 py-1 text-sm" 
+                value={sortBy} 
+                onChange={(e)=>{setSortBy(e.target.value as any); setPage(1)}}
+                aria-label="Sort users by field"
+              >
                 <option value="created">Joined</option>
                 <option value="name">Name</option>
                 <option value="email">Email</option>
@@ -409,14 +416,25 @@ export default function AdminUsersPage() {
                 <option value="status">Status</option>
                 <option value="last_seen">Last seen</option>
               </select>
-              <select className="border rounded px-2 py-1 text-sm" value={sortDir} onChange={(e)=>{setSortDir(e.target.value as any); setPage(1)}}>
+              <select 
+                className="border rounded px-2 py-1 text-sm" 
+                value={sortDir} 
+                onChange={(e)=>{setSortDir(e.target.value as any); setPage(1)}}
+                aria-label="Sort direction"
+              >
                 <option value="asc">Asc</option>
                 <option value="desc">Desc</option>
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Page size</span>
-              <select className="border rounded px-2 py-1 text-sm" value={pageSize} onChange={(e)=>{setPageSize(parseInt(e.target.value)); setPage(1)}}>
+              <label htmlFor="page-size-select" className="text-sm text-gray-500">Page size</label>
+              <select 
+                id="page-size-select"
+                className="border rounded px-2 py-1 text-sm" 
+                value={pageSize} 
+                onChange={(e)=>{setPageSize(parseInt(e.target.value)); setPage(1)}}
+                aria-label="Number of users per page"
+              >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
@@ -505,11 +523,17 @@ export default function AdminUsersPage() {
                   className="flex items-center justify-between p-6 border-2 rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-200 group"
                 >
                   <div className="flex items-center space-x-6">
-                    <input type="checkbox" className="mt-1" checked={selectedIds.has(user.id)} onChange={(e)=>{
-                      const next = new Set(selectedIds)
-                      if (e.target.checked) next.add(user.id); else next.delete(user.id)
-                      setSelectedIds(next)
-                    }} />
+                    <input 
+                      type="checkbox" 
+                      className="mt-1" 
+                      checked={selectedIds.has(user.id)} 
+                      onChange={(e)=>{
+                        const next = new Set(selectedIds)
+                        if (e.target.checked) next.add(user.id); else next.delete(user.id)
+                        setSelectedIds(next)
+                      }}
+                      aria-label={`Select user ${user.full_name}`}
+                    />
                     <div className="relative">
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
                         <span className="text-blue-700 font-bold text-lg">
@@ -583,20 +607,29 @@ export default function AdminUsersPage() {
                   
                   <div className="flex items-center space-x-2 opacity-60 group-hover:opacity-100 transition-opacity">
                     {/* inline quick editors */}
-                    <select className="border rounded px-2 py-1 text-xs" value={user.role} onChange={async (e)=>{
-                      try { await callAdminUpdate(user.id, { role: e.target.value }); await fetchUsers() } catch(err:any){ alert(err.message) }
-                    }}>
+                    <select 
+                      className="border rounded px-2 py-1 text-xs" 
+                      value={user.role} 
+                      onChange={async (e)=>{
+                        try { await callAdminUpdate(user.id, { role: e.target.value }); await fetchUsers() } catch(err:any){ alert(err.message) }
+                      }}
+                      aria-label={`Change role for ${user.full_name}`}
+                    >
                       <option value="admin">admin</option>
                       <option value="manager">manager</option>
                       <option value="provider">provider</option>
                       <option value="client">client</option>
                     </select>
-                    <select className="border rounded px-2 py-1 text-xs" value={user.status}
+                    <select 
+                      className="border rounded px-2 py-1 text-xs" 
+                      value={user.status}
                       onChange={async (e)=>{
                         const s = e.target.value
                         const backend = s==='active'?'approved':(s==='suspended'?'suspended':'pending')
                         try { await callAdminUpdate(user.id, { status: backend }); await fetchUsers() } catch(err:any){ alert(err.message) }
-                      }}>
+                      }}
+                      aria-label={`Change status for ${user.full_name}`}
+                    >
                       <option value="active">active</option>
                       <option value="inactive">inactive</option>
                       <option value="suspended">suspended</option>
