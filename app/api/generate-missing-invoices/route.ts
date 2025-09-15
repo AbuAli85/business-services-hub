@@ -24,8 +24,7 @@ export async function POST(request: NextRequest) {
         service_id
       `)
       .eq('approval_status', 'approved')
-      .is('service_id', null) // Only bookings with service_id
-      .not('service_id', 'is', null)
+      .not('service_id', 'is', null) // Only bookings that are linked to a service
 
     if (bookingsError) {
       console.error('❌ Error fetching approved bookings:', bookingsError)

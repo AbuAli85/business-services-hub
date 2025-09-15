@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     console.log('🔧 Starting simple bulk invoice generation...')
     const supabase = await getSupabaseClient()
 
-    // Get all approved bookings for the specific provider
+    // Get all approved bookings (optionally scope by provider via Authorization later)
     const { data: approvedBookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -23,7 +23,6 @@ export async function POST(request: NextRequest) {
         service_id
       `)
       .eq('approval_status', 'approved')
-      .eq('provider_id', 'd2ce1fe9-806f-4dbc-8efb-9cf160f19e4b') // The provider from the screenshot
       .not('service_id', 'is', null)
 
     if (bookingsError) {
