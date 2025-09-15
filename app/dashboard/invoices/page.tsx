@@ -25,8 +25,22 @@ export default function InvoicesPage() {
       }
 
       setUser(user)
-      const role = user.user_metadata?.role || 'client'
-      setUserRole(role as 'client' | 'provider' | 'admin')
+      // Prefer role from profiles table; fallback to user metadata
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+
+        const roleFromProfile = profile?.role as 'client' | 'provider' | 'admin' | undefined
+        const role = roleFromProfile || (user.user_metadata?.role as 'client' | 'provider' | 'admin' | undefined) || 'client'
+        setUserRole(role)
+      } catch (profileErr) {
+        console.warn('Failed to load role from profiles, using metadata fallback:', profileErr)
+        const role = (user.user_metadata?.role as 'client' | 'provider' | 'admin' | undefined) || 'client'
+        setUserRole(role)
+      }
     } catch (error) {
       console.error('Error checking user:', error)
     } finally {
