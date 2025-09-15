@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { rateLimit, handleOptions, badRequest, ok } from '@/lib/api-helpers'
+
+export async function OPTIONS(request: NextRequest) {
+  return handleOptions()
+}
 
 export async function POST(request: NextRequest) {
-  // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    })
-  }
+  // Rate limit by IP for email endpoint
+  const limited = rateLimit(request, { key: 'send-email', windowMs: 60_000, max: 20 })
+  if (!limited.allowed) return limited.response!
 
   try {
     console.log('Email API called with method:', request.method)
@@ -22,17 +19,7 @@ export async function POST(request: NextRequest) {
     console.log('Email request data:', { to, subject, from, replyTo, notificationId, notificationType, userId })
 
     if (!to || !subject || !html || !text) {
-      return NextResponse.json(
-        { error: 'Missing required email fields (to, subject, html, text)' },
-        { 
-          status: 400,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-          },
-        }
-      )
+      return badRequest('Missing required email fields (to, subject, html, text)')
     }
 
     // Check for Resend API key with detailed logging
@@ -51,14 +38,7 @@ export async function POST(request: NextRequest) {
           error: 'RESEND_API_KEY environment variable is not set',
           details: 'Please add RESEND_API_KEY to your Vercel environment variables'
         },
-        { 
-          status: 500,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-          },
-        }
+        { status: 500 }
       )
     }
 
@@ -98,31 +78,11 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('❌ Resend email error:', error)
       console.error('❌ Error details:', JSON.stringify(error, null, 2))
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { 
-          status: 500,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-          },
-        }
-      )
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
     console.log('✅ Email sent successfully! Message ID:', data?.id)
-    return NextResponse.json(
-      { success: true, messageId: data?.id },
-      {
-        status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        },
-      }
-    )
+    return ok({ success: true, messageId: data?.id })
   } catch (error) {
     console.error('Email API error:', error)
     console.error('Error details:', {
@@ -130,20 +90,10 @@ export async function POST(request: NextRequest) {
       stack: error instanceof Error ? error.stack : undefined,
       name: error instanceof Error ? error.name : undefined,
     })
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: process.env.NODE_ENV === 'development' ? error : undefined
-      },
-      {
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        },
-      }
-    )
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error : undefined
+    }, { status: 500 })
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 import { z } from 'zod'
+import { rateLimit, handleOptions, badRequest, unauthorized, forbidden, ok } from '@/lib/api-helpers'
 
 // Validation schema for report queries
 const ReportQuerySchema = z.object({
@@ -15,15 +16,23 @@ const ReportQuerySchema = z.object({
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
+export async function OPTIONS(request: NextRequest) {
+  return handleOptions()
+}
+
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit reports endpoint
+    const limited = rateLimit(request, { key: 'reports', windowMs: 60_000, max: 60 })
+    if (!limited.allowed) return limited.response!
+
     const supabase = await getSupabaseClient()
     const { searchParams } = new URL(request.url)
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return unauthorized()
     }
     
     // Parse and validate query parameters
@@ -38,10 +47,7 @@ export async function GET(request: NextRequest) {
     
     const validationResult = ReportQuerySchema.safeParse(queryParams)
     if (!validationResult.success) {
-      return NextResponse.json({ 
-        error: 'Invalid query parameters', 
-        details: validationResult.error.errors 
-      }, { status: 400 })
+      return badRequest('Invalid query parameters', validationResult.error.errors)
     }
     
     const { type, period, start_date, end_date, user_id, category } = validationResult.data
@@ -99,7 +105,7 @@ export async function GET(request: NextRequest) {
         
       case 'users':
         if (!isAdmin) {
-          return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+          return forbidden('Access denied')
         }
         reportData = await generateUsersReport(supabase, {
           startDate,
@@ -120,10 +126,10 @@ export async function GET(request: NextRequest) {
         break
         
       default:
-        return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
+        return badRequest('Invalid report type')
     }
     
-    return NextResponse.json({
+    return ok({
       report_type: type,
       period,
       date_range: { start: startDate, end: endDate },
