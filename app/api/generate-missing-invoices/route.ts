@@ -96,8 +96,12 @@ export async function POST(request: NextRequest) {
     try {
       const mod: any = await import('@/lib/smart-invoice-service')
       const Ctor = mod?.SmartInvoiceService || mod?.default
-      if (Ctor) {
+      if (typeof Ctor === 'function') {
         invoiceService = new Ctor()
+      } else if (mod?.smartInvoiceService) {
+        invoiceService = mod.smartInvoiceService
+      } else {
+        invoiceService = null
       }
     } catch (e) {
       console.warn('⚠️ Could not load SmartInvoiceService, will use simple insert fallback')

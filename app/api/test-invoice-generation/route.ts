@@ -16,18 +16,7 @@ export async function POST(request: NextRequest) {
     // Check if booking exists and is approved
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
-        id,
-        status,
-        approval_status,
-        amount,
-        currency,
-        client_id,
-        provider_id,
-        service:services(title),
-        client:profiles(full_name, email),
-        provider:profiles(full_name, email)
-      `)
+      .select('id,status,approval_status,amount,currency,client_id,provider_id')
       .eq('id', bookingId)
       .single()
 
