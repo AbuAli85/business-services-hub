@@ -20,6 +20,8 @@ import {
   Clock,
   Star
 } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 interface DashboardData {
   totalServices: number
@@ -224,6 +226,7 @@ export default function EnhancedDashboardPage() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
@@ -320,12 +323,7 @@ export default function EnhancedDashboardPage() {
                   <span>Completion Rate</span>
                   <span>{dashboardData?.performanceMetrics.completionRate.toFixed(1)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${dashboardData?.performanceMetrics.completionRate || 0}%` }}
-                  ></div>
-                </div>
+                <Progress value={dashboardData?.performanceMetrics.completionRate || 0} />
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
@@ -335,24 +333,14 @@ export default function EnhancedDashboardPage() {
                     <Star className="h-3 w-3 ml-1 text-yellow-500 fill-current" />
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(dashboardData?.performanceMetrics.averageRating || 0) * 20}%` }}
-                  ></div>
-                </div>
+                <Progress value={(dashboardData?.performanceMetrics.averageRating || 0) * 20} />
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Response Time</span>
                   <span>{dashboardData?.performanceMetrics.responseTime.toFixed(1)} hours</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${100 - (dashboardData?.performanceMetrics.responseTime || 0) * 10}%` }}
-                  ></div>
-                </div>
+                <Progress value={100 - (dashboardData?.performanceMetrics.responseTime || 0) * 10} />
               </div>
             </CardContent>
           </Card>
@@ -493,5 +481,6 @@ export default function EnhancedDashboardPage() {
         )}
       </div>
     </div>
+    </ErrorBoundary>
   )
 }

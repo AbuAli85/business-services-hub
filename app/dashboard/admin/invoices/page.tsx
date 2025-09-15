@@ -5,6 +5,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import UnifiedInvoiceManagement from '@/components/dashboard/unified-invoice-management'
 
 import { logger } from '@/lib/logger'
+import { InvoicesErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 export default function AdminInvoicesPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -52,9 +53,11 @@ export default function AdminInvoicesPage() {
   }
 
   return (
-    <UnifiedInvoiceManagement 
-      userRole="admin" 
-      userId={user.id} 
-    />
+    <InvoicesErrorBoundary>
+      <UnifiedInvoiceManagement 
+        userRole="admin" 
+        userId={user.id} 
+      />
+    </InvoicesErrorBoundary>
   )
 }

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { ServicesErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -657,6 +659,7 @@ export default function ServicesPage() {
   }
 
   return (
+    <ServicesErrorBoundary>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="container mx-auto p-6 space-y-8">
         {/* Enhanced Header */}
@@ -720,11 +723,8 @@ export default function ServicesPage() {
               <p className="text-xs text-blue-700 font-medium">
                 Available for booking
               </p>
-              <div className="mt-3 w-full bg-blue-200 rounded-full h-2">
-                                  <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-500 shadow-soft" 
-                    style={{ width: `${stats?.totalServices ? Math.round((stats.activeServices / stats.totalServices) * 100) : 0}%` }}
-                  ></div>
+              <div className="mt-3">
+                <Progress value={stats?.totalServices ? Math.round((stats.activeServices / stats.totalServices) * 100) : 0} />
               </div>
             </CardContent>
           </Card>
@@ -741,11 +741,8 @@ export default function ServicesPage() {
               <p className="text-xs text-green-700 font-medium">
                 {userRole === 'provider' ? 'For your services' : 'Across active services'}
               </p>
-              <div className="mt-3 w-full bg-green-200 rounded-full h-2">
-                <div 
-                  className="bg-green-600 h-2 rounded-full transition-all duration-500 shadow-soft" 
-                  style={{ width: `${stats?.totalBookings ? Math.min((stats.totalBookings / 100) * 100, 100) : 0}%` }}
-                ></div>
+              <div className="mt-3">
+                <Progress value={stats?.totalBookings ? Math.min((stats.totalBookings / 100) * 100, 100) : 0} />
               </div>
             </CardContent>
           </Card>
@@ -762,11 +759,8 @@ export default function ServicesPage() {
               <p className="text-xs text-purple-700 font-medium">
                 {userRole === 'provider' ? 'From your services' : 'From active services'}
               </p>
-              <div className="mt-3 w-full bg-purple-200 rounded-full h-2">
-                <div 
-                  className="bg-purple-600 h-2 rounded-full transition-all duration-500 shadow-soft" 
-                  style={{ width: `${stats?.totalRevenue ? Math.min((stats.totalRevenue / 10000) * 100, 100) : 0}%` }}
-                ></div>
+              <div className="mt-3">
+                <Progress value={stats?.totalRevenue ? Math.min((stats.totalRevenue / 10000) * 100, 100) : 0} />
               </div>
             </CardContent>
           </Card>
@@ -783,11 +777,8 @@ export default function ServicesPage() {
               <p className="text-xs text-amber-700 font-medium">
                 {userRole === 'provider' ? 'For your services' : 'Across active services'}
               </p>
-              <div className="mt-3 w-full bg-amber-200 rounded-full h-2">
-                <div 
-                  className="bg-amber-600 h-2 rounded-full transition-all duration-500 shadow-soft" 
-                  style={{ width: `${stats?.averageRating ? (stats.averageRating / 5) * 100 : 0}%` }}
-                ></div>
+              <div className="mt-3">
+                <Progress value={stats?.averageRating ? (stats.averageRating / 5) * 100 : 0} />
               </div>
             </CardContent>
           </Card>
@@ -1467,5 +1458,6 @@ export default function ServicesPage() {
         )}
       </div>
     </div>
+    </ServicesErrorBoundary>
   )
 } 

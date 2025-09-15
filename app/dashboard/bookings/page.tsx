@@ -43,6 +43,7 @@ import { format, isWithinInterval, parseISO } from 'date-fns'
 import { realtimeManager } from '@/lib/realtime'
 
 import { logger } from '@/lib/logger'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 interface Booking {
   id: string
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'approved' | 'declined' | 'rescheduled'
@@ -755,6 +756,7 @@ export default function BookingsPage() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="space-y-6">
       {/* Enhanced Header */}
       <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl p-8 text-white">
@@ -1306,5 +1308,6 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
     </div>
+    </ErrorBoundary>
   )
 }

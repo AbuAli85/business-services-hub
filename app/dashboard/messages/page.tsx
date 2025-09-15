@@ -30,6 +30,7 @@ import { useRouter } from 'next/navigation'
 import { formatDate, formatTime } from '@/lib/utils'
 
 import { logger } from '@/lib/logger'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 interface Message {
   id: string
   content: string
@@ -490,6 +491,7 @@ export default function MessagesPage() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="mx-auto max-w-7xl p-4 sm:p-6 h-[calc(100vh-120px)]">
       <div className="flex h-full gap-4 sm:gap-6 bg-white/60 backdrop-blur rounded-2xl shadow-xl border border-gray-100">
         {/* Conversations Sidebar */}
@@ -766,5 +768,6 @@ export default function MessagesPage() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   )
 }
