@@ -1,4 +1,5 @@
 import { getSupabaseClient } from './supabase'
+import { z } from 'zod'
 
 export interface InvoiceData {
   id: string
@@ -53,10 +54,15 @@ export interface BookingData {
 }
 
 export class SmartInvoiceService {
-  private supabase: any
+  private supabasePromise: ReturnType<typeof getSupabaseClient>
 
   constructor() {
-    this.supabase = getSupabaseClient()
+    // getSupabaseClient is async in this project; store the promise and await per-call
+    this.supabasePromise = getSupabaseClient()
+  }
+
+  private async getClient() {
+    return await this.supabasePromise
   }
 
   /**
@@ -66,8 +72,18 @@ export class SmartInvoiceService {
     try {
       console.log('🔧 Generating invoice for approved booking:', bookingId)
 
+      // Validate input defensively
+      const idSchema = z.string().uuid('Invalid bookingId')
+      const parsedId = idSchema.safeParse(bookingId)
+      if (!parsedId.success) {
+        console.error('❌ Invalid bookingId:', parsedId.error.flatten())
+        return null
+      }
+
+      const supabase = await this.getClient()
+
       // Get booking details with service and user information
-      const { data: booking, error: bookingError } = await this.supabase
+      const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .select(`
           *,
@@ -109,7 +125,7 @@ export class SmartInvoiceService {
       }
 
       // Check if invoice already exists
-      const { data: existingInvoice } = await this.supabase
+      const { data: existingInvoice } = await supabase
         .from('invoices')
         .select('id')
         .eq('booking_id', bookingId)
@@ -144,8 +160,6 @@ export class SmartInvoiceService {
         invoice_number: invoiceNumber,
         due_date: dueDate.toISOString(),
         subtotal,
-        tax_rate: vatPercent,
-        tax_amount: vatAmount,
         total_amount: totalAmount,
         payment_terms: 'Payment due within 30 days',
         notes: `Invoice for ${booking.service?.title || 'Service'} - Booking #${bookingId.slice(0, 8)}`,
@@ -163,7 +177,7 @@ export class SmartInvoiceService {
       }
 
       // Insert invoice into database
-      const { data: invoice, error: invoiceError } = await this.supabase
+      const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert(invoiceData)
         .select()
@@ -198,17 +212,30 @@ export class SmartInvoiceService {
    * Generate unique invoice number
    */
   private async generateInvoiceNumber(): Promise<string> {
-    const year = new Date().getFullYear()
-    const month = String(new Date().getMonth() + 1).padStart(2, '0')
-    
+    const now = new Date()
+    const year = now.getFullYear()
+    const monthIndex = now.getMonth() // 0-11
+    const month = String(monthIndex + 1).padStart(2, '0')
+
+    // Calculate first day of next month safely (handles December rollover)
+    const nextMonthDate = new Date(year, monthIndex + 1, 1)
+    const nextYear = nextMonthDate.getFullYear()
+    const nextMonth = String(nextMonthDate.getMonth() + 1).padStart(2, '0')
+
+    const supabase = await this.getClient()
+
     // Get count of invoices this month
-    const { count } = await this.supabase
+    const { count, error } = await supabase
       .from('invoices')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', `${year}-${month}-01`)
-      .lt('created_at', `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-01`)
+      .lt('created_at', `${nextYear}-${nextMonth}-01`)
 
-    const sequence = (count || 0) + 1
+    if (error) {
+      console.warn('⚠️ Could not count invoices for the month:', error)
+    }
+
+    const sequence = ((count as number) || 0) + 1
     return `INV-${year}${month}-${String(sequence).padStart(3, '0')}`
   }
 
@@ -219,7 +246,7 @@ export class SmartInvoiceService {
     try {
       // Send email notification to client
       if (invoice.client_email) {
-        await fetch('/api/notifications/email', {
+        await fetch('/api/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -247,7 +274,8 @@ export class SmartInvoiceService {
       }
 
       // Create in-app notification
-      await this.supabase
+      const supabase = await this.getClient()
+      await supabase
         .from('notifications')
         .insert({
           user_id: invoice.client_id,
@@ -301,7 +329,15 @@ export class SmartInvoiceService {
    */
   async getUserInvoices(userId: string, userRole: 'client' | 'provider'): Promise<InvoiceData[]> {
     try {
-      const { data: invoices, error } = await this.supabase
+      const idSchema = z.string().uuid('Invalid userId')
+      const parsed = idSchema.safeParse(userId)
+      if (!parsed.success) {
+        console.error('❌ Invalid userId:', parsed.error.flatten())
+        return []
+      }
+
+      const supabase = await this.getClient()
+      const { data: invoices, error } = await supabase
         .from('invoices')
         .select(`
           *,
@@ -333,10 +369,25 @@ export class SmartInvoiceService {
    */
   async updateInvoiceStatus(invoiceId: string, status: InvoiceData['status']): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const idSchema = z.string().uuid('Invalid invoiceId')
+      const parsed = idSchema.safeParse(invoiceId)
+      if (!parsed.success) {
+        console.error('❌ Invalid invoiceId:', parsed.error.flatten())
+        return false
+      }
+
+      const statusSchema = z.enum(['draft','issued','paid','overdue','cancelled'])
+      const parsedStatus = statusSchema.safeParse(status)
+      if (!parsedStatus.success) {
+        console.error('❌ Invalid status value:', parsedStatus.error.flatten())
+        return false
+      }
+
+      const supabase = await this.getClient()
+      const { error } = await supabase
         .from('invoices')
         .update({ 
-          status,
+          status: parsedStatus.data,
           updated_at: new Date().toISOString()
         })
         .eq('id', invoiceId)
@@ -360,7 +411,15 @@ export class SmartInvoiceService {
    */
   async markInvoiceAsPaid(invoiceId: string, paymentMethod: string = 'online'): Promise<boolean> {
     try {
-      const { error } = await this.supabase
+      const idSchema = z.string().uuid('Invalid invoiceId')
+      const parsed = idSchema.safeParse(invoiceId)
+      if (!parsed.success) {
+        console.error('❌ Invalid invoiceId:', parsed.error.flatten())
+        return false
+      }
+
+      const supabase = await this.getClient()
+      const { error } = await supabase
         .from('invoices')
         .update({ 
           status: 'paid',
@@ -376,14 +435,14 @@ export class SmartInvoiceService {
       }
 
       // Update related booking status if needed
-      const { data: invoice } = await this.supabase
+      const { data: invoice } = await supabase
         .from('invoices')
         .select('booking_id')
         .eq('id', invoiceId)
         .single()
 
       if (invoice) {
-        await this.supabase
+        await supabase
           .from('bookings')
           .update({ 
             status: 'paid',
