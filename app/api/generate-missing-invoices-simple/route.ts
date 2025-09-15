@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🔧 Starting simple bulk invoice generation...')
-    const supabase = await getSupabaseClient()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get all approved bookings (optionally scope by provider via Authorization later)
+    // Get bookings that should have invoices (approved or active)
     const { data: approvedBookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
         client_id,
         service_id
       `)
-      .eq('approval_status', 'approved')
+      .or('approval_status.eq.approved,status.in.(approved,in_progress,completed)')
       .not('service_id', 'is', null)
 
     if (bookingsError) {

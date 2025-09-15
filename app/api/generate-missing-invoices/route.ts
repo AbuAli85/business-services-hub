@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { SmartInvoiceService } from '@/lib/smart-invoice-service'
 
 export const dynamic = 'force-dynamic'
@@ -7,9 +7,11 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     console.log('🔧 Starting bulk invoice generation for missing invoices...')
-    const supabase = await getSupabaseClient()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get all approved bookings that don't have invoices
+    // Get bookings that should have invoices
     const { data: approvedBookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -21,9 +23,10 @@ export async function POST(request: NextRequest) {
         created_at,
         provider_id,
         client_id,
-        service_id
+        service_id,
+        status
       `)
-      .eq('approval_status', 'approved')
+      .or('approval_status.eq.approved,status.in.(approved,in_progress,completed)')
       .not('service_id', 'is', null) // Only bookings that are linked to a service
 
     if (bookingsError) {
@@ -64,6 +67,21 @@ export async function POST(request: NextRequest) {
     const existingBookingIds = new Set(existingInvoices?.map(inv => inv.booking_id) || [])
     const bookingsNeedingInvoices = approvedBookings.filter(b => !existingBookingIds.has(b.id))
 
+    // Ensure provider_id exists for each booking by looking up the service if missing
+    const bookingsWithProvider = [] as any[]
+    for (const b of bookingsNeedingInvoices) {
+      if (!b.provider_id) {
+        const { data: svc } = await supabase
+          .from('services')
+          .select('provider_id')
+          .eq('id', b.service_id)
+          .single()
+        bookingsWithProvider.push({ ...b, provider_id: svc?.provider_id || null })
+      } else {
+        bookingsWithProvider.push(b)
+      }
+    }
+
     console.log(`📊 Found ${bookingsNeedingInvoices.length} bookings that need invoices`)
 
     if (bookingsNeedingInvoices.length === 0) {
@@ -80,7 +98,7 @@ export async function POST(request: NextRequest) {
     let successCount = 0
     let errorCount = 0
 
-    for (const booking of bookingsNeedingInvoices) {
+    for (const booking of bookingsWithProvider) {
       try {
         console.log(`🔧 Generating invoice for booking: ${booking.id} (${booking.title})`)
         

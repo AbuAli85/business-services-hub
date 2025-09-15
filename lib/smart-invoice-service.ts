@@ -153,7 +153,7 @@ export class SmartInvoiceService {
       const invoiceData = {
         booking_id: bookingId,
         client_id: booking.client_id,
-        provider_id: booking.provider_id,
+        provider_id: booking.provider_id || booking.service?.provider?.id || null,
         amount: totalAmount,
         currency: booking.currency || 'OMR',
         status: 'issued' as const,
