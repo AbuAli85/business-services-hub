@@ -29,14 +29,15 @@ import {
   UserX,
   Crown,
   Lock,
-  Unlock
+  Unlock,
+  RefreshCw
 } from 'lucide-react'
 
 interface AdminUser {
   id: string
   email: string
   full_name: string
-  role: 'admin' | 'provider' | 'client' | 'staff' | 'moderator' | 'support'
+  role: 'admin' | 'manager' | 'provider' | 'client' | 'staff' | 'moderator' | 'support'
   phone?: string
   company_name?: string
   created_at: string
@@ -250,9 +251,10 @@ export default function AdminUsersPage() {
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={fetchUsers}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add User
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
             </Button>
             <Button 
               variant="secondary"
@@ -486,6 +488,13 @@ export default function AdminUsersPage() {
               onClick={() => {setSelectedRole('provider'); setSelectedStatus('active')}}
             >
               Active Providers
+            </Badge>
+            <Badge 
+              variant="outline" 
+              className="cursor-pointer hover:bg-yellow-50"
+              onClick={() => {setSelectedRole('all'); setSelectedStatus('pending')}}
+            >
+              Pending Requests
             </Badge>
             <Badge 
               variant="outline" 

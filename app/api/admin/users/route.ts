@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     // Select only safe columns that are guaranteed to exist across environments
     let query = admin
       .from('profiles')
-      .select('id, full_name, role, phone, company_name, created_at, email')
+      .select('id, full_name, role, phone, company_name, created_at')
       .order('created_at', { ascending: false })
       .limit(200)
     if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role.ilike.%${q}%`)
