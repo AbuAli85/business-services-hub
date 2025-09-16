@@ -32,28 +32,45 @@ export async function POST(req: NextRequest) {
       if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Update profile status/role if provided
+    // Update role/status across auth metadata and profiles (if column exists)
     if (status !== undefined || role !== undefined) {
-      const update: any = {}
-      if (status !== undefined) update.status = status
-      if (role !== undefined) update.role = role
-
-      const { error: profErr } = await admin
-        .from('profiles')
-        .update(update)
-        .eq('id', user_id)
-
-      if (profErr) {
-        return NextResponse.json({ error: 'Failed to update profile', details: profErr.message }, { status: 400 })
+      // 1) Update auth metadata for canonical source of truth
+      try {
+        await admin.auth.admin.updateUserById(user_id, {
+          user_metadata: {
+            ...(role !== undefined ? { role } : {}),
+            ...(status !== undefined ? { status } : {})
+          }
+        } as any)
+      } catch (e: any) {
+        console.warn('Auth metadata update failed:', e?.message || e)
       }
 
+      // 2) Best-effort update of profiles table to reflect role/status
+      try {
+        const update: any = {}
+        if (role !== undefined) update.role = role
+        if (status !== undefined) update.status = status
+        if (Object.keys(update).length > 0) {
+          const { error: profErr } = await admin
+            .from('profiles')
+            .update(update)
+            .eq('id', user_id)
+          if (profErr && !/column .*status.* does not exist/i.test(profErr.message)) {
+            return NextResponse.json({ error: 'Failed to update profile', details: profErr.message }, { status: 400 })
+          }
+        }
+      } catch (e: any) {
+        // Non-fatal; rely on auth metadata
+        console.warn('Profiles update failed:', e?.message || e)
+      }
+
+      // 3) Maintain user_roles table when role changes
       if (role !== undefined) {
-        // Upsert user_roles on unique user_id
         const { error: roleErr } = await admin
           .from('user_roles')
           .upsert({ user_id, role }, { onConflict: 'user_id' })
-
-        if (roleErr && !roleErr.message?.includes('relation') ) {
+        if (roleErr && !roleErr.message?.includes('relation')) {
           return NextResponse.json({ error: 'Failed to upsert user role', details: roleErr.message }, { status: 400 })
         }
       }

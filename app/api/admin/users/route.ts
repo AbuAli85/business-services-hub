@@ -61,9 +61,11 @@ export async function GET(req: NextRequest) {
 
     const profileUsers = ((rows || []).map((u: any) => {
       const au = authById.get(u.id)
-      const email = u.email || au?.email || null
+      const email = (u as any).email || au?.email || null
       const fullName = u.full_name || (au?.user_metadata?.full_name as string) || (email ? email.split('@')[0] : 'User')
       const role = u.role || (au?.user_metadata?.role as string) || 'client'
+      const metaStatus = (au?.user_metadata as any)?.status as string | undefined
+      const status = metaStatus === 'approved' ? 'active' : (metaStatus === 'suspended' ? 'suspended' : (metaStatus === 'pending' ? 'pending' : 'active'))
       return {
         id: u.id,
         email,
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
         company_name: u.company_name || null,
         created_at: u.created_at,
         last_sign_in: au?.last_sign_in_at ? String(au.last_sign_in_at) : null,
-        status: 'active',
+        status,
         is_verified: au ? !!au.email_confirmed_at : null,
         two_factor_enabled: au ? (Array.isArray((au as any).factors) && (au as any).factors.length > 0) : null
       }
