@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// This route depends on request parameters; force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl?.searchParams || new URL(request.url).searchParams
     const role = searchParams.get('role') || 'client'
     const userId = searchParams.get('userId')
     
