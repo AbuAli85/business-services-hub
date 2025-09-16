@@ -5,59 +5,9 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await getSupabaseClient()
     
-    // Test 1: Check if invoices table has proper structure
-    console.log('🔍 Testing invoice table structure...')
-    const { data: tableInfo, error: tableError } = await supabase
-      .from('information_schema.columns')
-      .select('column_name, data_type, is_nullable')
-      .eq('table_name', 'invoices')
-      .eq('table_schema', 'public')
-      .order('ordinal_position')
-
-    if (tableError) {
-      console.error('❌ Table structure error:', tableError)
-      return NextResponse.json({ error: 'Failed to check table structure' }, { status: 500 })
-    }
-
-    // Test 2: Check RLS policies
-    console.log('🔍 Testing RLS policies...')
-    const { data: policies, error: policyError } = await supabase
-      .from('pg_policies')
-      .select('policyname, permissive, roles, cmd, qual')
-      .eq('tablename', 'invoices')
-      .eq('schemaname', 'public')
-
-    if (policyError) {
-      console.error('❌ Policy check error:', policyError)
-      return NextResponse.json({ error: 'Failed to check RLS policies' }, { status: 500 })
-    }
-
-    // Test 3: Check foreign key constraints
-    console.log('🔍 Testing foreign key constraints...')
-    const { data: constraints, error: constraintError } = await supabase
-      .from('information_schema.table_constraints')
-      .select('constraint_name, constraint_type')
-      .eq('table_name', 'invoices')
-      .eq('table_schema', 'public')
-      .eq('constraint_type', 'FOREIGN KEY')
-
-    if (constraintError) {
-      console.error('❌ Constraint check error:', constraintError)
-      return NextResponse.json({ error: 'Failed to check constraints' }, { status: 500 })
-    }
-
-    // Test 4: Check indexes
-    console.log('🔍 Testing indexes...')
-    const { data: indexes, error: indexError } = await supabase
-      .from('pg_indexes')
-      .select('indexname, indexdef')
-      .eq('tablename', 'invoices')
-      .eq('schemaname', 'public')
-
-    if (indexError) {
-      console.error('❌ Index check error:', indexError)
-      return NextResponse.json({ error: 'Failed to check indexes' }, { status: 500 })
-    }
+    // Note: Skip information_schema and pg_* catalog checks here because
+    // those schemas are not exposed via the Supabase REST interface.
+    // This route focuses on functional sample reads only.
 
     // Test 5: Check sample invoice data with relationships
     console.log('🔍 Testing sample invoice data...')
@@ -115,17 +65,9 @@ export async function GET(request: NextRequest) {
     }) || []
 
     const results = {
-      table_structure: tableInfo,
-      rls_policies: policies,
-      foreign_key_constraints: constraints,
-      indexes: indexes,
       sample_invoices: sampleInvoices,
       relationship_checks: relationshipChecks,
       summary: {
-        total_columns: tableInfo?.length || 0,
-        total_policies: policies?.length || 0,
-        total_constraints: constraints?.length || 0,
-        total_indexes: indexes?.length || 0,
         sample_invoice_count: sampleInvoices?.length || 0,
         valid_relationships: relationshipChecks.filter(check => check.provider_client_match && check.roles_valid).length,
         invalid_relationships: relationshipChecks.filter(check => !check.provider_client_match || !check.roles_valid).length
