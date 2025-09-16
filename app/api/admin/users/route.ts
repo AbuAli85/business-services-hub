@@ -54,8 +54,7 @@ export async function GET(req: NextRequest) {
       .from('profiles')
       .select('id, full_name, role, phone, company_name, created_at')
       .order('created_at', { ascending: false })
-      .limit(200)
-    if (q) query = query.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,role.ilike.%${q}%`)
+      .limit(500)
     const { data: rows, error: pErr } = await query
     if (pErr) return NextResponse.json({ error: 'Failed to fetch users', details: pErr.message }, { status: 500 })
 
@@ -88,12 +87,6 @@ export async function GET(req: NextRequest) {
       const seen = new Set(merged.map(u => u.id))
       for (const au of authUsers) {
         if (seen.has(au.id)) continue
-        if (q) {
-          const s = q.toLowerCase()
-          const em = (au.email || '').toLowerCase()
-          const name = ((au.user_metadata?.full_name as string) || '').toLowerCase()
-          if (!(em.includes(s) || name.includes(s))) continue
-        }
         merged.push({
           id: au.id,
           email: au.email,
@@ -112,7 +105,18 @@ export async function GET(req: NextRequest) {
       merged.sort((a, b) => (new Date(b.created_at).getTime()) - (new Date(a.created_at).getTime()))
     }
 
-    return NextResponse.json({ users: merged })
+    // In-memory filter across full_name, role, and auth email to avoid relying on profiles.email
+    let finalUsers = merged
+    if (q) {
+      const s = q.toLowerCase()
+      finalUsers = merged.filter(u =>
+        (u.full_name || '').toLowerCase().includes(s) ||
+        (u.email || '').toLowerCase().includes(s) ||
+        (u.role || '').toLowerCase().includes(s)
+      )
+    }
+
+    return NextResponse.json({ users: finalUsers })
   } catch (e: any) {
     console.error('❌ Admin users API unexpected error:', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
