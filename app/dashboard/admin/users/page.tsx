@@ -63,6 +63,24 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers()
+    let intervalId: any
+    let channel: any
+    (async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        channel = supabase
+          .channel('admin-users-realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            fetchUsers()
+          })
+          .subscribe()
+      } catch {}
+    })()
+    intervalId = setInterval(() => { fetchUsers() }, 30000)
+    return () => {
+      try { if (channel) channel.unsubscribe() } catch {}
+      try { if (intervalId) clearInterval(intervalId) } catch {}
+    }
   }, [])
 
   const fetchUsers = async () => {

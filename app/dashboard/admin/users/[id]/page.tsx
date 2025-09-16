@@ -155,7 +155,7 @@ export default function AdminUserDetailsPage() {
             <div className="space-y-2">
               <div className="flex gap-2 items-center">
                 <span className="text-gray-500 text-sm">Role</span>
-                <select className="border rounded px-2 py-1 text-sm" value={user.role} onChange={(e)=>update({ role: e.target.value })} disabled={saving}>
+                <select className="border rounded px-2 py-1 text-sm" aria-label="Change role" value={user.role} onChange={(e)=>update({ role: e.target.value })} disabled={saving}>
                   <option value="admin">admin</option>
                   <option value="manager">manager</option>
                   <option value="provider">provider</option>
@@ -164,13 +164,14 @@ export default function AdminUserDetailsPage() {
               </div>
               <div className="flex gap-2 items-center">
                 <span className="text-gray-500 text-sm">Status</span>
-                <select className="border rounded px-2 py-1 text-sm" value={user.status}
+                <select className="border rounded px-2 py-1 text-sm" aria-label="Change status" value={user.status}
                   onChange={(e)=>{
                     const s = e.target.value
-                    const backend = s==='active'?'approved':(s==='suspended'?'suspended':'pending')
+                    const backend = s==='active'?'approved':(s==='suspended'?'suspended':(s==='pending'?'pending':'inactive'))
                     update({ status: backend })
                   }} disabled={saving}>
                   <option value="active">active</option>
+                  <option value="pending">pending</option>
                   <option value="inactive">inactive</option>
                   <option value="suspended">suspended</option>
                 </select>
