@@ -65,8 +65,13 @@ export async function GET(req: NextRequest) {
       const role = u.role || (au?.user_metadata?.role as string) || 'client'
       const metaStatus = (au?.user_metadata as any)?.status as string | undefined
       // Return backend statuses that the UI normalizes: approved|pending|suspended
-      // Default to 'pending' when no status is set so new registrations show as requests
-      const status = metaStatus === 'suspended' ? 'suspended' : (metaStatus === 'approved' ? 'approved' : 'pending')
+      // If a profile exists but has no explicit status, treat as 'approved'.
+      // Only auth-only users (no profile) default to 'pending' further below.
+      const status = metaStatus === 'suspended'
+        ? 'suspended'
+        : (metaStatus === 'pending'
+          ? 'pending'
+          : 'approved')
       return {
         id: u.id,
         email,
