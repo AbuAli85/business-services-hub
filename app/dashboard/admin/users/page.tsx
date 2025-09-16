@@ -41,7 +41,7 @@ interface AdminUser {
   company_name?: string
   created_at: string
   last_sign_in?: string
-  status: 'active' | 'inactive' | 'suspended'
+  status: 'active' | 'inactive' | 'suspended' | 'pending'
   permissions?: string[]
   is_verified?: boolean
   two_factor_enabled?: boolean
@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error(`Request failed: ${res.status}`)
       const json = await res.json()
       const apiUsers: AdminUser[] = (json.users || []).map((u: any) => {
-        const normStatus: 'active'|'inactive'|'suspended' = u.status === 'approved' ? 'active' : (u.status === 'suspended' ? 'suspended' : 'inactive')
+        const normStatus: 'active'|'inactive'|'suspended'|'pending' = u.status === 'approved' ? 'active' : (u.status === 'suspended' ? 'suspended' : (u.status === 'pending' ? 'pending' : 'inactive'))
         return {
         id: u.id,
         email: u.email,
@@ -120,6 +120,8 @@ export default function AdminUsersPage() {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
       case 'inactive':
         return 'bg-gray-100 text-gray-800'
       case 'suspended':
@@ -233,6 +235,10 @@ export default function AdminUsersPage() {
               <div className="flex items-center">
                 <Shield className="h-4 w-4 mr-1" />
                 <span>Active: {users.filter(u => u.status === 'active').length}</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>Pending: {users.filter(u => u.status === 'pending').length}</span>
               </div>
               <div className="flex items-center">
                 <Building2 className="h-4 w-4 mr-1" />
@@ -379,6 +385,7 @@ export default function AdminUsersPage() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="suspended">Suspended</SelectItem>
                 </SelectContent>
@@ -625,12 +632,13 @@ export default function AdminUsersPage() {
                       value={user.status}
                       onChange={async (e)=>{
                         const s = e.target.value
-                        const backend = s==='active'?'approved':(s==='suspended'?'suspended':'pending')
+                        const backend = s==='active'?'approved':(s==='suspended'?'suspended':(s==='pending'?'pending':'inactive'))
                         try { await callAdminUpdate(user.id, { status: backend }); await fetchUsers() } catch(err:any){ alert(err.message) }
                       }}
                       aria-label={`Change status for ${user.full_name}`}
                     >
                       <option value="active">active</option>
+                      <option value="pending">pending</option>
                       <option value="inactive">inactive</option>
                       <option value="suspended">suspended</option>
                     </select>
