@@ -65,7 +65,8 @@ export async function GET(req: NextRequest) {
       const fullName = u.full_name || (au?.user_metadata?.full_name as string) || (email ? email.split('@')[0] : 'User')
       const role = u.role || (au?.user_metadata?.role as string) || 'client'
       const metaStatus = (au?.user_metadata as any)?.status as string | undefined
-      const status = metaStatus === 'approved' ? 'active' : (metaStatus === 'suspended' ? 'suspended' : (metaStatus === 'pending' ? 'pending' : 'active'))
+      // Return backend statuses that the UI normalizes: approved|pending|suspended
+      const status = metaStatus === 'suspended' ? 'suspended' : (metaStatus === 'pending' ? 'pending' : 'approved')
       return {
         id: u.id,
         email,
