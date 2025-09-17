@@ -3,6 +3,14 @@ const nextConfig = {
   images: {
     domains: ['localhost', 'supabase.co'],
   },
+  // Exclude Supabase functions from Next.js build
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /supabase\/functions\/.*\.ts$/,
+      use: 'ignore-loader'
+    })
+    return config
+  },
   // Force cache busting for production builds
   generateBuildId: async () => {
     return `build-${Date.now()}-${Math.random().toString(36).slice(2)}`
