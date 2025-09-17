@@ -1,0 +1,99 @@
+{
+  "timestamp": "2025-09-17T23:05:01.001Z",
+  "duration": 81.841,
+  "summary": {
+    "total": 11,
+    "passed": 7,
+    "failed": 4,
+    "warnings": 1
+  },
+  "details": [
+    {
+      "testName": "File Structure",
+      "status": "passed",
+      "details": "All required files and directories exist",
+      "timestamp": "2025-09-17T23:03:39.162Z"
+    },
+    {
+      "testName": "Dependencies",
+      "status": "passed",
+      "details": "All critical dependencies are installed",
+      "timestamp": "2025-09-17T23:03:39.164Z"
+    },
+    {
+      "testName": "Environment Variables",
+      "status": "failed",
+      "details": "Missing environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "timestamp": "2025-09-17T23:03:39.164Z"
+    },
+    {
+      "testName": "TypeScript Compilation",
+      "status": "failed",
+      "details": "Command failed: npx tsc --noEmit\n",
+      "timestamp": "2025-09-17T23:03:45.626Z"
+    },
+    {
+      "testName": "App Linting",
+      "status": "failed",
+      "details": "Command failed: npm run lint\n ⚠ If you set up ESLint yourself, we recommend adding the Next.js ESLint plugin. See https://nextjs.org/docs/basic-features/eslint#migrating-existing-config\n",
+      "timestamp": "2025-09-17T23:03:46.695Z"
+    },
+    {
+      "testName": "App Build",
+      "status": "failed",
+      "details": "Command failed: npm run build\n",
+      "timestamp": "2025-09-17T23:04:46.716Z"
+    },
+    {
+      "testName": "MCP Server Startup",
+      "status": "passed",
+      "details": "Server started successfully",
+      "timestamp": "2025-09-17T23:04:48.736Z"
+    },
+    {
+      "testName": "MCP Tools List",
+      "status": "passed",
+      "details": "All expected tools are available",
+      "timestamp": "2025-09-17T23:04:52.975Z"
+    },
+    {
+      "testName": "MCP Tool Call: get_user_profile",
+      "status": "passed",
+      "details": "Tool call successful",
+      "timestamp": "2025-09-17T23:04:55.732Z"
+    },
+    {
+      "testName": "MCP Tool Call: get_company_info",
+      "status": "passed",
+      "details": "Tool call successful",
+      "timestamp": "2025-09-17T23:04:58.442Z"
+    },
+    {
+      "testName": "MCP Tool Call: get_invoice_data",
+      "status": "passed",
+      "details": "Tool call successful",
+      "timestamp": "2025-09-17T23:05:00.999Z"
+    }
+  ],
+  "errors": [
+    {
+      "testName": "Environment Variables",
+      "details": "Missing environment variables: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    },
+    {
+      "testName": "TypeScript Compilation",
+      "details": "Command failed: npx tsc --noEmit\n"
+    },
+    {
+      "testName": "App Linting",
+      "details": "Command failed: npm run lint\n ⚠ If you set up ESLint yourself, we recommend adding the Next.js ESLint plugin. See https://nextjs.org/docs/basic-features/eslint#migrating-existing-config\n"
+    },
+    {
+      "testName": "App Build",
+      "details": "Command failed: npm run build\n"
+    }
+  ],
+  "warnings": [
+    "Environment variables not configured"
+  ]
+}

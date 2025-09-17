@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+// import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { authLogger } from '@/lib/auth-logger'
 import { loginRateLimiter, registrationRateLimiter } from '@/lib/rate-limiter'
@@ -370,7 +370,7 @@ describe('Auth Workflow Integration Tests', () => {
           user_role: 'client'
         })
       } catch (error) {
-        expect(error.message).toBe('Network error')
+        expect((error as Error).message).toBe('Network error')
       }
     })
   })
@@ -412,7 +412,7 @@ describe('Auth Workflow Integration Tests', () => {
       const results = await Promise.all(promises)
       
       // All should succeed (different user IDs)
-      results.forEach(result => {
+      results.forEach((result: any) => {
         expect(result.data?.success).toBe(true)
       })
     })
