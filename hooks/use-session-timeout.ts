@@ -58,7 +58,13 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       const supabase = await getSupabaseClient()
       const { data: { session }, error } = await supabase.auth.getSession()
       
-      if (error || !session) {
+      if (error) {
+        console.warn('Session check error:', error)
+        setState(prev => ({ ...prev, isExpired: true }))
+        return
+      }
+      
+      if (!session) {
         setState(prev => ({ ...prev, isExpired: true }))
         return
       }

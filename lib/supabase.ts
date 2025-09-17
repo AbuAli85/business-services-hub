@@ -44,6 +44,9 @@ export async function getSupabaseClient(): Promise<SupabaseClient> {
   try {
     const client = await initializationPromise
     return client
+  } catch (error) {
+    console.error('Failed to initialize Supabase client:', error)
+    throw new Error('Could not initialize Supabase client. Please check your environment variables.')
   } finally {
     isInitializing = false
     initializationPromise = null

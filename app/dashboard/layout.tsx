@@ -137,9 +137,17 @@ export default function DashboardLayout({
   const checkUser = async () => {
     try {
       const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Session fetch error:', sessionError)
+        logger.error('Could not fetch session:', sessionError)
+        router.push('/auth/sign-in')
+        return
+      }
       
       if (!session) {
+        logger.warn('No active session found')
         router.push('/auth/sign-in')
         return
       }
