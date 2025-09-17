@@ -1,5 +1,0 @@
-[33mcde828a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: rename reserved keyword 'package' to 'selectedPackage' in bookings API
-[33m8b1f705[m docs: add comprehensive production readiness implementation summary
-[33m030028e[m fix: resolve critical authentication and profile creation issues
-[33m0b05aa3[m Update Supabase configuration: disable functions and upgrade CLI version. Removed function settings from config.toml and updated CLI version from v2.34.3 to v2.39.2 for improved performance and features.
-[33md0dca1d[m Implement AI-powered insights and predictive analytics in BookingsPage. Added new state management for AI features, including insights generation, predictive analytics, and optimization suggestions. Enhanced UI components to display smart insights summary, AI recommendations, and predictive metrics, improving user experience and data-driven decision-making.
