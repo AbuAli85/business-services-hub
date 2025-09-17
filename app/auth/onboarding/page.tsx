@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Loader2, Building2, User, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react'
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const role = searchParams.get('role') as 'client' | 'provider'
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
         return
       }
 
-      // First, ensure the profile exists
+      // First, ensure the profile exists using the RPC function
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('*')
@@ -108,27 +108,24 @@ export default function OnboardingPage() {
         .single()
       
       if (!existingProfile) {
-        // Create profile if it doesn't exist
-        const profileData: any = {
-          id: user.id,
-          role: role,
-          email: user.email,
-        }
-        
-        if (user.user_metadata?.full_name) {
-          profileData.full_name = user.user_metadata.full_name
-        }
-        
-        if (user.user_metadata?.phone) {
-          profileData.phone = user.user_metadata.phone
-        }
-        
-        const { error: createProfileError } = await supabase
-          .from('profiles')
-          .insert(profileData)
+        // Create profile using the RPC function for consistency
+        const { data: profileResult, error: createProfileError } = await supabase
+          .rpc('create_user_profile', {
+            user_id: user.id,
+            user_email: user.email || '',
+            user_role: role,
+            full_name: user.user_metadata?.full_name || '',
+            phone: user.user_metadata?.phone || ''
+          })
         
         if (createProfileError) {
+          console.error('Profile creation error:', createProfileError)
           toast.error(`Profile creation failed: ${createProfileError.message}`)
+          return
+        }
+
+        if (!profileResult?.success) {
+          toast.error(`Profile creation failed: ${profileResult?.message || 'Unknown error'}`)
           return
         }
       }
@@ -414,5 +411,20 @@ export default function OnboardingPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    }>
+      <OnboardingForm />
+    </Suspense>
   )
 }

@@ -146,12 +146,15 @@ export default function SignUpPage() {
       }
 
       if (data.user) {
-        // Show email verification modal instead of redirecting immediately
-        setRegisteredEmail(formData.email)
-        setShowEmailVerification(true)
-        
-        // Don't redirect immediately - let user see the verification modal
-        // router.push(`/auth/onboarding?role=${formData.role}`)
+        // Check if email confirmation is required
+        if (data.user.email_confirmed_at) {
+          // Email already confirmed, redirect to onboarding
+          router.push(`/auth/onboarding?role=${formData.role}`)
+        } else {
+          // Show email verification modal
+          setRegisteredEmail(formData.email)
+          setShowEmailVerification(true)
+        }
       }
     } catch (error) {
       toast.error('An unexpected error occurred during signup. Please try again.')
@@ -195,8 +198,9 @@ export default function SignUpPage() {
 
   const handleEmailVerificationClose = () => {
     setShowEmailVerification(false)
-    // Redirect to onboarding after closing the modal
-    router.push(`/auth/onboarding?role=${formData.role}`)
+    // Redirect to sign-in page after closing the modal
+    // User will need to sign in after confirming their email
+    router.push('/auth/sign-in')
   }
 
   return (

@@ -54,8 +54,6 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  // Note: dashboard auth redirects handled client-side to avoid cookie mismatch issues
-
   // Handle preflight quickly
   if (req.method === 'OPTIONS') {
     return new NextResponse(null, { status: 204, headers: res.headers })

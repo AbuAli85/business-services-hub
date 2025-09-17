@@ -146,17 +146,31 @@ export default function DashboardLayout({
 
       // Use user metadata from auth instead of database profile
       const userMetadata = session.user.user_metadata
-      // Production logging removed
       
       let userRole = userMetadata?.role
-              // Production logging removed
       
-      // In production mode, roles must be set during registration
-      // No fallback to profiles table or role selection allowed
-      
-      // In production mode, users must have a role set during registration
+      // If no role in metadata, try to get from profile
       if (!userRole) {
-        // Production logging removed
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (profile?.role) {
+            userRole = profile.role
+          }
+        } catch (error) {
+          logger.warn('Could not fetch role from profile:', error)
+        }
+      }
+      
+      // If still no role, redirect to onboarding
+      if (!userRole) {
+        logger.warn('No role found for user, redirecting to onboarding')
+        router.push('/auth/onboarding?role=client')
+        return
       }
       
       // Fetch company name from profile if user is a provider
