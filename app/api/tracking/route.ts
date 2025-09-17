@@ -293,9 +293,11 @@ export async function POST(request: NextRequest) {
 
     // Send email notification (best-effort)
     try {
-      const recipientEmail = isProvider ?
-        (await supabase.from('profiles').select('email').eq('id', booking.client_id).single()).data?.email :
-        (await supabase.from('profiles').select('email').eq('id', booking.provider_id).single()).data?.email
+      // Get email from auth users since profiles doesn't have email column
+      const { data: authUsers } = await supabase.auth.admin.listUsers()
+      const targetUserId = isProvider ? booking.client_id : booking.provider_id
+      const targetUser = authUsers?.users?.find((u: any) => u.id === targetUserId)
+      const recipientEmail = targetUser?.email
 
       if (recipientEmail) {
         await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/notifications/email`, {

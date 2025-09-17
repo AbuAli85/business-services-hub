@@ -304,8 +304,8 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         suggested_service:services(id, title, description, base_price, currency, category),
-        client:profiles!client_id(id, full_name, email, avatar_url),
-        provider:profiles!provider_id(id, full_name, email, avatar_url)
+        client:profiles!client_id(id, full_name, avatar_url),
+        provider:profiles!provider_id(id, full_name, avatar_url)
       `)
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -313,7 +313,7 @@ export async function GET(request: NextRequest) {
     // Get user profile to determine role  
     let { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, role, full_name, email')
+      .select('id, role, full_name')
       .eq('id', user.id)
       .single()
 

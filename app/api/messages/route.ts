@@ -374,10 +374,10 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Fetching profiles for user IDs:', Array.from(userIds))
 
-    // Fetch profiles for all users in one query
+    // Fetch profiles for all users in one query (email comes from auth, not profiles)
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name, email')
+      .select('id, full_name')
       .in('id', Array.from(userIds))
 
     if (profilesError) {

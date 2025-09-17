@@ -149,16 +149,16 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
 
       setBooking(bookingData)
 
-      // Load client and provider profiles separately
+      // Load client and provider profiles separately (email comes from auth, not profiles)
       const { data: clientData, error: clientError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name')
         .eq('id', bookingData.client_id)
         .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
       const { data: providerData, error: providerError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name')
         .eq('id', bookingData.provider_id)
         .maybeSingle() // Use maybeSingle instead of single to handle no rows
 
