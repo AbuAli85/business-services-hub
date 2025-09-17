@@ -28,14 +28,35 @@ export function UserLogo({ email, className = '', showFallback = true }: UserLog
     try {
       const supabase = await getSupabaseClient()
       
-      // First, get the user profile
-      const { data: profile } = await supabase
+      // Since profiles table doesn't have email column, we need to:
+      // 1. Get the user ID from auth.users by email
+      // 2. Then get the profile by user ID
+      
+      // First, get the user from auth.users
+      const { data: authUser, error: authError } = await supabase.auth.getUser()
+      
+      if (authError || !authUser.user) {
+        console.log(`No authenticated user found for email: ${email}`)
+        setLoading(false)
+        return
+      }
+
+      // Check if the current user's email matches the requested email
+      if (authUser.user.email !== email) {
+        console.log(`Email mismatch: requested ${email}, current user ${authUser.user.email}`)
+        setLoading(false)
+        return
+      }
+
+      // Now get the profile using the user ID
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, role, company_id')
-        .eq('email', email)
+        .select('id, role, company_id, logo_url')
+        .eq('id', authUser.user.id)
         .single()
 
-      if (!profile) {
+      if (profileError) {
+        console.log(`No profile found for user: ${authUser.user.id}`)
         setLoading(false)
         return
       }
@@ -52,14 +73,8 @@ export function UserLogo({ email, className = '', showFallback = true }: UserLog
 
         logoUrl = company?.logo_url || null
       } else {
-        // Get profile logo for clients
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('logo_url')
-          .eq('id', profile.id)
-          .single()
-
-        logoUrl = profileData?.logo_url || null
+        // Use the logo_url from the profile directly
+        logoUrl = profile.logo_url || null
       }
 
       setLogoUrl(logoUrl)
