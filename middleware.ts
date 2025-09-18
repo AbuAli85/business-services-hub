@@ -4,6 +4,9 @@ import { AuthMiddleware } from '@/lib/auth-middleware'
 
 // Basic edge middleware for CORS + security headers + simple rate limiting bucket
 const ENV_ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_APP_URL || ''
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+let SUPABASE_HOST = ''
+try { if (SUPABASE_URL) SUPABASE_HOST = new URL(SUPABASE_URL).host } catch {}
 
 // naive in-memory bucket (per instance); for production, use Upstash or KV
 const buckets = new Map<string, { count: number; resetAt: number }>()
@@ -61,8 +64,27 @@ export async function middleware(req: NextRequest) {
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  // CSP: add font-src to allow data: fonts; keep other directives strict
-  res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'self'; form-action 'self'")
+  
+  // CSP: allow Supabase REST/Realtime and hCaptcha
+  const connectSrc = [
+    "'self'",
+    'https:',
+    'wss:',
+    SUPABASE_HOST ? `https://${SUPABASE_HOST}` : '',
+    SUPABASE_HOST ? `wss://${SUPABASE_HOST}` : ''
+  ].filter(Boolean).join(' ')
+  const scriptSrc = [
+    "'self'",
+    "'unsafe-inline'",
+    'https://js.hcaptcha.com',
+    'https://challenges.hcaptcha.com'
+  ].join(' ')
+  const frameSrc = [
+    "'self'",
+    'https://hcaptcha.com',
+    'https://*.hcaptcha.com'
+  ].join(' ')
+  res.headers.set('Content-Security-Policy', `default-src 'self'; img-src 'self' data: https:; connect-src ${connectSrc}; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src ${frameSrc}; base-uri 'self'; form-action 'self'`)
 
   // Handle preflight quickly
   if (req.method === 'OPTIONS') {
