@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 // Uses shared dashboard layout (sidebar/header) from app/dashboard/layout.tsx
 import { EnhancedClientKPIGrid, EnhancedClientPerformanceMetrics } from '@/components/dashboard/enhanced-client-kpi-cards'
@@ -14,16 +14,10 @@ import { Button } from '@/components/ui/button'
 import { 
   RefreshCw, 
   AlertCircle,
-  Search,
-  Plus,
-  MessageSquare,
-  Target,
-  Zap,
-  Calendar,
   Star,
-  TrendingUp
+  Target
 } from 'lucide-react'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { ClientDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 import { logger } from '@/lib/logger'
@@ -90,7 +84,6 @@ export default function ClientDashboard() {
   const [error, setError] = useState<string | null>(null)
   // Sidebar/header come from shared dashboard layout
   const [user, setUser] = useState<any>(null)
-  const [userProfile, setUserProfile] = useState<any>(null)
   
   // Dashboard data
   const [stats, setStats] = useState<ClientStats | null>(null)
@@ -102,68 +95,30 @@ export default function ClientDashboard() {
     checkUserAndFetchData()
   }, [])
 
-  // Real-time updates
+  // Real-time updates (only what we actually need)
   useEffect(() => {
     if (!user?.id) return
 
-    let currentUserId: string | null = null
     let subscriptionKeys: string[] = []
 
     ;(async () => {
       try {
-        currentUserId = user.id
-
-        // Subscribe to real-time booking updates
-        const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, (update) => {
-          if (update.eventType === 'INSERT') {
-            fetchRecentBookings(user.id)
-            fetchUpcomingBookings(user.id)
-            fetchClientStats(user.id)
-          } else if (update.eventType === 'UPDATE') {
-            fetchRecentBookings(user.id)
-            fetchUpcomingBookings(user.id)
-            fetchClientStats(user.id)
-          }
+        const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, () => {
+          fetchAllClientData(user.id)
         })
         subscriptionKeys.push(`bookings:${user.id}`)
 
-        // Subscribe to real-time service suggestions
-        const suggestionsSubscription = await realtimeManager.subscribeToServiceSuggestions(user.id, (update) => {
-          if (update.eventType === 'INSERT') {
-            fetchServiceSuggestions(user.id)
-          } else if (update.eventType === 'UPDATE') {
-            fetchServiceSuggestions(user.id)
-          }
+        const suggestionsSubscription = await realtimeManager.subscribeToServiceSuggestions(user.id, () => {
+          fetchServiceSuggestions(user.id)
         })
         subscriptionKeys.push(`suggestions:${user.id}`)
-
-        // Subscribe to real-time message updates
-        const messageSubscription = await realtimeManager.subscribeToMessages(user.id, (update) => {
-          if (update.eventType === 'INSERT') {
-            // New message - refresh data if needed
-          }
-        })
-        subscriptionKeys.push(`messages:${user.id}`)
-
-        // Subscribe to general service updates
-        const serviceSubscription = await realtimeManager.subscribeToServices('', (update) => {
-          if (update.eventType === 'INSERT' || update.eventType === 'UPDATE') {
-            // Service updated - refresh favorites
-          }
-        })
-        subscriptionKeys.push('services:')
-
-        } catch (error) {
-          logger.warn('Error setting up realtime subscriptions:', error)
-        }
+      } catch (error) {
+        logger.warn('Error setting up realtime subscriptions:', error)
+      }
     })()
 
     return () => {
-      if (currentUserId) {
-        subscriptionKeys.forEach(key => {
-          realtimeManager.unsubscribe(key)
-        })
-      }
+      subscriptionKeys.forEach(key => realtimeManager.unsubscribe(key))
     }
   }, [user?.id])
 
@@ -182,32 +137,13 @@ export default function ClientDashboard() {
 
       // Check if user is a client
       const userRole = user.user_metadata?.role
-      logger.debug('User role:', userRole)
-      logger.debug('User ID:', user.id)
-      logger.debug('User metadata:', user.user_metadata)
-      
       if (userRole !== 'client') {
-        logger.debug('User is not a client, redirecting to dashboard')
         router.push('/dashboard')
         return
       }
 
       setUser(user)
-      
-      // Fetch user profile for name display
-      await fetchUserProfile(user.id)
-      
-      // Fetch data with error handling
-      try {
-        await Promise.all([
-          fetchClientStats(user.id),
-          fetchRecentBookings(user.id),
-          fetchUpcomingBookings(user.id),
-          fetchServiceSuggestions(user.id)
-        ])
-      } catch (fetchError) {
-        logger.error('Error fetching user data:', fetchError)
-      }
+      await fetchAllClientData(user.id)
     } catch (error) {
       logger.error('Error loading client data:', error)
       setError('Failed to load dashboard data')
@@ -217,73 +153,80 @@ export default function ClientDashboard() {
     }
   }
 
-  const fetchClientStats = async (userId: string) => {
+  const fetchAllClientData = async (userId: string) => {
     try {
-      logger.debug('Fetching client stats for user:', userId)
       const supabase = await getSupabaseClient()
-      
+
+      // One bookings query
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select('status, amount, currency, created_at')
-        .eq('client_id', userId)
-
-      logger.debug('Client stats query result:', { bookings, error: bookingsError })
+        .select(`
+          id,
+          service_id,
+          provider_id,
+          status,
+          subtotal,
+          total_amount,
+          currency,
+          created_at,
+          start_time,
+          scheduled_date
+        `)
+        .or(`client_id.eq.${userId},user_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+        .limit(50)
 
       if (bookingsError) {
         logger.error('Error fetching bookings:', bookingsError)
-        setStats({
-          totalBookings: 0,
-          activeBookings: 0,
-          completedBookings: 0,
-          totalSpent: 0,
-          monthlySpent: 0,
-          averageRating: 0,
-          totalReviews: 0,
-          favoriteProviders: 0
-        })
+        setRecentBookings([])
+        setUpcomingBookings([])
+        setStats(defaultStats())
         return
       }
 
+      // Services and providers lookups for enrichment
+      const serviceIds = Array.from(new Set((bookings || []).map((b: any) => b.service_id).filter(Boolean)))
+      const providerIds = Array.from(new Set((bookings || []).map((b: any) => b.provider_id).filter(Boolean)))
+
+      const [servicesResponse, providersResponse, reviewsResponse] = await Promise.all([
+        serviceIds.length ? supabase.from('services').select('id, title').in('id', serviceIds) : Promise.resolve({ data: [], error: null } as any),
+        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds) : Promise.resolve({ data: [], error: null } as any),
+        supabase.from('reviews').select('rating').eq('client_id', userId)
+      ])
+
+      const services = (servicesResponse as any).data || []
+      const providers = (providersResponse as any).data || []
+      const reviews = (reviewsResponse as any).data || []
+
+      // Compute stats from a single dataset
       const totalBookings = bookings?.length || 0
       const activeBookings = bookings?.filter(b => ['paid', 'in_progress'].includes(b.status)).length || 0
       const completedBookings = bookings?.filter(b => b.status === 'completed').length || 0
-      
-      const totalSpent = bookings
-        ?.filter(b => ['completed', 'in_progress'].includes(b.status))
-        .reduce((sum, b) => {
-          const subtotal = b.amount || 0
+
+      const totalSpent = (bookings || [])
+        .filter(b => ['completed', 'in_progress'].includes(b.status))
+        .reduce((sum, b: any) => {
+          const subtotal = b.subtotal || b.total_amount || 0
           const vatAmount = subtotal * 0.05
           return sum + subtotal + vatAmount
-        }, 0) || 0
+        }, 0)
 
-      const currentMonth = new Date().getMonth()
-      const currentYear = new Date().getFullYear()
-      const monthlyBookings = bookings?.filter(b => {
-        const bookingDate = new Date(b.created_at)
-        return bookingDate.getMonth() === currentMonth && 
-               bookingDate.getFullYear() === currentYear &&
-               ['completed', 'in_progress'].includes(b.status)
-      }) || []
-      
-      const monthlySpent = monthlyBookings.reduce((sum, b) => {
-        const subtotal = b.amount || 0
-        const vatAmount = subtotal * 0.05
-        return sum + subtotal + vatAmount
-      }, 0)
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+      const monthlySpent = (bookings || [])
+        .filter((b: any) => {
+          const d = new Date(b.created_at)
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear && ['completed', 'in_progress'].includes(b.status)
+        })
+        .reduce((sum, b: any) => {
+          const subtotal = b.subtotal || b.total_amount || 0
+          const vatAmount = subtotal * 0.05
+          return sum + subtotal + vatAmount
+        }, 0)
 
-      const { data: reviews, error: reviewsError } = await supabase
-        .from('reviews')
-        .select('rating')
-        .eq('client_id', userId)
-
-      if (reviewsError) {
-        logger.error('Error fetching reviews:', reviewsError)
-      }
-
-      const totalReviews = reviews?.length || 0
-      const averageRating = totalReviews > 0 && reviews
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
-        : 0
+      const totalReviews = reviews.length || 0
+      const averageRating = totalReviews > 0 ? (reviews.reduce((s: number, r: any) => s + (r.rating || 0), 0) / totalReviews) : 0
 
       setStats({
         totalBookings,
@@ -295,202 +238,40 @@ export default function ClientDashboard() {
         totalReviews,
         favoriteProviders: 0
       })
-    } catch (error) {
-      logger.error('Error fetching client stats:', error)
-      setStats({
-        totalBookings: 0,
-        activeBookings: 0,
-        completedBookings: 0,
-        totalSpent: 0,
-        monthlySpent: 0,
-        averageRating: 0,
-        totalReviews: 0,
-        favoriteProviders: 0
-      })
-    }
-  }
 
-  const fetchRecentBookings = async (userId: string) => {
-    try {
-      logger.debug('Fetching recent bookings for user:', userId)
-      const supabase = await getSupabaseClient()
-      
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          service_id,
-          provider_id,
-          status,
-          subtotal,
-          currency,
-          created_at,
-          start_time,
-          scheduled_date,
-          total_amount
-        `)
-        .or(`client_id.eq.${userId},user_id.eq.${userId}`)
-        .order('created_at', { ascending: false })
-        .limit(5)
-
-      logger.debug('Bookings query result:', { bookings, error: bookingsError })
-
-      if (bookingsError) {
-        logger.error('Error fetching recent bookings:', bookingsError)
-        setRecentBookings([])
-        return
-      }
-
-      if (!bookings || bookings.length === 0) {
-        setRecentBookings([])
-        return
-      }
-
-      const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
-      const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-      
-      if (serviceIds.length > 0 && providerIds.length > 0) {
-        const [servicesResponse, providersResponse] = await Promise.all([
-          supabase
-            .from('services')
-            .select('id, title')
-            .in('id', serviceIds),
-          supabase
-            .from('profiles')
-            .select('id, full_name, company_name')
-            .in('id', providerIds)
-        ])
-
-        const enrichedBookings = bookings.map((b: any) => {
-          const service = servicesResponse.data?.find(s => s.id === b.service_id)
-          const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-          logger.debug('Booking data:', b)
-          logger.debug('Service data:', service)
-          logger.debug('Provider data:', provider)
-          return {
-            ...b,
-            service_title: service?.title || 'Unknown Service',
-            provider_name: provider?.full_name || 'Unknown Provider',
-            provider_company: provider?.company_name || provider?.full_name || 'Unknown Company',
-            amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
-            scheduled_date: b.scheduled_date || b.start_time || b.created_at
-          }
-        })
-
-        setRecentBookings(enrichedBookings)
-      } else {
-        const enrichedBookings = bookings.map((b: any) => ({
+      // Enrich bookings once
+      const enrich = (b: any) => {
+        const service = services.find((s: any) => s.id === b.service_id)
+        const provider = providers.find((p: any) => p.id === b.provider_id)
+        return {
           ...b,
-          service_title: 'Unknown Service',
-          provider_name: 'Unknown Provider',
-          provider_company: 'Unknown Company',
+          service_title: service?.title || 'Unknown Service',
+          provider_name: provider?.full_name || 'Unknown Provider',
+          provider_company: provider?.company_name || provider?.full_name || 'Unknown Company',
           amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
           scheduled_date: b.scheduled_date || b.start_time || b.created_at
-        }))
-        setRecentBookings(enrichedBookings)
-      }
-    } catch (error) {
-      logger.error('Error fetching recent bookings:', error)
-      setRecentBookings([])
-    }
-  }
-
-  const fetchUpcomingBookings = async (userId: string) => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select(`
-          id,
-          service_id,
-          provider_id,
-          status,
-          created_at,
-          start_time,
-          scheduled_date
-        `)
-        .eq('client_id', userId)
-        .in('status', ['paid', 'in_progress'])
-        .order('created_at', { ascending: true })
-        .limit(3)
-
-      if (bookingsError) {
-        logger.error('Error fetching upcoming bookings:', bookingsError)
-        setUpcomingBookings([])
-        return
+        }
       }
 
-      if (!bookings || bookings.length === 0) {
-        setUpcomingBookings([])
-        return
-      }
-
-      const serviceIds = Array.from(new Set(bookings.map((b: any) => b.service_id).filter(Boolean)))
-      const providerIds = Array.from(new Set(bookings.map((b: any) => b.provider_id).filter(Boolean)))
-      
-      if (serviceIds.length > 0 && providerIds.length > 0) {
-        const [servicesResponse, providersResponse] = await Promise.all([
-          supabase
-            .from('services')
-            .select('id, title')
-            .in('id', serviceIds),
-          supabase
-            .from('profiles')
-            .select('id, full_name, company_name')
-            .in('id', providerIds)
-        ])
-
-        const enrichedBookings = bookings.map((b: any) => {
-          const service = servicesResponse.data?.find(s => s.id === b.service_id)
-          const provider = providersResponse.data?.find(p => p.id === b.provider_id)
-          return {
-            ...b,
-            service_title: service?.title || 'Unknown Service',
-            provider_name: provider?.full_name || 'Unknown Provider',
-            provider_company: provider?.company_name || 'Unknown Company',
-            scheduled_date: b.scheduled_date || b.start_time || b.created_at,
-            scheduled_time: b.start_time ? new Date(b.start_time).toLocaleTimeString() : 'TBD',
-            location: 'TBD'
-          }
-        })
-
-        setUpcomingBookings(enrichedBookings)
-      } else {
-        const enrichedBookings = bookings.map((b: any) => ({
-          ...b,
-          service_title: 'Unknown Service',
-          provider_name: 'Unknown Provider',
-          provider_company: 'Unknown Company',
-          scheduled_date: b.scheduled_date || b.start_time || b.created_at,
+      const recent = (bookings || []).slice(0, 5).map(enrich)
+      const upcoming = (bookings || [])
+        .filter((b: any) => ['paid', 'in_progress'].includes(b.status))
+        .slice(0, 3)
+        .map((b: any) => ({
+          ...enrich(b),
           scheduled_time: b.start_time ? new Date(b.start_time).toLocaleTimeString() : 'TBD',
           location: 'TBD'
         }))
-        setUpcomingBookings(enrichedBookings)
-      }
+
+      setRecentBookings(recent)
+      setUpcomingBookings(upcoming)
+
+      await fetchServiceSuggestions(userId)
     } catch (error) {
-      logger.error('Error fetching upcoming bookings:', error)
+      logger.error('Error fetching client data:', error)
+      setStats(defaultStats())
+      setRecentBookings([])
       setUpcomingBookings([])
-    }
-  }
-
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', userId)
-        .single()
-
-      if (error) {
-        logger.error('Error fetching user profile:', error)
-        return
-      }
-
-      setUserProfile(profile)
-    } catch (error) {
-      logger.error('Error fetching user profile:', error)
     }
   }
 
@@ -499,10 +280,7 @@ export default function ClientDashboard() {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       
-      if (!session?.access_token) {
-        logger.error('No access token available')
-        return
-      }
+      if (!session?.access_token) return
 
       const response = await fetch('/api/service-suggestions?type=received&status=pending&limit=5', {
         headers: {
@@ -511,10 +289,7 @@ export default function ClientDashboard() {
         }
       })
 
-      if (!response.ok) {
-        logger.error('Failed to fetch service suggestions:', response.statusText)
-        return
-      }
+      if (!response.ok) return
 
       const data = await response.json()
       setServiceSuggestions(data.suggestions || [])
@@ -526,15 +301,9 @@ export default function ClientDashboard() {
 
   const handleRefresh = async () => {
     if (!user?.id) return
-    
     try {
       setRefreshing(true)
-      await Promise.all([
-        fetchClientStats(user.id),
-        fetchRecentBookings(user.id),
-        fetchUpcomingBookings(user.id),
-        fetchServiceSuggestions(user.id)
-      ])
+      await fetchAllClientData(user.id)
       toast.success('Dashboard refreshed')
     } catch (err) {
       logger.error('Error refreshing dashboard:', err)
@@ -543,6 +312,19 @@ export default function ClientDashboard() {
       setRefreshing(false)
     }
   }
+
+  const defaultStats = (): ClientStats => ({
+    totalBookings: 0,
+    activeBookings: 0,
+    completedBookings: 0,
+    totalSpent: 0,
+    monthlySpent: 0,
+    averageRating: 0,
+    totalReviews: 0,
+    favoriteProviders: 0
+  })
+
+  const userFullName = useMemo(() => user?.user_metadata?.full_name || '', [user?.user_metadata?.full_name])
 
   if (loading) {
     return (
@@ -593,77 +375,62 @@ export default function ClientDashboard() {
     <ClientDashboardErrorBoundary>
       <main className="p-3 sm:p-4 lg:p-6 xl:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Client Dashboard</h1>
-            <p className="text-gray-600">{`Welcome back${userProfile?.full_name ? `, ${userProfile.full_name}` : ''}! Here's your booking overview`}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Client Dashboard</h1>
+              <p className="text-gray-600">{`Welcome back${userFullName ? `, ${userFullName}` : ''}! Here's your booking overview`}</p>
+            </div>
+            <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
           </div>
-          <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-        </div>
 
-        {/* Scrollable Content */}
-        <div>
-          {/* Welcome Section with Enhanced Design */}
+          {/* Welcome Section (no duplicate KPI tiles) */}
           <div className="mb-8 sm:mb-10">
             <div className="relative">
-              {/* Enhanced Background Pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-purple-50/60 rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
               <div className="relative bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/30 shadow-2xl p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-4">
+                    <div className="flex items-center space-x-3 mb-2">
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                         <Star className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                           Your Service Hub
-                        </h1>
+                        </h2>
                         <p className="text-gray-600 mt-1 text-sm sm:text-base lg:text-lg">Discover, book, and manage your professional services</p>
                       </div>
                     </div>
-                    
-                    {/* Enhanced Quick Stats Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mt-6 sm:mt-8">
-                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">{stats?.totalSpent ? formatCurrency(stats.totalSpent) : 'OMR 0'}</div>
-                        <div className="text-sm font-medium text-gray-700">Total Spent</div>
-                        <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mx-auto mt-2"></div>
+                    {/* Single highlight to avoid duplication */}
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
+                        <div className="text-xl font-semibold text-blue-600">{stats?.totalSpent ? formatCurrency(stats.totalSpent) : 'OMR 0'}</div>
+                        <div className="text-sm text-gray-700">Total Spent</div>
                       </div>
-                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="text-xl sm:text-2xl font-bold text-green-600 mb-1">{stats?.activeBookings || 0}</div>
-                        <div className="text-sm font-medium text-gray-700">Active Bookings</div>
-                        <div className="w-8 h-1 bg-gradient-to-r from-green-500 to-green-600 rounded-full mx-auto mt-2"></div>
+                      <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
+                        <div className="text-xl font-semibold text-green-600">{stats?.activeBookings || 0}</div>
+                        <div className="text-sm text-gray-700">Active</div>
                       </div>
-                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="text-xl sm:text-2xl font-bold text-purple-600 mb-1">{stats?.completedBookings || 0}</div>
-                        <div className="text-sm font-medium text-gray-700">Completed</div>
-                        <div className="w-8 h-1 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full mx-auto mt-2"></div>
+                      <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
+                        <div className="text-xl font-semibold text-purple-600">{stats?.completedBookings || 0}</div>
+                        <div className="text-sm text-gray-700">Completed</div>
                       </div>
-                      <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-1">{stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}</div>
-                        <div className="text-sm font-medium text-gray-700">Avg Rating</div>
-                        <div className="w-8 h-1 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full mx-auto mt-2"></div>
+                      <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
+                        <div className="text-xl font-semibold text-orange-600">{stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}</div>
+                        <div className="text-sm text-gray-700">Avg Rating</div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 lg:space-y-3 lg:space-x-0 xl:space-y-0 xl:space-x-3">
+                  <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-2 px-4 py-2 bg-green-100/80 backdrop-blur-sm rounded-full border border-green-200/50">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-sm font-medium text-green-700">Live Dashboard</span>
                     </div>
-                    <Button 
-                      onClick={handleRefresh} 
-                      disabled={refreshing}
-                      variant="outline"
-                      size="sm"
-                      className="bg-white/80 backdrop-blur-sm border-white/40 hover:bg-white/90 text-sm shadow-lg hover:shadow-xl transition-all duration-200"
-                    >
+                    <Button onClick={handleRefresh} disabled={refreshing} variant="outline" size="sm" className="bg-white/80 backdrop-blur-sm border-white/40">
                       <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                       {refreshing ? 'Refreshing...' : 'Refresh Data'}
                     </Button>
@@ -672,131 +439,81 @@ export default function ClientDashboard() {
               </div>
             </div>
           </div>
-              
+
           {/* KPI Grid */}
           <section className="mb-8 sm:mb-10">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-50/40 via-gray-50/30 to-slate-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative">
-                <EnhancedClientKPIGrid data={stats} />
-              </div>
-            </div>
+            <EnhancedClientKPIGrid data={stats} />
           </section>
 
           {/* Performance Metrics */}
           <section className="mb-8 sm:mb-10">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 via-indigo-50/30 to-blue-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative">
-                <EnhancedClientPerformanceMetrics data={stats} />
-              </div>
-            </div>
+            <EnhancedClientPerformanceMetrics data={stats} />
           </section>
 
           {/* Spending Chart */}
           <section className="mb-8 sm:mb-10">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-green-50/40 via-emerald-50/30 to-green-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative">
-                <AdvancedClientSpendingChart data={stats} />
-              </div>
-            </div>
+            <AdvancedClientSpendingChart data={stats} />
           </section>
 
           {/* Bookings + Service Suggestions */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 mb-8 sm:mb-10">
-            <div className="relative min-h-[500px]">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-50/40 via-pink-50/30 to-purple-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative h-full">
-                <PremiumClientBookings 
-                  recentBookings={recentBookings} 
-                  upcomingBookings={upcomingBookings} 
-                />
-              </div>
-            </div>
-            <div className="relative min-h-[500px]">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-50/40 via-amber-50/30 to-orange-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative h-full">
-                <EliteServiceSuggestions suggestions={serviceSuggestions} />
-              </div>
-            </div>
+            <PremiumClientBookings 
+              recentBookings={recentBookings} 
+              upcomingBookings={upcomingBookings} 
+            />
+            <EliteServiceSuggestions suggestions={serviceSuggestions} />
           </section>
 
           {/* Quick Actions & Insights */}
           <section className="mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-50/40 via-slate-50/30 to-gray-100/40 rounded-3xl -m-4"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
-              <div className="relative bg-white/85 backdrop-blur-md rounded-2xl border border-white/30 shadow-2xl p-6 sm:p-8 lg:p-10">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <Target className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Quick Actions</h3>
-                        <p className="text-gray-600 text-sm sm:text-base">Find and book services easily</p>
-                      </div>
+            <div className="relative bg-white/85 backdrop-blur-md rounded-2xl border border-white/30 shadow-2xl p-6 sm:p-8 lg:p-10">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <Target className="h-5 w-5 text-white" />
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <Button 
-                        onClick={() => router.push('/services')}
-                        className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-base font-semibold">Browse Services</div>
-                          <div className="text-xs opacity-90">Find what you need</div>
-                        </div>
-                      </Button>
-                      <Button 
-                        onClick={() => router.push('/dashboard/bookings/create')}
-                        className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-base font-semibold">Book Service</div>
-                          <div className="text-xs opacity-90">Start new project</div>
-                        </div>
-                      </Button>
-                      <Button 
-                        onClick={() => router.push('/dashboard/messages')}
-                        className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <div className="text-center">
-                          <div className="text-base font-semibold">Messages</div>
-                          <div className="text-xs opacity-90">Contact providers</div>
-                        </div>
-                      </Button>
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Quick Actions</h3>
+                      <p className="text-gray-600 text-sm sm:text-base">Find and book services easily</p>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 lg:space-y-4 lg:space-x-0 xl:space-y-0 xl:space-x-4">
-                    <div className="text-center lg:text-left">
-                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-                        {stats?.totalBookings || 0}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <Button onClick={() => router.push('/services')} className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                      <div className="text-center">
+                        <div className="text-base font-semibold">Browse Services</div>
+                        <div className="text-xs opacity-90">Find what you need</div>
                       </div>
-                      <div className="text-sm text-gray-600">Total Bookings</div>
-                    </div>
-                    <div className="text-center lg:text-left">
-                      <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-                        {stats?.totalReviews || 0}
+                    </Button>
+                    <Button onClick={() => router.push('/dashboard/bookings/create')} className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                      <div className="text-center">
+                        <div className="text-base font-semibold">Book Service</div>
+                        <div className="text-xs opacity-90">Start new project</div>
                       </div>
-                      <div className="text-sm text-gray-600">Reviews Given</div>
-                    </div>
+                    </Button>
+                    <Button onClick={() => router.push('/dashboard/messages')} className="h-16 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
+                      <div className="text-center">
+                        <div className="text-base font-semibold">Messages</div>
+                        <div className="text-xs opacity-90">Contact providers</div>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 lg:space-y-4 lg:space-x-0 xl:space-y-0 xl:space-x-4">
+                  <div className="text-center lg:text-left">
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stats?.totalBookings || 0}</div>
+                    <div className="text-sm text-gray-600">Total Bookings</div>
+                  </div>
+                  <div className="text-center lg:text-left">
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stats?.totalReviews || 0}</div>
+                    <div className="text-sm text-gray-600">Reviews Given</div>
                   </div>
                 </div>
               </div>
             </div>
           </section>
         </div>
-      </div>
-    </main>
+      </main>
     </ClientDashboardErrorBoundary>
   )
 }
