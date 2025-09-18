@@ -369,20 +369,52 @@ function OnboardingForm() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800">
-                  <strong>Coming Soon:</strong> Bio and profile image features will be available in the next update.
-                </p>
+              <div className="space-y-2">
+                <Label htmlFor="bio">Short Bio (Optional)</Label>
+                <Textarea
+                  id="bio"
+                  placeholder="Tell us a bit about your business or preferences"
+                  value={formData.bio}
+                  onChange={(e) => handleInputChange('bio', e.target.value)}
+                  rows={4}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profileImage">Profile Image (Optional)</Label>
+                <Input
+                  id="profileImage"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
               </div>
             </div>
           )}
 
           {step === 3 && role === 'provider' && (
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800">
-                  <strong>Coming Soon:</strong> Portfolio links and services details will be available in the next update.
-                </p>
+              <div className="space-y-2">
+                <Label htmlFor="portfolioLinks">Portfolio Links (Optional)</Label>
+                <Textarea
+                  id="portfolioLinks"
+                  placeholder="Add links to your past work, separated by new lines"
+                  value={formData.portfolioLinks}
+                  onChange={(e) => handleInputChange('portfolioLinks', e.target.value)}
+                  rows={3}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="services">Services Offered (Optional)</Label>
+                <Textarea
+                  id="services"
+                  placeholder="Briefly describe your services"
+                  value={formData.services}
+                  onChange={(e) => handleInputChange('services', e.target.value)}
+                  rows={3}
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
           )}
