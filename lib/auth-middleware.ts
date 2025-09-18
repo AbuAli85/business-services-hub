@@ -10,7 +10,7 @@ export interface RoleBasedRoute {
 }
 
 export const protectedRoutes: RoleBasedRoute[] = [
-  { path: '/dashboard', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: true },
+  { path: '/dashboard', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/dashboard/admin', roles: ['admin'], requireAuth: true, requireProfile: true },
   { path: '/dashboard/provider', roles: ['provider'], requireAuth: true, requireProfile: true },
   { path: '/dashboard/client', roles: ['client'], requireAuth: true, requireProfile: true },
