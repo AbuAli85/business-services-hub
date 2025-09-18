@@ -81,6 +81,23 @@ function SignInForm() {
         toast.success('Signed in successfully!')
         authLogger.logLoginSuccess({ success: true, method: 'password', email, userId: data.user.id, role: data.user.user_metadata?.role })
         
+        // Sync tokens to HttpOnly cookies for middleware
+        try {
+          const supabase = await getSupabaseClient()
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token && session?.refresh_token && session?.expires_at) {
+            await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+                expires_at: session.expires_at
+              })
+            })
+          }
+        } catch {}
+
         // Redirect back if provided, else dashboard
         const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard'
         router.replace(target)

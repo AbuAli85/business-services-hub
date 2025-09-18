@@ -301,6 +301,7 @@ export default function DashboardLayout({
       const { data: { session } } = await supabase.auth.getSession()
       await supabase.auth.signOut()
       authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signout' } })
+      try { await fetch('/api/auth/session', { method: 'DELETE' }) } catch {}
       router.push('/')
     } catch (error) {
       logger.error('Error signing out:', error)
