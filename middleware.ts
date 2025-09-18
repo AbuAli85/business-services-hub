@@ -59,8 +59,8 @@ export async function middleware(req: NextRequest) {
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  // CSP minimal: allow self + images/mailto; extend as needed
-  res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'")
+  // CSP: add font-src to allow data: fonts; keep other directives strict
+  res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'self'; form-action 'self'")
 
   // Handle preflight quickly
   if (req.method === 'OPTIONS') {
