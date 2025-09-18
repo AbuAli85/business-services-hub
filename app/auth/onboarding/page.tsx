@@ -169,14 +169,22 @@ function OnboardingForm() {
         }
 
         // Now create company for both clients and providers
+        const companyName = (formData.companyName || '').trim()
+        const crNumber = (formData.crNumber || '').trim()
+        const vatNumber = (formData.vatNumber || '').trim()
+        if (!companyName) {
+          toast.error('Company name is required')
+          setLoading(false)
+          return
+        }
         const { data: company, error: companyError } = await supabase
           .from('companies')
           .insert({
             owner_id: user.id,
-            name: formData.companyName,
-            cr_number: formData.crNumber || null,
-            vat_number: formData.vatNumber || null,
-            description: formData.bio || null
+            name: companyName,
+            cr_number: crNumber || null,
+            vat_number: vatNumber || null,
+            description: (formData.bio || '').trim() || null
           })
           .select()
           .single()
@@ -208,6 +216,20 @@ function OnboardingForm() {
       }
 
       toast.success('Onboarding completed successfully!')
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token && session?.refresh_token && session?.expires_at) {
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              access_token: session.access_token,
+              refresh_token: session.refresh_token,
+              expires_at: session.expires_at
+            })
+          })
+        }
+      } catch {}
       router.push('/dashboard')
       
     } catch (error) {
@@ -379,7 +401,24 @@ function OnboardingForm() {
               
               <Button
                 variant="ghost"
-                onClick={() => router.push('/dashboard')}
+                onClick={async () => {
+                  try {
+                    const supabase = await getSupabaseClient()
+                    const { data: { session } } = await supabase.auth.getSession()
+                    if (session?.access_token && session?.refresh_token && session?.expires_at) {
+                      await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          access_token: session.access_token,
+                          refresh_token: session.refresh_token,
+                          expires_at: session.expires_at
+                        })
+                      })
+                    }
+                  } catch {}
+                  router.push('/dashboard')
+                }}
                 className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
               >
                 Skip for now

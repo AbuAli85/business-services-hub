@@ -767,12 +767,17 @@ export default function CompanyPage() {
         }
       }
 
-      // Prepare company data with minimal required fields first
+      const name = (form.name || '').trim()
+      if (!name) {
+        setError('Company name is required')
+        setSubmitting(false)
+        return
+      }
       const companyData = {
         owner_id: user.id,
-        name: form.name,
+        name,
         // Only include fields that we know exist
-        description: form.description || null,
+        description: (form.description || '').trim() || null,
         logo_url: logoUrl || null,
       }
 
