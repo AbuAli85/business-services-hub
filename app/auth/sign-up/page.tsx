@@ -14,7 +14,7 @@ import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTrian
 import { EmailVerificationModal } from '@/components/ui/email-verification-modal'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { HCaptcha } from '@/components/ui/hcaptcha'
-import { validateSignupForm, sanitizeSignupForm, validatePassword } from '@/lib/signup-validation'
+import { validateSignupForm, sanitizeSignupForm, validatePassword, checkEmailExists } from '@/lib/signup-validation'
 import { AuthErrorBoundary } from '@/components/auth/ErrorBoundary'
 
 export default function SignUpPage() {
@@ -66,7 +66,7 @@ export default function SignUpPage() {
     })
   }
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const sanitizedData = sanitizeSignupForm(formData)
     const validation = validateSignupForm(sanitizedData, captchaToken)
     
@@ -78,19 +78,34 @@ export default function SignUpPage() {
       return false
     }
 
+    // Check if email already exists
+    if (sanitizedData.email) {
+      try {
+        const emailExists = await checkEmailExists(sanitizedData.email)
+        if (emailExists) {
+          setErrors(prev => ({ ...prev, email: 'An account with this email already exists. Please sign in instead.' }))
+          toast.error('An account with this email already exists. Please sign in instead.')
+          return false
+        }
+      } catch (error) {
+        console.error('Error checking email existence:', error)
+        // Continue with signup if email check fails
+      }
+    }
+
     // Show warnings if any
     if (Object.keys(validation.warnings).length > 0) {
       const firstWarning = Object.values(validation.warnings)[0]
       toast.error(firstWarning, { duration: 5000 })
     }
-
+    
     return true
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+    if (!(await validateForm())) return
 
     if (isSubmitting) return // Prevent double submission
 
@@ -195,11 +210,17 @@ export default function SignUpPage() {
   const handleResendVerificationEmail = async () => {
     try {
       const supabase = await getSupabaseClient()
-      const { error } = await supabase.auth.resend({
+      
+      // Try resend without captcha first (some Supabase configurations allow this)
+      let { error } = await supabase.auth.resend({
         type: 'signup',
-        email: registeredEmail,
-        options: { captchaToken }
+        email: registeredEmail
       })
+
+      // If captcha is required, show a message to refresh the page
+      if (error && error.message.includes('captcha')) {
+        throw new Error('Please refresh the page and try again to get a new captcha verification.')
+      }
 
       if (error) {
         console.error('Resend verification error:', error)

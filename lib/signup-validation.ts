@@ -251,6 +251,32 @@ export function validateCaptcha(captchaToken: string): { isValid: boolean; error
 }
 
 /**
+ * Checks if email already exists in the database
+ */
+export async function checkEmailExists(email: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/auth/check-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    })
+    
+    if (!response.ok) {
+      console.error('Failed to check email existence:', response.statusText)
+      return false // Assume email doesn't exist if check fails
+    }
+    
+    const data = await response.json()
+    return data.exists || false
+  } catch (error) {
+    console.error('Error checking email existence:', error)
+    return false // Assume email doesn't exist if check fails
+  }
+}
+
+/**
  * Comprehensive form validation
  */
 export function validateSignupForm(formData: SignupFormData, captchaToken: string): ValidationResult {

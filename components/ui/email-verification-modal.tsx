@@ -38,7 +38,13 @@ export function EmailVerificationModal({
         toast.success('Verification email sent successfully!')
       }
     } catch (error) {
-      toast.error('Failed to resend verification email. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend verification email. Please try again.'
+      
+      if (errorMessage.includes('captcha') || errorMessage.includes('refresh')) {
+        toast.error('Please refresh the page and try again to get a new captcha verification.')
+      } else {
+        toast.error(errorMessage)
+      }
     } finally {
       setIsResending(false)
     }
@@ -177,6 +183,19 @@ export function EmailVerificationModal({
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Open Email
+            </Button>
+          </div>
+
+          {/* Refresh Page Button for Captcha Issues */}
+          <div className="text-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.reload()}
+              className="text-blue-600 hover:text-blue-700"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Page (if resend fails)
             </Button>
           </div>
 
