@@ -214,15 +214,18 @@ export default function DashboardLayout({
       // Fetch client/staff logo if user is a client or staff
       if (userRole === 'client' || userRole === 'staff') {
         try {
-          // First try to get logo from companies table (preferred)
+          // First try to get logo and name from companies table (preferred)
           const { data: company } = await supabase
             .from('companies')
-            .select('logo_url')
+            .select('name, logo_url')
             .eq('owner_id', session.user.id)
             .maybeSingle()
           
           if (company?.logo_url) {
             setUserLogoUrl(company.logo_url)
+          }
+          if (company?.name) {
+            companyName = company.name
           } else {
             // Fallback to profile logo_url if no company logo
             const { data: profile } = await supabase
@@ -236,7 +239,7 @@ export default function DashboardLayout({
             }
           }
         } catch (error) {
-          logger.warn('Could not fetch client logo:', error)
+          logger.warn('Could not fetch client logo/name:', error)
         }
       }
       

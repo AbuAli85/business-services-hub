@@ -259,7 +259,15 @@ function OnboardingForm() {
           })
         }
       } catch {}
-      router.push('/dashboard')
+      try { router.replace('/dashboard') } catch {}
+      // Hard fallback if client router is stuck
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          if (window.location.pathname.includes('/auth/onboarding')) {
+            window.location.href = '/dashboard'
+          }
+        }, 100)
+      }
       
     } catch (error) {
       toast.error('An unexpected error occurred. Please try again.')
@@ -478,7 +486,14 @@ function OnboardingForm() {
                       })
                     }
                   } catch {}
-                  router.push('/dashboard')
+                  try { router.replace('/dashboard') } catch {}
+                  if (typeof window !== 'undefined') {
+                    setTimeout(() => {
+                      if (window.location.pathname.includes('/auth/onboarding')) {
+                        window.location.href = '/dashboard'
+                      }
+                    }, 100)
+                  }
                 }}
                 className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
               >
