@@ -14,6 +14,8 @@ import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTrian
 import { EmailVerificationModal } from '@/components/ui/email-verification-modal'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { HCaptcha } from '@/components/ui/hcaptcha'
+import { validateSignupForm, sanitizeSignupForm, validatePassword } from '@/lib/signup-validation'
+import { AuthErrorBoundary } from '@/components/auth/ErrorBoundary'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -37,10 +39,17 @@ export default function SignUpPage() {
   })
   const [captchaToken, setCaptchaToken] = useState<string>('')
   const [captchaKey, setCaptchaKey] = useState<number>(0)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    
+    // Clear field-specific errors
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
     
     // Check password strength when password changes
     if (field === 'password') {
@@ -49,60 +58,30 @@ export default function SignUpPage() {
   }
 
   const checkPasswordStrength = (password: string) => {
-    let score = 0
-    let feedback = ''
-    
-    if (password.length >= 8) score += 1
-    if (/[a-z]/.test(password)) score += 1
-    if (/[A-Z]/.test(password)) score += 1
-    if (/[0-9]/.test(password)) score += 1
-    if (/[^A-Za-z0-9]/.test(password)) score += 1
-    
-    const meetsRequirements = score >= 4 && password.length >= 8
-    
-    if (score === 0) feedback = 'Very weak'
-    else if (score === 1) feedback = 'Weak'
-    else if (score === 2) feedback = 'Fair'
-    else if (score === 3) feedback = 'Good'
-    else if (score === 4) feedback = 'Strong'
-    else feedback = 'Very strong'
-    
-    setPasswordStrength({ score, feedback, meetsRequirements })
+    const validation = validatePassword(password)
+    setPasswordStrength({
+      score: validation.score,
+      feedback: validation.feedback,
+      meetsRequirements: validation.meetsRequirements
+    })
   }
 
   const validateForm = () => {
-    if (!formData.email || !formData.password || !formData.fullName || !formData.phone || !formData.companyName) {
-      toast.error('Please fill in all required fields')
+    const sanitizedData = sanitizeSignupForm(formData)
+    const validation = validateSignupForm(sanitizedData, captchaToken)
+    
+    setErrors(validation.errors)
+
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0]
+      toast.error(firstError)
       return false
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
-      return false
-    }
-
-    if (!passwordStrength.meetsRequirements) {
-      toast.error('Password does not meet security requirements')
-      return false
-    }
-
-    if (!captchaToken) {
-      toast.error('Please complete the captcha')
-      return false
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      toast.error('Please enter a valid email address')
-      return false
-    }
-
-    // Basic phone validation
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
-    if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-      toast.error('Please enter a valid phone number')
-      return false
+    // Show warnings if any
+    if (Object.keys(validation.warnings).length > 0) {
+      const firstWarning = Object.values(validation.warnings)[0]
+      toast.error(firstWarning, { duration: 5000 })
     }
 
     return true
@@ -113,7 +92,10 @@ export default function SignUpPage() {
     
     if (!validateForm()) return
 
+    if (isSubmitting) return // Prevent double submission
+
     setLoading(true)
+    setIsSubmitting(true)
     
     try {
       const supabase = await getSupabaseClient()
@@ -133,33 +115,60 @@ export default function SignUpPage() {
       })
 
       if (error) {
-        if (error.message.includes('User already registered')) {
+        console.error('Signup error:', error)
+        
+        // Handle specific error cases
+        if (error.message.includes('User already registered') || error.message.includes('already registered')) {
           toast.error('An account with this email already exists. Please sign in instead.')
-        } else if (error.message.includes('Password should be at least')) {
+        } else if (error.message.includes('Password should be at least') || error.message.includes('password')) {
           toast.error('Password is too weak. Please choose a stronger password.')
+        } else if (error.message.includes('Invalid email') || error.message.includes('email')) {
+          toast.error('Please enter a valid email address.')
+        } else if (error.message.includes('captcha') || error.message.includes('verification')) {
+          toast.error('Captcha verification failed. Please try again.')
+        } else if (error.message.includes('rate limit') || error.message.includes('too many')) {
+          toast.error('Too many signup attempts. Please wait a moment before trying again.')
+        } else if (error.message.includes('network') || error.message.includes('connection')) {
+          toast.error('Network error. Please check your connection and try again.')
         } else {
           toast.error(`Signup failed: ${error.message}`)
         }
+        
+        // Reset captcha on error
         setCaptchaToken('')
         setCaptchaKey(k => k + 1)
         return
       }
 
       if (data.user) {
+        // Log successful signup
+        console.log('✅ User signup successful:', {
+          userId: data.user.id,
+          email: data.user.email,
+          role: formData.role,
+          emailConfirmed: !!data.user.email_confirmed_at
+        })
+        
         // Check if email confirmation is required
         if (data.user.email_confirmed_at) {
           // Email already confirmed, redirect to onboarding
+          toast.success('Account created successfully! Redirecting to setup...')
           router.push(`/auth/onboarding?role=${formData.role}`)
         } else {
           // Show email verification modal
           setRegisteredEmail(formData.email)
           setShowEmailVerification(true)
+          toast.success('Account created! Please check your email to verify your account.')
         }
+      } else {
+        toast.error('Signup completed but no user data returned. Please try again.')
       }
     } catch (error) {
+      console.error('Signup error:', error)
       toast.error('An unexpected error occurred during signup. Please try again.')
     } finally {
       setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -179,6 +188,10 @@ export default function SignUpPage() {
     return 'bg-green-500'
   }
 
+  const getPasswordStrengthWidth = () => {
+    return `${(passwordStrength.score / 5) * 100}%`
+  }
+
   const handleResendVerificationEmail = async () => {
     try {
       const supabase = await getSupabaseClient()
@@ -189,9 +202,18 @@ export default function SignUpPage() {
       })
 
       if (error) {
-        throw error
+        console.error('Resend verification error:', error)
+        
+        if (error.message.includes('rate limit') || error.message.includes('too many')) {
+          throw new Error('Too many resend attempts. Please wait before trying again.')
+        } else if (error.message.includes('captcha') || error.message.includes('verification')) {
+          throw new Error('Captcha verification failed. Please refresh and try again.')
+        } else {
+          throw new Error(error.message)
+        }
       }
     } catch (error) {
+      console.error('Resend verification error:', error)
       throw error
     }
   }
@@ -204,8 +226,9 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <AuthErrorBoundary>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <PlatformLogo size="lg" variant="full" />
@@ -255,8 +278,11 @@ export default function SignUpPage() {
                 onChange={(e) => handleInputChange('fullName', e.target.value)}
                 required
                 disabled={loading}
-                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : ''}`}
               />
+              {errors.fullName && (
+                <p className="text-sm text-red-500">{errors.fullName}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -269,8 +295,11 @@ export default function SignUpPage() {
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 required
                 disabled={loading}
-                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : ''}`}
               />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -283,8 +312,11 @@ export default function SignUpPage() {
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 required
                 disabled={loading}
-                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-500' : ''}`}
               />
+              {errors.phone && (
+                <p className="text-sm text-red-500">{errors.phone}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -297,8 +329,11 @@ export default function SignUpPage() {
                 onChange={(e) => handleInputChange('companyName', e.target.value)}
                 required
                 disabled={loading}
-                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.companyName ? 'border-red-500' : ''}`}
               />
+              {errors.companyName && (
+                <p className="text-sm text-red-500">{errors.companyName}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -312,7 +347,7 @@ export default function SignUpPage() {
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   required
                   disabled={loading}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12"
+                  className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12 ${errors.password ? 'border-red-500' : ''}`}
                 />
                 <Button
                   type="button"
@@ -342,7 +377,8 @@ export default function SignUpPage() {
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthBg()}`}
-                      style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                      // eslint-disable-next-line react/forbid-dom-props
+                      style={{ width: getPasswordStrengthWidth() }}
                     />
                   </div>
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
@@ -374,6 +410,9 @@ export default function SignUpPage() {
                   </div>
                 </div>
               )}
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -387,7 +426,7 @@ export default function SignUpPage() {
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                   required
                   disabled={loading}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12"
+                  className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12 ${errors.confirmPassword ? 'border-red-500' : ''}`}
                 />
                 <Button
                   type="button"
@@ -421,12 +460,15 @@ export default function SignUpPage() {
                   )}
                 </div>
               )}
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-500">{errors.confirmPassword}</p>
+              )}
             </div>
             
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-              disabled={loading || !passwordStrength.meetsRequirements || formData.password !== formData.confirmPassword}
+              disabled={loading || isSubmitting || !passwordStrength.meetsRequirements || formData.password !== formData.confirmPassword}
             >
               {loading ? (
                 <>
@@ -449,6 +491,9 @@ export default function SignUpPage() {
           {/* hCaptcha */}
           <div className="mt-2">
             <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
+            {errors.captcha && (
+              <p className="text-sm text-red-500 mt-1">{errors.captcha}</p>
+            )}
           </div>
           
           <div className="mt-4 text-center text-xs text-muted-foreground">
@@ -467,6 +512,7 @@ export default function SignUpPage() {
         email={registeredEmail}
         onResendEmail={handleResendVerificationEmail}
       />
-    </div>
+      </div>
+    </AuthErrorBoundary>
   )
 }

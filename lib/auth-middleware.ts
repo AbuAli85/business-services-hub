@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createMiddlewareClient } from './supabase-middleware'
 import { authLogger } from './auth-logger'
 
 export interface RoleBasedRoute {
@@ -38,10 +38,7 @@ export class AuthMiddleware {
   private supabase: any
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    this.supabase = createMiddlewareClient()
   }
 
   async checkAuth(req: NextRequest): Promise<{

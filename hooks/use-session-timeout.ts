@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
+import { clearAuthData, isRefreshTokenError, safeSignOut, isSessionValid, getSessionTimeRemaining } from '@/lib/session-utils'
 
 interface SessionTimeoutConfig {
   warningTime: number // seconds before expiry to show warning
@@ -60,18 +61,21 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       
       if (error) {
         console.warn('Session check error:', error)
+        // Handle specific refresh token errors
+        if (isRefreshTokenError(error)) {
+          console.log('🔄 Invalid refresh token detected, clearing session')
+          await safeSignOut(supabase, { clearLocalStorage: true })
+        }
         setState(prev => ({ ...prev, isExpired: true }))
         return
       }
       
-      if (!session) {
+      if (!session || !isSessionValid(session)) {
         setState(prev => ({ ...prev, isExpired: true }))
         return
       }
 
-      const now = Math.floor(Date.now() / 1000)
-      const expiresAt = session.expires_at || 0
-      const timeUntilExpiry = expiresAt - now
+      const timeUntilExpiry = getSessionTimeRemaining(session)
 
       if (timeUntilExpiry <= 0) {
         setState(prev => ({ ...prev, isExpired: true }))
@@ -126,11 +130,13 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   const handleLogout = useCallback(async () => {
     try {
       const supabase = await getSupabaseClient()
-      await supabase.auth.signOut()
+      await safeSignOut(supabase, { clearLocalStorage: true })
       toast.success('You have been logged out due to session timeout.')
       router.push('/auth/sign-in')
     } catch (error) {
       console.error('Logout error:', error)
+      // Clear auth data even if sign out fails
+      clearAuthData({ clearLocalStorage: true })
       router.push('/auth/sign-in')
     }
   }, [router])
@@ -143,6 +149,13 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       
       if (error) {
         console.error('Session refresh error:', error)
+        
+        // Handle specific refresh token errors
+        if (isRefreshTokenError(error)) {
+          console.log('🔄 Invalid refresh token during refresh, signing out')
+          await safeSignOut(supabase, { clearLocalStorage: true })
+        }
+        
         setState(prev => ({ ...prev, isExpired: true }))
         return false
       }
@@ -161,6 +174,18 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       return false
     } catch (error) {
       console.error('Session refresh error:', error)
+      
+      // Handle refresh token errors in catch block too
+      if (isRefreshTokenError(error)) {
+        console.log('🔄 Invalid refresh token in catch block, signing out')
+        try {
+          const supabase = await getSupabaseClient()
+          await safeSignOut(supabase, { clearLocalStorage: true })
+        } catch (signOutError) {
+          console.error('Error signing out:', signOutError)
+        }
+      }
+      
       setState(prev => ({ ...prev, isExpired: true }))
       return false
     }

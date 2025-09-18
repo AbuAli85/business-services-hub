@@ -1,0 +1,6 @@
+# Exclude Supabase functions from Next.js build
+supabase/functions/
+supabase-functions/
+supabase-functions-backup/
+supabase/migrations/
+supabase/seed.sql

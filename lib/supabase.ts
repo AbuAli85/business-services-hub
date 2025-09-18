@@ -90,7 +90,10 @@ For production deployments, ensure environment variables are set in your hosting
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      flowType: 'pkce',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: 'sb-reootcngcptfogfozlmz-auth-token',
+      debug: process.env.NODE_ENV === 'development'
     },
     global: {
       headers: {
@@ -116,6 +119,10 @@ For production deployments, ensure environment variables are set in your hosting
               authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, role: session?.user?.user_metadata?.role, metadata: { token_expires_at: expiresAt, seconds_remaining: secondsRemaining } })
             } else if (event === 'SIGNED_OUT') {
               authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signed_out' } })
+              // Clear any stored session data
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('sb-reootcngcptfogfozlmz-auth-token')
+              }
             } else if (event === 'TOKEN_REFRESHED') {
               authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'token_refreshed', token_expires_at: expiresAt, seconds_remaining: secondsRemaining } })
               // Proactively re-check and refresh if expiry is near (within 5 minutes)
@@ -129,11 +136,32 @@ For production deployments, ensure environment variables are set in your hosting
                     const { error: refreshError } = await supabaseClient!.auth.refreshSession()
                     if (refreshError) {
                       console.warn('⚠️ Proactive token refresh failed:', refreshError)
+                      
+                      // Handle specific refresh token errors
+                      if (refreshError.message.includes('Invalid Refresh Token') || 
+                          refreshError.message.includes('Refresh Token Not Found') ||
+                          refreshError.message.includes('refresh_token_not_found')) {
+                        console.log('🔄 Invalid refresh token during proactive refresh, signing out')
+                        await supabaseClient!.auth.signOut()
+                      }
                     } else {
                       authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'proactive_refresh' } })
                     }
                   } catch (e) {
                     console.warn('⚠️ Proactive refresh exception:', e)
+                    
+                    // Handle refresh token errors in catch block too
+                    if (e instanceof Error && (
+                        e.message.includes('Invalid Refresh Token') || 
+                        e.message.includes('Refresh Token Not Found') ||
+                        e.message.includes('refresh_token_not_found'))) {
+                      console.log('🔄 Invalid refresh token in proactive refresh catch block, signing out')
+                      try {
+                        await supabaseClient!.auth.signOut()
+                      } catch (signOutError) {
+                        console.error('Error signing out:', signOutError)
+                      }
+                    }
                   }
                 }
               }

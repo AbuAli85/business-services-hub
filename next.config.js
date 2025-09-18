@@ -5,10 +5,24 @@ const nextConfig = {
   },
   // Exclude Supabase functions from Next.js build
   webpack: (config) => {
+    // Exclude Supabase functions directory from compilation
     config.module.rules.push({
       test: /supabase\/functions\/.*\.ts$/,
       use: 'ignore-loader'
     })
+    
+    // Exclude the supabase-functions directory
+    config.module.rules.push({
+      test: /supabase-functions\/.*\.ts$/,
+      use: 'ignore-loader'
+    })
+    
+    // Exclude the supabase-functions-backup directory
+    config.module.rules.push({
+      test: /supabase-functions-backup\/.*\.ts$/,
+      use: 'ignore-loader'
+    })
+    
     return config
   },
   // Force cache busting for production builds

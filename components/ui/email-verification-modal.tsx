@@ -66,7 +66,7 @@ export function EmailVerificationModal({
             Verify Your Email Address
           </DialogTitle>
           <DialogDescription>
-            We've sent a verification link to your email address
+            We've sent a verification link to your email address. Click the link to verify your account and continue with setup.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,7 +129,7 @@ export function EmailVerificationModal({
                 <div>
                   <p className="text-sm font-medium">Return to complete setup</p>
                   <p className="text-xs text-gray-500">
-                    You'll be redirected to complete your profile
+                    You'll be automatically signed in and redirected to complete your profile
                   </p>
                 </div>
               </div>
