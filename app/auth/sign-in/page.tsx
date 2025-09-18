@@ -13,6 +13,7 @@ import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
 import { HCaptcha } from '@/components/ui/hcaptcha'
+import { authLogger } from '@/lib/auth-logger'
 
 function SignInForm() {
   const [email, setEmail] = useState('')
@@ -39,6 +40,7 @@ function SignInForm() {
 
     try {
       const supabase = await getSupabaseClient()
+      authLogger.logLoginAttempt({ success: true, method: 'password', email, metadata: { attempts } })
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -49,6 +51,7 @@ function SignInForm() {
         setAttempts(prev => prev + 1)
         setCaptchaToken('')
         setCaptchaKey(k => k + 1)
+        authLogger.logLoginFailure({ success: false, method: 'password', email, error: error.message, attemptCount: attempts + 1 })
         
         // Handle specific error cases for production
         if (error.message.includes('Email not confirmed')) {
@@ -66,6 +69,7 @@ function SignInForm() {
       if (data.user) {
         // Check if email is confirmed
         if (!data.user.email_confirmed_at) {
+          authLogger.logLoginFailure({ success: false, method: 'password', email, error: 'Email not confirmed' })
           toast.error('Please check your email and click the confirmation link before signing in.')
           return
         }
@@ -75,6 +79,7 @@ function SignInForm() {
         
         // Show success message
         toast.success('Signed in successfully!')
+        authLogger.logLoginSuccess({ success: true, method: 'password', email, userId: data.user.id, role: data.user.user_metadata?.role })
         
         // Redirect back if provided, else dashboard
         const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard'
@@ -84,6 +89,7 @@ function SignInForm() {
       setAttempts(prev => prev + 1)
       setCaptchaToken('')
       setCaptchaKey(k => k + 1)
+      authLogger.logLoginFailure({ success: false, method: 'password', email, error: err instanceof Error ? err.message : 'Unknown error', attemptCount: attempts + 1 })
       toast.error('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
@@ -94,6 +100,7 @@ function SignInForm() {
     try {
       setLoading(true)
       const supabase = await getSupabaseClient()
+      authLogger.logLoginAttempt({ success: true, method: 'oauth', email, metadata: { provider: 'google' } })
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -102,9 +109,11 @@ function SignInForm() {
       })
 
       if (error) {
+        authLogger.logLoginFailure({ success: false, method: 'oauth', email, error: error.message })
         toast.error('Google sign in failed. Please try again.')
       }
     } catch (error) {
+      authLogger.logLoginFailure({ success: false, method: 'oauth', email, error: error instanceof Error ? error.message : 'Unknown error' })
       toast.error('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -170,7 +179,7 @@ function SignInForm() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-6">
             <div className="w-24 h-24 flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200 p-3">
-              {/^\S+@\S+\.\S+$/.test(email) ? (
+              {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? (
                 <UserLogo 
                   email={email} 
                   className="w-full h-full object-contain"
@@ -286,7 +295,7 @@ function SignInForm() {
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-8.09 3.28-8.09z"
                   fill="#4285F4"
                 />
                 <path

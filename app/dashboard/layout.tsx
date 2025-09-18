@@ -33,6 +33,7 @@ import { UserLogo } from '@/components/ui/user-logo'
 import { SessionManager } from '@/components/ui/session-manager'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { logger } from '@/lib/logger'
+import { authLogger } from '@/lib/auth-logger'
 
 interface UserProfile {
   id: string
@@ -297,7 +298,9 @@ export default function DashboardLayout({
   const handleSignOut = async () => {
     try {
       const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
       await supabase.auth.signOut()
+      authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signout' } })
       router.push('/')
     } catch (error) {
       logger.error('Error signing out:', error)

@@ -9,6 +9,7 @@ let supabaseClient: SupabaseClient | null = null
 let supabaseAdminClient: SupabaseClient | null = null
 let isInitializing = false
 let initializationPromise: Promise<SupabaseClient> | null = null
+let lastProactiveRefreshAt = 0
 
 // Helper function to check environment variables (moved outside async function)
 function checkEnvironmentVariables() {
@@ -106,6 +107,38 @@ For production deployments, ensure environment variables are set in your hosting
         // Set up auth state change listener
         supabaseClient!.auth.onAuthStateChange(async (event, session) => {
           console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+          try {
+            const { authLogger } = await import('./auth-logger')
+            const expiresAt = session?.expires_at || null
+            const now = Math.floor(Date.now() / 1000)
+            const secondsRemaining = expiresAt ? (expiresAt - now) : null
+            if (event === 'SIGNED_IN') {
+              authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, role: session?.user?.user_metadata?.role, metadata: { token_expires_at: expiresAt, seconds_remaining: secondsRemaining } })
+            } else if (event === 'SIGNED_OUT') {
+              authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signed_out' } })
+            } else if (event === 'TOKEN_REFRESHED') {
+              authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'token_refreshed', token_expires_at: expiresAt, seconds_remaining: secondsRemaining } })
+              // Proactively re-check and refresh if expiry is near (within 5 minutes)
+              if (secondsRemaining !== null && secondsRemaining <= 300) {
+                const nowMs = Date.now()
+                // Cooldown 60s to prevent loops
+                if (nowMs - lastProactiveRefreshAt > 60_000) {
+                  lastProactiveRefreshAt = nowMs
+                  try {
+                    console.log('🔄 Proactive token refresh due to near expiry')
+                    const { error: refreshError } = await supabaseClient!.auth.refreshSession()
+                    if (refreshError) {
+                      console.warn('⚠️ Proactive token refresh failed:', refreshError)
+                    } else {
+                      authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'proactive_refresh' } })
+                    }
+                  } catch (e) {
+                    console.warn('⚠️ Proactive refresh exception:', e)
+                  }
+                }
+              }
+            }
+          } catch (_) {}
           
           if (event === 'TOKEN_REFRESHED') {
             console.log('✅ Token refreshed successfully')
