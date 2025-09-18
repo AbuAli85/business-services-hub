@@ -130,10 +130,10 @@ function OnboardingForm() {
         }
       }
 
-      // Create company for both clients and providers
+      // Create company logic: required for providers; optional for clients
       try {
-        // First, ensure the user has a profile
-        const { data: existingProfile, error: profileCheckError } = await supabase
+        // Ensure the user has a profile
+        const { data: existingProfile2, error: profileCheckError } = await supabase
           .from('profiles')
           .select('id')
           .eq('id', user.id)
@@ -145,8 +145,8 @@ function OnboardingForm() {
           return
         }
 
-        // If no profile exists, create one
-        if (!existingProfile) {
+        // If no profile exists, create one (idempotent guard)
+        if (!existingProfile2) {
           console.log(`Creating missing profile for ${role}:`, user.email)
           const { error: profileCreateError } = await supabase
             .from('profiles')
@@ -168,46 +168,75 @@ function OnboardingForm() {
           console.log(`Profile created successfully for ${role}`)
         }
 
-        // Now create company for both clients and providers
         const companyName = (formData.companyName || '').trim()
         const crNumber = (formData.crNumber || '').trim()
         const vatNumber = (formData.vatNumber || '').trim()
-        if (!companyName) {
-          toast.error('Company name is required')
-          setLoading(false)
-          return
+
+        let createdCompanyId: string | null = null
+
+        if (role === 'provider') {
+          // Providers must provide a company name
+          if (!companyName) {
+            toast.error('Company name is required')
+            setLoading(false)
+            return
+          }
+          const { data: company, error: companyError } = await supabase
+            .from('companies')
+            .insert({
+              owner_id: user.id,
+              name: companyName,
+              cr_number: crNumber || null,
+              vat_number: vatNumber || null,
+              description: (formData.bio || '').trim() || null
+            })
+            .select()
+            .single()
+
+          if (companyError) {
+            console.error('Company creation error:', companyError)
+            toast.error(`Company creation failed: ${companyError.message}`)
+            return
+          }
+          createdCompanyId = company.id
+        } else {
+          // Client: create company only if provided
+          if (companyName) {
+            const { data: company, error: companyError } = await supabase
+              .from('companies')
+              .insert({
+                owner_id: user.id,
+                name: companyName,
+                cr_number: crNumber || null,
+                vat_number: vatNumber || null,
+                description: (formData.bio || '').trim() || null
+              })
+              .select()
+              .single()
+            if (companyError) {
+              console.error('Optional company creation error:', companyError)
+              toast.error(`Company creation failed: ${companyError.message}`)
+              return
+            }
+            createdCompanyId = company.id
+          }
         }
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .insert({
-            owner_id: user.id,
-            name: companyName,
-            cr_number: crNumber || null,
-            vat_number: vatNumber || null,
-            description: (formData.bio || '').trim() || null
-          })
-          .select()
-          .single()
 
-        if (companyError) {
-          console.error('Company creation error:', companyError)
-          toast.error(`Company creation failed: ${companyError.message}`)
-          return
-        }
+        // Update profile with company_id and company_name only if company was created
+        if (createdCompanyId) {
+          const { error: profileUpdateError } = await supabase
+            .from('profiles')
+            .update({ 
+              company_id: createdCompanyId,
+              company_name: companyName
+            })
+            .eq('id', user.id)
 
-        // Update profile with company_id and company_name
-        const { error: profileUpdateError } = await supabase
-          .from('profiles')
-          .update({ 
-            company_id: company.id,
-            company_name: formData.companyName
-          })
-          .eq('id', user.id)
-
-        if (profileUpdateError) {
-          console.error('Profile update error:', profileUpdateError)
-          toast.error(`Profile update failed: ${profileUpdateError.message}`)
-          return
+          if (profileUpdateError) {
+            console.error('Profile update error:', profileUpdateError)
+            toast.error(`Profile update failed: ${profileUpdateError.message}`)
+            return
+          }
         }
       } catch (error) {
         console.error('Error creating company profile:', error)
