@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { AuthMiddleware } from '@/lib/auth-middleware'
 
 // Basic edge middleware for CORS + security headers + simple rate limiting bucket
-const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_APP_URL || 'https://marketing.thedigitalmorph.com'
+const ENV_ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_APP_URL || ''
 
 // naive in-memory bucket (per instance); for production, use Upstash or KV
 const buckets = new Map<string, { count: number; resetAt: number }>()
@@ -24,6 +24,8 @@ function rateLimit(key: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  const requestOrigin = req.headers.get('origin') || req.nextUrl.origin
+  const ALLOWED_ORIGIN = ENV_ALLOWED_ORIGIN || requestOrigin
 
   // Simple rate limit for API routes
   if (pathname.startsWith('/api/')) {
@@ -47,7 +49,7 @@ export async function middleware(req: NextRequest) {
 
   // CORS: only allow your app origin
   const origin = req.headers.get('origin') || ''
-  if (origin === ALLOWED_ORIGIN) {
+  if (!origin || origin === ALLOWED_ORIGIN) {
     res.headers.set('Access-Control-Allow-Origin', ALLOWED_ORIGIN)
   }
   res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
