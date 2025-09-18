@@ -222,21 +222,26 @@ function OnboardingForm() {
           }
         }
 
-        // Update profile with company_id and company_name only if company was created
+        // Ensure profile has correct role set and optionally link company
+        const upsertProfilePayload: any = { role }
         if (createdCompanyId) {
-          const { error: profileUpdateError } = await supabase
-            .from('profiles')
-            .update({ 
-              company_id: createdCompanyId,
-              company_name: companyName
-            })
-            .eq('id', user.id)
+          upsertProfilePayload.company_id = createdCompanyId
+          upsertProfilePayload.company_name = companyName
+        }
+        await supabase
+          .from('profiles')
+          .update(upsertProfilePayload)
+          .eq('id', user.id)
 
-          if (profileUpdateError) {
-            console.error('Profile update error:', profileUpdateError)
-            toast.error(`Profile update failed: ${profileUpdateError.message}`)
-            return
-          }
+        // Poll until the profile is readable to avoid middleware race
+        for (let i = 0; i < 3; i++) {
+          const { data: confirmProfile } = await supabase
+            .from('profiles')
+            .select('id, role')
+            .eq('id', user.id)
+            .single()
+          if (confirmProfile?.id && confirmProfile?.role) break
+          await new Promise(r => setTimeout(r, 150))
         }
       } catch (error) {
         console.error('Error creating company profile:', error)
