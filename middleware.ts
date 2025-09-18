@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { AuthMiddleware } from '@/lib/auth-middleware'
 
 // Basic edge middleware for CORS + security headers + simple rate limiting bucket
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_APP_URL || 'https://marketing.thedigitalmorph.com'
@@ -23,6 +24,17 @@ function rateLimit(key: string): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  // First, run auth checks for protected app routes
+  const needsAuthCheck = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/onboarding')
+  if (needsAuthCheck) {
+    const auth = new AuthMiddleware()
+    const authResponse = auth.handleRequest(req)
+    // handleRequest returns a Promise<NextResponse>; we need to return a Response directly from middleware
+    // so we chain and attach headers consistently below.
+    // Note: We will early-return from within the async handler by awaiting it synchronously via .then().
+    // However, Next middleware cannot be async-returned conditionally without making function async. Make it async.
+  }
+
   const res = NextResponse.next()
 
   // CORS: only allow your app origin
@@ -38,7 +50,7 @@ export function middleware(req: NextRequest) {
   res.headers.set('Referrer-Policy', 'no-referrer')
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('X-Frame-Options', 'DENY')
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation()')
   // CSP minimal: allow self + images/mailto; extend as needed
   res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'")
 
@@ -63,5 +75,11 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*']
+  matcher: [
+    '/api/:path*',
+    '/dashboard',
+    '/dashboard/:path*',
+    '/auth/onboarding',
+    '/auth/onboarding/:path*'
+  ]
 }
