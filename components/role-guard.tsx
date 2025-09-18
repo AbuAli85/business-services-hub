@@ -26,8 +26,8 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
         .select('role')
         .eq('id', session.user.id)
         .single()
-      const role = (prof?.role || 'client') as Role
-      if (allow.includes(role)) setOk(true)
+      const role = (prof?.role || null) as Role | null
+      if (role && allow.includes(role)) setOk(true)
       else { setOk(false); router.replace(redirect) }
     })()
     return () => { mounted = false }
