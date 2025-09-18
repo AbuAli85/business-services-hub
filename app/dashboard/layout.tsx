@@ -34,6 +34,7 @@ import { SessionManager } from '@/components/ui/session-manager'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { logger } from '@/lib/logger'
 import { authLogger } from '@/lib/auth-logger'
+import { clearSessionCookies } from '@/lib/utils/session-sync'
 
 interface UserProfile {
   id: string
@@ -304,7 +305,7 @@ export default function DashboardLayout({
       const { data: { session } } = await supabase.auth.getSession()
       await supabase.auth.signOut()
       authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signout' } })
-      try { await fetch('/api/auth/session', { method: 'DELETE' }) } catch {}
+      try { await clearSessionCookies() } catch {}
       router.push('/')
     } catch (error) {
       logger.error('Error signing out:', error)

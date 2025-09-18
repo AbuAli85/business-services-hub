@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { Loader2, Building2, User, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react'
+import { syncSessionCookies } from '@/lib/utils/session-sync'
 
 function OnboardingForm() {
   const router = useRouter()
@@ -100,15 +101,14 @@ function OnboardingForm() {
         return
       }
 
-      // First, ensure the profile exists using the RPC function
+      // Ensure the profile exists, if missing create via RPC
       const { data: existingProfile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id')
         .eq('id', user.id)
         .single()
       
       if (!existingProfile) {
-        // Create profile using the RPC function for consistency
         const { data: profileResult, error: createProfileError } = await supabase
           .rpc('create_user_profile', {
             user_id: user.id,
@@ -117,155 +117,93 @@ function OnboardingForm() {
             full_name: user.user_metadata?.full_name || '',
             phone: user.user_metadata?.phone || ''
           })
-        
-        if (createProfileError) {
-          console.error('Profile creation error:', createProfileError)
-          toast.error(`Profile creation failed: ${createProfileError.message}`)
-          return
-        }
-
-        if (!profileResult?.success) {
-          toast.error(`Profile creation failed: ${profileResult?.message || 'Unknown error'}`)
+        if (createProfileError || !profileResult?.success) {
+          console.error('Profile creation error:', createProfileError || profileResult?.message)
+          toast.error(`Profile creation failed: ${(createProfileError?.message) || profileResult?.message || 'Unknown error'}`)
           return
         }
       }
 
-      // Create company logic: required for providers; optional for clients
-      try {
-        // Ensure the user has a profile
-        const { data: existingProfile2, error: profileCheckError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .single()
+      // Company creation: required for provider, optional for client
+      const companyName = (formData.companyName || '').trim()
+      const crNumber = (formData.crNumber || '').trim()
+      const vatNumber = (formData.vatNumber || '').trim()
 
-        if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-          console.error('Error checking profile:', profileCheckError)
-          toast.error('Failed to verify user profile')
+      let createdCompanyId: string | null = null
+
+      if (role === 'provider') {
+        if (!companyName) {
+          toast.error('Company name is required')
+          setLoading(false)
           return
         }
-
-        // If no profile exists, create one (idempotent guard)
-        if (!existingProfile2) {
-          console.log(`Creating missing profile for ${role}:`, user.email)
-          const { error: profileCreateError } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              email: user.email,
-              full_name: user.user_metadata?.full_name || (role === 'provider' ? 'Provider' : 'Client'),
-              role: role,
-              phone: user.user_metadata?.phone || '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-
-          if (profileCreateError) {
-            console.error('Profile creation error:', profileCreateError)
-            toast.error(`Profile creation failed: ${profileCreateError.message}`)
-            return
-          }
-          console.log(`Profile created successfully for ${role}`)
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+            owner_id: user.id,
+            name: companyName,
+            cr_number: crNumber || null,
+            vat_number: vatNumber || null,
+            description: (formData.bio || '').trim() || null
+          })
+          .select()
+          .single()
+        if (companyError) {
+          console.error('Company creation error:', companyError)
+          toast.error(`Company creation failed: ${companyError.message}`)
+          return
         }
-
-        const companyName = (formData.companyName || '').trim()
-        const crNumber = (formData.crNumber || '').trim()
-        const vatNumber = (formData.vatNumber || '').trim()
-
-        let createdCompanyId: string | null = null
-
-        if (role === 'provider') {
-          // Providers must provide a company name
-          if (!companyName) {
-            toast.error('Company name is required')
-            setLoading(false)
-            return
-          }
-          const { data: company, error: companyError } = await supabase
-            .from('companies')
-            .insert({
-              owner_id: user.id,
-              name: companyName,
-              cr_number: crNumber || null,
-              vat_number: vatNumber || null,
-              description: (formData.bio || '').trim() || null
-            })
-            .select()
-            .single()
-
-          if (companyError) {
-            console.error('Company creation error:', companyError)
-            toast.error(`Company creation failed: ${companyError.message}`)
-            return
-          }
-          createdCompanyId = company.id
-        } else {
-          // Client: create company only if provided
-          if (companyName) {
-            const { data: company, error: companyError } = await supabase
-              .from('companies')
-              .insert({
-                owner_id: user.id,
-                name: companyName,
-                cr_number: crNumber || null,
-                vat_number: vatNumber || null,
-                description: (formData.bio || '').trim() || null
-              })
-              .select()
-              .single()
-            if (companyError) {
-              console.error('Optional company creation error:', companyError)
-              toast.error(`Company creation failed: ${companyError.message}`)
-              return
-            }
-            createdCompanyId = company.id
-          }
+        createdCompanyId = company.id
+      } else if (companyName) {
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .insert({
+            owner_id: user.id,
+            name: companyName,
+            cr_number: crNumber || null,
+            vat_number: vatNumber || null,
+            description: (formData.bio || '').trim() || null
+          })
+          .select()
+          .single()
+        if (companyError) {
+          console.error('Optional company creation error:', companyError)
+          toast.error(`Company creation failed: ${companyError.message}`)
+          return
         }
+        createdCompanyId = company.id
+      }
 
-        // Ensure profile has correct role set and optionally link company
-        const upsertProfilePayload: any = { role }
-        if (createdCompanyId) {
-          upsertProfilePayload.company_id = createdCompanyId
-          upsertProfilePayload.company_name = companyName
-        }
-        await supabase
+      // Update profile
+      const upsertProfilePayload: any = { role }
+      if (createdCompanyId) {
+        upsertProfilePayload.company_id = createdCompanyId
+        upsertProfilePayload.company_name = companyName
+      }
+      await supabase
+        .from('profiles')
+        .update(upsertProfilePayload)
+        .eq('id', user.id)
+
+      // Poll until profile is readable
+      for (let i = 0; i < 3; i++) {
+        const { data: confirmProfile } = await supabase
           .from('profiles')
-          .update(upsertProfilePayload)
+          .select('id, role')
           .eq('id', user.id)
-
-        // Poll until the profile is readable to avoid middleware race
-        for (let i = 0; i < 3; i++) {
-          const { data: confirmProfile } = await supabase
-            .from('profiles')
-            .select('id, role')
-            .eq('id', user.id)
-            .single()
-          if (confirmProfile?.id && confirmProfile?.role) break
-          await new Promise(r => setTimeout(r, 150))
-        }
-      } catch (error) {
-        console.error('Error creating company profile:', error)
-        toast.error('Failed to create company profile')
-        return
+          .single()
+        if (confirmProfile?.id && confirmProfile?.role) break
+        await new Promise(r => setTimeout(r, 150))
       }
 
       toast.success('Onboarding completed successfully!')
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.access_token && session?.refresh_token && session?.expires_at) {
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              access_token: session.access_token,
-              refresh_token: session.refresh_token,
-              expires_at: session.expires_at
-            })
-          })
+          await syncSessionCookies(session.access_token, session.refresh_token, session.expires_at)
         }
       } catch {}
       try { router.replace('/dashboard') } catch {}
-      // Hard fallback if client router is stuck
       if (typeof window !== 'undefined') {
         setTimeout(() => {
           if (window.location.pathname.includes('/auth/onboarding')) {
@@ -273,7 +211,6 @@ function OnboardingForm() {
           }
         }, 100)
       }
-      
     } catch (error) {
       toast.error('An unexpected error occurred. Please try again.')
     } finally {
@@ -480,15 +417,7 @@ function OnboardingForm() {
                     const supabase = await getSupabaseClient()
                     const { data: { session } } = await supabase.auth.getSession()
                     if (session?.access_token && session?.refresh_token && session?.expires_at) {
-                      await fetch('/api/auth/session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          access_token: session.access_token,
-                          refresh_token: session.refresh_token,
-                          expires_at: session.expires_at
-                        })
-                      })
+                      await syncSessionCookies(session.access_token, session.refresh_token, session.expires_at)
                     }
                   } catch {}
                   try { router.replace('/dashboard') } catch {}

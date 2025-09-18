@@ -14,6 +14,7 @@ import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
 import { HCaptcha } from '@/components/ui/hcaptcha'
 import { authLogger } from '@/lib/auth-logger'
+import { syncSessionCookies } from '@/lib/utils/session-sync'
 
 function SignInForm() {
   const [email, setEmail] = useState('')
@@ -86,15 +87,7 @@ function SignInForm() {
           const supabase = await getSupabaseClient()
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.access_token && session?.refresh_token && session?.expires_at) {
-            await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                access_token: session.access_token,
-                refresh_token: session.refresh_token,
-                expires_at: session.expires_at
-              })
-            })
+            await syncSessionCookies(session.access_token, session.refresh_token, session.expires_at)
           }
         } catch {}
 
