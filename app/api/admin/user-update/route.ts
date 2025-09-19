@@ -46,18 +46,26 @@ export async function POST(req: NextRequest) {
         console.warn('Auth metadata update failed:', e?.message || e)
       }
 
-      // 2) Best-effort update of profiles table to reflect role/status
+      // 2) Best-effort update of profiles table to reflect role/verification_status
       try {
         const update: any = {}
         if (role !== undefined) update.role = role
-        if (status !== undefined) update.status = status
+        if (status !== undefined) {
+          // Map UI status to verification_status
+          const verificationStatus = status === 'active' ? 'approved' :
+                                   status === 'pending' ? 'pending' :
+                                   status === 'suspended' ? 'suspended' :
+                                   status === 'inactive' ? 'rejected' : 'pending'
+          update.verification_status = verificationStatus
+        }
         if (Object.keys(update).length > 0) {
           const { error: profErr } = await admin
             .from('profiles')
             .update(update)
             .eq('id', user_id)
-          if (profErr && !/column .*status.* does not exist/i.test(profErr.message)) {
-            return NextResponse.json({ error: 'Failed to update profile', details: profErr.message }, { status: 400 })
+          if (profErr) {
+            console.warn('Profiles update failed:', profErr.message)
+            // Don't fail the request, just log the warning
           }
         }
       } catch (e: any) {

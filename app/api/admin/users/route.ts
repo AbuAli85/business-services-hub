@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     // Select only safe columns that are guaranteed to exist across environments
     let query = admin
       .from('profiles')
-      .select('id, full_name, role, phone, company_name, created_at')
+      .select('id, full_name, role, phone, company_name, created_at, verification_status, profile_completed')
       .order('created_at', { ascending: false })
       .limit(500)
     const { data: rows, error: pErr } = await query
@@ -64,14 +64,25 @@ export async function GET(req: NextRequest) {
       const fullName = u.full_name || (au?.user_metadata?.full_name as string) || (email ? email.split('@')[0] : 'User')
       const role = u.role || (au?.user_metadata?.role as string) || 'client'
       const metaStatus = (au?.user_metadata as any)?.status as string | undefined
-      // Return backend statuses that the UI normalizes: approved|pending|suspended
-      // If a profile exists but has no explicit status, treat as 'approved'.
-      // Only auth-only users (no profile) default to 'pending' further below.
-      const status = metaStatus === 'suspended'
-        ? 'suspended'
-        : (metaStatus === 'pending'
-          ? 'pending'
-          : 'approved')
+      const verificationStatus = u.verification_status as string | undefined
+      
+      // Use verification_status from profiles table as the primary source
+      // Fallback to user_metadata.status if verification_status is not set
+      let status: string
+      if (verificationStatus) {
+        // Map verification_status to UI status
+        status = verificationStatus === 'approved' ? 'active' : 
+                verificationStatus === 'pending' ? 'pending' : 
+                verificationStatus === 'rejected' ? 'inactive' : 'pending'
+      } else if (metaStatus) {
+        // Fallback to user_metadata.status
+        status = metaStatus === 'suspended' ? 'suspended' :
+                metaStatus === 'pending' ? 'pending' :
+                metaStatus === 'approved' ? 'active' : 'pending'
+      } else {
+        // Default to pending for new users
+        status = 'pending'
+      }
       return {
         id: u.id,
         email,
