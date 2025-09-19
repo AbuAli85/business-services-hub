@@ -81,7 +81,8 @@ export async function GET(req: NextRequest) {
         sample: authUsers.slice(0, 3).map(u => ({ id: u.id, email: u.email, role: u.user_metadata?.role }))
       })
     } catch (error) {
-      console.error('❌ Error loading auth users:', error)
+      console.error('❌ Error loading auth users (continuing without):', error)
+      // Continue without auth users - we'll use profile data
     }
     const authById = new Map(authUsers.map((au: any) => [au.id, au]))
 
@@ -150,8 +151,8 @@ export async function GET(req: NextRequest) {
         created_at: u.created_at,
         last_sign_in: au?.last_sign_in_at ? String(au.last_sign_in_at) : null,
         status,
-        is_verified: au ? !!au.email_confirmed_at : null,
-        two_factor_enabled: au ? (Array.isArray((au as any).factors) && (au as any).factors.length > 0) : null
+        is_verified: au ? !!au.email_confirmed_at : (email ? true : false), // If we have email, assume verified
+        two_factor_enabled: au ? (Array.isArray((au as any).factors) && (au as any).factors.length > 0) : false
       }
     })) as any[]
 

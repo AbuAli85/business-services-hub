@@ -150,8 +150,29 @@ export default function AdminUsersPage() {
       }
 
       const json = await res.json()
+      console.log('🔍 API Response:', { userCount: json.users?.length || 0, sampleUser: json.users?.[0] })
+      
       const apiUsers: AdminUser[] = (json.users || []).map((u: any) => {
-        const normStatus: 'active'|'inactive'|'suspended'|'pending' = u.status === 'approved' ? 'active' : (u.status === 'suspended' ? 'suspended' : (u.status === 'pending' ? 'pending' : 'inactive'))
+        // Map API status to UI status
+        let normStatus: 'active'|'inactive'|'suspended'|'pending'
+        if (u.status === 'approved' || u.status === 'active') {
+          normStatus = 'active'
+        } else if (u.status === 'suspended') {
+          normStatus = 'suspended'
+        } else if (u.status === 'pending') {
+          normStatus = 'pending'
+        } else {
+          normStatus = 'inactive'
+        }
+        
+        console.log('👤 User mapping:', { 
+          id: u.id, 
+          name: u.full_name, 
+          originalStatus: u.status, 
+          mappedStatus: normStatus,
+          isVerified: u.is_verified 
+        })
+        
         return {
           id: u.id,
           email: u.email,
@@ -162,7 +183,7 @@ export default function AdminUsersPage() {
           created_at: u.created_at,
           last_sign_in: u.last_sign_in || undefined,
           status: normStatus,
-          is_verified: !!u.is_verified,
+          is_verified: u.is_verified === true || u.is_verified === 'true' || (u.email && u.email !== null),
           two_factor_enabled: !!u.two_factor_enabled,
           permissions: []
         }
@@ -259,6 +280,19 @@ export default function AdminUsersPage() {
     const clients = users.filter(u => u.role === 'client').length
     const verified = users.filter(u => u.is_verified).length
     const twoFA = users.filter(u => u.two_factor_enabled).length
+
+    console.log('📊 Statistics calculation:', {
+      total,
+      active,
+      pending,
+      suspended,
+      admins,
+      providers,
+      clients,
+      verified,
+      twoFA,
+      userStatuses: users.map(u => ({ name: u.full_name, status: u.status, verified: u.is_verified }))
+    })
 
     return { total, active, pending, suspended, admins, providers, clients, verified, twoFA }
   }, [users])
