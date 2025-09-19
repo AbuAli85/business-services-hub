@@ -39,8 +39,17 @@ function OnboardingForm() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') as 'client' | 'provider'
   
+  // Debug logging
+  console.log('🔍 Onboarding Debug:')
+  console.log('  - URL search params:', Object.fromEntries(searchParams.entries()))
+  console.log('  - Extracted role:', role)
+  console.log('  - Role type:', typeof role)
+  console.log('  - Is provider:', role === 'provider')
+  console.log('  - Is client:', role === 'client')
+  
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [userRole, setUserRole] = useState<'client' | 'provider' | null>(null)
   const [formData, setFormData] = useState({
     // Provider fields
     companyName: '',
@@ -97,6 +106,18 @@ function OnboardingForm() {
           .eq('id', user.id)
           .single()
         
+        // If role is not in URL, get it from user's profile
+        if (!role && profile?.role) {
+          console.log('🔍 No role in URL, using role from profile:', profile.role)
+          setUserRole(profile.role as 'client' | 'provider')
+        } else if (role) {
+          console.log('✅ Using role from URL:', role)
+          setUserRole(role)
+        } else {
+          console.log('❌ No role found, defaulting to client')
+          setUserRole('client')
+        }
+        
         if (profile && profile.bio && profile.location) {
           // User already has a complete profile, redirect to dashboard
           router.push('/dashboard')
@@ -151,7 +172,7 @@ function OnboardingForm() {
       if (!formData.bio.trim()) newErrors.bio = 'Bio is required'
       if (!formData.location.trim()) newErrors.location = 'Location is required'
     } else if (stepNumber === 2) {
-      if (role === 'provider') {
+      if ((userRole || role) === 'provider') {
         if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required'
         if (!formData.services.trim()) newErrors.services = 'Services offered is required'
         if (!formData.experience.trim()) newErrors.experience = 'Experience level is required'
@@ -219,7 +240,7 @@ function OnboardingForm() {
           linkedin: formData.linkedin,
           avatar_url: profileImageUrl,
           company_name: formData.companyName,
-          role: role,
+            role: userRole || role,
           profile_completed: true, // Mark profile as completed
           verification_status: 'pending', // Set verification status to pending
           updated_at: new Date().toISOString(),
@@ -229,11 +250,11 @@ function OnboardingForm() {
       if (error) {
         console.error('Profile update error:', error)
         toast.error('Failed to update profile. Please try again.')
-        return
-      }
+          return
+        }
 
       // Create role-specific data
-      if (role === 'provider') {
+      if ((userRole || role) === 'provider') {
         // Create company record
         const { error: companyError } = await supabase
           .from('companies')
@@ -263,13 +284,13 @@ function OnboardingForm() {
 
   const getStepTitle = () => {
     if (step === 1) return 'Tell us about yourself'
-    if (step === 2) return role === 'provider' ? 'Your business details' : 'Your preferences'
+    if (step === 2) return (userRole || role) === 'provider' ? 'Your business details' : 'Your preferences'
     return 'Complete your profile'
   }
 
   const getStepDescription = () => {
     if (step === 1) return 'Help others get to know you better'
-    if (step === 2) return role === 'provider' ? 'Share details about your business and services' : 'Tell us what you\'re looking for'
+    if (step === 2) return (userRole || role) === 'provider' ? 'Share details about your business and services' : 'Tell us what you\'re looking for'
     return 'Add the final touches to your profile'
   }
 
@@ -286,14 +307,14 @@ function OnboardingForm() {
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <User className="h-5 w-5 text-white" />
-              </div>
+                </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">BusinessHub</h1>
                 <p className="text-sm text-gray-500">Complete your profile</p>
               </div>
             </div>
             <Badge variant="outline" className="px-3 py-1">
-              {role === 'provider' ? 'Service Provider' : 'Client'}
+              {(userRole || role) === 'provider' ? 'Service Provider' : 'Client'}
             </Badge>
           </div>
         </div>
@@ -327,7 +348,7 @@ function OnboardingForm() {
                 <CardHeader className="pb-6">
                   <CardTitle className="text-2xl font-bold text-gray-900">{getStepTitle()}</CardTitle>
                   <CardDescription className="text-gray-600">{getStepDescription()}</CardDescription>
-                </CardHeader>
+        </CardHeader>
                 <CardContent className="space-y-6">
                   {step === 1 && (
                     <>
@@ -444,18 +465,18 @@ function OnboardingForm() {
                     </>
                   )}
 
-                  {step === 2 && role === 'provider' && (
+                  {step === 2 && (userRole || role) === 'provider' && (
                     <>
                       {/* Company Name */}
-                      <div className="space-y-2">
+                  <div className="space-y-2">
                         <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">Company Name *</Label>
                         <div className="relative">
                           <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="companyName"
+                    <Input
+                      id="companyName"
                             placeholder="Your company name"
-                            value={formData.companyName}
-                            onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      value={formData.companyName}
+                      onChange={(e) => handleInputChange('companyName', e.target.value)}
                             className="pl-10"
                           />
                         </div>
@@ -495,44 +516,44 @@ function OnboardingForm() {
                         {errors.experience && (
                           <p className="text-sm text-red-500">{errors.experience}</p>
                         )}
-                      </div>
-
+                  </div>
+                  
                       {/* CR Number */}
-                      <div className="space-y-2">
+                    <div className="space-y-2">
                         <Label htmlFor="crNumber" className="text-sm font-semibold text-gray-700">Commercial Registration Number</Label>
                         <div className="relative">
                           <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="crNumber"
+                      <Input
+                        id="crNumber"
                             placeholder="CR Number (if applicable)"
-                            value={formData.crNumber}
-                            onChange={(e) => handleInputChange('crNumber', e.target.value)}
+                        value={formData.crNumber}
+                        onChange={(e) => handleInputChange('crNumber', e.target.value)}
                             className="pl-10"
-                          />
+                      />
                         </div>
-                      </div>
-
+                    </div>
+                    
                       {/* VAT Number */}
-                      <div className="space-y-2">
+                    <div className="space-y-2">
                         <Label htmlFor="vatNumber" className="text-sm font-semibold text-gray-700">VAT Number</Label>
                         <div className="relative">
                           <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="vatNumber"
+                      <Input
+                        id="vatNumber"
                             placeholder="VAT Number (if applicable)"
-                            value={formData.vatNumber}
-                            onChange={(e) => handleInputChange('vatNumber', e.target.value)}
+                        value={formData.vatNumber}
+                        onChange={(e) => handleInputChange('vatNumber', e.target.value)}
                             className="pl-10"
-                          />
-                        </div>
-                      </div>
+                      />
+                    </div>
+                  </div>
                     </>
                   )}
 
-                  {step === 2 && role === 'client' && (
+                  {step === 2 && (userRole || role) === 'client' && (
                     <>
                       {/* Preferred Categories */}
-                      <div className="space-y-2">
+                  <div className="space-y-2">
                         <Label htmlFor="preferredCategories" className="text-sm font-semibold text-gray-700">Preferred Service Categories *</Label>
                         <Textarea
                           id="preferredCategories"
@@ -544,10 +565,10 @@ function OnboardingForm() {
                         {errors.preferredCategories && (
                           <p className="text-sm text-red-500">{errors.preferredCategories}</p>
                         )}
-                      </div>
-
+                  </div>
+                  
                       {/* Budget Range */}
-                      <div className="space-y-2">
+                  <div className="space-y-2">
                         <Label htmlFor="budgetRange" className="text-sm font-semibold text-gray-700">Budget Range *</Label>
                         <div className="relative">
                           <TrendingUp className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -557,15 +578,15 @@ function OnboardingForm() {
                             value={formData.budgetRange}
                             onChange={(e) => handleInputChange('budgetRange', e.target.value)}
                             className="pl-10"
-                          />
-                        </div>
+                    />
+                  </div>
                         {errors.budgetRange && (
                           <p className="text-sm text-red-500">{errors.budgetRange}</p>
-                        )}
-                      </div>
+              )}
+            </div>
 
                       {/* Project Timeline */}
-                      <div className="space-y-2">
+              <div className="space-y-2">
                         <Label htmlFor="projectTimeline" className="text-sm font-semibold text-gray-700">Project Timeline</Label>
                         <div className="relative">
                           <Target className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -575,24 +596,24 @@ function OnboardingForm() {
                             value={formData.projectTimeline}
                             onChange={(e) => handleInputChange('projectTimeline', e.target.value)}
                             className="pl-10"
-                          />
-                        </div>
+                />
+              </div>
                       </div>
 
                       {/* Communication Preference */}
-                      <div className="space-y-2">
+              <div className="space-y-2">
                         <Label htmlFor="communicationPreference" className="text-sm font-semibold text-gray-700">Preferred Communication</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
+                <Input
                             id="communicationPreference"
                             placeholder="Email, Phone, Video calls, etc."
                             value={formData.communicationPreference}
                             onChange={(e) => handleInputChange('communicationPreference', e.target.value)}
                             className="pl-10"
-                          />
-                        </div>
-                      </div>
+                />
+              </div>
+            </div>
                     </>
                   )}
 
@@ -600,60 +621,60 @@ function OnboardingForm() {
                     <div className="text-center space-y-6">
                       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                         <CheckCircle className="h-8 w-8 text-green-600" />
-                      </div>
+              </div>
                       <div>
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">You're all set!</h3>
                         <p className="text-gray-600">
-                          Your profile is complete. You can now start {role === 'provider' ? 'offering your services' : 'finding the perfect service providers'} on our platform.
+                          Your profile is complete. You can now start {(userRole || role) === 'provider' ? 'offering your services' : 'finding the perfect service providers'} on our platform.
                         </p>
-                      </div>
-                    </div>
-                  )}
+              </div>
+            </div>
+          )}
                 </CardContent>
               </Card>
-
+          
               {/* Navigation */}
               <div className="flex justify-between mt-6">
-                <Button
+              <Button
                   type="button"
-                  variant="outline"
-                  onClick={handleBack}
-                  disabled={step === 1}
+                variant="outline"
+                onClick={handleBack}
+                disabled={step === 1}
                   className="flex items-center"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              
                 {step < 3 ? (
-                  <Button
+              <Button
                     type="button"
                     onClick={handleNext}
                     className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button
+                Next
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            ) : (
+              <Button 
                     type="button"
-                    onClick={handleSubmit}
-                    disabled={loading}
+                onClick={handleSubmit}
+                disabled={loading}
                     className="flex items-center bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                  >
-                    {loading ? (
-                      <>
+              >
+                {loading ? (
+                  <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Completing...
-                      </>
-                    ) : (
+                    Completing...
+                  </>
+                ) : (
                       <>
                         Complete Profile
                         <CheckCircle className="h-4 w-4 ml-2" />
                       </>
-                    )}
-                  </Button>
                 )}
+              </Button>
+            )}
               </div>
             </div>
 
@@ -664,7 +685,7 @@ function OnboardingForm() {
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg font-semibold text-blue-900 flex items-center">
-                      {role === 'provider' ? (
+                      {(userRole || role) === 'provider' ? (
                         <>
                           <Building2 className="h-5 w-5 mr-2" />
                           Provider Benefits
@@ -678,7 +699,7 @@ function OnboardingForm() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {role === 'provider' ? (
+                    {(userRole || role) === 'provider' ? (
                       <>
                         <div className="flex items-start space-x-3">
                           <TrendingUp className="h-4 w-4 text-blue-600 mt-0.5" />
@@ -740,14 +761,14 @@ function OnboardingForm() {
                             stepNumber <= step ? 'text-gray-900 font-medium' : 'text-gray-500'
                           }`}>
                             {stepNumber === 1 && 'Basic Information'}
-                            {stepNumber === 2 && (role === 'provider' ? 'Business Details' : 'Preferences')}
+                            {stepNumber === 2 && ((userRole || role) === 'provider' ? 'Business Details' : 'Preferences')}
                             {stepNumber === 3 && 'Complete Profile'}
                           </span>
                         </div>
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
+          </div>
+        </CardContent>
+      </Card>
               </div>
             </div>
           </div>
