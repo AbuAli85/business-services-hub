@@ -318,8 +318,9 @@ function OnboardingForm() {
           .insert({
             owner_id: user.id,
             name: formData.companyName,
-            cr_number: formData.crNumber,
-            vat_number: formData.vatNumber,
+            cr_number: formData.crNumber || null,
+            vat_number: formData.vatNumber || null,
+            founded_year: null, // Explicitly set to null to avoid empty string error
           })
 
         if (companyError) {
