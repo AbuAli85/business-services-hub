@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -51,6 +51,8 @@ function OnboardingForm() {
   const [loading, setLoading] = useState(false)
   const [userRole, setUserRole] = useState<'client' | 'provider' | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const hasProcessedRedirect = useRef(false)
   const [formData, setFormData] = useState({
     // Provider fields
     companyName: '',
@@ -122,16 +124,24 @@ function OnboardingForm() {
         // Check if user already has a completed profile using the proper completion status
         if (profile?.profile_completed && profile?.verification_status === 'approved') {
           // User already has a complete and approved profile, redirect to dashboard
-          console.log('✅ Profile already completed and approved, redirecting to dashboard')
-          router.push('/dashboard')
-          return
+          if (!hasProcessedRedirect.current) {
+            console.log('✅ Profile already completed and approved, redirecting to dashboard')
+            hasProcessedRedirect.current = true
+            setIsRedirecting(true)
+            router.push('/dashboard')
+            return
+          }
         }
         
         if (profile?.verification_status === 'pending') {
           // User profile is pending approval, redirect to pending approval page
-          console.log('⏳ Profile pending approval, redirecting to pending approval page')
-          router.push('/auth/pending-approval')
-          return
+          if (!hasProcessedRedirect.current) {
+            console.log('⏳ Profile pending approval, redirecting to pending approval page')
+            hasProcessedRedirect.current = true
+            setIsRedirecting(true)
+            router.push('/auth/pending-approval')
+            return
+          }
         }
         
         // Pre-fill form with existing data
@@ -310,6 +320,18 @@ function OnboardingForm() {
 
   const getProgressPercentage = () => {
     return (step / 3) * 100
+  }
+
+  // Show loading state if redirecting
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
