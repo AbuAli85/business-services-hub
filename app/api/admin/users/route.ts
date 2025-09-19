@@ -151,6 +151,7 @@ export async function GET(req: NextRequest) {
         created_at: u.created_at,
         last_sign_in: au?.last_sign_in_at ? String(au.last_sign_in_at) : null,
         status,
+        verification_status: u.verification_status || 'pending',
         is_verified: au ? !!au.email_confirmed_at : (email ? true : false), // If we have email, assume verified
         two_factor_enabled: au ? (Array.isArray((au as any).factors) && (au as any).factors.length > 0) : false
       }
@@ -172,6 +173,7 @@ export async function GET(req: NextRequest) {
           created_at: au.created_at,
           last_sign_in: au.last_sign_in_at ? String(au.last_sign_in_at) : null,
           status: 'pending',
+          verification_status: 'pending',
           is_verified: !!au.email_confirmed_at,
           two_factor_enabled: Array.isArray((au as any).factors) && (au as any).factors.length > 0
         })

@@ -72,6 +72,7 @@ interface AdminUser {
   permissions?: string[]
   is_verified?: boolean
   two_factor_enabled?: boolean
+  verification_status?: 'pending' | 'approved' | 'rejected'
 }
 
 export default function AdminUsersPage() {
@@ -128,6 +129,7 @@ export default function AdminUsersPage() {
       return
     }
     setIsFetching(true)
+    console.log(`🔄 Fetching users (force: ${force})...`)
     try {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -142,7 +144,7 @@ export default function AdminUsersPage() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
 
-      const res = await fetch('/api/admin/users', { cache: 'no-store', headers })
+      const res = await fetch(`/api/admin/users?t=${Date.now()}`, { cache: 'no-store', headers })
       if (!res.ok) {
         const errorText = await res.text()
         console.error('❌ API Error:', { status: res.status, error: errorText })
@@ -185,11 +187,20 @@ export default function AdminUsersPage() {
           status: normStatus,
           is_verified: u.is_verified === true || u.is_verified === 'true' || (u.email && u.email !== null),
           two_factor_enabled: !!u.two_factor_enabled,
+          verification_status: u.verification_status || 'pending',
           permissions: []
         }
       })
       setUsers(apiUsers)
       setError(null)
+      
+      // Debug: Log the updated users
+      console.log('🔄 Users updated after fetch:', {
+        total: apiUsers.length,
+        active: apiUsers.filter(u => u.status === 'active').length,
+        pending: apiUsers.filter(u => u.status === 'pending').length,
+        users: apiUsers.map(u => ({ name: u.full_name, status: u.status }))
+      })
     } catch (error) {
       console.error('❌ Error fetching users:', error)
       setError(error instanceof Error ? error.message : 'Failed to fetch users')
@@ -293,6 +304,15 @@ export default function AdminUsersPage() {
       twoFA,
       userStatuses: users.map(u => ({ name: u.full_name, status: u.status, verified: u.is_verified }))
     })
+    
+    // Additional debugging for active users
+    const activeUsers = users.filter(u => u.status === 'active')
+    console.log('🎯 Active users breakdown:', activeUsers.map(u => ({ 
+      name: u.full_name, 
+      status: u.status, 
+      role: u.role,
+      verification_status: u.verification_status 
+    })))
 
     return { total, active, pending, suspended, admins, providers, clients, verified, twoFA }
   }, [users])
@@ -330,15 +350,22 @@ export default function AdminUsersPage() {
 
   const handleStatusChange = async (user: AdminUser, newStatus: string) => {
     try {
+      console.log(`🔄 Updating ${user.full_name} status from ${user.status} to ${newStatus}`)
       const backendStatus = newStatus === 'active' ? 'approved' : 
                           newStatus === 'suspended' ? 'suspended' : 
                           newStatus === 'pending' ? 'pending' : 
                           newStatus === 'inactive' ? 'rejected' : 'pending'
       
+      console.log(`📡 Calling API with backend status: ${backendStatus}`)
       await callAdminUpdate(user.id, { status: backendStatus })
-      await fetchUsers()
+      
+      console.log(`🔄 Refreshing users list...`)
+      await fetchUsers(true) // Force refresh
+      
+      console.log(`✅ Status update completed for ${user.full_name}`)
       toast.success(`${user.full_name}'s status updated to ${newStatus}`)
     } catch (err: any) {
+      console.error(`❌ Status update failed for ${user.full_name}:`, err)
       toast.error(err.message)
     }
   }
@@ -408,7 +435,11 @@ export default function AdminUsersPage() {
             </div>
             <div className="flex items-center space-x-3">
               <Button
-                onClick={() => fetchUsers(true)}
+                onClick={async () => {
+                  console.log('🔄 Manual refresh triggered')
+                  setUsers([]) // Clear users first
+                  await fetchUsers(true)
+                }}
                 disabled={isFetching}
                 variant="outline"
                 size="sm"
