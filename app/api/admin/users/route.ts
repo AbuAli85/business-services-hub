@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
     console.log('🔐 Admin Users API - Auth Check:', { 
       hasAuthHeader: !!authHeader, 
       hasToken: !!token,
-      tokenLength: token.length 
+      tokenLength: token.length,
+      timestamp: new Date().toISOString()
     })
     
     if (!token) {
@@ -71,6 +72,12 @@ export async function GET(req: NextRequest) {
     // Simpler: list users from profiles only (avoids auth DB dependency)
     const url = new URL(req.url)
     const q = (url.searchParams.get('q') || '').trim()
+    
+    console.log('📊 API Request Details:', {
+      url: req.url,
+      query: q,
+      timestamp: new Date().toISOString()
+    })
     // Load auth users upfront for enrichment
     let authUsers: any[] = []
     try {
@@ -192,6 +199,22 @@ export async function GET(req: NextRequest) {
         (u.role || '').toLowerCase().includes(s)
       )
     }
+
+    console.log('📤 Returning users:', { 
+      count: finalUsers.length,
+      sample: finalUsers.slice(0, 2).map(u => ({ 
+        id: u.id, 
+        name: u.full_name, 
+        role: u.role, 
+        status: u.status,
+        verification_status: u.verification_status
+      })),
+      sepideh: finalUsers.find(u => u.full_name === 'sepideh gavanji') ? {
+        name: finalUsers.find(u => u.full_name === 'sepideh gavanji')?.full_name,
+        status: finalUsers.find(u => u.full_name === 'sepideh gavanji')?.status,
+        verification_status: finalUsers.find(u => u.full_name === 'sepideh gavanji')?.verification_status
+      } : 'Not found'
+    })
 
     return NextResponse.json({ users: finalUsers })
   } catch (e: any) {

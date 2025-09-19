@@ -93,7 +93,9 @@ export default function AdminUsersPage() {
   const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
-    fetchUsers()
+    // Force initial fetch with cache busting
+    console.log('🚀 Admin Users Page mounted - forcing fresh data fetch')
+    fetchUsers(true)
     let intervalId: ReturnType<typeof setInterval> | undefined
     let channel: any
     let lastFetchTime = 0
@@ -107,7 +109,7 @@ export default function AdminUsersPage() {
             const now = Date.now()
             if (now - lastFetchTime > 2000) {
               lastFetchTime = now
-              fetchUsers()
+              fetchUsers(true) // Force refresh on realtime updates
             }
           })
           .subscribe()
@@ -115,7 +117,7 @@ export default function AdminUsersPage() {
     }
     
     setupRealtime()
-    intervalId = setInterval(() => { fetchUsers() }, 60000)
+    intervalId = setInterval(() => { fetchUsers(true) }, 60000) // Force refresh every minute
     
     return () => {
       try { if (channel) channel.unsubscribe() } catch {}
@@ -144,7 +146,15 @@ export default function AdminUsersPage() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
 
-      const res = await fetch(`/api/admin/users?t=${Date.now()}`, { cache: 'no-store', headers })
+      const res = await fetch(`/api/admin/users?t=${Date.now()}&r=${Math.random()}`, { 
+        cache: 'no-store', 
+        headers: {
+          ...headers,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      })
       if (!res.ok) {
         const errorText = await res.text()
         console.error('❌ API Error:', { status: res.status, error: errorText })
