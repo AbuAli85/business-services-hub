@@ -296,7 +296,7 @@ export default function ClientInvoiceTemplatePage() {
           scrollY: 0,
         },
         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-        pagebreak: { mode: ['css', 'avoid-all'] as const }
+        pagebreak: { mode: ['css', 'avoid-all'] }
       }
 
       toast.loading('Generating PDF...')
