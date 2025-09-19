@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
-import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTriangle, Mail, Phone, Lock, Briefcase, ArrowRight, Shield, Star } from 'lucide-react'
 import { EmailVerificationModal } from '@/components/ui/email-verification-modal'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { HCaptcha } from '@/components/ui/hcaptcha'
@@ -51,7 +51,7 @@ export default function SignUpPage() {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
     
-    // Check password strength when password changes
+    // Check password strength
     if (field === 'password') {
       checkPasswordStrength(value)
     }
@@ -64,6 +64,26 @@ export default function SignUpPage() {
       feedback: validation.feedback,
       meetsRequirements: validation.meetsRequirements
     })
+  }
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength.score <= 1) return 'text-red-500'
+    if (passwordStrength.score <= 2) return 'text-orange-500'
+    if (passwordStrength.score <= 3) return 'text-yellow-500'
+    if (passwordStrength.score <= 4) return 'text-blue-500'
+    return 'text-green-500'
+  }
+
+  const getPasswordStrengthBg = () => {
+    if (passwordStrength.score <= 1) return 'bg-red-500'
+    if (passwordStrength.score <= 2) return 'bg-orange-500'
+    if (passwordStrength.score <= 3) return 'bg-yellow-500'
+    if (passwordStrength.score <= 4) return 'bg-blue-500'
+    return 'bg-green-500'
+  }
+
+  const getPasswordStrengthWidth = () => {
+    return `${(passwordStrength.score / 5) * 100}%`
   }
 
   const validateForm = async () => {
@@ -187,26 +207,6 @@ export default function SignUpPage() {
     }
   }
 
-  const getPasswordStrengthColor = () => {
-    if (passwordStrength.score <= 1) return 'text-red-500'
-    if (passwordStrength.score <= 2) return 'text-orange-500'
-    if (passwordStrength.score <= 3) return 'text-yellow-500'
-    if (passwordStrength.score <= 4) return 'text-blue-500'
-    return 'text-green-500'
-  }
-
-  const getPasswordStrengthBg = () => {
-    if (passwordStrength.score <= 1) return 'bg-red-500'
-    if (passwordStrength.score <= 2) return 'bg-orange-500'
-    if (passwordStrength.score <= 3) return 'bg-yellow-500'
-    if (passwordStrength.score <= 4) return 'bg-blue-500'
-    return 'bg-green-500'
-  }
-
-  const getPasswordStrengthWidth = () => {
-    return `${(passwordStrength.score / 5) * 100}%`
-  }
-
   const handleResendVerificationEmail = async () => {
     try {
       const supabase = await getSupabaseClient()
@@ -248,291 +248,394 @@ export default function SignUpPage() {
 
   return (
     <AuthErrorBoundary>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <PlatformLogo size="lg" variant="full" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-          <CardDescription>
-            Join Business Services Hub and start connecting with trusted service providers
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="role">I want to join as</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value: 'client' | 'provider') => handleInputChange('role', value)}
-                disabled={loading}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center space-x-3">
+                <PlatformLogo className="h-8 w-8" />
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">BusinessHub</h1>
+                  <p className="text-sm text-gray-500">Services Platform</p>
+                </div>
+              </div>
+              <Link 
+                href="/auth/sign-in" 
+                className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
               >
-                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Client - Looking for services
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="provider">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      Provider - Offering services
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                Already have an account? Sign in
+              </Link>
             </div>
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name *</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="Enter your full name"
-                value={formData.fullName}
-                onChange={(e) => handleInputChange('fullName', e.target.value)}
-                required
-                disabled={loading}
-                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : ''}`}
-              />
-              {errors.fullName && (
-                <p className="text-sm text-red-500">{errors.fullName}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                required
-                disabled={loading}
-                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : ''}`}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="Enter your phone number"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                required
-                disabled={loading}
-                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-500' : ''}`}
-              />
-              {errors.phone && (
-                <p className="text-sm text-red-500">{errors.phone}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name *</Label>
-              <Input
-                id="companyName"
-                type="text"
-                placeholder="Enter your company name"
-                value={formData.companyName}
-                onChange={(e) => handleInputChange('companyName', e.target.value)}
-                required
-                disabled={loading}
-                className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 ${errors.companyName ? 'border-red-500' : ''}`}
-              />
-              {errors.companyName && (
-                <p className="text-sm text-red-500">{errors.companyName}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Create a password (min 8 characters)"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  required
-                  disabled={loading}
-                  className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12 ${errors.password ? 'border-red-500' : ''}`}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent disabled:opacity-50"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={loading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              
-              {/* Password Strength Indicator */}
-              {formData.password && (
-                <div className="mt-2 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Password strength:</span>
-                    <span className={`font-medium ${getPasswordStrengthColor()}`}>
-                      {passwordStrength.feedback}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthBg()}`}
-                      // eslint-disable-next-line react/forbid-dom-props
-                      style={{ width: getPasswordStrengthWidth() }}
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                    <span>Requirements:</span>
-                    <div className="flex items-center space-x-1">
-                      <span className={formData.password.length >= 8 ? 'text-green-500' : 'text-red-500'}>
-                        {formData.password.length >= 8 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                      </span>
-                      <span>8+ chars</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className={/[a-z]/.test(formData.password) ? 'text-green-500' : 'text-red-500'}>
-                        {/[a-z]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                      </span>
-                      <span>lowercase</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className={/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-red-500'}>
-                        {/[A-Z]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                      </span>
-                      <span>uppercase</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className={/[0-9]/.test(formData.password) ? 'text-green-500' : 'text-red-500'}>
-                        {/[0-9]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                      </span>
-                      <span>number</span>
-                    </div>
-                  </div>
+        {/* Main Content */}
+        <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md">
+            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+              <CardHeader className="text-center pb-8">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+                  <User className="h-8 w-8 text-white" />
                 </div>
-              )}
-              {errors.password && (
-                <p className="text-sm text-red-500">{errors.password}</p>
-              )}
-            </div>
+                <CardTitle className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</CardTitle>
+                <CardDescription className="text-gray-600 text-base">
+                  Join thousands of businesses already using our platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-8 pb-8">
+                <form onSubmit={handleSignUp} className="space-y-6">
+                  {/* Role Selection */}
+                  <div className="space-y-3">
+                    <Label htmlFor="role" className="text-sm font-semibold text-gray-700">I want to join as</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value: 'client' | 'provider') => handleInputChange('role', value)}
+                      disabled={loading}
+                    >
+                      <SelectTrigger className="h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="client">
+                          <div className="flex items-center gap-3 py-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <User className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Client</div>
+                              <div className="text-sm text-gray-500">Looking for services</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="provider">
+                          <div className="flex items-center gap-3 py-2">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                              <Building2 className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">Provider</div>
+                              <div className="text-sm text-gray-500">Offering services</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  required
-                  disabled={loading}
-                  className={`transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12 ${errors.confirmPassword ? 'border-red-500' : ''}`}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent disabled:opacity-50"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={loading}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              
-              {/* Password Match Indicator */}
-              {formData.confirmPassword && (
-                <div className="flex items-center space-x-2 text-sm">
-                  {formData.password === formData.confirmPassword ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="text-green-600">Passwords match</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      <span className="text-red-600">Passwords do not match</span>
-                    </>
-                  )}
+                  {/* Full Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">Full Name *</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={formData.fullName}
+                        onChange={(e) => handleInputChange('fullName', e.target.value)}
+                        required
+                        disabled={loading}
+                        className={`pl-10 h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300 ${errors.fullName ? 'border-red-500' : ''}`}
+                      />
+                    </div>
+                    {errors.fullName && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.fullName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        required
+                        disabled={loading}
+                        className={`pl-10 h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300 ${errors.email ? 'border-red-500' : ''}`}
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-semibold text-gray-700">Phone Number *</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        required
+                        disabled={loading}
+                        className={`pl-10 h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300 ${errors.phone ? 'border-red-500' : ''}`}
+                      />
+                    </div>
+                    {errors.phone && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Company Name */}
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName" className="text-sm font-semibold text-gray-700">Company Name *</Label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="companyName"
+                        type="text"
+                        placeholder="Enter your company name"
+                        value={formData.companyName}
+                        onChange={(e) => handleInputChange('companyName', e.target.value)}
+                        required
+                        disabled={loading}
+                        className={`pl-10 h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300 ${errors.companyName ? 'border-red-500' : ''}`}
+                      />
+                    </div>
+                    {errors.companyName && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.companyName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password *</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Create a strong password"
+                        value={formData.password}
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        required
+                        disabled={loading}
+                        className={`pl-10 pr-12 h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300 ${errors.password ? 'border-red-500' : ''}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent disabled:opacity-50"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={loading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Password Strength Indicator */}
+                    {formData.password && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600">Password strength:</span>
+                          <span className={`font-medium ${getPasswordStrengthColor()}`}>
+                            {passwordStrength.feedback}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthBg()}`}
+                            style={{ width: getPasswordStrengthWidth() }}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex items-center space-x-1">
+                            <span className={formData.password.length >= 8 ? 'text-green-500' : 'text-red-500'}>
+                              {formData.password.length >= 8 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                            </span>
+                            <span>8+ characters</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <span className={/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-red-500'}>
+                              {/[A-Z]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                            </span>
+                            <span>uppercase</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <span className={/[0-9]/.test(formData.password) ? 'text-green-500' : 'text-red-500'}>
+                              {/[0-9]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                            </span>
+                            <span>number</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <span className={/[^A-Za-z0-9]/.test(formData.password) ? 'text-green-500' : 'text-red-500'}>
+                              {/[^A-Za-z0-9]/.test(formData.password) ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                            </span>
+                            <span>special</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {errors.password && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.password}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirm Password *</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Confirm your password"
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                        required
+                        disabled={loading}
+                        className={`pl-10 pr-12 h-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 border-gray-300 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent disabled:opacity-50"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        disabled={loading}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Password Match Indicator */}
+                    {formData.confirmPassword && (
+                      <div className="flex items-center space-x-2 text-sm">
+                        <span className={formData.password === formData.confirmPassword ? 'text-green-500' : 'text-red-500'}>
+                          {formData.password === formData.confirmPassword ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                        </span>
+                        <span className={formData.password === formData.confirmPassword ? 'text-green-600' : 'text-red-600'}>
+                          {formData.password === formData.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {errors.confirmPassword && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.confirmPassword}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Captcha */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Security verification</span>
+                    </div>
+                    <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
+                    {errors.captcha && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.captcha}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    disabled={loading || isSubmitting || !passwordStrength.meetsRequirements || formData.password !== formData.confirmPassword}
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-base transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  >
+                    {loading || isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        Create Account
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Terms and Privacy */}
+                  <div className="text-center text-sm text-gray-500">
+                    By creating an account, you agree to our{' '}
+                    <Link href="/terms" className="text-blue-600 hover:text-blue-500 font-medium">
+                      Terms of Service
+                    </Link>{' '}
+                    and{' '}
+                    <Link href="/privacy" className="text-blue-600 hover:text-blue-500 font-medium">
+                      Privacy Policy
+                    </Link>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Features Section */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Shield className="h-6 w-6 text-blue-600" />
                 </div>
-              )}
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-500">{errors.confirmPassword}</p>
-              )}
+                <h3 className="font-semibold text-gray-900 mb-1">Secure & Trusted</h3>
+                <p className="text-sm text-gray-600">Enterprise-grade security for your business</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Star className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-1">Quality Assured</h3>
+                <p className="text-sm text-gray-600">Vetted professionals and verified services</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Briefcase className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-1">Business Ready</h3>
+                <p className="text-sm text-gray-600">Tools designed for business growth</p>
+              </div>
             </div>
-            
-            <Button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-              disabled={loading || isSubmitting || !passwordStrength.meetsRequirements || formData.password !== formData.confirmPassword}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                'Create Account'
-              )}
-            </Button>
-          </form>
-          
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
-            <Link href="/auth/sign-in" className="text-blue-600 hover:underline font-medium">
-              Sign in
-            </Link>
           </div>
+        </div>
 
-          {/* hCaptcha */}
-          <div className="mt-2">
-            <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-            {errors.captcha && (
-              <p className="text-sm text-red-500 mt-1">{errors.captcha}</p>
-            )}
-          </div>
-          
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            By creating an account, you agree to our{' '}
-            <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
-            {' '}and{' '}
-            <Link href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Email Verification Modal */}
-      <EmailVerificationModal
-        isOpen={showEmailVerification}
-        onClose={handleEmailVerificationClose}
-        email={registeredEmail}
-        onResendEmail={handleResendVerificationEmail}
-      />
+        {/* Email Verification Modal */}
+        <EmailVerificationModal
+          isOpen={showEmailVerification}
+          onClose={handleEmailVerificationClose}
+          email={registeredEmail}
+          onResendEmail={handleResendVerificationEmail}
+        />
       </div>
     </AuthErrorBoundary>
   )
