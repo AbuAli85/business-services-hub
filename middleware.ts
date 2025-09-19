@@ -77,7 +77,8 @@ export async function middleware(req: NextRequest) {
     "'self'",
     "'unsafe-inline'",
     'https://js.hcaptcha.com',
-    'https://challenges.hcaptcha.com'
+    'https://challenges.hcaptcha.com',
+    'https://vercel.live'
   ].join(' ')
   const frameSrc = [
     "'self'",
