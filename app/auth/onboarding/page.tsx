@@ -53,6 +53,7 @@ function OnboardingForm() {
   const [isInitializing, setIsInitializing] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasProcessedRedirect = useRef(false)
+  const userIdRef = useRef<string | null>(null)
   const [formData, setFormData] = useState({
     // Provider fields
     companyName: '',
@@ -95,6 +96,9 @@ function OnboardingForm() {
           router.push('/auth/sign-in')
           return
         }
+
+        // Store user ID in ref for cleanup
+        userIdRef.current = user.id
         
         // Get session for cookie sync
         const { data: { session } } = await supabase.auth.getSession()
@@ -124,22 +128,40 @@ function OnboardingForm() {
         // Check if user already has a completed profile using the proper completion status
         if (profile?.profile_completed && profile?.verification_status === 'approved') {
           // User already has a complete and approved profile, redirect to dashboard
-          if (!hasProcessedRedirect.current) {
+          const redirectKey = `onboarding_redirect_${user.id}`
+          if (!hasProcessedRedirect.current && !localStorage.getItem(redirectKey)) {
             console.log('✅ Profile already completed and approved, redirecting to dashboard')
             hasProcessedRedirect.current = true
+            localStorage.setItem(redirectKey, 'true')
             setIsRedirecting(true)
-            router.push('/dashboard')
+            
+            // Clear the redirect flag after 5 seconds as a safety measure
+            setTimeout(() => {
+              localStorage.removeItem(redirectKey)
+            }, 5000)
+            
+            // Use window.location.href for a hard redirect to prevent loops
+            window.location.href = '/dashboard'
             return
           }
         }
         
         if (profile?.verification_status === 'pending') {
           // User profile is pending approval, redirect to pending approval page
-          if (!hasProcessedRedirect.current) {
+          const redirectKey = `onboarding_redirect_${user.id}`
+          if (!hasProcessedRedirect.current && !localStorage.getItem(redirectKey)) {
             console.log('⏳ Profile pending approval, redirecting to pending approval page')
             hasProcessedRedirect.current = true
+            localStorage.setItem(redirectKey, 'true')
             setIsRedirecting(true)
-            router.push('/auth/pending-approval')
+            
+            // Clear the redirect flag after 5 seconds as a safety measure
+            setTimeout(() => {
+              localStorage.removeItem(redirectKey)
+            }, 5000)
+            
+            // Use window.location.href for a hard redirect to prevent loops
+            window.location.href = '/auth/pending-approval'
             return
           }
         }
@@ -170,6 +192,17 @@ function OnboardingForm() {
     
     checkAuth()
   }, [router])
+
+  // Cleanup function to remove redirect flag
+  useEffect(() => {
+    return () => {
+      // Clear the redirect flag when component unmounts
+      if (typeof window !== 'undefined' && userIdRef.current) {
+        const redirectKey = `onboarding_redirect_${userIdRef.current}`
+        localStorage.removeItem(redirectKey)
+      }
+    }
+  }, [])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
