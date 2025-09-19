@@ -61,30 +61,51 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isFetching, setIsFetching] = useState(false)
 
   useEffect(() => {
     fetchUsers()
-    let intervalId: any
+    let intervalId: ReturnType<typeof setInterval> | undefined
     let channel: any
-    (async () => {
+    let lastFetchTime = 0
+    
+    const setupRealtime = async () => {
       try {
         const supabase = await getSupabaseClient()
         channel = supabase
           .channel('admin-users-realtime')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-            fetchUsers()
+            // Throttle realtime updates to prevent excessive calls
+            const now = Date.now()
+            if (now - lastFetchTime > 2000) { // 2 second throttle
+              lastFetchTime = now
+              fetchUsers()
+            }
           })
           .subscribe()
       } catch {}
-    })()
-    intervalId = setInterval(() => { fetchUsers() }, 30000)
+    }
+    
+    setupRealtime()
+    
+    // Reduce interval frequency to 60 seconds
+    intervalId = setInterval(() => { fetchUsers() }, 60000)
+    
     return () => {
       try { if (channel) channel.unsubscribe() } catch {}
       try { if (intervalId) clearInterval(intervalId) } catch {}
     }
   }, [])
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (force = false) => {
+    // Prevent multiple simultaneous calls
+    if (isFetching && !force) {
+      console.log('⏳ Fetch already in progress, skipping...')
+      return
+    }
+    
+    setIsFetching(true)
+    
     try {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -142,6 +163,7 @@ export default function AdminUsersPage() {
       logger.error('Error fetching users:', error)
     } finally {
       setLoading(false)
+      setIsFetching(false)
     }
   }
 
@@ -274,7 +296,7 @@ export default function AdminUsersPage() {
           <Button onClick={() => {
             setError(null)
             setLoading(true)
-            fetchUsers()
+            fetchUsers(true) // Force fetch even if already fetching
           }} className="bg-blue-600 hover:bg-blue-700">
             Try Again
           </Button>
@@ -316,10 +338,11 @@ export default function AdminUsersPage() {
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={fetchUsers}
+              onClick={() => fetchUsers(true)}
+              disabled={isFetching}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              {isFetching ? 'Refreshing...' : 'Refresh'}
             </Button>
             <Button 
               variant="secondary"

@@ -76,7 +76,10 @@ export async function GET(req: NextRequest) {
     try {
       const res: any = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
       authUsers = res?.data?.users || res?.users || []
-    } catch {}
+      console.log('🔐 Loaded auth users:', { count: authUsers.length })
+    } catch (error) {
+      console.error('❌ Error loading auth users:', error)
+    }
     const authById = new Map(authUsers.map((au: any) => [au.id, au]))
 
     // Use admin client for profiles read to bypass RLS when authorized
@@ -91,16 +94,28 @@ export async function GET(req: NextRequest) {
 
     const profileUsers = ((rows || []).map((u: any) => {
       const au = authById.get(u.id)
-      const email = (u as any).email || au?.email || null
+      const email = au?.email || (u as any).email || null
       const fullName = u.full_name || (au?.user_metadata?.full_name as string) || (email ? email.split('@')[0] : 'User')
       const role = u.role || (au?.user_metadata?.role as string) || 'client'
       const metaStatus = (au?.user_metadata as any)?.status as string | undefined
       const verificationStatus = u.verification_status as string | undefined
       
+      console.log('👤 Processing user:', { 
+        id: u.id, 
+        email, 
+        role, 
+        verificationStatus,
+        hasAuthUser: !!au 
+      })
+      
       // Use verification_status from profiles table as the primary source
       // Fallback to user_metadata.status if verification_status is not set
       let status: string
-      if (verificationStatus) {
+      
+      // Admin users should always be approved
+      if (role === 'admin') {
+        status = 'active'
+      } else if (verificationStatus) {
         // Map verification_status to UI status
         status = verificationStatus === 'approved' ? 'active' : 
                 verificationStatus === 'pending' ? 'pending' : 
