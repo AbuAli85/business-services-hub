@@ -52,6 +52,7 @@ export default function AdminUsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRole, setSelectedRole] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -87,11 +88,36 @@ export default function AdminUsersPage() {
     try {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.error('❌ No session found')
+        setError('Please sign in to access this page')
+        setLoading(false)
+        return
+      }
+      
+      console.log('🔐 Session found:', { 
+        userId: session.user?.id, 
+        email: session.user?.email,
+        role: session.user?.user_metadata?.role 
+      })
+      
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      
+      console.log('📡 Fetching users with headers:', { hasAuth: !!headers.Authorization })
+      
       const res = await fetch('/api/admin/users', { cache: 'no-store', headers })
-      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('❌ API Error:', { status: res.status, error: errorText })
+        throw new Error(`Request failed: ${res.status} - ${errorText}`)
+      }
+      
       const json = await res.json()
+      console.log('✅ API Response:', { userCount: json.users?.length || 0 })
+      
       const apiUsers: AdminUser[] = (json.users || []).map((u: any) => {
         const normStatus: 'active'|'inactive'|'suspended'|'pending' = u.status === 'approved' ? 'active' : (u.status === 'suspended' ? 'suspended' : (u.status === 'pending' ? 'pending' : 'inactive'))
         return {
@@ -109,7 +135,10 @@ export default function AdminUsersPage() {
         permissions: []
       }})
       setUsers(apiUsers)
+      setError(null)
     } catch (error) {
+      console.error('❌ Error fetching users:', error)
+      setError(error instanceof Error ? error.message : 'Failed to fetch users')
       logger.error('Error fetching users:', error)
     } finally {
       setLoading(false)
@@ -232,6 +261,24 @@ export default function AdminUsersPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-red-600 text-lg font-semibold mb-2">Error Loading Users</div>
+          <div className="text-gray-600 mb-4">{error}</div>
+          <Button onClick={() => {
+            setError(null)
+            setLoading(true)
+            fetchUsers()
+          }} className="bg-blue-600 hover:bg-blue-700">
+            Try Again
+          </Button>
+        </div>
       </div>
     )
   }

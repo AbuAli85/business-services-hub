@@ -23,19 +23,50 @@ export async function GET(req: NextRequest) {
     // Require authenticated admin via Bearer token (works in API route)
     const authHeader = req.headers.get('authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : ''
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    
+    console.log('🔐 Admin Users API - Auth Check:', { 
+      hasAuthHeader: !!authHeader, 
+      hasToken: !!token,
+      tokenLength: token.length 
+    })
+    
+    if (!token) {
+      console.log('❌ No token provided')
+      return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 })
+    }
+    
     const { data: tokenUser, error: tokenErr } = await admin.auth.getUser(token)
-    if (tokenErr || !tokenUser?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (tokenErr || !tokenUser?.user) {
+      console.log('❌ Token validation failed:', tokenErr?.message)
+      return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 })
+    }
+    
     const userId = tokenUser.user.id
     const metaRole = (tokenUser.user.user_metadata as any)?.role
+    
+    console.log('👤 User info:', { 
+      userId, 
+      email: tokenUser.user.email,
+      metaRole,
+      userMetadata: tokenUser.user.user_metadata 
+    })
+    
     if (metaRole !== 'admin') {
       const { data: me } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single()
-      if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      
+      console.log('📋 Profile role check:', { profileRole: me?.role })
+      
+      if ((me?.role || 'client') !== 'admin') {
+        console.log('❌ User is not admin')
+        return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+      }
     }
+    
+    console.log('✅ Admin access granted')
 
     // Simpler: list users from profiles only (avoids auth DB dependency)
     const url = new URL(req.url)
