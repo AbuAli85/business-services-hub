@@ -126,8 +126,27 @@ function OnboardingForm() {
         }
         
         // Check if user already has a completed profile using the proper completion status
-        if (profile?.profile_completed && profile?.verification_status === 'approved') {
-          // User already has a complete and approved profile, redirect to dashboard
+        // Admin users bypass profile completion checks
+        if (profile?.role === 'admin') {
+          // Admin users always go to dashboard
+          const redirectKey = `onboarding_redirect_${user.id}`
+          if (!hasProcessedRedirect.current && !localStorage.getItem(redirectKey)) {
+            console.log('✅ Admin user detected, redirecting to dashboard')
+            hasProcessedRedirect.current = true
+            localStorage.setItem(redirectKey, 'true')
+            setIsRedirecting(true)
+            
+            // Clear the redirect flag after 5 seconds as a safety measure
+            setTimeout(() => {
+              localStorage.removeItem(redirectKey)
+            }, 5000)
+            
+            // Use window.location.href for a hard redirect to prevent loops
+            window.location.href = '/dashboard'
+            return
+          }
+        } else if (profile?.profile_completed && profile?.verification_status === 'approved') {
+          // Non-admin users with completed and approved profile, redirect to dashboard
           const redirectKey = `onboarding_redirect_${user.id}`
           if (!hasProcessedRedirect.current && !localStorage.getItem(redirectKey)) {
             console.log('✅ Profile already completed and approved, redirecting to dashboard')

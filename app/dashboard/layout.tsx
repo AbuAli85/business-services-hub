@@ -192,25 +192,31 @@ export default function DashboardLayout({
           .single()
 
         if (profile) {
-          // If profile is not completed, redirect to onboarding
-          if (!profile.profile_completed) {
-            logger.warn('Profile not completed, redirecting to onboarding')
-            router.push('/auth/onboarding')
-            return
-          }
+          // Admin users bypass profile completion and verification checks
+          if (profile.role === 'admin') {
+            logger.info('Admin user detected, bypassing profile completion checks')
+            // Continue with normal flow for admin users
+          } else {
+            // For non-admin users, check profile completion and verification
+            if (!profile.profile_completed) {
+              logger.warn('Profile not completed, redirecting to onboarding')
+              router.push('/auth/onboarding')
+              return
+            }
 
-          // If profile is completed but not approved, redirect to pending approval
-          if (profile.verification_status === 'pending') {
-            logger.warn('Profile pending approval, redirecting to pending approval page')
-            router.push('/auth/pending-approval')
-            return
-          }
+            // If profile is completed but not approved, redirect to pending approval
+            if (profile.verification_status === 'pending') {
+              logger.warn('Profile pending approval, redirecting to pending approval page')
+              router.push('/auth/pending-approval')
+              return
+            }
 
-          // If profile is rejected, redirect to pending approval page
-          if (profile.verification_status === 'rejected') {
-            logger.warn('Profile rejected, redirecting to pending approval page')
-            router.push('/auth/pending-approval')
-            return
+            // If profile is rejected, redirect to pending approval page
+            if (profile.verification_status === 'rejected') {
+              logger.warn('Profile rejected, redirecting to pending approval page')
+              router.push('/auth/pending-approval')
+              return
+            }
           }
         }
       } catch (error) {

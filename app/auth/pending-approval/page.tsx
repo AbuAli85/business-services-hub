@@ -75,6 +75,13 @@ export default function PendingApprovalPage() {
         return
       }
 
+      // Admin users bypass profile completion checks
+      if (profileData.role === 'admin') {
+        console.log('Admin user detected, redirecting to dashboard')
+        router.push('/dashboard')
+        return
+      }
+
       // If profile is not completed, redirect to onboarding
       if (!profileData.profile_completed) {
         router.push('/auth/onboarding')
