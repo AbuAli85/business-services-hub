@@ -50,6 +50,7 @@ function OnboardingForm() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [userRole, setUserRole] = useState<'client' | 'provider' | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [formData, setFormData] = useState({
     // Provider fields
     companyName: '',
@@ -118,9 +119,18 @@ function OnboardingForm() {
           setUserRole('client')
         }
         
-        if (profile && profile.bio && profile.location) {
-          // User already has a complete profile, redirect to dashboard
+        // Check if user already has a completed profile using the proper completion status
+        if (profile?.profile_completed && profile?.verification_status === 'approved') {
+          // User already has a complete and approved profile, redirect to dashboard
+          console.log('✅ Profile already completed and approved, redirecting to dashboard')
           router.push('/dashboard')
+          return
+        }
+        
+        if (profile?.verification_status === 'pending') {
+          // User profile is pending approval, redirect to pending approval page
+          console.log('⏳ Profile pending approval, redirecting to pending approval page')
+          router.push('/auth/pending-approval')
           return
         }
         
@@ -137,10 +147,14 @@ function OnboardingForm() {
           }))
         }
         
+        // Set initialization complete
+        setIsInitializing(false)
+        
       } catch (error) {
         console.error('Auth check error:', error)
         toast.error('Authentication error. Please try again.')
         router.push('/auth/sign-in')
+        setIsInitializing(false)
       }
     }
     
