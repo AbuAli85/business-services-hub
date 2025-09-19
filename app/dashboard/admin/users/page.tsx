@@ -91,6 +91,7 @@ export default function AdminUsersPage() {
   const [isFetching, setIsFetching] = useState(false)
   const [viewMode, setViewMode] = useState<'grid'|'list'>('list')
   const [showFilters, setShowFilters] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     // Force initial fetch with cache busting
@@ -132,6 +133,15 @@ export default function AdminUsersPage() {
     }
     setIsFetching(true)
     console.log(`🔄 Fetching users (force: ${force})...`)
+    
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ API request timeout')
+      setError('Request timeout. Please try again.')
+      setLoading(false)
+      setIsFetching(false)
+    }, 10000) // 10 second timeout
+    
     try {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -142,6 +152,12 @@ export default function AdminUsersPage() {
         setLoading(false)
         return
       }
+
+      console.log('🔐 Session found:', {
+        userId: session.user?.id,
+        email: session.user?.email,
+        role: session.user?.user_metadata?.role
+      })
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
@@ -158,7 +174,18 @@ export default function AdminUsersPage() {
       if (!res.ok) {
         const errorText = await res.text()
         console.error('❌ API Error:', { status: res.status, error: errorText })
-        throw new Error(`Request failed: ${res.status} - ${errorText}`)
+        
+        if (res.status === 401) {
+          setError('Authentication failed. Please sign in again.')
+          setLoading(false)
+          return
+        } else if (res.status === 403) {
+          setError('Access denied. Admin privileges required.')
+          setLoading(false)
+          return
+        } else {
+          throw new Error(`Request failed: ${res.status} - ${errorText}`)
+        }
       }
 
       const json = await res.json()
@@ -213,9 +240,21 @@ export default function AdminUsersPage() {
       })
     } catch (error) {
       console.error('❌ Error fetching users:', error)
+      
+      // Retry logic for network errors
+      if (retryCount < 3 && error instanceof Error && error.message.includes('fetch')) {
+        console.log(`🔄 Retrying fetch (attempt ${retryCount + 1}/3)...`)
+        setRetryCount(prev => prev + 1)
+        setTimeout(() => {
+          fetchUsers(true)
+        }, 2000 * (retryCount + 1)) // Exponential backoff
+        return
+      }
+      
       setError(error instanceof Error ? error.message : 'Failed to fetch users')
       logger.error('Error fetching users:', error)
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
       setIsFetching(false)
     }
