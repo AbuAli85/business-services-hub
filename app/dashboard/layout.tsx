@@ -182,6 +182,41 @@ export default function DashboardLayout({
         router.push('/auth/onboarding?role=client')
         return
       }
+
+      // Check if user has completed profile and is verified
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('profile_completed, verification_status, role')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profile) {
+          // If profile is not completed, redirect to onboarding
+          if (!profile.profile_completed) {
+            logger.warn('Profile not completed, redirecting to onboarding')
+            router.push('/auth/onboarding')
+            return
+          }
+
+          // If profile is completed but not approved, redirect to pending approval
+          if (profile.verification_status === 'pending') {
+            logger.warn('Profile pending approval, redirecting to pending approval page')
+            router.push('/auth/pending-approval')
+            return
+          }
+
+          // If profile is rejected, redirect to pending approval page
+          if (profile.verification_status === 'rejected') {
+            logger.warn('Profile rejected, redirecting to pending approval page')
+            router.push('/auth/pending-approval')
+            return
+          }
+        }
+      } catch (error) {
+        logger.warn('Could not check profile status:', error)
+        // Continue with normal flow if profile check fails
+      }
       
       // Fetch company name from profile if user is a provider
       let companyName = undefined

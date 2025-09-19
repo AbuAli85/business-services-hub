@@ -209,7 +209,7 @@ function OnboardingForm() {
         }
       }
 
-      // Update profile
+      // Update profile with completion status
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -220,6 +220,8 @@ function OnboardingForm() {
           avatar_url: profileImageUrl,
           company_name: formData.companyName,
           role: role,
+          profile_completed: true, // Mark profile as completed
+          verification_status: 'pending', // Set verification status to pending
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)
@@ -247,8 +249,9 @@ function OnboardingForm() {
         }
       }
 
-      toast.success('Profile completed successfully!')
-      router.push('/dashboard')
+      // Redirect to pending approval page instead of dashboard
+      toast.success('Profile completed! Your account is pending admin approval.')
+      router.push('/auth/pending-approval')
       
     } catch (error) {
       console.error('Onboarding error:', error)

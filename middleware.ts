@@ -43,7 +43,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // For protected app routes, enforce auth using AuthMiddleware
-  const needsAuthCheck = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/onboarding')
+  const needsAuthCheck = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/onboarding') || pathname.startsWith('/auth/pending-approval')
   let res = NextResponse.next()
   if (needsAuthCheck) {
     const auth = new AuthMiddleware()
@@ -100,6 +100,8 @@ export const config = {
     '/dashboard',
     '/dashboard/:path*',
     '/auth/onboarding',
-    '/auth/onboarding/:path*'
+    '/auth/onboarding/:path*',
+    '/auth/pending-approval',
+    '/auth/pending-approval/:path*'
   ]
 }

@@ -95,50 +95,18 @@ export async function GET(request: NextRequest) {
       redirectTo: next
     })
 
-    // Check if user has a profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, role, full_name')
-      .eq('id', data.user.id)
-      .single()
-
-    if (profileError && profileError.code !== 'PGRST116') {
-      // Database error (not "not found")
-      authLogger.logAuthCallback({
-        success: false,
-        method: 'email_verification',
-        userId: data.user.id,
-        error: `Profile lookup failed: ${profileError.message}`,
-        redirectTo: '/auth/sign-in?error=profile_lookup_failed'
-      })
-      
-      console.error('Profile lookup error:', profileError)
-      return NextResponse.redirect(`${requestUrl.origin}/auth/sign-in?error=profile_lookup_failed`)
-    }
-
-    if (!profile) {
-      // User doesn't have a profile, redirect to onboarding
-      const role = data.user.user_metadata?.role || 'client'
-      
-      authLogger.logAuthCallback({
-        success: true,
-        method: 'email_verification',
-        userId: data.user.id,
-        redirectTo: `/auth/onboarding?role=${role}`
-      })
-      
-      return NextResponse.redirect(`${requestUrl.origin}/auth/onboarding?role=${role}`)
-    }
-
-    // User has profile, redirect to dashboard or specified next
+    // Always redirect to onboarding after email verification
+    // This ensures users complete their profile and go through admin verification
+    const role = data.user.user_metadata?.role || 'client'
+    
     authLogger.logAuthCallback({
       success: true,
       method: 'email_verification',
       userId: data.user.id,
-      redirectTo: next
+      redirectTo: `/auth/onboarding?role=${role}&verified=true`
     })
     
-    return NextResponse.redirect(`${requestUrl.origin}${next}`)
+    return NextResponse.redirect(`${requestUrl.origin}/auth/onboarding?role=${role}&verified=true`)
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
