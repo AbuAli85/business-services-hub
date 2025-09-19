@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
         if (role !== undefined) update.role = role
         if (status !== undefined) {
           // Map UI status to verification_status
-          const verificationStatus = status === 'active' ? 'approved' :
+          const verificationStatus = status === 'approved' ? 'approved' :
+                                   status === 'active' ? 'approved' :
                                    status === 'pending' ? 'pending' :
                                    status === 'suspended' ? 'suspended' :
                                    status === 'inactive' ? 'rejected' : 'pending'

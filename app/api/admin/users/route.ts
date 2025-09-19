@@ -76,7 +76,10 @@ export async function GET(req: NextRequest) {
     try {
       const res: any = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
       authUsers = res?.data?.users || res?.users || []
-      console.log('🔐 Loaded auth users:', { count: authUsers.length })
+      console.log('🔐 Loaded auth users:', { 
+        count: authUsers.length,
+        sample: authUsers.slice(0, 3).map(u => ({ id: u.id, email: u.email, role: u.user_metadata?.role }))
+      })
     } catch (error) {
       console.error('❌ Error loading auth users:', error)
     }
@@ -86,15 +89,19 @@ export async function GET(req: NextRequest) {
     // Select only safe columns that are guaranteed to exist across environments
     let query = admin
       .from('profiles')
-      .select('id, full_name, role, phone, company_name, created_at, verification_status, profile_completed')
+      .select('id, full_name, role, phone, company_name, created_at, verification_status, profile_completed, email')
       .order('created_at', { ascending: false })
       .limit(500)
     const { data: rows, error: pErr } = await query
-    if (pErr) return NextResponse.json({ error: 'Failed to fetch users', details: pErr.message }, { status: 500 })
+    if (pErr) {
+      console.error('❌ Profiles query error:', pErr)
+      return NextResponse.json({ error: 'Failed to fetch users', details: pErr.message }, { status: 500 })
+    }
 
     const profileUsers = ((rows || []).map((u: any) => {
       const au = authById.get(u.id)
-      const email = au?.email || (u as any).email || null
+      // Prioritize email from auth.users, then from profiles.email, then null
+      const email = au?.email || u.email || null
       const fullName = u.full_name || (au?.user_metadata?.full_name as string) || (email ? email.split('@')[0] : 'User')
       const role = u.role || (au?.user_metadata?.role as string) || 'client'
       const metaStatus = (au?.user_metadata as any)?.status as string | undefined
@@ -105,14 +112,17 @@ export async function GET(req: NextRequest) {
         email, 
         role, 
         verificationStatus,
-        hasAuthUser: !!au 
+        metaStatus,
+        hasAuthUser: !!au,
+        authUserEmail: au?.email,
+        profileEmail: u.email
       })
       
       // Use verification_status from profiles table as the primary source
       // Fallback to user_metadata.status if verification_status is not set
       let status: string
       
-      // Admin users should always be approved
+      // Admin users should always be active
       if (role === 'admin') {
         status = 'active'
       } else if (verificationStatus) {
@@ -129,6 +139,7 @@ export async function GET(req: NextRequest) {
         // Default to pending for new users
         status = 'pending'
       }
+      
       return {
         id: u.id,
         email,

@@ -18,7 +18,17 @@ import {
   User,
   Building2,
   AlertCircle,
-  Shield
+  Shield,
+  Calendar,
+  MessageCircle,
+  ExternalLink,
+  HelpCircle,
+  Clock3,
+  CheckCircle2,
+  ArrowRight,
+  Star,
+  Globe,
+  Headphones
 } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 
@@ -205,173 +215,334 @@ export default function PendingApprovalPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Enhanced Header */}
+      <div className="bg-white shadow-lg border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <PlatformLogo className="h-8 w-8" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">BusinessHub</h1>
-                <p className="text-sm text-gray-500">Account Status</p>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <PlatformLogo className="h-10 w-10" />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">BusinessHub</h1>
+                  <p className="text-sm text-gray-500">Business Services Platform</p>
+                </div>
               </div>
             </div>
-            <Button onClick={handleSignOut} variant="outline" size="sm">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+            <div className="flex items-center space-x-4">
+              <Button 
+                onClick={() => router.push('/contact')} 
+                variant="outline" 
+                size="sm"
+                className="hidden sm:flex"
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Help Center
+              </Button>
+              <Button onClick={handleSignOut} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Status Card */}
-            <div className="lg:col-span-2">
-              <Card className="shadow-lg border-0">
-                <CardHeader className="text-center pb-6">
-                  <div className="mx-auto mb-4">
-                    {getStatusIcon()}
+      <div className="py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Main Status Card - Takes 3 columns */}
+            <div className="lg:col-span-3">
+              <Card className="shadow-xl border-0 overflow-hidden">
+                {/* Status Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-white/20 rounded-full">
+                        {getStatusIcon()}
+                      </div>
+                      <div>
+                        <h1 className="text-3xl font-bold">Account Status</h1>
+                        <p className="text-blue-100 text-lg mt-1">{getStatusMessage()}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {getStatusBadge()}
+                    </div>
                   </div>
-                  <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
-                    Account Status
-                  </CardTitle>
-                  <div className="flex justify-center mb-4">
-                    {getStatusBadge()}
-                  </div>
-                  <CardDescription className="text-gray-600 text-base">
-                    {getStatusMessage()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Profile Information */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <User className="h-4 w-4 mr-2" />
+                </div>
+
+                <CardContent className="p-8 space-y-8">
+                  {/* Profile Information - Enhanced */}
+                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                      <User className="h-5 w-5 mr-3 text-blue-600" />
                       Profile Information
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Name:</span>
-                        <span className="ml-2 font-medium">{profile.full_name}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Full Name</p>
+                        <p className="text-lg font-semibold text-gray-900">{profile.full_name}</p>
                       </div>
-                      <div>
-                        <span className="text-gray-600">Role:</span>
-                        <span className="ml-2 font-medium capitalize">{profile.role}</span>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Role</p>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="text-sm">
+                            {profile.role === 'provider' ? 'Service Provider' : 
+                             profile.role === 'client' ? 'Client' : 
+                             profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+                          </Badge>
+                        </div>
                       </div>
                       {profile.company_name && (
-                        <div className="md:col-span-2">
-                          <span className="text-gray-600">Company:</span>
-                          <span className="ml-2 font-medium">{profile.company_name}</span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Company</p>
+                          <p className="text-lg font-semibold text-gray-900 flex items-center">
+                            <Building2 className="h-4 w-4 mr-2 text-blue-600" />
+                            {profile.company_name}
+                          </p>
                         </div>
                       )}
-                      <div>
-                        <span className="text-gray-600">Applied:</span>
-                        <span className="ml-2 font-medium">
-                          {new Date(profile.created_at).toLocaleDateString()}
-                        </span>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Applied Date</p>
+                        <p className="text-lg font-semibold text-gray-900 flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-blue-600" />
+                          {new Date(profile.created_at).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </p>
                       </div>
                       {profile.verified_at && (
-                        <div>
-                          <span className="text-gray-600">Reviewed:</span>
-                          <span className="ml-2 font-medium">
-                            {new Date(profile.verified_at).toLocaleDateString()}
-                          </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Reviewed Date</p>
+                          <p className="text-lg font-semibold text-gray-900 flex items-center">
+                            <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                            {new Date(profile.verified_at).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </p>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Admin Notes */}
+                  {/* Admin Notes - Enhanced */}
                   {profile.admin_notes && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
-                        <Shield className="h-4 w-4 mr-2" />
-                        Admin Notes
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                      <h3 className="text-xl font-semibold text-blue-900 mb-4 flex items-center">
+                        <Shield className="h-5 w-5 mr-3" />
+                        Admin Review Notes
                       </h3>
-                      <p className="text-blue-800 text-sm">{profile.admin_notes}</p>
+                      <div className="bg-white rounded-lg p-4 border border-blue-200">
+                        <p className="text-blue-800 leading-relaxed">{profile.admin_notes}</p>
+                      </div>
                     </div>
                   )}
 
-                  {/* Next Steps */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-gray-900">Next Steps</h3>
-                    <ul className="space-y-2">
+                  {/* Next Steps - Enhanced */}
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                      <ArrowRight className="h-5 w-5 mr-3 text-blue-600" />
+                      What Happens Next?
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {getNextSteps().map((step, index) => (
-                        <li key={index} className="flex items-start space-x-2 text-sm text-gray-600">
-                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <span>{step}</span>
-                        </li>
+                        <div key={index} className="flex items-start space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
+                          <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 font-semibold text-sm">{index + 1}</span>
+                          </div>
+                          <p className="text-gray-700 leading-relaxed">{step}</p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  {/* Actions - Enhanced */}
+                  <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
                     <Button
                       onClick={handleRefresh}
                       disabled={refreshing}
                       variant="outline"
+                      size="lg"
                       className="flex-1"
                     >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                      {refreshing ? 'Refreshing...' : 'Refresh Status'}
+                      <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                      {refreshing ? 'Refreshing Status...' : 'Refresh Status'}
                     </Button>
                     {profile.verification_status === 'rejected' && (
                       <Button
                         onClick={() => router.push('/contact')}
+                        size="lg"
                         className="flex-1"
                       >
+                        <MessageCircle className="h-5 w-5 mr-2" />
                         Contact Support
                       </Button>
                     )}
+                    <Button
+                      onClick={() => router.push('/contact')}
+                      variant="outline"
+                      size="lg"
+                      className="flex-1"
+                    >
+                      <HelpCircle className="h-5 w-5 mr-2" />
+                      Get Help
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Sidebar */}
+            {/* Enhanced Sidebar - Takes 1 column */}
             <div className="lg:col-span-1">
               <div className="space-y-6">
-                {/* Contact Information */}
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-semibold text-gray-900">Need Help?</CardTitle>
+                {/* Contact Information - Enhanced */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+                    <CardTitle className="text-lg font-semibold flex items-center">
+                      <Headphones className="h-5 w-5 mr-2" />
+                      Need Help?
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Mail className="h-4 w-4 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Email Support</p>
-                        <p className="text-xs text-gray-500">support@businesshub.com</p>
+                  <CardContent className="p-6 space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                        <Mail className="h-5 w-5 text-blue-600 mt-1" />
+                        <div>
+                          <p className="font-semibold text-gray-900">Email Support</p>
+                          <p className="text-sm text-gray-600">support@businesshub.com</p>
+                          <p className="text-xs text-gray-500 mt-1">24/7 response within 2 hours</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                        <Phone className="h-5 w-5 text-green-600 mt-1" />
+                        <div>
+                          <p className="font-semibold text-gray-900">Phone Support</p>
+                          <p className="text-sm text-gray-600">+1 (555) 123-4567</p>
+                          <p className="text-xs text-gray-500 mt-1">Mon-Fri 9AM-6PM EST</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3 p-3 bg-purple-50 rounded-lg">
+                        <MessageCircle className="h-5 w-5 text-purple-600 mt-1" />
+                        <div>
+                          <p className="font-semibold text-gray-900">Live Chat</p>
+                          <p className="text-sm text-gray-600">Available 24/7</p>
+                          <p className="text-xs text-gray-500 mt-1">Instant response</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-3 p-3 bg-orange-50 rounded-lg">
+                        <Globe className="h-5 w-5 text-orange-600 mt-1" />
+                        <div>
+                          <p className="font-semibold text-gray-900">Help Center</p>
+                          <p className="text-sm text-gray-600">Self-service portal</p>
+                          <p className="text-xs text-gray-500 mt-1">FAQs & guides</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Phone className="h-4 w-4 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Phone Support</p>
-                        <p className="text-xs text-gray-500">+1 (555) 123-4567</p>
-                      </div>
+
+                    <div className="pt-4 border-t border-gray-200">
+                      <Button 
+                        onClick={() => router.push('/contact')} 
+                        className="w-full"
+                        size="sm"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Contact Us Now
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Process Information */}
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-semibold text-gray-900">Review Process</CardTitle>
+                {/* Review Process - Enhanced */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
+                    <CardTitle className="text-lg font-semibold flex items-center">
+                      <Clock3 className="h-5 w-5 mr-2" />
+                      Review Process
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-sm space-y-2">
-                      <p><strong>Step 1:</strong> Profile completion</p>
-                      <p><strong>Step 2:</strong> Admin review</p>
-                      <p><strong>Step 3:</strong> Approval notification</p>
-                      <p><strong>Step 4:</strong> Dashboard access</p>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Profile Completion</p>
+                          <p className="text-xs text-gray-500">✓ Done</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-yellow-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Admin Review</p>
+                          <p className="text-xs text-gray-500">In Progress</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Mail className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Approval Notification</p>
+                          <p className="text-xs text-gray-500">Pending</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Star className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">Dashboard Access</p>
+                          <p className="text-xs text-gray-500">Pending</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-4">
-                      <p>Review typically takes 1-2 business days. You'll receive an email notification once your account is reviewed.</p>
+                    
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800 font-medium">
+                        ⏱️ Review typically takes 1-2 business days
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        You'll receive an email notification once your account is reviewed.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Stats */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+                    <CardTitle className="text-lg font-semibold">Platform Stats</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-gray-900">500+</p>
+                        <p className="text-sm text-gray-500">Active Users</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-gray-900">24h</p>
+                        <p className="text-sm text-gray-500">Average Review Time</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-gray-900">99%</p>
+                        <p className="text-sm text-gray-500">Approval Rate</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

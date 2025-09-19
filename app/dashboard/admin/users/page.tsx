@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { toast } from 'react-hot-toast'
 import { 
   Users, 
   Search, 
@@ -263,9 +264,9 @@ export default function AdminUsersPage() {
       }
       await callAdminUpdate(u.id, { role: newRole, status: backendStatus })
       await fetchUsers()
-      alert('User updated')
+      toast.success('User updated successfully')
     } catch (e: any) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -274,8 +275,9 @@ export default function AdminUsersPage() {
     try {
       await callAdminUpdate(u.id, { status: nextStatus })
       await fetchUsers()
+      toast.success(`User ${nextStatus === 'approved' ? 'activated' : 'suspended'} successfully`)
     } catch (e: any) {
-      alert(e.message)
+      toast.error(e.message)
     }
   }
 
@@ -546,7 +548,8 @@ export default function AdminUsersPage() {
                     await Promise.all(ops)
                     setSelectedIds(new Set())
                     await fetchUsers()
-                  } catch(e:any){ alert(e.message) }
+                    toast.success(`Bulk approved ${selectedIds.size} users`)
+                  } catch(e:any){ toast.error(e.message) }
                 }}>Activate</Button>
                 <Button size="sm" variant="outline" onClick={async()=>{
                   try {
@@ -554,7 +557,8 @@ export default function AdminUsersPage() {
                     await Promise.all(ops)
                     setSelectedIds(new Set())
                     await fetchUsers()
-                  } catch(e:any){ alert(e.message) }
+                    toast.success(`Bulk suspended ${selectedIds.size} users`)
+                  } catch(e:any){ toast.error(e.message) }
                 }}>Suspend</Button>
               </div>
             )}
@@ -715,7 +719,13 @@ export default function AdminUsersPage() {
                       className="border rounded px-2 py-1 text-xs" 
                       value={user.role} 
                       onChange={async (e)=>{
-                        try { await callAdminUpdate(user.id, { role: e.target.value }); await fetchUsers() } catch(err:any){ alert(err.message) }
+                        try { 
+                          await callAdminUpdate(user.id, { role: e.target.value }); 
+                          await fetchUsers() 
+                          toast.success(`User role updated to ${e.target.value}`)
+                        } catch(err:any){ 
+                          toast.error(err.message)
+                        }
                       }}
                       aria-label={`Change role for ${user.full_name}`}
                     >
@@ -729,8 +739,14 @@ export default function AdminUsersPage() {
                       value={user.status}
                       onChange={async (e)=>{
                         const s = e.target.value
-                        const backend = s==='active'?'approved':(s==='suspended'?'suspended':(s==='pending'?'pending':'inactive'))
-                        try { await callAdminUpdate(user.id, { status: backend }); await fetchUsers() } catch(err:any){ alert(err.message) }
+                        const backend = s==='active'?'approved':(s==='suspended'?'suspended':(s==='pending'?'pending':(s==='inactive'?'rejected':'pending')))
+                        try { 
+                          await callAdminUpdate(user.id, { status: backend }); 
+                          await fetchUsers() 
+                          toast.success(`User status updated to ${s}`)
+                        } catch(err:any){ 
+                          toast.error(err.message)
+                        }
                       }}
                       aria-label={`Change status for ${user.full_name}`}
                     >
