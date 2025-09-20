@@ -42,6 +42,9 @@ function OnboardingForm() {
     companyName: '',
     services: '',
     experience: '',
+    businessType: '',
+    teamSize: '',
+    businessRegistration: '',
     certifications: '',
     languages: '',
     availability: '',
@@ -129,6 +132,13 @@ function OnboardingForm() {
         newErrors.location = 'Location is required'
       }
       
+      // Phone validation for providers
+      if (currentRole === 'provider' && !formData.phone.trim()) {
+        newErrors.phone = 'Phone number is required for providers'
+      } else if (currentRole === 'provider' && formData.phone.trim() && !isValidPhone(formData.phone)) {
+        newErrors.phone = 'Please enter a valid phone number'
+      }
+      
       if (formData.website && !isValidUrl(formData.website)) {
         newErrors.website = 'Please enter a valid website URL'
       }
@@ -139,11 +149,15 @@ function OnboardingForm() {
     } else if (stepNumber === 2) {
       if (currentRole === 'provider') {
         if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required'
-        if (!formData.services.trim()) newErrors.services = 'Services offered is required'
+        if (!formData.services.trim()) newErrors.services = 'Primary service category is required'
         if (!formData.experience.trim()) newErrors.experience = 'Experience level is required'
+        if (!formData.businessType.trim()) newErrors.businessType = 'Business type is required'
+        if (!formData.teamSize.trim()) newErrors.teamSize = 'Team size is required'
       } else {
-        if (!formData.preferredCategories.trim()) newErrors.preferredCategories = 'Preferred categories is required'
+        if (!formData.preferredCategories.trim()) newErrors.preferredCategories = 'Service category is required'
         if (!formData.budgetRange.trim()) newErrors.budgetRange = 'Budget range is required'
+        if (!formData.projectTimeline.trim()) newErrors.projectTimeline = 'Project timeline is required'
+        if (!formData.communicationPreference.trim()) newErrors.communicationPreference = 'Communication preference is required'
       }
     }
     
@@ -165,8 +179,14 @@ function OnboardingForm() {
     return url.includes('linkedin.com/in/') || url.includes('linkedin.com/company/')
   }
   
+  const isValidPhone = (phone: string) => {
+    // Basic phone validation - should contain digits and optional + at start
+    const phoneRegex = /^[\+]?[\d\s\-\(\)]{8,}$/
+    return phoneRegex.test(phone.trim())
+  }
+  
   const getCompletionPercentage = () => {
-    const totalFields = getCurrentRole() === 'provider' ? 12 : 10
+    const totalFields = getCurrentRole() === 'provider' ? 16 : 10
     const filledFields = Object.values(formData).filter(value => value && value.trim().length > 0).length
     return Math.round((filledFields / totalFields) * 100)
   }
@@ -532,6 +552,49 @@ function OnboardingForm() {
                       
                       <Separator className="my-8" />
                       
+                      {/* Phone Number for Providers */}
+                      {getCurrentRole() === 'provider' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                              <Phone className="h-5 w-5 text-blue-600" />
+                              <span>Phone Number *</span>
+                            </Label>
+                            <div className="flex items-center space-x-2 text-sm text-gray-500">
+                              <Info className="h-4 w-4" />
+                              <span>For client communication</span>
+                            </div>
+                          </div>
+                          
+                          <Input
+                            value={formData.phone}
+                            onChange={(e) => handleFieldChange('phone', e.target.value)}
+                            onFocus={() => handleFieldFocus('phone')}
+                            onBlur={handleFieldBlur}
+                            placeholder="+968 XXXX XXXX (Omani format)"
+                            className={`transition-all duration-200 ${
+                              fieldFocus === 'phone' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                            } ${errors.phone ? 'border-red-300' : 'border-gray-200'}`}
+                          />
+                          
+                          {fieldFocus === 'phone' && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                              <div className="flex items-start space-x-2">
+                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Include country code for international clients. This will be visible to potential clients.</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {errors.phone && <span className="text-sm text-red-500 flex items-center space-x-1">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>{errors.phone}</span>
+                          </span>}
+                        </div>
+                      )}
+                      
+                      <Separator className="my-8" />
+                      
                       {/* Contact Information */}
                       <div className="space-y-6">
                         <h3 className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
@@ -652,31 +715,51 @@ function OnboardingForm() {
                         <div className="flex items-center justify-between">
                           <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
                             <Star className="h-5 w-5 text-green-600" />
-                            <span>Services Offered *</span>
+                            <span>Primary Service Category *</span>
                           </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            <span>Your main service focus</span>
+                          </div>
                         </div>
                         
-                        <div className="relative">
-                          <Textarea
-                            value={formData.services}
-                            onChange={(e) => handleFieldChange('services', e.target.value)}
-                            onFocus={() => handleFieldFocus('services')}
-                            onBlur={handleFieldBlur}
-                            placeholder="List all the services you offer. Be specific and include keywords clients might search for..."
-                            className={`min-h-[120px] resize-none transition-all duration-200 ${
-                              fieldFocus === 'services' ? 'ring-2 ring-green-500 shadow-lg' : ''
-                            } ${errors.services ? 'border-red-300' : 'border-gray-200'}`}
-                          />
-                          
-                          {fieldFocus === 'services' && (
-                            <div className="absolute -bottom-8 left-0 right-0 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
-                              <div className="flex items-start space-x-2">
-                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <span>{getFieldTip('services')}</span>
-                              </div>
+                        <Select 
+                          value={formData.services} 
+                          onValueChange={(value) => handleFieldChange('services', value)}
+                        >
+                          <SelectTrigger className={`transition-all duration-200 ${
+                            fieldFocus === 'services' ? 'ring-2 ring-green-500 shadow-lg' : ''
+                          } ${errors.services ? 'border-red-300' : 'border-gray-200'}`}>
+                            <SelectValue placeholder="Select your primary service category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="web-development">Web Development & Design</SelectItem>
+                            <SelectItem value="digital-marketing">Digital Marketing & SEO</SelectItem>
+                            <SelectItem value="social-media">Social Media Management</SelectItem>
+                            <SelectItem value="content-creation">Content Creation & Writing</SelectItem>
+                            <SelectItem value="graphic-design">Graphic Design & Branding</SelectItem>
+                            <SelectItem value="ecommerce">E-commerce Solutions</SelectItem>
+                            <SelectItem value="mobile-apps">Mobile App Development</SelectItem>
+                            <SelectItem value="consulting">Business Consulting</SelectItem>
+                            <SelectItem value="hr-services">HR & Staffing Services</SelectItem>
+                            <SelectItem value="accounting">Accounting & Finance</SelectItem>
+                            <SelectItem value="legal-services">Legal Services</SelectItem>
+                            <SelectItem value="it-support">IT Support & Maintenance</SelectItem>
+                            <SelectItem value="data-analysis">Data Analysis & Analytics</SelectItem>
+                            <SelectItem value="project-management">Project Management</SelectItem>
+                            <SelectItem value="translation">Translation Services</SelectItem>
+                            <SelectItem value="other">Other Professional Services</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {fieldFocus === 'services' && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>Choose your primary service category. You can add more specific services in your profile later.</span>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         
                         {errors.services && <span className="text-sm text-red-500 flex items-center space-x-1">
                           <AlertCircle className="h-4 w-4" />
@@ -725,6 +808,91 @@ function OnboardingForm() {
                           <AlertCircle className="h-4 w-4" />
                           <span>{errors.experience}</span>
                         </span>}
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Business Information */}
+                      <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                          <Building2 className="h-5 w-5 text-green-600" />
+                          <span>Business Information</span>
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Business Type */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                              <Briefcase className="h-4 w-4" />
+                              <span>Business Type *</span>
+                            </Label>
+                            <Select 
+                              value={formData.businessType} 
+                              onValueChange={(value) => handleFieldChange('businessType', value)}
+                            >
+                              <SelectTrigger className="transition-all duration-200">
+                                <SelectValue placeholder="Select business type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="sole-proprietorship">Sole Proprietorship</SelectItem>
+                                <SelectItem value="partnership">Partnership</SelectItem>
+                                <SelectItem value="llc">Limited Liability Company (LLC)</SelectItem>
+                                <SelectItem value="corporation">Corporation</SelectItem>
+                                <SelectItem value="freelancer">Freelancer/Independent Contractor</SelectItem>
+                                <SelectItem value="agency">Agency/Studio</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {/* Team Size */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                              <Users className="h-4 w-4" />
+                              <span>Team Size *</span>
+                            </Label>
+                            <Select 
+                              value={formData.teamSize} 
+                              onValueChange={(value) => handleFieldChange('teamSize', value)}
+                            >
+                              <SelectTrigger className="transition-all duration-200">
+                                <SelectValue placeholder="Select team size" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="solo">Solo (Just me)</SelectItem>
+                                <SelectItem value="2-5">2-5 people</SelectItem>
+                                <SelectItem value="6-10">6-10 people</SelectItem>
+                                <SelectItem value="11-25">11-25 people</SelectItem>
+                                <SelectItem value="26-50">26-50 people</SelectItem>
+                                <SelectItem value="50-plus">50+ people</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        {/* Business Registration */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                            <Shield className="h-4 w-4" />
+                            <span>Business Registration Number</span>
+                          </Label>
+                          <Input
+                            value={formData.businessRegistration}
+                            onChange={(e) => handleFieldChange('businessRegistration', e.target.value)}
+                            onFocus={() => handleFieldFocus('businessRegistration')}
+                            onBlur={handleFieldBlur}
+                            placeholder="Enter your business registration/license number (optional)"
+                            className="transition-all duration-200"
+                          />
+                          {fieldFocus === 'businessRegistration' && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                              <div className="flex items-start space-x-2">
+                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Adding your business registration number increases trust and credibility with clients.</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
                       <Separator className="my-8" />
@@ -815,7 +983,7 @@ function OnboardingForm() {
                           onChange={(e) => handleFieldChange('pricing', e.target.value)}
                           onFocus={() => handleFieldFocus('pricing')}
                           onBlur={handleFieldBlur}
-                          placeholder="Describe your pricing structure (e.g., $50-100/hour, $500-2000/project, retainer packages, etc.)"
+                          placeholder="Describe your pricing structure (e.g., 20-50 OMR/hour, 200-1000 OMR/project, retainer packages, etc.)"
                           className="min-h-[80px] resize-none transition-all duration-200"
                         />
                       </div>
@@ -1113,6 +1281,22 @@ function OnboardingForm() {
                                 </div>
                               )}
                               
+                              {formData.businessType && (
+                                <div className="flex items-center space-x-2">
+                                  <Briefcase className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Business Type:</span>
+                                  <span className="text-gray-700 capitalize">{formData.businessType.replace('-', ' ')}</span>
+                                </div>
+                              )}
+                              
+                              {formData.teamSize && (
+                                <div className="flex items-center space-x-2">
+                                  <Users className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Team Size:</span>
+                                  <span className="text-gray-700 capitalize">{formData.teamSize.replace('-', '-')}</span>
+                                </div>
+                              )}
+                              
                               {formData.experience && (
                                 <div className="flex items-center space-x-2">
                                   <Award className="h-4 w-4 text-green-600" />
@@ -1143,8 +1327,26 @@ function OnboardingForm() {
                                 <div className="flex items-start space-x-2">
                                   <Star className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
                                   <div>
-                                    <span className="font-medium text-sm">Services:</span>
-                                    <p className="text-gray-700 text-sm mt-1">{formData.services}</p>
+                                    <span className="font-medium text-sm">Primary Service:</span>
+                                    <p className="text-gray-700 text-sm mt-1">
+                                      {formData.services === 'web-development' ? 'Web Development & Design' :
+                                       formData.services === 'digital-marketing' ? 'Digital Marketing & SEO' :
+                                       formData.services === 'social-media' ? 'Social Media Management' :
+                                       formData.services === 'content-creation' ? 'Content Creation & Writing' :
+                                       formData.services === 'graphic-design' ? 'Graphic Design & Branding' :
+                                       formData.services === 'ecommerce' ? 'E-commerce Solutions' :
+                                       formData.services === 'mobile-apps' ? 'Mobile App Development' :
+                                       formData.services === 'consulting' ? 'Business Consulting' :
+                                       formData.services === 'hr-services' ? 'HR & Staffing Services' :
+                                       formData.services === 'accounting' ? 'Accounting & Finance' :
+                                       formData.services === 'legal-services' ? 'Legal Services' :
+                                       formData.services === 'it-support' ? 'IT Support & Maintenance' :
+                                       formData.services === 'data-analysis' ? 'Data Analysis & Analytics' :
+                                       formData.services === 'project-management' ? 'Project Management' :
+                                       formData.services === 'translation' ? 'Translation Services' :
+                                       formData.services === 'other' ? 'Other Professional Services' :
+                                       formData.services}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
