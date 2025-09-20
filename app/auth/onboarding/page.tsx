@@ -1069,7 +1069,7 @@ function OnboardingForm() {
                 </CardContent>
               </Card>
           
-              {/* Navigation */}
+              {/* Navigation - MOVED OUTSIDE CARD */}
               <div className="flex justify-between mt-6">
                 <Button
                   type="button"
