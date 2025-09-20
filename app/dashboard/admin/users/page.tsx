@@ -143,13 +143,45 @@ export default function AdminUsersPage() {
     }, 10000) // 10 second timeout
     
     try {
+      console.log('🔧 Initializing Supabase client...')
       const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      console.log('✅ Supabase client initialized successfully')
+      
+      // Try to get session with retry logic
+      let session = null
+      let sessionRetries = 0
+      const maxSessionRetries = 3
+      
+      while (!session && sessionRetries < maxSessionRetries) {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+        session = sessionData.session
+        
+        if (!session && sessionRetries < maxSessionRetries - 1) {
+          console.log(`🔄 No session found, retrying... (${sessionRetries + 1}/${maxSessionRetries})`)
+          await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+          sessionRetries++
+        } else {
+          break
+        }
+      }
+
+      // If still no session, try to refresh the session
+      if (!session) {
+        console.log('🔄 Attempting to refresh session...')
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshData.session) {
+          session = refreshData.session
+          console.log('✅ Session refreshed successfully')
+        } else {
+          console.error('❌ Session refresh failed:', refreshError)
+        }
+      }
 
       if (!session) {
-        console.error('❌ No session found')
-        setError('Please sign in to access this page')
+        console.error('❌ No session found after retries and refresh')
+        setError('Please sign in to access this page. Session not found.')
         setLoading(false)
+        setIsFetching(false)
         return
       }
 
@@ -160,9 +192,48 @@ export default function AdminUsersPage() {
       })
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+        console.log('🔑 Using access token for API call')
+      } else {
+        console.warn('⚠️ No access token available for API call - trying without auth')
+        // Try to get token from cookies as fallback
+        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=')
+          acc[key] = value
+          return acc
+        }, {} as Record<string, string>)
+        
+        if (cookies['sb-access-token']) {
+          headers['Authorization'] = `Bearer ${cookies['sb-access-token']}`
+          console.log('🔑 Using access token from cookies as fallback')
+        }
+      }
 
-      const res = await fetch(`/api/admin/users?t=${Date.now()}&r=${Math.random()}`, { 
+      const apiUrl = `/api/admin/users?t=${Date.now()}&r=${Math.random()}`
+      console.log('🌐 Making API call to:', apiUrl)
+      console.log('📤 Request headers:', headers)
+
+      // First, test if the API endpoint is reachable
+      try {
+        const testRes = await fetch('/api/check-schema', { method: 'GET' })
+        console.log('🧪 API connectivity test:', testRes.status)
+      } catch (testError) {
+        console.warn('⚠️ API connectivity test failed:', testError)
+      }
+
+      // Test basic Supabase connectivity
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from('profiles')
+          .select('count')
+          .limit(1)
+        console.log('🧪 Supabase connectivity test:', { data: testData, error: testError })
+      } catch (testError) {
+        console.warn('⚠️ Supabase connectivity test failed:', testError)
+      }
+
+      const res = await fetch(apiUrl, { 
         cache: 'no-store', 
         headers: {
           ...headers,
@@ -171,6 +242,9 @@ export default function AdminUsersPage() {
           'Expires': '0'
         }
       })
+      
+      console.log('📥 API response status:', res.status)
+      
       if (!res.ok) {
         const errorText = await res.text()
         console.error('❌ API Error:', { status: res.status, error: errorText })
@@ -178,13 +252,18 @@ export default function AdminUsersPage() {
         if (res.status === 401) {
           setError('Authentication failed. Please sign in again.')
           setLoading(false)
+          setIsFetching(false)
           return
         } else if (res.status === 403) {
           setError('Access denied. Admin privileges required.')
           setLoading(false)
+          setIsFetching(false)
           return
         } else {
-          throw new Error(`Request failed: ${res.status} - ${errorText}`)
+          setError(`API Error: ${res.status} - ${errorText}`)
+          setLoading(false)
+          setIsFetching(false)
+          return
         }
       }
 
@@ -451,6 +530,23 @@ export default function AdminUsersPage() {
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Users</h2>
           <p className="text-gray-600">Please wait while we fetch user data...</p>
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Debug Info:</p>
+            <p>Loading: {loading ? 'true' : 'false'}</p>
+            <p>Error: {error || 'none'}</p>
+            <p>IsFetching: {isFetching ? 'true' : 'false'}</p>
+            <p>Users Count: {users.length}</p>
+            <Button 
+              onClick={() => {
+                console.log('🧪 Manual test fetch triggered')
+                fetchUsers(true)
+              }}
+              className="mt-2"
+              size="sm"
+            >
+              Test Fetch
+            </Button>
+          </div>
         </div>
       </div>
     )
