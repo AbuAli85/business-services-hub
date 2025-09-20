@@ -198,12 +198,20 @@ function OnboardingForm() {
         return
       }
 
+      // Get the access token for API authentication
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
       // Call the profile completion API
       const response = await fetch('/api/auth/complete-profile', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           formData,
           role: getCurrentRole()
