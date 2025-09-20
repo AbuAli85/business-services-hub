@@ -71,7 +71,10 @@ function OnboardingForm() {
   
   // Get current role with fallback
   const getCurrentRole = () => {
-    return userRole || role || 'client'
+    // Priority: userRole (from state) > role (from URL) > 'provider' (default for onboarding)
+    const detectedRole = userRole || role || 'provider'
+    console.log('🔍 Role detection:', { userRole, role, detectedRole })
+    return detectedRole
   }
   
   // Initialize component
@@ -81,7 +84,30 @@ function OnboardingForm() {
         if (role) {
           setUserRole(role)
         } else {
-          setUserRole('client')
+          // Try to detect role from user's profile
+          try {
+            const supabase = await getSupabaseClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (session?.user) {
+              // Check user metadata for role
+              const userRole = session.user.user_metadata?.role
+              if (userRole) {
+                setUserRole(userRole)
+                console.log('🔍 Role detected from user metadata:', userRole)
+              } else {
+                // Default to 'provider' for onboarding since this is primarily for service providers
+                setUserRole('provider')
+                console.log('🔍 No role in metadata, defaulting to provider')
+              }
+            } else {
+              setUserRole('provider')
+              console.log('🔍 No session, defaulting to provider')
+            }
+          } catch (error) {
+            console.error('Error detecting role from profile:', error)
+            setUserRole('provider')
+          }
         }
         setIsInitializing(false)
       } catch (error) {
