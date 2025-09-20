@@ -50,13 +50,8 @@ function OnboardingForm() {
   const searchParams = useSearchParams()
   const role = searchParams.get('role') as 'client' | 'provider'
   
-  // Debug logging
-  console.log('🔍 Onboarding Debug:')
-  console.log('  - URL search params:', Object.fromEntries(searchParams.entries()))
-  console.log('  - Extracted role:', role)
-  console.log('  - Role type:', typeof role)
-  console.log('  - Is provider:', role === 'provider')
-  console.log('  - Is client:', role === 'client')
+  // Debug logging (simplified to prevent console spam)
+  // console.log('🔍 Onboarding Debug:', { role, roleType: typeof role })
   
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -71,10 +66,10 @@ function OnboardingForm() {
   const userIdRef = useRef<string | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Debug step state changes
-  useEffect(() => {
-    console.log('🔍 Step state changed:', { step, userRole, role })
-  }, [step, userRole, role])
+  // Debug step state changes (removed to prevent infinite loops)
+  // useEffect(() => {
+  //   console.log('🔍 Step state changed:', { step, userRole, role })
+  // }, [step, userRole, role])
   
   const [formData, setFormData] = useState({
     // Provider fields
@@ -146,12 +141,6 @@ function OnboardingForm() {
           setUserRole(role)
         } else {
           console.log('❌ No role found, defaulting to client')
-          setUserRole('client')
-        }
-        
-        // Ensure userRole is set even if profile doesn't exist
-        if (!userRole && !role) {
-          console.log('🔧 Setting default role to client')
           setUserRole('client')
         }
         
@@ -240,7 +229,7 @@ function OnboardingForm() {
     }
     
     checkAuth()
-  }, [router])
+  }, [router, role]) // Add role as dependency to prevent infinite loops
 
   // Cleanup function to remove redirect flag
   useEffect(() => {
