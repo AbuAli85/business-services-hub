@@ -168,16 +168,27 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
       // Debug specific user status mapping
       const digitalMorphUser = json.users?.find((u: any) => u.full_name === 'Digital Morph')
       if (digitalMorphUser) {
-        logger.debug('🔍 Digital Morph user data:', {
+        console.log('🔍 Digital Morph user data (RAW from API):', {
           raw: digitalMorphUser,
           status: digitalMorphUser.status,
-          verification_status: digitalMorphUser.verification_status
+          verification_status: digitalMorphUser.verification_status,
+          role: digitalMorphUser.role
+        })
+        logger.debug('🔍 Digital Morph user data (RAW from API):', {
+          raw: digitalMorphUser,
+          status: digitalMorphUser.status,
+          verification_status: digitalMorphUser.verification_status,
+          role: digitalMorphUser.role
         })
       }
       
       const apiUsers: AdminUser[] = (json.users || []).map((u: BackendUser) => {
         const mapped = mapBackendUserToAdminUser(u)
         if (u.full_name === 'Digital Morph') {
+          console.log('🔍 Digital Morph mapped (after mapping):', {
+            original: u,
+            mapped: mapped
+          })
           logger.debug('🔍 Digital Morph mapped:', {
             original: u,
             mapped: mapped

@@ -119,6 +119,9 @@ export default function AdminUsersPage() {
       
       await updateUser(user.id, { status: backendStatus as any })
       
+      // Add a small delay to ensure backend has processed the update
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
       // Force refresh the data to ensure UI updates
       await refetch(true)
       
