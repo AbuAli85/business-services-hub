@@ -389,8 +389,22 @@ function OnboardingForm() {
     })
     
     if (stepNumber === 1) {
-      if (!formData.bio.trim()) newErrors.bio = 'Bio is required'
-      if (!formData.location.trim()) newErrors.location = 'Location is required'
+      if (!formData.bio.trim()) {
+        newErrors.bio = 'Bio is required'
+        console.log('❌ Bio validation failed: empty')
+      } else if (formData.bio.trim().length < 50) {
+        newErrors.bio = 'Bio should be at least 50 characters'
+        console.log('❌ Bio validation failed: too short', formData.bio.trim().length)
+      } else {
+        console.log('✅ Bio validation passed:', formData.bio.trim().length)
+      }
+      
+      if (!formData.location.trim()) {
+        newErrors.location = 'Location is required'
+        console.log('❌ Location validation failed: empty')
+      } else {
+        console.log('✅ Location validation passed:', formData.location.trim())
+      }
     } else if (stepNumber === 2) {
       if (currentRole === 'provider') {
         if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required'
@@ -412,7 +426,7 @@ function OnboardingForm() {
   }
 
   const handleNext = () => {
-    console.log('🔍 Next button clicked:', {
+    console.log('🔍 handleNext function called:', {
       step,
       userRole,
       role,
@@ -422,11 +436,18 @@ function OnboardingForm() {
       }
     })
     
-    if (validateStep(step)) {
+    const isValid = validateStep(step)
+    console.log('🔍 Validation result:', isValid)
+    
+    if (isValid) {
       console.log('✅ Validation passed, moving to next step')
-      setStep(prev => prev + 1)
+      setStep(prev => {
+        console.log('🔍 Setting step from', prev, 'to', prev + 1)
+        return prev + 1
+      })
     } else {
       console.log('❌ Validation failed, staying on current step')
+      console.log('🔍 Current errors:', errors)
     }
   }
 
@@ -1063,7 +1084,11 @@ function OnboardingForm() {
                 {step < 3 ? (
               <Button
                     type="button"
-                    onClick={handleNext}
+                    onClick={(e) => {
+                      console.log('🔍 Next button clicked - event:', e)
+                      console.log('🔍 Current state:', { step, userRole, role, formData: { bio: formData.bio.length, location: formData.location.length } })
+                      handleNext()
+                    }}
                     className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   >
                 Next
