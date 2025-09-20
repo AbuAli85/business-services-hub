@@ -58,15 +58,27 @@ export async function POST(req: NextRequest) {
                                    status === 'suspended' ? 'suspended' :
                                    status === 'inactive' ? 'rejected' : 'pending'
           update.verification_status = verificationStatus
+          console.log('🔄 Backend status update:', {
+            userId: user_id,
+            status,
+            verificationStatus,
+            update
+          })
         }
         if (Object.keys(update).length > 0) {
+          console.log('🔄 Updating profiles table:', {
+            userId: user_id,
+            update
+          })
           const { error: profErr } = await admin
             .from('profiles')
             .update(update)
             .eq('id', user_id)
           if (profErr) {
-            console.warn('Profiles update failed:', profErr.message)
+            console.error('❌ Profiles update failed:', profErr.message)
             // Don't fail the request, just log the warning
+          } else {
+            console.log('✅ Profiles update successful')
           }
         }
       } catch (e: any) {

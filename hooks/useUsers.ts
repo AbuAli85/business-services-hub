@@ -240,6 +240,11 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
       })
       const data = await res.json()
       
+      console.log('🔄 Update response:', {
+        status: res.status,
+        data,
+        ok: res.ok
+      })
       logger.debug('🔄 Update response:', {
         status: res.status,
         data
