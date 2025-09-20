@@ -71,6 +71,11 @@ function OnboardingForm() {
   const userIdRef = useRef<string | null>(null)
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
+  // Debug step state changes
+  useEffect(() => {
+    console.log('🔍 Step state changed:', { step, userRole, role })
+  }, [step, userRole, role])
+  
   const [formData, setFormData] = useState({
     // Provider fields
     companyName: '',
@@ -1070,31 +1075,53 @@ function OnboardingForm() {
           
               {/* Navigation */}
               <div className="flex justify-between mt-6">
-              <Button
+                <Button
                   type="button"
-                variant="outline"
-                onClick={handleBack}
-                disabled={step === 1}
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={step === 1}
                   className="flex items-center"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                
+                {/* Debug info */}
+                <div className="text-sm text-gray-500">
+                  Step: {step} | Role: {getCurrentRole()}
+                </div>
+                
+                {/* Test button - always visible */}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔍 Test button clicked!')
+                    console.log('🔍 Current step:', step)
+                    console.log('🔍 Step < 3?', step < 3)
+                    setStep(prev => {
+                      console.log('🔍 Setting step from', prev, 'to', prev + 1)
+                      return prev + 1
+                    })
+                  }}
+                  className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold"
+                >
+                  TEST NEXT
+                </Button>
+                
                 {step < 3 ? (
-              <Button
+                  <Button
                     type="button"
                     onClick={(e) => {
                       console.log('🔍 Next button clicked - event:', e)
                       console.log('🔍 Current state:', { step, userRole, role, formData: { bio: formData.bio.length, location: formData.location.length } })
                       handleNext()
                     }}
-                    className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-semibold shadow-lg"
                   >
-                Next
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            ) : (
+                    Next
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
               <Button 
                     type="button"
                 onClick={handleSubmit}
