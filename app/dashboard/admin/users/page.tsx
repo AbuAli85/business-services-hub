@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
             const now = Date.now()
             if (now - lastFetchTime > 2000) {
               lastFetchTime = now
-              fetchUsers(true) // Force refresh on realtime updates
+              fetchUsers(false) // Use normal refresh on realtime updates
             }
           })
           .subscribe()
@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
     }
     
     setupRealtime()
-    intervalId = setInterval(() => { fetchUsers(true) }, 60000) // Force refresh every minute
+    intervalId = setInterval(() => { fetchUsers(false) }, 60000) // Normal refresh every minute
     
     return () => {
       try { if (channel) channel.unsubscribe() } catch {}
@@ -219,25 +219,6 @@ export default function AdminUsersPage() {
       console.log('🌐 Making API call to:', apiUrl)
       console.log('📤 Request headers:', headers)
 
-      // First, test if the API endpoint is reachable
-      try {
-        const testRes = await fetch('/api/check-schema', { method: 'GET' })
-        console.log('🧪 API connectivity test:', testRes.status)
-      } catch (testError) {
-        console.warn('⚠️ API connectivity test failed:', testError)
-      }
-
-      // Test basic Supabase connectivity
-      try {
-        const { data: testData, error: testError } = await supabase
-          .from('profiles')
-          .select('count')
-          .limit(1)
-        console.log('🧪 Supabase connectivity test:', { data: testData, error: testError })
-      } catch (testError) {
-        console.warn('⚠️ Supabase connectivity test failed:', testError)
-      }
-
       const res = await fetch(apiUrl, { 
         cache: 'no-store', 
         headers: {
@@ -288,14 +269,6 @@ export default function AdminUsersPage() {
           normStatus = 'inactive'
         }
         
-        console.log('👤 User mapping:', { 
-          id: u.id, 
-          name: u.full_name, 
-          originalStatus: u.status, 
-          mappedStatus: normStatus,
-          isVerified: u.is_verified 
-        })
-        
         return {
           id: u.id,
           email: u.email,
@@ -314,6 +287,7 @@ export default function AdminUsersPage() {
       })
       setUsers(apiUsers)
       setError(null)
+      setRetryCount(0) // Reset retry count on successful fetch
       
       // Debug: Log the updated users
       console.log('🔄 Users updated after fetch:', {
@@ -498,7 +472,7 @@ export default function AdminUsersPage() {
       await callAdminUpdate(user.id, { status: backendStatus })
       
       console.log(`🔄 Refreshing users list...`)
-      await fetchUsers(true) // Force refresh
+      await fetchUsers(false) // Normal refresh
       
       console.log(`✅ Status update completed for ${user.full_name}`)
       toast.success(`${user.full_name}'s status updated to ${newStatus}`)
@@ -511,7 +485,7 @@ export default function AdminUsersPage() {
   const handleRoleChange = async (user: AdminUser, newRole: string) => {
     try {
       await callAdminUpdate(user.id, { role: newRole })
-      await fetchUsers()
+      await fetchUsers(false)
       toast.success(`${user.full_name}'s role updated to ${newRole}`)
     } catch (err: any) {
       toast.error(err.message)
@@ -526,7 +500,7 @@ export default function AdminUsersPage() {
       const ops = Array.from(selectedIds).map(id => callAdminUpdate(id, { status }))
       await Promise.all(ops)
       setSelectedIds(new Set())
-      await fetchUsers()
+      await fetchUsers(false)
       toast.success(`Bulk ${action} completed for ${selectedIds.size} users`)
     } catch (e: any) {
       toast.error(e.message)
@@ -553,7 +527,7 @@ export default function AdminUsersPage() {
     
     try {
       await callAdminUpdate(userToDelete.id, { status: 'deleted' })
-      await fetchUsers()
+      await fetchUsers(false)
       toast.success(`${userToDelete.full_name} has been deleted`)
       setShowDeleteConfirm(false)
       setUserToDelete(null)
@@ -612,7 +586,7 @@ export default function AdminUsersPage() {
         throw new Error(errorData.error || 'Invitation failed')
       }
       
-      await fetchUsers()
+      await fetchUsers(false)
       toast.success(`Invitation sent to ${email}`)
     } catch (err: any) {
       toast.error(err.message)
