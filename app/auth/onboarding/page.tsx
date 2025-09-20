@@ -1091,7 +1091,7 @@ function OnboardingForm() {
                 <div 
                   onClick={() => {
                     alert('DIV CLICKED!')
-                    console.log('🔍 Div clicked!')
+                    setStep(2)
                   }}
                   className="bg-yellow-400 p-2 cursor-pointer"
                 >
@@ -1101,17 +1101,9 @@ function OnboardingForm() {
                 {/* Test button - always visible */}
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
+                  onClick={() => {
                     alert('TEST BUTTON CLICKED!')
-                    console.log('🔍 Test button clicked!')
-                    console.log('🔍 Current step:', step)
-                    console.log('🔍 Step < 3?', step < 3)
-                    setStep(prev => {
-                      console.log('🔍 Setting step from', prev, 'to', prev + 1)
-                      return prev + 1
-                    })
+                    setStep(2)
                   }}
                   className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold"
                 >
@@ -1121,13 +1113,9 @@ function OnboardingForm() {
                 {step < 3 ? (
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
+                    onClick={() => {
                       alert('NEXT BUTTON CLICKED!')
-                      console.log('🔍 Next button clicked - event:', e)
-                      console.log('🔍 Current state:', { step, userRole, role, formData: { bio: formData.bio.length, location: formData.location.length } })
-                      handleNext()
+                      setStep(2)
                     }}
                     className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-semibold shadow-lg"
                   >
