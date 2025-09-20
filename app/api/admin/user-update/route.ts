@@ -139,6 +139,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Verify the update by reading the user data back
+    try {
+      const { data: verifyProfile } = await admin
+        .from('profiles')
+        .select('id, verification_status, role')
+        .eq('id', user_id)
+        .single()
+      
+      console.log('🔍 Verification after update:', verifyProfile)
+    } catch (e) {
+      console.warn('Could not verify update:', e)
+    }
+
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('Admin user-update error:', e)

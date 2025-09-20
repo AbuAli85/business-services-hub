@@ -148,6 +148,16 @@ export async function GET(req: NextRequest) {
         status = 'pending'
       }
       
+      // Debug logging for Digital Morph
+      if (u.full_name === 'Digital Morph') {
+        console.log('🔍 Digital Morph status determination:', {
+          verificationStatus,
+          metaStatus,
+          finalStatus: status,
+          role
+        })
+      }
+      
       return {
         id: u.id,
         email,
@@ -209,11 +219,12 @@ export async function GET(req: NextRequest) {
         status: u.status,
         verification_status: u.verification_status
       })),
-      sepideh: finalUsers.find(u => u.full_name === 'sepideh gavanji') ? {
-        name: finalUsers.find(u => u.full_name === 'sepideh gavanji')?.full_name,
-        status: finalUsers.find(u => u.full_name === 'sepideh gavanji')?.status,
-        verification_status: finalUsers.find(u => u.full_name === 'sepideh gavanji')?.verification_status
-      } : 'Not found'
+      digitalMorph: finalUsers.find(u => u.full_name === 'Digital Morph') ? {
+        name: finalUsers.find(u => u.full_name === 'Digital Morph')?.full_name,
+        status: finalUsers.find(u => u.full_name === 'Digital Morph')?.status,
+        verification_status: finalUsers.find(u => u.full_name === 'Digital Morph')?.verification_status
+      } : 'Not found',
+      timestamp: new Date().toISOString()
     })
 
     return NextResponse.json({ users: finalUsers })
