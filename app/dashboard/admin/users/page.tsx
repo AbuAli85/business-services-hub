@@ -10,7 +10,6 @@ import { UserFilters } from '@/components/users/UserFilters'
 import { UserTable } from '@/components/users/UserTable'
 import { UserGrid } from '@/components/users/UserGrid'
 import { UserModals } from '@/components/users/UserModals'
-import { getSupabaseClient } from '@/lib/supabase'
 import { AdminUser, UserFilters as UserFiltersType } from '@/types/users'
 import { calculateUserStats, filterAndSortUsers, paginateUsers, exportUsersToCSV } from '@/lib/utils/user'
 import { 
@@ -245,62 +244,6 @@ export default function AdminUsersPage() {
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                 {isFetching ? 'Refreshing...' : 'Refresh'}
-              </Button>
-              <Button 
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/test-profile')
-                    const data = await res.json()
-                    console.log('🔍 Profile test result:', data)
-                    if (data.exists) {
-                      console.log('🔍 Profile details:', data.profile)
-                      toast(`Profile exists - Status: ${data.profile.verification_status}`)
-                    } else {
-                      toast('Profile does not exist')
-                    }
-                  } catch (e) {
-                    console.error('Profile test failed:', e)
-                    toast.error('Profile test failed')
-                  }
-                }}
-                variant="outline"
-                size="sm"
-              >
-                Check Profile
-              </Button>
-              <Button 
-                onClick={async () => {
-                  try {
-                    // Get session for auth headers
-                    const supabase = await getSupabaseClient()
-                    const { data: { session } } = await supabase.auth.getSession()
-                    
-                    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-                    if (session?.access_token) {
-                      headers['Authorization'] = `Bearer ${session.access_token}`
-                    }
-                    
-                    const res = await fetch('/api/admin/user-update', {
-                      method: 'POST',
-                      headers,
-                      body: JSON.stringify({ 
-                        user_id: '6867a364-e239-4de7-9e07-fc6b5682d92c',
-                        status: 'approved'
-                      })
-                    })
-                    const data = await res.json()
-                    console.log('🔍 Manual update result:', data)
-                    toast('Manual update completed')
-                    await refetch(true)
-                  } catch (e) {
-                    console.error('Manual update failed:', e)
-                    toast.error('Manual update failed')
-                  }
-                }}
-                variant="outline"
-                size="sm"
-              >
-                Update Status
               </Button>
               <Button 
                 onClick={() => setShowAddUserModal(true)}
