@@ -1081,9 +1081,12 @@ function OnboardingForm() {
                 </div>
                 
                 {/* Test button - always visible */}
-                <Button
+                <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    alert('TEST BUTTON CLICKED!')
                     console.log('🔍 Test button clicked!')
                     console.log('🔍 Current step:', step)
                     console.log('🔍 Step < 3?', step < 3)
@@ -1095,12 +1098,15 @@ function OnboardingForm() {
                   className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold"
                 >
                   TEST NEXT
-                </Button>
+                </button>
                 
                 {step < 3 ? (
-                  <Button
+                  <button
                     type="button"
                     onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      alert('NEXT BUTTON CLICKED!')
                       console.log('🔍 Next button clicked - event:', e)
                       console.log('🔍 Current state:', { step, userRole, role, formData: { bio: formData.bio.length, location: formData.location.length } })
                       handleNext()
@@ -1109,7 +1115,7 @@ function OnboardingForm() {
                   >
                     Next
                     <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  </button>
                 ) : (
               <Button 
                     type="button"
