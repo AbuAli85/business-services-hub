@@ -8,11 +8,17 @@ export async function POST(request: NextRequest) {
     
     // Get the session from the request headers
     const authHeader = request.headers.get('authorization')
+    console.log('🔍 Auth header:', authHeader ? 'Present' : 'Missing')
+    
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '')
+      console.log('🔍 Token length:', token.length)
       const { data: { user }, error: authError } = await supabase.auth.getUser(token)
       
+      console.log('🔍 Token auth result:', { user: user?.id, error: authError?.message })
+      
       if (authError || !user) {
+        console.log('❌ Token authentication failed:', authError)
         authLogger.logLoginSuccess({
           success: false,
           method: 'callback',
@@ -92,9 +98,13 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Fallback: try to get user from session
+      console.log('🔍 No auth header, trying session-based auth')
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
+      console.log('🔍 Session auth result:', { user: user?.id, error: authError?.message })
+      
       if (authError || !user) {
+        console.log('❌ Session authentication failed:', authError)
         authLogger.logLoginSuccess({
           success: false,
           method: 'callback',

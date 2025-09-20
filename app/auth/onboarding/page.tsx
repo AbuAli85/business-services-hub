@@ -200,12 +200,21 @@ function OnboardingForm() {
 
       // Get the access token for API authentication
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('🔍 Session data:', { 
+        hasSession: !!session, 
+        hasToken: !!session?.access_token,
+        tokenLength: session?.access_token?.length 
+      })
+      
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       }
       
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
+        console.log('🔍 Added auth header to request')
+      } else {
+        console.log('❌ No access token available')
       }
 
       // Call the profile completion API
