@@ -144,6 +144,12 @@ function OnboardingForm() {
           setUserRole('client')
         }
         
+        // Ensure userRole is set even if profile doesn't exist
+        if (!userRole && !role) {
+          console.log('🔧 Setting default role to client')
+          setUserRole('client')
+        }
+        
         // Check if user already has a completed profile using the proper completion status
         // Admin users bypass profile completion checks
         if (profile?.role === 'admin') {
@@ -364,12 +370,29 @@ function OnboardingForm() {
 
   const validateStep = (stepNumber: number) => {
     const newErrors: Record<string, string> = {}
+    const currentRole = getCurrentRole()
+    
+    console.log('🔍 Validation Debug:', {
+      stepNumber,
+      userRole,
+      role,
+      currentRole,
+      formData: {
+        bio: formData.bio.trim().length,
+        location: formData.location.trim().length,
+        companyName: formData.companyName.trim().length,
+        services: formData.services.trim().length,
+        experience: formData.experience.trim().length,
+        preferredCategories: formData.preferredCategories.trim().length,
+        budgetRange: formData.budgetRange.trim().length
+      }
+    })
     
     if (stepNumber === 1) {
       if (!formData.bio.trim()) newErrors.bio = 'Bio is required'
       if (!formData.location.trim()) newErrors.location = 'Location is required'
     } else if (stepNumber === 2) {
-      if ((userRole || role) === 'provider') {
+      if (currentRole === 'provider') {
         if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required'
         if (!formData.services.trim()) newErrors.services = 'Services offered is required'
         if (!formData.experience.trim()) newErrors.experience = 'Experience level is required'
@@ -379,13 +402,31 @@ function OnboardingForm() {
       }
     }
     
+    console.log('🔍 Validation Result:', {
+      errors: newErrors,
+      isValid: Object.keys(newErrors).length === 0
+    })
+    
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleNext = () => {
+    console.log('🔍 Next button clicked:', {
+      step,
+      userRole,
+      role,
+      formData: {
+        bio: formData.bio.trim().length,
+        location: formData.location.trim().length
+      }
+    })
+    
     if (validateStep(step)) {
+      console.log('✅ Validation passed, moving to next step')
       setStep(prev => prev + 1)
+    } else {
+      console.log('❌ Validation failed, staying on current step')
     }
   }
 
@@ -480,15 +521,19 @@ function OnboardingForm() {
     }
   }
 
+  const getCurrentRole = () => {
+    return userRole || role || 'client'
+  }
+
   const getStepTitle = () => {
     if (step === 1) return 'Tell us about yourself'
-    if (step === 2) return (userRole || role) === 'provider' ? 'Your business details' : 'Your preferences'
+    if (step === 2) return getCurrentRole() === 'provider' ? 'Your business details' : 'Your preferences'
     return 'Complete your profile'
   }
 
   const getStepDescription = () => {
     if (step === 1) return 'Help others get to know you better'
-    if (step === 2) return (userRole || role) === 'provider' ? 'Share details about your business and services' : 'Tell us what you\'re looking for'
+    if (step === 2) return getCurrentRole() === 'provider' ? 'Share details about your business and services' : 'Tell us what you\'re looking for'
     return 'Add the final touches to your profile'
   }
 
@@ -547,12 +592,12 @@ function OnboardingForm() {
                   <span>Saved {lastSaved.toLocaleTimeString()}</span>
                 </div>
               )}
-              <Badge 
-                variant="outline" 
-                className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 font-semibold"
-              >
-                {(userRole || role) === 'provider' ? 'Service Provider' : 'Client'}
-              </Badge>
+            <Badge 
+              variant="outline" 
+              className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 font-semibold"
+            >
+              {getCurrentRole() === 'provider' ? 'Service Provider' : 'Client'}
+            </Badge>
             </div>
           </div>
         </div>
@@ -597,7 +642,7 @@ function OnboardingForm() {
                 Basic Information
               </div>
               <div className={`text-center ${step >= 2 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
-                {(userRole || role) === 'provider' ? 'Business Details' : 'Preferences'}
+                {getCurrentRole() === 'provider' ? 'Business Details' : 'Preferences'}
               </div>
               <div className={`text-center ${step >= 3 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
                 Complete Profile
