@@ -109,12 +109,25 @@ export default function AdminUsersPage() {
                           newStatus === 'inactive' ? 'rejected' : 
                           newStatus === 'deleted' ? 'deleted' : 'pending'
       
+      console.log('🔄 Status change:', {
+        userId: user.id,
+        userName: user.full_name,
+        currentStatus: user.status,
+        newStatus,
+        backendStatus
+      })
+      
       await updateUser(user.id, { status: backendStatus as any })
+      
+      // Force refresh the data to ensure UI updates
+      await refetch(true)
+      
       toast.success(`${user.full_name}'s status updated to ${newStatus}`)
     } catch (err: any) {
+      console.error('❌ Status change error:', err)
       toast.error(err.message)
     }
-  }, [updateUser])
+  }, [updateUser, refetch])
 
   const handleRoleChange = useCallback(async (user: AdminUser, newRole: string) => {
     try {

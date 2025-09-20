@@ -165,7 +165,27 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
       const json = await res.json()
       logger.debug('API Response:', { userCount: json.users?.length || 0 })
       
-      const apiUsers: AdminUser[] = (json.users || []).map((u: BackendUser) => mapBackendUserToAdminUser(u))
+      // Debug specific user status mapping
+      const digitalMorphUser = json.users?.find((u: any) => u.full_name === 'Digital Morph')
+      if (digitalMorphUser) {
+        logger.debug('🔍 Digital Morph user data:', {
+          raw: digitalMorphUser,
+          status: digitalMorphUser.status,
+          verification_status: digitalMorphUser.verification_status
+        })
+      }
+      
+      const apiUsers: AdminUser[] = (json.users || []).map((u: BackendUser) => {
+        const mapped = mapBackendUserToAdminUser(u)
+        if (u.full_name === 'Digital Morph') {
+          logger.debug('🔍 Digital Morph mapped:', {
+            original: u,
+            mapped: mapped
+          })
+        }
+        return mapped
+      })
+      
       setUsers(apiUsers)
       setError(null)
       setRetryCount(0) // Reset retry count on successful fetch
@@ -194,12 +214,26 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
       
+      const userToUpdate = users.find(u => u.id === userId)
+      logger.debug('🔄 Updating user:', {
+        userId,
+        userName: userToUpdate?.full_name,
+        currentStatus: userToUpdate?.status,
+        updates
+      })
+      
       const res = await fetch('/api/admin/user-update', { 
         method: 'POST', 
         headers, 
         body: JSON.stringify({ user_id: userId, ...updates }) 
       })
       const data = await res.json()
+      
+      logger.debug('🔄 Update response:', {
+        status: res.status,
+        data
+      })
+      
       if (!res.ok) throw new Error(data?.error || 'Update failed')
       
       // Log the action
@@ -212,12 +246,13 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
         actor: session?.user?.id || 'unknown'
       })
       
-      await refetch(false)
+      // Force refresh to get updated data
+      await fetchUsers(true)
     } catch (err: any) {
       logger.error('Error updating user:', err)
       throw err
     }
-  }, [users, logUserAction])
+  }, [users, logUserAction, fetchUsers])
 
   const deleteUser = useCallback(async (userId: string) => {
     try {
