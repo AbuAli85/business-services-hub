@@ -182,26 +182,91 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Update the profile
-    const { error: updateError } = await admin
+    // First, check if profile exists
+    const { data: existingProfile, error: checkError } = await admin
       .from('profiles')
-      .update(profileData)
+      .select('id, profile_completed')
       .eq('id', userId)
+      .single()
 
-    if (updateError) {
-      console.error('❌ Error updating profile:', {
-        error: updateError,
-        userId,
-        profileDataKeys: Object.keys(profileData),
-        role
-      })
+    console.log('🔍 Profile check result:', {
+      exists: !!existingProfile,
+      checkError: checkError?.message,
+      userId
+    })
+
+    if (checkError?.code === 'PGRST116') {
+      // Profile doesn't exist, create it
+      console.log('🔍 Profile does not exist, creating new profile...')
+      
+      if (!userId) {
+        console.error('❌ No user ID available for profile creation')
+        return NextResponse.json({ 
+          error: 'No user ID available', 
+          details: 'User ID is required to create profile' 
+        }, { status: 400 })
+      }
+      
+      const { data: authUser, error: authError } = await admin.auth.admin.getUserById(userId!)
+      if (authError) {
+        console.error('❌ Could not get auth user:', authError)
+        return NextResponse.json({ 
+          error: 'Could not retrieve user information', 
+          details: authError?.message || 'Unknown auth error' 
+        }, { status: 500 })
+      }
+
+      // Create new profile
+      const { error: createError } = await admin
+        .from('profiles')
+        .insert({
+          id: userId,
+          full_name: authUser.user?.user_metadata?.full_name || authUser.user?.email?.split('@')[0] || 'User',
+          email: authUser.user?.email || null,
+          role: role || 'provider',
+          ...profileData,
+          created_at: new Date().toISOString()
+        })
+
+      if (createError) {
+        console.error('❌ Error creating profile:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create profile', 
+          details: createError?.message || 'Unknown create error' 
+        }, { status: 500 })
+      }
+
+      console.log('✅ Profile created successfully for user:', userId)
+    } else if (checkError) {
+      console.error('❌ Error checking profile:', checkError)
       return NextResponse.json({ 
-        error: 'Failed to update profile', 
-        details: updateError?.message || 'Unknown database error'
+        error: 'Failed to check profile', 
+        details: checkError?.message || 'Unknown check error' 
       }, { status: 500 })
-    }
+    } else {
+      // Profile exists, update it
+      console.log('🔍 Profile exists, updating...')
+      
+      const { error: updateError } = await admin
+        .from('profiles')
+        .update(profileData)
+        .eq('id', userId)
 
-    console.log('✅ Profile updated successfully for user:', userId)
+      if (updateError) {
+        console.error('❌ Error updating profile:', {
+          error: updateError,
+          userId,
+          profileDataKeys: Object.keys(profileData),
+          role
+        })
+        return NextResponse.json({ 
+          error: 'Failed to update profile', 
+          details: updateError?.message || 'Unknown database error'
+        }, { status: 500 })
+      }
+
+      console.log('✅ Profile updated successfully for user:', userId)
+    }
 
     authLogger.logLoginSuccess({
       success: true,
