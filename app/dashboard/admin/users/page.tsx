@@ -236,7 +236,7 @@ export default function AdminUsersPage() {
               <p className="text-gray-600 mt-1">Manage platform users, roles, and permissions</p>
             </div>
             <div className="flex items-center space-x-3">
-              <Button
+              <Button 
                 onClick={() => refetch(true)}
                 disabled={isFetching}
                 variant="outline"
@@ -244,6 +244,48 @@ export default function AdminUsersPage() {
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                 {isFetching ? 'Refreshing...' : 'Refresh'}
+              </Button>
+              <Button 
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/test-profile')
+                    const data = await res.json()
+                    console.log('🔍 Profile test result:', data)
+                    toast(data.exists ? 'Profile exists' : 'Profile does not exist')
+                  } catch (e) {
+                    console.error('Profile test failed:', e)
+                    toast.error('Profile test failed')
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Test Profile
+              </Button>
+              <Button 
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/admin/user-update', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        user_id: '6867a364-e239-4de7-9e07-fc6b5682d92c',
+                        status: 'approved'
+                      })
+                    })
+                    const data = await res.json()
+                    console.log('🔍 Manual update result:', data)
+                    toast('Manual update completed')
+                    await refetch(true)
+                  } catch (e) {
+                    console.error('Manual update failed:', e)
+                    toast.error('Manual update failed')
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Create Profile
               </Button>
               <Button 
                 onClick={() => setShowAddUserModal(true)}
