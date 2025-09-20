@@ -1,37 +1,148 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, ArrowLeft, ArrowRight, Building2 } from 'lucide-react'
+import { Loader2, ArrowLeft, ArrowRight, Building2, CheckCircle, AlertCircle, Info, Sparkles, Target, Users, Briefcase, Star, Zap, Shield, Award, TrendingUp, Globe, Mail, Phone, MapPin, ExternalLink, Eye, EyeOff, Save, Clock, Lightbulb, ChevronDown, ChevronUp, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Separator } from '@/components/ui/separator'
+import { toast } from 'sonner'
 
 function OnboardingForm() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const role = searchParams.get('role') as 'client' | 'provider'
+  
   const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [userRole, setUserRole] = useState<'client' | 'provider' | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [showTips, setShowTips] = useState(true)
+  const [fieldFocus, setFieldFocus] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  
   const [formData, setFormData] = useState({
+    // Basic Info
     bio: '',
-    location: ''
+    location: '',
+    website: '',
+    linkedin: '',
+    phone: '',
+    
+    // Provider fields
+    companyName: '',
+    services: '',
+    experience: '',
+    certifications: '',
+    languages: '',
+    availability: '',
+    pricing: '',
+    
+    // Client fields
+    preferredCategories: '',
+    budgetRange: '',
+    projectTimeline: '',
+    communicationPreference: 'email',
+    
+    // Advanced fields
+    timezone: '',
+    workingHours: '',
+    specializations: '',
+    portfolio: '',
+    testimonials: ''
   })
+  
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  console.log('🔍 Onboarding component rendering, step:', step)
+  console.log('🔍 Enhanced Onboarding component rendering, step:', step)
   
-  // Validation function
+  // Get current role with fallback
+  const getCurrentRole = () => {
+    return userRole || role || 'client'
+  }
+  
+  // Initialize component
+  useEffect(() => {
+    const initializeComponent = async () => {
+      try {
+        if (role) {
+          setUserRole(role)
+        } else {
+          setUserRole('client')
+        }
+        setIsInitializing(false)
+      } catch (error) {
+        console.error('Initialization error:', error)
+        setIsInitializing(false)
+      }
+    }
+    
+    initializeComponent()
+  }, [role])
+  
+  // Auto-save functionality
+  const autoSave = useCallback(async () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      setIsAutoSaving(true)
+      try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        setLastSaved(new Date())
+        toast.success('Progress saved automatically', { duration: 2000 })
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      } finally {
+        setIsAutoSaving(false)
+      }
+    }, 2000)
+  }, [])
+  
+  // Enhanced validation function
   const validateStep = (stepNumber: number) => {
     const newErrors: Record<string, string> = {}
+    const currentRole = getCurrentRole()
     
     if (stepNumber === 1) {
       if (!formData.bio.trim()) {
         newErrors.bio = 'Bio is required'
       } else if (formData.bio.trim().length < 50) {
         newErrors.bio = 'Bio should be at least 50 characters'
+      } else if (formData.bio.trim().length > 500) {
+        newErrors.bio = 'Bio should be less than 500 characters'
       }
       
       if (!formData.location.trim()) {
         newErrors.location = 'Location is required'
+      }
+      
+      if (formData.website && !isValidUrl(formData.website)) {
+        newErrors.website = 'Please enter a valid website URL'
+      }
+      
+      if (formData.linkedin && !isValidLinkedIn(formData.linkedin)) {
+        newErrors.linkedin = 'Please enter a valid LinkedIn profile URL'
+      }
+    } else if (stepNumber === 2) {
+      if (currentRole === 'provider') {
+        if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required'
+        if (!formData.services.trim()) newErrors.services = 'Services offered is required'
+        if (!formData.experience.trim()) newErrors.experience = 'Experience level is required'
+      } else {
+        if (!formData.preferredCategories.trim()) newErrors.preferredCategories = 'Preferred categories is required'
+        if (!formData.budgetRange.trim()) newErrors.budgetRange = 'Budget range is required'
       }
     }
     
@@ -39,11 +150,34 @@ function OnboardingForm() {
     return Object.keys(newErrors).length === 0
   }
   
-  // Navigation functions
+  // Helper functions
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+  
+  const isValidLinkedIn = (url: string) => {
+    return url.includes('linkedin.com/in/') || url.includes('linkedin.com/company/')
+  }
+  
+  const getCompletionPercentage = () => {
+    const totalFields = getCurrentRole() === 'provider' ? 12 : 10
+    const filledFields = Object.values(formData).filter(value => value && value.trim().length > 0).length
+    return Math.round((filledFields / totalFields) * 100)
+  }
+  
+  // Enhanced navigation functions
   const handleNext = () => {
     const isValid = validateStep(step)
     if (isValid) {
       setStep(prev => prev + 1)
+      autoSave()
+    } else {
+      toast.error('Please fix the errors before continuing')
     }
   }
   
@@ -51,42 +185,183 @@ function OnboardingForm() {
     setStep(prev => prev - 1)
   }
   
+  const handleSubmit = async () => {
+    setLoading(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      toast.success('Profile completed successfully!')
+      router.push('/dashboard')
+    } catch (error) {
+      toast.error('Failed to complete profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  // Form field handlers with auto-save
+  const handleFieldChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    autoSave()
+  }
+  
+  const handleFieldFocus = (field: string) => {
+    setFieldFocus(field)
+  }
+  
+  const handleFieldBlur = () => {
+    setFieldFocus(null)
+  }
+  
+  // Get step title and description
+  const getStepTitle = () => {
+    if (step === 1) return 'Tell us about yourself'
+    if (step === 2) return getCurrentRole() === 'provider' ? 'Business Details' : 'Preferences'
+    return 'Complete Profile'
+  }
+  
+  const getStepDescription = () => {
+    if (step === 1) return 'Help others get to know you better'
+    if (step === 2) return getCurrentRole() === 'provider' ? 'Tell us about your business' : 'Help us match you with the right providers'
+    return 'Review and complete your profile'
+  }
+  
+  // Pro tips for each field
+  const getFieldTip = (field: string) => {
+    const tips: Record<string, string> = {
+      bio: 'Share your professional background, skills, and what makes you unique. Be specific about your expertise.',
+      location: 'Include city and country. This helps with local service matching.',
+      website: 'Include your professional website or portfolio to showcase your work.',
+      linkedin: 'Add your LinkedIn profile to build professional credibility.',
+      companyName: 'Use your official business name as it appears on legal documents.',
+      services: 'List all services you offer. Be specific and include keywords clients might search for.',
+      experience: 'Be honest about your experience level. Clients appreciate transparency.',
+      preferredCategories: 'Select categories that match your business needs and interests.',
+      budgetRange: 'This helps us match you with providers in your price range.'
+    }
+    return tips[field] || ''
+  }
+  
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto">
+            <Building2 className="h-8 w-8 text-white animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold text-gray-800">Setting up your profile...</h2>
+            <p className="text-gray-600">This will only take a moment</p>
+          </div>
+          <div className="flex items-center justify-center space-x-2">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+            <span className="text-sm text-gray-600">Loading</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-40">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-indigo-50/30"></div>
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.1) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(99, 102, 241, 0.1) 0%, transparent 50%)`
+        }}></div>
+      </div>
+      
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative bg-white/95 backdrop-blur-md border-b border-white/30 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-white" />
+                <div className="w-14 h-14 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Building2 className="h-7 w-7 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Business Services Hub</h1>
-                  <p className="text-sm text-gray-600">Complete your profile to get started</p>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
+                    Business Services Hub
+                  </h1>
+                  <p className="text-sm text-gray-600 flex items-center space-x-2">
+                    <Sparkles className="h-4 w-4 text-blue-500" />
+                    <span>Complete your profile to unlock your potential</span>
+                  </p>
                 </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <Badge 
+                  variant="outline" 
+                  className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 font-semibold shadow-sm"
+                >
+                  {getCurrentRole() === 'provider' ? 'Service Provider' : 'Client'}
+                </Badge>
+                
+                {lastSaved && (
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <Save className="h-4 w-4" />
+                    <span>Saved {lastSaved.toLocaleTimeString()}</span>
+                  </div>
+                )}
+                
+                {isAutoSaving && (
+                  <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Saving...</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="bg-white/90 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-lg font-semibold text-gray-800">Step {step} of 3</span>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-600">{Math.round((step / 3) * 100)}% Complete</span>
-                <div className="w-24 bg-gray-200 rounded-full h-2">
+      {/* Enhanced Progress Section */}
+      <div className="relative bg-white/90 backdrop-blur-sm border-b border-white/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-gray-800">Step {step} of 3</h2>
+                <p className="text-gray-600">{getStepTitle()}</p>
+              </div>
+              
+              <div className="flex items-center space-x-6">
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">{getCompletionPercentage()}%</div>
+                  <div className="text-sm text-gray-600">Profile Complete</div>
+                </div>
+                
+                <div className="w-32 bg-gray-200 rounded-full h-3 shadow-inner">
                   <div 
-                    className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${(step / 3) * 100}%` }}
+                    className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 h-3 rounded-full transition-all duration-700 ease-out shadow-lg"
+                    style={{ width: `${getCompletionPercentage()}%` }}
                   />
                 </div>
               </div>
+            </div>
+            
+            {/* Step Indicators */}
+            <div className="flex justify-between">
+              {[1, 2, 3].map((stepNum) => (
+                <div key={stepNum} className="flex flex-col items-center space-y-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                    step >= stepNum 
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+                      : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    {step > stepNum ? <CheckCircle className="h-5 w-5" /> : stepNum}
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    step >= stepNum ? 'text-blue-600' : 'text-gray-400'
+                  }`}>
+                    {stepNum === 1 ? 'Basic Info' : stepNum === 2 ? (getCurrentRole() === 'provider' ? 'Business' : 'Preferences') : 'Complete'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -94,71 +369,237 @@ function OnboardingForm() {
 
       {/* Main Content */}
       <div className="py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Main Form */}
-            <div className="lg:col-span-2">
-              <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-                <CardHeader className="pb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
-                  <CardTitle className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                    {step === 1 ? 'Tell us about yourself' : step === 2 ? 'Business Details' : 'Complete Profile'}
-                  </CardTitle>
-                  <CardDescription className="text-gray-600 text-lg mt-2">
-                    {step === 1 ? 'Help others get to know you better' : step === 2 ? 'Tell us about your business' : 'Review and complete your profile'}
-                  </CardDescription>
+            <div className="lg:col-span-3">
+              <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm overflow-hidden">
+                <CardHeader className="pb-8 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-t-lg border-b border-white/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
+                        {getStepTitle()}
+                      </CardTitle>
+                      <CardDescription className="text-gray-600 text-lg mt-2 flex items-center space-x-2">
+                        <Info className="h-4 w-4" />
+                        <span>{getStepDescription()}</span>
+                      </CardDescription>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="px-3 py-1 bg-blue-50 text-blue-700 border-blue-200">
+                        {getCompletionPercentage()}% Complete
+                      </Badge>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                
+                <CardContent className="p-8 space-y-8">
                   {step === 1 && (
-                    <>
-                      {/* Bio */}
-                      <div className="space-y-3">
-                        <Label className="text-sm font-semibold text-gray-700">Bio *</Label>
-                        <Textarea
-                          value={formData.bio}
-                          onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                          placeholder="Tell us about yourself, your experience, and what makes you unique..."
-                          className="min-h-[120px] resize-none"
-                        />
-                        <div className="flex justify-between text-sm">
-                          <span className={errors.bio ? 'text-red-500' : 'text-gray-500'}>
-                            {errors.bio || `${formData.bio.length}/500 characters`}
-                          </span>
+                    <div className="space-y-8">
+                      {/* Bio Section */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <User className="h-5 w-5 text-blue-600" />
+                            <span>Professional Bio *</span>
+                          </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Target className="h-4 w-4" />
+                            <span>Help others understand your expertise</span>
+                          </div>
+                        </div>
+                        
+                        <div className="relative">
+                          <Textarea
+                            value={formData.bio}
+                            onChange={(e) => handleFieldChange('bio', e.target.value)}
+                            onFocus={() => handleFieldFocus('bio')}
+                            onBlur={handleFieldBlur}
+                            placeholder="Share your professional background, key skills, achievements, and what makes you unique. Be specific about your expertise and experience..."
+                            className={`min-h-[140px] resize-none transition-all duration-200 ${
+                              fieldFocus === 'bio' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                            } ${errors.bio ? 'border-red-300' : 'border-gray-200'}`}
+                          />
+                          
+                          {fieldFocus === 'bio' && (
+                            <div className="absolute -bottom-8 left-0 right-0 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                              <div className="flex items-start space-x-2">
+                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>{getFieldTip('bio')}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex justify-between items-center text-sm">
+                          <div className="flex items-center space-x-4">
+                            <span className={errors.bio ? 'text-red-500' : 'text-gray-500'}>
+                              {errors.bio || `${formData.bio.length}/500 characters`}
+                            </span>
+                            {formData.bio.length >= 50 && !errors.bio && (
+                              <span className="text-green-600 flex items-center space-x-1">
+                                <CheckCircle className="h-4 w-4" />
+                                <span>Good length</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
-                      {/* Location */}
-                      <div className="space-y-3">
-                        <Label className="text-sm font-semibold text-gray-700">Location *</Label>
+                      <Separator className="my-8" />
+                      
+                      {/* Location Section */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <MapPin className="h-5 w-5 text-blue-600" />
+                            <span>Location *</span>
+                          </Label>
+                        </div>
+                        
                         <Input
                           value={formData.location}
-                          onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                          placeholder="City, Country"
+                          onChange={(e) => handleFieldChange('location', e.target.value)}
+                          onFocus={() => handleFieldFocus('location')}
+                          onBlur={handleFieldBlur}
+                          placeholder="City, Country (e.g., New York, USA)"
+                          className={`transition-all duration-200 ${
+                            fieldFocus === 'location' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                          } ${errors.location ? 'border-red-300' : 'border-gray-200'}`}
                         />
-                        {errors.location && <span className="text-sm text-red-500">{errors.location}</span>}
+                        
+                        {fieldFocus === 'location' && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>{getFieldTip('location')}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {errors.location && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.location}</span>
+                        </span>}
                       </div>
-                    </>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Contact Information */}
+                      <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                          <Globe className="h-5 w-5 text-blue-600" />
+                          <span>Contact Information</span>
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Website */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                              <ExternalLink className="h-4 w-4" />
+                              <span>Website</span>
+                            </Label>
+                            <Input
+                              value={formData.website}
+                              onChange={(e) => handleFieldChange('website', e.target.value)}
+                              onFocus={() => handleFieldFocus('website')}
+                              onBlur={handleFieldBlur}
+                              placeholder="https://yourwebsite.com"
+                              className={`transition-all duration-200 ${
+                                fieldFocus === 'website' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                              } ${errors.website ? 'border-red-300' : 'border-gray-200'}`}
+                            />
+                            {fieldFocus === 'website' && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                                <div className="flex items-start space-x-2">
+                                  <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                  <span>{getFieldTip('website')}</span>
+                                </div>
+                              </div>
+                            )}
+                            {errors.website && <span className="text-sm text-red-500 flex items-center space-x-1">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>{errors.website}</span>
+                            </span>}
+                          </div>
+                          
+                          {/* LinkedIn */}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+                              <Users className="h-4 w-4" />
+                              <span>LinkedIn Profile</span>
+                            </Label>
+                            <Input
+                              value={formData.linkedin}
+                              onChange={(e) => handleFieldChange('linkedin', e.target.value)}
+                              onFocus={() => handleFieldFocus('linkedin')}
+                              onBlur={handleFieldBlur}
+                              placeholder="https://linkedin.com/in/yourprofile"
+                              className={`transition-all duration-200 ${
+                                fieldFocus === 'linkedin' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                              } ${errors.linkedin ? 'border-red-300' : 'border-gray-200'}`}
+                            />
+                            {fieldFocus === 'linkedin' && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                                <div className="flex items-start space-x-2">
+                                  <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                  <span>{getFieldTip('linkedin')}</span>
+                                </div>
+                              </div>
+                            )}
+                            {errors.linkedin && <span className="text-sm text-red-500 flex items-center space-x-1">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>{errors.linkedin}</span>
+                            </span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
-                  {step === 2 && (
-                    <div className="text-center space-y-6">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                        <Building2 className="h-8 w-8 text-green-600" />
+                  {step === 2 && getCurrentRole() === 'provider' && (
+                    <div className="space-y-8">
+                      <div className="text-center space-y-6">
+                        <div className="w-20 h-20 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                          <Briefcase className="h-10 w-10 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-semibold text-gray-900 mb-2">Business Details</h3>
+                          <p className="text-gray-600">Tell us about your business and services</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">Step 2 Content</h3>
-                        <p className="text-gray-600">This is step 2 content.</p>
+                    </div>
+                  )}
+
+                  {step === 2 && getCurrentRole() === 'client' && (
+                    <div className="space-y-8">
+                      <div className="text-center space-y-6">
+                        <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto">
+                          <Target className="h-10 w-10 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-semibold text-gray-900 mb-2">Your Preferences</h3>
+                          <p className="text-gray-600">Help us match you with the right providers</p>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {step === 3 && (
-                    <div className="text-center space-y-6">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                        <Building2 className="h-8 w-8 text-green-600" />
+                    <div className="text-center space-y-8">
+                      <div className="w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                        <Award className="h-12 w-12 text-green-600" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">You're all set!</h3>
-                        <p className="text-gray-600">Your profile is complete.</p>
+                        <h3 className="text-3xl font-bold text-gray-900 mb-4">You're all set!</h3>
+                        <p className="text-xl text-gray-600 mb-6">
+                          Your profile is complete and ready to help you {getCurrentRole() === 'provider' ? 'attract clients' : 'find the perfect service providers'}.
+                        </p>
+                        <div className="flex items-center justify-center space-x-2 text-green-600">
+                          <CheckCircle className="h-5 w-5" />
+                          <span className="font-semibold">Profile {getCompletionPercentage()}% Complete</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -166,65 +607,172 @@ function OnboardingForm() {
               </Card>
             </div>
 
-            {/* Sidebar */}
+            {/* Enhanced Sidebar */}
             <div className="space-y-6">
+              {/* Profile Progress Card */}
               <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-800">Profile Progress</CardTitle>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                    <TrendingUp className="h-5 w-5 text-blue-600" />
+                    <span>Profile Progress</span>
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className={`flex items-center space-x-3 ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-                      1
-                    </div>
-                    <span className="text-sm">Basic Information</span>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    {[
+                      { num: 1, title: 'Basic Info', desc: 'Personal details' },
+                      { num: 2, title: getCurrentRole() === 'provider' ? 'Business' : 'Preferences', desc: getCurrentRole() === 'provider' ? 'Company info' : 'Your needs' },
+                      { num: 3, title: 'Complete', desc: 'Final review' }
+                    ].map((item) => (
+                      <div key={item.num} className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${
+                        step >= item.num ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
+                      }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
+                          step >= item.num 
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+                            : 'bg-gray-200 text-gray-400'
+                        }`}>
+                          {step > item.num ? <CheckCircle className="h-4 w-4" /> : item.num}
+                        </div>
+                        <div className="flex-1">
+                          <div className={`text-sm font-semibold ${step >= item.num ? 'text-blue-600' : 'text-gray-400'}`}>
+                            {item.title}
+                          </div>
+                          <div className="text-xs text-gray-500">{item.desc}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className={`flex items-center space-x-3 ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-                      2
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Completion</span>
+                      <span className="font-semibold text-blue-600">{getCompletionPercentage()}%</span>
                     </div>
-                    <span className="text-sm">Business Details</span>
+                    <Progress value={getCompletionPercentage()} className="h-2" />
                   </div>
-                  <div className={`flex items-center space-x-3 ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
-                      3
+                </CardContent>
+              </Card>
+              
+              {/* Pro Tips Card */}
+              {showTips && (
+                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold text-blue-800 flex items-center space-x-2">
+                      <Lightbulb className="h-5 w-5" />
+                      <span>Pro Tips</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-sm text-blue-700 space-y-2">
+                      <div className="flex items-start space-x-2">
+                        <Star className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                        <span>Be specific about your skills and experience</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <Shield className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                        <span>Include relevant keywords for better discoverability</span>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <Zap className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                        <span>Complete all fields to increase your profile strength</span>
+                      </div>
                     </div>
-                    <span className="text-sm">Complete Profile</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setShowTips(false)}
+                      className="w-full text-blue-600 hover:text-blue-700"
+                    >
+                      Hide Tips
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Auto-save Status */}
+              <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Save className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Auto-save</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {isAutoSaving ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                          <span className="text-xs text-blue-600">Saving...</span>
+                        </>
+                      ) : lastSaved ? (
+                        <>
+                          <CheckCircle className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-green-600">Saved</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400">Ready</span>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
           </div>
 
-          {/* Navigation */}
-          <div className="flex justify-between mt-6">
+          {/* Enhanced Navigation */}
+          <div className="flex justify-between items-center mt-8 p-6 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/20">
             <Button
               type="button"
               variant="outline"
               onClick={handleBack}
               disabled={step === 1}
-              className="flex items-center"
+              className="flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 disabled:opacity-50"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
             </Button>
+            
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                Step {step} of 3
+              </div>
+              <div className="w-24 bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${(step / 3) * 100}%` }}
+                />
+              </div>
+            </div>
             
             {step < 3 ? (
               <Button
                 type="button"
                 onClick={handleNext}
-                className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-semibold shadow-lg"
+                className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 hover:shadow-xl"
               >
-                Next
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <span>Next</span>
+                <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
               <Button 
                 type="button"
-                onClick={() => alert('Profile completed!')}
-                className="flex items-center bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2 rounded-lg font-semibold shadow-lg"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-50"
               >
-                Complete Profile
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Completing...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Complete Profile</span>
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -236,27 +784,24 @@ function OnboardingForm() {
 
 export default function OnboardingPage() {
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-2xl font-bold mb-4">Test Page</h1>
-      <button 
-        onClick={() => {
-          alert('SIMPLE BUTTON WORKS!')
-          console.log('Simple button clicked!')
-        }}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        SIMPLE TEST BUTTON
-      </button>
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <span>Loading...</span>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto">
+            <Building2 className="h-8 w-8 text-white animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold text-gray-800">Loading your profile setup...</h2>
+            <p className="text-gray-600">This will only take a moment</p>
+          </div>
+          <div className="flex items-center justify-center space-x-2">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+            <span className="text-sm text-gray-600">Loading</span>
           </div>
         </div>
-      }>
-        <OnboardingForm />
-      </Suspense>
-    </div>
+      </div>
+    }>
+      <OnboardingForm />
+    </Suspense>
   )
 }
