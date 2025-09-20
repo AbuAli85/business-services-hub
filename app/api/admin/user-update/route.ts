@@ -62,60 +62,54 @@ export async function POST(req: NextRequest) {
         console.error('❌ Auth metadata update failed:', e?.message || e)
       }
 
-      // 2) Best-effort update of profiles table to reflect role/verification_status
-      try {
-        const update: any = {}
-        if (role !== undefined) update.role = role
-        if (status !== undefined) {
+      // 2) Direct update of profiles table - simplified approach
+      if (status !== undefined) {
+        try {
           // Map UI status to verification_status
           const verificationStatus = status === 'approved' ? 'approved' :
                                    status === 'active' ? 'approved' :
                                    status === 'pending' ? 'pending' :
                                    status === 'suspended' ? 'suspended' :
                                    status === 'inactive' ? 'rejected' : 'pending'
-          update.verification_status = verificationStatus
-          console.log('🔄 Backend status update:', {
+          
+          console.log('🔄 Direct profiles update:', {
             userId: user_id,
             status,
-            verificationStatus,
-            update
-          })
-        }
-        if (Object.keys(update).length > 0) {
-          console.log('🔄 Updating profiles table:', {
-            userId: user_id,
-            update
+            verificationStatus
           })
           
-          // First, check if the user exists in profiles
-          const { data: existingProfile, error: checkErr } = await admin
-            .from('profiles')
-            .select('id, verification_status')
-            .eq('id', user_id)
-            .single()
-          
-          if (checkErr) {
-            console.error('❌ Error checking existing profile:', checkErr.message)
-          } else {
-            console.log('🔍 Existing profile:', existingProfile)
-          }
-          
+          // Use a more direct update approach
           const { data: updateResult, error: profErr } = await admin
             .from('profiles')
-            .update(update)
+            .update({ 
+              verification_status: verificationStatus,
+              ...(role !== undefined ? { role } : {})
+            })
             .eq('id', user_id)
-            .select('id, verification_status')
+            .select('id, verification_status, role')
           
           if (profErr) {
-            console.error('❌ Profiles update failed:', profErr.message)
-            // Don't fail the request, just log the warning
+            console.error('❌ Direct profiles update failed:', profErr.message)
+            // Try alternative approach - insert if not exists
+            const { error: insertErr } = await admin
+              .from('profiles')
+              .upsert({ 
+                id: user_id,
+                verification_status: verificationStatus,
+                ...(role !== undefined ? { role } : {})
+              })
+            
+            if (insertErr) {
+              console.error('❌ Profiles upsert also failed:', insertErr.message)
+            } else {
+              console.log('✅ Profiles upsert successful')
+            }
           } else {
-            console.log('✅ Profiles update successful:', updateResult)
+            console.log('✅ Direct profiles update successful:', updateResult)
           }
+        } catch (e: any) {
+          console.error('❌ Profiles update error:', e?.message || e)
         }
-      } catch (e: any) {
-        // Non-fatal; rely on auth metadata
-        console.warn('Profiles update failed:', e?.message || e)
       }
 
       // 3) Maintain user_roles table when role changes
