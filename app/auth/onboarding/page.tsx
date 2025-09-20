@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'react-hot-toast'
 import { 
@@ -30,7 +31,17 @@ import {
   Globe,
   Camera,
   Upload,
-  X
+  X,
+  AlertCircle,
+  CheckCircle2,
+  Lightbulb,
+  Clock,
+  Zap,
+  Award,
+  Heart,
+  Sparkles,
+  ArrowUpRight,
+  Info
 } from 'lucide-react'
 import { syncSessionCookies } from '@/lib/utils/session-sync'
 
@@ -52,8 +63,14 @@ function OnboardingForm() {
   const [userRole, setUserRole] = useState<'client' | 'provider' | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [showTips, setShowTips] = useState(true)
+  const [fieldFocus, setFieldFocus] = useState<string | null>(null)
   const hasProcessedRedirect = useRef(false)
   const userIdRef = useRef<string | null>(null)
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
   const [formData, setFormData] = useState({
     // Provider fields
     companyName: '',
@@ -84,6 +101,8 @@ function OnboardingForm() {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [validationState, setValidationState] = useState<Record<string, 'valid' | 'invalid' | 'pending'>>({})
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -223,12 +242,114 @@ function OnboardingForm() {
     }
   }, [])
 
-  const handleInputChange = (field: string, value: string) => {
+  // Smart validation with real-time feedback
+  const validateField = useCallback((field: string, value: string): { isValid: boolean; message?: string } => {
+    switch (field) {
+      case 'bio':
+        if (!value.trim()) return { isValid: false, message: 'Bio is required' }
+        if (value.trim().length < 50) return { isValid: false, message: 'Bio should be at least 50 characters' }
+        if (value.trim().length > 500) return { isValid: false, message: 'Bio should be less than 500 characters' }
+        return { isValid: true }
+      
+      case 'location':
+        if (!value.trim()) return { isValid: false, message: 'Location is required' }
+        return { isValid: true }
+      
+      case 'website':
+        if (value && !/^https?:\/\/.+\..+/.test(value)) {
+          return { isValid: false, message: 'Please enter a valid website URL' }
+        }
+        return { isValid: true }
+      
+      case 'linkedin':
+        if (value && !/^https?:\/\/(www\.)?linkedin\.com\/in\/.+/.test(value)) {
+          return { isValid: false, message: 'Please enter a valid LinkedIn profile URL' }
+        }
+        return { isValid: true }
+      
+      case 'companyName':
+        if (!value.trim()) return { isValid: false, message: 'Company name is required' }
+        if (value.trim().length < 2) return { isValid: false, message: 'Company name should be at least 2 characters' }
+        return { isValid: true }
+      
+      case 'services':
+        if (!value.trim()) return { isValid: false, message: 'Services offered is required' }
+        if (value.trim().length < 10) return { isValid: false, message: 'Please provide more details about your services' }
+        return { isValid: true }
+      
+      case 'experience':
+        if (!value.trim()) return { isValid: false, message: 'Experience level is required' }
+        return { isValid: true }
+      
+      case 'preferredCategories':
+        if (!value.trim()) return { isValid: false, message: 'Preferred categories is required' }
+        return { isValid: true }
+      
+      case 'budgetRange':
+        if (!value.trim()) return { isValid: false, message: 'Budget range is required' }
+        return { isValid: true }
+      
+      default:
+        return { isValid: true }
+    }
+  }, [])
+
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    setTouched(prev => ({ ...prev, [field]: true }))
+    
+    // Clear existing errors
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
-  }
+    
+    // Real-time validation
+    const validation = validateField(field, value)
+    setValidationState(prev => ({ 
+      ...prev, 
+      [field]: validation.isValid ? 'valid' : 'invalid' 
+    }))
+    
+    if (!validation.isValid) {
+      setErrors(prev => ({ ...prev, [field]: validation.message || '' }))
+    }
+    
+    // Auto-save after 2 seconds of inactivity
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveForm()
+    }, 2000)
+  }, [errors, validateField])
+
+  // Auto-save functionality
+  const autoSaveForm = useCallback(async () => {
+    if (!userIdRef.current) return
+    
+    setIsAutoSaving(true)
+    try {
+      const supabase = await getSupabaseClient()
+      await supabase
+        .from('profiles')
+        .update({
+          bio: formData.bio,
+          location: formData.location,
+          website: formData.website,
+          linkedin: formData.linkedin,
+          company_name: formData.companyName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userIdRef.current)
+      
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+    } finally {
+      setIsAutoSaving(false)
+    }
+  }, [formData])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -388,56 +509,152 @@ function OnboardingForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-40">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-100/50"></div>
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(156, 146, 172, 0.15) 1px, transparent 0)`,
+          backgroundSize: '20px 20px'
+        }}></div>
+      </div>
+      
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative bg-white/80 backdrop-blur-sm shadow-sm border-b border-white/20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
-                </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">BusinessHub</h1>
-                <p className="text-sm text-gray-500">Complete your profile</p>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  BusinessHub
+                </h1>
+                <p className="text-sm text-gray-600 font-medium">Complete your profile</p>
               </div>
             </div>
-            <Badge variant="outline" className="px-3 py-1">
-              {(userRole || role) === 'provider' ? 'Service Provider' : 'Client'}
-            </Badge>
+            <div className="flex items-center space-x-3">
+              {isAutoSaving && (
+                <div className="flex items-center space-x-2 text-sm text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Auto-saving...</span>
+                </div>
+              )}
+              {lastSaved && !isAutoSaving && (
+                <div className="flex items-center space-x-2 text-sm text-green-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Saved {lastSaved.toLocaleTimeString()}</span>
+                </div>
+              )}
+              <Badge 
+                variant="outline" 
+                className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 font-semibold"
+              >
+                {(userRole || role) === 'provider' ? 'Service Provider' : 'Client'}
+              </Badge>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Step {step} of 3</span>
-              <span className="text-sm text-gray-500">{Math.round(getProgressPercentage())}% Complete</span>
+      {/* Enhanced Progress Bar */}
+      <div className="relative bg-white/90 backdrop-blur-sm border-b border-white/20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <span className="text-lg font-semibold text-gray-800">Step {step} of 3</span>
+                <div className="flex items-center space-x-2">
+                  {[1, 2, 3].map((stepNumber) => (
+                    <div
+                      key={stepNumber}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                        stepNumber <= step
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}
+                    >
+                      {stepNumber < step ? <CheckCircle2 className="h-4 w-4" /> : stepNumber}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-600">{Math.round(getProgressPercentage())}% Complete</span>
+                <div className="w-24 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${getProgressPercentage()}%` }}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
+            
+            {/* Step Titles */}
+            <div className="flex justify-between text-sm">
+              <div className={`text-center ${step >= 1 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                Basic Information
+              </div>
+              <div className={`text-center ${step >= 2 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                {(userRole || role) === 'provider' ? 'Business Details' : 'Preferences'}
+              </div>
+              <div className={`text-center ${step >= 3 ? 'text-blue-600 font-semibold' : 'text-gray-400'}`}>
+                Complete Profile
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Form */}
             <div className="lg:col-span-2">
-              <Card className="shadow-lg border-0">
-                <CardHeader className="pb-6">
-                  <CardTitle className="text-2xl font-bold text-gray-900">{getStepTitle()}</CardTitle>
-                  <CardDescription className="text-gray-600">{getStepDescription()}</CardDescription>
-        </CardHeader>
+              <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+                <CardHeader className="pb-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                        {getStepTitle()}
+                      </CardTitle>
+                      <CardDescription className="text-gray-600 text-lg mt-2">
+                        {getStepDescription()}
+                      </CardDescription>
+                    </div>
+                    {showTips && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowTips(false)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Lightbulb className="h-4 w-4 mr-2" />
+                        Tips
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {/* Smart Tips */}
+                  {showTips && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <Lightbulb className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-blue-900 mb-1">Pro Tip</h4>
+                          <p className="text-sm text-blue-800">
+                            {step === 1 && "A compelling bio helps clients understand your expertise and personality. Include your experience, specializations, and what makes you unique."}
+                            {step === 2 && (userRole || role) === 'provider' && "Detailed service descriptions help clients find you. Be specific about what you offer and your experience level."}
+                            {step === 2 && (userRole || role) === 'client' && "Clear preferences help us match you with the right service providers. Be specific about your needs and budget."}
+                            {step === 3 && "You're almost done! Review your information and complete your profile to start using BusinessHub."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardHeader>
                 <CardContent className="space-y-6">
                   {step === 1 && (
                     <>
@@ -490,35 +707,98 @@ function OnboardingForm() {
                       </div>
 
                       {/* Bio */}
-                      <div className="space-y-2">
-                        <Label htmlFor="bio" className="text-sm font-semibold text-gray-700">Bio *</Label>
-                        <Textarea
-                          id="bio"
-                          placeholder="Tell us about yourself, your experience, and what makes you unique..."
-                          value={formData.bio}
-                          onChange={(e) => handleInputChange('bio', e.target.value)}
-                          className="min-h-[100px] resize-none"
-                        />
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="bio" className="text-sm font-semibold text-gray-700">Bio *</Label>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">{formData.bio.length}/500</span>
+                            {validationState.bio === 'valid' && (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            )}
+                            {validationState.bio === 'invalid' && (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <Textarea
+                            id="bio"
+                            placeholder="Tell us about yourself, your experience, and what makes you unique..."
+                            value={formData.bio}
+                            onChange={(e) => handleInputChange('bio', e.target.value)}
+                            onFocus={() => setFieldFocus('bio')}
+                            onBlur={() => setFieldFocus(null)}
+                            className={`min-h-[120px] resize-none transition-all duration-200 ${
+                              validationState.bio === 'valid' 
+                                ? 'border-green-300 focus:border-green-500 focus:ring-green-500' 
+                                : validationState.bio === 'invalid' 
+                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                                : fieldFocus === 'bio'
+                                ? 'border-blue-300 focus:border-blue-500 focus:ring-blue-500'
+                                : 'border-gray-300'
+                            }`}
+                          />
+                          {fieldFocus === 'bio' && (
+                            <div className="absolute -bottom-8 left-0 text-xs text-gray-500">
+                              💡 Include your experience, specializations, and what makes you unique
+                            </div>
+                          )}
+                        </div>
                         {errors.bio && (
-                          <p className="text-sm text-red-500">{errors.bio}</p>
+                          <div className="flex items-center space-x-2 text-sm text-red-600">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>{errors.bio}</span>
+                          </div>
+                        )}
+                        {formData.bio.length >= 50 && !errors.bio && (
+                          <div className="flex items-center space-x-2 text-sm text-green-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>Great! Your bio looks compelling</span>
+                          </div>
                         )}
                       </div>
 
                       {/* Location */}
-                      <div className="space-y-2">
-                        <Label htmlFor="location" className="text-sm font-semibold text-gray-700">Location *</Label>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="location" className="text-sm font-semibold text-gray-700">Location *</Label>
+                          {validationState.location === 'valid' && (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          )}
+                          {validationState.location === 'invalid' && (
+                            <AlertCircle className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <Input
                             id="location"
-                            placeholder="City, Country"
+                            placeholder="City, Country (e.g., Muscat, Oman)"
                             value={formData.location}
                             onChange={(e) => handleInputChange('location', e.target.value)}
-                            className="pl-10"
+                            onFocus={() => setFieldFocus('location')}
+                            onBlur={() => setFieldFocus(null)}
+                            className={`pl-10 transition-all duration-200 ${
+                              validationState.location === 'valid' 
+                                ? 'border-green-300 focus:border-green-500 focus:ring-green-500' 
+                                : validationState.location === 'invalid' 
+                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                                : fieldFocus === 'location'
+                                ? 'border-blue-300 focus:border-blue-500 focus:ring-blue-500'
+                                : 'border-gray-300'
+                            }`}
                           />
                         </div>
                         {errors.location && (
-                          <p className="text-sm text-red-500">{errors.location}</p>
+                          <div className="flex items-center space-x-2 text-sm text-red-600">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>{errors.location}</span>
+                          </div>
+                        )}
+                        {fieldFocus === 'location' && (
+                          <div className="text-xs text-gray-500">
+                            💡 This helps clients find service providers in their area
+                          </div>
                         )}
                       </div>
 
@@ -767,97 +1047,204 @@ function OnboardingForm() {
               </div>
             </div>
 
-            {/* Sidebar */}
+            {/* Enhanced Sidebar */}
             <div className="lg:col-span-1">
               <div className="space-y-6">
                 {/* Role Benefits */}
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                <Card className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-blue-200 shadow-lg">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-semibold text-blue-900 flex items-center">
+                    <CardTitle className="text-xl font-bold text-blue-900 flex items-center">
                       {(userRole || role) === 'provider' ? (
                         <>
-                          <Building2 className="h-5 w-5 mr-2" />
+                          <Building2 className="h-6 w-6 mr-3 text-blue-600" />
                           Provider Benefits
                         </>
                       ) : (
                         <>
-                          <User className="h-5 w-5 mr-2" />
+                          <User className="h-6 w-6 mr-3 text-blue-600" />
                           Client Benefits
                         </>
                       )}
                     </CardTitle>
+                    <CardDescription className="text-blue-700">
+                      What you'll get with BusinessHub
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-4">
                     {(userRole || role) === 'provider' ? (
                       <>
-                        <div className="flex items-start space-x-3">
-                          <TrendingUp className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Grow your business with new clients</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Grow Your Business</span>
+                            <p className="text-xs text-blue-700">Connect with new clients and expand your reach</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Secure payment processing</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Secure Payments</span>
+                            <p className="text-xs text-blue-700">Protected transactions and guaranteed payments</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <Star className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Build your reputation and reviews</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Star className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Build Reputation</span>
+                            <p className="text-xs text-blue-700">Collect reviews and showcase your expertise</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <Target className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Target your ideal clients</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Target className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Target Clients</span>
+                            <p className="text-xs text-blue-700">Find projects that match your skills</p>
+                          </div>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="flex items-start space-x-3">
-                          <Users className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Access to verified professionals</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Users className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Verified Professionals</span>
+                            <p className="text-xs text-blue-700">Access to vetted and qualified service providers</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <Shield className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Secure and protected transactions</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Secure Transactions</span>
+                            <p className="text-xs text-blue-700">Protected payments and dispute resolution</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <Star className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Quality assured services</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Star className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Quality Assured</span>
+                            <p className="text-xs text-blue-700">High-quality services with satisfaction guarantee</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <Target className="h-4 w-4 text-blue-600 mt-0.5" />
-                          <span className="text-sm text-blue-800">Find the perfect match for your needs</span>
+                        <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg">
+                          <Target className="h-5 w-5 text-blue-600 mt-0.5" />
+                          <div>
+                            <span className="text-sm font-semibold text-blue-900">Perfect Match</span>
+                            <p className="text-xs text-blue-700">Find providers that match your specific needs</p>
+                          </div>
                         </div>
                       </>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Progress Steps */}
-                <Card>
+                {/* Enhanced Progress Steps */}
+                <Card className="shadow-lg">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-semibold text-gray-900">Profile Progress</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                      <Clock className="h-5 w-5 mr-2 text-blue-600" />
+                      Profile Progress
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      {[1, 2, 3].map((stepNumber) => (
-                        <div key={stepNumber} className="flex items-center space-x-3">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                            stepNumber <= step 
-                              ? 'bg-blue-600 text-white' 
+                    <div className="space-y-4">
+                      {[
+                        { 
+                          number: 1, 
+                          title: 'Basic Information', 
+                          description: 'Tell us about yourself',
+                          completed: step > 1,
+                          current: step === 1
+                        },
+                        { 
+                          number: 2, 
+                          title: (userRole || role) === 'provider' ? 'Business Details' : 'Preferences', 
+                          description: (userRole || role) === 'provider' ? 'Share your business info' : 'What you\'re looking for',
+                          completed: step > 2,
+                          current: step === 2
+                        },
+                        { 
+                          number: 3, 
+                          title: 'Complete Profile', 
+                          description: 'Review and finish',
+                          completed: step > 3,
+                          current: step === 3
+                        }
+                      ].map((stepInfo) => (
+                        <div key={stepInfo.number} className={`flex items-start space-x-3 p-3 rounded-lg transition-all duration-200 ${
+                          stepInfo.current ? 'bg-blue-50 border border-blue-200' : 
+                          stepInfo.completed ? 'bg-green-50 border border-green-200' : 
+                          'bg-gray-50'
+                        }`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200 ${
+                            stepInfo.completed 
+                              ? 'bg-green-500 text-white' 
+                              : stepInfo.current
+                              ? 'bg-blue-500 text-white'
                               : 'bg-gray-200 text-gray-500'
                           }`}>
-                            {stepNumber < step ? <CheckCircle className="h-3 w-3" /> : stepNumber}
+                            {stepInfo.completed ? <CheckCircle2 className="h-4 w-4" /> : stepInfo.number}
                           </div>
-                          <span className={`text-sm ${
-                            stepNumber <= step ? 'text-gray-900 font-medium' : 'text-gray-500'
-                          }`}>
-                            {stepNumber === 1 && 'Basic Information'}
-                            {stepNumber === 2 && ((userRole || role) === 'provider' ? 'Business Details' : 'Preferences')}
-                            {stepNumber === 3 && 'Complete Profile'}
-                          </span>
+                          <div className="flex-1">
+                            <span className={`text-sm font-semibold ${
+                              stepInfo.completed ? 'text-green-800' : 
+                              stepInfo.current ? 'text-blue-800' : 
+                              'text-gray-600'
+                            }`}>
+                              {stepInfo.title}
+                            </span>
+                            <p className={`text-xs mt-1 ${
+                              stepInfo.completed ? 'text-green-600' : 
+                              stepInfo.current ? 'text-blue-600' : 
+                              'text-gray-500'
+                            }`}>
+                              {stepInfo.description}
+                            </p>
+                          </div>
                         </div>
                       ))}
-          </div>
-        </CardContent>
-      </Card>
+                    </div>
+                    
+                    {/* Completion Summary */}
+                    {step === 3 && (
+                      <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Award className="h-5 w-5 text-green-600" />
+                          <span className="text-sm font-semibold text-green-800">Almost Done!</span>
+                        </div>
+                        <p className="text-xs text-green-700">
+                          Complete your profile to start using BusinessHub and connect with {(userRole || role) === 'provider' ? 'clients' : 'service providers'}.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Quick Stats */}
+                <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold text-purple-900 flex items-center">
+                      <Zap className="h-5 w-5 mr-2" />
+                      Quick Stats
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-purple-700">Profile Completion</span>
+                      <span className="text-sm font-semibold text-purple-900">{Math.round(getProgressPercentage())}%</span>
+                    </div>
+                    <div className="w-full bg-purple-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${getProgressPercentage()}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-purple-600">
+                      {Math.round(getProgressPercentage()) < 50 && "Keep going! You're making great progress."}
+                      {Math.round(getProgressPercentage()) >= 50 && Math.round(getProgressPercentage()) < 100 && "Excellent! You're almost there."}
+                      {Math.round(getProgressPercentage()) === 100 && "Perfect! Your profile is complete."}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
