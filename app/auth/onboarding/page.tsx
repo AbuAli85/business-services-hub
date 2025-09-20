@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { getSupabaseClient } from '@/lib/supabase'
 
 function OnboardingForm() {
   const router = useRouter()
@@ -188,12 +189,40 @@ function OnboardingForm() {
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      toast.success('Profile completed successfully!')
-      router.push('/dashboard')
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        toast.error('Please sign in to complete your profile')
+        router.push('/auth/sign-in')
+        return
+      }
+
+      // Call the profile completion API
+      const response = await fetch('/api/auth/complete-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData,
+          role: getCurrentRole()
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to complete profile')
+      }
+
+      toast.success('Profile completed successfully! Your profile is now pending admin approval.')
+      
+      // Redirect to pending approval page
+      router.push('/auth/pending-approval')
     } catch (error) {
-      toast.error('Failed to complete profile')
+      console.error('Profile completion error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to complete profile')
     } finally {
       setLoading(false)
     }
@@ -683,6 +712,78 @@ function OnboardingForm() {
                       
                       <Separator className="my-8" />
                       
+                      {/* Certifications */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Award className="h-5 w-5 text-green-600" />
+                            <span>Certifications & Credentials</span>
+                          </Label>
+                        </div>
+                        
+                        <Textarea
+                          value={formData.certifications}
+                          onChange={(e) => handleFieldChange('certifications', e.target.value)}
+                          onFocus={() => handleFieldFocus('certifications')}
+                          onBlur={handleFieldBlur}
+                          placeholder="List your professional certifications, licenses, or credentials (e.g., PMP, AWS Certified, Google Analytics, etc.)"
+                          className="min-h-[80px] resize-none transition-all duration-200"
+                        />
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Languages */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Globe className="h-5 w-5 text-green-600" />
+                            <span>Languages</span>
+                          </Label>
+                        </div>
+                        
+                        <Input
+                          value={formData.languages}
+                          onChange={(e) => handleFieldChange('languages', e.target.value)}
+                          onFocus={() => handleFieldFocus('languages')}
+                          onBlur={handleFieldBlur}
+                          placeholder="e.g., English (Native), Spanish (Fluent), French (Conversational)"
+                          className="transition-all duration-200"
+                        />
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Availability */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Clock className="h-5 w-5 text-green-600" />
+                            <span>Availability</span>
+                          </Label>
+                        </div>
+                        
+                        <Select 
+                          value={formData.availability} 
+                          onValueChange={(value) => handleFieldChange('availability', value)}
+                        >
+                          <SelectTrigger className="transition-all duration-200">
+                            <SelectValue placeholder="Select your availability" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="immediate">Immediate (Available now)</SelectItem>
+                            <SelectItem value="1-week">Within 1 week</SelectItem>
+                            <SelectItem value="2-weeks">Within 2 weeks</SelectItem>
+                            <SelectItem value="1-month">Within 1 month</SelectItem>
+                            <SelectItem value="flexible">Flexible schedule</SelectItem>
+                            <SelectItem value="part-time">Part-time only</SelectItem>
+                            <SelectItem value="full-time">Full-time only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
                       {/* Pricing */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -697,7 +798,49 @@ function OnboardingForm() {
                           onChange={(e) => handleFieldChange('pricing', e.target.value)}
                           onFocus={() => handleFieldFocus('pricing')}
                           onBlur={handleFieldBlur}
-                          placeholder="Describe your pricing structure (e.g., hourly rates, project-based, packages, etc.)"
+                          placeholder="Describe your pricing structure (e.g., $50-100/hour, $500-2000/project, retainer packages, etc.)"
+                          className="min-h-[80px] resize-none transition-all duration-200"
+                        />
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Specializations */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Zap className="h-5 w-5 text-green-600" />
+                            <span>Specializations</span>
+                          </Label>
+                        </div>
+                        
+                        <Textarea
+                          value={formData.specializations}
+                          onChange={(e) => handleFieldChange('specializations', e.target.value)}
+                          onFocus={() => handleFieldFocus('specializations')}
+                          onBlur={handleFieldBlur}
+                          placeholder="List your key specializations or areas of expertise (e.g., E-commerce, Mobile Apps, Enterprise Solutions, etc.)"
+                          className="min-h-[80px] resize-none transition-all duration-200"
+                        />
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Portfolio */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <ExternalLink className="h-5 w-5 text-green-600" />
+                            <span>Portfolio/Work Samples</span>
+                          </Label>
+                        </div>
+                        
+                        <Textarea
+                          value={formData.portfolio}
+                          onChange={(e) => handleFieldChange('portfolio', e.target.value)}
+                          onFocus={() => handleFieldFocus('portfolio')}
+                          onBlur={handleFieldBlur}
+                          placeholder="Share links to your portfolio, GitHub, Dribbble, or other work samples"
                           className="min-h-[80px] resize-none transition-all duration-200"
                         />
                       </div>
@@ -852,20 +995,190 @@ function OnboardingForm() {
                   )}
 
                   {step === 3 && (
-                    <div className="text-center space-y-8">
-                      <div className="w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                        <Award className="h-12 w-12 text-green-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-3xl font-bold text-gray-900 mb-4">You're all set!</h3>
-                        <p className="text-xl text-gray-600 mb-6">
-                          Your profile is complete and ready to help you {getCurrentRole() === 'provider' ? 'attract clients' : 'find the perfect service providers'}.
-                        </p>
-                        <div className="flex items-center justify-center space-x-2 text-green-600">
-                          <CheckCircle className="h-5 w-5" />
-                          <span className="font-semibold">Profile {getCompletionPercentage()}% Complete</span>
+                    <div className="space-y-8">
+                      <div className="text-center space-y-6">
+                        <div className="w-24 h-24 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                          <Award className="h-12 w-12 text-green-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-bold text-gray-900 mb-4">You're all set!</h3>
+                          <p className="text-xl text-gray-600 mb-6">
+                            Your profile is complete and ready to help you {getCurrentRole() === 'provider' ? 'attract clients' : 'find the perfect service providers'}.
+                          </p>
+                          <div className="flex items-center justify-center space-x-2 text-green-600">
+                            <CheckCircle className="h-5 w-5" />
+                            <span className="font-semibold">Profile {getCompletionPercentage()}% Complete</span>
+                          </div>
                         </div>
                       </div>
+                      
+                      {/* Profile Summary for Providers */}
+                      {getCurrentRole() === 'provider' && (
+                        <div className="mt-8">
+                          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                            <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                              <Briefcase className="h-5 w-5 text-green-600" />
+                              <span>Your Business Profile Summary</span>
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              {formData.companyName && (
+                                <div className="flex items-center space-x-2">
+                                  <Building2 className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Company:</span>
+                                  <span className="text-gray-700">{formData.companyName}</span>
+                                </div>
+                              )}
+                              
+                              {formData.experience && (
+                                <div className="flex items-center space-x-2">
+                                  <Award className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Experience:</span>
+                                  <span className="text-gray-700 capitalize">{formData.experience}</span>
+                                </div>
+                              )}
+                              
+                              {formData.availability && (
+                                <div className="flex items-center space-x-2">
+                                  <Clock className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Availability:</span>
+                                  <span className="text-gray-700 capitalize">{formData.availability.replace('-', ' ')}</span>
+                                </div>
+                              )}
+                              
+                              {formData.languages && (
+                                <div className="flex items-center space-x-2">
+                                  <Globe className="h-4 w-4 text-green-600" />
+                                  <span className="font-medium">Languages:</span>
+                                  <span className="text-gray-700">{formData.languages}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {formData.services && (
+                              <div className="mt-4">
+                                <div className="flex items-start space-x-2">
+                                  <Star className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium text-sm">Services:</span>
+                                    <p className="text-gray-700 text-sm mt-1">{formData.services}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {formData.specializations && (
+                              <div className="mt-4">
+                                <div className="flex items-start space-x-2">
+                                  <Zap className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium text-sm">Specializations:</span>
+                                    <p className="text-gray-700 text-sm mt-1">{formData.specializations}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="mt-6 bg-blue-50 rounded-xl p-6 border border-blue-200">
+                            <h4 className="text-lg font-semibold text-blue-800 mb-3 flex items-center space-x-2">
+                              <Lightbulb className="h-5 w-5" />
+                              <span>Next Steps</span>
+                            </h4>
+                            <ul className="space-y-2 text-sm text-blue-700">
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Your profile will be reviewed and approved within 24-48 hours</span>
+                              </li>
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Once approved, you can start receiving client requests</span>
+                              </li>
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Complete your service listings to increase visibility</span>
+                              </li>
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Upload portfolio samples to showcase your work</span>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Profile Summary for Clients */}
+                      {getCurrentRole() === 'client' && (
+                        <div className="mt-8">
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                            <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                              <Target className="h-5 w-5 text-blue-600" />
+                              <span>Your Preferences Summary</span>
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              {formData.preferredCategories && (
+                                <div className="flex items-start space-x-2">
+                                  <Star className="h-4 w-4 text-blue-600 mt-1 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium">Interested in:</span>
+                                    <p className="text-gray-700">{formData.preferredCategories}</p>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {formData.budgetRange && (
+                                <div className="flex items-center space-x-2">
+                                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                                  <span className="font-medium">Budget:</span>
+                                  <span className="text-gray-700 capitalize">{formData.budgetRange.replace('-', ' - ')}</span>
+                                </div>
+                              )}
+                              
+                              {formData.projectTimeline && (
+                                <div className="flex items-center space-x-2">
+                                  <Clock className="h-4 w-4 text-blue-600" />
+                                  <span className="font-medium">Timeline:</span>
+                                  <span className="text-gray-700 capitalize">{formData.projectTimeline.replace('-', ' ')}</span>
+                                </div>
+                              )}
+                              
+                              {formData.communicationPreference && (
+                                <div className="flex items-center space-x-2">
+                                  <Mail className="h-4 w-4 text-blue-600" />
+                                  <span className="font-medium">Communication:</span>
+                                  <span className="text-gray-700 capitalize">{formData.communicationPreference}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="mt-6 bg-green-50 rounded-xl p-6 border border-green-200">
+                            <h4 className="text-lg font-semibold text-green-800 mb-3 flex items-center space-x-2">
+                              <Lightbulb className="h-5 w-5" />
+                              <span>What's Next?</span>
+                            </h4>
+                            <ul className="space-y-2 text-sm text-green-700">
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Browse available service providers in your area</span>
+                              </li>
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Compare profiles and portfolios</span>
+                              </li>
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Send project requests to qualified providers</span>
+                              </li>
+                              <li className="flex items-start space-x-2">
+                                <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>Review proposals and select the best match</span>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

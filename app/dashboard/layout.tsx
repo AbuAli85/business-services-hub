@@ -197,14 +197,8 @@ export default function DashboardLayout({
             logger.info('Admin user detected, bypassing profile completion checks')
             // Continue with normal flow for admin users
           } else {
-            // For non-admin users, check profile completion and verification
-            if (!profile.profile_completed) {
-              logger.warn('Profile not completed, redirecting to onboarding')
-              router.push('/auth/onboarding')
-              return
-            }
-
-            // If profile is completed but not approved, redirect to pending approval
+            // For non-admin users, check verification status first
+            // If profile is pending approval, redirect to pending approval page
             if (profile.verification_status === 'pending') {
               logger.warn('Profile pending approval, redirecting to pending approval page')
               router.push('/auth/pending-approval')
@@ -215,6 +209,14 @@ export default function DashboardLayout({
             if (profile.verification_status === 'rejected') {
               logger.warn('Profile rejected, redirecting to pending approval page')
               router.push('/auth/pending-approval')
+              return
+            }
+
+            // Only redirect to onboarding if profile is not completed AND not approved
+            // This allows approved users to access dashboard even if profile_completed is false
+            if (!profile.profile_completed && profile.verification_status !== 'approved') {
+              logger.warn('Profile not completed, redirecting to onboarding')
+              router.push('/auth/onboarding')
               return
             }
           }
