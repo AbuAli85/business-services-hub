@@ -568,8 +568,15 @@ function OnboardingForm() {
     )
   }
 
+  // Test if component is rendering
+  console.log('🔍 Component rendering, step:', step, 'userRole:', userRole)
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      {/* Test banner */}
+      <div className="bg-red-500 text-white p-2 text-center font-bold">
+        COMPONENT IS RENDERING - STEP: {step} | ROLE: {getCurrentRole()}
+      </div>
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-40">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-indigo-100/50"></div>
@@ -1080,6 +1087,17 @@ function OnboardingForm() {
                   Step: {step} | Role: {getCurrentRole()}
                 </div>
                 
+                {/* Simple test div */}
+                <div 
+                  onClick={() => {
+                    alert('DIV CLICKED!')
+                    console.log('🔍 Div clicked!')
+                  }}
+                  className="bg-yellow-400 p-2 cursor-pointer"
+                >
+                  CLICK ME TO TEST
+                </div>
+                
                 {/* Test button - always visible */}
                 <button
                   type="button"
@@ -1348,15 +1366,27 @@ function OnboardingForm() {
 
 export default function OnboardingPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading...</span>
+    <div className="min-h-screen bg-gray-100 p-8">
+      <h1 className="text-2xl font-bold mb-4">Test Page</h1>
+      <button 
+        onClick={() => {
+          alert('SIMPLE BUTTON WORKS!')
+          console.log('Simple button clicked!')
+        }}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        SIMPLE TEST BUTTON
+      </button>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading...</span>
+          </div>
         </div>
-      </div>
-    }>
-      <OnboardingForm />
-    </Suspense>
+      }>
+        <OnboardingForm />
+      </Suspense>
+    </div>
   )
 }
