@@ -36,14 +36,30 @@ export async function POST(req: NextRequest) {
     if (status !== undefined || role !== undefined) {
       // 1) Update auth metadata for canonical source of truth
       try {
+        const metadataUpdate: any = {}
+        if (role !== undefined) metadataUpdate.role = role
+        if (status !== undefined) {
+          // Map status to a more explicit format for metadata
+          metadataUpdate.status = status
+          metadataUpdate.verification_status = status === 'approved' ? 'approved' :
+                                            status === 'active' ? 'approved' :
+                                            status === 'pending' ? 'pending' :
+                                            status === 'suspended' ? 'suspended' :
+                                            status === 'inactive' ? 'rejected' : 'pending'
+        }
+        
+        console.log('🔄 Updating auth metadata:', {
+          userId: user_id,
+          metadataUpdate
+        })
+        
         await admin.auth.admin.updateUserById(user_id, {
-          user_metadata: {
-            ...(role !== undefined ? { role } : {}),
-            ...(status !== undefined ? { status } : {})
-          }
+          user_metadata: metadataUpdate
         } as any)
+        
+        console.log('✅ Auth metadata update successful')
       } catch (e: any) {
-        console.warn('Auth metadata update failed:', e?.message || e)
+        console.error('❌ Auth metadata update failed:', e?.message || e)
       }
 
       // 2) Best-effort update of profiles table to reflect role/verification_status
@@ -70,15 +86,31 @@ export async function POST(req: NextRequest) {
             userId: user_id,
             update
           })
-          const { error: profErr } = await admin
+          
+          // First, check if the user exists in profiles
+          const { data: existingProfile, error: checkErr } = await admin
+            .from('profiles')
+            .select('id, verification_status')
+            .eq('id', user_id)
+            .single()
+          
+          if (checkErr) {
+            console.error('❌ Error checking existing profile:', checkErr.message)
+          } else {
+            console.log('🔍 Existing profile:', existingProfile)
+          }
+          
+          const { data: updateResult, error: profErr } = await admin
             .from('profiles')
             .update(update)
             .eq('id', user_id)
+            .select('id, verification_status')
+          
           if (profErr) {
             console.error('❌ Profiles update failed:', profErr.message)
             // Don't fail the request, just log the warning
           } else {
-            console.log('✅ Profiles update successful')
+            console.log('✅ Profiles update successful:', updateResult)
           }
         }
       } catch (e: any) {
