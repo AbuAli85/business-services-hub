@@ -63,7 +63,7 @@ function OnboardingForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  console.log('🔍 Enhanced Onboarding component rendering, step:', step)
+  // Removed console.log to prevent excessive re-rendering
   
   // Get current role with fallback
   const getCurrentRole = () => {
@@ -560,28 +560,293 @@ function OnboardingForm() {
 
                   {step === 2 && getCurrentRole() === 'provider' && (
                     <div className="space-y-8">
-                      <div className="text-center space-y-6">
-                        <div className="w-20 h-20 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full flex items-center justify-center mx-auto">
-                          <Briefcase className="h-10 w-10 text-green-600" />
+                      {/* Company Name */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Briefcase className="h-5 w-5 text-green-600" />
+                            <span>Company Name *</span>
+                          </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            <span>Your business name</span>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-2xl font-semibold text-gray-900 mb-2">Business Details</h3>
-                          <p className="text-gray-600">Tell us about your business and services</p>
+                        
+                        <Input
+                          value={formData.companyName}
+                          onChange={(e) => handleFieldChange('companyName', e.target.value)}
+                          onFocus={() => handleFieldFocus('companyName')}
+                          onBlur={handleFieldBlur}
+                          placeholder="Enter your company or business name"
+                          className={`transition-all duration-200 ${
+                            fieldFocus === 'companyName' ? 'ring-2 ring-green-500 shadow-lg' : ''
+                          } ${errors.companyName ? 'border-red-300' : 'border-gray-200'}`}
+                        />
+                        
+                        {fieldFocus === 'companyName' && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>{getFieldTip('companyName')}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {errors.companyName && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.companyName}</span>
+                        </span>}
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Services Offered */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Star className="h-5 w-5 text-green-600" />
+                            <span>Services Offered *</span>
+                          </Label>
                         </div>
+                        
+                        <div className="relative">
+                          <Textarea
+                            value={formData.services}
+                            onChange={(e) => handleFieldChange('services', e.target.value)}
+                            onFocus={() => handleFieldFocus('services')}
+                            onBlur={handleFieldBlur}
+                            placeholder="List all the services you offer. Be specific and include keywords clients might search for..."
+                            className={`min-h-[120px] resize-none transition-all duration-200 ${
+                              fieldFocus === 'services' ? 'ring-2 ring-green-500 shadow-lg' : ''
+                            } ${errors.services ? 'border-red-300' : 'border-gray-200'}`}
+                          />
+                          
+                          {fieldFocus === 'services' && (
+                            <div className="absolute -bottom-8 left-0 right-0 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                              <div className="flex items-start space-x-2">
+                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>{getFieldTip('services')}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {errors.services && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.services}</span>
+                        </span>}
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Experience Level */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Award className="h-5 w-5 text-green-600" />
+                            <span>Experience Level *</span>
+                          </Label>
+                        </div>
+                        
+                        <Select 
+                          value={formData.experience} 
+                          onValueChange={(value) => handleFieldChange('experience', value)}
+                        >
+                          <SelectTrigger className={`transition-all duration-200 ${
+                            fieldFocus === 'experience' ? 'ring-2 ring-green-500 shadow-lg' : ''
+                          } ${errors.experience ? 'border-red-300' : 'border-gray-200'}`}>
+                            <SelectValue placeholder="Select your experience level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="beginner">Beginner (0-2 years)</SelectItem>
+                            <SelectItem value="intermediate">Intermediate (2-5 years)</SelectItem>
+                            <SelectItem value="advanced">Advanced (5-10 years)</SelectItem>
+                            <SelectItem value="expert">Expert (10+ years)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {fieldFocus === 'experience' && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>{getFieldTip('experience')}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {errors.experience && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.experience}</span>
+                        </span>}
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Pricing */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <TrendingUp className="h-5 w-5 text-green-600" />
+                            <span>Pricing Information</span>
+                          </Label>
+                        </div>
+                        
+                        <Textarea
+                          value={formData.pricing}
+                          onChange={(e) => handleFieldChange('pricing', e.target.value)}
+                          onFocus={() => handleFieldFocus('pricing')}
+                          onBlur={handleFieldBlur}
+                          placeholder="Describe your pricing structure (e.g., hourly rates, project-based, packages, etc.)"
+                          className="min-h-[80px] resize-none transition-all duration-200"
+                        />
                       </div>
                     </div>
                   )}
 
                   {step === 2 && getCurrentRole() === 'client' && (
                     <div className="space-y-8">
-                      <div className="text-center space-y-6">
-                        <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto">
-                          <Target className="h-10 w-10 text-blue-600" />
+                      {/* Preferred Categories */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Target className="h-5 w-5 text-blue-600" />
+                            <span>Preferred Service Categories *</span>
+                          </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            <span>What services do you need?</span>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-2xl font-semibold text-gray-900 mb-2">Your Preferences</h3>
-                          <p className="text-gray-600">Help us match you with the right providers</p>
+                        
+                        <div className="relative">
+                          <Textarea
+                            value={formData.preferredCategories}
+                            onChange={(e) => handleFieldChange('preferredCategories', e.target.value)}
+                            onFocus={() => handleFieldFocus('preferredCategories')}
+                            onBlur={handleFieldBlur}
+                            placeholder="e.g., Web Development, Digital Marketing, Graphic Design, Content Writing, SEO Services, Social Media Management..."
+                            className={`min-h-[120px] resize-none transition-all duration-200 ${
+                              fieldFocus === 'preferredCategories' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                            } ${errors.preferredCategories ? 'border-red-300' : 'border-gray-200'}`}
+                          />
+                          
+                          {fieldFocus === 'preferredCategories' && (
+                            <div className="absolute -bottom-8 left-0 right-0 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                              <div className="flex items-start space-x-2">
+                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                <span>{getFieldTip('preferredCategories')}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
+                        
+                        {errors.preferredCategories && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.preferredCategories}</span>
+                        </span>}
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Budget Range */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <TrendingUp className="h-5 w-5 text-blue-600" />
+                            <span>Budget Range *</span>
+                          </Label>
+                        </div>
+                        
+                        <Select 
+                          value={formData.budgetRange} 
+                          onValueChange={(value) => handleFieldChange('budgetRange', value)}
+                        >
+                          <SelectTrigger className={`transition-all duration-200 ${
+                            fieldFocus === 'budgetRange' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                          } ${errors.budgetRange ? 'border-red-300' : 'border-gray-200'}`}>
+                            <SelectValue placeholder="Select your budget range" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="under-1k">Under $1,000</SelectItem>
+                            <SelectItem value="1k-5k">$1,000 - $5,000</SelectItem>
+                            <SelectItem value="5k-10k">$5,000 - $10,000</SelectItem>
+                            <SelectItem value="10k-25k">$10,000 - $25,000</SelectItem>
+                            <SelectItem value="25k-plus">$25,000+</SelectItem>
+                            <SelectItem value="custom">Custom Range</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {fieldFocus === 'budgetRange' && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>{getFieldTip('budgetRange')}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {errors.budgetRange && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.budgetRange}</span>
+                        </span>}
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Project Timeline */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                            <span>Project Timeline</span>
+                          </Label>
+                        </div>
+                        
+                        <Select 
+                          value={formData.projectTimeline} 
+                          onValueChange={(value) => handleFieldChange('projectTimeline', value)}
+                        >
+                          <SelectTrigger className="transition-all duration-200">
+                            <SelectValue placeholder="When do you need the project completed?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="asap">ASAP (Within 1 week)</SelectItem>
+                            <SelectItem value="1-month">Within 1 month</SelectItem>
+                            <SelectItem value="2-3-months">2-3 months</SelectItem>
+                            <SelectItem value="3-6-months">3-6 months</SelectItem>
+                            <SelectItem value="6-months-plus">6+ months</SelectItem>
+                            <SelectItem value="flexible">Flexible timeline</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <Separator className="my-8" />
+                      
+                      {/* Communication Preference */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
+                            <Mail className="h-5 w-5 text-blue-600" />
+                            <span>Communication Preference</span>
+                          </Label>
+                        </div>
+                        
+                        <Select 
+                          value={formData.communicationPreference} 
+                          onValueChange={(value) => handleFieldChange('communicationPreference', value)}
+                        >
+                          <SelectTrigger className="transition-all duration-200">
+                            <SelectValue placeholder="How would you like to communicate?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="phone">Phone calls</SelectItem>
+                            <SelectItem value="video">Video calls</SelectItem>
+                            <SelectItem value="chat">Chat/Instant messaging</SelectItem>
+                            <SelectItem value="mixed">Mixed (Email + Calls)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
