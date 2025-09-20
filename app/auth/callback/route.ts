@@ -89,6 +89,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${requestUrl.origin}/auth/sign-in?error=profile_lookup_failed`)
     }
 
+    // Prepare session cookies for middleware
+    const sessionCookies = data.session?.access_token && data.session?.refresh_token && data.session?.expires_at ? {
+      accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token,
+      expiresAt: data.session.expires_at
+    } : null
+
+    if (!sessionCookies) {
+      console.error('❌ Missing session data for cookie sync:', {
+        hasAccessToken: !!data.session?.access_token,
+        hasRefreshToken: !!data.session?.refresh_token,
+        hasExpiresAt: !!data.session?.expires_at
+      })
+    } else {
+      console.log('✅ Session data available for cookie sync')
+    }
+
     if (!profile) {
       // User doesn't have a profile, redirect to onboarding
       const role = data.user.user_metadata?.role || 'client'
@@ -100,7 +117,29 @@ export async function GET(request: NextRequest) {
         redirectTo: `/auth/onboarding?role=${role}`
       })
       
-      return NextResponse.redirect(`${requestUrl.origin}/auth/onboarding?role=${role}`)
+      const redirectResponse = NextResponse.redirect(`${requestUrl.origin}/auth/onboarding?role=${role}`)
+      
+      // Set session cookies for middleware
+      if (sessionCookies) {
+        const expires = new Date((Number(sessionCookies.expiresAt) || 0) * 1000)
+        redirectResponse.cookies.set('sb-access-token', sessionCookies.accessToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+          path: '/',
+          expires
+        })
+        redirectResponse.cookies.set('sb-refresh-token', sessionCookies.refreshToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'lax',
+          path: '/',
+          expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        })
+        console.log('✅ Session cookies set for onboarding redirect')
+      }
+      
+      return redirectResponse
     }
 
     // User has profile, redirect to dashboard
@@ -111,7 +150,29 @@ export async function GET(request: NextRequest) {
       redirectTo: next
     })
     
-    return NextResponse.redirect(`${requestUrl.origin}${next}`)
+    const redirectResponse = NextResponse.redirect(`${requestUrl.origin}${next}`)
+    
+    // Set session cookies for middleware
+    if (sessionCookies) {
+      const expires = new Date((Number(sessionCookies.expiresAt) || 0) * 1000)
+      redirectResponse.cookies.set('sb-access-token', sessionCookies.accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        expires
+      })
+      redirectResponse.cookies.set('sb-refresh-token', sessionCookies.refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      })
+      console.log('✅ Session cookies set for dashboard redirect')
+    }
+    
+    return redirectResponse
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

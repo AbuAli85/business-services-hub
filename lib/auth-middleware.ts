@@ -53,6 +53,15 @@ export class AuthMiddleware {
       const token = req.cookies.get('sb-access-token')?.value
       const refreshToken = req.cookies.get('sb-refresh-token')?.value
 
+      // Debug logging for cookie inspection
+      const allCookies = req.cookies.getAll()
+      console.log('🔍 Middleware cookie check:', {
+        hasAccessToken: !!token,
+        hasRefreshToken: !!refreshToken,
+        allCookieNames: allCookies.map(c => c.name),
+        pathname: req.nextUrl.pathname
+      })
+
       if (!token) {
         return {
           isAuthenticated: false,
