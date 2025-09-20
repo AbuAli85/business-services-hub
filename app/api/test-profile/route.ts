@@ -20,14 +20,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ 
         exists: false, 
         error: 'Profile does not exist',
-        userId 
+        userId,
+        errorCode: checkErr.code
       })
     } else if (checkErr) {
       console.log('❌ Error checking profile:', checkErr.message)
       return NextResponse.json({ 
         exists: false, 
         error: checkErr.message,
-        userId 
+        userId,
+        errorCode: checkErr.code
       })
     } else {
       console.log('✅ Profile exists:', existingProfile)
