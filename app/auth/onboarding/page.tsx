@@ -232,6 +232,7 @@ function OnboardingForm() {
     setStep(prev => prev - 1)
   }
   
+
   const handleSubmit = async () => {
     setLoading(true)
     try {
@@ -264,6 +265,12 @@ function OnboardingForm() {
       }
 
       // Call the profile completion API
+      console.log('🔍 Making API call with data:', {
+        formDataKeys: Object.keys(formData),
+        role: getCurrentRole(),
+        hasAuthHeader: !!headers.Authorization
+      })
+
       const response = await fetch('/api/auth/complete-profile', {
         method: 'POST',
         headers,
@@ -273,10 +280,21 @@ function OnboardingForm() {
         })
       })
 
+      console.log('🔍 API Response status:', response.status)
+      console.log('🔍 API Response headers:', Object.fromEntries(response.headers.entries()))
+
       const result = await response.json()
+      console.log('🔍 API Response body:', result)
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to complete profile')
+        console.error('❌ API Error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: result,
+          formData: formData,
+          role: getCurrentRole()
+        })
+        throw new Error(result.error || `Failed to complete profile (${response.status})`)
       }
 
       toast.success('Profile completed successfully! Your profile is now pending admin approval.')

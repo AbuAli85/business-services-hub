@@ -136,38 +136,25 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString()
     }
 
-    // Add basic info
-    if (formData.bio) profileData.bio = formData.bio
-    if (formData.location) profileData.location = formData.location
-    if (formData.website) profileData.website = formData.website
-    if (formData.linkedin) profileData.linkedin = formData.linkedin
+    // Add basic info - only use columns that exist in the profiles table
+    // Based on the admin users API, the profiles table has these columns:
+    // id, full_name, role, phone, company_name, created_at, verification_status, profile_completed, email
+    
     if (formData.phone) profileData.phone = formData.phone
 
-    // Add role-specific data
+    // Add role-specific data - only use existing columns
     if (role === 'provider') {
       if (formData.companyName) profileData.company_name = formData.companyName
-      if (formData.services) profileData.services = formData.services
-      if (formData.experience) profileData.experience = formData.experience
-      if (formData.businessType) profileData.business_type = formData.businessType
-      if (formData.teamSize) profileData.team_size = formData.teamSize
-      if (formData.businessRegistration) profileData.business_registration = formData.businessRegistration
-      if (formData.certifications) profileData.certifications = formData.certifications
-      if (formData.languages) profileData.languages = formData.languages
-      if (formData.availability) profileData.availability = formData.availability
-      if (formData.pricing) profileData.pricing = formData.pricing
-      if (formData.specializations) profileData.specializations = formData.specializations
-      if (formData.portfolio) profileData.portfolio = formData.portfolio
+      // Note: services, experience, businessType, teamSize, businessRegistration, 
+      // certifications, languages, availability, pricing, specializations, portfolio 
+      // columns don't exist in the profiles table yet
     } else if (role === 'client') {
-      if (formData.preferredCategories) profileData.preferred_categories = formData.preferredCategories
-      if (formData.budgetRange) profileData.budget_range = formData.budgetRange
-      if (formData.projectTimeline) profileData.project_timeline = formData.projectTimeline
-      if (formData.communicationPreference) profileData.communication_preference = formData.communicationPreference
+      // Note: preferredCategories, budgetRange, projectTimeline, communicationPreference
+      // columns don't exist in the profiles table yet
     }
 
-    // Add advanced fields
-    if (formData.timezone) profileData.timezone = formData.timezone
-    if (formData.workingHours) profileData.working_hours = formData.workingHours
-    if (formData.testimonials) profileData.testimonials = formData.testimonials
+    // Note: bio, location, website, linkedin, timezone, workingHours, testimonials
+    // columns don't exist in the profiles table yet
 
     // Log the profile data being updated
     console.log('🔍 Updating profile with data:', {
@@ -176,9 +163,8 @@ export async function POST(request: NextRequest) {
       profileDataKeys: Object.keys(profileData),
       profileDataSample: {
         profile_completed: profileData.profile_completed,
-        company_name: profileData.company_name,
-        business_type: profileData.business_type,
-        team_size: profileData.team_size
+        phone: profileData.phone,
+        company_name: profileData.company_name
       }
     })
 
