@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { authLogger } from '@/lib/auth-logger'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseAdminClient()
+    const supabase = await getSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
