@@ -3,14 +3,14 @@ import { getSupabaseAdminClient } from '@/lib/supabase'
 import { authLogger } from '@/lib/auth-logger'
 
 export async function POST(request: NextRequest) {
+  let userId: string | null = null
+  
   try {
     const admin = getSupabaseAdminClient()
     
     // Get the session from the request headers
     const authHeader = request.headers.get('authorization')
     console.log('🔍 Auth header:', authHeader ? 'Present' : 'Missing')
-    
-    let userId: string | null = null
     
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '')
@@ -148,6 +148,9 @@ export async function POST(request: NextRequest) {
       if (formData.companyName) profileData.company_name = formData.companyName
       if (formData.services) profileData.services = formData.services
       if (formData.experience) profileData.experience = formData.experience
+      if (formData.businessType) profileData.business_type = formData.businessType
+      if (formData.teamSize) profileData.team_size = formData.teamSize
+      if (formData.businessRegistration) profileData.business_registration = formData.businessRegistration
       if (formData.certifications) profileData.certifications = formData.certifications
       if (formData.languages) profileData.languages = formData.languages
       if (formData.availability) profileData.availability = formData.availability
@@ -166,6 +169,19 @@ export async function POST(request: NextRequest) {
     if (formData.workingHours) profileData.working_hours = formData.workingHours
     if (formData.testimonials) profileData.testimonials = formData.testimonials
 
+    // Log the profile data being updated
+    console.log('🔍 Updating profile with data:', {
+      userId,
+      role,
+      profileDataKeys: Object.keys(profileData),
+      profileDataSample: {
+        profile_completed: profileData.profile_completed,
+        company_name: profileData.company_name,
+        business_type: profileData.business_type,
+        team_size: profileData.team_size
+      }
+    })
+
     // Update the profile
     const { error: updateError } = await admin
       .from('profiles')
@@ -173,9 +189,19 @@ export async function POST(request: NextRequest) {
       .eq('id', userId)
 
     if (updateError) {
-      console.error('Error updating profile:', updateError)
-      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
+      console.error('❌ Error updating profile:', {
+        error: updateError,
+        userId,
+        profileDataKeys: Object.keys(profileData),
+        role
+      })
+      return NextResponse.json({ 
+        error: 'Failed to update profile', 
+        details: updateError?.message || 'Unknown database error'
+      }, { status: 500 })
     }
+
+    console.log('✅ Profile updated successfully for user:', userId)
 
     authLogger.logLoginSuccess({
       success: true,
@@ -193,12 +219,19 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Profile completion error:', error)
+    console.error('❌ Profile completion error:', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      userId: userId || 'unknown'
+    })
     authLogger.logLoginSuccess({
       success: false,
       method: 'callback',
       error: error instanceof Error ? error.message : 'Unknown error'
     })
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
