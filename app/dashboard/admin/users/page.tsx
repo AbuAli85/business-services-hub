@@ -92,6 +92,11 @@ export default function AdminUsersPage() {
   const [viewMode, setViewMode] = useState<'grid'|'list'>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const [showAddUserModal, setShowAddUserModal] = useState(false)
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null)
 
   useEffect(() => {
     // Force initial fetch with cache busting
@@ -408,6 +413,11 @@ export default function AdminUsersPage() {
   const currentPage = Math.min(page, totalPages)
   const pagedUsers = sortedUsers.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize)
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, selectedRole, selectedStatus])
+
   // Statistics
   const stats = useMemo(() => {
     const total = users.length
@@ -523,6 +533,92 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleViewUser = (user: AdminUser) => {
+    setSelectedUser(user)
+    setShowUserDetailsModal(true)
+  }
+
+  const handleEditUser = (user: AdminUser) => {
+    setSelectedUser(user)
+    setShowUserDetailsModal(true)
+  }
+
+  const handleDeleteUser = (user: AdminUser) => {
+    setUserToDelete(user)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return
+    
+    try {
+      await callAdminUpdate(userToDelete.id, { status: 'deleted' })
+      await fetchUsers()
+      toast.success(`${userToDelete.full_name} has been deleted`)
+      setShowDeleteConfirm(false)
+      setUserToDelete(null)
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
+
+  const handleExportUsers = async () => {
+    try {
+      const csvContent = [
+        ['Name', 'Email', 'Role', 'Status', 'Company', 'Phone', 'Created At', 'Last Sign In'],
+        ...users.map(user => [
+          user.full_name,
+          user.email || '',
+          user.role,
+          user.status,
+          user.company_name || '',
+          user.phone || '',
+          new Date(user.created_at).toLocaleDateString(),
+          user.last_sign_in ? new Date(user.last_sign_in).toLocaleDateString() : 'Never'
+        ])
+      ].map(row => row.map(field => `"${field}"`).join(',')).join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      toast.success('Users exported successfully')
+    } catch (err: any) {
+      toast.error('Export failed: ' + err.message)
+    }
+  }
+
+  const handleInviteUser = async (email: string, role: string = 'client') => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      
+      const res = await fetch('/api/admin/users/invite', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email, role })
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Invitation failed')
+      }
+      
+      await fetchUsers()
+      toast.success(`Invitation sent to ${email}`)
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
@@ -530,23 +626,25 @@ export default function AdminUsersPage() {
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Users</h2>
           <p className="text-gray-600">Please wait while we fetch user data...</p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Debug Info:</p>
-            <p>Loading: {loading ? 'true' : 'false'}</p>
-            <p>Error: {error || 'none'}</p>
-            <p>IsFetching: {isFetching ? 'true' : 'false'}</p>
-            <p>Users Count: {users.length}</p>
-            <Button 
-              onClick={() => {
-                console.log('🧪 Manual test fetch triggered')
-                fetchUsers(true)
-              }}
-              className="mt-2"
-              size="sm"
-            >
-              Test Fetch
-            </Button>
-          </div>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 text-sm text-gray-500">
+              <p>Debug Info:</p>
+              <p>Loading: {loading ? 'true' : 'false'}</p>
+              <p>Error: {error || 'none'}</p>
+              <p>IsFetching: {isFetching ? 'true' : 'false'}</p>
+              <p>Users Count: {users.length}</p>
+              <Button 
+                onClick={() => {
+                  console.log('🧪 Manual test fetch triggered')
+                  fetchUsers(true)
+                }}
+                className="mt-2"
+                size="sm"
+              >
+                Test Fetch
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -592,7 +690,10 @@ export default function AdminUsersPage() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
                 {isFetching ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button 
+                onClick={() => setShowAddUserModal(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add User
               </Button>
@@ -831,11 +932,19 @@ export default function AdminUsersPage() {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
+                <Button 
+                  onClick={handleExportUsers}
+                  variant="outline" 
+                  size="sm"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button variant="outline" size="sm">
+                <Button 
+                  onClick={() => toast('Import functionality coming soon')}
+                  variant="outline" 
+                  size="sm"
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Import
                 </Button>
@@ -977,14 +1086,30 @@ export default function AdminUsersPage() {
                         </SelectContent>
                       </Select>
                       
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        onClick={() => handleViewUser(user)}
+                        variant="outline" 
+                        size="sm"
+                        title="View user details"
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        onClick={() => handleEditUser(user)}
+                        variant="outline" 
+                        size="sm"
+                        title="Edit user"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <MoreVertical className="h-4 w-4" />
+                      <Button 
+                        onClick={() => handleDeleteUser(user)}
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete user"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -1140,6 +1265,189 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add User Modal */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Invite New User</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              const formData = new FormData(e.target as HTMLFormElement)
+              const email = formData.get('email') as string
+              const role = formData.get('role') as string
+              await handleInviteUser(email, role)
+              setShowAddUserModal(false)
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address
+                  </label>
+                  <Input
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <Select name="role" defaultValue="client">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="provider">Provider</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddUserModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                  Send Invitation
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetailsModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-semibold">User Details</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUserDetailsModal(false)}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-700 font-bold text-xl">
+                    {selectedUser.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-xl font-semibold">{selectedUser.full_name}</h4>
+                  <p className="text-gray-600">{selectedUser.email || 'No email'}</p>
+                  <div className="flex gap-2 mt-2">
+                    <Badge className={getRoleColor(selectedUser.role)}>
+                      {selectedUser.role.toUpperCase()}
+                    </Badge>
+                    <Badge className={getStatusColor(selectedUser.status)}>
+                      {selectedUser.status.toUpperCase()}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Company</label>
+                  <p className="text-gray-900">{selectedUser.company_name || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Phone</label>
+                  <p className="text-gray-900">{selectedUser.phone || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Created</label>
+                  <p className="text-gray-900">{new Date(selectedUser.created_at).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Last Sign In</label>
+                  <p className="text-gray-900">
+                    {selectedUser.last_sign_in ? new Date(selectedUser.last_sign_in).toLocaleDateString() : 'Never'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Verified</label>
+                  <p className="text-gray-900">{selectedUser.is_verified ? 'Yes' : 'No'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">2FA Enabled</label>
+                  <p className="text-gray-900">{selectedUser.two_factor_enabled ? 'Yes' : 'No'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowUserDetailsModal(false)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowUserDetailsModal(false)
+                  handleEditUser(selectedUser)
+                }}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Edit User
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Delete User</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{userToDelete.full_name}</strong>? 
+              This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setUserToDelete(null)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteUser}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete User
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
