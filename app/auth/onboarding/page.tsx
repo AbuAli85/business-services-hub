@@ -866,40 +866,56 @@ function OnboardingForm() {
 
                   {step === 2 && getCurrentRole() === 'client' && (
                     <div className="space-y-8">
-                      {/* Preferred Categories */}
+                      {/* Preferred Service Categories */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
                             <Target className="h-5 w-5 text-blue-600" />
-                            <span>Preferred Service Categories *</span>
+                            <span>Service Categories *</span>
                           </Label>
                           <div className="flex items-center space-x-2 text-sm text-gray-500">
                             <Info className="h-4 w-4" />
-                            <span>What services do you need?</span>
+                            <span>Select the services you need</span>
                           </div>
                         </div>
                         
-                        <div className="relative">
-                          <Textarea
-                            value={formData.preferredCategories}
-                            onChange={(e) => handleFieldChange('preferredCategories', e.target.value)}
-                            onFocus={() => handleFieldFocus('preferredCategories')}
-                            onBlur={handleFieldBlur}
-                            placeholder="e.g., Web Development, Digital Marketing, Graphic Design, Content Writing, SEO Services, Social Media Management..."
-                            className={`min-h-[120px] resize-none transition-all duration-200 ${
-                              fieldFocus === 'preferredCategories' ? 'ring-2 ring-blue-500 shadow-lg' : ''
-                            } ${errors.preferredCategories ? 'border-red-300' : 'border-gray-200'}`}
-                          />
-                          
-                          {fieldFocus === 'preferredCategories' && (
-                            <div className="absolute -bottom-8 left-0 right-0 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
-                              <div className="flex items-start space-x-2">
-                                <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                <span>{getFieldTip('preferredCategories')}</span>
-                              </div>
+                        <Select 
+                          value={formData.preferredCategories} 
+                          onValueChange={(value) => handleFieldChange('preferredCategories', value)}
+                        >
+                          <SelectTrigger className={`transition-all duration-200 ${
+                            fieldFocus === 'preferredCategories' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                          } ${errors.preferredCategories ? 'border-red-300' : 'border-gray-200'}`}>
+                            <SelectValue placeholder="Choose your primary service needs" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="web-development">Web Development & Design</SelectItem>
+                            <SelectItem value="digital-marketing">Digital Marketing & SEO</SelectItem>
+                            <SelectItem value="social-media">Social Media Management</SelectItem>
+                            <SelectItem value="content-creation">Content Creation & Writing</SelectItem>
+                            <SelectItem value="graphic-design">Graphic Design & Branding</SelectItem>
+                            <SelectItem value="ecommerce">E-commerce Solutions</SelectItem>
+                            <SelectItem value="mobile-apps">Mobile App Development</SelectItem>
+                            <SelectItem value="consulting">Business Consulting</SelectItem>
+                            <SelectItem value="hr-services">HR & Staffing Services</SelectItem>
+                            <SelectItem value="accounting">Accounting & Finance</SelectItem>
+                            <SelectItem value="legal-services">Legal Services</SelectItem>
+                            <SelectItem value="it-support">IT Support & Maintenance</SelectItem>
+                            <SelectItem value="data-analysis">Data Analysis & Analytics</SelectItem>
+                            <SelectItem value="project-management">Project Management</SelectItem>
+                            <SelectItem value="translation">Translation Services</SelectItem>
+                            <SelectItem value="other">Other (Specify in notes)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {fieldFocus === 'preferredCategories' && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>Choose the service category that best matches your primary needs. You can add more details in the project description later.</span>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                         
                         {errors.preferredCategories && <span className="text-sm text-red-500 flex items-center space-x-1">
                           <AlertCircle className="h-4 w-4" />
@@ -914,8 +930,12 @@ function OnboardingForm() {
                         <div className="flex items-center justify-between">
                           <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
                             <TrendingUp className="h-5 w-5 text-blue-600" />
-                            <span>Budget Range *</span>
+                            <span>Project Budget *</span>
                           </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            <span>In Omani Rial (OMR)</span>
+                          </div>
                         </div>
                         
                         <Select 
@@ -925,15 +945,17 @@ function OnboardingForm() {
                           <SelectTrigger className={`transition-all duration-200 ${
                             fieldFocus === 'budgetRange' ? 'ring-2 ring-blue-500 shadow-lg' : ''
                           } ${errors.budgetRange ? 'border-red-300' : 'border-gray-200'}`}>
-                            <SelectValue placeholder="Select your budget range" />
+                            <SelectValue placeholder="Select your project budget range" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="under-1k">Under $1,000</SelectItem>
-                            <SelectItem value="1k-5k">$1,000 - $5,000</SelectItem>
-                            <SelectItem value="5k-10k">$5,000 - $10,000</SelectItem>
-                            <SelectItem value="10k-25k">$10,000 - $25,000</SelectItem>
-                            <SelectItem value="25k-plus">$25,000+</SelectItem>
+                            <SelectItem value="under-500">Under 500 OMR</SelectItem>
+                            <SelectItem value="500-1000">500 - 1,000 OMR</SelectItem>
+                            <SelectItem value="1000-2500">1,000 - 2,500 OMR</SelectItem>
+                            <SelectItem value="2500-5000">2,500 - 5,000 OMR</SelectItem>
+                            <SelectItem value="5000-10000">5,000 - 10,000 OMR</SelectItem>
+                            <SelectItem value="10000-plus">10,000+ OMR</SelectItem>
                             <SelectItem value="custom">Custom Range</SelectItem>
+                            <SelectItem value="discuss">Prefer to discuss</SelectItem>
                           </SelectContent>
                         </Select>
                         
@@ -941,7 +963,7 @@ function OnboardingForm() {
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
                             <div className="flex items-start space-x-2">
                               <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                              <span>{getFieldTip('budgetRange')}</span>
+                              <span>Selecting a budget range helps us match you with providers who work within your budget. Don't worry, this is just an estimate.</span>
                             </div>
                           </div>
                         )}
@@ -959,26 +981,47 @@ function OnboardingForm() {
                         <div className="flex items-center justify-between">
                           <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
                             <Clock className="h-5 w-5 text-blue-600" />
-                            <span>Project Timeline</span>
+                            <span>Project Timeline *</span>
                           </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            <span>When do you need this completed?</span>
+                          </div>
                         </div>
                         
                         <Select 
                           value={formData.projectTimeline} 
                           onValueChange={(value) => handleFieldChange('projectTimeline', value)}
                         >
-                          <SelectTrigger className="transition-all duration-200">
-                            <SelectValue placeholder="When do you need the project completed?" />
+                          <SelectTrigger className={`transition-all duration-200 ${
+                            fieldFocus === 'projectTimeline' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                          } ${errors.projectTimeline ? 'border-red-300' : 'border-gray-200'}`}>
+                            <SelectValue placeholder="Select your preferred project timeline" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="asap">ASAP (Within 1 week)</SelectItem>
+                            <SelectItem value="urgent">Urgent (Within 1 week)</SelectItem>
                             <SelectItem value="1-month">Within 1 month</SelectItem>
                             <SelectItem value="2-3-months">2-3 months</SelectItem>
                             <SelectItem value="3-6-months">3-6 months</SelectItem>
                             <SelectItem value="6-months-plus">6+ months</SelectItem>
-                            <SelectItem value="flexible">Flexible timeline</SelectItem>
+                            <SelectItem value="flexible">Flexible - depends on scope</SelectItem>
+                            <SelectItem value="discuss">Prefer to discuss timeline</SelectItem>
                           </SelectContent>
                         </Select>
+                        
+                        {fieldFocus === 'projectTimeline' && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>Realistic timelines help ensure quality delivery. Most projects can be completed faster with additional resources.</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {errors.projectTimeline && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.projectTimeline}</span>
+                        </span>}
                       </div>
                       
                       <Separator className="my-8" />
@@ -988,25 +1031,48 @@ function OnboardingForm() {
                         <div className="flex items-center justify-between">
                           <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
                             <Mail className="h-5 w-5 text-blue-600" />
-                            <span>Communication Preference</span>
+                            <span>Preferred Communication *</span>
                           </Label>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Info className="h-4 w-4" />
+                            <span>How do you prefer to communicate?</span>
+                          </div>
                         </div>
                         
                         <Select 
                           value={formData.communicationPreference} 
                           onValueChange={(value) => handleFieldChange('communicationPreference', value)}
                         >
-                          <SelectTrigger className="transition-all duration-200">
-                            <SelectValue placeholder="How would you like to communicate?" />
+                          <SelectTrigger className={`transition-all duration-200 ${
+                            fieldFocus === 'communicationPreference' ? 'ring-2 ring-blue-500 shadow-lg' : ''
+                          } ${errors.communicationPreference ? 'border-red-300' : 'border-gray-200'}`}>
+                            <SelectValue placeholder="Select your preferred communication method" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="email">Email</SelectItem>
-                            <SelectItem value="phone">Phone calls</SelectItem>
-                            <SelectItem value="video">Video calls</SelectItem>
-                            <SelectItem value="chat">Chat/Instant messaging</SelectItem>
+                            <SelectItem value="email">Email (Formal & Documented)</SelectItem>
+                            <SelectItem value="phone">Phone Calls (Direct & Personal)</SelectItem>
+                            <SelectItem value="video">Video Calls (Face-to-Face)</SelectItem>
+                            <SelectItem value="whatsapp">WhatsApp (Quick & Convenient)</SelectItem>
+                            <SelectItem value="teams">Microsoft Teams</SelectItem>
+                            <SelectItem value="zoom">Zoom Meetings</SelectItem>
                             <SelectItem value="mixed">Mixed (Email + Calls)</SelectItem>
+                            <SelectItem value="flexible">Flexible (Provider's choice)</SelectItem>
                           </SelectContent>
                         </Select>
+                        
+                        {fieldFocus === 'communicationPreference' && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                            <div className="flex items-start space-x-2">
+                              <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                              <span>Choose your preferred communication method. This helps us match you with providers who use similar communication styles.</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {errors.communicationPreference && <span className="text-sm text-red-500 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{errors.communicationPreference}</span>
+                        </span>}
                       </div>
                     </div>
                   )}
@@ -1138,8 +1204,26 @@ function OnboardingForm() {
                                 <div className="flex items-start space-x-2">
                                   <Star className="h-4 w-4 text-blue-600 mt-1 flex-shrink-0" />
                                   <div>
-                                    <span className="font-medium">Interested in:</span>
-                                    <p className="text-gray-700">{formData.preferredCategories}</p>
+                                    <span className="font-medium">Service Category:</span>
+                                    <p className="text-gray-700">
+                                      {formData.preferredCategories === 'web-development' ? 'Web Development & Design' :
+                                       formData.preferredCategories === 'digital-marketing' ? 'Digital Marketing & SEO' :
+                                       formData.preferredCategories === 'social-media' ? 'Social Media Management' :
+                                       formData.preferredCategories === 'content-creation' ? 'Content Creation & Writing' :
+                                       formData.preferredCategories === 'graphic-design' ? 'Graphic Design & Branding' :
+                                       formData.preferredCategories === 'ecommerce' ? 'E-commerce Solutions' :
+                                       formData.preferredCategories === 'mobile-apps' ? 'Mobile App Development' :
+                                       formData.preferredCategories === 'consulting' ? 'Business Consulting' :
+                                       formData.preferredCategories === 'hr-services' ? 'HR & Staffing Services' :
+                                       formData.preferredCategories === 'accounting' ? 'Accounting & Finance' :
+                                       formData.preferredCategories === 'legal-services' ? 'Legal Services' :
+                                       formData.preferredCategories === 'it-support' ? 'IT Support & Maintenance' :
+                                       formData.preferredCategories === 'data-analysis' ? 'Data Analysis & Analytics' :
+                                       formData.preferredCategories === 'project-management' ? 'Project Management' :
+                                       formData.preferredCategories === 'translation' ? 'Translation Services' :
+                                       formData.preferredCategories === 'other' ? 'Other (Specify in notes)' :
+                                       formData.preferredCategories}
+                                    </p>
                                   </div>
                                 </div>
                               )}
@@ -1148,7 +1232,17 @@ function OnboardingForm() {
                                 <div className="flex items-center space-x-2">
                                   <TrendingUp className="h-4 w-4 text-blue-600" />
                                   <span className="font-medium">Budget:</span>
-                                  <span className="text-gray-700 capitalize">{formData.budgetRange.replace('-', ' - ')}</span>
+                                  <span className="text-gray-700 capitalize">
+                                    {formData.budgetRange === 'under-500' ? 'Under 500 OMR' :
+                                     formData.budgetRange === '500-1000' ? '500 - 1,000 OMR' :
+                                     formData.budgetRange === '1000-2500' ? '1,000 - 2,500 OMR' :
+                                     formData.budgetRange === '2500-5000' ? '2,500 - 5,000 OMR' :
+                                     formData.budgetRange === '5000-10000' ? '5,000 - 10,000 OMR' :
+                                     formData.budgetRange === '10000-plus' ? '10,000+ OMR' :
+                                     formData.budgetRange === 'custom' ? 'Custom Range' :
+                                     formData.budgetRange === 'discuss' ? 'Prefer to discuss' :
+                                     formData.budgetRange.replace('-', ' - ')}
+                                  </span>
                                 </div>
                               )}
                               
