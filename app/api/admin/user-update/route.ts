@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
         console.error('❌ Auth metadata update failed:', e?.message || e)
       }
 
-      // 2) Direct update of profiles table - simplified approach
+      // 2) Ensure profile exists and update it
       if (status !== undefined) {
         try {
           // Map UI status to verification_status
@@ -72,40 +72,65 @@ export async function POST(req: NextRequest) {
                                    status === 'suspended' ? 'suspended' :
                                    status === 'inactive' ? 'rejected' : 'pending'
           
-          console.log('🔄 Direct profiles update:', {
+          console.log('🔄 Ensuring profile exists and updating:', {
             userId: user_id,
             status,
             verificationStatus
           })
           
-          // Use a more direct update approach
-          const { data: updateResult, error: profErr } = await admin
+          // First, check if profile exists
+          const { data: existingProfile, error: checkErr } = await admin
             .from('profiles')
-            .update({ 
-              verification_status: verificationStatus,
-              ...(role !== undefined ? { role } : {})
-            })
+            .select('id')
             .eq('id', user_id)
-            .select('id, verification_status, role')
+            .single()
           
-          if (profErr) {
-            console.error('❌ Direct profiles update failed:', profErr.message)
-            // Try alternative approach - insert if not exists
-            const { error: insertErr } = await admin
+          if (checkErr && checkErr.code === 'PGRST116') {
+            console.log('🔍 Profile does not exist, creating it...')
+            
+            // Get user data from auth to create profile
+            const { data: authUser, error: authErr } = await admin.auth.admin.getUserById(user_id)
+            if (authErr) {
+              console.error('❌ Could not get auth user:', authErr.message)
+            } else {
+              // Create profile with basic data
+              const { error: createErr } = await admin
+                .from('profiles')
+                .insert({
+                  id: user_id,
+                  full_name: authUser.user?.user_metadata?.full_name || authUser.user?.email?.split('@')[0] || 'User',
+                  email: authUser.user?.email || null,
+                  role: role || 'client',
+                  verification_status: verificationStatus,
+                  created_at: new Date().toISOString()
+                })
+              
+              if (createErr) {
+                console.error('❌ Profile creation failed:', createErr.message)
+              } else {
+                console.log('✅ Profile created successfully')
+              }
+            }
+          } else if (checkErr) {
+            console.error('❌ Error checking profile:', checkErr.message)
+          } else {
+            console.log('🔍 Profile exists, updating it...')
+            
+            // Profile exists, update it
+            const { data: updateResult, error: updateErr } = await admin
               .from('profiles')
-              .upsert({ 
-                id: user_id,
+              .update({ 
                 verification_status: verificationStatus,
                 ...(role !== undefined ? { role } : {})
               })
+              .eq('id', user_id)
+              .select('id, verification_status, role')
             
-            if (insertErr) {
-              console.error('❌ Profiles upsert also failed:', insertErr.message)
+            if (updateErr) {
+              console.error('❌ Profile update failed:', updateErr.message)
             } else {
-              console.log('✅ Profiles upsert successful')
+              console.log('✅ Profile update successful:', updateResult)
             }
-          } else {
-            console.log('✅ Direct profiles update successful:', updateResult)
           }
         } catch (e: any) {
           console.error('❌ Profiles update error:', e?.message || e)

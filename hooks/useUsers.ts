@@ -264,24 +264,6 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
       
       // Force refresh to get updated data
       await fetchUsers(true)
-      
-      // Additional verification: Check if the update actually worked
-      try {
-        const supabase = await getSupabaseClient()
-        const { data: directCheck, error: directError } = await supabase
-          .from('profiles')
-          .select('id, verification_status, role')
-          .eq('id', userId)
-          .single()
-        
-        if (directError) {
-          console.error('❌ Direct check failed:', directError)
-        } else {
-          console.log('🔍 Direct database check:', directCheck)
-        }
-      } catch (e) {
-        console.error('❌ Direct check error:', e)
-      }
     } catch (err: any) {
       logger.error('Error updating user:', err)
       throw err
