@@ -178,23 +178,14 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
     } catch (error) {
       logger.error('Error fetching users:', error)
       
-      // Retry logic for network errors
-      if (retryCount < 3 && error instanceof Error && error.message.includes('fetch')) {
-        logger.debug(`Retrying fetch (attempt ${retryCount + 1}/3)...`)
-        setRetryCount(prev => prev + 1)
-        setTimeout(() => {
-          fetchUsers(true)
-        }, 2000 * (retryCount + 1)) // Exponential backoff
-        return
-      }
-      
+      // Don't retry automatically to prevent infinite loops
       setError(error instanceof Error ? error.message : 'Failed to fetch users')
     } finally {
       clearTimeout(timeoutId)
       setLoading(false)
       setIsFetching(false)
     }
-  }, [isFetching, retryCount])
+  }, [isFetching])
 
   const updateUser = useCallback(async (userId: string, updates: Partial<AdminUser>) => {
     try {
@@ -296,12 +287,12 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
 
   const refetch = useCallback(async (force = false) => {
     await fetchUsers(force)
-  }, [fetchUsers])
+  }, []) // Remove fetchUsers dependency to prevent re-creation
 
   // Initial fetch
   useEffect(() => {
     fetchUsers(true)
-  }, [fetchUsers])
+  }, []) // Empty dependency array to run only once on mount
 
   // Auto refresh
   useEffect(() => {
@@ -312,7 +303,7 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
     }, refreshInterval)
     
     return () => clearInterval(intervalId)
-  }, [autoRefresh, refreshInterval, fetchUsers])
+  }, [autoRefresh, refreshInterval]) // Remove fetchUsers from dependencies
 
   // Realtime updates
   useEffect(() => {
@@ -348,7 +339,7 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
         logger.error('Error unsubscribing from realtime:', error)
       }
     }
-  }, [enableRealtime, fetchUsers])
+  }, [enableRealtime]) // Remove fetchUsers from dependencies
 
   return {
     users,
