@@ -19,6 +19,9 @@ interface Service {
   base_price: number
   currency: string
   cover_image_url?: string
+  created_at?: string
+  rating?: number
+  popularity?: number
   provider?: {
     id?: string
     full_name?: string
@@ -140,11 +143,15 @@ export default function ServicesPage() {
       case 'price-high':
         return sorted.sort((a, b) => getLowestPrice(b.service_packages, b.base_price) - getLowestPrice(a.service_packages, a.base_price))
       case 'rating':
-        return sorted.sort((a, b) => (b as any).rating - (a as any).rating)
+        return sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0))
       case 'newest':
-        return sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        return sorted.sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+          return dateB - dateA
+        })
       case 'popular':
-        return sorted.sort((a, b) => (b as any).popularity - (a as any).popularity)
+        return sorted.sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
       default:
         return sorted
     }
