@@ -118,6 +118,11 @@ export async function GET(req: NextRequest) {
       .select('id, full_name, role, phone, company_name, created_at, verification_status, profile_completed, email')
       .order('created_at', { ascending: false })
       .limit(500)
+    
+    if (q) {
+      query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,company_name.ilike.%${q}%`)
+    }
+    
     const { data: rows, error: pErr } = await query
     if (pErr) {
       console.error('❌ Profiles query error:', pErr)
