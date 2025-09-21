@@ -41,6 +41,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
+      {/* Skip Navigation */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50"
+      >
+        Skip to main content
+      </a>
+      
       {/* Enhanced Header */}
       <header className="fixed w-full top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">
         <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -136,7 +144,7 @@ export default function HomePage() {
       </header>
 
       {/* Enhanced Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-16">
+      <section id="main-content" className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-16">
         {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full opacity-20 blur-3xl"></div>
@@ -147,7 +155,7 @@ export default function HomePage() {
           <div className="text-center">
             {/* Badge */}
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-8">
-              <Sparkles className="h-4 w-4 mr-2" />
+              <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
               Trusted by 5000+ businesses in Oman
             </div>
             
@@ -158,7 +166,7 @@ export default function HomePage() {
             <p className="mt-6 text-xl leading-8 text-gray-600 max-w-3xl mx-auto">
               Find verified service providers in Oman for all your business needs. 
               From digital marketing to legal services, connect with professionals 
-              who deliver quality results with guaranteed satisfaction.
+              who understand the local market and deliver quality results with guaranteed satisfaction.
             </p>
             
             {/* CTA Buttons */}
@@ -170,7 +178,7 @@ export default function HomePage() {
                 </Button>
               </Link>
               <Button variant="outline" size="lg" className="text-lg px-8 py-4 rounded-xl border-2">
-                <Play className="h-4 w-4 mr-2" />
+                <Play className="h-4 w-4 mr-2" aria-hidden="true" />
                 Watch Demo
               </Button>
             </div>
@@ -178,15 +186,15 @@ export default function HomePage() {
             {/* Trust Indicators */}
             <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-8 text-sm text-gray-600">
               <div className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <CheckCircle className="h-5 w-5 text-green-500" aria-hidden="true" />
                 <span>5000+ Happy Customers</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Shield className="h-5 w-5 text-blue-500" />
+                <Shield className="h-5 w-5 text-blue-500" aria-hidden="true" />
                 <span>100% Verified Providers</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Star className="h-5 w-5 text-yellow-500" />
+                <Star className="h-5 w-5 text-yellow-500" aria-hidden="true" />
                 <span>4.9/5 Average Rating</span>
               </div>
             </div>
@@ -223,7 +231,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-4">
-              <Target className="h-4 w-4 mr-2" />
+              <Target className="h-4 w-4 mr-2" aria-hidden="true" />
               Why Choose Us
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
@@ -238,7 +246,7 @@ export default function HomePage() {
             <Card className="card-elevated hover-lift border-0 bg-white">
               <CardHeader className="text-center pb-4">
                 <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
-                  <Shield className="h-8 w-8 text-white" />
+                  <Shield className="h-8 w-8 text-white" aria-hidden="true" />
                 </div>
                 <CardTitle className="text-xl mb-3">Verified Providers</CardTitle>
                 <CardDescription className="text-gray-600 leading-relaxed">
@@ -381,23 +389,56 @@ export default function HomePage() {
               {
                 name: "Ahmed Al-Rashid",
                 title: "CEO, TechStart Oman",
+                company: "Technology Startup",
                 image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-                content: "Business Services Hub helped us find the perfect digital marketing partner. Our online presence has grown by 300% in just 6 months!",
-                rating: 5
+                content: "Business Services Hub helped us find the perfect digital marketing partner. Our online presence has grown by 300% in just 6 months! The local expertise made all the difference.",
+                rating: 5,
+                location: "Muscat, Oman"
               },
               {
                 name: "Fatima Al-Zahra", 
                 title: "Founder, Muscat Retail",
+                company: "Retail Business",
                 image: "https://images.unsplash.com/photo-1494790108755-2616b612b123?w=150&h=150&fit=crop&crop=face",
-                content: "The quality of service providers is exceptional. We found our accounting firm here and they've been fantastic for our business growth.",
-                rating: 5
+                content: "The quality of service providers is exceptional. We found our accounting firm here and they've been fantastic for our business growth. They understand Omani regulations perfectly.",
+                rating: 5,
+                location: "Muscat, Oman"
               },
               {
                 name: "Omar Hassan",
                 title: "Operations Manager, Gulf Logistics",
+                company: "Logistics Company",
                 image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face", 
-                content: "Professional, reliable, and results-driven. The platform made it easy to connect with trusted legal advisors for our expansion.",
-                rating: 5
+                content: "Professional, reliable, and results-driven. The platform made it easy to connect with trusted legal advisors for our expansion across the GCC region.",
+                rating: 5,
+                location: "Salalah, Oman"
+              },
+              {
+                name: "Sarah Al-Mansouri",
+                title: "Marketing Director, Nizwa Trading",
+                company: "Trading Company",
+                image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+                content: "Finding the right IT services provider was challenging until we discovered Business Services Hub. The verification process gave us confidence, and the results exceeded expectations.",
+                rating: 5,
+                location: "Nizwa, Oman"
+              },
+              {
+                name: "Khalid Al-Balushi",
+                title: "CEO, Sur Manufacturing",
+                company: "Manufacturing",
+                image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face",
+                content: "The platform's focus on local businesses in Oman is what sets it apart. We found HR services that understand our cultural context and business needs perfectly.",
+                rating: 5,
+                location: "Sur, Oman"
+              },
+              {
+                name: "Aisha Al-Hinai",
+                title: "Founder, Sohar Consulting",
+                company: "Consulting Firm",
+                image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
+                content: "As a service provider on the platform, I've seen how it connects us with quality clients. The verification process ensures we work with serious businesses who value quality work.",
+                rating: 5,
+                location: "Sohar, Oman"
               }
             ].map((testimonial, index) => (
               <Card key={index} className="card-glass border-0 hover-lift">
@@ -414,17 +455,116 @@ export default function HomePage() {
                   <div className="flex items-center">
                     <img
                       src={testimonial.image}
-                      alt={testimonial.name}
+                      alt={`${testimonial.name} - ${testimonial.title}`}
                       className="w-12 h-12 rounded-full object-cover mr-4"
                     />
                     <div>
                       <div className="font-semibold text-gray-900">{testimonial.name}</div>
                       <div className="text-sm text-gray-600">{testimonial.title}</div>
+                      <div className="text-xs text-gray-500">{testimonial.location}</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Case Studies Section */}
+      <section className="py-24 bg-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium mb-4">
+              <Award className="h-4 w-4 mr-2" />
+              Success Stories
+            </div>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Real Results from Oman Businesses
+            </h2>
+            <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
+              See how businesses across Oman have transformed their operations with our verified service providers
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                  <TrendingUp className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">TechStart Oman</h3>
+                <p className="text-gray-600 mb-6">
+                  A technology startup needed to establish their digital presence and scale their operations across the GCC region.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Services Used:</span>
+                    <span className="text-sm font-medium">Digital Marketing, Legal Services</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Result:</span>
+                    <span className="text-sm font-medium text-green-600">300% growth in 6 months</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Location:</span>
+                    <span className="text-sm font-medium">Muscat, Oman</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-6">
+                  <Building2 className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Gulf Logistics</h3>
+                <p className="text-gray-600 mb-6">
+                  A logistics company needed legal expertise for international expansion and compliance with local regulations.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Services Used:</span>
+                    <span className="text-sm font-medium">Legal Services, Consulting</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Result:</span>
+                    <span className="text-sm font-medium text-green-600">Successful GCC expansion</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Location:</span>
+                    <span className="text-sm font-medium">Salalah, Oman</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6">
+                  <Users className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Sur Manufacturing</h3>
+                <p className="text-gray-600 mb-6">
+                  A manufacturing company needed HR services that understand local culture and business practices.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Services Used:</span>
+                    <span className="text-sm font-medium">HR Services, Consulting</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Result:</span>
+                    <span className="text-sm font-medium text-green-600">50% reduction in turnover</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Location:</span>
+                    <span className="text-sm font-medium">Sur, Oman</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

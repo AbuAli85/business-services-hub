@@ -42,6 +42,8 @@ export default function ServicesPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [sortBy, setSortBy] = useState('relevance')
+  const [showFilters, setShowFilters] = useState(false)
 
   const categories = [
     'Digital Marketing',
@@ -56,9 +58,35 @@ export default function ServicesPage() {
     'Content Creation'
   ]
 
+  const sortOptions = [
+    { value: 'relevance', label: 'Most Relevant' },
+    { value: 'price-low', label: 'Price: Low to High' },
+    { value: 'price-high', label: 'Price: High to Low' },
+    { value: 'rating', label: 'Highest Rated' },
+    { value: 'newest', label: 'Newest First' },
+    { value: 'popular', label: 'Most Popular' }
+  ]
+
+  // Service images mapping for better visual representation
+  const getServiceImage = (category: string, title: string) => {
+    const imageMap: { [key: string]: string } = {
+      'Digital Marketing': 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=225&fit=crop',
+      'Legal Services': 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=225&fit=crop',
+      'Accounting': 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=225&fit=crop',
+      'IT Services': 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=225&fit=crop',
+      'Design & Branding': 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=400&h=225&fit=crop',
+      'Consulting': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=225&fit=crop',
+      'Translation': 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=225&fit=crop',
+      'HR Services': 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=225&fit=crop',
+      'Web Development': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=225&fit=crop',
+      'Content Creation': 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=225&fit=crop'
+    }
+    return imageMap[category] || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=225&fit=crop'
+  }
+
   useEffect(() => {
     fetchServices()
-  }, [searchQuery, selectedCategory, minPrice, maxPrice])
+  }, [searchQuery, selectedCategory, minPrice, maxPrice, sortBy])
 
   const fetchServices = async () => {
     setLoading(true)
@@ -92,6 +120,9 @@ export default function ServicesPage() {
         filtered = filtered.filter((s: any) => (s.base_price ?? 0) <= max)
       }
 
+      // Apply sorting
+      filtered = sortServices(filtered, sortBy)
+
       setServices(filtered)
     } catch (error) {
       console.error('Error fetching services:', error)
@@ -100,11 +131,31 @@ export default function ServicesPage() {
     }
   }
 
+  const sortServices = (services: Service[], sortBy: string) => {
+    const sorted = [...services]
+    
+    switch (sortBy) {
+      case 'price-low':
+        return sorted.sort((a, b) => getLowestPrice(a.service_packages, a.base_price) - getLowestPrice(b.service_packages, b.base_price))
+      case 'price-high':
+        return sorted.sort((a, b) => getLowestPrice(b.service_packages, b.base_price) - getLowestPrice(a.service_packages, a.base_price))
+      case 'rating':
+        return sorted.sort((a, b) => (b as any).rating - (a as any).rating)
+      case 'newest':
+        return sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      case 'popular':
+        return sorted.sort((a, b) => (b as any).popularity - (a as any).popularity)
+      default:
+        return sorted
+    }
+  }
+
   const clearFilters = () => {
     setSearchQuery('')
     setSelectedCategory('all')
     setMinPrice('')
     setMaxPrice('')
+    setSortBy('relevance')
   }
 
   const getLowestPrice = (packages: Service['service_packages'], basePrice: number = 0) => {
@@ -114,6 +165,14 @@ export default function ServicesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Skip Navigation */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50"
+      >
+        Skip to main content
+      </a>
+      
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -124,11 +183,11 @@ export default function ServicesPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
+          <div className="flex flex-col lg:flex-row gap-4 mb-4">
+            <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search services..."
@@ -138,34 +197,75 @@ export default function ServicesPage() {
               />
             </div>
             
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Input
-              type="number"
-              placeholder="Min Price (OMR)"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-            />
-            
-            <Input
-              type="number"
-              placeholder="Max Price (OMR)"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+              </Button>
+            </div>
           </div>
+          
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="border-t pt-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Price Range (OMR)</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Min Price"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Max Price"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-end">
+                  <Button variant="outline" onClick={clearFilters} className="w-full">
+                    Clear All Filters
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="mt-4 flex justify-between items-center">
             <div className="flex items-center space-x-2">
@@ -175,9 +275,9 @@ export default function ServicesPage() {
               </span>
             </div>
             
-            <Button variant="outline" onClick={clearFilters}>
-              Clear Filters
-            </Button>
+            <div className="text-sm text-gray-500">
+              Showing results for {selectedCategory === 'all' ? 'all categories' : selectedCategory}
+            </div>
           </div>
         </div>
 
@@ -202,13 +302,15 @@ export default function ServicesPage() {
                   {service.cover_image_url ? (
                     <img
                       src={service.cover_image_url}
-                      alt={service.title}
-                      className="w-full h-full object-cover"
+                      alt={`${service.title} - ${service.category} service`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-300">
-                      <Building2 className="h-12 w-12 text-gray-500" />
-                    </div>
+                    <img
+                      src={getServiceImage(service.category, service.title)}
+                      alt={`${service.title} - ${service.category} service`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
                   )}
                 </div>
                 
