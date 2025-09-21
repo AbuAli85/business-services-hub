@@ -139,7 +139,7 @@ export default function SignUpPage() {
         email: formData.email,
         password: formData.password,
         options: {
-          captchaToken,
+          ...(captchaToken && { captchaToken }),
           data: {
             role: formData.role,
             full_name: formData.fullName,
@@ -553,20 +553,22 @@ export default function SignUpPage() {
                     )}
                   </div>
 
-                  {/* Captcha */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">Security verification</span>
+                  {/* Captcha - Only show if configured */}
+                  {process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">Security verification</span>
+                      </div>
+                      <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
+                      {errors.captcha && (
+                        <p className="text-sm text-red-500 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {errors.captcha}
+                        </p>
+                      )}
                     </div>
-                    <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-                    {errors.captcha && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {errors.captcha}
-                      </p>
-                    )}
-                  </div>
+                  )}
 
                   {/* Submit Button */}
                   <Button

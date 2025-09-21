@@ -319,10 +319,12 @@ export function validateSignupForm(formData: SignupFormData, captchaToken: strin
     errors.companyName = companyNameValidation.error!
   }
 
-  // Captcha validation
-  const captchaValidation = validateCaptcha(captchaToken)
-  if (!captchaValidation.isValid) {
-    errors.captcha = captchaValidation.error!
+  // Captcha validation (optional if not configured)
+  if (process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY) {
+    const captchaValidation = validateCaptcha(captchaToken)
+    if (!captchaValidation.isValid) {
+      errors.captcha = captchaValidation.error!
+    }
   }
 
   // Additional warnings
