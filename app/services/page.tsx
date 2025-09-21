@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 // We now fetch from our API which already enriches services with provider and packages
 import { formatCurrency } from '@/lib/utils'
+import { getServiceCardImageUrl } from '@/lib/service-images'
 import { Search, Filter, Star, MapPin, Building2, Eye } from 'lucide-react'
 
 interface Service {
@@ -72,19 +73,7 @@ export default function ServicesPage() {
 
   // Service images mapping for better visual representation
   const getServiceImage = (category: string, title: string) => {
-    const imageMap: { [key: string]: string } = {
-      'Digital Marketing': 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=225&fit=crop',
-      'Legal Services': 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=225&fit=crop',
-      'Accounting': 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=225&fit=crop',
-      'IT Services': 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=225&fit=crop',
-      'Design & Branding': 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=400&h=225&fit=crop',
-      'Consulting': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=225&fit=crop',
-      'Translation': 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=225&fit=crop',
-      'HR Services': 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&h=225&fit=crop',
-      'Web Development': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=225&fit=crop',
-      'Content Creation': 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=225&fit=crop'
-    }
-    return imageMap[category] || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=225&fit=crop'
+    return getServiceCardImageUrl(category, title, undefined, 400, 225)
   }
 
   useEffect(() => {

@@ -27,6 +27,7 @@ import {
   Zap
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { getServiceCardImageUrl } from '@/lib/service-images'
 
 interface Service {
   id: string
@@ -40,6 +41,7 @@ interface Service {
   featured: boolean
   created_at: string
   updated_at: string
+  cover_image_url?: string
   provider: {
     id: string
     full_name: string
@@ -303,8 +305,12 @@ export function EnhancedServiceTable({
                   <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                          <Package className="h-6 w-6 text-white" />
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={getServiceCardImageUrl(service.category, service.title, service.cover_image_url, 48, 48)}
+                            alt={`${service.title} - ${service.category} service`}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 truncate">{service.title}</div>

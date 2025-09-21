@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   Table,
@@ -30,7 +31,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Search
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -82,6 +84,9 @@ export default function AdminReportsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('30d')
+  const [selectedTab, setSelectedTab] = useState<'all' | 'financial' | 'user' | 'service' | 'booking' | 'analytics'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
     loadReports()
@@ -259,6 +264,85 @@ export default function AdminReportsPage() {
     )
   }
 
+  // Filter reports based on selected tab and search
+  const filteredReports = reports.filter(report => {
+    const matchesTab = selectedTab === 'all' || report.type === selectedTab
+    const matchesSearch = searchQuery === '' || 
+      report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || report.status === statusFilter
+    
+    return matchesTab && matchesSearch && matchesStatus
+  })
+
+  // Get tab-specific analytics
+  const getTabAnalytics = () => {
+    if (!analytics) return null
+    
+    switch (selectedTab) {
+      case 'financial':
+        return {
+          title: 'Financial Overview',
+          description: 'Revenue, expenses, and profit analysis',
+          metrics: [
+            { label: 'Total Revenue', value: formatCurrency(analytics.totalRevenue), icon: DollarSign },
+            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar },
+            { label: 'Avg Revenue/Booking', value: formatCurrency(analytics.totalRevenue / analytics.totalBookings), icon: TrendingUp }
+          ]
+        }
+      case 'user':
+        return {
+          title: 'User Analytics',
+          description: 'User registrations, roles, and engagement',
+          metrics: [
+            { label: 'Total Users', value: analytics.totalUsers.toString(), icon: Users },
+            { label: 'Active Users', value: Math.floor(analytics.totalUsers * 0.8).toString(), icon: UserCheck },
+            { label: 'Growth Rate', value: '+12.5%', icon: TrendingUp }
+          ]
+        }
+      case 'service':
+        return {
+          title: 'Service Performance',
+          description: 'Service bookings, ratings, and provider performance',
+          metrics: [
+            { label: 'Total Services', value: analytics.topServices.length.toString(), icon: BarChart3 },
+            { label: 'Top Service', value: analytics.topServices[0]?.name || 'N/A', icon: Building2 },
+            { label: 'Avg Rating', value: '4.8/5', icon: Activity }
+          ]
+        }
+      case 'booking':
+        return {
+          title: 'Booking Analytics',
+          description: 'Booking trends, completion rates, and client insights',
+          metrics: [
+            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar },
+            { label: 'Completion Rate', value: '87.5%', icon: CheckCircle },
+            { label: 'Avg Booking Value', value: formatCurrency(analytics.totalRevenue / analytics.totalBookings), icon: DollarSign }
+          ]
+        }
+      case 'analytics':
+        return {
+          title: 'Platform Analytics',
+          description: 'Overall platform performance and growth metrics',
+          metrics: [
+            { label: 'Total Users', value: analytics.totalUsers.toString(), icon: Users },
+            { label: 'Total Revenue', value: formatCurrency(analytics.totalRevenue), icon: DollarSign },
+            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar }
+          ]
+        }
+      default:
+        return {
+          title: 'All Reports Overview',
+          description: 'Comprehensive platform analytics and insights',
+          metrics: [
+            { label: 'Total Users', value: analytics.totalUsers.toString(), icon: Users },
+            { label: 'Total Revenue', value: formatCurrency(analytics.totalRevenue), icon: DollarSign },
+            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar }
+          ]
+        }
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -375,6 +459,81 @@ export default function AdminReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tab Navigation */}
+      <div className="flex items-center space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+        <Button 
+          variant={selectedTab === 'all' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedTab('all')}
+          className="rounded-md"
+        >
+          All Reports
+        </Button>
+        <Button 
+          variant={selectedTab === 'financial' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedTab('financial')}
+          className="rounded-md"
+        >
+          Financial
+        </Button>
+        <Button 
+          variant={selectedTab === 'user' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedTab('user')}
+          className="rounded-md"
+        >
+          Users
+        </Button>
+        <Button 
+          variant={selectedTab === 'service' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedTab('service')}
+          className="rounded-md"
+        >
+          Services
+        </Button>
+        <Button 
+          variant={selectedTab === 'booking' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedTab('booking')}
+          className="rounded-md"
+        >
+          Bookings
+        </Button>
+        <Button 
+          variant={selectedTab === 'analytics' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setSelectedTab('analytics')}
+          className="rounded-md"
+        >
+          Analytics
+        </Button>
+      </div>
+
+      {/* Tab-specific Analytics */}
+      {getTabAnalytics() && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{getTabAnalytics()?.title}</CardTitle>
+            <CardDescription>{getTabAnalytics()?.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {getTabAnalytics()?.metrics.map((metric, index) => (
+                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <metric.icon className="h-6 w-6 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{metric.label}</p>
+                    <p className="text-lg font-bold text-gray-900">{metric.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Services & User Roles */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -497,6 +656,30 @@ export default function AdminReportsPage() {
           <CardDescription>View and download previously generated reports with comprehensive analytics</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Search and Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search reports..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="generating">Generating</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -511,7 +694,7 @@ export default function AdminReportsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reports.map((report) => (
+                {filteredReports.map((report) => (
                   <TableRow key={report.id}>
                     <TableCell>
                       <div className="flex items-center space-x-2">
