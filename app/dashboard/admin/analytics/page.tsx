@@ -20,6 +20,8 @@ import {
   Clock
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { RealtimeAnalytics } from '@/components/dashboard/RealtimeAnalytics'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 
 interface AnalyticsData {
   totalUsers: number
@@ -203,6 +205,7 @@ export default function AdminAnalyticsPage() {
                   <SelectItem value="365">Last year</SelectItem>
                 </SelectContent>
               </Select>
+              <RealtimeNotifications />
               <Button 
                 variant="secondary"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
@@ -306,6 +309,9 @@ export default function AdminAnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Real-time Analytics Dashboard */}
+      <RealtimeAnalytics className="mb-8" />
 
       {/* Performance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

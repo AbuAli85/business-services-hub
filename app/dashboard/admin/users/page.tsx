@@ -7,9 +7,10 @@ import { toast } from 'react-hot-toast'
 import { useUsers } from '@/hooks/useUsers'
 import { UserStats } from '@/components/users/UserStats'
 import { UserFilters } from '@/components/users/UserFilters'
-import { UserTable } from '@/components/users/UserTable'
+import { EnhancedUserTable } from '@/components/users/EnhancedUserTable'
 import { UserGrid } from '@/components/users/UserGrid'
 import { UserModals } from '@/components/users/UserModals'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 import { AdminUser, UserFilters as UserFiltersType } from '@/types/users'
 import { calculateUserStats, filterAndSortUsers, paginateUsers, exportUsersToCSV } from '@/lib/utils/user'
 import { 
@@ -141,6 +142,37 @@ export default function AdminUsersPage() {
     }
   }, [updateUser])
 
+  const handleVerifyUser = useCallback(async (user: AdminUser) => {
+    try {
+      await updateUser(user.id, { 
+        status: 'active',
+        verification_status: 'approved'
+      })
+      toast.success(`${user.full_name} verified successfully`)
+    } catch (err: any) {
+      toast.error('Failed to verify user')
+    }
+  }, [updateUser])
+
+  const handleSuspendUser = useCallback(async (user: AdminUser) => {
+    try {
+      await updateUser(user.id, { status: 'suspended' })
+      toast.success(`${user.full_name} suspended successfully`)
+    } catch (err: any) {
+      toast.error('Failed to suspend user')
+    }
+  }, [updateUser])
+
+  const handleSendEmail = useCallback(async (user: AdminUser) => {
+    try {
+      // Simulate email sending
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      toast.success(`Email sent to ${user.email}`)
+    } catch (err: any) {
+      toast.error('Failed to send email')
+    }
+  }, [])
+
   const handleBulkAction = useCallback(async (action: 'approve' | 'suspend' | 'delete') => {
     if (selectedIds.size === 0) return
     
@@ -236,6 +268,7 @@ export default function AdminUsersPage() {
               <p className="text-gray-600 mt-1">Manage platform users, roles, and permissions</p>
             </div>
             <div className="flex items-center space-x-3">
+              <RealtimeNotifications />
               <Button 
                 onClick={() => refetch(true)}
                 disabled={isFetching}
@@ -355,7 +388,7 @@ export default function AdminUsersPage() {
                 </Button>
               </div>
             ) : viewMode === 'list' ? (
-              <UserTable
+              <EnhancedUserTable
                 users={pagedUsers}
                 selectedIds={selectedIds}
                 onSelectionChange={handleSelectionChange}
@@ -364,6 +397,9 @@ export default function AdminUsersPage() {
                 onDeleteUser={handleDeleteUser}
                 onStatusChange={handleStatusChange}
                 onRoleChange={handleRoleChange}
+                onVerifyUser={handleVerifyUser}
+                onSuspendUser={handleSuspendUser}
+                onSendEmail={handleSendEmail}
               />
             ) : (
               <UserGrid

@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { EnhancedServiceTable } from '@/components/services/EnhancedServiceTable'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 import { 
   Search,
   Filter,
@@ -222,6 +224,94 @@ export default function AdminServicesPage() {
     }
   }
 
+  // Enhanced service handlers for the new table
+  const handleApproveService = async (service: Service) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('services')
+        .update({ 
+          approval_status: 'approved',
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', service.id)
+
+      if (error) throw error
+
+      toast.success('Service approved successfully!')
+      loadServices()
+    } catch (error: any) {
+      console.error('Error approving service:', error)
+      toast.error('Failed to approve service')
+    }
+  }
+
+  const handleSuspendService = async (service: Service) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('services')
+        .update({ 
+          status: 'suspended',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', service.id)
+
+      if (error) throw error
+
+      toast.success('Service suspended successfully!')
+      loadServices()
+    } catch (error: any) {
+      console.error('Error suspending service:', error)
+      toast.error('Failed to suspend service')
+    }
+  }
+
+  const handleFeatureService = async (service: Service) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('services')
+        .update({ 
+          featured: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', service.id)
+
+      if (error) throw error
+
+      toast.success('Service featured successfully!')
+      loadServices()
+    } catch (error: any) {
+      console.error('Error featuring service:', error)
+      toast.error('Failed to feature service')
+    }
+  }
+
+  const handleUpdatePricing = async (service: Service) => {
+    // This would typically open a modal for editing pricing
+    toast.success('Pricing update functionality coming soon!')
+  }
+
+  const handleViewService = (service: Service) => {
+    // This would typically open a service details modal
+    toast.success(`Viewing service: ${service.title}`)
+  }
+
+  const handleEditService = (service: Service) => {
+    // This would typically open an edit modal
+    toast.success(`Editing service: ${service.title}`)
+  }
+
+  const handleDeleteService = (service: Service) => {
+    // This would typically open a confirmation modal
+    toast.success(`Delete service: ${service.title}`)
+  }
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: 'Pending Review', variant: 'secondary' as const, icon: Clock },
@@ -293,6 +383,7 @@ export default function AdminServicesPage() {
             </div>
           </div>
           <div className="flex flex-col gap-3">
+            <RealtimeNotifications />
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
@@ -385,113 +476,17 @@ export default function AdminServicesPage() {
               </Select>
             </div>
 
-            {/* Table */}
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredServices.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        <div className="flex flex-col items-center space-y-2">
-                          <Package className="h-12 w-12 opacity-50" />
-                          <p className="text-lg font-medium">No services found</p>
-                          <p className="text-sm">Try adjusting your filters or search criteria</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredServices.map((service) => (
-                      <TableRow key={service.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{service.title}</p>
-                              {service.featured && (
-                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {service.description}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{service.provider.full_name}</p>
-                            <p className="text-sm text-muted-foreground">{service.provider.email}</p>
-                            {service.provider.phone && (
-                              <p className="text-xs text-muted-foreground">{service.provider.phone}</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{service.category}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium">{formatCurrency(service.base_price, service.currency)}</span>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(service.approval_status)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>{formatDate(service.created_at)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-4 w-4 mr-2" />
-                              View
-                            </Button>
-                            {service.approval_status === 'pending' && (
-                              <>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  className="text-green-600 hover:text-green-700"
-                                  onClick={() => approveService(service.id)}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  className="text-red-600 hover:text-red-700"
-                                  onClick={() => rejectService(service.id)}
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => toggleFeatured(service.id, service.featured)}
-                            >
-                              <Star className={`h-4 w-4 mr-2 ${service.featured ? 'text-yellow-500 fill-current' : ''}`} />
-                              {service.featured ? 'Unfeature' : 'Feature'}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            {/* Enhanced Service Table */}
+            <EnhancedServiceTable
+              services={filteredServices}
+              onViewService={handleViewService}
+              onEditService={handleEditService}
+              onDeleteService={handleDeleteService}
+              onApproveService={handleApproveService}
+              onSuspendService={handleSuspendService}
+              onFeatureService={handleFeatureService}
+              onUpdatePricing={handleUpdatePricing}
+            />
           </div>
         </CardContent>
       </Card>
