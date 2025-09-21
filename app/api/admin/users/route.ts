@@ -96,18 +96,20 @@ export async function GET(req: NextRequest) {
     })
     // Load auth users upfront for enrichment
     let authUsers: any[] = []
+    let authById = new Map()
     try {
       const res: any = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
       authUsers = res?.data?.users || res?.users || []
+      authById = new Map(authUsers.map((au: any) => [au.id, au]))
       console.log('🔐 Loaded auth users:', { 
         count: authUsers.length,
         sample: authUsers.slice(0, 3).map(u => ({ id: u.id, email: u.email, role: u.user_metadata?.role }))
       })
     } catch (error) {
       console.error('❌ Error loading auth users (continuing without):', error)
-      // Continue without auth users - we'll use profile data
+      // Continue without auth users - we'll use profile data only
+      console.log('🔄 Continuing with profiles-only mode')
     }
-    const authById = new Map(authUsers.map((au: any) => [au.id, au]))
 
     // Use admin client for profiles read to bypass RLS when authorized
     // Select only safe columns that are guaranteed to exist across environments
