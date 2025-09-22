@@ -275,7 +275,7 @@ export default function SignUpPage() {
           <div className="w-full max-w-md">
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardHeader className="text-center pb-8">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+                <div className="mx-auto w-16 h-16 max-w-full max-h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-4">
                   <User className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</CardTitle>

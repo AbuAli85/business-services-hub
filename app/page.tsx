@@ -574,7 +574,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Enhanced CTA Section */}
+      {/* Enhanced CTA Section with Newsletter */}
       <section className="relative py-24 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0">
@@ -607,6 +607,32 @@ export default function HomePage() {
               </Link>
             </div>
             
+            {/* Newsletter signup */}
+            <form
+              action="https://formspree.io/f/xayzexample"
+              method="POST"
+              className="max-w-xl mx-auto mb-10"
+              aria-labelledby="newsletter-heading"
+            >
+              <h3 id="newsletter-heading" className="sr-only">Subscribe for updates</h3>
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+                <label htmlFor="newsletter-email" className="sr-only">Email address</label>
+                <input
+                  id="newsletter-email"
+                  name="email"
+                  type="email"
+                  required
+                  aria-required="true"
+                  placeholder="your@email.com"
+                  className="flex-1 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-white/30"
+                />
+                <Button type="submit" className="bg-white text-blue-700 hover:bg-gray-100 px-6 rounded-xl font-medium">
+                  Subscribe
+                </Button>
+              </div>
+              <p className="mt-2 text-sm text-blue-100">By subscribing you agree to our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>
+            </form>
+
             {/* Mini features */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-blue-100">
               <div className="flex flex-col items-center">

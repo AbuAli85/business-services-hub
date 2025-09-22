@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
@@ -15,6 +13,13 @@ export default function CareersComingSoon() {
       </div>
     </div>
   )
+}
+
+export const metadata = {
+  robots: {
+    index: false,
+    follow: false
+  }
 }
 
 
