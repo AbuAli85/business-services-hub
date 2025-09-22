@@ -28,6 +28,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'My Services', href: '/dashboard/services', icon: Briefcase },
   { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
+  { name: 'My Clients', href: '/dashboard/provider/clients', icon: User },
   { name: 'Earnings', href: '/dashboard/provider/earnings', icon: DollarSign },
   { name: 'My Invoices', href: '/dashboard/provider/invoices', icon: FileText },
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
