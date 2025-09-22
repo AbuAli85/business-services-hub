@@ -66,6 +66,17 @@
   body {
     @apply bg-background text-foreground;
   }
+
+/* Prefer page-level scrolling; avoid nested scroll regions on service detail */
+.service-detail-main {
+  overflow: visible;
+}
+
+/* Visible custom scrollbar when applied */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #667eea #f1f1f1;
+}
 }
 
 @layer components {

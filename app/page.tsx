@@ -338,24 +338,26 @@ export default function HomePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: 'Digital Marketing', count: '150+', color: 'from-blue-500 to-blue-600' },
-              { name: 'Legal Services', count: '80+', color: 'from-green-500 to-green-600' },
-              { name: 'Accounting', count: '120+', color: 'from-purple-500 to-purple-600' },
-              { name: 'IT Services', count: '200+', color: 'from-orange-500 to-orange-600' },
-              { name: 'Design & Branding', count: '180+', color: 'from-pink-500 to-pink-600' },
-              { name: 'Consulting', count: '90+', color: 'from-indigo-500 to-indigo-600' },
-              { name: 'Translation', count: '60+', color: 'from-teal-500 to-teal-600' },
-              { name: 'HR Services', count: '70+', color: 'from-red-500 to-red-600' },
+              { name: 'Digital Marketing', slug: 'digital-marketing', count: '150+', color: 'from-blue-500 to-blue-600' },
+              { name: 'Legal Services', slug: 'legal-services', count: '80+', color: 'from-green-500 to-green-600' },
+              { name: 'Accounting', slug: 'accounting', count: '120+', color: 'from-purple-500 to-purple-600' },
+              { name: 'IT Services', slug: 'it-services', count: '200+', color: 'from-orange-500 to-orange-600' },
+              { name: 'Design & Branding', slug: 'design-branding', count: '180+', color: 'from-pink-500 to-pink-600' },
+              { name: 'Consulting', slug: 'consulting', count: '90+', color: 'from-indigo-500 to-indigo-600' },
+              { name: 'Translation', slug: 'translation', count: '60+', color: 'from-teal-500 to-teal-600' },
+              { name: 'HR Services', slug: 'hr-services', count: '70+', color: 'from-red-500 to-red-600' },
             ].map((service) => (
-              <Card key={service.name} className="card-elevated hover-lift border-0 cursor-pointer group">
-                <CardContent className="p-6 text-center">
-                  <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <Briefcase className="h-8 w-8 text-white" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 mb-2 text-lg">{service.name}</h3>
-                  <Badge className="badge-enhanced bg-gray-100 text-gray-800">{service.count} providers</Badge>
-                </CardContent>
-              </Card>
+              <Link key={service.name} href={`/services?category=${service.slug}`}>
+                <Card className="card-elevated hover-lift border-0 cursor-pointer group">
+                  <CardContent className="p-6 text-center">
+                    <div className={`w-16 h-16 bg-gradient-to-br ${service.color} rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      <Briefcase className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-2 text-lg">{service.name}</h3>
+                    <Badge className="badge-enhanced bg-gray-100 text-gray-800">{service.count} providers</Badge>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
           

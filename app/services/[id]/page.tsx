@@ -114,7 +114,7 @@ export default function ServiceDetail() {
   }, [serviceId])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 custom-scrollbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Enhanced Header */}
         <div className="mb-8">
@@ -294,7 +294,7 @@ export default function ServiceDetail() {
 
             {/* Main + sticky sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="space-y-8 lg:col-span-2">
+              <div className="space-y-8 lg:col-span-2 service-detail-main">
                 {/* Enhanced Provider Card */}
                 {service.provider && (
                   <div className="relative">
