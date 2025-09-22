@@ -843,16 +843,16 @@ export default function AdminServicesPage() {
                   <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="space-y-5">
+                <TabsContent value="overview" className="space-y-6">
               {/* Hero image + KPIs */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {/* Gallery */}
                 <div className="sm:col-span-1">
                   {detailsService.images && detailsService.images.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        className="col-span-2 h-36 rounded-lg overflow-hidden border focus:outline-none"
+                        className="col-span-2 h-36 rounded-lg overflow-hidden border focus:outline-none hover:ring-2 hover:ring-blue-200"
                         onClick={() => setLightboxOpen(true)}
                         title="Open image"
                       >
@@ -866,7 +866,7 @@ export default function AdminServicesPage() {
                         <button
                           key={idx}
                           type="button"
-                          className={`h-16 rounded-lg overflow-hidden border focus:outline-none ${galleryIndex === idx ? 'ring-2 ring-blue-500' : ''}`}
+                          className={`h-16 rounded-lg overflow-hidden border focus:outline-none hover:ring-2 hover:ring-blue-200 ${galleryIndex === idx ? 'ring-2 ring-blue-500' : ''}`}
                           onClick={() => setGalleryIndex(idx)}
                           title={`Show image ${idx + 1}`}
                         >
@@ -884,7 +884,7 @@ export default function AdminServicesPage() {
                     </div>
                   )}
                 </div>
-                <div className="sm:col-span-2 grid grid-cols-3 gap-4">
+                <div className="sm:col-span-2 grid grid-cols-3 gap-6">
                   <div className="p-4 rounded-lg border bg-white shadow-sm">
                     <div className="text-xs text-muted-foreground">Rating</div>
                     <div className="mt-1 flex items-center gap-1">
@@ -920,7 +920,7 @@ export default function AdminServicesPage() {
                     <Badge variant="secondary" className="text-xs">{detailsService.category}</Badge>
                   </div>
                       <div className="mt-1 text-xs text-muted-foreground truncate">
-                    ID: <span className="font-mono">{detailsService.id}</span>
+                        ID: <span className="font-mono" title={detailsService.id}>{detailsService.id}</span>
                     <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.id)}>
                       <Copy className="h-3 w-3 mr-1" /> Copy
                     </Button>
@@ -1037,14 +1037,14 @@ export default function AdminServicesPage() {
                         )}
                         <div className="text-muted-foreground truncate">
                           {detailsService.provider.email ? (
-                            <a className="underline" href={`mailto:${detailsService.provider.email}`}>{detailsService.provider.email}</a>
+                            <a className="underline" href={`mailto:${detailsService.provider.email}`} title={detailsService.provider.email}>{detailsService.provider.email}</a>
                           ) : (
                             <span>—</span>
                           )}
                         </div>
                         {detailsService.provider.id && (
                           <div className="mt-1 text-xs text-muted-foreground">
-                            ID: <span className="font-mono">{detailsService.provider.id}</span>
+                            ID: <span className="font-mono" title={detailsService.provider.id}>{detailsService.provider.id}</span>
                             <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.id!)}>
                               <Copy className="h-3 w-3 mr-1" /> Copy
                             </Button>
