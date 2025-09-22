@@ -39,6 +39,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogOverlay } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { getServiceCardImageUrl } from '@/lib/service-images'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 
 interface Service {
@@ -53,11 +54,17 @@ interface Service {
   featured: boolean
   created_at: string
   updated_at: string
+  cover_image_url?: string
+  images?: string[]
+  rating?: number
+  review_count?: number
+  booking_count?: number
   provider: {
     id: string
     full_name: string
     email: string
     phone?: string
+    company_name?: string
   }
 }
 
@@ -93,6 +100,10 @@ export default function AdminServicesPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsService, setDetailsService] = useState<Service | null>(null)
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [galleryIndex, setGalleryIndex] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>((searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc')
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -351,6 +362,7 @@ export default function AdminServicesPage() {
   const handleViewService = (service: Service) => {
     setDetailsService(service)
     setDetailsOpen(true)
+    setGalleryIndex(0)
   }
 
   const handleEditService = (service: Service) => {
@@ -507,6 +519,33 @@ export default function AdminServicesPage() {
       year: 'numeric'
     })
   }
+
+  // Load audit logs on open
+  useEffect(() => {
+    const loadAudit = async () => {
+      if (!detailsService) return
+      setAuditLoading(true)
+      try {
+        const supabase = await getSupabaseClient()
+        const { data, error } = await supabase
+          .from('service_audit_logs')
+          .select('*')
+          .eq('service_id', detailsService.id)
+          .order('created_at', { ascending: false })
+        if (error) throw error
+        setAuditLogs(data || [])
+      } catch (e) {
+        // graceful fallback using known timestamps
+        setAuditLogs([
+          { id: 'created', event: 'Created', created_at: detailsService.created_at },
+          { id: 'updated', event: 'Last Updated', created_at: detailsService.updated_at }
+        ])
+      } finally {
+        setAuditLoading(false)
+      }
+    }
+    loadAudit()
+  }, [detailsService])
 
   if (loading) {
     return (
@@ -723,6 +762,68 @@ export default function AdminServicesPage() {
           </DialogHeader>
           {detailsService && (
             <div className="space-y-5">
+              {/* Hero image + KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Gallery */}
+                <div className="sm:col-span-1">
+                  {detailsService.images && detailsService.images.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className="col-span-2 h-36 rounded-lg overflow-hidden border focus:outline-none"
+                        onClick={() => setLightboxOpen(true)}
+                        title="Open image"
+                      >
+                        <img
+                          src={detailsService.images[galleryIndex]}
+                          alt={`${detailsService.title} image ${galleryIndex + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                      {detailsService.images.slice(0, 4).map((url, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`h-16 rounded-lg overflow-hidden border focus:outline-none ${galleryIndex === idx ? 'ring-2 ring-blue-500' : ''}`}
+                          onClick={() => setGalleryIndex(idx)}
+                          title={`Show image ${idx + 1}`}
+                        >
+                          <img src={url} alt={`${detailsService.title} thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="w-full h-36 rounded-lg overflow-hidden border">
+                      <img
+                        src={getServiceCardImageUrl(detailsService.category, detailsService.title, detailsService.cover_image_url, 640, 360)}
+                        alt={`${detailsService.title} cover`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="sm:col-span-2 grid grid-cols-3 gap-4">
+                  <div className="p-3 rounded-lg border bg-white">
+                    <div className="text-xs text-muted-foreground">Rating</div>
+                    <div className="mt-1 flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      <div className="text-lg font-semibold">{detailsService.rating?.toFixed(1) || '0.0'}</div>
+                      {detailsService.review_count ? (
+                        <div className="text-xs text-muted-foreground">({detailsService.review_count})</div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-white">
+                    <div className="text-xs text-muted-foreground">Bookings</div>
+                    <div className="mt-1 text-lg font-semibold">{detailsService.booking_count || 0}</div>
+                  </div>
+                  <div className="p-3 rounded-lg border bg-white">
+                    <div className="text-xs text-muted-foreground">Revenue</div>
+                    <div className="mt-1 text-lg font-semibold">{formatCurrency((detailsService.booking_count || 0) * (detailsService.base_price || 0), detailsService.currency)}</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Header summary */}
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -790,6 +891,30 @@ export default function AdminServicesPage() {
                   </div>
                 </ScrollArea>
               </div>
+
+              {/* Audit log */}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Audit Log</div>
+                <div className="border rounded-md divide-y">
+                  {auditLoading ? (
+                    <div className="p-3 text-sm text-muted-foreground">Loading history…</div>
+                  ) : auditLogs.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">No history available.</div>
+                  ) : (
+                    auditLogs.map((log: any) => (
+                      <div key={log.id} className="p-3 text-sm flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{log.event || log.action || 'Event'}</div>
+                          {(log.actor_name || log.actor_email || log.actor_id) && (
+                            <div className="text-xs text-muted-foreground">by {log.actor_name || log.actor_email || log.actor_id}</div>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground">{formatDate(log.created_at)}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -822,6 +947,16 @@ export default function AdminServicesPage() {
               setConfirmOpen(false)
             }}>Confirm</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lightbox for images */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogOverlay />
+        <DialogContent onClose={() => setLightboxOpen(false)} className="max-w-3xl p-0 bg-black">
+          {detailsService && detailsService.images && detailsService.images.length > 0 && (
+            <img src={detailsService.images[galleryIndex]} alt="Service image" className="w-full h-auto object-contain" />
+          )}
         </DialogContent>
       </Dialog>
     </div>
