@@ -38,6 +38,7 @@ import {
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogOverlay } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 
 interface Service {
@@ -721,17 +722,73 @@ export default function AdminServicesPage() {
             <DialogDescription>Service details and metadata</DialogDescription>
           </DialogHeader>
           {detailsService && (
-            <div className="space-y-3">
-              <div className="text-sm text-muted-foreground">ID: {detailsService.id}</div>
-              <div className="text-sm">Category: <Badge variant="secondary">{detailsService.category}</Badge></div>
-              <div className="text-sm">Price: {formatCurrency(detailsService.base_price, detailsService.currency)}</div>
-              <div className="text-sm">Status: {getStatusBadge(detailsService.approval_status)}</div>
-              <div className="text-sm">Provider: {detailsService.provider?.full_name} ({detailsService.provider?.email})</div>
-              <div className="text-sm">Created: {formatDate(detailsService.created_at)}</div>
-              <div className="text-sm">Updated: {formatDate(detailsService.updated_at)}</div>
-              <div className="text-sm">Description:</div>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {detailsService.description}
+            <div className="space-y-5">
+              {/* Header summary */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(detailsService.approval_status)}
+                    {detailsService.featured && (
+                      <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-200 bg-yellow-50">Featured</Badge>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm text-muted-foreground truncate">
+                    ID: <span className="font-mono">{detailsService.id}</span>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.id)}>Copy</Button>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button size="sm" onClick={() => handleApproveService(detailsService)}>Approve</Button>
+                  <Button size="sm" variant="destructive" onClick={() => rejectService(detailsService.id)}>Reject</Button>
+                  <Button size="sm" variant="outline" onClick={() => handleSuspendService(detailsService)}>Suspend</Button>
+                  <Button size="sm" variant="secondary" onClick={() => handleFeatureService(detailsService)}>
+                    {detailsService.featured ? 'Unfeature' : 'Feature'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Key facts grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1 text-sm">
+                  <div className="text-muted-foreground">Category</div>
+                  <div><Badge variant="secondary">{detailsService.category}</Badge></div>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <div className="text-muted-foreground">Price</div>
+                  <div className="font-medium">{formatCurrency(detailsService.base_price, detailsService.currency)}</div>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <div className="text-muted-foreground">Created</div>
+                  <div>{formatDate(detailsService.created_at)}</div>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <div className="text-muted-foreground">Updated</div>
+                  <div>{formatDate(detailsService.updated_at)}</div>
+                </div>
+                <div className="space-y-1 text-sm sm:col-span-2">
+                  <div className="text-muted-foreground">Provider</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">{detailsService.provider?.full_name?.[0] || 'P'}</div>
+                    <div>
+                      <div className="font-medium">{detailsService.provider?.full_name || 'Unknown'}</div>
+                      <div className="text-muted-foreground">
+                        {detailsService.provider?.email ? (
+                          <a className="underline" href={`mailto:${detailsService.provider.email}`}>{detailsService.provider.email}</a>
+                        ) : 'No email'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Description</div>
+                <ScrollArea className="max-h-48">
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap pr-2">
+                    {detailsService.description || '—'}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
           )}
