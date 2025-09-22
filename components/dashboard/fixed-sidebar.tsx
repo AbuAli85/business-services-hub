@@ -26,7 +26,7 @@ interface FixedSidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Services', href: '/dashboard/admin/services', icon: Briefcase },
+  { name: 'My Services', href: '/dashboard/services', icon: Briefcase },
   { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
   { name: 'Earnings', href: '/dashboard/provider/earnings', icon: DollarSign },
   { name: 'My Invoices', href: '/dashboard/provider/invoices', icon: FileText },

@@ -79,7 +79,7 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
   if (user.role === 'admin') {
     baseItems.splice(1, 0, 
       { 
-        name: 'Services', 
+        name: 'Services (Admin)', 
         href: '/dashboard/admin/services', 
         icon: Briefcase,
         description: 'Manage all services'
