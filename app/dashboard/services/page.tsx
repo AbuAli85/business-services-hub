@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,10 +28,13 @@ import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { getServiceCardImageUrl } from '@/lib/service-images'
+import { getSupabaseClient } from '@/lib/supabase'
 
 export default function ServicesPage() {
   const router = useRouter()
   const { services, bookings, loading, error, refresh } = useDashboardData()
+  const [providerServices, setProviderServices] = useState<any[]>([])
+  const [providerLoading, setProviderLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -41,15 +44,58 @@ export default function ServicesPage() {
   const [ratingFilter, setRatingFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
+  // Load provider-owned services from API if user is a provider
+  useEffect(() => {
+    (async () => {
+      try {
+        setProviderLoading(true)
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setProviderServices([])
+          setProviderLoading(false)
+          return
+        }
+        const params = new URLSearchParams({ status: 'active', provider_id: user.id, limit: '100', page: '1' })
+        const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
+        if (!res.ok) throw new Error(await res.text())
+        const json = await res.json()
+        const mapped = (json.services || []).map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          description: s.description || '',
+          category: s.category || 'Uncategorized',
+          basePrice: s.base_price ?? 0,
+          currency: s.currency || 'OMR',
+          providerId: s.provider_id,
+          providerName: s.provider?.full_name || 'Service Provider',
+          status: s.status || 'active',
+          rating: s.rating || 0,
+          bookingCount: s.bookings_count || 0,
+          createdAt: s.created_at || new Date().toISOString(),
+          cover_image_url: s.cover_image_url,
+        }))
+        setProviderServices(mapped)
+      } catch (e) {
+        // Fall back silently to centralized data
+        setProviderServices([])
+      } finally {
+        setProviderLoading(false)
+      }
+    })()
+  }, [])
+
+  const sourceServices = providerServices.length > 0 ? providerServices : services
+
   // Filter and sort services
   const filteredServices = useMemo(() => {
-    let filtered = services.filter(service => {
+    let filtered = sourceServices.filter(service => {
       const matchesSearch = searchTerm === '' || 
         service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.category.toLowerCase().includes(searchTerm.toLowerCase())
       
-      const matchesStatus = statusFilter === 'all' || service.status === statusFilter
+      const matchesStatus = statusFilter === 'all' || (service.status || 'active') === statusFilter
       const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
       
       const matchesPrice = (() => {
@@ -118,24 +164,24 @@ export default function ServicesPage() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = services.length
-    const active = services.filter(s => s.status === 'active').length
-    const pending = services.filter(s => s.status === 'inactive').length
+    const total = sourceServices.length
+    const active = sourceServices.filter(s => (s.status || 'active') === 'active').length
+    const pending = sourceServices.filter(s => (s.status || 'inactive') === 'inactive').length
     const totalBookings = bookings.length
     const totalRevenue = bookings
       .filter(b => b.status === 'completed')
       .reduce((sum, b) => sum + b.totalAmount, 0)
-    const avgRating = services.length > 0 
-      ? services.reduce((sum, s) => sum + (s.rating || 0), 0) / services.length 
+    const avgRating = sourceServices.length > 0 
+      ? sourceServices.reduce((sum, s) => sum + (s.rating || 0), 0) / sourceServices.length 
       : 0
 
     return { total, active, pending, totalBookings, totalRevenue, avgRating }
-  }, [services, bookings])
+  }, [sourceServices, bookings])
 
   // Get unique categories
   const categories = useMemo(() => {
-    return Array.from(new Set(services.map(s => s.category))).sort()
-  }, [services])
+    return Array.from(new Set(sourceServices.map((s: any) => s.category))).sort()
+  }, [sourceServices])
 
   // Get status badge
   const getStatusBadge = (status: string) => {
@@ -155,7 +201,7 @@ export default function ServicesPage() {
     )
   }
 
-  if (loading) {
+  if (loading || providerLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
