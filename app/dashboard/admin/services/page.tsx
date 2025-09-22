@@ -33,7 +33,11 @@ import {
   AlertCircle,
   TrendingUp,
   Users,
-  Package
+  Package,
+  Mail,
+  Phone,
+  Link as LinkIcon,
+  Copy
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -41,6 +45,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 interface Service {
   id: string
@@ -56,6 +61,8 @@ interface Service {
   updated_at: string
   cover_image_url?: string
   images?: string[]
+  attachments?: string[]
+  slug?: string
   rating?: number
   review_count?: number
   booking_count?: number
@@ -858,10 +865,16 @@ export default function AdminServicesPage() {
                     {detailsService.featured && (
                       <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-200 bg-yellow-50">Featured</Badge>
                     )}
+                    {detailsService.status && (
+                      <Badge variant="outline" className="text-xs">{detailsService.status}</Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">{detailsService.category}</Badge>
                   </div>
                   <div className="mt-2 text-sm text-muted-foreground truncate">
                     ID: <span className="font-mono">{detailsService.id}</span>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.id)}>Copy</Button>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.id)}>
+                      <Copy className="h-3 w-3 mr-1" /> Copy
+                    </Button>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
@@ -871,6 +884,14 @@ export default function AdminServicesPage() {
                   <Button size="sm" variant="secondary" onClick={() => handleFeatureService(detailsService)}>
                     {detailsService.featured ? 'Unfeature' : 'Feature'}
                   </Button>
+                  {detailsService.slug && (
+                    <Link href={`/services/${detailsService.slug}`} target="_blank" rel="noreferrer" className="inline-flex">
+                      <Button size="sm" variant="outline">Open page</Button>
+                    </Link>
+                  )}
+                  {detailsService.provider?.id && (
+                    <Button size="sm" variant="outline" onClick={() => { setDetailsOpen(false); router.push(`/dashboard/admin/users?userId=${detailsService.provider!.id}`) }}>Provider</Button>
+                  )}
                 </div>
               </div>
 
@@ -904,6 +925,27 @@ export default function AdminServicesPage() {
                         ) : 'No email'}
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 ml-2">
+                      {detailsService.provider?.email && (
+                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.email!)}>
+                          <Copy className="h-3 w-3 mr-1" /> Email
+                        </Button>
+                      )}
+                      {detailsService.provider?.phone && (
+                        <a href={`tel:${detailsService.provider.phone}`}>
+                          <Button size="sm" variant="outline" className="h-7 px-2">
+                            <Phone className="h-3 w-3 mr-1" /> Call
+                          </Button>
+                        </a>
+                      )}
+                      {detailsService.provider?.email && (
+                        <a href={`mailto:${detailsService.provider.email}`}>
+                          <Button size="sm" variant="outline" className="h-7 px-2">
+                            <Mail className="h-3 w-3 mr-1" /> Mail
+                          </Button>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -918,12 +960,33 @@ export default function AdminServicesPage() {
                 </ScrollArea>
               </div>
 
+              {/* Attachments */}
+              {detailsService.attachments && detailsService.attachments.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Attachments</div>
+                  <div className="space-y-2">
+                    {detailsService.attachments.map((url, idx) => (
+                      <a key={idx} href={url} target="_blank" rel="noreferrer" className="flex items-center text-sm text-blue-600 hover:underline">
+                        <LinkIcon className="h-4 w-4 mr-2" /> {url}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Audit log */}
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Audit Log</div>
                 <div className="border rounded-md divide-y">
                   {auditLoading ? (
-                    <div className="p-3 text-sm text-muted-foreground">Loading history…</div>
+                    <>
+                      <div className="p-3 animate-pulse">
+                        <div className="h-3 bg-gray-200 rounded w-1/3" />
+                      </div>
+                      <div className="p-3 animate-pulse">
+                        <div className="h-3 bg-gray-200 rounded w-1/4" />
+                      </div>
+                    </>
                   ) : auditLogs.length === 0 ? (
                     <div className="p-3 text-sm text-muted-foreground">No history available.</div>
                   ) : (
