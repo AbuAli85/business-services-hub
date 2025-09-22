@@ -56,11 +56,26 @@ export default function ServicesPage() {
           setProviderLoading(false)
           return
         }
-        const params = new URLSearchParams({ provider_id: user.id, limit: '100', page: '1' })
-        const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
-        if (!res.ok) throw new Error(await res.text())
-        const json = await res.json()
-        const mapped = (json.services || []).map((s: any) => ({
+        // 1) Try direct provider_id query
+        const params1 = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
+        let res = await fetch(`/api/services?${params1.toString()}`, { cache: 'no-store' })
+        let list: any[] = []
+        if (res.ok) {
+          const json = await res.json()
+          list = json.services || []
+        }
+        // 2) If empty (possible RLS/provider_id mismatch), fetch all then filter by current user
+        if (list.length === 0) {
+          const params2 = new URLSearchParams({ limit: '200', page: '1' })
+          res = await fetch(`/api/services?${params2.toString()}`, { cache: 'no-store' })
+          if (res.ok) {
+            const jsonAll = await res.json()
+            const all: any[] = jsonAll.services || []
+            list = all.filter((s: any) => s.provider_id === user.id || s?.provider?.email === user.email)
+          }
+        }
+
+        const mapped = (list || []).map((s: any) => ({
           id: s.id,
           title: s.title,
           description: s.description || '',
@@ -77,7 +92,7 @@ export default function ServicesPage() {
         }))
         setProviderServices(mapped)
       } catch (e) {
-        // Fall back silently to centralized data
+        // On failure, do not show mock; prefer empty state for accuracy
         setProviderServices([])
       } finally {
         setProviderLoading(false)
@@ -85,7 +100,8 @@ export default function ServicesPage() {
     })()
   }, [])
 
-  const sourceServices = providerServices.length > 0 ? providerServices : services
+  // For provider view, prefer providerServices. If none, show empty state (not mock).
+  const sourceServices = providerServices.length > 0 ? providerServices : []
 
   // Filter and sort services
   const filteredServices = useMemo(() => {
