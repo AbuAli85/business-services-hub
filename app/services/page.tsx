@@ -81,6 +81,13 @@ export default function ServicesPage() {
   }
 
   useEffect(() => {
+    // Support URL param ?category=digital-marketing etc.
+    const url = new URL(window.location.href)
+    const catParam = url.searchParams.get('category')
+    if (catParam) {
+      const normalized = catParam.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      if (categories.includes(normalized)) setSelectedCategory(normalized)
+    }
     fetchServices()
   }, [searchQuery, selectedCategory, minPrice, maxPrice, sortBy, page])
 

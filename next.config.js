@@ -59,6 +59,18 @@ const nextConfig = {
           },
         ],
       },
+      // Redirect legacy policy routes to correct paths
+      {
+        source: '/privacy-policy',
+        headers: [],
+      },
+    ]
+  },
+  async redirects() {
+    return [
+      { source: '/privacy-policy', destination: '/privacy', permanent: true },
+      { source: '/terms-of-service', destination: '/terms', permanent: true },
+      { source: '/contact', destination: '/contact/', permanent: true },
     ]
   },
 }

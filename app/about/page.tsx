@@ -210,10 +210,12 @@ export default function AboutPage() {
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{member.name}</h3>
                   <p className="text-blue-600 font-medium mb-3">{member.role}</p>
                   <p className="text-gray-600 text-sm leading-relaxed mb-4">{member.bio}</p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Linkedin className="h-4 w-4 mr-2" />
-                    Connect
-                  </Button>
+                  <a href={member.linkedin !== '#' ? member.linkedin : '#'} target={member.linkedin !== '#' ? '_blank' : undefined} rel={member.linkedin !== '#' ? 'noopener noreferrer' : undefined}>
+                    <Button variant="outline" size="sm" className="w-full">
+                      <Linkedin className="h-4 w-4 mr-2" />
+                      Connect
+                    </Button>
+                  </a>
                 </CardContent>
               </Card>
             ))}

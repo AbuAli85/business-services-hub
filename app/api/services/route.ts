@@ -104,11 +104,23 @@ export async function GET(request: NextRequest) {
       })
     )
     
-    // Get total count for pagination
-    const { count: totalCount } = await supabase
+    // Get total count for pagination (respecting filters)
+    let countQuery = supabase
       .from('services')
       .select('*', { count: 'exact', head: true })
       .eq('status', status)
+
+    if (category) {
+      countQuery = countQuery.eq('category', category)
+    }
+    if (provider_id) {
+      countQuery = countQuery.eq('provider_id', provider_id)
+    }
+    if (search) {
+      countQuery = countQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+    }
+
+    const { count: totalCount } = await countQuery
     
     return ok({
       services: enrichedServices,
