@@ -104,6 +104,7 @@ export default function AdminServicesPage() {
   const [auditLoading, setAuditLoading] = useState(false)
   const [galleryIndex, setGalleryIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [allowFeature, setAllowFeature] = useState(true)
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>((searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc')
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -125,6 +126,26 @@ export default function AdminServicesPage() {
     const qs = params.toString()
     router.replace(`${pathname}${qs ? `?${qs}` : ''}`)
   }, [searchQuery, statusFilter, page, pageSize, sortBy, sortOrder])
+
+  // Detect if 'featured' column exists; if not, hide feature-related UI
+  useEffect(() => {
+    const checkSchema = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data, error } = await supabase
+          .from('services')
+          .select('featured')
+          .limit(1)
+        if (error) throw error
+        setAllowFeature(true)
+      } catch (e: any) {
+        if (e?.code === 'PGRST204') {
+          setAllowFeature(false)
+        }
+      }
+    }
+    checkSchema()
+  }, [])
 
   useEffect(() => {
     filterServices()
@@ -282,7 +303,11 @@ export default function AdminServicesPage() {
       loadServices()
     } catch (error: any) {
       console.error('Error toggling featured status:', error)
-      toast.error('Failed to update featured status')
+      if (error?.code === 'PGRST204') {
+        toast.error("'featured' column is missing. Run latest migrations and try again.")
+      } else {
+        toast.error('Failed to update featured status')
+      }
     }
   }
 
@@ -715,6 +740,7 @@ export default function AdminServicesPage() {
                 selectedIds={selectedIds}
                 onSelectionChange={setSelectedIds}
                 disableClientSorting
+                allowFeature={allowFeature}
               />
             </div>
 

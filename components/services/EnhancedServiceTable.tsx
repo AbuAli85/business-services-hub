@@ -72,6 +72,7 @@ interface EnhancedServiceTableProps {
   selectedIds?: string[]
   onSelectionChange?: (ids: string[]) => void
   disableClientSorting?: boolean
+  allowFeature?: boolean
 }
 
 export function EnhancedServiceTable({
@@ -90,7 +91,8 @@ export function EnhancedServiceTable({
   selectable,
   selectedIds = [],
   onSelectionChange,
-  disableClientSorting
+  disableClientSorting,
+  allowFeature = true
 }: EnhancedServiceTableProps) {
   const [searchQuery, setSearchQuery] = useState(searchQueryExternal ?? '')
   const [categoryFilter, setCategoryFilter] = useState(categoryFilterExternal ?? 'all')
@@ -228,7 +230,7 @@ export function EnhancedServiceTable({
       actions.push({ label: 'Reactivate', icon: CheckCircle, action: 'approve', color: 'text-green-600' })
     }
     
-    if (!service.featured) {
+    if (allowFeature && !service.featured) {
       actions.push({ label: 'Feature', icon: Star, action: 'feature', color: 'text-yellow-600' })
     }
     
