@@ -48,6 +48,10 @@ export default function ServicesPage() {
   const [maxPrice, setMaxPrice] = useState('')
   const [sortBy, setSortBy] = useState('relevance')
   const [showFilters, setShowFilters] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalResults, setTotalResults] = useState(0)
+  const PAGE_LIMIT = 12
 
   const categories = [
     'Digital Marketing',
@@ -78,7 +82,7 @@ export default function ServicesPage() {
 
   useEffect(() => {
     fetchServices()
-  }, [searchQuery, selectedCategory, minPrice, maxPrice, sortBy])
+  }, [searchQuery, selectedCategory, minPrice, maxPrice, sortBy, page])
 
   const fetchServices = async () => {
     setLoading(true)
@@ -89,9 +93,9 @@ export default function ServicesPage() {
       params.set('status', 'active')
       if (selectedCategory && selectedCategory !== 'all') params.set('category', selectedCategory)
       if (searchQuery) params.set('search', searchQuery)
-      // Basic pagination (optional): fetch first 50
-      params.set('limit', '50')
-      params.set('page', '1')
+      // Server-side pagination
+      params.set('limit', String(PAGE_LIMIT))
+      params.set('page', String(page))
 
       const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
       if (!res.ok) {
@@ -99,7 +103,7 @@ export default function ServicesPage() {
         setServices([])
         return
       }
-      const { services: servicesData } = await res.json()
+      const { services: servicesData, pagination } = await res.json()
 
       // Client-side price range filtering if provided
       let filtered = servicesData || []
@@ -116,6 +120,13 @@ export default function ServicesPage() {
       filtered = sortServices(filtered, sortBy)
 
       setServices(filtered)
+      if (pagination) {
+        setTotalPages(pagination.pages || 1)
+        setTotalResults(pagination.total || filtered.length)
+      } else {
+        setTotalPages(1)
+        setTotalResults(filtered.length)
+      }
     } catch (error) {
       console.error('Error fetching services:', error)
     } finally {
@@ -267,7 +278,7 @@ export default function ServicesPage() {
             <div className="flex items-center space-x-2">
               <Filter className="h-4 w-4 text-gray-500" />
               <span className="text-sm text-gray-600">
-                {services.length} services found
+                {services.length} services shown • Page {page} of {totalPages}
               </span>
             </div>
             
@@ -364,6 +375,31 @@ export default function ServicesPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && services.length > 0 && (
+          <div className="flex items-center justify-between mt-8">
+            <div className="text-sm text-gray-600">
+              Showing {(page - 1) * PAGE_LIMIT + 1}–{Math.min(page * PAGE_LIMIT, totalResults)} of {totalResults}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>
