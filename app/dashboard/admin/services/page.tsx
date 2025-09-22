@@ -830,7 +830,7 @@ export default function AdminServicesPage() {
       {/* Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogOverlay />
-        <DialogContent onClose={() => setDetailsOpen(false)}>
+        <DialogContent onClose={() => setDetailsOpen(false)} className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{detailsService?.title}</DialogTitle>
             <DialogDescription>Service details and metadata</DialogDescription>
@@ -885,7 +885,7 @@ export default function AdminServicesPage() {
                   )}
                 </div>
                 <div className="sm:col-span-2 grid grid-cols-3 gap-4">
-                  <div className="p-3 rounded-lg border bg-white">
+                  <div className="p-4 rounded-lg border bg-white shadow-sm">
                     <div className="text-xs text-muted-foreground">Rating</div>
                     <div className="mt-1 flex items-center gap-1">
                       <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
@@ -895,11 +895,11 @@ export default function AdminServicesPage() {
                       ) : null}
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg border bg-white">
+                  <div className="p-4 rounded-lg border bg-white shadow-sm">
                     <div className="text-xs text-muted-foreground">Bookings</div>
                     <div className="mt-1 text-lg font-semibold">{detailsService.booking_count || 0}</div>
                   </div>
-                  <div className="p-3 rounded-lg border bg-white">
+                  <div className="p-4 rounded-lg border bg-white shadow-sm">
                     <div className="text-xs text-muted-foreground">Revenue</div>
                     <div className="mt-1 text-lg font-semibold">{formatCurrency((detailsService.booking_count || 0) * (detailsService.base_price || 0), detailsService.currency)}</div>
                   </div>
@@ -927,10 +927,10 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <Button size="sm" aria-label="Approve service" onClick={() => handleApproveService(detailsService)}>Approve</Button>
-                      <Button size="sm" aria-label="Reject service" variant="destructive" onClick={() => rejectService(detailsService.id)}>Reject</Button>
-                      <Button size="sm" aria-label="Suspend service" variant="outline" onClick={() => handleSuspendService(detailsService)}>Suspend</Button>
-                      <Button size="sm" aria-label="Toggle featured" variant="secondary" onClick={() => handleFeatureService(detailsService)}>
+                      <Button size="sm" aria-label="Approve service" disabled={!actorId} onClick={() => handleApproveService(detailsService)}>Approve</Button>
+                      <Button size="sm" aria-label="Reject service" disabled={!actorId} variant="destructive" onClick={() => rejectService(detailsService.id)}>Reject</Button>
+                      <Button size="sm" aria-label="Suspend service" disabled={!actorId} variant="outline" onClick={() => handleSuspendService(detailsService)}>Suspend</Button>
+                      <Button size="sm" aria-label="Toggle featured" disabled={!actorId} variant="secondary" onClick={() => handleFeatureService(detailsService)}>
                     {detailsService.featured ? 'Unfeature' : 'Feature'}
                   </Button>
                   {detailsService.slug && (
@@ -1082,8 +1082,8 @@ export default function AdminServicesPage() {
               </div>
 
               {/* Description */}
-              <div className="space-y-2">
-                <div className="text-sm text-muted-foreground">Description</div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Description</div>
                 <ScrollArea className="max-h-48">
                   <div className="text-sm text-gray-700 whitespace-pre-wrap pr-2">
                     {detailsService.description || '—'}
@@ -1095,8 +1095,14 @@ export default function AdminServicesPage() {
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">Quick note (saved to audit log)</div>
                 <div className="flex items-center gap-2">
-                  <Input placeholder="Add a brief note..." value={quickNote} onChange={(e) => setQuickNote(e.target.value)} />
-                  <Button onClick={async () => {
+                  <Input placeholder="Add a brief note..." value={quickNote} onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      const btn = document.getElementById('save-quick-note-btn') as HTMLButtonElement
+                      btn?.click()
+                    }
+                  }} onChange={(e) => setQuickNote(e.target.value)} />
+                  <Button id="save-quick-note-btn" disabled={!actorId} onClick={async () => {
                     if (!quickNote.trim()) { toast.error('Note is empty'); return }
                     try {
                       const supabase = await getSupabaseClient()
@@ -1127,7 +1133,7 @@ export default function AdminServicesPage() {
               {/* Attachments */}
               {detailsService.attachments && detailsService.attachments.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Attachments</div>
+                  <div className="text-sm font-medium">Attachments</div>
                   <div className="space-y-2">
                     {detailsService.attachments.map((url, idx) => (
                       <a key={idx} href={url} target="_blank" rel="noreferrer" className="flex items-center text-sm text-blue-600 hover:underline">
