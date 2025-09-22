@@ -56,7 +56,7 @@ export default function ServicesPage() {
           setProviderLoading(false)
           return
         }
-        const params = new URLSearchParams({ status: 'active', provider_id: user.id, limit: '100', page: '1' })
+        const params = new URLSearchParams({ provider_id: user.id, limit: '100', page: '1' })
         const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
         if (!res.ok) throw new Error(await res.text())
         const json = await res.json()
