@@ -169,6 +169,9 @@ export default function AdminServicesPage() {
     checkSchema()
   }, [])
 
+  // abort on unmount
+  useEffect(() => () => abortRef.current?.abort(), [])
+
   // Load current actor profile to gate inline edits and enrich audit logs
   useEffect(() => {
     const loadActor = async () => {
@@ -396,22 +399,22 @@ export default function AdminServicesPage() {
   const handleFeatureService = async (service: Service) => {
     try {
       const supabase = await getSupabaseClient()
-      
+      const nextVal = !service.featured
       const { error } = await supabase
         .from('services')
         .update({ 
-          featured: true,
+          featured: nextVal,
           updated_at: new Date().toISOString()
         })
         .eq('id', service.id)
 
       if (error) throw error
 
-      toast.success('Service featured successfully!')
+      toast.success(`Service ${nextVal ? 'featured' : 'unfeatured'} successfully!`)
       loadServices()
     } catch (error: any) {
       console.error('Error featuring service:', error)
-      toast.error('Failed to feature service')
+      toast.error('Failed to update featured status')
     }
   }
 
@@ -893,7 +896,7 @@ export default function AdminServicesPage() {
                     <div className="mt-1 text-lg font-semibold">{detailsService.booking_count || 0}</div>
                   </div>
                   <div className="p-4 rounded-lg border bg-white shadow-sm">
-              <div className="text-xs text-muted-foreground">Price Sum (filtered)</div>
+              <div className="text-xs text-muted-foreground">Est. Revenue (bookings × price)</div>
                     <div className="mt-1 text-lg font-semibold">{formatCurrency((detailsService.booking_count || 0) * (detailsService.base_price || 0), detailsService.currency)}</div>
                   </div>
                 </div>

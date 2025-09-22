@@ -29,11 +29,11 @@ begin
   )
   select
     count(*)::int as total,
-    count(*) filter (where approval_status = 'pending')::int as pending,
-    count(*) filter (where approval_status = 'approved')::int as approved,
-    count(*) filter (where approval_status = 'rejected')::int as rejected,
-    count(*) filter (where featured is true)::int as featured,
-    coalesce(sum(base_price),0)::numeric as price_sum
+    count(*) filter (where base.approval_status = 'pending')::int as pending,
+    count(*) filter (where base.approval_status = 'approved')::int as approved,
+    count(*) filter (where base.approval_status = 'rejected')::int as rejected,
+    count(*) filter (where coalesce(base.featured,false) = true)::int as featured,
+    coalesce(sum(base.base_price),0)::numeric as price_sum
   from base;
 end;
 $$;
