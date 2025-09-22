@@ -206,7 +206,7 @@ export default function AdminServicesPage() {
         .from('services')
         .select(`
           *,
-          provider:profiles!services_provider_id_fkey(
+          provider:profiles(
             id,
             full_name,
             email,
@@ -495,7 +495,7 @@ export default function AdminServicesPage() {
         .from('services')
         .select(`
           *,
-          provider:profiles!services_provider_id_fkey(
+          provider:profiles(
             id,
             full_name,
             email,
