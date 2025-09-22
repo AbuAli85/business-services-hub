@@ -34,10 +34,12 @@ export default function AdminUsersPage() {
   })
 
   // Use centralized data if available, fallback to useUsers
-  const finalUsers = centralizedUsers.length > 0 ? centralizedUsers : users
-  const finalLoading = centralizedLoading || loading
-  const finalError = centralizedError || error
-  const finalRefresh = centralizedRefresh || refetch
+  // Prefer live users hook (backed by Supabase) to ensure full dataset.
+  // Fall back to centralized snapshot only if hook is empty.
+  const finalUsers = users.length > 0 ? users : centralizedUsers
+  const finalLoading = loading || centralizedLoading
+  const finalError = error || centralizedError
+  const finalRefresh = refetch || centralizedRefresh
 
   // UI state
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
@@ -56,7 +58,7 @@ export default function AdminUsersPage() {
     sortBy: 'created',
     sortDir: 'desc',
     page: 1,
-    pageSize: 20
+    pageSize: 50
   })
 
   // Convert centralized users to AdminUser format if needed
