@@ -94,6 +94,7 @@ export default function AdminServicesPage() {
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [rawSearch, setRawSearch] = useState(searchParams.get('q') || '')
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all')
   const [stats, setStats] = useState<ServiceStats>({
     total: 0,
@@ -191,11 +192,17 @@ export default function AdminServicesPage() {
     loadActor()
   }, [])
 
+  // debounce search input
   useEffect(() => {
-    filterServices()
-  }, [services, searchQuery, statusFilter])
+    const t = setTimeout(() => setSearchQuery(rawSearch), 300)
+    return () => clearTimeout(t)
+  }, [rawSearch])
 
+  let currentController: AbortController | null = null
   const loadServices = async () => {
+    if (currentController) currentController.abort()
+    currentController = new AbortController()
+    const signal = currentController.signal
     try {
       const supabase = await getSupabaseClient()
       
@@ -210,7 +217,8 @@ export default function AdminServicesPage() {
             id,
             full_name,
             email,
-            phone
+            phone,
+            company_name
           )
         `, { count: 'exact' })
 
@@ -234,15 +242,33 @@ export default function AdminServicesPage() {
       const { data, count, error } = await query.range(from, to)
 
       if (error) throw error
+      if (signal.aborted) return
 
       setServices(data || [])
       setTotalCount(count || 0)
-      calculateStats(data || [])
-      setLoading(false)
+      try {
+        const [{ data: statRows }, { data: revRows }] = await Promise.all([
+          supabase.rpc('services_stats', { p_search: searchQuery || null, p_status: statusFilter || null }),
+          supabase.rpc('bookings_revenue_stats', { p_search: searchQuery || null, p_status: statusFilter || null })
+        ])
+        const s = statRows?.[0] as any
+        const r = revRows?.[0] as any
+        if (s || r) {
+          setStats({
+            total: Number(s?.total) || 0,
+            pending: Number(s?.pending) || 0,
+            approved: Number(s?.approved) || 0,
+            rejected: Number(s?.rejected) || 0,
+            featured: Number(s?.featured) || 0,
+            totalRevenue: Number(r?.booking_sum ?? s?.price_sum ?? 0) || 0
+          })
+        }
+      } catch {}
+      if (!signal.aborted) setLoading(false)
     } catch (error: any) {
       console.error('Error loading services:', error)
       toast.error('Failed to load services')
-      setLoading(false)
+      if (!signal.aborted) setLoading(false)
     }
   }
 
@@ -734,8 +760,8 @@ export default function AdminServicesPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by title, description, category, or provider..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={rawSearch}
+                  onChange={(e) => setRawSearch(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -774,7 +800,7 @@ export default function AdminServicesPage() {
             {/* Enhanced Service Table */}
             <div className="overflow-x-auto">
               <EnhancedServiceTable
-                services={filteredServices}
+                services={services}
                 onViewService={handleViewService}
                 onEditService={handleEditService}
                 onDeleteService={handleDeleteService}
@@ -900,7 +926,7 @@ export default function AdminServicesPage() {
                     <div className="mt-1 text-lg font-semibold">{detailsService.booking_count || 0}</div>
                   </div>
                   <div className="p-4 rounded-lg border bg-white shadow-sm">
-                    <div className="text-xs text-muted-foreground">Revenue</div>
+              <div className="text-xs text-muted-foreground">Price Sum (filtered)</div>
                     <div className="mt-1 text-lg font-semibold">{formatCurrency((detailsService.booking_count || 0) * (detailsService.base_price || 0), detailsService.currency)}</div>
                   </div>
                 </div>
@@ -996,6 +1022,7 @@ export default function AdminServicesPage() {
                       <Button size="sm" className="h-8" onClick={async () => {
                         const supabase = await getSupabaseClient()
                         const newPrice = Number(priceInput)
+                        if (!Number.isFinite(newPrice) || newPrice < 0) { toast.error('Invalid price'); return }
                         const { error } = await supabase.from('services').update({ base_price: newPrice, updated_at: new Date().toISOString() }).eq('id', detailsService.id)
                         if (error) { toast.error('Failed to update price'); return }
                         await supabase.from('service_audit_logs').insert({
