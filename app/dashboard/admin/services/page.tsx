@@ -123,6 +123,11 @@ export default function AdminServicesPage() {
   const [editingCategory, setEditingCategory] = useState(false)
   const [categoryInput, setCategoryInput] = useState('')
   const [quickNote, setQuickNote] = useState('')
+  const [actorId, setActorId] = useState<string | null>(null)
+  const [actorName, setActorName] = useState<string | null>(null)
+  const [actorEmail, setActorEmail] = useState<string | null>(null)
+  const [actorRole, setActorRole] = useState<string | null>(null)
+  const canEdit = actorRole === 'admin' || actorRole === 'staff'
 
   useEffect(() => {
     loadServices()
@@ -159,6 +164,31 @@ export default function AdminServicesPage() {
       }
     }
     checkSchema()
+  }, [])
+
+  // Load current actor profile to gate inline edits and enrich audit logs
+  useEffect(() => {
+    const loadActor = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: userResp } = await supabase.auth.getUser()
+        const uid = userResp?.user?.id || null
+        setActorId(uid)
+        if (uid) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('full_name,email,role')
+            .eq('id', uid)
+            .single()
+          setActorName(prof?.full_name || null)
+          setActorEmail(prof?.email || null)
+          setActorRole(prof?.role || null)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    loadActor()
   }, [])
 
   useEffect(() => {
@@ -921,7 +951,9 @@ export default function AdminServicesPage() {
                   {!editingCategory ? (
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">{detailsService.category}</Badge>
-                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setEditingCategory(true); setCategoryInput(detailsService.category || '') }}>Edit</Button>
+                      {canEdit && (
+                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setEditingCategory(true); setCategoryInput(detailsService.category || '') }}>Edit</Button>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -931,6 +963,15 @@ export default function AdminServicesPage() {
                         const newCategory = categoryInput.trim()
                         const { error } = await supabase.from('services').update({ category: newCategory, updated_at: new Date().toISOString() }).eq('id', detailsService.id)
                         if (error) { toast.error('Failed to update category'); return }
+                        // Write audit log with actor info
+                        await supabase.from('service_audit_logs').insert({
+                          service_id: detailsService.id,
+                          event: 'Category Updated',
+                          actor_id: actorId,
+                          actor_name: actorName,
+                          actor_email: actorEmail,
+                          metadata: { from: detailsService.category, to: newCategory }
+                        })
                         setEditingCategory(false)
                         setDetailsService({ ...detailsService, category: newCategory })
                         toast.success('Category updated')
@@ -945,7 +986,9 @@ export default function AdminServicesPage() {
                   {!editingPrice ? (
                     <div className="font-medium flex items-center gap-2">
                       {formatCurrency(detailsService.base_price, detailsService.currency)}
-                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setEditingPrice(true); setPriceInput(String(detailsService.base_price || '')) }}>Edit</Button>
+                      {canEdit && (
+                        <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setEditingPrice(true); setPriceInput(String(detailsService.base_price || '')) }}>Edit</Button>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -955,6 +998,14 @@ export default function AdminServicesPage() {
                         const newPrice = Number(priceInput)
                         const { error } = await supabase.from('services').update({ base_price: newPrice, updated_at: new Date().toISOString() }).eq('id', detailsService.id)
                         if (error) { toast.error('Failed to update price'); return }
+                        await supabase.from('service_audit_logs').insert({
+                          service_id: detailsService.id,
+                          event: 'Price Updated',
+                          actor_id: actorId,
+                          actor_name: actorName,
+                          actor_email: actorEmail,
+                          metadata: { from: detailsService.base_price, to: newPrice }
+                        })
                         setEditingPrice(false)
                         setDetailsService({ ...detailsService, base_price: newPrice })
                         toast.success('Price updated')
@@ -1052,6 +1103,9 @@ export default function AdminServicesPage() {
                       const { error } = await supabase.from('service_audit_logs').insert({
                         service_id: detailsService.id,
                         event: 'Note',
+                        actor_id: actorId,
+                        actor_name: actorName,
+                        actor_email: actorEmail,
                         metadata: { note: quickNote }
                       })
                       if (error) throw error
