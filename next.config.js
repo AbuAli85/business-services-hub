@@ -1,7 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost', 'supabase.co'],
+    domains: ['localhost'],
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '**.imgix.net' },
+      { protocol: 'https', hostname: '**.googleusercontent.com' }
+    ],
+    formats: ['image/avif','image/webp']
   },
   // Exclude Supabase functions from Next.js build
   webpack: (config) => {

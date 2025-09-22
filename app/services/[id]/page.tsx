@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getServiceCardImageUrl as _getServiceCardImageUrl } from '@/lib/service-images'
+
+function getFallbackImage(category?: string, title?: string) {
+  return _getServiceCardImageUrl(category || 'Service', title || 'Service', undefined, 1200, 600)
+}
 import Head from 'next/head'
 import { ArrowLeft, Package, Wallet, Building2, User as UserIcon, Share2, Heart, Clock, MessageCircle, Upload, FileText, BarChart3, TrendingUp, Star, Calendar, Phone, Mail, Eye, Download, ThumbsUp, MessageSquare, Target, Award, Zap, Users, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -208,9 +213,28 @@ export default function ServiceDetail() {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-indigo-50/30 to-purple-50/50"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
               
-              {service.cover_image_url && (
+              {service.cover_image_url ? (
                 <div className="relative h-64 w-full">
-                  <Image src={service.cover_image_url} alt={service.title} fill className="object-cover" />
+                  <Image
+                    src={service.cover_image_url}
+                    alt={service.title}
+                    fill
+                    sizes="100vw"
+                    className="object-cover"
+                    priority
+                    onError={(e) => {
+                      const target = e.target as any
+                      if (target && !target.dataset.fallback) {
+                        target.dataset.fallback = '1'
+                        target.src = getFallbackImage(service.category, service.title)
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                </div>
+              ) : (
+                <div className="relative h-64 w-full">
+                  <Image src={getFallbackImage(service.category, service.title)} alt={service.title} fill sizes="100vw" className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                 </div>
               )}
