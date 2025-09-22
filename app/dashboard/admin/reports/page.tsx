@@ -35,6 +35,8 @@ import {
   Search
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { useDashboardData } from '@/hooks/useDashboardData'
+import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 
 interface Report {
@@ -80,9 +82,9 @@ interface AnalyticsData {
 }
 
 export default function AdminReportsPage() {
+  const { users, services, bookings, invoices, loading, error, refresh } = useDashboardData()
   const [reports, setReports] = useState<Report[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('30d')
   const [selectedTab, setSelectedTab] = useState<'all' | 'financial' | 'user' | 'service' | 'booking' | 'analytics'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -166,11 +168,9 @@ export default function AdminReportsPage() {
       ]
 
       setReports(mockReports)
-      setLoading(false)
     } catch (error) {
       console.error('Error loading reports:', error)
       toast.error('Failed to load reports')
-      setLoading(false)
     }
   }
 

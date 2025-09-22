@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { toast } from 'react-hot-toast'
 import { useUsers } from '@/hooks/useUsers'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import { UserStats } from '@/components/users/UserStats'
 import { UserFilters } from '@/components/users/UserFilters'
 import { EnhancedUserTable } from '@/components/users/EnhancedUserTable'
@@ -25,11 +26,18 @@ import {
 
 export default function AdminUsersPage() {
   // Data fetching
+  const { users: centralizedUsers, loading: centralizedLoading, error: centralizedError, refresh: centralizedRefresh } = useDashboardData()
   const { users, loading, error, isFetching, refetch, updateUser, deleteUser, inviteUser, bulkAction } = useUsers({
     autoRefresh: true,
     refreshInterval: 60000,
     enableRealtime: true
   })
+
+  // Use centralized data if available, fallback to useUsers
+  const finalUsers = centralizedUsers.length > 0 ? centralizedUsers : users
+  const finalLoading = centralizedLoading || loading
+  const finalError = centralizedError || error
+  const finalRefresh = centralizedRefresh || refetch
 
   // UI state
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
@@ -51,9 +59,29 @@ export default function AdminUsersPage() {
     pageSize: 20
   })
 
+  // Convert centralized users to AdminUser format if needed
+  const adminUsers = useMemo(() => {
+    if (finalUsers.length === 0) return []
+    
+    // Check if it's already AdminUser format
+    if ('full_name' in finalUsers[0]) {
+      return finalUsers as AdminUser[]
+    }
+    
+    // Convert User to AdminUser format
+    return finalUsers.map(user => ({
+      ...user,
+      full_name: (user as any).fullName || `${(user as any).firstName} ${(user as any).lastName}`,
+      created_at: (user as any).createdAt,
+      last_sign_in: (user as any).lastActive,
+      status: (user as any).status as 'active' | 'inactive' | 'suspended' | 'pending' | 'deleted',
+      role: (user as any).role as 'client' | 'provider' | 'admin' | 'manager' | 'support'
+    }))
+  }, [finalUsers])
+
   // Computed values
-  const stats = useMemo(() => calculateUserStats(users), [users])
-  const filteredUsers = useMemo(() => filterAndSortUsers(users, filters), [users, filters])
+  const stats = useMemo(() => calculateUserStats(adminUsers), [adminUsers])
+  const filteredUsers = useMemo(() => filterAndSortUsers(adminUsers, filters), [adminUsers, filters])
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / filters.pageSize))
   const currentPage = Math.min(filters.page, totalPages)
   const pagedUsers = useMemo(() => paginateUsers(filteredUsers, currentPage, filters.pageSize), [filteredUsers, currentPage, filters.pageSize])
@@ -228,7 +256,7 @@ export default function AdminUsersPage() {
   }, [users])
 
   // Loading state
-  if (loading) {
+  if (finalLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -241,7 +269,7 @@ export default function AdminUsersPage() {
   }
 
   // Error state
-  if (error) {
+  if (finalError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center max-w-md">
