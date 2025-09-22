@@ -354,7 +354,7 @@ export default function AdminServicesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
       {/* Enhanced Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
@@ -477,16 +477,18 @@ export default function AdminServicesPage() {
             </div>
 
             {/* Enhanced Service Table */}
-            <EnhancedServiceTable
-              services={filteredServices}
-              onViewService={handleViewService}
-              onEditService={handleEditService}
-              onDeleteService={handleDeleteService}
-              onApproveService={handleApproveService}
-              onSuspendService={handleSuspendService}
-              onFeatureService={handleFeatureService}
-              onUpdatePricing={handleUpdatePricing}
-            />
+            <div className="overflow-x-auto">
+              <EnhancedServiceTable
+                services={filteredServices}
+                onViewService={handleViewService}
+                onEditService={handleEditService}
+                onDeleteService={handleDeleteService}
+                onApproveService={handleApproveService}
+                onSuspendService={handleSuspendService}
+                onFeatureService={handleFeatureService}
+                onUpdatePricing={handleUpdatePricing}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

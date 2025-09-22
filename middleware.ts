@@ -83,7 +83,9 @@ export async function middleware(req: NextRequest) {
   const frameSrc = [
     "'self'",
     'https://hcaptcha.com',
-    'https://*.hcaptcha.com'
+    'https://*.hcaptcha.com',
+    'https://vercel.live',
+    'https://*.vercel.live'
   ].join(' ')
   res.headers.set('Content-Security-Policy', `default-src 'self'; img-src 'self' data: https: blob:; connect-src ${connectSrc}; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src ${frameSrc}; base-uri 'self'; form-action 'self'`)
 
