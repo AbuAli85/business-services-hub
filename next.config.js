@@ -59,11 +59,6 @@ const nextConfig = {
           },
         ],
       },
-      // Redirect legacy policy routes to correct paths
-      {
-        source: '/privacy-policy',
-        headers: [],
-      },
     ]
   },
   async redirects() {
