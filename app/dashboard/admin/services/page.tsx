@@ -45,6 +45,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
 
 interface Service {
@@ -116,6 +118,11 @@ export default function AdminServicesPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>((searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmAction, setConfirmAction] = useState<'reject' | 'approve' | 'toggleFeatured' | null>(null)
+  const [editingPrice, setEditingPrice] = useState(false)
+  const [priceInput, setPriceInput] = useState('')
+  const [editingCategory, setEditingCategory] = useState(false)
+  const [categoryInput, setCategoryInput] = useState('')
+  const [quickNote, setQuickNote] = useState('')
 
   useEffect(() => {
     loadServices()
@@ -395,6 +402,11 @@ export default function AdminServicesPage() {
     setDetailsService(service)
     setDetailsOpen(true)
     setGalleryIndex(0)
+    setEditingPrice(false)
+    setEditingCategory(false)
+    setPriceInput(String(service.base_price || ''))
+    setCategoryInput(service.category || '')
+    setQuickNote('')
   }
 
   const handleEditService = (service: Service) => {
@@ -795,6 +807,13 @@ export default function AdminServicesPage() {
           </DialogHeader>
           {detailsService && (
             <div className="space-y-5">
+              <Tabs defaultValue="overview">
+                <TabsList className="mb-3">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-5">
               {/* Hero image + KPIs */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Gallery */}
@@ -899,11 +918,51 @@ export default function AdminServicesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1 text-sm">
                   <div className="text-muted-foreground">Category</div>
-                  <div><Badge variant="secondary">{detailsService.category}</Badge></div>
+                  {!editingCategory ? (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{detailsService.category}</Badge>
+                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setEditingCategory(true); setCategoryInput(detailsService.category || '') }}>Edit</Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input className="h-8 w-48" value={categoryInput} onChange={(e) => setCategoryInput(e.target.value)} />
+                      <Button size="sm" className="h-8" onClick={async () => {
+                        const supabase = await getSupabaseClient()
+                        const newCategory = categoryInput.trim()
+                        const { error } = await supabase.from('services').update({ category: newCategory, updated_at: new Date().toISOString() }).eq('id', detailsService.id)
+                        if (error) { toast.error('Failed to update category'); return }
+                        setEditingCategory(false)
+                        setDetailsService({ ...detailsService, category: newCategory })
+                        toast.success('Category updated')
+                        loadServices()
+                      }}>Save</Button>
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => setEditingCategory(false)}>Cancel</Button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1 text-sm">
                   <div className="text-muted-foreground">Price</div>
-                  <div className="font-medium">{formatCurrency(detailsService.base_price, detailsService.currency)}</div>
+                  {!editingPrice ? (
+                    <div className="font-medium flex items-center gap-2">
+                      {formatCurrency(detailsService.base_price, detailsService.currency)}
+                      <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => { setEditingPrice(true); setPriceInput(String(detailsService.base_price || '')) }}>Edit</Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input className="h-8 w-32" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} />
+                      <Button size="sm" className="h-8" onClick={async () => {
+                        const supabase = await getSupabaseClient()
+                        const newPrice = Number(priceInput)
+                        const { error } = await supabase.from('services').update({ base_price: newPrice, updated_at: new Date().toISOString() }).eq('id', detailsService.id)
+                        if (error) { toast.error('Failed to update price'); return }
+                        setEditingPrice(false)
+                        setDetailsService({ ...detailsService, base_price: newPrice })
+                        toast.success('Price updated')
+                        loadServices()
+                      }}>Save</Button>
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => setEditingPrice(false)}>Cancel</Button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1 text-sm">
                   <div className="text-muted-foreground">Created</div>
@@ -915,38 +974,59 @@ export default function AdminServicesPage() {
                 </div>
                 <div className="space-y-1 text-sm sm:col-span-2">
                   <div className="text-muted-foreground">Provider</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">{detailsService.provider?.full_name?.[0] || 'P'}</div>
-                    <div>
-                      <div className="font-medium">{detailsService.provider?.full_name || 'Unknown'}</div>
-                      <div className="text-muted-foreground">
-                        {detailsService.provider?.email ? (
-                          <a className="underline" href={`mailto:${detailsService.provider.email}`}>{detailsService.provider.email}</a>
-                        ) : 'No email'}
+                  {detailsService.provider ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                        {detailsService.provider.full_name?.[0] || 'P'}
                       </div>
+                      <div>
+                        <div className="font-medium">{detailsService.provider.full_name || 'Unknown'}</div>
+                        {detailsService.provider.company_name && (
+                          <div className="text-xs text-muted-foreground">{detailsService.provider.company_name}</div>
+                        )}
+                        <div className="text-muted-foreground">
+                          {detailsService.provider.email ? (
+                            <a className="underline" href={`mailto:${detailsService.provider.email}`}>{detailsService.provider.email}</a>
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </div>
+                        {detailsService.provider.id && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            ID: <span className="font-mono">{detailsService.provider.id}</span>
+                            <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.id!)}>
+                              <Copy className="h-3 w-3 mr-1" /> Copy
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {(detailsService.provider.email || detailsService.provider.phone) && (
+                        <div className="flex items-center gap-2 ml-2">
+                          {detailsService.provider.email && (
+                            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.email!)}>
+                              <Copy className="h-3 w-3 mr-1" /> Email
+                            </Button>
+                          )}
+                          {detailsService.provider.phone && (
+                            <a href={`tel:${detailsService.provider.phone}`}>
+                              <Button size="sm" variant="outline" className="h-7 px-2">
+                                <Phone className="h-3 w-3 mr-1" /> Call
+                              </Button>
+                            </a>
+                          )}
+                          {detailsService.provider.email && (
+                            <a href={`mailto:${detailsService.provider.email}`}>
+                              <Button size="sm" variant="outline" className="h-7 px-2">
+                                <Mail className="h-3 w-3 mr-1" /> Mail
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 ml-2">
-                      {detailsService.provider?.email && (
-                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.email!)}>
-                          <Copy className="h-3 w-3 mr-1" /> Email
-                        </Button>
-                      )}
-                      {detailsService.provider?.phone && (
-                        <a href={`tel:${detailsService.provider.phone}`}>
-                          <Button size="sm" variant="outline" className="h-7 px-2">
-                            <Phone className="h-3 w-3 mr-1" /> Call
-                          </Button>
-                        </a>
-                      )}
-                      {detailsService.provider?.email && (
-                        <a href={`mailto:${detailsService.provider.email}`}>
-                          <Button size="sm" variant="outline" className="h-7 px-2">
-                            <Mail className="h-3 w-3 mr-1" /> Mail
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  </div>
+                  ) : (
+                    <div className="text-muted-foreground">No provider linked —</div>
+                  )}
                 </div>
               </div>
 
@@ -958,6 +1038,36 @@ export default function AdminServicesPage() {
                     {detailsService.description || '—'}
                   </div>
                 </ScrollArea>
+              </div>
+
+              {/* Quick note */}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Quick note (saved to audit log)</div>
+                <div className="flex items-center gap-2">
+                  <Input placeholder="Add a brief note..." value={quickNote} onChange={(e) => setQuickNote(e.target.value)} />
+                  <Button onClick={async () => {
+                    if (!quickNote.trim()) { toast.error('Note is empty'); return }
+                    try {
+                      const supabase = await getSupabaseClient()
+                      const { error } = await supabase.from('service_audit_logs').insert({
+                        service_id: detailsService.id,
+                        event: 'Note',
+                        metadata: { note: quickNote }
+                      })
+                      if (error) throw error
+                      setQuickNote('')
+                      toast.success('Note saved')
+                      const { data } = await supabase
+                        .from('service_audit_logs')
+                        .select('*')
+                        .eq('service_id', detailsService.id)
+                        .order('created_at', { ascending: false })
+                      setAuditLogs(data || [])
+                    } catch (e) {
+                      toast.error('Failed to save note')
+                    }
+                  }}>Save</Button>
+                </div>
               </div>
 
               {/* Attachments */}
@@ -973,37 +1083,39 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
               )}
+                  <Separator />
+                </TabsContent>
 
-              {/* Audit log */}
-              <div className="space-y-2">
-                <div className="text-sm text-muted-foreground">Audit Log</div>
-                <div className="border rounded-md divide-y">
-                  {auditLoading ? (
-                    <>
-                      <div className="p-3 animate-pulse">
-                        <div className="h-3 bg-gray-200 rounded w-1/3" />
-                      </div>
-                      <div className="p-3 animate-pulse">
-                        <div className="h-3 bg-gray-200 rounded w-1/4" />
-                      </div>
-                    </>
-                  ) : auditLogs.length === 0 ? (
-                    <div className="p-3 text-sm text-muted-foreground">No history available.</div>
-                  ) : (
-                    auditLogs.map((log: any) => (
-                      <div key={log.id} className="p-3 text-sm flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{log.event || log.action || 'Event'}</div>
-                          {(log.actor_name || log.actor_email || log.actor_id) && (
-                            <div className="text-xs text-muted-foreground">by {log.actor_name || log.actor_email || log.actor_id}</div>
-                          )}
+                <TabsContent value="history" className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Audit Log</div>
+                  <div className="border rounded-md divide-y">
+                    {auditLoading ? (
+                      <>
+                        <div className="p-3 animate-pulse">
+                          <div className="h-3 bg-gray-200 rounded w-1/3" />
                         </div>
-                        <div className="text-muted-foreground">{formatDate(log.created_at)}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+                        <div className="p-3 animate-pulse">
+                          <div className="h-3 bg-gray-200 rounded w-1/4" />
+                        </div>
+                      </>
+                    ) : auditLogs.length === 0 ? (
+                      <div className="p-3 text-sm text-muted-foreground">No history available.</div>
+                    ) : (
+                      auditLogs.map((log: any) => (
+                        <div key={log.id} className="p-3 text-sm flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{log.event || log.action || 'Event'}</div>
+                            {(log.actor_name || log.actor_email || log.actor_id) && (
+                              <div className="text-xs text-muted-foreground">by {log.actor_name || log.actor_email || log.actor_id}</div>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground">{formatDate(log.created_at)}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </DialogContent>
