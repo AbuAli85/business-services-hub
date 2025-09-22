@@ -35,6 +35,7 @@ export default function ServicesPage() {
   const { services, bookings, loading, error, refresh } = useDashboardData()
   const [providerServices, setProviderServices] = useState<any[]>([])
   const [providerLoading, setProviderLoading] = useState(false)
+  const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -44,7 +45,7 @@ export default function ServicesPage() {
   const [ratingFilter, setRatingFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
-  // Load provider-owned services from API if user is a provider
+  // Load dataset based on role (provider: own services; client/admin: all active services)
   useEffect(() => {
     (async () => {
       try {
@@ -56,22 +57,44 @@ export default function ServicesPage() {
           setProviderLoading(false)
           return
         }
-        // 1) Try direct provider_id query
-        const params1 = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
-        let res = await fetch(`/api/services?${params1.toString()}`, { cache: 'no-store' })
-        let list: any[] = []
-        if (res.ok) {
-          const json = await res.json()
-          list = json.services || []
+        // detect role
+        let role: any = user.user_metadata?.role
+        if (!role) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle()
+          role = profile?.role || null
         }
-        // 2) If empty (possible RLS/provider_id mismatch), fetch all then filter by current user
-        if (list.length === 0) {
-          const params2 = new URLSearchParams({ limit: '200', page: '1' })
-          res = await fetch(`/api/services?${params2.toString()}`, { cache: 'no-store' })
+        setUserRole(role)
+
+        let list: any[] = []
+        if (role === 'provider') {
+          // 1) Try direct provider_id query
+          const params1 = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
+          let res = await fetch(`/api/services?${params1.toString()}`, { cache: 'no-store' })
           if (res.ok) {
-            const jsonAll = await res.json()
-            const all: any[] = jsonAll.services || []
-            list = all.filter((s: any) => s.provider_id === user.id || s?.provider?.email === user.email)
+            const json = await res.json()
+            list = json.services || []
+          }
+          // 2) If empty, fetch all and filter by provider
+          if (list.length === 0) {
+            const params2 = new URLSearchParams({ limit: '200', page: '1' })
+            const resAll = await fetch(`/api/services?${params2.toString()}`, { cache: 'no-store' })
+            if (resAll.ok) {
+              const jsonAll = await resAll.json()
+              const all: any[] = jsonAll.services || []
+              list = all.filter((s: any) => s.provider_id === user.id || s?.provider?.email === user.email)
+            }
+          }
+        } else {
+          // client/admin/staff: show all active
+          const params = new URLSearchParams({ status: 'active', limit: '200', page: '1' })
+          const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
+          if (res.ok) {
+            const json = await res.json()
+            list = json.services || []
           }
         }
 
@@ -176,7 +199,7 @@ export default function ServicesPage() {
     })
 
     return filtered
-  }, [services, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder, priceRange, ratingFilter])
+  }, [sourceServices, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder, priceRange, ratingFilter])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -242,10 +265,8 @@ export default function ServicesPage() {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Services Management</h1>
-            <p className="text-blue-100 text-lg mb-4">
-              Manage and track all services with real-time booking and revenue data
-            </p>
+            <h1 className="text-4xl font-bold mb-2">{userRole === 'provider' ? 'My Services' : 'Services'}</h1>
+            <p className="text-blue-100 text-lg mb-4">{userRole === 'provider' ? 'Manage your services and bookings' : 'Browse available services and book what you need'}</p>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">
                 <Package className="h-4 w-4 mr-1" />
@@ -274,14 +295,16 @@ export default function ServicesPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button 
-              variant="secondary"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={() => router.push('/dashboard/services/create')}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              New Service
-            </Button>
+            {userRole === 'provider' && (
+              <Button 
+                variant="secondary"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => router.push('/dashboard/services/create')}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Service
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -446,17 +469,29 @@ export default function ServicesPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => router.push(`/dashboard/services/${service.id}`)}
+                      onClick={() => router.push(`/services/${service.id}`)}
+                      title="View Details"
                     >
                       <Eye className="h-3 w-3" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
+                    {userRole === 'provider' ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                        title="Edit Service"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
+                        title="Book Service"
+                      >
+                        Book
+                      </Button>
+                    )}
                   </div>
                 </div>
                 
@@ -487,12 +522,18 @@ export default function ServicesPage() {
             <p className="text-gray-600 mb-4">
               {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
                 ? 'Try adjusting your filters to see more services.'
-                : 'Services will appear here when created.'}
+                : userRole === 'provider' ? 'Services will appear here when you create them.' : 'No active services available at the moment.'}
             </p>
-            <Button onClick={() => router.push('/dashboard/services/create')} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Service
-            </Button>
+            {userRole === 'provider' ? (
+              <Button onClick={() => router.push('/dashboard/services/create')} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Service
+              </Button>
+            ) : (
+              <Button onClick={() => router.push('/services')} variant="outline">
+                Browse Services
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
