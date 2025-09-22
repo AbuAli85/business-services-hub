@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
@@ -63,6 +64,14 @@ interface EnhancedServiceTableProps {
   onSuspendService: (service: Service) => Promise<void>
   onFeatureService: (service: Service) => Promise<void>
   onUpdatePricing: (service: Service) => Promise<void>
+  searchQueryExternal?: string
+  statusFilterExternal?: string
+  categoryFilterExternal?: string
+  hideInternalFilters?: boolean
+  selectable?: boolean
+  selectedIds?: string[]
+  onSelectionChange?: (ids: string[]) => void
+  disableClientSorting?: boolean
 }
 
 export function EnhancedServiceTable({
@@ -73,14 +82,45 @@ export function EnhancedServiceTable({
   onApproveService,
   onSuspendService,
   onFeatureService,
-  onUpdatePricing
+  onUpdatePricing,
+  searchQueryExternal,
+  statusFilterExternal,
+  categoryFilterExternal,
+  hideInternalFilters,
+  selectable,
+  selectedIds = [],
+  onSelectionChange,
+  disableClientSorting
 }: EnhancedServiceTableProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState(searchQueryExternal ?? '')
+  const [categoryFilter, setCategoryFilter] = useState(categoryFilterExternal ?? 'all')
+  const [statusFilter, setStatusFilter] = useState(statusFilterExternal ?? 'all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [actionLoading, setActionLoading] = useState<Set<string>>(new Set())
+  const isSelected = (id: string) => selectedIds.includes(id)
+  const toggleRow = (id: string) => {
+    if (!onSelectionChange) return
+    const next = isSelected(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]
+    onSelectionChange(next)
+  }
+  const toggleAllVisible = () => {
+    if (!onSelectionChange) return
+    const visibleIds = filteredAndSortedServices.map(s => s.id)
+    const allSelected = visibleIds.every(id => selectedIds.includes(id))
+    onSelectionChange(allSelected ? selectedIds.filter(id => !visibleIds.includes(id)) : Array.from(new Set([...selectedIds, ...visibleIds])))
+  }
+
+  // Keep internal state in sync with external props when provided
+  useEffect(() => {
+    if (typeof searchQueryExternal === 'string') setSearchQuery(searchQueryExternal)
+  }, [searchQueryExternal])
+  useEffect(() => {
+    if (typeof categoryFilterExternal === 'string') setCategoryFilter(categoryFilterExternal)
+  }, [categoryFilterExternal])
+  useEffect(() => {
+    if (typeof statusFilterExternal === 'string') setStatusFilter(statusFilterExternal)
+  }, [statusFilterExternal])
 
   const categories = [
     'Digital Marketing',
@@ -105,6 +145,7 @@ export function EnhancedServiceTable({
       return matchesSearch && matchesCategory && matchesStatus
     })
     .sort((a, b) => {
+      if (disableClientSorting) return 0
       let aValue: any, bValue: any
       
       switch (sortBy) {
@@ -219,6 +260,7 @@ export function EnhancedServiceTable({
   return (
     <div className="space-y-4">
       {/* Enhanced Filters */}
+      {!hideInternalFilters && (
       <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
@@ -279,6 +321,7 @@ export function EnhancedServiceTable({
           </Button>
         </div>
       </div>
+      )}
 
       {/* Services Table */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -286,6 +329,15 @@ export function EnhancedServiceTable({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                {selectable && (
+                  <th className="text-left py-3 px-4 font-medium text-gray-900 w-10">
+                    <Checkbox
+                      checked={filteredAndSortedServices.length > 0 && filteredAndSortedServices.every(s => selectedIds.includes(s.id))}
+                      onCheckedChange={toggleAllVisible}
+                      aria-label="Select all"
+                    />
+                  </th>
+                )}
                 <th className="text-left py-3 px-4 font-medium text-gray-900">Service</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-900">Provider</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
@@ -297,12 +349,21 @@ export function EnhancedServiceTable({
               </tr>
             </thead>
             <tbody>
-              {filteredAndSortedServices.map((service) => {
+              {filteredAndSortedServices.length === 0 ? (
+                <tr>
+                  <td colSpan={selectable ? 9 : 8} className="py-10 text-center text-gray-500">No services found. Adjust filters or search.</td>
+                </tr>
+              ) : filteredAndSortedServices.map((service) => {
                 const isLoading = actionLoading.has(service.id)
                 const quickActions = getQuickActions(service)
                 
                 return (
                   <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    {selectable && (
+                      <td className="py-4 px-4">
+                        <Checkbox checked={isSelected(service.id)} onCheckedChange={() => toggleRow(service.id)} aria-label={`Select ${service.title}`} />
+                      </td>
+                    )}
                     <td className="py-4 px-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">

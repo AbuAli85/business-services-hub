@@ -37,6 +37,8 @@ import {
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogOverlay } from '@/components/ui/dialog'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 
 interface Service {
   id: string
@@ -68,11 +70,14 @@ interface ServiceStats {
 }
 
 export default function AdminServicesPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [services, setServices] = useState<Service[]>([])
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all')
   const [stats, setStats] = useState<ServiceStats>({
     total: 0,
     pending: 0,
@@ -81,10 +86,33 @@ export default function AdminServicesPage() {
     featured: 0,
     totalRevenue: 0
   })
+  const [page, setPage] = useState(Number(searchParams.get('page') || 1))
+  const [pageSize, setPageSize] = useState(Number(searchParams.get('pageSize') || 10))
+  const [totalCount, setTotalCount] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsService, setDetailsService] = useState<Service | null>(null)
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>((searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc')
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<'reject' | 'approve' | 'toggleFeatured' | null>(null)
 
   useEffect(() => {
     loadServices()
-  }, [])
+  }, [page, pageSize, searchQuery, statusFilter, sortBy, sortOrder])
+
+  // Sync state to URL
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('q', searchQuery)
+    if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
+    if (page && page !== 1) params.set('page', String(page))
+    if (pageSize && pageSize !== 10) params.set('pageSize', String(pageSize))
+    if (sortBy && sortBy !== 'created_at') params.set('sortBy', sortBy)
+    if (sortOrder && sortOrder !== 'desc') params.set('sortOrder', sortOrder)
+    const qs = params.toString()
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`)
+  }, [searchQuery, statusFilter, page, pageSize, sortBy, sortOrder])
 
   useEffect(() => {
     filterServices()
@@ -94,7 +122,10 @@ export default function AdminServicesPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      const { data, error } = await supabase
+      const from = (page - 1) * pageSize
+      const to = from + pageSize - 1
+
+      let query = supabase
         .from('services')
         .select(`
           *,
@@ -104,12 +135,31 @@ export default function AdminServicesPage() {
             email,
             phone
           )
-        `)
-        .order('created_at', { ascending: false })
+        `, { count: 'exact' })
+
+      // Server-side search across service columns and provider fields
+      if (searchQuery) {
+        const like = `%${searchQuery}%`
+        query = query.or(
+          `title.ilike.${like},description.ilike.${like},category.ilike.${like},provider.full_name.ilike.${like},provider.email.ilike.${like}`
+        )
+      }
+
+      // Server-side approval status filter
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.eq('approval_status', statusFilter)
+      }
+
+      // Server-side sort
+      const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
+      query = query.order(sortColumn as any, { ascending: sortOrder === 'asc' })
+
+      const { data, count, error } = await query.range(from, to)
 
       if (error) throw error
 
       setServices(data || [])
+      setTotalCount(count || 0)
       calculateStats(data || [])
       setLoading(false)
     } catch (error: any) {
@@ -298,8 +348,8 @@ export default function AdminServicesPage() {
   }
 
   const handleViewService = (service: Service) => {
-    // This would typically open a service details modal
-    toast.success(`Viewing service: ${service.title}`)
+    setDetailsService(service)
+    setDetailsOpen(true)
   }
 
   const handleEditService = (service: Service) => {
@@ -310,6 +360,118 @@ export default function AdminServicesPage() {
   const handleDeleteService = (service: Service) => {
     // This would typically open a confirmation modal
     toast.success(`Delete service: ${service.title}`)
+  }
+
+  const exportCsv = () => {
+    const rows = filteredServices.map(s => ({
+      id: s.id,
+      title: s.title,
+      category: s.category,
+      base_price: s.base_price,
+      currency: s.currency,
+      approval_status: s.approval_status,
+      status: s.status,
+      provider_name: s.provider?.full_name,
+      provider_email: s.provider?.email,
+      created_at: s.created_at,
+      updated_at: s.updated_at
+    }))
+    const header = Object.keys(rows[0] || { id: 'id' })
+    const csv = [
+      header.join(','),
+      ...rows.map(r => header.map(h => {
+        const v = (r as any)[h]
+        if (v === null || v === undefined) return ''
+        const str = String(v).replace(/"/g, '""')
+        return /[",\n]/.test(str) ? `"${str}"` : str
+      }).join(','))
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `services_page_${page}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportAllCsv = async () => {
+    try {
+      const supabase = await getSupabaseClient()
+
+      const header = [
+        'id','title','category','base_price','currency','approval_status','status','provider_name','provider_email','created_at','updated_at'
+      ]
+      const rows: any[] = []
+
+      let query = supabase
+        .from('services')
+        .select(`
+          *,
+          provider:profiles!services_provider_id_fkey(
+            id,
+            full_name,
+            email,
+            phone
+          )
+        `, { count: 'exact' })
+
+      if (searchQuery) {
+        const like = `%${searchQuery}%`
+        query = query.or(
+          `title.ilike.${like},description.ilike.${like},category.ilike.${like},provider.full_name.ilike.${like},provider.email.ilike.${like}`
+        )
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.eq('approval_status', statusFilter)
+      }
+      const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
+      query = query.order(sortColumn as any, { ascending: sortOrder === 'asc' })
+
+      const chunk = 1000
+      let offset = 0
+      while (true) {
+        const { data, error } = await query.range(offset, offset + chunk - 1)
+        if (error) throw error
+        const batch = (data || []).map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          category: s.category,
+          base_price: s.base_price,
+          currency: s.currency,
+          approval_status: s.approval_status,
+          status: s.status,
+          provider_name: s.provider?.full_name,
+          provider_email: s.provider?.email,
+          created_at: s.created_at,
+          updated_at: s.updated_at
+        }))
+        rows.push(...batch)
+        if (!data || data.length < chunk) break
+        offset += chunk
+      }
+
+      const csv = [
+        header.join(','),
+        ...rows.map(r => header.map(h => {
+          const v = (r as any)[h]
+          if (v === null || v === undefined) return ''
+          const str = String(v).replace(/"/g, '""')
+          return /[",\n]/.test(str) ? `"${str}"` : str
+        }).join(','))
+      ].join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `services_all.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Export all failed', err)
+      toast.error('Failed to export all')
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -453,7 +615,7 @@ export default function AdminServicesPage() {
         <CardContent>
           <div className="space-y-4">
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -474,6 +636,25 @@ export default function AdminServicesPage() {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1) }}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Date Created</SelectItem>
+                  <SelectItem value="title">Title</SelectItem>
+                  <SelectItem value="base_price">Price</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}>
+                {sortOrder === 'asc' ? 'Asc' : 'Desc'}
+              </Button>
+              <Button variant="secondary" onClick={() => exportCsv()}>
+                Export CSV
+              </Button>
+              <Button variant="secondary" onClick={() => exportAllCsv()}>
+                Export All
+              </Button>
             </div>
 
             {/* Enhanced Service Table */}
@@ -487,11 +668,105 @@ export default function AdminServicesPage() {
                 onSuspendService={handleSuspendService}
                 onFeatureService={handleFeatureService}
                 onUpdatePricing={handleUpdatePricing}
+                searchQueryExternal={searchQuery}
+                statusFilterExternal={statusFilter}
+                hideInternalFilters
+                selectable
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                disableClientSorting
               />
+            </div>
+
+            {/* Bulk Actions */}
+            {selectedIds.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{selectedIds.length} selected</Badge>
+            <Button size="sm" onClick={() => { setConfirmAction('approve'); setConfirmOpen(true) }}>Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => { setConfirmAction('reject'); setConfirmOpen(true) }}>Reject</Button>
+            <Button size="sm" variant="outline" onClick={() => { setConfirmAction('toggleFeatured'); setConfirmOpen(true) }}>Toggle Featured</Button>
+              </div>
+            )}
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {page} of {Math.max(1, Math.ceil(totalCount / pageSize))} · {totalCount} total
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 / page</SelectItem>
+                    <SelectItem value="20">20 / page</SelectItem>
+                    <SelectItem value="50">50 / page</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => (p < Math.ceil(totalCount / pageSize) ? p + 1 : p))} disabled={page >= Math.ceil(totalCount / pageSize)}>Next</Button>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Details Dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogOverlay />
+        <DialogContent onClose={() => setDetailsOpen(false)}>
+          <DialogHeader>
+            <DialogTitle>{detailsService?.title}</DialogTitle>
+            <DialogDescription>Service details and metadata</DialogDescription>
+          </DialogHeader>
+          {detailsService && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">ID: {detailsService.id}</div>
+              <div className="text-sm">Category: <Badge variant="secondary">{detailsService.category}</Badge></div>
+              <div className="text-sm">Price: {formatCurrency(detailsService.base_price, detailsService.currency)}</div>
+              <div className="text-sm">Status: {getStatusBadge(detailsService.approval_status)}</div>
+              <div className="text-sm">Provider: {detailsService.provider?.full_name} ({detailsService.provider?.email})</div>
+              <div className="text-sm">Created: {formatDate(detailsService.created_at)}</div>
+              <div className="text-sm">Updated: {formatDate(detailsService.updated_at)}</div>
+              <div className="text-sm">Description:</div>
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {detailsService.description}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogOverlay />
+        <DialogContent onClose={() => setConfirmOpen(false)}>
+          <DialogHeader>
+            <DialogTitle>Confirm Action</DialogTitle>
+            <DialogDescription>Are you sure you want to proceed?</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={async () => {
+              if (confirmAction === 'reject') {
+                await Promise.all(selectedIds.map(async (id) => rejectService(id)))
+                setSelectedIds([])
+              } else if (confirmAction === 'approve') {
+                await Promise.all(selectedIds.map(async (id) => approveService(id)))
+                setSelectedIds([])
+              } else if (confirmAction === 'toggleFeatured') {
+                await Promise.all(selectedIds.map(async (id) => {
+                  const svc = services.find(s => s.id === id)
+                  if (svc) await toggleFeatured(id, !!svc.featured)
+                }))
+                setSelectedIds([])
+              }
+              setConfirmOpen(false)
+            }}>Confirm</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
