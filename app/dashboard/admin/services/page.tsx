@@ -906,10 +906,10 @@ export default function AdminServicesPage() {
                 </div>
               </div>
 
-              {/* Header summary */}
-              <div className="flex items-start justify-between gap-4">
+                  {/* Sticky action + status summary */}
+                  <div className="sticky top-0 z-10 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70 border rounded-md p-2 flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                     {getStatusBadge(detailsService.approval_status)}
                     {detailsService.featured && (
                       <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-200 bg-yellow-50">Featured</Badge>
@@ -919,27 +919,27 @@ export default function AdminServicesPage() {
                     )}
                     <Badge variant="secondary" className="text-xs">{detailsService.category}</Badge>
                   </div>
-                  <div className="mt-2 text-sm text-muted-foreground truncate">
+                      <div className="mt-1 text-xs text-muted-foreground truncate">
                     ID: <span className="font-mono">{detailsService.id}</span>
                     <Button variant="ghost" size="sm" className="h-6 px-2 ml-1" onClick={() => navigator.clipboard?.writeText(detailsService.id)}>
                       <Copy className="h-3 w-3 mr-1" /> Copy
                     </Button>
                   </div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <Button size="sm" onClick={() => handleApproveService(detailsService)}>Approve</Button>
-                  <Button size="sm" variant="destructive" onClick={() => rejectService(detailsService.id)}>Reject</Button>
-                  <Button size="sm" variant="outline" onClick={() => handleSuspendService(detailsService)}>Suspend</Button>
-                  <Button size="sm" variant="secondary" onClick={() => handleFeatureService(detailsService)}>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button size="sm" aria-label="Approve service" onClick={() => handleApproveService(detailsService)}>Approve</Button>
+                      <Button size="sm" aria-label="Reject service" variant="destructive" onClick={() => rejectService(detailsService.id)}>Reject</Button>
+                      <Button size="sm" aria-label="Suspend service" variant="outline" onClick={() => handleSuspendService(detailsService)}>Suspend</Button>
+                      <Button size="sm" aria-label="Toggle featured" variant="secondary" onClick={() => handleFeatureService(detailsService)}>
                     {detailsService.featured ? 'Unfeature' : 'Feature'}
                   </Button>
                   {detailsService.slug && (
-                    <Link href={`/services/${detailsService.slug}`} target="_blank" rel="noreferrer" className="inline-flex">
-                      <Button size="sm" variant="outline">Open page</Button>
+                        <Link href={`/services/${detailsService.slug}`} target="_blank" rel="noreferrer" className="inline-flex">
+                          <Button size="sm" aria-label="Open public page" variant="outline">Open page</Button>
                     </Link>
                   )}
                   {detailsService.provider?.id && (
-                    <Button size="sm" variant="outline" onClick={() => { setDetailsOpen(false); router.push(`/dashboard/admin/users?userId=${detailsService.provider!.id}`) }}>Provider</Button>
+                        <Button size="sm" aria-label="View provider profile" variant="outline" onClick={() => { setDetailsOpen(false); router.push(`/dashboard/admin/users?userId=${detailsService.provider!.id}`) }}>Provider</Button>
                   )}
                 </div>
               </div>
@@ -1026,16 +1026,16 @@ export default function AdminServicesPage() {
                 <div className="space-y-1 text-sm sm:col-span-2">
                   <div className="text-muted-foreground">Provider</div>
                   {detailsService.provider ? (
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="rounded-lg border bg-muted/30 p-3 flex flex-wrap items-center gap-3">
                       <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                         {detailsService.provider.full_name?.[0] || 'P'}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-medium">{detailsService.provider.full_name || 'Unknown'}</div>
                         {detailsService.provider.company_name && (
                           <div className="text-xs text-muted-foreground">{detailsService.provider.company_name}</div>
                         )}
-                        <div className="text-muted-foreground">
+                        <div className="text-muted-foreground truncate">
                           {detailsService.provider.email ? (
                             <a className="underline" href={`mailto:${detailsService.provider.email}`}>{detailsService.provider.email}</a>
                           ) : (
@@ -1054,20 +1054,20 @@ export default function AdminServicesPage() {
                       {(detailsService.provider.email || detailsService.provider.phone) && (
                         <div className="flex items-center gap-2 ml-2">
                           {detailsService.provider.email && (
-                            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.email!)}>
+                            <Button size="sm" aria-label="Copy provider email" variant="outline" className="h-7 px-2" onClick={() => navigator.clipboard?.writeText(detailsService.provider!.email!)}>
                               <Copy className="h-3 w-3 mr-1" /> Email
                             </Button>
                           )}
                           {detailsService.provider.phone && (
                             <a href={`tel:${detailsService.provider.phone}`}>
-                              <Button size="sm" variant="outline" className="h-7 px-2">
+                              <Button size="sm" aria-label="Call provider" variant="outline" className="h-7 px-2">
                                 <Phone className="h-3 w-3 mr-1" /> Call
                               </Button>
                             </a>
                           )}
                           {detailsService.provider.email && (
                             <a href={`mailto:${detailsService.provider.email}`}>
-                              <Button size="sm" variant="outline" className="h-7 px-2">
+                              <Button size="sm" aria-label="Email provider" variant="outline" className="h-7 px-2">
                                 <Mail className="h-3 w-3 mr-1" /> Mail
                               </Button>
                             </a>
