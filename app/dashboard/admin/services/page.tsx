@@ -91,7 +91,6 @@ export default function AdminServicesPage() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [services, setServices] = useState<Service[]>([])
-  const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
   const [rawSearch, setRawSearch] = useState(searchParams.get('q') || '')
@@ -272,42 +271,7 @@ export default function AdminServicesPage() {
     }
   }
 
-  const calculateStats = (servicesData: Service[]) => {
-    const total = servicesData.length
-    const pending = servicesData.filter(s => s.approval_status === 'pending').length
-    const approved = servicesData.filter(s => s.approval_status === 'approved').length
-    const rejected = servicesData.filter(s => s.approval_status === 'rejected').length
-    const featured = servicesData.filter(s => s.featured).length
-    const totalRevenue = servicesData.reduce((sum, s) => sum + (s.base_price || 0), 0)
-
-    setStats({
-      total,
-      pending,
-      approved,
-      rejected,
-      featured,
-      totalRevenue
-    })
-  }
-
-  const filterServices = () => {
-    let filtered = [...services]
-
-    if (searchQuery) {
-      filtered = filtered.filter(service =>
-        service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.provider.full_name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(service => service.approval_status === statusFilter)
-    }
-
-    setFilteredServices(filtered)
-  }
+  // removed old page-level stats and client filtering; now using RPC stats + server filters only
 
   const approveService = async (serviceId: string) => {
     try {
@@ -373,7 +337,7 @@ export default function AdminServicesPage() {
       loadServices()
     } catch (error: any) {
       console.error('Error toggling featured status:', error)
-      if (error?.code === 'PGRST204') {
+      if (error?.code === '42703') {
         toast.error("'featured' column is missing. Run latest migrations and try again.")
       } else {
         toast.error('Failed to update featured status')
@@ -476,7 +440,7 @@ export default function AdminServicesPage() {
   }
 
   const exportCsv = () => {
-    const rows = filteredServices.map(s => ({
+    const rows = services.map(s => ({
       id: s.id,
       title: s.title,
       category: s.category,
@@ -513,40 +477,40 @@ export default function AdminServicesPage() {
       const supabase = await getSupabaseClient()
 
       const header = [
-        'id','title','category','base_price','currency','approval_status','status','provider_name','provider_email','created_at','updated_at'
+        'id','title','category','base_price','currency','approval_status','status','provider_name','provider_email','provider_company','created_at','updated_at'
       ]
       const rows: any[] = []
-
-      let query = supabase
-        .from('services')
-        .select(`
-          *,
-          provider:profiles(
-            id,
-            full_name,
-            email,
-            phone
-          )
-        `, { count: 'exact' })
-
-      if (searchQuery) {
-        const like = `%${searchQuery}%`
-        query = query.or(
-          `title.ilike.${like},description.ilike.${like},category.ilike.${like},provider.full_name.ilike.${like},provider.email.ilike.${like}`
-        )
-      }
-      if (statusFilter && statusFilter !== 'all') {
-        query = query.eq('approval_status', statusFilter)
-      }
-      const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
-      query = query.order(sortColumn as any, { ascending: sortOrder === 'asc' })
 
       const chunk = 1000
       let offset = 0
       while (true) {
-        const { data, error } = await query.range(offset, offset + chunk - 1)
+        let q = supabase
+          .from('services')
+          .select(`
+            *,
+            provider:profiles(
+              id,
+              full_name,
+              email,
+              phone,
+              company_name
+            )
+          `)
+
+        if (searchQuery) {
+          const like = `%${searchQuery}%`
+          q = q.or(`title.ilike.${like},description.ilike.${like},category.ilike.${like}`)
+          q = (q as any).or(`full_name.ilike.${like},email.ilike.${like}`, { foreignTable: 'profiles' })
+        }
+        if (statusFilter && statusFilter !== 'all') {
+          q = q.eq('approval_status', statusFilter) as any
+        }
+        const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
+        q = q.order(sortColumn as any, { ascending: sortOrder === 'asc' }) as any
+
+        const { data, error } = await q.range(offset, offset + chunk - 1)
         if (error) throw error
-        const batch = (data || []).map((s: any) => ({
+        rows.push(...(data || []).map((s: any) => ({
           id: s.id,
           title: s.title,
           category: s.category,
@@ -556,10 +520,11 @@ export default function AdminServicesPage() {
           status: s.status,
           provider_name: s.provider?.full_name,
           provider_email: s.provider?.email,
+          provider_company: s.provider?.company_name,
           created_at: s.created_at,
           updated_at: s.updated_at
-        }))
-        rows.push(...batch)
+        })))
+
         if (!data || data.length < chunk) break
         offset += chunk
       }
