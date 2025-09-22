@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -128,6 +128,7 @@ export default function AdminServicesPage() {
   const [actorEmail, setActorEmail] = useState<string | null>(null)
   const [actorRole, setActorRole] = useState<string | null>(null)
   const canEdit = actorRole === 'admin' || actorRole === 'staff'
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     loadServices()
@@ -158,7 +159,9 @@ export default function AdminServicesPage() {
         if (error) throw error
         setAllowFeature(true)
       } catch (e: any) {
-        if (e?.code === 'PGRST204') {
+        if (e?.code === '42703') {
+          setAllowFeature(false)
+        } else {
           setAllowFeature(false)
         }
       }
@@ -197,11 +200,12 @@ export default function AdminServicesPage() {
     return () => clearTimeout(t)
   }, [rawSearch])
 
-  let currentController: AbortController | null = null
   const loadServices = async () => {
-    if (currentController) currentController.abort()
-    currentController = new AbortController()
-    const signal = currentController.signal
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const { signal } = controller
+    setLoading(true)
     try {
       const supabase = await getSupabaseClient()
       
@@ -212,7 +216,7 @@ export default function AdminServicesPage() {
         .from('services')
         .select(`
           *,
-          provider:profiles(
+          provider:profiles!inner(
             id,
             full_name,
             email,
@@ -221,27 +225,23 @@ export default function AdminServicesPage() {
           )
         `, { count: 'exact' })
 
-      // Server-side search across service columns and provider fields
       if (searchQuery) {
         const like = `%${searchQuery}%`
-        query = query.or(
-          `title.ilike.${like},description.ilike.${like},category.ilike.${like},provider.full_name.ilike.${like},provider.email.ilike.${like}`
-        )
+        query = query.or(`title.ilike.${like},description.ilike.${like},category.ilike.${like}`)
+        query = (query as any).or(`full_name.ilike.${like},email.ilike.${like}`, { foreignTable: 'profiles' })
       }
 
-      // Server-side approval status filter
       if (statusFilter && statusFilter !== 'all') {
         query = query.eq('approval_status', statusFilter)
       }
 
-      // Server-side sort
       const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
-      query = query.order(sortColumn as any, { ascending: sortOrder === 'asc' })
+      query = query.order(sortColumn as any, { ascending: sortOrder === 'asc', nullsFirst: false } as any)
 
       const { data, count, error } = await query.range(from, to)
 
-      if (error) throw error
       if (signal.aborted) return
+      if (error) throw error
 
       setServices(data || [])
       setTotalCount(count || 0)
@@ -265,8 +265,10 @@ export default function AdminServicesPage() {
       } catch {}
       if (!signal.aborted) setLoading(false)
     } catch (error: any) {
-      console.error('Error loading services:', error)
-      toast.error('Failed to load services')
+      if (!(error?.name || '').includes('Abort')) {
+        console.error('Error loading services:', error)
+        toast.error('Failed to load services')
+      }
       if (!signal.aborted) setLoading(false)
     }
   }
@@ -1183,7 +1185,7 @@ export default function AdminServicesPage() {
           </DialogHeader>
           <div className="flex items-center justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={async () => {
+            <Button variant={confirmAction === 'reject' ? 'destructive' : 'default'} onClick={async () => {
               if (confirmAction === 'reject') {
                 await Promise.all(selectedIds.map(async (id) => rejectService(id)))
                 setSelectedIds([])
