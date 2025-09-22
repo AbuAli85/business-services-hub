@@ -220,9 +220,16 @@ export default function CreateBookingPage() {
       const supabase = await getSupabaseClient()
       
       // Prepare booking data based on whether service has packages or not
+      const providerId = (selectedService as any)?.provider?.id || (selectedService as any)?.provider_id || ''
+      if (!selectedService.id || !providerId || !user?.id) {
+        toast.error('Unable to create booking: missing required IDs. Please reselect the service and try again.')
+        setSubmitting(false)
+        return
+      }
+
       const bookingData: any = {
         service_id: selectedService.id,
-        provider_id: selectedService.provider.id,
+        provider_id: providerId,
         client_id: user.id,
         title: selectedPackage ? `${selectedService.title} - ${selectedPackage.name}` : selectedService.title,
         scheduled_date: formData.scheduled_date.toISOString(),
