@@ -100,7 +100,7 @@ export default function ContactPage() {
     {
       icon: Mail,
       title: 'Email Us',
-      details: 'hello@businesshub.om\nsupport@businesshub.om',
+      details: 'hello@businesshub.com\nsupport@businesshub.com',
       description: 'We respond within 24 hours'
     },
     {
@@ -115,21 +115,21 @@ export default function ContactPage() {
     {
       icon: Users,
       title: 'Customer Support',
-      email: 'support@businesshub.om',
+      email: 'support@businesshub.com',
       phone: '+968 2234 5678',
       description: 'General inquiries and account support'
     },
     {
       icon: Building2,
       title: 'Business Development',
-      email: 'partnerships@businesshub.om',
+      email: 'partnerships@businesshub.com',
       phone: '+968 2234 5679',
       description: 'Partnerships and business opportunities'
     },
     {
       icon: Headphones,
       title: 'Technical Support',
-      email: 'tech@businesshub.om',
+      email: 'tech@businesshub.com',
       phone: '+968 2234 5680',
       description: 'Technical issues and platform support'
     }
@@ -197,38 +197,48 @@ export default function ContactPage() {
                 <form onSubmit={onSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                      <label htmlFor="full-name" className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                       <Input 
+                        id="full-name"
+                        name="full-name"
                         placeholder="Your full name" 
                         value={formData.name} 
                         onChange={(e) => handleInputChange('name', e.target.value)} 
                         required 
+                        aria-required="true"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
                       <Input 
+                        id="email"
+                        name="email"
                         type="email" 
                         placeholder="your.email@company.com" 
                         value={formData.email} 
                         onChange={(e) => handleInputChange('email', e.target.value)} 
                         required 
+                        aria-required="true"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                      <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
                       <Input 
+                        id="company"
+                        name="company"
                         placeholder="Your company name" 
                         value={formData.company} 
                         onChange={(e) => handleInputChange('company', e.target.value)} 
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                       <Input 
+                        id="phone"
+                        name="phone"
                         placeholder="+968 XXXX XXXX" 
                         value={formData.phone} 
                         onChange={(e) => handleInputChange('phone', e.target.value)} 
@@ -238,10 +248,10 @@ export default function ContactPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Inquiry Type *</label>
+                      <label htmlFor="inquiry-type" className="block text-sm font-medium text-gray-700 mb-2">Inquiry Type *</label>
                       <Select value={formData.inquiryType} onValueChange={(value) => handleInputChange('inquiryType', value)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select inquiry type" />
+                          <SelectValue id="inquiry-type" placeholder="Select inquiry type" />
                         </SelectTrigger>
                         <SelectContent>
                           {inquiryTypes.map((type) => (
@@ -251,10 +261,10 @@ export default function ContactPage() {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
+                      <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
                       <Select value={formData.subject} onValueChange={(value) => handleInputChange('subject', value)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select subject" />
+                          <SelectValue id="subject" placeholder="Select subject" />
                         </SelectTrigger>
                         <SelectContent>
                           {subjects.map((subject) => (
@@ -266,12 +276,15 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
+                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
                     <Textarea 
+                      id="message"
+                      name="message"
                       placeholder="Please provide details about your inquiry..." 
                       value={formData.message} 
                       onChange={(e) => handleInputChange('message', e.target.value)} 
                       required 
+                      aria-required="true"
                       rows={6}
                       className="resize-none"
                     />

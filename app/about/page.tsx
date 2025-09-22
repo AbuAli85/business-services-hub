@@ -261,7 +261,7 @@ export default function AboutPage() {
                   <Mail className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Email Us</h3>
-                <p className="text-gray-600">hello@businesshub.om<br />support@businesshub.om</p>
+                <p className="text-gray-600">hello@businesshub.com<br />support@businesshub.com</p>
               </div>
             </div>
             

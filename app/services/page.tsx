@@ -299,12 +299,14 @@ export default function ServicesPage() {
                     <img
                       src={service.cover_image_url}
                       alt={`${service.title} - ${service.category} service`}
+                      loading="lazy"
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <img
                       src={getServiceImage(service.category, service.title)}
-                      alt={`${service.title} - ${service.category} service`}
+                      alt={`${service.title} - ${service.category} service`
+                      loading="lazy"
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />
                   )}
@@ -322,10 +324,12 @@ export default function ServicesPage() {
                   
                   <div className="flex items-center justify-between mt-3">
                     <Badge variant="secondary">{service.category}</Badge>
-                    <div className="flex items-center space-x-1 text-sm text-gray-600">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span>4.5</span>
-                    </div>
+                    {typeof service.rating === 'number' && service.rating > 0 && (
+                      <div className="flex items-center space-x-1 text-sm text-gray-600">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span>{service.rating.toFixed(1)}</span>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 

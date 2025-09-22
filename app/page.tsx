@@ -177,10 +177,12 @@ export default function HomePage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="text-lg px-8 py-4 rounded-xl border-2">
-                <Play className="h-4 w-4 mr-2" aria-hidden="true" />
-                Watch Demo
-              </Button>
+              <Link href="/contact">
+                <Button variant="outline" size="lg" className="text-lg px-8 py-4 rounded-xl border-2">
+                  <Play className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Book a Consultation
+                </Button>
+              </Link>
             </div>
 
             {/* Trust Indicators */}
@@ -456,6 +458,7 @@ export default function HomePage() {
                     <img
                       src={testimonial.image}
                       alt={`${testimonial.name} - ${testimonial.title}`}
+                      loading="lazy"
                       className="w-12 h-12 rounded-full object-cover mr-4"
                     />
                     <div>
@@ -687,7 +690,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center space-x-3 text-gray-400">
                   <Mail className="h-4 w-4" />
-                  <span>hello@businesshub.om</span>
+                  <span>hello@businesshub.com</span>
                 </div>
                 <div className="flex items-center space-x-3 text-gray-400">
                   <MapPin className="h-4 w-4" />

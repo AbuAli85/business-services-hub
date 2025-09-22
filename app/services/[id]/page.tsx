@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
+import Head from 'next/head'
 import { ArrowLeft, Package, Wallet, Building2, User as UserIcon, Share2, Heart, Clock, MessageCircle, Upload, FileText, BarChart3, TrendingUp, Star, Calendar, Phone, Mail, Eye, Download, ThumbsUp, MessageSquare, Target, Award, Zap, Users, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -116,6 +118,27 @@ export default function ServiceDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Enhanced Header */}
         <div className="mb-8">
+          <nav aria-label="Breadcrumb" className="mb-3">
+            <ol className="flex items-center space-x-1 text-sm text-gray-600">
+              <li>
+                <Link href="/" className="hover:underline">Home</Link>
+              </li>
+              <li>
+                <span className="px-1">/</span>
+              </li>
+              <li>
+                <Link href="/services" className="hover:underline">Services</Link>
+              </li>
+              {service?.category && (
+                <>
+                  <li>
+                    <span className="px-1">/</span>
+                  </li>
+                  <li className="text-gray-700">{service.category}</li>
+                </>
+              )}
+            </ol>
+          </nav>
           <div className="flex items-center justify-between">
             <Button 
               variant="outline" 
@@ -156,6 +179,29 @@ export default function ServiceDetail() {
         )}
 
         {!loading && !error && service && (
+          <>
+            <Head>
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify({
+                    '@context': 'https://schema.org',
+                    '@type': 'Service',
+                    name: service.title,
+                    description: service.description || undefined,
+                    category: service.category || undefined,
+                    provider: service.provider?.company_name || service.provider?.full_name
+                      ? { '@type': 'Organization', name: service.provider?.company_name || service.provider?.full_name }
+                      : undefined,
+                    aggregateRating:
+                      typeof service.rating === 'number' && (service.bookings_count || 0) > 0
+                        ? { '@type': 'AggregateRating', ratingValue: service.rating, reviewCount: service.bookings_count || 0 }
+                        : undefined
+                  })
+                }}
+              />
+            </Head>
+            <div className="space-y-8">
           <div className="space-y-8">
             {/* Enhanced Hero Section */}
             <div className="relative overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -182,8 +228,9 @@ export default function ServiceDetail() {
                         <div className="flex items-center gap-2 mt-2">
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
                           <span className="text-sm text-gray-600">
-                            {typeof service.rating === 'number' ? service.rating.toFixed(1) : '0.0'} 
-                            ({service.bookings_count || 0} bookings)
+                            {typeof service.rating === 'number' && (service.bookings_count || 0) > 0
+                              ? `${service.rating.toFixed(1)} (${service.bookings_count} bookings)`
+                              : 'No reviews yet'}
                           </span>
                         </div>
                       </div>
@@ -794,7 +841,8 @@ export default function ServiceDetail() {
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>

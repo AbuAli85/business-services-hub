@@ -75,6 +75,27 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Business Services Hub',
+              url: 'https://marketing.thedigitalmorph.com',
+              logo: 'https://marketing.thedigitalmorph.com/favicon.svg',
+              sameAs: [],
+              contactPoint: [{
+                '@type': 'ContactPoint',
+                contactType: 'customer support',
+                email: 'hello@businesshub.com',
+                telephone: '+968 2234 5678',
+                areaServed: 'OM',
+                availableLanguage: ['en']
+              }]
+            })
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
