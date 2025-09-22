@@ -326,11 +326,21 @@ export function EnhancedServiceTable({
       {/* Services Table */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed min-w-[1100px]">
+            <colgroup>
+              {selectable && <col className="w-10" />}
+              <col className="w-[38%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 {selectable && (
-                  <th className="text-left py-3 px-4 font-medium text-gray-900 w-10">
+                  <th className="text-left py-3 px-4 font-medium text-gray-900">
                     <Checkbox
                       checked={filteredAndSortedServices.length > 0 && filteredAndSortedServices.every(s => selectedIds.includes(s.id))}
                       onCheckedChange={toggleAllVisible}
@@ -341,11 +351,11 @@ export function EnhancedServiceTable({
                 <th className="text-left py-3 px-4 font-medium text-gray-900">Service</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-900">Provider</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-900">Category</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-900">Price</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-900">Rating</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-900">Bookings</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-900">Price</th>
+                <th className="text-center py-3 px-4 font-medium text-gray-900">Status</th>
+                <th className="text-center py-3 px-4 font-medium text-gray-900">Rating</th>
+                <th className="text-center py-3 px-4 font-medium text-gray-900">Bookings</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-900">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -360,11 +370,11 @@ export function EnhancedServiceTable({
                 return (
                   <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     {selectable && (
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 align-middle">
                         <Checkbox checked={isSelected(service.id)} onCheckedChange={() => toggleRow(service.id)} aria-label={`Select ${service.title}`} />
                       </td>
                     )}
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4 align-top">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
                           <img
@@ -375,7 +385,7 @@ export function EnhancedServiceTable({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 truncate">{service.title}</div>
-                          <div className="text-sm text-gray-500 truncate">{service.description}</div>
+                          <div className="text-sm text-gray-500 line-clamp-1 sm:line-clamp-2">{service.description}</div>
                           {service.featured && (
                             <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-200 bg-yellow-50 mt-1">
                               <Star className="h-3 w-3 mr-1" />
@@ -385,7 +395,7 @@ export function EnhancedServiceTable({
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4 align-middle">
                       <div className="flex items-center space-x-2">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                           <User className="h-4 w-4 text-gray-600" />
@@ -398,23 +408,23 @@ export function EnhancedServiceTable({
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4 align-middle">
                       <Badge variant="secondary" className="text-xs">
                         {service.category}
                       </Badge>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-1">
+                    <td className="py-4 px-4 align-middle text-right whitespace-nowrap">
+                      <div className="inline-flex items-center space-x-1">
                         <DollarSign className="h-4 w-4 text-gray-400" />
                         <span className="font-medium">{service.base_price}</span>
                         <span className="text-sm text-gray-500">{service.currency}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4 align-middle text-center">
                       {getStatusBadge(service)}
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-1">
+                    <td className="py-4 px-4 align-middle text-center whitespace-nowrap">
+                      <div className="inline-flex items-center space-x-1">
                         <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
                         <span className="text-sm font-medium">{service.rating?.toFixed(1) || 'N/A'}</span>
                         {service.review_count && (
@@ -422,14 +432,14 @@ export function EnhancedServiceTable({
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-1">
+                    <td className="py-4 px-4 align-middle text-center">
+                      <div className="inline-flex items-center space-x-1">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <span className="text-sm font-medium">{service.booking_count || 0}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center space-x-2">
+                    <td className="py-4 px-4 align-middle text-right">
+                      <div className="inline-flex items-center space-x-2">
                         {/* Quick Actions */}
                         {quickActions.map((action, index) => (
                           <Button
