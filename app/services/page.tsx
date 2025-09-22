@@ -316,7 +316,7 @@ export default function ServicesPage() {
                   ) : (
                     <img
                       src={getServiceImage(service.category, service.title)}
-                      alt={`${service.title} - ${service.category} service`
+                      alt={`${service.title} - ${service.category} service`}
                       loading="lazy"
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     />

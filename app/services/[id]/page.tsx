@@ -202,7 +202,6 @@ export default function ServiceDetail() {
               />
             </Head>
             <div className="space-y-8">
-          <div className="space-y-8">
             {/* Enhanced Hero Section */}
             <div className="relative overflow-hidden rounded-3xl bg-white shadow-2xl">
               {/* Background Pattern */}
