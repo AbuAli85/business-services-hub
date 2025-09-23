@@ -38,7 +38,6 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
-import { useBookingsRealtime } from '@/hooks/use-bookings-realtime'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 
@@ -52,12 +51,7 @@ export default function BookingsPage() {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
-  // Realtime: refresh dashboard data on booking changes for either party
-  const handleRealtimeChange = useCallback(() => {
-    // Debounce rapid events via microtask
-    Promise.resolve().then(() => refresh())
-  }, [refresh])
-  useBookingsRealtime(handleRealtimeChange, true)
+  // Data sourced from centralized dashboard store
 
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
@@ -72,7 +66,6 @@ export default function BookingsPage() {
       return matchesSearch && matchesStatus
     })
 
-    // Sort bookings
     filtered.sort((a, b) => {
       let aValue: any, bValue: any
       
@@ -342,19 +335,19 @@ export default function BookingsPage() {
                     return (
                       <TableRow key={booking.id}>
                         <TableCell>
-                          <div className="font-medium">{booking.serviceTitle}</div>
+                          <div className="font-medium">{(booking as any).service?.title || (booking as any).title || 'Service'}</div>
                           <div className="text-sm text-gray-500">ID: {booking.id}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{booking.clientName}</div>
-                          <div className="text-sm text-gray-500">Client ID: {booking.clientId}</div>
+                          <div className="font-medium">{(booking as any).client_profile?.full_name || 'Client'}</div>
+                          <div className="text-sm text-gray-500">Client ID: {(booking as any).client_id}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{booking.providerName}</div>
-                          <div className="text-sm text-gray-500">Provider ID: {booking.providerId}</div>
+                          <div className="font-medium">{(booking as any).provider_profile?.full_name || 'Provider'}</div>
+                          <div className="text-sm text-gray-500">Provider ID: {(booking as any).provider_id}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{formatCurrency(booking.totalAmount, booking.currency)}</div>
+                          <div className="font-medium">{formatCurrency((booking as any).amount || 0, (booking as any).currency || 'OMR')}</div>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(booking.status)}
@@ -388,10 +381,10 @@ export default function BookingsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {new Date(booking.createdAt).toLocaleDateString()}
+                            {new Date((booking as any).created_at).toLocaleDateString()}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {new Date(booking.createdAt).toLocaleTimeString()}
+                            {new Date((booking as any).created_at).toLocaleTimeString()}
                           </div>
                         </TableCell>
                         <TableCell>
