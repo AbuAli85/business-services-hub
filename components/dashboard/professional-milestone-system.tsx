@@ -1936,35 +1936,35 @@ function MilestoneCard({
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1">
-              <Tooltip content="Move milestone up">
+              <Tooltip content={<div className="whitespace-pre-line">Move milestone up</div>}>
                 <Button size="sm" variant="outline" onClick={onMoveUp}>
                   <ArrowUp className="h-4 w-4" />
                 </Button>
               </Tooltip>
-              <Tooltip content="Move milestone down">
+              <Tooltip content={<div className="whitespace-pre-line">Move milestone down</div>}>
                 <Button size="sm" variant="outline" onClick={onMoveDown}>
                   <ArrowDown className="h-4 w-4" />
                 </Button>
               </Tooltip>
             </div>
-            <Tooltip content="Manage dependencies">
+            <Tooltip content={<div className="whitespace-pre-line">Manage dependencies</div>}>
               <Button size="sm" variant="outline" onClick={onManageDependencies}>
                 <Link className="h-4 w-4 mr-1" />
                 Dependencies
               </Button>
             </Tooltip>
-            <Tooltip content="Add a new task">
+            <Tooltip content={<div className="whitespace-pre-line">Add a new task</div>}>
               <Button size="sm" variant="outline" onClick={onAddTask}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Task
               </Button>
             </Tooltip>
-            <Tooltip content="Edit milestone">
+            <Tooltip content={<div className="whitespace-pre-line">Edit milestone</div>}>
               <Button size="sm" variant="outline" onClick={onEdit}>
                 <Edit className="h-4 w-4" />
               </Button>
             </Tooltip>
-            <Tooltip content="Delete milestone">
+            <Tooltip content={<div className="whitespace-pre-line">Delete milestone</div>}>
               <Button size="sm" variant="destructive" onClick={onDelete}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -2010,32 +2010,32 @@ function MilestoneCard({
                       <Clock className="h-3 w-3" />
                       {task.estimated_hours}h
                     </div>
-                    <Tooltip content="Add comment">
+                    <Tooltip content={<div className="whitespace-pre-line">Add comment</div>}>
                       <Button size="sm" variant="ghost" onClick={() => onTaskComment(task)}>
                         <MessageSquare className="h-3 w-3" />
                       </Button>
                     </Tooltip>
-                    <Tooltip content="Flag task">
+                    <Tooltip content={<div className="whitespace-pre-line">Flag task</div>}>
                       <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'flag')}>
                         <Flag className="h-3 w-3" />
                       </Button>
                     </Tooltip>
-                    <Tooltip content="Assign task">
+                    <Tooltip content={<div className="whitespace-pre-line">Assign task</div>}>
                       <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'assign')}>
                         <Users className="h-3 w-3" />
                       </Button>
                     </Tooltip>
-                    <Tooltip content="Set priority">
+                    <Tooltip content={<div className="whitespace-pre-line">Set priority</div>}>
                       <Button size="sm" variant="ghost" onClick={() => onTaskAction(task, 'priority')}>
                         <AlertTriangle className="h-3 w-3" />
                       </Button>
                     </Tooltip>
-                    <Tooltip content="Edit task">
+                    <Tooltip content={<div className="whitespace-pre-line">Edit task</div>}>
                       <Button size="sm" variant="ghost" onClick={() => onEditTask(task)}>
                         <Edit className="h-3 w-3" />
                       </Button>
                     </Tooltip>
-                    <Tooltip content="Delete task">
+                    <Tooltip content={<div className="whitespace-pre-line">Delete task</div>}>
                       <Button size="sm" variant="ghost" onClick={() => onDeleteTask(task.id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
