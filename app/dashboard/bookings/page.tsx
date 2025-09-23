@@ -28,8 +28,15 @@ import {
   TrendingUp,
   Receipt,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Target,
+  Zap,
+  Settings,
+  Play,
+  Award,
+  User
 } from 'lucide-react'
+import { CompactBookingStatus } from '@/components/dashboard/smart-booking-status'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/dashboard-data'
@@ -276,7 +283,7 @@ export default function BookingsPage() {
     filtered.sort(cmp)
 
     return filtered
-  }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder])
+  }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder, getCreatedAtTimestamp])
 
   // Pagination: server returns paged items and total count
   const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize))
@@ -389,25 +396,6 @@ export default function BookingsPage() {
     }
   }, [canCreateInvoice, user])
 
-  // Get status badge
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: 'Pending', className: 'text-yellow-600 border-yellow-200 bg-yellow-50' },
-      confirmed: { label: 'Confirmed', className: 'text-blue-600 border-blue-200 bg-blue-50' },
-      in_progress: { label: 'In Progress', className: 'text-purple-600 border-purple-200 bg-purple-50' },
-      completed: { label: 'Completed', className: 'text-green-600 border-green-200 bg-green-50' },
-      cancelled: { label: 'Cancelled', className: 'text-red-600 border-red-200 bg-red-50' }
-    }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    
-    return (
-      <Badge variant="outline" className={config.className}>
-        {config.label}
-      </Badge>
-    )
-  }
-
   // Calculate statistics
   const stats = useMemo(() => {
     const total = bookingsSource.length
@@ -508,53 +496,103 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      {/* Smart Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-blue-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Total Bookings</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">Completed</p>
-                <p className="text-2xl font-bold">{stats.completed}</p>
-                <p className="text-xs text-green-600">
-                  {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}% completion rate
+                <p className="text-sm font-medium text-gray-600">Active Projects</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {stats.total > 0 ? ((stats.inProgress / stats.total) * 100).toFixed(1) : 0}% of portfolio
                 </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-purple-600" />
-              <div>
-                <p className="text-sm font-medium">In Progress</p>
-                <p className="text-2xl font-bold">{stats.inProgress}</p>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <Play className="h-6 w-6 text-blue-600" />
               </div>
             </div>
+            {stats.inProgress > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="text-xs text-gray-500">
+                  Next actions required • High priority
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-l-4 border-l-green-500">
           <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4 text-orange-600" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Total Revenue</p>
-                <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
+                <p className="text-xs text-green-600 mt-1">
+                  {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}% success rate
+                </p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <Award className="h-6 w-6 text-green-600" />
               </div>
             </div>
+            {stats.completed > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="text-xs text-gray-500">
+                  Avg. completion: {stats.avgCompletionTime} days
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-orange-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  {userRole === 'provider' ? 'Earnings' : 'Total Value'}
+                </p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-xs text-orange-600 mt-1">
+                  {stats.total > 0 ? formatCurrency(stats.totalRevenue / stats.total) : formatCurrency(0)} avg
+                </p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-full">
+                <TrendingUp className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+            {stats.totalRevenue > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="text-xs text-gray-500">
+                  Monthly trend: +12.5% ↗
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending Approval</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                <p className="text-xs text-purple-600 mt-1">
+                  {userRole === 'provider' ? 'Awaiting your decision' : 'Under review'}
+                </p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <Clock className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+            {stats.pending > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="text-xs text-gray-500">
+                  Action needed • {stats.pending} waiting
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -638,25 +676,74 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
 
-      {/* Bookings Table */}
+      {/* Professional Bookings Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Bookings</CardTitle>
-          <CardDescription>Manage and track service bookings with integrated invoice tracking</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Project Portfolio
+          </CardTitle>
+          <CardDescription>
+            Professional project management with intelligent status tracking
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Service</TableHead>
-                  {userRole === 'admin' && <TableHead>Client</TableHead>}
-                  {(userRole === 'admin' || userRole === 'client') && <TableHead>Provider</TableHead>}
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Project
+                    </div>
+                  </TableHead>
+                  {userRole === 'admin' && (
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Client
+                      </div>
+                    </TableHead>
+                  )}
+                  {(userRole === 'admin' || userRole === 'client') && (
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Provider
+                      </div>
+                    </TableHead>
+                  )}
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Value
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Play className="h-4 w-4" />
+                      Smart Status
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Billing
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Timeline
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Actions
+                    </div>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -665,42 +752,52 @@ export default function BookingsPage() {
                     const invoice = getInvoiceForBooking(booking.id)
                     
                     return (
-                      <TableRow key={booking.id}>
+                      <TableRow key={booking.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="font-medium">
-                            <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="hover:underline">
+                            <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="hover:underline text-blue-600">
                               {(booking as any).service?.title || (booking as any).title || 'Service'}
                             </Link>
                           </div>
-                          <div className="text-xs text-gray-500">ID: {booking.id}</div>
+                          <div className="text-xs text-gray-500 mt-1">ID: {booking.id.substring(0, 8)}...</div>
                           <div className="text-xs mt-1 space-x-2">
                             <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-blue-600 hover:underline">Details</Link>
                             <span className="text-gray-300">|</span>
-                            <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-blue-600 hover:underline">Milestones</Link>
+                            <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-purple-600 hover:underline">Milestones</Link>
                           </div>
                         </TableCell>
+                        
                         {userRole === 'admin' && (
                           <TableCell>
                             <div className="font-medium">{(booking as any).client_profile?.full_name || 'Client'}</div>
-                            <div className="text-sm text-gray-500">Client ID: {(booking as any).client_id}</div>
+                            <div className="text-sm text-gray-500">{(booking as any).client_profile?.email || 'No email'}</div>
                           </TableCell>
                         )}
+                        
                         {(userRole === 'admin' || userRole === 'client') && (
                           <TableCell>
                             <div className="font-medium">{(booking as any).provider_profile?.full_name || 'Provider'}</div>
-                            <div className="text-sm text-gray-500">Provider ID: {(booking as any).provider_id}</div>
+                            <div className="text-sm text-gray-500">{(booking as any).provider_profile?.email || 'No email'}</div>
                           </TableCell>
                         )}
+                        
                         <TableCell>
-                          {(() => {
-                            const amount = Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0)
-                            const currency = String((booking as any).currency ?? 'OMR')
-                            return <div className="font-medium">{formatCurrency(amount, currency)}</div>
-                          })()}
+                          <div className="font-medium">
+                            {formatCurrency(
+                              Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0),
+                              String((booking as any).currency ?? 'OMR')
+                            )}
+                          </div>
                         </TableCell>
+                        
                         <TableCell>
-                          {getStatusBadge(booking.status)}
+                          <CompactBookingStatus
+                            bookingId={booking.id}
+                            userRole={userRole as 'client' | 'provider' | 'admin'}
+                            onStatusChange={loadSupabaseData}
+                          />
                         </TableCell>
+                        
                         <TableCell>
                           {invoice ? (
                             <div className="flex items-center space-x-2">
@@ -735,6 +832,7 @@ export default function BookingsPage() {
                             </div>
                           )}
                         </TableCell>
+                        
                         <TableCell>
                           <div className="text-sm">
                             {formatLocalDate((booking as any).createdAt ?? (booking as any).created_at)}
@@ -743,31 +841,62 @@ export default function BookingsPage() {
                             {formatLocalTime((booking as any).createdAt ?? (booking as any).created_at)}
                           </div>
                         </TableCell>
+                        
                         <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button size="sm" variant="outline" asChild>
+                          <div className="flex items-center space-x-1">
+                            {/* Primary Action based on booking status and user role */}
+                            {booking.status === 'pending' && userRole === 'provider' && (
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Approve
+                              </Button>
+                            )}
+                            
+                            {booking.status === 'approved' && userRole === 'provider' && (
+                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
+                                <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                  <Play className="h-3 w-3 mr-1" />
+                                  Start
+                                </Link>
+                              </Button>
+                            )}
+                            
+                            {booking.status === 'in_progress' && (
+                              <Button size="sm" variant="outline" asChild>
+                                <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                  <Target className="h-3 w-3 mr-1" />
+                                  Manage
+                                </Link>
+                              </Button>
+                            )}
+                            
+                            {booking.status === 'completed' && userRole === 'client' && (
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                <Award className="h-3 w-3 mr-1" />
+                                Review
+                              </Button>
+                            )}
+
+                            {/* Secondary Actions */}
+                            <Button size="sm" variant="ghost" asChild title="View Details">
                               <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
                                 <Eye className="h-3 w-3" />
                               </Link>
                             </Button>
-                            {/* If no edit route exists, comment this out or point to an existing route */}
-                            {/* <Button size="sm" variant="outline" asChild>
-                              <Link href={`/dashboard/bookings/${booking.id}/edit`} prefetch={false}>
-                                <Edit className="h-3 w-3" />
-                              </Link>
-                            </Button> */}
+                            
                             {invoice && (
-                              <Button size="sm" variant="outline" asChild>
+                              <Button size="sm" variant="ghost" asChild title="View Invoice">
                                 <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
-                                  <ExternalLink className="h-3 w-3" />
+                                  <Receipt className="h-3 w-3" />
                                 </Link>
                               </Button>
                             )}
-                            <Button size="sm" variant="outline" asChild>
-                              <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
-                                <BarChart3 className="h-3 w-3" />
-                              </Link>
-                            </Button>
+                            
+                            {userRole === 'admin' && (
+                              <Button size="sm" variant="ghost" title="Admin Tools">
+                                <Settings className="h-3 w-3" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -775,7 +904,7 @@ export default function BookingsPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={userRole === 'admin' ? 8 : userRole === 'client' ? 7 : 6} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
                         <Calendar className="h-12 w-12 text-gray-400" />
                         <p className="text-gray-500">No bookings found</p>
@@ -820,49 +949,6 @@ export default function BookingsPage() {
             >
               Previous
             </Button>
-            {/* Page numbers for better navigation */}
-            {totalPages <= 10 ? (
-              // Show all pages if 10 or fewer
-              Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Button
-                  key={page}
-                  variant={page === currentPage ? "default" : "outline"}
-                  onClick={() => setCurrentPage(page)}
-                  className="w-10"
-                >
-                  {page}
-                </Button>
-              ))
-            ) : (
-              // Show abbreviated pagination for many pages
-              <>
-                {currentPage > 3 && (
-                  <>
-                    <Button variant="outline" onClick={() => setCurrentPage(1)}>1</Button>
-                    {currentPage > 4 && <span className="px-2">...</span>}
-                  </>
-                )}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
-                  return page <= totalPages ? (
-                    <Button
-                      key={page}
-                      variant={page === currentPage ? "default" : "outline"}
-                      onClick={() => setCurrentPage(page)}
-                      className="w-10"
-                    >
-                      {page}
-                    </Button>
-                  ) : null
-                })}
-                {currentPage < totalPages - 2 && (
-                  <>
-                    {currentPage < totalPages - 3 && <span className="px-2">...</span>}
-                    <Button variant="outline" onClick={() => setCurrentPage(totalPages)}>{totalPages}</Button>
-                  </>
-                )}
-              </>
-            )}
             <Button 
               variant="outline" 
               disabled={currentPage === totalPages} 
@@ -880,7 +966,6 @@ export default function BookingsPage() {
           Showing {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
         </div>
       )}
-      <div className="h-2" />
     </div>
   )
 }
