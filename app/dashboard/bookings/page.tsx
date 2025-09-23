@@ -86,28 +86,17 @@ export default function BookingsPage() {
       setSbLoading(true)
       setSbError(null)
       const supabase = await getSupabaseClient()
-      const { data: auth } = await supabase.auth.getUser()
-      const userId = auth.user?.id
-      if (!userId) throw new Error('Not authenticated')
-
-      // Fetch bookings where user is client or provider
-      const { data: clientBookings, error: cbErr } = await supabase
+      // Admin-like view: fetch ALL bookings with related names
+      const { data: allBookings, error: fetchErr } = await supabase
         .from('bookings')
         .select(`*, service:services(id,title), client_profile:profiles!client_id(full_name), provider_profile:profiles!provider_id(full_name)`) 
-        .eq('client_id', userId)
+        .order('created_at', { ascending: false })
 
-      const { data: providerBookings, error: pbErr } = await supabase
-        .from('bookings')
-        .select(`*, service:services(id,title), client_profile:profiles!client_id(full_name), provider_profile:profiles!provider_id(full_name)`) 
-        .eq('provider_id', userId)
+      if (fetchErr) throw fetchErr
 
-      if (cbErr) console.warn(cbErr)
-      if (pbErr) console.warn(pbErr)
+      setSbBookings(allBookings || [])
 
-      const merged = [...(clientBookings || []), ...(providerBookings || [])]
-      setSbBookings(merged)
-
-      const bookingIds = merged.map(b => b.id)
+      const bookingIds = (allBookings || []).map(b => b.id)
       if (bookingIds.length > 0) {
         const { data: invs } = await supabase
           .from('invoices')
@@ -128,8 +117,9 @@ export default function BookingsPage() {
     loadSupabaseData()
   }, [loadSupabaseData])
 
-  const bookingsSource = sbBookings.length > 0 ? sbBookings : bookings
-  const invoicesSource = sbBookings.length > 0 ? sbInvoices : invoices
+  // Always use Supabase data on this page to avoid mock IDs in routes
+  const bookingsSource = sbBookings
+  const invoicesSource = sbInvoices
 
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
@@ -205,17 +195,17 @@ export default function BookingsPage() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = bookings.length
-    const completed = bookings.filter(b => b.status === 'completed').length
-    const inProgress = bookings.filter(b => b.status === 'in_progress').length
-    const pending = bookings.filter(b => b.status === 'pending').length
-    const totalRevenue = bookings
+    const total = bookingsSource.length
+    const completed = bookingsSource.filter((b:any) => b.status === 'completed').length
+    const inProgress = bookingsSource.filter((b:any) => b.status === 'in_progress').length
+    const pending = bookingsSource.filter((b:any) => b.status === 'pending').length
+    const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
-      .reduce((sum, b) => sum + b.totalAmount, 0)
+      .reduce((sum: number, b: any) => sum + (b.totalAmount ?? b.amount ?? b.total_price ?? 0), 0)
     const avgCompletionTime = 7.2 // Mock data
 
     return { total, completed, inProgress, pending, totalRevenue, avgCompletionTime }
-  }, [bookings])
+  }, [bookingsSource])
 
   if (loading || sbLoading) {
     return (
