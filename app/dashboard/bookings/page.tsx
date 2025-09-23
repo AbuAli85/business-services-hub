@@ -501,7 +501,7 @@ export default function BookingsPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => router.push(`/dashboard/invoices/${invoice.id}`)}
+                                onClick={() => router.push(`/dashboard/invoices/template/${invoice.id}`)}
                               >
                                 <Receipt className="h-3 w-3" />
                               </Button>
@@ -533,7 +533,7 @@ export default function BookingsPage() {
                             </Button> */}
                             {invoice && (
                               <Button size="sm" variant="outline" asChild>
-                                <Link href={`/dashboard/invoices/${invoice.id}`} prefetch={false}>
+                                <Link href={`/dashboard/invoices/template/${invoice.id}`} prefetch={false}>
                                   <ExternalLink className="h-3 w-3" />
                                 </Link>
                               </Button>
