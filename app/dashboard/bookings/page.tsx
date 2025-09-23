@@ -273,6 +273,118 @@ export default function BookingsPage() {
     }
   }, [user, userRole, userLoading, loadSupabaseData])
 
+  // Realtime subscriptions for live updates
+  useEffect(() => {
+    if (!user || !userRole) return
+
+    let bookingsChannel: any
+    let milestonesChannel: any  
+    let invoicesChannel: any
+    let isMounted = true
+
+    const setupRealtimeSubscriptions = async () => {
+      try {
+        console.log('🔄 Setting up realtime subscriptions for:', userRole)
+        const supabase = await getSupabaseClient()
+
+        if (!isMounted) return
+
+        // Subscribe to bookings changes
+        bookingsChannel = supabase
+          .channel(`bookings-changes-${user.id}`)
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'bookings',
+            filter: userRole === 'admin' ? undefined : 
+                   userRole === 'client' ? `client_id=eq.${user.id}` :
+                   `provider_id=eq.${user.id}`
+          }, (payload: any) => {
+            if (!isMounted) return
+            console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
+            // Debounce the reload to avoid too many refreshes
+            setTimeout(() => {
+              if (isMounted) loadSupabaseData()
+            }, 500)
+            
+            // Show toast notification for important changes
+            if (payload.eventType === 'INSERT') {
+              toast.success('New booking received!')
+            } else if (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status) {
+              toast(`Booking status updated to ${payload.new.status}`)
+            }
+          })
+          .subscribe()
+
+        // Subscribe to milestones changes for progress updates
+        milestonesChannel = supabase
+          .channel(`milestones-changes-${user.id}`)
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'milestones'
+          }, (payload: any) => {
+            if (!isMounted) return
+            console.log('📡 Milestones realtime update:', payload.eventType)
+            // This will trigger CompactBookingStatus components to refresh
+            setTimeout(() => {
+              if (isMounted) loadSupabaseData()
+            }, 300)
+          })
+          .subscribe()
+
+        // Subscribe to invoices changes
+        invoicesChannel = supabase
+          .channel(`invoices-changes-${user.id}`)
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'invoices',
+            filter: userRole === 'admin' ? undefined :
+                   userRole === 'client' ? `client_id=eq.${user.id}` :
+                   `provider_id=eq.${user.id}`
+          }, (payload: any) => {
+            if (!isMounted) return
+            console.log('📡 Invoices realtime update:', payload.eventType)
+            setTimeout(() => {
+              if (isMounted) loadSupabaseData()
+            }, 400)
+            
+            if (payload.eventType === 'INSERT') {
+              toast.success('New invoice created!')
+            }
+          })
+          .subscribe()
+
+        console.log('✅ Realtime subscriptions active')
+      } catch (error) {
+        console.error('❌ Realtime subscription error:', error)
+        // Non-blocking - continue without realtime if it fails
+      }
+    }
+
+    setupRealtimeSubscriptions()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+      console.log('🧹 Cleaning up realtime subscriptions')
+      
+      const cleanup = async () => {
+        try {
+          const supabase = await getSupabaseClient()
+          if (bookingsChannel) supabase.removeChannel(bookingsChannel)
+          if (milestonesChannel) supabase.removeChannel(milestonesChannel)
+          if (invoicesChannel) supabase.removeChannel(invoicesChannel)
+        } catch (error) {
+          console.warn('Error cleaning up subscriptions:', error)
+        }
+      }
+      
+      cleanup()
+    }
+  }, [user, userRole, loadSupabaseData])
+
   // Debounce searchQuery for smoother UX
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 250)
@@ -340,15 +452,20 @@ export default function BookingsPage() {
     ? bookingsSource // Server-side pagination for admin
     : filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize) // Client-side for others
 
-  // Get invoice for a booking
+  // Memoized invoice lookup for performance
   const invoiceByBooking = useMemo(() => {
+    console.log('🔄 Rebuilding invoice lookup map with', invoicesSource.length, 'invoices')
     const m = new Map<string, any>()
     invoicesSource.forEach((invoice: any) => {
-      m.set(String(invoice.bookingId ?? invoice.booking_id), invoice)
+      const bookingId = String(invoice.bookingId ?? invoice.booking_id)
+      m.set(bookingId, invoice)
     })
     return m
   }, [invoicesSource])
-  const getInvoiceForBooking = (bookingId: string) => invoiceByBooking.get(String(bookingId))
+  
+  const getInvoiceForBooking = useCallback((bookingId: string) => {
+    return invoiceByBooking.get(String(bookingId))
+  }, [invoiceByBooking])
 
   const getInvoiceHref = (invoiceId: string) => {
     if (userRole === 'admin') return `/dashboard/invoices/template/${invoiceId}`
@@ -446,6 +563,50 @@ export default function BookingsPage() {
       toast.error(e?.message || 'Failed to create invoice')
     }
   }, [canCreateInvoice, user])
+
+  // Quick invoice actions
+  const handleSendInvoice = useCallback(async (invoiceId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'sent',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoiceId)
+
+      if (error) throw error
+
+      toast.success('Invoice sent successfully')
+      loadSupabaseData() // Refresh data
+    } catch (e: any) {
+      console.error('Send invoice failed:', e)
+      toast.error(e?.message || 'Failed to send invoice')
+    }
+  }, [loadSupabaseData])
+
+  const handleMarkInvoicePaid = useCallback(async (invoiceId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoiceId)
+
+      if (error) throw error
+
+      toast.success('Invoice marked as paid')
+      loadSupabaseData() // Refresh data
+    } catch (e: any) {
+      console.error('Mark paid failed:', e)
+      toast.error(e?.message || 'Failed to mark invoice as paid')
+    }
+  }, [loadSupabaseData])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -806,6 +967,55 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
 
+      {/* Active Filters Summary */}
+      {(searchQuery || statusFilter !== 'all' || sortBy !== 'createdAt' || sortOrder !== 'desc') && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-white">
+                    Active Filters
+                  </Badge>
+                  {searchQuery && (
+                    <Badge className="bg-blue-600 text-white">
+                      Search: "{searchQuery}"
+                    </Badge>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <Badge className="bg-purple-600 text-white">
+                      Status: {statusFilter}
+                    </Badge>
+                  )}
+                  {sortBy !== 'createdAt' && (
+                    <Badge className="bg-orange-600 text-white">
+                      Sort: {sortBy} ({sortOrder})
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-sm text-blue-700">
+                  {filteredBookings.length} result{filteredBookings.length !== 1 ? 's' : ''} found
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('')
+                  setStatusFilter('all')
+                  setSortBy('createdAt')
+                  setSortOrder('desc')
+                  setCurrentPage(1)
+                }}
+                className="text-blue-600 border-blue-300"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Professional Bookings Table */}
       <Card>
         <CardHeader>
@@ -938,34 +1148,72 @@ export default function BookingsPage() {
                         
                         <TableCell>
                           {invoice ? (
-                            <div className="flex items-center space-x-2">
-                              <Badge 
-                                variant="outline" 
-                                className={
-                                  invoice.status === 'paid' 
-                                    ? 'text-green-600 border-green-200 bg-green-50'
-                                    : invoice.status === 'sent'
-                                    ? 'text-yellow-600 border-yellow-200 bg-yellow-50'
-                                    : 'text-gray-600 border-gray-200 bg-gray-50'
-                                }
-                              >
-                                {invoice.status}
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => router.push(getInvoiceHref(invoice.id))}
-                              >
-                                <Receipt className="h-3 w-3" />
-                              </Button>
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    invoice.status === 'paid' 
+                                      ? 'text-green-600 border-green-200 bg-green-50'
+                                      : invoice.status === 'sent'
+                                      ? 'text-yellow-600 border-yellow-200 bg-yellow-50'
+                                      : invoice.status === 'draft'
+                                      ? 'text-blue-600 border-blue-200 bg-blue-50'
+                                      : 'text-gray-600 border-gray-200 bg-gray-50'
+                                  }`}
+                                >
+                                  {invoice.status}
+                                </Badge>
+                                <Tooltip content="View invoice details">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => router.push(getInvoiceHref(invoice.id))}
+                                  >
+                                    <Receipt className="h-3 w-3" />
+                                  </Button>
+                                </Tooltip>
+                              </div>
+                              
+                              {/* Quick Invoice Actions */}
+                              {canCreateInvoice && (
+                                <div className="flex gap-1">
+                                  {invoice.status === 'draft' && (
+                                    <Tooltip content="Send invoice to client">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs h-6 px-2"
+                                        onClick={() => handleSendInvoice(invoice.id)}
+                                      >
+                                        Send
+                                      </Button>
+                                    </Tooltip>
+                                  )}
+                                  {invoice.status === 'sent' && (
+                                    <Tooltip content="Mark invoice as paid">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs h-6 px-2 text-green-600 border-green-300"
+                                        onClick={() => handleMarkInvoicePaid(invoice.id)}
+                                      >
+                                        Mark Paid
+                                      </Button>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
                               <span className="text-gray-400 text-sm">No invoice</span>
                               {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
-                                <Button size="sm" variant="outline" onClick={() => handleCreateInvoice(booking)}>
-                                  Create
-                                </Button>
+                                <Tooltip content="Create invoice for this booking">
+                                  <Button size="sm" variant="outline" onClick={() => handleCreateInvoice(booking)}>
+                                    Create
+                                  </Button>
+                                </Tooltip>
                               )}
                             </div>
                           )}
