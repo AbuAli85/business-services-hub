@@ -1782,6 +1782,8 @@ function MilestoneCard({
   isDragging: boolean
   isDragOver: boolean
 }) {
+  const [showAllTasksByMilestone, setShowAllTasksByMilestone] = useState<Record<string, boolean>>({})
+  
   return (
     <Card 
       className={`hover:shadow-md transition-shadow cursor-move ${
