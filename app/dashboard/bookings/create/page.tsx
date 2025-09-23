@@ -217,73 +217,41 @@ export default function CreateBookingPage() {
 
     setSubmitting(true)
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Prepare booking data based on whether service has packages or not
+      // Guard against missing IDs before API call
       const providerId = (selectedService as any)?.provider?.id || (selectedService as any)?.provider_id || ''
-      if (!selectedService.id || !providerId || !user?.id) {
-        toast.error('Unable to create booking: missing required IDs. Please reselect the service and try again.')
+      if (!selectedService.id || !user?.id) {
+        toast.error('Missing required information. Please reselect the service and try again.')
+        setSubmitting(false)
+        return
+      }
+      if (!providerId) {
+        // Not fatal when using server API (provider derived server-side), but warn the user
+        console.warn('Provider ID missing on client; proceeding with server-side derivation')
+      }
+
+      // Call server API which validates, derives provider_id, creates notifications and milestones
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: selectedService.id,
+          scheduled_date: formData.scheduled_date.toISOString(),
+          notes: formData.notes,
+          service_package_id: selectedPackage ? selectedPackage.id : undefined,
+          estimated_duration: undefined,
+          location: formData.location || undefined,
+        })
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const reason = body?.error || 'Unable to create booking'
+        toast.error(reason)
         setSubmitting(false)
         return
       }
 
-      const bookingData: any = {
-        service_id: selectedService.id,
-        provider_id: providerId,
-        client_id: user.id,
-        title: selectedPackage ? `${selectedService.title} - ${selectedPackage.name}` : selectedService.title,
-        scheduled_date: formData.scheduled_date.toISOString(),
-        scheduled_time: formData.scheduled_time,
-        start_time: formData.scheduled_date.toISOString(), // Use scheduled_date as start_time
-        end_time: new Date(formData.scheduled_date.getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add 2 hours for end_time
-        location: formData.location,
-        notes: formData.notes,
-        special_requirements: formData.special_requirements,
-        budget_range: formData.budget_range,
-        urgency: formData.urgency,
-        status: 'pending',
-        currency: selectedService.currency
-      }
-
-      // Add package-specific data if package exists
-      if (selectedPackage) {
-        bookingData.package_id = selectedPackage.id
-        bookingData.amount = selectedPackage.price
-      } else {
-        // For services without packages, use base price and add a note
-        bookingData.amount = selectedService.base_price
-        bookingData.notes = (bookingData.notes || '') + '\n\n[Direct booking - no package selected. Provider will contact to discuss specific requirements and pricing.]'
-      }
-
-      // Create booking directly with Supabase client (handles auth automatically)
-      const { data: booking, error } = await supabase
-        .from('bookings')
-        .insert(bookingData)
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Manually trigger notification since we're not using API route
-      try {
-        const { triggerBookingCreated } = await import('@/lib/notification-triggers-simple')
-        await triggerBookingCreated(booking.id, {
-          client_id: user.id,
-          client_name: user?.user_metadata?.full_name || 'Client',
-          provider_id: selectedService.provider.id,
-          provider_name: selectedService.provider.full_name,
-          service_name: selectedService.title,
-          booking_title: booking.title,
-          scheduled_date: booking.scheduled_date,
-          total_amount: booking.amount,
-          currency: booking.currency
-        })
-        console.log('✅ Booking notification triggered')
-      } catch (notificationError) {
-        console.warn('Failed to send booking notification:', notificationError)
-        // Non-blocking - don't fail the booking if notifications fail
-      }
-
+      const { booking } = await res.json()
       toast.success('Booking created successfully!')
       router.push(`/dashboard/bookings/${booking.id}`)
     } catch (error) {
