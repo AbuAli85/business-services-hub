@@ -11,29 +11,53 @@ interface TooltipProps {
   className?: string
 }
 
-const TooltipContext = React.createContext<{
+type TooltipContextValue = {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
-}>({
+  delayDuration: number
+  skipDelayDuration: number
+  lastOpenAt: number
+  setLastOpenAt: (t: number) => void
+  defaultSide: "top" | "bottom" | "left" | "right"
+  defaultClassName?: string
+}
+
+const TooltipContext = React.createContext<TooltipContextValue>({
   isOpen: false,
-  setIsOpen: () => {}
+  setIsOpen: () => {},
+  delayDuration: 200,
+  skipDelayDuration: 500,
+  lastOpenAt: 0,
+  setLastOpenAt: () => {},
+  defaultSide: "top",
+  defaultClassName: undefined
 })
 
-const TooltipProvider = ({ children }: { children: React.ReactNode }) => {
+type TooltipProviderProps = {
+  children: React.ReactNode
+  delayDuration?: number
+  skipDelayDuration?: number
+  defaultSide?: "top" | "bottom" | "left" | "right"
+  defaultClassName?: string
+}
+
+const TooltipProvider = ({ children, delayDuration = 200, skipDelayDuration = 500, defaultSide = "top", defaultClassName }: TooltipProviderProps) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [lastOpenAt, setLastOpenAt] = React.useState(0)
   
   return (
-    <TooltipContext.Provider value={{ isOpen, setIsOpen }}>
+    <TooltipContext.Provider value={{ isOpen, setIsOpen, delayDuration, skipDelayDuration, lastOpenAt, setLastOpenAt, defaultSide, defaultClassName }}>
       {children}
     </TooltipContext.Provider>
   )
 }
 
-const Tooltip = ({ children, content, side = "top", className }: TooltipProps) => {
-  const { isOpen, setIsOpen } = React.useContext(TooltipContext)
+const Tooltip = ({ children, content, side, className }: TooltipProps) => {
+  const { isOpen, setIsOpen, delayDuration, skipDelayDuration, lastOpenAt, setLastOpenAt, defaultSide, defaultClassName } = React.useContext(TooltipContext)
   const [position, setPosition] = React.useState({ top: 0, left: 0 })
   const triggerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)
+  const openTimerRef = React.useRef<number | null>(null)
 
   const updatePosition = React.useCallback(() => {
     if (!triggerRef.current || !contentRef.current) return
@@ -46,7 +70,7 @@ const Tooltip = ({ children, content, side = "top", className }: TooltipProps) =
     let top = 0
     let left = 0
 
-    switch (side) {
+  switch (side ?? defaultSide) {
       case "top":
         top = triggerRect.top + scrollY - contentRect.height - 8
         left = triggerRect.left + scrollX + (triggerRect.width - contentRect.width) / 2
@@ -66,7 +90,7 @@ const Tooltip = ({ children, content, side = "top", className }: TooltipProps) =
     }
 
     setPosition({ top, left })
-  }, [side])
+  }, [side ?? defaultSide])
 
   React.useEffect(() => {
     if (isOpen) {
@@ -84,11 +108,37 @@ const Tooltip = ({ children, content, side = "top", className }: TooltipProps) =
     }
   }, [isOpen, updatePosition])
 
+  const handleOpen = () => {
+    const now = Date.now()
+    const sinceLastOpen = now - lastOpenAt
+    const openNow = sinceLastOpen <= skipDelayDuration
+    if (openNow) {
+      setIsOpen(true)
+      setLastOpenAt(now)
+    } else {
+      if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = window.setTimeout(() => {
+        setIsOpen(true)
+        setLastOpenAt(Date.now())
+      }, delayDuration) as unknown as number
+    }
+  }
+
+  const handleClose = () => {
+    if (openTimerRef.current) {
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
+    }
+    setIsOpen(false)
+  }
+
   return (
     <div
       ref={triggerRef}
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
+      onMouseEnter={handleOpen}
+      onMouseLeave={handleClose}
+      onFocus={handleOpen}
+      onBlur={handleClose}
       className="inline-block"
     >
       {children}
@@ -97,6 +147,7 @@ const Tooltip = ({ children, content, side = "top", className }: TooltipProps) =
           ref={contentRef}
           className={cn(
             "fixed z-50 overflow-hidden rounded-md bg-slate-900 px-3 py-1.5 text-xs text-slate-50 shadow-lg animate-in fade-in-0 zoom-in-95",
+            defaultClassName,
             className
           )}
           style={{
