@@ -208,6 +208,35 @@ export default function BookingsPage() {
     return `/dashboard/client/invoices/template/${invoiceId}`
   }
 
+  const handleCreateInvoice = useCallback(async (booking: any) => {
+    try {
+      const eligibleStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
+      if (!eligibleStatuses.includes(String(booking.status))) {
+        toast.error('Invoice can be created only after approval')
+        return
+      }
+      const supabase = await getSupabaseClient()
+      const amount = Number(booking.totalAmount ?? booking.amount ?? booking.total_price ?? 0)
+      const currency = String(booking.currency ?? 'OMR')
+      const payload: any = {
+        booking_id: booking.id,
+        client_id: booking.client_id,
+        provider_id: booking.provider_id,
+        amount,
+        currency,
+        status: 'sent',
+        created_at: new Date().toISOString()
+      }
+      const { data, error } = await supabase.from('invoices').insert(payload).select('id, booking_id, status').single()
+      if (error) throw error
+      // Update local map
+      setInvoices(prev => [{ id: data.id, booking_id: data.booking_id, status: data.status }, ...prev])
+      toast.success('Invoice created')
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create invoice')
+    }
+  }, [])
+
   // Get status badge
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -523,7 +552,14 @@ export default function BookingsPage() {
                               </Button>
                             </div>
                           ) : (
-                            <span className="text-gray-400 text-sm">No invoice</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-400 text-sm">No invoice</span>
+                              {['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
+                                <Button size="sm" variant="outline" onClick={() => handleCreateInvoice(booking)}>
+                                  Create
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
