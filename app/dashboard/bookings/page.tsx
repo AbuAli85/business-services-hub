@@ -357,8 +357,17 @@ export default function BookingsPage() {
                     return (
                       <TableRow key={booking.id}>
                         <TableCell>
-                          <div className="font-medium">{(booking as any).service?.title || (booking as any).title || 'Service'}</div>
-                          <div className="text-sm text-gray-500">ID: {booking.id}</div>
+                          <div className="font-medium">
+                            <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="hover:underline">
+                              {(booking as any).service?.title || (booking as any).title || 'Service'}
+                            </Link>
+                          </div>
+                          <div className="text-xs text-gray-500">ID: {booking.id}</div>
+                          <div className="text-xs mt-1 space-x-2">
+                            <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-blue-600 hover:underline">Details</Link>
+                            <span className="text-gray-300">|</span>
+                            <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-blue-600 hover:underline">Milestones</Link>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{(booking as any).client_profile?.full_name || 'Client'}</div>
@@ -412,26 +421,27 @@ export default function BookingsPage() {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Button size="sm" variant="outline" asChild>
-                              <Link href={`/dashboard/bookings/${booking.id}`}>
+                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
                                 <Eye className="h-3 w-3" />
                               </Link>
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              asChild
-                            >
-                              <Link href={`/dashboard/bookings/${booking.id}/edit`}>
+                            <Button size="sm" variant="outline" asChild>
+                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
                                 <Edit className="h-3 w-3" />
                               </Link>
                             </Button>
                             {invoice && (
                               <Button size="sm" variant="outline" asChild>
-                                <Link href={`/dashboard/invoices/${invoice.id}`}>
+                                <Link href={`/dashboard/invoices/${invoice.id}`} prefetch={false}>
                                   <ExternalLink className="h-3 w-3" />
                                 </Link>
                               </Button>
                             )}
+                            <Button size="sm" variant="outline" asChild>
+                              <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                <BarChart3 className="h-3 w-3" />
+                              </Link>
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
