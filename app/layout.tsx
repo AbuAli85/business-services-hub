@@ -4,6 +4,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from 'react-hot-toast'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/lib/error-handler'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -102,10 +103,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ErrorBoundary>
-            {children}
-            <Toaster position="top-right" />
-          </ErrorBoundary>
+          <TooltipProvider>
+            <ErrorBoundary>
+              {children}
+              <Toaster position="top-right" />
+            </ErrorBoundary>
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
