@@ -29,6 +29,8 @@ import {
   Bell,
   ExternalLink
 } from 'lucide-react'
+import { Tooltip } from '@/components/ui/tooltip'
+import { getSupabaseClient } from '@/lib/supabase'
 import { SmartBookingStatus, ContextualAction, Risk, smartBookingStatusService } from '@/lib/smart-booking-status'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -486,7 +488,14 @@ export function SmartBookingStatusComponent({
   )
 }
 
-// Compact status for table cells
+interface Milestone {
+  id: string
+  title: string
+  status: string
+  progress_percentage?: number
+}
+
+// Enhanced Compact status for table cells with milestone-based progress
 export function CompactBookingStatus({
   bookingId,
   userRole,
@@ -496,12 +505,208 @@ export function CompactBookingStatus({
   userRole: 'client' | 'provider' | 'admin'
   onStatusChange?: () => void
 }) {
+  const [progress, setProgress] = useState<number>(0)
+  const [status, setStatus] = useState<string>('pending')
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadStatusAndProgress = async () => {
+      try {
+        setLoading(true)
+        const supabase = await getSupabaseClient()
+
+        // Fetch booking with status
+        const { data: booking, error: bookingError } = await supabase
+          .from('bookings')
+          .select('id, status')
+          .eq('id', bookingId)
+          .single()
+
+        if (bookingError) {
+          console.error('Error fetching booking:', bookingError)
+          setStatus('unknown')
+          setProgress(0)
+          return
+        }
+
+        // Fetch booking milestones with detailed information
+        const { data, error } = await supabase
+          .from('milestones')
+          .select('id, title, status, progress_percentage')
+          .eq('booking_id', bookingId)
+          .order('order_index', { ascending: true })
+
+        if (error) {
+          console.error('Error fetching milestones:', error)
+          // Fallback to booking status
+          setStatus(booking.status)
+          setProgress(0)
+          setMilestones([])
+          return
+        }
+
+        if (!data || data.length === 0) {
+          setProgress(0)
+          setMilestones([])
+          setStatus(booking.status)
+          return
+        }
+
+        setMilestones(data)
+
+        // Calculate weighted progress based on milestone completion and individual progress
+        let totalProgress = 0
+        data.forEach(milestone => {
+          if (milestone.status === 'completed') {
+            totalProgress += 100
+          } else if (milestone.status === 'in_progress') {
+            totalProgress += (milestone.progress_percentage || 0)
+          }
+          // Pending milestones contribute 0
+        })
+
+        const calculatedProgress = Math.round(totalProgress / data.length)
+        setProgress(calculatedProgress)
+
+        // Derive intelligent booking status from milestones
+        const completed = data.filter(m => m.status === 'completed').length
+        const inProgress = data.filter(m => m.status === 'in_progress').length
+        
+        let derivedStatus = booking.status
+        if (booking.status === 'approved' || booking.status === 'confirmed') {
+          if (completed === data.length) {
+            derivedStatus = 'completed'
+          } else if (completed > 0 || inProgress > 0) {
+            derivedStatus = 'in_progress'
+          }
+        }
+
+        setStatus(derivedStatus)
+        onStatusChange?.()
+      } catch (e) {
+        console.error('Failed to load booking progress:', e)
+        setStatus('unknown')
+        setProgress(0)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStatusAndProgress()
+  }, [bookingId, onStatusChange])
+
+  if (loading) {
+    return (
+      <div className="space-y-1">
+        <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
+        <div className="animate-pulse bg-gray-200 h-2 w-16 rounded"></div>
+      </div>
+    )
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return <Clock className="h-3 w-3" />
+      case 'approved': return <CheckCircle className="h-3 w-3" />
+      case 'in_progress': return <Play className="h-3 w-3" />
+      case 'completed': return <Award className="h-3 w-3" />
+      case 'cancelled': return <XCircle className="h-3 w-3" />
+      case 'on_hold': return <Pause className="h-3 w-3" />
+      default: return <Clock className="h-3 w-3" />
+    }
+  }
+
+  // Generate comprehensive tooltip content
+  const getTooltipContent = () => {
+    if (milestones.length === 0) {
+      return 'No milestones created yet'
+    }
+
+    const completed = milestones.filter(m => m.status === 'completed')
+    const inProgress = milestones.filter(m => m.status === 'in_progress')
+    const pending = milestones.filter(m => m.status === 'pending')
+
+    const lines = []
+    lines.push(`${completed.length}/${milestones.length} milestones completed (${progress}%)`)
+    
+    if (completed.length > 0) {
+      const completedTitles = completed.slice(0, 3).map(m => m.title).join(', ')
+      lines.push(`✅ Completed: ${completedTitles}${completed.length > 3 ? ` (+${completed.length - 3} more)` : ''}`)
+    }
+    
+    if (inProgress.length > 0) {
+      const inProgressTitles = inProgress.slice(0, 2).map(m => m.title).join(', ')
+      lines.push(`🔄 In Progress: ${inProgressTitles}${inProgress.length > 2 ? ` (+${inProgress.length - 2} more)` : ''}`)
+    }
+    
+    if (pending.length > 0) {
+      const pendingTitles = pending.slice(0, 2).map(m => m.title).join(', ')
+      lines.push(`⏳ Pending: ${pendingTitles}${pending.length > 2 ? ` (+${pending.length - 2} more)` : ''}`)
+    }
+
+    return lines.join('\n')
+  }
+
   return (
-    <SmartBookingStatusComponent
-      bookingId={bookingId}
-      userRole={userRole}
-      compact={true}
-      onStatusChange={onStatusChange}
-    />
+    <Tooltip content={getTooltipContent()}>
+      <div className="space-y-1 cursor-pointer">
+        {/* Status Badge */}
+        <Badge
+          variant="outline"
+          className={`flex items-center gap-1 text-xs ${
+            status === 'completed'
+              ? 'text-green-600 border-green-200 bg-green-50'
+              : status === 'in_progress'
+              ? 'text-blue-600 border-blue-200 bg-blue-50'
+              : status === 'approved'
+              ? 'text-purple-600 border-purple-200 bg-purple-50'
+              : 'text-gray-600 border-gray-200 bg-gray-50'
+          }`}
+        >
+          {getStatusIcon(status)}
+          <span className="capitalize">{status.replace('_', ' ')}</span>
+        </Badge>
+
+        {/* Progress Bar and Details */}
+        {milestones.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Progress 
+                value={progress} 
+                className={`h-2 w-20 ${
+                  progress === 100 ? '[&>div]:bg-green-500' :
+                  progress >= 75 ? '[&>div]:bg-blue-500' :
+                  progress >= 50 ? '[&>div]:bg-yellow-500' :
+                  progress >= 25 ? '[&>div]:bg-orange-500' :
+                  '[&>div]:bg-gray-400'
+                }`}
+              />
+              <span className="text-xs font-medium text-gray-700">{progress}%</span>
+            </div>
+            
+            {/* Milestone Summary */}
+            <div className="text-xs text-gray-500">
+              {milestones.filter(m => m.status === 'completed').length}/{milestones.length} milestones
+              {milestones.some(m => m.status === 'in_progress') && (
+                <span className="text-purple-600 ml-1">
+                  • {milestones.filter(m => m.status === 'in_progress').length} active
+                </span>
+              )}
+            </div>
+
+            {/* Current Activity Indicator */}
+            {milestones.some(m => m.status === 'in_progress') && (
+              <div className="text-xs text-purple-600 flex items-center gap-1">
+                <div className="w-1 h-1 bg-purple-600 rounded-full animate-pulse"></div>
+                <span className="truncate max-w-32">
+                  {milestones.find(m => m.status === 'in_progress')?.title}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Tooltip>
   )
 }
