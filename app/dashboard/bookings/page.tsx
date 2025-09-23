@@ -27,7 +27,8 @@ import {
   BarChart3,
   TrendingUp,
   Receipt,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -390,9 +391,21 @@ export default function BookingsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading bookings</p>
-          <Button onClick={() => { loadSupabaseData() }}>Retry</Button>
+        <div className="text-center max-w-md mx-auto">
+          <div className="text-red-600 mb-4">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-2" />
+            <h3 className="text-lg font-semibold">Error Loading Bookings</h3>
+            <p className="text-sm mt-2 text-gray-600">{error}</p>
+          </div>
+          <div className="space-x-2">
+            <Button onClick={() => loadSupabaseData()} variant="default">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            <Button onClick={() => router.push('/dashboard')} variant="outline">
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -748,14 +761,80 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
 
-      {/* Pagination controls */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">Page {currentPage} of {totalPages} • {totalCount} results</div>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Prev</Button>
-          <Button variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</Button>
+      {/* Pagination controls - only show for admin with server-side pagination */}
+      {userRole === 'admin' && totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages} • {totalCount} results
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              disabled={currentPage === 1} 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            {/* Page numbers for better navigation */}
+            {totalPages <= 10 ? (
+              // Show all pages if 10 or fewer
+              Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  onClick={() => setCurrentPage(page)}
+                  className="w-10"
+                >
+                  {page}
+                </Button>
+              ))
+            ) : (
+              // Show abbreviated pagination for many pages
+              <>
+                {currentPage > 3 && (
+                  <>
+                    <Button variant="outline" onClick={() => setCurrentPage(1)}>1</Button>
+                    {currentPage > 4 && <span className="px-2">...</span>}
+                  </>
+                )}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
+                  return page <= totalPages ? (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      onClick={() => setCurrentPage(page)}
+                      className="w-10"
+                    >
+                      {page}
+                    </Button>
+                  ) : null
+                })}
+                {currentPage < totalPages - 2 && (
+                  <>
+                    {currentPage < totalPages - 3 && <span className="px-2">...</span>}
+                    <Button variant="outline" onClick={() => setCurrentPage(totalPages)}>{totalPages}</Button>
+                  </>
+                )}
+              </>
+            )}
+            <Button 
+              variant="outline" 
+              disabled={currentPage === totalPages} 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+      
+      {/* Simple results count for non-admin users */}
+      {userRole !== 'admin' && bookings.length > 0 && (
+        <div className="text-center text-sm text-gray-600">
+          Showing {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
+        </div>
+      )}
       <div className="h-2" />
     </div>
   )
