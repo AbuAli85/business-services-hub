@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,10 +41,15 @@ import Link from 'next/link'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
+import { getSupabaseClient } from '@/lib/supabase'
 
 export default function BookingsPage() {
   const router = useRouter()
   const { bookings, invoices, loading, error, refresh } = useDashboardData()
+  const [sbLoading, setSbLoading] = useState(false)
+  const [sbError, setSbError] = useState<string | null>(null)
+  const [sbBookings, setSbBookings] = useState<any[]>([])
+  const [sbInvoices, setSbInvoices] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('createdAt')
@@ -75,13 +80,64 @@ export default function BookingsPage() {
     return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString()
   }, [])
 
+  // Load real bookings and invoices from Supabase
+  const loadSupabaseData = useCallback(async () => {
+    try {
+      setSbLoading(true)
+      setSbError(null)
+      const supabase = await getSupabaseClient()
+      const { data: auth } = await supabase.auth.getUser()
+      const userId = auth.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      // Fetch bookings where user is client or provider
+      const { data: clientBookings, error: cbErr } = await supabase
+        .from('bookings')
+        .select(`*, service:services(id,title), client_profile:profiles!client_id(full_name), provider_profile:profiles!provider_id(full_name)`) 
+        .eq('client_id', userId)
+
+      const { data: providerBookings, error: pbErr } = await supabase
+        .from('bookings')
+        .select(`*, service:services(id,title), client_profile:profiles!client_id(full_name), provider_profile:profiles!provider_id(full_name)`) 
+        .eq('provider_id', userId)
+
+      if (cbErr) console.warn(cbErr)
+      if (pbErr) console.warn(pbErr)
+
+      const merged = [...(clientBookings || []), ...(providerBookings || [])]
+      setSbBookings(merged)
+
+      const bookingIds = merged.map(b => b.id)
+      if (bookingIds.length > 0) {
+        const { data: invs } = await supabase
+          .from('invoices')
+          .select('id, booking_id, status')
+          .in('booking_id', bookingIds)
+        setSbInvoices(invs || [])
+      } else {
+        setSbInvoices([])
+      }
+    } catch (e: any) {
+      setSbError(e?.message || 'Failed to load data')
+    } finally {
+      setSbLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSupabaseData()
+  }, [loadSupabaseData])
+
+  const bookingsSource = sbBookings.length > 0 ? sbBookings : bookings
+  const invoicesSource = sbBookings.length > 0 ? sbInvoices : invoices
+
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
-    let filtered = bookings.filter(booking => {
+    let filtered = bookingsSource.filter(booking => {
       const matchesSearch = searchQuery === '' || 
-        booking.serviceTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.providerName.toLowerCase().includes(searchQuery.toLowerCase())
+        ((booking as any).service?.title || booking.serviceTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((booking as any).client_profile?.full_name || booking.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((booking as any).provider_profile?.full_name || booking.providerName || '').toLowerCase().includes(searchQuery.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
       
@@ -121,11 +177,11 @@ export default function BookingsPage() {
     })
 
     return filtered
-  }, [bookings, searchQuery, statusFilter, sortBy, sortOrder])
+  }, [bookingsSource, searchQuery, statusFilter, sortBy, sortOrder])
 
   // Get invoice for a booking
   const getInvoiceForBooking = (bookingId: string) => {
-    return invoices.find(invoice => invoice.bookingId === bookingId)
+    return invoicesSource.find((invoice: any) => (invoice.bookingId ?? invoice.booking_id) === bookingId)
   }
 
   // Get status badge
@@ -161,7 +217,7 @@ export default function BookingsPage() {
     return { total, completed, inProgress, pending, totalRevenue, avgCompletionTime }
   }, [bookings])
 
-  if (loading) {
+  if (loading || sbLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -169,12 +225,12 @@ export default function BookingsPage() {
     )
   }
 
-  if (error) {
+  if (error || sbError) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading bookings</p>
-          <Button onClick={refresh}>Retry</Button>
+          <Button onClick={() => { refresh(); loadSupabaseData() }}>Retry</Button>
         </div>
       </div>
     )
