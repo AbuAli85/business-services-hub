@@ -53,6 +53,27 @@ export default function BookingsPage() {
 
   // Data sourced from centralized dashboard store
 
+  // Safely resolve and format dates regardless of field naming or value shape
+  const getCreatedAtTimestamp = useCallback((record: any): number => {
+    const raw = record?.createdAt ?? record?.created_at ?? record?.created_at_utc ?? record?.created_at_iso
+    if (!raw) return 0
+    const date = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    const time = date.getTime()
+    return Number.isNaN(time) ? 0 : time
+  }, [])
+
+  const formatLocalDate = useCallback((raw: any): string => {
+    if (!raw) return '—'
+    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString()
+  }, [])
+
+  const formatLocalTime = useCallback((raw: any): string => {
+    if (!raw) return '—'
+    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString()
+  }, [])
+
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
     let filtered = bookings.filter(booking => {
@@ -71,8 +92,8 @@ export default function BookingsPage() {
       
       switch (sortBy) {
         case 'createdAt':
-          aValue = new Date(a.createdAt).getTime()
-          bValue = new Date(b.createdAt).getTime()
+          aValue = getCreatedAtTimestamp(a)
+          bValue = getCreatedAtTimestamp(b)
           break
         case 'totalAmount':
           aValue = a.totalAmount
@@ -87,8 +108,8 @@ export default function BookingsPage() {
           bValue = b.clientName
           break
         default:
-          aValue = new Date(a.createdAt).getTime()
-          bValue = new Date(b.createdAt).getTime()
+          aValue = getCreatedAtTimestamp(a)
+          bValue = getCreatedAtTimestamp(b)
       }
 
       if (sortOrder === 'asc') {
@@ -381,10 +402,10 @@ export default function BookingsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {new Date((booking as any).created_at).toLocaleDateString()}
+                            {formatLocalDate((booking as any).createdAt ?? (booking as any).created_at)}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {new Date((booking as any).created_at).toLocaleTimeString()}
+                            {formatLocalTime((booking as any).createdAt ?? (booking as any).created_at)}
                           </div>
                         </TableCell>
                         <TableCell>

@@ -1663,24 +1663,34 @@ export default function EnhancedBookingDetails({
     }).format(amount)
   }
 
-  const formatDate = (date: string) => {
-    if (!date) return 'N/A'
+  const parseToValidDate = (input: any): Date | null => {
+    if (!input) return null
     try {
-      return format(parseISO(date), 'PPP')
-    } catch (error) {
-      console.warn('Invalid date format:', date, error)
-      return 'Invalid Date'
+      // Try ISO first
+      const iso = typeof input === 'string' ? parseISO(input) : new Date(input)
+      if (!isNaN(iso.getTime())) return iso
+    } catch {}
+    try {
+      const fallback = new Date(String(input))
+      return isNaN(fallback.getTime()) ? null : fallback
+    } catch {
+      return null
     }
   }
 
-  const formatTime = (date: string) => {
-    if (!date) return 'N/A'
-    try {
-      return format(parseISO(date), 'p')
-    } catch (error) {
-      console.warn('Invalid time format:', date, error)
-      return 'Invalid Time'
-    }
+  const formatDate = (date: any) => {
+    const d = parseToValidDate(date)
+    return d ? format(d, 'PPP') : '—'
+  }
+
+  const formatTime = (date: any) => {
+    const d = parseToValidDate(date)
+    return d ? format(d, 'p') : '—'
+  }
+
+  const formatFromNow = (date: any) => {
+    const d = parseToValidDate(date)
+    return d ? `${formatDistanceToNow(d)} ago` : 'recently'
   }
 
   if (loading) {
@@ -2667,3 +2677,4 @@ export default function EnhancedBookingDetails({
     </div>
   )
 }
+
