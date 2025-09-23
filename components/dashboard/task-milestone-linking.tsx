@@ -80,6 +80,7 @@ export function TaskMilestoneLinking({
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [showAllTasksByMilestone, setShowAllTasksByMilestone] = useState<Record<string, boolean>>({})
 
   // Task form state
   const [taskForm, setTaskForm] = useState({
