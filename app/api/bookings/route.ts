@@ -407,6 +407,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const role = searchParams.get('role') || 'all'
+    const bookingId = searchParams.get('bookingId')
 
     // First get the basic bookings data
     let query = supabase
@@ -417,6 +418,11 @@ export async function GET(request: NextRequest) {
       `)
       .order('created_at', { ascending: false })
 
+    // If specific booking ID is requested, filter by it
+    if (bookingId) {
+      query = query.eq('id', bookingId)
+    }
+
     // Get user profile to determine role
     const { data: profile } = await supabase
       .from('profiles')
@@ -426,28 +432,42 @@ export async function GET(request: NextRequest) {
     
     const userRole = profile?.is_admin ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
     
-    // Filter by user role
-    if (role === 'client' || (role === 'all' && userRole === 'client')) {
-      query = query.eq('client_id', user.id)
-    } else if (role === 'provider' || (role === 'all' && userRole === 'provider')) {
-      query = query.eq('provider_id', user.id)
-    } else if (role === 'admin' || (role === 'all' && userRole === 'admin')) {
-      // Admin can see all bookings - no additional filter needed
-      if (userRole !== 'admin') {
-        const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
-        Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-        return response
-      }
-    } else {
-      // Default to user's own bookings based on their role
+    // Filter by user role - but if specific booking is requested, check access differently
+    if (bookingId) {
+      // For specific booking requests, check if user has access to this booking
       if (userRole === 'client') {
         query = query.eq('client_id', user.id)
       } else if (userRole === 'provider') {
         query = query.eq('provider_id', user.id)
       } else if (userRole !== 'admin') {
-        const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
-        Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-        return response
+        // Check if user has access to this specific booking
+        query = query.or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+      }
+      // Admin can access any booking
+    } else {
+      // Regular role-based filtering for listing bookings
+      if (role === 'client' || (role === 'all' && userRole === 'client')) {
+        query = query.eq('client_id', user.id)
+      } else if (role === 'provider' || (role === 'all' && userRole === 'provider')) {
+        query = query.eq('provider_id', user.id)
+      } else if (role === 'admin' || (role === 'all' && userRole === 'admin')) {
+        // Admin can see all bookings - no additional filter needed
+        if (userRole !== 'admin') {
+          const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
+          Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+          return response
+        }
+      } else {
+        // Default to user's own bookings based on their role
+        if (userRole === 'client') {
+          query = query.eq('client_id', user.id)
+        } else if (userRole === 'provider') {
+          query = query.eq('provider_id', user.id)
+        } else if (userRole !== 'admin') {
+          const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
+          Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+          return response
+        }
       }
     }
 

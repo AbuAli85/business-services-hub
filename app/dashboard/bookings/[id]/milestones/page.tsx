@@ -63,7 +63,7 @@ export default function MilestonesPage() {
         throw new Error('User not authenticated')
       }
 
-      // Load booking details
+      // Load booking details with separate profile queries for reliability
       const { data: bookingData, error: bookingError } = await supabase
         .from('bookings')
         .select(`
@@ -73,6 +73,7 @@ export default function MilestonesPage() {
           created_at,
           scheduled_date,
           total_price,
+          amount,
           currency,
           client_id,
           provider_id,
@@ -81,16 +82,6 @@ export default function MilestonesPage() {
             id,
             title,
             description
-          ),
-          client:profiles!bookings_client_id_fkey (
-            id,
-            full_name,
-            email
-          ),
-          provider:profiles!bookings_provider_id_fkey (
-            id,
-            full_name,
-            email
           )
         `)
         .eq('id', bookingId)
@@ -100,28 +91,111 @@ export default function MilestonesPage() {
         throw new Error(`Failed to load booking: ${bookingError.message}`)
       }
 
-      // Transform booking data
+      // Load enriched booking data via dedicated API
+      let clientProfile = null
+      let providerProfile = null
+
+      try {
+        // Use the dedicated booking details API
+        const enrichedResponse = await fetch(`/api/bookings/${bookingId}`, {
+          headers: { 'Content-Type': 'application/json' }
+        })
+        
+        if (enrichedResponse.ok) {
+          const enrichedData = await enrichedResponse.json()
+          const enrichedBooking = enrichedData.booking
+          
+          if (enrichedBooking) {
+            clientProfile = enrichedBooking.client_profile
+            providerProfile = enrichedBooking.provider_profile
+            
+            // Update the booking data with enriched service info if available
+            if (enrichedBooking.services) {
+              bookingData.services = enrichedBooking.services
+            }
+            
+            console.log('Profiles loaded via dedicated API:', {
+              client: clientProfile?.full_name,
+              provider: providerProfile?.full_name
+            })
+          }
+        } else {
+          console.warn('Failed to load enriched booking data:', enrichedResponse.status)
+        }
+      } catch (apiError) {
+        console.warn('Failed to load enriched booking data via API:', apiError)
+      }
+
+      // Fallback: try direct profile queries if API failed
+      if (!clientProfile && bookingData.client_id) {
+        console.log('Fallback: Loading client profile for ID:', bookingData.client_id)
+        try {
+          const { data: clientData, error: clientError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('id', bookingData.client_id)
+            .maybeSingle()
+          
+          if (!clientError && clientData) {
+            clientProfile = clientData
+            console.log('Client profile loaded via fallback:', clientData.full_name)
+          } else {
+            console.warn('Failed to load client profile:', clientError)
+          }
+        } catch (err) {
+          console.error('Error loading client profile:', err)
+        }
+      }
+
+      if (!providerProfile && bookingData.provider_id) {
+        console.log('Fallback: Loading provider profile for ID:', bookingData.provider_id)
+        try {
+          const { data: providerData, error: providerError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('id', bookingData.provider_id)
+            .maybeSingle()
+          
+          if (!providerError && providerData) {
+            providerProfile = providerData
+            console.log('Provider profile loaded via fallback:', providerData.full_name)
+          } else {
+            console.warn('Failed to load provider profile:', providerError)
+          }
+        } catch (err) {
+          console.error('Error loading provider profile:', err)
+        }
+      }
+
+      // Transform booking data with properly loaded profiles
       const transformedBooking: Booking = {
         id: bookingData.id,
-        title: bookingData.title,
+        title: bookingData.title || 'Service Booking',
         status: bookingData.status,
         service: {
           name: (bookingData.services as any)?.title || 'Unknown Service',
           description: (bookingData.services as any)?.description
         },
         client: {
-          full_name: (bookingData.client as any)?.full_name || 'Unknown Client',
-          email: (bookingData.client as any)?.email || ''
+          full_name: clientProfile?.full_name || `Client (${bookingData.client_id?.substring(0, 8)}...)`,
+          email: clientProfile?.email || 'No email available'
         },
         provider: {
-          full_name: (bookingData.provider as any)?.full_name || 'Unknown Provider',
-          email: (bookingData.provider as any)?.email || ''
+          full_name: providerProfile?.full_name || `Provider (${bookingData.provider_id?.substring(0, 8)}...)`,
+          email: providerProfile?.email || 'No email available'
         },
         created_at: bookingData.created_at,
         scheduled_date: bookingData.scheduled_date,
-        total_price: bookingData.total_price,
+        total_price: bookingData.total_price || bookingData.amount || 0,
         currency: bookingData.currency || 'OMR'
       }
+
+      console.log('Booking data loaded:', {
+        id: transformedBooking.id,
+        clientName: transformedBooking.client.full_name,
+        providerName: transformedBooking.provider.full_name,
+        serviceName: transformedBooking.service.name
+      })
 
       setBooking(transformedBooking)
 
@@ -154,8 +228,10 @@ export default function MilestonesPage() {
     }
   }
 
-  const handleRefresh = () => {
-    loadBookingData()
+  const handleRefresh = async () => {
+    toast.info('Refreshing booking data...')
+    await loadBookingData()
+    toast.success('Booking data refreshed')
   }
 
   const handleBack = () => {
@@ -329,11 +405,22 @@ export default function MilestonesPage() {
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Client Information</h3>
                 <div className="space-y-1">
                   <p className="text-sm text-gray-900">
-                    <span className="font-medium">Name:</span> {booking.client.full_name}
+                    <span className="font-medium">Name:</span> 
+                    <span className={booking.client.full_name.includes('Client (') ? 'text-gray-500 italic' : ''}>
+                      {booking.client.full_name}
+                    </span>
                   </p>
                   <p className="text-sm text-gray-900">
-                    <span className="font-medium">Email:</span> {booking.client.email}
+                    <span className="font-medium">Email:</span> 
+                    <span className={booking.client.email === 'No email available' ? 'text-gray-500 italic' : ''}>
+                      {booking.client.email}
+                    </span>
                   </p>
+                  {booking.client.full_name.includes('Client (') && (
+                    <p className="text-xs text-amber-600">
+                      ⚠️ Profile data not available
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -341,11 +428,22 @@ export default function MilestonesPage() {
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Provider Information</h3>
                 <div className="space-y-1">
                   <p className="text-sm text-gray-900">
-                    <span className="font-medium">Name:</span> {booking.provider.full_name}
+                    <span className="font-medium">Name:</span> 
+                    <span className={booking.provider.full_name.includes('Provider (') ? 'text-gray-500 italic' : ''}>
+                      {booking.provider.full_name}
+                    </span>
                   </p>
                   <p className="text-sm text-gray-900">
-                    <span className="font-medium">Email:</span> {booking.provider.email}
+                    <span className="font-medium">Email:</span> 
+                    <span className={booking.provider.email === 'No email available' ? 'text-gray-500 italic' : ''}>
+                      {booking.provider.email}
+                    </span>
                   </p>
+                  {booking.provider.full_name.includes('Provider (') && (
+                    <p className="text-xs text-amber-600">
+                      ⚠️ Profile data not available
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
