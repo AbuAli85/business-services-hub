@@ -184,15 +184,26 @@ export function SmartBookingStatusComponent({
         </div>
         
         {/* Progress Bar */}
-        {status.progress_percentage > 0 && (
-          <div>
-            <div className="flex justify-between text-xs text-gray-600 mb-1">
-              <span>Progress</span>
-              <span>{status.progress_percentage}%</span>
-            </div>
-            <Progress value={status.progress_percentage} className="h-2" />
+        <div>
+          <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Progress</span>
+            <span>{status.progress_percentage}%</span>
           </div>
-        )}
+          <Progress 
+            value={status.progress_percentage} 
+            className={`h-2 ${
+              status.progress_percentage === 100 ? 'bg-green-100' :
+              status.progress_percentage >= 75 ? 'bg-blue-100' :
+              status.progress_percentage >= 50 ? 'bg-yellow-100' :
+              'bg-gray-100'
+            }`}
+          />
+          {status.milestones_total > 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              {status.milestones_completed}/{status.milestones_total} milestones • {status.tasks_completed}/{status.tasks_total} tasks
+            </div>
+          )}
+        </div>
 
         {/* Next Action */}
         {status.next_action && (

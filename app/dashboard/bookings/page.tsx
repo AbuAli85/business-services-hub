@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { 
   Table,
   TableBody,
@@ -285,9 +292,11 @@ export default function BookingsPage() {
     return filtered
   }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder, getCreatedAtTimestamp])
 
-  // Pagination: server returns paged items and total count
-  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize))
-  const paginatedBookings = bookingsSource
+  // Pagination: server returns paged items and total count for admin, client-side for others
+  const totalPages = Math.max(1, Math.ceil((totalCount || filteredBookings.length) / pageSize))
+  const paginatedBookings = userRole === 'admin' 
+    ? bookingsSource // Server-side pagination for admin
+    : filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize) // Client-side for others
 
   // Get invoice for a booking
   const invoiceByBooking = useMemo(() => {
@@ -412,11 +421,70 @@ export default function BookingsPage() {
 
   if (loading || !userRole) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading bookings...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <Skeleton className="h-40 w-full rounded-xl" />
+        
+        {/* Statistics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="border-l-4 border-l-gray-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+        
+        {/* Filters Skeleton */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-20 rounded-full" />
+                ))}
+              </div>
+              <div className="flex gap-4">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-10 w-10" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-24" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -843,61 +911,104 @@ export default function BookingsPage() {
                         </TableCell>
                         
                         <TableCell>
-                          <div className="flex items-center space-x-1">
-                            {/* Primary Action based on booking status and user role */}
-                            {booking.status === 'pending' && userRole === 'provider' && (
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                            )}
-                            
-                            {booking.status === 'approved' && userRole === 'provider' && (
-                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
-                                <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
-                                  <Play className="h-3 w-3 mr-1" />
-                                  Start
-                                </Link>
-                              </Button>
-                            )}
-                            
-                            {booking.status === 'in_progress' && (
-                              <Button size="sm" variant="outline" asChild>
-                                <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
-                                  <Target className="h-3 w-3 mr-1" />
-                                  Manage
-                                </Link>
-                              </Button>
-                            )}
-                            
-                            {booking.status === 'completed' && userRole === 'client' && (
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                <Award className="h-3 w-3 mr-1" />
-                                Review
-                              </Button>
-                            )}
+                          <TooltipProvider>
+                            <div className="flex items-center space-x-1">
+                              {/* Primary Action based on booking status and user role */}
+                              {booking.status === 'pending' && userRole === 'provider' && (
+                                <Tooltip content="Approve this booking to start the project">
+                                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Approve
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {booking.status === 'pending' && userRole === 'client' && (
+                                <Tooltip content="Waiting for provider approval">
+                                  <Button size="sm" variant="outline" disabled>
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Pending
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {booking.status === 'approved' && userRole === 'provider' && (
+                                <Tooltip content="Begin project work and create milestones">
+                                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
+                                    <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                      <Play className="h-3 w-3 mr-1" />
+                                      Start
+                                    </Link>
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {booking.status === 'approved' && userRole === 'client' && (
+                                <Tooltip content="Waiting for provider to start work">
+                                  <Button size="sm" variant="outline" disabled>
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Approved
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {booking.status === 'in_progress' && (
+                                <Tooltip content="View progress and manage project milestones">
+                                  <Button size="sm" variant="outline" asChild>
+                                    <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                      <Target className="h-3 w-3 mr-1" />
+                                      Manage
+                                    </Link>
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {booking.status === 'completed' && userRole === 'client' && (
+                                <Tooltip content="Review completed project and provide feedback">
+                                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                    <Award className="h-3 w-3 mr-1" />
+                                    Review
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {booking.status === 'completed' && userRole === 'provider' && (
+                                <Tooltip content="Project completed - awaiting client review">
+                                  <Button size="sm" variant="outline" disabled>
+                                    <Award className="h-3 w-3 mr-1" />
+                                    Complete
+                                  </Button>
+                                </Tooltip>
+                              )}
 
-                            {/* Secondary Actions */}
-                            <Button size="sm" variant="ghost" asChild title="View Details">
-                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
-                                <Eye className="h-3 w-3" />
-                              </Link>
-                            </Button>
-                            
-                            {invoice && (
-                              <Button size="sm" variant="ghost" asChild title="View Invoice">
-                                <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
-                                  <Receipt className="h-3 w-3" />
-                                </Link>
-                              </Button>
-                            )}
-                            
-                            {userRole === 'admin' && (
-                              <Button size="sm" variant="ghost" title="Admin Tools">
-                                <Settings className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
+                              {/* Secondary Actions */}
+                              <Tooltip content="View detailed project information">
+                                <Button size="sm" variant="ghost" asChild>
+                                  <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
+                                    <Eye className="h-3 w-3" />
+                                  </Link>
+                                </Button>
+                              </Tooltip>
+                              
+                              {invoice && (
+                                <Tooltip content="View and manage invoice">
+                                  <Button size="sm" variant="ghost" asChild>
+                                    <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
+                                      <Receipt className="h-3 w-3" />
+                                    </Link>
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              
+                              {userRole === 'admin' && (
+                                <Tooltip content="Access admin management tools">
+                                  <Button size="sm" variant="ghost">
+                                    <Settings className="h-3 w-3" />
+                                  </Button>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     )
@@ -905,26 +1016,84 @@ export default function BookingsPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      <div className="flex flex-col items-center space-y-2">
-                        <Calendar className="h-12 w-12 text-gray-400" />
-                        <p className="text-gray-500">No bookings found</p>
-                        <p className="text-sm text-gray-400">
-                          {searchQuery || statusFilter !== 'all'
-                            ? 'Try adjusting your filters'
-                            : userRole === 'client' 
-                              ? 'Start by creating your first booking'
-                              : userRole === 'provider'
-                              ? 'Bookings from clients will appear here'
-                              : 'Bookings will appear here when created'}
-                        </p>
-                        {userRole === 'client' && !searchQuery && statusFilter === 'all' && (
-                          <Button 
-                            className="mt-4"
-                            onClick={() => router.push('/dashboard/bookings/create')}
-                          >
-                            Create Your First Booking
-                          </Button>
-                        )}
+                      <div className="flex flex-col items-center space-y-4 py-8">
+                        <div className={`p-6 rounded-full ${
+                          userRole === 'client' ? 'bg-blue-100' :
+                          userRole === 'provider' ? 'bg-purple-100' :
+                          'bg-gray-100'
+                        }`}>
+                          <Calendar className={`h-12 w-12 ${
+                            userRole === 'client' ? 'text-blue-600' :
+                            userRole === 'provider' ? 'text-purple-600' :
+                            'text-gray-400'
+                          }`} />
+                        </div>
+                        
+                        <div className="text-center space-y-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {searchQuery || statusFilter !== 'all' ? 'No Results Found' : 'No Bookings Yet'}
+                          </h3>
+                          <p className="text-sm text-gray-600 max-w-md">
+                            {searchQuery || statusFilter !== 'all'
+                              ? 'Try adjusting your search filters or check different status categories to find what you\'re looking for.'
+                              : userRole === 'client' 
+                                ? 'Ready to get started? Create your first booking to begin working with our professional service providers.'
+                                : userRole === 'provider'
+                                ? 'Your service bookings from clients will appear here. Make sure your services are published and visible.'
+                                : 'Bookings from across the platform will appear here as they are created by clients and providers.'}
+                          </p>
+                        </div>
+
+                        {/* Role-specific CTAs */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          {userRole === 'client' && !searchQuery && statusFilter === 'all' && (
+                            <>
+                              <Button 
+                                className="bg-blue-600 hover:bg-blue-700"
+                                onClick={() => router.push('/dashboard/bookings/create')}
+                              >
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Create Your First Booking
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                onClick={() => router.push('/services')}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Browse Services
+                              </Button>
+                            </>
+                          )}
+                          
+                          {userRole === 'provider' && !searchQuery && statusFilter === 'all' && (
+                            <>
+                              <Button 
+                                className="bg-purple-600 hover:bg-purple-700"
+                                onClick={() => router.push('/dashboard/provider/provider-services')}
+                              >
+                                <Settings className="h-4 w-4 mr-2" />
+                                Manage Your Services
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                onClick={() => router.push('/dashboard/provider/create-service')}
+                              >
+                                <Target className="h-4 w-4 mr-2" />
+                                Create New Service
+                              </Button>
+                            </>
+                          )}
+                          
+                          {userRole === 'admin' && !searchQuery && statusFilter === 'all' && (
+                            <Button 
+                              variant="outline"
+                              onClick={() => router.push('/dashboard/admin/analytics')}
+                            >
+                              <BarChart3 className="h-4 w-4 mr-2" />
+                              View Platform Analytics
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -935,35 +1104,102 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
 
-      {/* Pagination controls - only show for admin with server-side pagination */}
-      {userRole === 'admin' && totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages} • {totalCount} results
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              disabled={currentPage === 1} 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <Button 
-              variant="outline" 
-              disabled={currentPage === totalPages} 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+      {/* Smart Pagination - works for all user roles */}
+      {totalPages > 1 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-gray-600">
+                {userRole === 'admin' 
+                  ? `Page ${currentPage} of ${totalPages} • ${totalCount} total results`
+                  : `Page ${currentPage} of ${totalPages} • ${filteredBookings.length} results`
+                }
+                {paginatedBookings.length !== filteredBookings.length && (
+                  <span className="text-blue-600 ml-2">
+                    (Showing {paginatedBookings.length} per page)
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                >
+                  <ChevronDown className="h-4 w-4 rotate-90" />
+                  Previous
+                </Button>
+                
+                {/* Page numbers for better navigation */}
+                {totalPages <= 7 ? (
+                  // Show all pages if 7 or fewer
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-10"
+                    >
+                      {page}
+                    </Button>
+                  ))
+                ) : (
+                  // Show abbreviated pagination for many pages
+                  <>
+                    {currentPage > 3 && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} className="w-10">1</Button>
+                        {currentPage > 4 && <span className="text-gray-400">...</span>}
+                      </>
+                    )}
+                    {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                      const page = Math.max(1, Math.min(totalPages - 2, currentPage - 1)) + i
+                      return page <= totalPages ? (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className="w-10"
+                        >
+                          {page}
+                        </Button>
+                      ) : null
+                    })}
+                    {currentPage < totalPages - 2 && (
+                      <>
+                        {currentPage < totalPages - 3 && <span className="text-gray-400">...</span>}
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} className="w-10">{totalPages}</Button>
+                      </>
+                    )}
+                  </>
+                )}
+                
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={currentPage === totalPages} 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                  <ChevronDown className="h-4 w-4 -rotate-90" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
       
-      {/* Simple results count for non-admin users */}
-      {userRole !== 'admin' && bookings.length > 0 && (
-        <div className="text-center text-sm text-gray-600">
-          Showing {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
+      {/* Smart Results Summary */}
+      {!loading && totalPages <= 1 && bookings.length > 0 && (
+        <div className="text-center">
+          <Badge variant="outline" className="text-gray-600">
+            <BarChart3 className="h-3 w-3 mr-1" />
+            {bookings.length} project{bookings.length !== 1 ? 's' : ''} in your portfolio
+          </Badge>
         </div>
       )}
     </div>
