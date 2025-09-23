@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { useBookingsRealtime } from '@/hooks/use-bookings-realtime'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 
@@ -50,6 +51,13 @@ export default function BookingsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
+
+  // Realtime: refresh dashboard data on booking changes for either party
+  const handleRealtimeChange = useCallback(() => {
+    // Debounce rapid events via microtask
+    Promise.resolve().then(() => refresh())
+  }, [refresh])
+  useBookingsRealtime(handleRealtimeChange, true)
 
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
