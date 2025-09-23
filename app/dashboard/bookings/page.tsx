@@ -50,6 +50,9 @@ export default function BookingsPage() {
   const [sbError, setSbError] = useState<string | null>(null)
   const [sbBookings, setSbBookings] = useState<any[]>([])
   const [sbInvoices, setSbInvoices] = useState<any[]>([])
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('createdAt')
@@ -117,6 +120,12 @@ export default function BookingsPage() {
     loadSupabaseData()
   }, [loadSupabaseData])
 
+  // Debounce searchQuery for smoother UX
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 250)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
   // Always use Supabase data on this page to avoid mock IDs in routes
   const bookingsSource = sbBookings
   const invoicesSource = sbInvoices
@@ -124,10 +133,12 @@ export default function BookingsPage() {
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
     let filtered = bookingsSource.filter(booking => {
-      const matchesSearch = searchQuery === '' || 
-        ((booking as any).service?.title || booking.serviceTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ((booking as any).client_profile?.full_name || booking.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ((booking as any).provider_profile?.full_name || booking.providerName || '').toLowerCase().includes(searchQuery.toLowerCase())
+      const q = debouncedQuery.trim().toLowerCase()
+      const matchesSearch = q === '' || 
+        ((booking as any).service?.title || booking.serviceTitle || '').toLowerCase().includes(q) ||
+        ((booking as any).client_profile?.full_name || booking.clientName || '').toLowerCase().includes(q) ||
+        ((booking as any).provider_profile?.full_name || booking.providerName || '').toLowerCase().includes(q) ||
+        String((booking as any).id || '').toLowerCase().includes(q)
       
       const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
       
@@ -167,7 +178,14 @@ export default function BookingsPage() {
     })
 
     return filtered
-  }, [bookingsSource, searchQuery, statusFilter, sortBy, sortOrder])
+  }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder])
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize))
+  const paginatedBookings = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredBookings.slice(start, start + pageSize)
+  }, [filteredBookings, currentPage, pageSize])
 
   // Get invoice for a booking
   const getInvoiceForBooking = (bookingId: string) => {
@@ -330,7 +348,28 @@ export default function BookingsPage() {
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4">
+            {/* Quick status chips */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'pending', label: 'Pending' },
+                { key: 'confirmed', label: 'Confirmed' },
+                { key: 'in_progress', label: 'In Progress' },
+                { key: 'completed', label: 'Completed' },
+                { key: 'cancelled', label: 'Cancelled' }
+              ].map(s => (
+                <button
+                  key={s.key}
+                  onClick={() => { setStatusFilter(s.key as any); setCurrentPage(1) }}
+                  className={`px-3 py-1 rounded-full text-sm border ${statusFilter === s.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -370,6 +409,17 @@ export default function BookingsPage() {
             >
               {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
+              <Select value={String(pageSize)} onValueChange={(v)=> { setPageSize(Number(v)); setCurrentPage(1) }}>
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="25">25 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -396,8 +446,8 @@ export default function BookingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBookings.length > 0 ? (
-                  filteredBookings.map((booking) => {
+                {paginatedBookings.length > 0 ? (
+                  paginatedBookings.map((booking) => {
                     const invoice = getInvoiceForBooking(booking.id)
                     
                     return (
@@ -513,6 +563,15 @@ export default function BookingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-600">Page {currentPage} of {totalPages} • {filteredBookings.length} results</div>
+        <div className="flex gap-2">
+          <Button variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Prev</Button>
+          <Button variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</Button>
+        </div>
+      </div>
     </div>
   )
 }
