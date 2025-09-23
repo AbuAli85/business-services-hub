@@ -95,9 +95,12 @@ async function authenticateUser(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Invoices API GET called')
+    
     const { user, authError } = await authenticateUser(request)
     
     if (authError || !user) {
+      console.error('❌ Auth error:', authError)
       const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
         ? authError.message 
         : 'Authentication failed'
@@ -107,6 +110,7 @@ export async function GET(request: NextRequest) {
     }
     
     const supabase = await getSupabaseAdminClient()
+    console.log('✅ User authenticated:', user.id)
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -124,8 +128,17 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('invoices')
       .select(`
-        *,
-        bookings(id, title, client_id, provider_id)
+        id,
+        booking_id,
+        provider_id,
+        client_id,
+        amount,
+        currency,
+        status,
+        invoice_number,
+        due_date,
+        created_at,
+        updated_at
       `)
       .order('created_at', { ascending: false })
 
@@ -145,19 +158,30 @@ export async function GET(request: NextRequest) {
     const { data: invoices, error } = await query
 
     if (error) {
-      console.error('Error fetching invoices:', error)
-      const response = NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
+      console.error('❌ Error fetching invoices:', error)
+      console.error('❌ Query details:', { userRole, userId: user.id, status })
+      const response = NextResponse.json({ 
+        error: 'Failed to fetch invoices', 
+        details: error.message,
+        debug: { userRole, userId: user.id, status }
+      }, { status: 500 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
+    console.log(`✅ Successfully fetched ${invoices?.length || 0} invoices for ${userRole}`)
+    
     const response = NextResponse.json({ invoices: invoices || [] })
     Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
     return response
 
   } catch (error) {
-    console.error('Error fetching invoices:', error)
-    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('❌ Error fetching invoices:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const response = NextResponse.json({ 
+      error: 'Internal server error', 
+      details: errorMessage 
+    }, { status: 500 })
     Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
     return response
   }

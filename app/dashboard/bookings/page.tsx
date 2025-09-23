@@ -188,12 +188,20 @@ export default function BookingsPage() {
         setTotalCount(bookingsData.length)
         
         // Load invoices separately for non-admin users
-        const invoiceRes = await fetch('/api/invoices', {
-          headers: { 'Content-Type': 'application/json' }
-        })
-        if (invoiceRes.ok) {
-          const invoiceJson = await invoiceRes.json()
-          setInvoices(invoiceJson.invoices || [])
+        try {
+          const invoiceRes = await fetch('/api/invoices', {
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (invoiceRes.ok) {
+            const invoiceJson = await invoiceRes.json()
+            setInvoices(invoiceJson.invoices || [])
+          } else {
+            console.warn('Invoice loading failed:', invoiceRes.status)
+            setInvoices([]) // Continue without invoices if loading fails
+          }
+        } catch (invoiceError) {
+          console.warn('Invoice loading error:', invoiceError)
+          setInvoices([]) // Continue without invoices if loading fails
         }
       }
       
@@ -322,27 +330,64 @@ export default function BookingsPage() {
         toast.error('Invoice can be created only after approval')
         return
       }
+      
+      if (!canCreateInvoice) {
+        toast.error('You do not have permission to create invoices')
+        return
+      }
+      
       const supabase = await getSupabaseClient()
       const amount = Number(booking.totalAmount ?? booking.amount ?? booking.total_price ?? 0)
       const currency = String(booking.currency ?? 'OMR')
+      
+      if (amount <= 0) {
+        toast.error('Invalid booking amount')
+        return
+      }
+      
       const payload: any = {
         booking_id: booking.id,
-        client_id: booking.client_id,
-        provider_id: booking.provider_id,
+        client_id: booking.client_id || booking.client_profile?.id,
+        provider_id: booking.provider_id || booking.provider_profile?.id || user?.id,
         amount,
         currency,
-        status: 'sent',
-        created_at: new Date().toISOString()
+        status: 'draft',
+        invoice_number: `INV-${Date.now()}`,
+        total_amount: amount,
+        subtotal: amount,
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
-      const { data, error } = await supabase.from('invoices').insert(payload).select('id, booking_id, status').single()
-      if (error) throw error
-      // Update local map
-      setInvoices(prev => [{ id: data.id, booking_id: data.booking_id, status: data.status }, ...prev])
-      toast.success('Invoice created')
+      
+      console.log('Creating invoice with payload:', payload)
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert(payload)
+        .select('id, booking_id, status, amount, currency')
+        .single()
+      
+      if (error) {
+        console.error('Invoice creation error:', error)
+        throw new Error(error.message || 'Failed to create invoice')
+      }
+      
+      // Update local invoices list
+      setInvoices(prev => [{ 
+        id: data.id, 
+        booking_id: data.booking_id, 
+        status: data.status,
+        amount: data.amount,
+        currency: data.currency
+      }, ...prev])
+      
+      toast.success('Invoice created successfully')
     } catch (e: any) {
+      console.error('Invoice creation failed:', e)
       toast.error(e?.message || 'Failed to create invoice')
     }
-  }, [])
+  }, [canCreateInvoice, user])
 
   // Get status badge
   const getStatusBadge = (status: string) => {
