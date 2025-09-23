@@ -41,6 +41,7 @@ export default function BookingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [bookings, setBookings] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -79,46 +80,37 @@ export default function BookingsPage() {
     return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
   }, [])
 
-  // Load real bookings and invoices from Supabase
+  // Load bookings via server API (RLS-safe)
   const loadSupabaseData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
-      const supabase = await getSupabaseClient()
-      // Get current user and role
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUserId(user.id)
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-        const roleFromProfile = (profile?.role as any) || (user.user_metadata?.role as any) || 'client'
-        setUserRole(roleFromProfile)
+      // Build query params for server-side pagination/filtering
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        pageSize: String(pageSize),
+        status: statusFilter,
+        sortBy,
+        sortOrder,
+        q: debouncedQuery.replace(/^#/, '')
+      })
+      const res = await fetch(`/api/admin/bookings?${params}`, { cache: 'no-store' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({} as any))
+        throw new Error(body?.error || 'Failed to load')
       }
-      // Admin-like view: fetch ALL bookings with related names
-      const { data: allBookings, error: fetchErr } = await supabase
-        .from('bookings')
-        .select(`*, service:services(id,title), client_profile:profiles!client_id(full_name), provider_profile:profiles!provider_id(full_name)`) 
-        .order('created_at', { ascending: false })
-
-      if (fetchErr) throw fetchErr
-
-      setBookings(allBookings || [])
-
-      const bookingIds = (allBookings || []).map(b => b.id)
-      if (bookingIds.length > 0) {
-        const { data: invs } = await supabase
-          .from('invoices')
-          .select('id, booking_id, status')
-          .in('booking_id', bookingIds)
-        setInvoices(invs || [])
-      } else {
-        setInvoices([])
-      }
+      const json = await res.json()
+      setBookings(json.items || [])
+      setTotalCount(Number(json.total || 0))
+      // Flatten embedded invoices for quick lookup
+      const embedded = (json.items || []).flatMap((r: any) => r.invoices || [])
+      setInvoices(embedded)
     } catch (e: any) {
       setError(e?.message || 'Failed to load data')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPage, pageSize, statusFilter, sortBy, sortOrder, debouncedQuery])
 
   useEffect(() => {
     loadSupabaseData()
@@ -185,12 +177,9 @@ export default function BookingsPage() {
     return filtered
   }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder])
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize))
-  const paginatedBookings = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return filteredBookings.slice(start, start + pageSize)
-  }, [filteredBookings, currentPage, pageSize])
+  // Pagination: server returns paged items and total count
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / pageSize))
+  const paginatedBookings = bookingsSource
 
   // Get invoice for a booking
   const invoiceByBooking = useMemo(() => {
@@ -623,7 +612,7 @@ export default function BookingsPage() {
 
       {/* Pagination controls */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">Page {currentPage} of {totalPages} • {filteredBookings.length} results</div>
+        <div className="text-sm text-gray-600">Page {currentPage} of {totalPages} • {totalCount} results</div>
         <div className="flex gap-2">
           <Button variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}>Prev</Button>
           <Button variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</Button>
