@@ -388,7 +388,7 @@ export function TaskMilestoneLinking({
                     </div>
                     {milestone.tasks && milestone.tasks.length > 0 && (
                       <div className="space-y-2">
-                        {milestone.tasks.slice(0, 3).map((task) => (
+                        {(showAllTasksByMilestone?.[milestone.id] ? milestone.tasks : milestone.tasks.slice(0, 3)).map((task) => (
                           <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                             <div className="flex items-center gap-2">
                               <Badge className={`${getStatusColor(task.status)} text-xs`}>
@@ -403,7 +403,20 @@ export function TaskMilestoneLinking({
                           </div>
                         ))}
                         {milestone.tasks.length > 3 && (
-                          <p className="text-xs text-gray-500">+{milestone.tasks.length - 3} more tasks</p>
+                          <button
+                            type="button"
+                            className="text-xs text-blue-600 hover:underline"
+                            onClick={() => {
+                              setShowAllTasksByMilestone((prev: Record<string, boolean> = {}) => ({
+                                ...prev,
+                                [milestone.id]: !prev?.[milestone.id]
+                              }))
+                            }}
+                          >
+                            {showAllTasksByMilestone?.[milestone.id]
+                              ? 'Show less'
+                              : `+${milestone.tasks.length - 3} more tasks`}
+                          </button>
                         )}
                       </div>
                     )}

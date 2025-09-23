@@ -582,7 +582,11 @@ export function ClientMilestoneViewer({
                 />
               </div>
             </div>
+            <label htmlFor="milestone-status" className="sr-only">Filter milestones by status</label>
             <select
+              id="milestone-status"
+              aria-label="Filter milestones by status"
+              title="Filter milestones by status"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"

@@ -1882,7 +1882,7 @@ function MilestoneCard({
         {milestone.tasks && milestone.tasks.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-700">Tasks ({milestone.tasks.length})</h4>
-            {milestone.tasks.slice(0, 3).map((task) => (
+            {(showAllTasksByMilestone?.[milestone.id] ? milestone.tasks : milestone.tasks.slice(0, 3)).map((task) => (
               <div key={task.id} className="p-2 bg-gray-50 rounded space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1944,7 +1944,20 @@ function MilestoneCard({
               </div>
             ))}
             {milestone.tasks && milestone.tasks.length > 3 && (
-              <p className="text-xs text-gray-500">+{milestone.tasks.length - 3} more tasks</p>
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:underline"
+                onClick={() => {
+                  setShowAllTasksByMilestone((prev: Record<string, boolean> = {}) => ({
+                    ...prev,
+                    [milestone.id]: !prev?.[milestone.id]
+                  }))
+                }}
+              >
+                {showAllTasksByMilestone?.[milestone.id]
+                  ? 'Show less'
+                  : `+${milestone.tasks.length - 3} more tasks`}
+              </button>
             )}
           </div>
         )}
