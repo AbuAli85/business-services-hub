@@ -44,6 +44,8 @@ export default function BookingsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin'>('client')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('createdAt')
@@ -83,6 +85,14 @@ export default function BookingsPage() {
       setLoading(true)
       setError(null)
       const supabase = await getSupabaseClient()
+      // Get current user and role
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUserId(user.id)
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        const roleFromProfile = (profile?.role as any) || (user.user_metadata?.role as any) || 'client'
+        setUserRole(roleFromProfile)
+      }
       // Admin-like view: fetch ALL bookings with related names
       const { data: allBookings, error: fetchErr } = await supabase
         .from('bookings')
@@ -191,6 +201,12 @@ export default function BookingsPage() {
     return m
   }, [invoicesSource])
   const getInvoiceForBooking = (bookingId: string) => invoiceByBooking.get(String(bookingId))
+
+  const getInvoiceHref = (invoiceId: string) => {
+    if (userRole === 'admin') return `/dashboard/invoices/template/${invoiceId}`
+    if (userRole === 'provider') return `/dashboard/provider/invoices/template/${invoiceId}`
+    return `/dashboard/client/invoices/template/${invoiceId}`
+  }
 
   // Get status badge
   const getStatusBadge = (status: string) => {
@@ -501,7 +517,7 @@ export default function BookingsPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => router.push(`/dashboard/invoices/template/${invoice.id}`)}
+                                onClick={() => router.push(getInvoiceHref(invoice.id))}
                               >
                                 <Receipt className="h-3 w-3" />
                               </Button>
@@ -533,7 +549,7 @@ export default function BookingsPage() {
                             </Button> */}
                             {invoice && (
                               <Button size="sm" variant="outline" asChild>
-                                <Link href={`/dashboard/invoices/template/${invoice.id}`} prefetch={false}>
+                                <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
                                   <ExternalLink className="h-3 w-3" />
                                 </Link>
                               </Button>
