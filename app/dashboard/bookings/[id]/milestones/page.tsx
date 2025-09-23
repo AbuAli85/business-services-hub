@@ -11,6 +11,7 @@ import { ProfessionalMilestoneManager } from '@/components/dashboard/professiona
 import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-viewer'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { SmartBookingStatusComponent } from '@/components/dashboard/smart-booking-status'
 
 interface Booking {
   id: string
@@ -48,6 +49,61 @@ export default function MilestonesPage() {
 
   useEffect(() => {
     loadBookingData()
+  }, [bookingId])
+
+  // Realtime updates for this booking's milestones and booking status
+  useEffect(() => {
+    let channelMilestones: any
+    let channelBooking: any
+    let isMounted = true
+
+    const setup = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        if (!isMounted) return
+
+        channelMilestones = supabase
+          .channel(`milestones-${bookingId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'milestones',
+            filter: `booking_id=eq.${bookingId}`
+          }, () => {
+            if (!isMounted) return
+            loadBookingData()
+          })
+          .subscribe()
+
+        channelBooking = supabase
+          .channel(`booking-${bookingId}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'bookings',
+            filter: `id=eq.${bookingId}`
+          }, () => {
+            if (!isMounted) return
+            loadBookingData()
+          })
+          .subscribe()
+      } catch (e) {
+        console.warn('Realtime setup failed:', e)
+      }
+    }
+
+    setup()
+
+    return () => {
+      isMounted = false
+      ;(async () => {
+        try {
+          const supabase = await getSupabaseClient()
+          if (channelMilestones) supabase.removeChannel(channelMilestones)
+          if (channelBooking) supabase.removeChannel(channelBooking)
+        } catch {}
+      })()
+    }
   }, [bookingId])
 
   const loadBookingData = async () => {
@@ -447,6 +503,20 @@ export default function MilestonesPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Smart Status Overview */}
+        <Card className="mb-6 border-blue-200">
+          <CardHeader>
+            <CardTitle className="text-base">Smart Status Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SmartBookingStatusComponent 
+              bookingId={bookingId} 
+              userRole={userRole}
+              onStatusChange={() => loadBookingData()}
+            />
           </CardContent>
         </Card>
 

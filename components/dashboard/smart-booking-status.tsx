@@ -649,63 +649,63 @@ export function CompactBookingStatus({
   }
 
   return (
-    <Tooltip content={getTooltipContent()}>
+    <Tooltip content={<div className="max-w-xs whitespace-pre-line">{getTooltipContent()}</div>}>
       <div className="space-y-1 cursor-pointer">
-        {/* Status Badge */}
-        <Badge
-          variant="outline"
-          className={`flex items-center gap-1 text-xs ${
-            status === 'completed'
-              ? 'text-green-600 border-green-200 bg-green-50'
-              : status === 'in_progress'
-              ? 'text-blue-600 border-blue-200 bg-blue-50'
-              : status === 'approved'
-              ? 'text-purple-600 border-purple-200 bg-purple-50'
-              : 'text-gray-600 border-gray-200 bg-gray-50'
-          }`}
-        >
-          {getStatusIcon(status)}
-          <span className="capitalize">{status.replace('_', ' ')}</span>
-        </Badge>
+            {/* Status Badge */}
+            <Badge
+              variant="outline"
+              className={`flex items-center gap-1 text-xs ${
+                status === 'completed'
+                  ? 'text-green-600 border-green-200 bg-green-50'
+                  : status === 'in_progress'
+                  ? 'text-blue-600 border-blue-200 bg-blue-50'
+                  : status === 'approved'
+                  ? 'text-purple-600 border-purple-200 bg-purple-50'
+                  : 'text-gray-600 border-gray-200 bg-gray-50'
+              }`}
+            >
+              {getStatusIcon(status)}
+              <span className="capitalize">{status.replace('_', ' ')}</span>
+            </Badge>
 
-        {/* Progress Bar and Details */}
-        {milestones.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Progress 
-                value={progress} 
-                className={`h-2 w-20 ${
-                  progress === 100 ? '[&>div]:bg-green-500' :
-                  progress >= 75 ? '[&>div]:bg-blue-500' :
-                  progress >= 50 ? '[&>div]:bg-yellow-500' :
-                  progress >= 25 ? '[&>div]:bg-orange-500' :
-                  '[&>div]:bg-gray-400'
-                }`}
-              />
-              <span className="text-xs font-medium text-gray-700">{progress}%</span>
-            </div>
-            
-            {/* Milestone Summary */}
-            <div className="text-xs text-gray-500">
-              {milestones.filter(m => m.status === 'completed').length}/{milestones.length} milestones
-              {milestones.some(m => m.status === 'in_progress') && (
-                <span className="text-purple-600 ml-1">
-                  • {milestones.filter(m => m.status === 'in_progress').length} active
-                </span>
-              )}
-            </div>
+            {/* Progress Bar and Details */}
+            {milestones.length > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Progress 
+                    value={progress} 
+                    className={`h-2 w-20 ${
+                      progress === 100 ? '[&>div]:bg-green-500' :
+                      progress >= 75 ? '[&>div]:bg-blue-500' :
+                      progress >= 50 ? '[&>div]:bg-yellow-500' :
+                      progress >= 25 ? '[&>div]:bg-orange-500' :
+                      '[&>div]:bg-gray-400'
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-gray-700">{progress}%</span>
+                </div>
+                
+                {/* Milestone Summary */}
+                <div className="text-xs text-gray-500">
+                  {milestones.filter(m => m.status === 'completed').length}/{milestones.length} milestones
+                  {milestones.some(m => m.status === 'in_progress') && (
+                    <span className="text-purple-600 ml-1">
+                      • {milestones.filter(m => m.status === 'in_progress').length} active
+                    </span>
+                  )}
+                </div>
 
-            {/* Current Activity Indicator */}
-            {milestones.some(m => m.status === 'in_progress') && (
-              <div className="text-xs text-purple-600 flex items-center gap-1">
-                <div className="w-1 h-1 bg-purple-600 rounded-full animate-pulse"></div>
-                <span className="truncate max-w-32">
-                  {milestones.find(m => m.status === 'in_progress')?.title}
-                </span>
+                {/* Current Activity Indicator */}
+                {milestones.some(m => m.status === 'in_progress') && (
+                  <div className="text-xs text-purple-600 flex items-center gap-1">
+                    <div className="w-1 h-1 bg-purple-600 rounded-full animate-pulse"></div>
+                    <span className="truncate max-w-32">
+                      {milestones.find(m => m.status === 'in_progress')?.title}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
       </div>
     </Tooltip>
   )
