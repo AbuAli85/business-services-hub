@@ -52,7 +52,8 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 export default function BookingsPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
+  const [userLoading, setUserLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [bookings, setBookings] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
@@ -99,22 +100,25 @@ export default function BookingsPage() {
   useEffect(() => {
     const initializeUser = async () => {
       try {
-        setLoading(true)
+        console.log('🔄 Initializing user authentication...')
+        setUserLoading(true)
         setError(null)
         
         const supabase = await getSupabaseClient()
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
         
         if (userError || !currentUser) {
-          console.error('Authentication error:', userError)
+          console.error('❌ Authentication error:', userError)
           router.push('/auth/sign-in')
           return
         }
         
+        console.log('✅ User authenticated:', currentUser.id)
         setUser(currentUser)
         
         // Determine user role from metadata first, then profile
         let detectedRole = currentUser.user_metadata?.role
+        console.log('🔍 Role from metadata:', detectedRole)
         
         if (!detectedRole) {
           try {
@@ -126,26 +130,29 @@ export default function BookingsPage() {
             
             if (!profileError && profile) {
               detectedRole = profile.is_admin ? 'admin' : profile.role
+              console.log('🔍 Role from profile:', detectedRole)
             }
           } catch (profileError) {
-            console.warn('Could not fetch profile role:', profileError)
+            console.warn('⚠️ Could not fetch profile role:', profileError)
           }
         }
         
         // Default to client if no role found
         if (!detectedRole) {
           detectedRole = 'client'
+          console.log('🔍 Using default role: client')
         }
         
         setUserRole(detectedRole as 'client' | 'provider' | 'admin')
-        console.log('User role detected:', detectedRole)
+        console.log('✅ User role set:', detectedRole)
         
       } catch (error) {
-        console.error('User initialization error:', error)
+        console.error('❌ User initialization error:', error)
         setError('Failed to initialize user session')
         router.push('/auth/sign-in')
       } finally {
-        setLoading(false)
+        setUserLoading(false)
+        console.log('✅ User initialization complete')
       }
     }
     
@@ -155,11 +162,13 @@ export default function BookingsPage() {
   // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
     if (!user || !userRole) {
+      console.log('Skipping data load - user or role not ready:', { user: !!user, userRole })
       return
     }
     
     try {
-      setLoading(true)
+      console.log('📊 Loading bookings data for role:', userRole)
+      setDataLoading(true)
       setError(null)
       
       // Build query params for server-side pagination/filtering
@@ -174,6 +183,8 @@ export default function BookingsPage() {
         ? `/api/admin/bookings?page=${currentPage}&pageSize=${pageSize}&${params}`
         : `/api/bookings?${params}`
       
+      console.log('📡 Fetching from:', apiEndpoint)
+      
       const res = await fetch(apiEndpoint, { 
         cache: 'no-store',
         headers: {
@@ -183,23 +194,41 @@ export default function BookingsPage() {
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
+        console.error('❌ API request failed:', res.status, errorData)
+        
+        // For non-critical errors, show empty state instead of error
+        if (res.status === 404 || res.status === 403) {
+          console.log('📝 No bookings found or access denied - showing empty state')
+          setBookings([])
+          setTotalCount(0)
+          setInvoices([])
+          return
+        }
+        
         throw new Error(errorData?.error || `API request failed: ${res.status}`)
       }
       
       const json = await res.json()
+      console.log('📊 API Response received:', { 
+        type: userRole === 'admin' ? 'admin' : 'standard',
+        itemCount: userRole === 'admin' ? json.items?.length : json.bookings?.length
+      })
       
       // Handle different response formats
       if (userRole === 'admin') {
-        setBookings(json.items || [])
+        const items = json.items || []
+        setBookings(items)
         setTotalCount(Number(json.total || 0))
         // Extract invoices from embedded data
-        const embedded = (json.items || []).flatMap((r: any) => r.invoices || [])
+        const embedded = items.flatMap((r: any) => r.invoices || [])
         setInvoices(embedded)
+        console.log('✅ Admin data loaded:', { bookings: items.length, invoices: embedded.length })
       } else {
         // Standard bookings API response
         const bookingsData = json.bookings || []
         setBookings(bookingsData)
         setTotalCount(bookingsData.length)
+        console.log('✅ Bookings data loaded:', bookingsData.length)
         
         // Load invoices separately for non-admin users
         try {
@@ -208,28 +237,41 @@ export default function BookingsPage() {
           })
           if (invoiceRes.ok) {
             const invoiceJson = await invoiceRes.json()
-            setInvoices(invoiceJson.invoices || [])
+            const invoicesData = invoiceJson.invoices || []
+            setInvoices(invoicesData)
+            console.log('✅ Invoices data loaded:', invoicesData.length)
           } else {
-            console.warn('Invoice loading failed:', invoiceRes.status)
+            console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
             setInvoices([]) // Continue without invoices if loading fails
           }
         } catch (invoiceError) {
-          console.warn('Invoice loading error:', invoiceError)
+          console.warn('⚠️ Invoice loading error:', invoiceError)
           setInvoices([]) // Continue without invoices if loading fails
         }
       }
       
     } catch (e: any) {
-      console.error('Data loading error:', e)
+      console.error('❌ Data loading error:', e)
       setError(e?.message || 'Failed to load bookings data')
     } finally {
-      setLoading(false)
+      setDataLoading(false)
+      console.log('✅ Data loading complete')
     }
   }, [user, userRole, currentPage, pageSize, statusFilter, sortBy, sortOrder, debouncedQuery])
 
+  // Only load data when user and role are ready
   useEffect(() => {
-    loadSupabaseData()
-  }, [loadSupabaseData])
+    if (user && userRole && !userLoading) {
+      console.log('🚀 Triggering data load - user and role ready')
+      loadSupabaseData()
+    } else {
+      console.log('⏳ Waiting for user/role - not triggering data load yet', { 
+        user: !!user, 
+        userRole, 
+        userLoading 
+      })
+    }
+  }, [user, userRole, userLoading, loadSupabaseData])
 
   // Debounce searchQuery for smoother UX
   useEffect(() => {
@@ -419,7 +461,8 @@ export default function BookingsPage() {
     return { total, completed, inProgress, pending, totalRevenue, avgCompletionTime }
   }, [bookingsSource])
 
-  if (loading || !userRole) {
+  // Show loading skeleton only during initial user loading
+  if (userLoading) {
     return (
       <div className="space-y-6">
         {/* Header Skeleton */}
@@ -489,6 +532,24 @@ export default function BookingsPage() {
     )
   }
 
+  // Show error state if user is not ready or there's an error
+  if (!user || !userRole) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center max-w-md mx-auto">
+          <AlertTriangle className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold">Session Loading</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Please wait while we verify your session and role...
+          </p>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -546,9 +607,10 @@ export default function BookingsPage() {
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               onClick={loadSupabaseData}
+              disabled={dataLoading}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              <RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
+              {dataLoading ? 'Refreshing...' : 'Refresh'}
             </Button>
             {canCreateBooking && (
               <Button 
@@ -756,7 +818,15 @@ export default function BookingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border relative">
+            {dataLoading && (
+              <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
+                <div className="text-center">
+                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Loading bookings...</p>
+                </div>
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1194,7 +1264,7 @@ export default function BookingsPage() {
       )}
       
       {/* Smart Results Summary */}
-      {!loading && totalPages <= 1 && bookings.length > 0 && (
+      {!dataLoading && totalPages <= 1 && bookings.length > 0 && (
         <div className="text-center">
           <Badge variant="outline" className="text-gray-600">
             <BarChart3 className="h-3 w-3 mr-1" />
