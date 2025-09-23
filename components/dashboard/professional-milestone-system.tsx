@@ -28,6 +28,7 @@ import {
   Users,
   FileText,
   BarChart3,
+  RefreshCw,
   ArrowRight,
   ArrowDown,
   ArrowUp,
@@ -66,6 +67,9 @@ export function ProfessionalMilestoneSystem({
   className = '' 
 }: ProfessionalMilestoneSystemProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'>('all')
+  const [highRiskOnly, setHighRiskOnly] = useState(false)
   const [phases, setPhases] = useState<ProjectPhase[]>([])
   const [templates, setTemplates] = useState<MilestoneTemplate[]>([])
   const [comments, setComments] = useState<Record<string, any[]>>({})
@@ -318,6 +322,25 @@ export function ProfessionalMilestoneSystem({
       setLoading(false)
     }
   }
+
+  // Derived, memoized filtered milestones for UI responsiveness
+  const filteredMilestones = React.useMemo(() => {
+    let list = [...milestones]
+    if (statusFilter !== 'all') {
+      list = list.filter(m => m.status === statusFilter)
+    }
+    if (highRiskOnly) {
+      list = list.filter(m => ['high', 'critical'].includes(String(m.risk_level)))
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter(m =>
+        (m.title || '').toLowerCase().includes(q) ||
+        (m.description || '').toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [milestones, statusFilter, highRiskOnly, searchQuery])
 
   // Calculate and update milestone progress based on tasks
   const calculateAndUpdateMilestoneProgress = async (milestone: any, supabase: any) => {
@@ -1120,6 +1143,71 @@ export function ProfessionalMilestoneSystem({
         </div>
       </div>
 
+      {/* Smart Toolbar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex-1">
+              <Input
+                placeholder="Search milestones..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant={highRiskOnly ? 'default' : 'outline'}
+                onClick={() => setHighRiskOnly(v => !v)}
+                className={highRiskOnly ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" /> High Risk Only
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadData}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" /> Recalculate Progress
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('')
+                  setStatusFilter('all')
+                  setHighRiskOnly(false)
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+          {(searchQuery || statusFilter !== 'all' || highRiskOnly) && (
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <Badge variant="outline">Active Filters</Badge>
+              {searchQuery && <Badge className="bg-blue-600 text-white">Search: "{searchQuery}"</Badge>}
+              {statusFilter !== 'all' && <Badge className="bg-purple-600 text-white">Status: {statusFilter}</Badge>}
+              {highRiskOnly && <Badge className="bg-red-600 text-white">High Risk</Badge>}
+              <span className="text-gray-500 ml-auto">{filteredMilestones.length} shown</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
@@ -1190,7 +1278,7 @@ export function ProfessionalMilestoneSystem({
           {/* Milestones List */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">Project Milestones</h3>
-            {milestones.map((milestone) => (
+            {filteredMilestones.map((milestone) => (
               <MilestoneCard
                 key={milestone.id}
                 milestone={milestone}
