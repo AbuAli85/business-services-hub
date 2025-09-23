@@ -37,6 +37,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
@@ -410,27 +411,25 @@ export default function BookingsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => router.push(`/dashboard/bookings/${booking.id}`)}
-                            >
-                              <Eye className="h-3 w-3" />
+                            <Button size="sm" variant="outline" asChild>
+                              <Link href={`/dashboard/bookings/${booking.id}`}>
+                                <Eye className="h-3 w-3" />
+                              </Link>
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => router.push(`/dashboard/bookings/${booking.id}/edit`)}
+                              asChild
                             >
-                              <Edit className="h-3 w-3" />
+                              <Link href={`/dashboard/bookings/${booking.id}/edit`}>
+                                <Edit className="h-3 w-3" />
+                              </Link>
                             </Button>
                             {invoice && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/dashboard/invoices/${invoice.id}`)}
-                              >
-                                <ExternalLink className="h-3 w-3" />
+                              <Button size="sm" variant="outline" asChild>
+                                <Link href={`/dashboard/invoices/${invoice.id}`}>
+                                  <ExternalLink className="h-3 w-3" />
+                                </Link>
                               </Button>
                             )}
                           </div>
