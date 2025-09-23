@@ -16,40 +16,31 @@ import {
 } from '@/components/ui/table'
 import { 
   Search,
-  Filter,
   Eye,
-  MessageSquare,
   Calendar,
   RefreshCw,
   Clock,
   CheckCircle,
-  XCircle,
   Download,
   ChevronUp,
   ChevronDown,
-  Trash2,
-  Edit,
-  Copy,
   BarChart3,
   TrendingUp,
-  Target,
   Receipt,
   ExternalLink
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase'
 
 export default function BookingsPage() {
   const router = useRouter()
-  const { bookings, invoices, loading, error, refresh } = useDashboardData()
-  const [sbLoading, setSbLoading] = useState(false)
-  const [sbError, setSbError] = useState<string | null>(null)
-  const [sbBookings, setSbBookings] = useState<any[]>([])
-  const [sbInvoices, setSbInvoices] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [bookings, setBookings] = useState<any[]>([])
+  const [invoices, setInvoices] = useState<any[]>([])
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -71,23 +62,26 @@ export default function BookingsPage() {
     return Number.isNaN(time) ? 0 : time
   }, [])
 
+  const OMAN_TZ = 'Asia/Muscat'
   const formatLocalDate = useCallback((raw: any): string => {
     if (!raw) return '—'
     const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
-    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString()
+    if (Number.isNaN(d.getTime())) return '—'
+    return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, year: 'numeric', month: 'short', day: '2-digit' }).format(d)
   }, [])
 
   const formatLocalTime = useCallback((raw: any): string => {
     if (!raw) return '—'
     const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
-    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString()
+    if (Number.isNaN(d.getTime())) return '—'
+    return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
   }, [])
 
   // Load real bookings and invoices from Supabase
   const loadSupabaseData = useCallback(async () => {
     try {
-      setSbLoading(true)
-      setSbError(null)
+      setLoading(true)
+      setError(null)
       const supabase = await getSupabaseClient()
       // Admin-like view: fetch ALL bookings with related names
       const { data: allBookings, error: fetchErr } = await supabase
@@ -97,7 +91,7 @@ export default function BookingsPage() {
 
       if (fetchErr) throw fetchErr
 
-      setSbBookings(allBookings || [])
+      setBookings(allBookings || [])
 
       const bookingIds = (allBookings || []).map(b => b.id)
       if (bookingIds.length > 0) {
@@ -105,14 +99,14 @@ export default function BookingsPage() {
           .from('invoices')
           .select('id, booking_id, status')
           .in('booking_id', bookingIds)
-        setSbInvoices(invs || [])
+        setInvoices(invs || [])
       } else {
-        setSbInvoices([])
+        setInvoices([])
       }
     } catch (e: any) {
-      setSbError(e?.message || 'Failed to load data')
+      setError(e?.message || 'Failed to load data')
     } finally {
-      setSbLoading(false)
+      setLoading(false)
     }
   }, [])
 
@@ -127,13 +121,13 @@ export default function BookingsPage() {
   }, [searchQuery])
 
   // Always use Supabase data on this page to avoid mock IDs in routes
-  const bookingsSource = sbBookings
-  const invoicesSource = sbInvoices
+  const bookingsSource = bookings
+  const invoicesSource = invoices
 
   // Filter and sort bookings
   const filteredBookings = useMemo(() => {
     let filtered = bookingsSource.filter(booking => {
-      const q = debouncedQuery.trim().toLowerCase()
+      const q = debouncedQuery.trim().replace(/^#/, '').toLowerCase()
       const matchesSearch = q === '' || 
         ((booking as any).service?.title || booking.serviceTitle || '').toLowerCase().includes(q) ||
         ((booking as any).client_profile?.full_name || booking.clientName || '').toLowerCase().includes(q) ||
@@ -145,37 +139,38 @@ export default function BookingsPage() {
       return matchesSearch && matchesStatus
     })
 
-    filtered.sort((a, b) => {
-      let aValue: any, bValue: any
-      
+    const safeStr = (v: any) => (v ?? '').toString()
+    const safeNum = (v: any) => (typeof v === 'number' && !Number.isNaN(v)) ? v : Number(v ?? 0) || 0
+    const cmp = (a: any, b: any) => {
       switch (sortBy) {
-        case 'createdAt':
-          aValue = getCreatedAtTimestamp(a)
-          bValue = getCreatedAtTimestamp(b)
-          break
-        case 'totalAmount':
-          aValue = a.totalAmount
-          bValue = b.totalAmount
-          break
-        case 'serviceTitle':
-          aValue = a.serviceTitle
-          bValue = b.serviceTitle
-          break
-        case 'clientName':
-          aValue = a.clientName
-          bValue = b.clientName
-          break
-        default:
-          aValue = getCreatedAtTimestamp(a)
-          bValue = getCreatedAtTimestamp(b)
+        case 'createdAt': {
+          const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
+          return sortOrder === 'asc' ? av - bv : bv - av
+        }
+        case 'totalAmount': {
+          const av = safeNum(a.totalAmount ?? a.amount ?? a.total_price)
+          const bv = safeNum(b.totalAmount ?? b.amount ?? b.total_price)
+          return sortOrder === 'asc' ? av - bv : bv - av
+        }
+        case 'serviceTitle': {
+          const av = safeStr(a.service?.title ?? a.serviceTitle)
+          const bv = safeStr(b.service?.title ?? b.serviceTitle)
+          const res = av.localeCompare(bv, undefined, { sensitivity: 'base' })
+          return sortOrder === 'asc' ? res : -res
+        }
+        case 'clientName': {
+          const av = safeStr(a.client_profile?.full_name ?? a.clientName)
+          const bv = safeStr(b.client_profile?.full_name ?? b.clientName)
+          const res = av.localeCompare(bv, undefined, { sensitivity: 'base' })
+          return sortOrder === 'asc' ? res : -res
+        }
+        default: {
+          const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
+          return sortOrder === 'asc' ? av - bv : bv - av
+        }
       }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1
-      } else {
-        return aValue < bValue ? 1 : -1
-      }
-    })
+    }
+    filtered.sort(cmp)
 
     return filtered
   }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder])
@@ -188,9 +183,14 @@ export default function BookingsPage() {
   }, [filteredBookings, currentPage, pageSize])
 
   // Get invoice for a booking
-  const getInvoiceForBooking = (bookingId: string) => {
-    return invoicesSource.find((invoice: any) => (invoice.bookingId ?? invoice.booking_id) === bookingId)
-  }
+  const invoiceByBooking = useMemo(() => {
+    const m = new Map<string, any>()
+    invoicesSource.forEach((invoice: any) => {
+      m.set(String(invoice.bookingId ?? invoice.booking_id), invoice)
+    })
+    return m
+  }, [invoicesSource])
+  const getInvoiceForBooking = (bookingId: string) => invoiceByBooking.get(String(bookingId))
 
   // Get status badge
   const getStatusBadge = (status: string) => {
@@ -225,7 +225,7 @@ export default function BookingsPage() {
     return { total, completed, inProgress, pending, totalRevenue, avgCompletionTime }
   }, [bookingsSource])
 
-  if (loading || sbLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -233,12 +233,12 @@ export default function BookingsPage() {
     )
   }
 
-  if (error || sbError) {
+  if (error) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading bookings</p>
-          <Button onClick={() => { refresh(); loadSupabaseData() }}>Retry</Button>
+          <Button onClick={() => { loadSupabaseData() }}>Retry</Button>
         </div>
       </div>
     )
@@ -277,7 +277,7 @@ export default function BookingsPage() {
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={refresh}
+              onClick={loadSupabaseData}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -474,7 +474,11 @@ export default function BookingsPage() {
                           <div className="text-sm text-gray-500">Provider ID: {(booking as any).provider_id}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{formatCurrency((booking as any).amount || 0, (booking as any).currency || 'OMR')}</div>
+                          {(() => {
+                            const amount = Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0)
+                            const currency = String((booking as any).currency ?? 'OMR')
+                            return <div className="font-medium">{formatCurrency(amount, currency)}</div>
+                          })()}
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(booking.status)}
@@ -521,11 +525,12 @@ export default function BookingsPage() {
                                 <Eye className="h-3 w-3" />
                               </Link>
                             </Button>
-                            <Button size="sm" variant="outline" asChild>
-                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
+                            {/* If no edit route exists, comment this out or point to an existing route */}
+                            {/* <Button size="sm" variant="outline" asChild>
+                              <Link href={`/dashboard/bookings/${booking.id}/edit`} prefetch={false}>
                                 <Edit className="h-3 w-3" />
                               </Link>
-                            </Button>
+                            </Button> */}
                             {invoice && (
                               <Button size="sm" variant="outline" asChild>
                                 <Link href={`/dashboard/invoices/${invoice.id}`} prefetch={false}>
@@ -572,6 +577,7 @@ export default function BookingsPage() {
           <Button variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next</Button>
         </div>
       </div>
+      <div className="h-2" />
     </div>
   )
 }
