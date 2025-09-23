@@ -37,7 +37,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 export default function BookingsPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [bookings, setBookings] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
@@ -45,8 +45,8 @@ export default function BookingsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin'>('client')
+  const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('createdAt')
@@ -80,37 +80,129 @@ export default function BookingsPage() {
     return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
   }, [])
 
-  // Load bookings via server API (RLS-safe)
+  // Initialize user authentication and role detection
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const supabase = await getSupabaseClient()
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !currentUser) {
+          console.error('Authentication error:', userError)
+          router.push('/auth/sign-in')
+          return
+        }
+        
+        setUser(currentUser)
+        
+        // Determine user role from metadata first, then profile
+        let detectedRole = currentUser.user_metadata?.role
+        
+        if (!detectedRole) {
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('role, is_admin')
+              .eq('id', currentUser.id)
+              .single()
+            
+            if (!profileError && profile) {
+              detectedRole = profile.is_admin ? 'admin' : profile.role
+            }
+          } catch (profileError) {
+            console.warn('Could not fetch profile role:', profileError)
+          }
+        }
+        
+        // Default to client if no role found
+        if (!detectedRole) {
+          detectedRole = 'client'
+        }
+        
+        setUserRole(detectedRole as 'client' | 'provider' | 'admin')
+        console.log('User role detected:', detectedRole)
+        
+      } catch (error) {
+        console.error('User initialization error:', error)
+        setError('Failed to initialize user session')
+        router.push('/auth/sign-in')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    initializeUser()
+  }, [router])
+
+  // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
+    if (!user || !userRole) {
+      return
+    }
+    
     try {
       setLoading(true)
       setError(null)
+      
       // Build query params for server-side pagination/filtering
       const params = new URLSearchParams({
-        page: String(currentPage),
-        pageSize: String(pageSize),
+        role: userRole,
         status: statusFilter,
-        sortBy,
-        sortOrder,
         q: debouncedQuery.replace(/^#/, '')
       })
-      const res = await fetch(`/api/admin/bookings?${params}`, { cache: 'no-store' })
+      
+      // Use appropriate API endpoint based on role
+      const apiEndpoint = userRole === 'admin' 
+        ? `/api/admin/bookings?page=${currentPage}&pageSize=${pageSize}&${params}`
+        : `/api/bookings?${params}`
+      
+      const res = await fetch(apiEndpoint, { 
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
       if (!res.ok) {
-        const body = await res.json().catch(() => ({} as any))
-        throw new Error(body?.error || 'Failed to load')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData?.error || `API request failed: ${res.status}`)
       }
+      
       const json = await res.json()
-      setBookings(json.items || [])
-      setTotalCount(Number(json.total || 0))
-      // Flatten embedded invoices for quick lookup
-      const embedded = (json.items || []).flatMap((r: any) => r.invoices || [])
-      setInvoices(embedded)
+      
+      // Handle different response formats
+      if (userRole === 'admin') {
+        setBookings(json.items || [])
+        setTotalCount(Number(json.total || 0))
+        // Extract invoices from embedded data
+        const embedded = (json.items || []).flatMap((r: any) => r.invoices || [])
+        setInvoices(embedded)
+      } else {
+        // Standard bookings API response
+        const bookingsData = json.bookings || []
+        setBookings(bookingsData)
+        setTotalCount(bookingsData.length)
+        
+        // Load invoices separately for non-admin users
+        const invoiceRes = await fetch('/api/invoices', {
+          headers: { 'Content-Type': 'application/json' }
+        })
+        if (invoiceRes.ok) {
+          const invoiceJson = await invoiceRes.json()
+          setInvoices(invoiceJson.invoices || [])
+        }
+      }
+      
     } catch (e: any) {
-      setError(e?.message || 'Failed to load data')
+      console.error('Data loading error:', e)
+      setError(e?.message || 'Failed to load bookings data')
     } finally {
       setLoading(false)
     }
-  }, [currentPage, pageSize, statusFilter, sortBy, sortOrder, debouncedQuery])
+  }, [user, userRole, currentPage, pageSize, statusFilter, sortBy, sortOrder, debouncedQuery])
 
   useEffect(() => {
     loadSupabaseData()
@@ -197,6 +289,31 @@ export default function BookingsPage() {
     return `/dashboard/client/invoices/template/${invoiceId}`
   }
 
+  // Role-based permissions
+  const canCreateBooking = userRole === 'client' || userRole === 'admin'
+  const canManageBookings = userRole === 'admin'
+  const canViewAllBookings = userRole === 'admin'
+  const canCreateInvoice = userRole === 'provider' || userRole === 'admin'
+  
+  // Get role-specific page title and description
+  const getPageTitle = () => {
+    switch (userRole) {
+      case 'admin': return 'All Bookings Management'
+      case 'provider': return 'My Service Bookings'
+      case 'client': return 'My Bookings'
+      default: return 'Bookings'
+    }
+  }
+  
+  const getPageDescription = () => {
+    switch (userRole) {
+      case 'admin': return 'Manage all bookings across the platform'
+      case 'provider': return 'Track and manage your service bookings'
+      case 'client': return 'View and manage your service requests'
+      default: return 'Manage bookings'
+    }
+  }
+
   const handleCreateInvoice = useCallback(async (booking: any) => {
     try {
       const eligibleStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
@@ -259,10 +376,13 @@ export default function BookingsPage() {
     return { total, completed, inProgress, pending, totalRevenue, avgCompletionTime }
   }, [bookingsSource])
 
-  if (loading) {
+  if (loading || !userRole) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading bookings...</p>
+        </div>
       </div>
     )
   }
@@ -284,9 +404,9 @@ export default function BookingsPage() {
       <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Bookings Management</h1>
+            <h1 className="text-4xl font-bold mb-2">{getPageTitle()}</h1>
             <p className="text-green-100 text-lg mb-4">
-              Manage and track all service bookings with integrated invoice tracking
+              {getPageDescription()}
             </p>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">
@@ -316,14 +436,16 @@ export default function BookingsPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button 
-              variant="secondary"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={() => router.push('/dashboard/bookings/create')}
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              New Booking
-            </Button>
+            {canCreateBooking && (
+              <Button 
+                variant="secondary"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => router.push('/dashboard/bookings/create')}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                New Booking
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -470,8 +592,8 @@ export default function BookingsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Service</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Provider</TableHead>
+                  {userRole === 'admin' && <TableHead>Client</TableHead>}
+                  {(userRole === 'admin' || userRole === 'client') && <TableHead>Provider</TableHead>}
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Invoice</TableHead>
@@ -499,14 +621,18 @@ export default function BookingsPage() {
                             <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-blue-600 hover:underline">Milestones</Link>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{(booking as any).client_profile?.full_name || 'Client'}</div>
-                          <div className="text-sm text-gray-500">Client ID: {(booking as any).client_id}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{(booking as any).provider_profile?.full_name || 'Provider'}</div>
-                          <div className="text-sm text-gray-500">Provider ID: {(booking as any).provider_id}</div>
-                        </TableCell>
+                        {userRole === 'admin' && (
+                          <TableCell>
+                            <div className="font-medium">{(booking as any).client_profile?.full_name || 'Client'}</div>
+                            <div className="text-sm text-gray-500">Client ID: {(booking as any).client_id}</div>
+                          </TableCell>
+                        )}
+                        {(userRole === 'admin' || userRole === 'client') && (
+                          <TableCell>
+                            <div className="font-medium">{(booking as any).provider_profile?.full_name || 'Provider'}</div>
+                            <div className="text-sm text-gray-500">Provider ID: {(booking as any).provider_id}</div>
+                          </TableCell>
+                        )}
                         <TableCell>
                           {(() => {
                             const amount = Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0)
@@ -543,7 +669,7 @@ export default function BookingsPage() {
                           ) : (
                             <div className="flex items-center gap-2">
                               <span className="text-gray-400 text-sm">No invoice</span>
-                              {['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
+                              {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
                                 <Button size="sm" variant="outline" onClick={() => handleCreateInvoice(booking)}>
                                   Create
                                 </Button>
@@ -591,15 +717,27 @@ export default function BookingsPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={userRole === 'admin' ? 8 : userRole === 'client' ? 7 : 6} className="text-center py-8">
                       <div className="flex flex-col items-center space-y-2">
                         <Calendar className="h-12 w-12 text-gray-400" />
                         <p className="text-gray-500">No bookings found</p>
                         <p className="text-sm text-gray-400">
                           {searchQuery || statusFilter !== 'all'
                             ? 'Try adjusting your filters'
-                            : 'Bookings will appear here when created'}
+                            : userRole === 'client' 
+                              ? 'Start by creating your first booking'
+                              : userRole === 'provider'
+                              ? 'Bookings from clients will appear here'
+                              : 'Bookings will appear here when created'}
                         </p>
+                        {userRole === 'client' && !searchQuery && statusFilter === 'all' && (
+                          <Button 
+                            className="mt-4"
+                            onClick={() => router.push('/dashboard/bookings/create')}
+                          >
+                            Create Your First Booking
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

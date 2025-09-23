@@ -1,118 +1,164 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdminClient } from '@/lib/supabase'
 
-// This route depends on request parameters; force dynamic rendering
-export const dynamic = 'force-dynamic'
+// CORS headers for cross-domain access
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400'
+}
+
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  })
+}
+
+// Helper function to authenticate user
+async function authenticateUser(request: NextRequest) {
+  let user = null
+  let authError = null
+  
+  try {
+    const supabase = await getSupabaseAdminClient()
+    const cookieHeader = request.headers.get('cookie')
+    
+    // Try to get user from Authorization header first
+    const authHeader = request.headers.get('authorization')
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7)
+      try {
+        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
+        if (tokenUser && !tokenError) {
+          user = tokenUser
+          return { user, authError }
+        } else {
+          authError = tokenError
+        }
+      } catch (tokenAuthError) {
+        authError = tokenAuthError
+      }
+    }
+    
+    // If no Authorization header, try to extract session from cookies
+    if (!user && cookieHeader) {
+      try {
+        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+          const [key, value] = cookie.trim().split('=')
+          acc[key] = value
+          return acc
+        }, {} as Record<string, string>)
+        
+        const possibleTokenKeys = [
+          'sb-access-token',
+          'supabase-auth-token', 
+          'sb-access-token',
+          'supabase.auth.token',
+          'sb-' + (process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || 'default') + '-auth-token'
+        ]
+        
+        let accessToken = null
+        for (const key of possibleTokenKeys) {
+          if (cookies[key]) {
+            accessToken = cookies[key]
+            break
+          }
+        }
+        
+        if (accessToken) {
+          const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser(accessToken)
+          if (cookieUser && !cookieError) {
+            user = cookieUser
+            return { user, authError }
+          } else {
+            authError = cookieError
+          }
+        }
+      } catch (cookieError) {
+        authError = cookieError
+      }
+    }
+    
+    if (!user) {
+      authError = new Error('Auth session missing!')
+    }
+    
+  } catch (error) {
+    authError = error
+  }
+  
+  return { user, authError }
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl?.searchParams || new URL(request.url).searchParams
-    const role = searchParams.get('role') || 'client'
-    const userId = searchParams.get('userId')
+    const { user, authError } = await authenticateUser(request)
     
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    if (authError || !user) {
+      const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
+        ? authError.message 
+        : 'Authentication failed'
+      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
     
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const supabase = await getSupabaseAdminClient()
+
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+
+    // Get user profile to determine role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, is_admin')
+      .eq('id', user.id)
+      .single()
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const userRole = profile?.is_admin ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
 
     // Build query based on user role
     let query = supabase
       .from('invoices')
       .select(`
         *,
-        provider:profiles!invoices_provider_id_fkey(
-          id,
-          full_name,
-          email,
-          phone,
-          company:companies(
-            id,
-            name,
-            address,
-            phone,
-            email,
-            website,
-            logo_url
-          )
-        ),
-        client:profiles!invoices_client_id_fkey(
-          id,
-          full_name,
-          email,
-          phone,
-          company:companies(
-            id,
-            name,
-            address,
-            phone,
-            email,
-            website,
-            logo_url
-          )
-        ),
-        booking:bookings!invoices_booking_id_fkey(
-          id,
-          status,
-          requirements,
-          service:services(
-            id,
-            title,
-            description
-          )
-        )
+        bookings(id, title, client_id, provider_id)
       `)
       .order('created_at', { ascending: false })
 
-    // Apply role-based filtering
-    if (role === 'client') {
-      query = query.eq('client_id', userId)
-    } else if (role === 'provider') {
-      query = query.eq('provider_id', userId)
+    // Filter by user role
+    if (userRole === 'client') {
+      query = query.eq('client_id', user.id)
+    } else if (userRole === 'provider') {
+      query = query.eq('provider_id', user.id)
     }
-    // Admin can see all invoices (no additional filter)
+    // Admin can see all invoices - no additional filter
+
+    // Filter by status if specified
+    if (status && status !== 'all') {
+      query = query.eq('status', status)
+    }
 
     const { data: invoices, error } = await query
 
     if (error) {
       console.error('Error fetching invoices:', error)
-      return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
+      const response = NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
     }
 
-    console.log('📊 Raw invoices data:', JSON.stringify(invoices, null, 2))
-
-    // Transform the data to match the expected format
-    const transformedInvoices = (invoices || []).map((invoice: any) => ({
-      ...invoice,
-      service_title: invoice.booking?.service?.title || invoice.service_title || 'Service',
-      service_description: invoice.booking?.service?.description || invoice.service_description,
-      client_name: invoice.client?.full_name || invoice.client_name || 'Unknown Client',
-      client_email: invoice.client?.email || invoice.client_email,
-      client_phone: invoice.client?.phone || invoice.client_phone,
-      provider_name: invoice.provider?.full_name || invoice.provider_name || 'Unknown Provider',
-      provider_email: invoice.provider?.email || invoice.provider_email,
-      provider_phone: invoice.provider?.phone || invoice.provider_phone,
-      company_name: invoice.provider?.company?.name || invoice.company_name,
-      company_logo: invoice.provider?.company?.logo_url || invoice.company_logo,
-      // Include full provider and client objects for detailed access
-      provider: invoice.provider,
-      client: invoice.client,
-      booking: invoice.booking
-    }))
-
-    return NextResponse.json({ 
-      invoices: transformedInvoices,
-      count: transformedInvoices.length
-    })
+    const response = NextResponse.json({ invoices: invoices || [] })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
 
   } catch (error) {
-    console.error('Error in invoices API:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('Error fetching invoices:', error)
+    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
   }
 }
