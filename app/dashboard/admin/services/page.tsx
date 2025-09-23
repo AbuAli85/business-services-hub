@@ -129,10 +129,21 @@ export default function AdminServicesPage() {
   const [actorRole, setActorRole] = useState<string | null>(null)
   const canEdit = actorRole === 'admin' || actorRole === 'staff'
   const abortRef = useRef<AbortController | null>(null)
+  const latestReqRef = useRef(0)
 
   useEffect(() => {
     loadServices()
   }, [page, pageSize, searchQuery, statusFilter, sortBy, sortOrder])
+
+  // Clear selection when the list or filters change
+  useEffect(() => {
+    setSelectedIds([])
+  }, [page, pageSize, searchQuery, statusFilter, sortBy, sortOrder, services.length])
+
+  // Abort any in-flight request when unmounting
+  useEffect(() => {
+    return () => abortRef.current?.abort()
+  }, [])
 
   // Sync state to URL
   useEffect(() => {
@@ -169,8 +180,6 @@ export default function AdminServicesPage() {
     checkSchema()
   }, [])
 
-  // abort on unmount
-  useEffect(() => () => abortRef.current?.abort(), [])
 
   // Load current actor profile to gate inline edits and enrich audit logs
   useEffect(() => {
@@ -209,6 +218,8 @@ export default function AdminServicesPage() {
     abortRef.current = controller
     const { signal } = controller
     setLoading(true)
+    const reqId = ++latestReqRef.current
+
     try {
       const supabase = await getSupabaseClient()
       
@@ -227,11 +238,15 @@ export default function AdminServicesPage() {
             company_name
           )
         `, { count: 'exact' })
+        .abortSignal(signal)
 
       if (searchQuery) {
         const like = `%${searchQuery}%`
         query = query.or(`title.ilike.${like},description.ilike.${like},category.ilike.${like}`)
-        query = (query as any).or(`full_name.ilike.${like},email.ilike.${like}`, { foreignTable: 'profiles' })
+        query = (query as any).or(
+          `full_name.ilike.${like},email.ilike.${like},company_name.ilike.${like}`,
+          { foreignTable: 'profiles' }
+        )
       }
 
       if (statusFilter && statusFilter !== 'all') {
@@ -239,19 +254,29 @@ export default function AdminServicesPage() {
       }
 
       const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
-      query = query.order(sortColumn as any, { ascending: sortOrder === 'asc', nullsFirst: false } as any)
+      const { data, count, error } = await query
+        .order(sortColumn as any, { ascending: sortOrder === 'asc', nullsFirst: false } as any)
+        .range(from, to)
 
-      const { data, count, error } = await query.range(from, to)
-
-      if (signal.aborted) return
+      if (signal.aborted || reqId !== latestReqRef.current) return
       if (error) throw error
 
       setServices(data || [])
       setTotalCount(count || 0)
+      // If current page is out of bounds after new count, snap to last valid page
+      const totalPages = Math.max(1, Math.ceil((count || 0) / pageSize))
+      if (page > totalPages) {
+        setPage(totalPages)
+      }
+
       try {
         const [{ data: statRows }, { data: revRows }] = await Promise.all([
-          supabase.rpc('services_stats', { p_search: searchQuery || null, p_status: statusFilter || null }),
-          supabase.rpc('bookings_revenue_stats', { p_search: searchQuery || null, p_status: statusFilter || null })
+          supabase
+            .rpc('services_stats', { p_search: searchQuery || null, p_status: statusFilter || null })
+            .abortSignal(signal),
+          supabase
+            .rpc('bookings_revenue_stats', { p_search: searchQuery || null, p_status: statusFilter || null })
+            .abortSignal(signal)
         ])
         const s = statRows?.[0] as any
         const r = revRows?.[0] as any
@@ -266,13 +291,13 @@ export default function AdminServicesPage() {
           })
         }
       } catch {}
-      if (!signal.aborted) setLoading(false)
+      if (!signal.aborted && reqId === latestReqRef.current) setLoading(false)
     } catch (error: any) {
       if (!(error?.name || '').includes('Abort')) {
         console.error('Error loading services:', error)
         toast.error('Failed to load services')
       }
-      if (!signal.aborted) setLoading(false)
+      if (!signal.aborted && reqId === latestReqRef.current) setLoading(false)
     }
   }
 
@@ -455,6 +480,7 @@ export default function AdminServicesPage() {
       status: s.status,
       provider_name: s.provider?.full_name,
       provider_email: s.provider?.email,
+      provider_company: s.provider?.company_name,
       created_at: s.created_at,
       updated_at: s.updated_at
     }))
@@ -505,7 +531,10 @@ export default function AdminServicesPage() {
         if (searchQuery) {
           const like = `%${searchQuery}%`
           q = q.or(`title.ilike.${like},description.ilike.${like},category.ilike.${like}`)
-          q = (q as any).or(`full_name.ilike.${like},email.ilike.${like}`, { foreignTable: 'profiles' })
+          q = (q as any).or(
+            `full_name.ilike.${like},email.ilike.${like},company_name.ilike.${like}`,
+            { foreignTable: 'profiles' }
+          )
         }
         if (statusFilter && statusFilter !== 'all') {
           q = q.eq('approval_status', statusFilter) as any
