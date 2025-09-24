@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
 import { ProgressDataService } from '@/lib/progress-data-service'
-import { z } from 'zod'
+import { z as zod } from 'zod'
 
 import { 
   triggerBookingCreated,
   triggerBookingApproved
 } from '@/lib/notification-triggers-simple'
+import { z } from 'zod'
 import { createNotification } from '@/lib/notification-service'
 // CORS headers for cross-domain access
 const corsHeaders = {
@@ -530,6 +531,29 @@ export async function GET(request: NextRequest) {
 }
 
 // Update booking status (approve, decline, reschedule, complete, cancel)
+// Normalize numbers (epoch ms or s) and ISO strings to ISO string
+function normalizeToISO(input?: string | number | null): string | undefined {
+  if (input === undefined || input === null) return undefined
+  if (typeof input === 'string') {
+    const d = new Date(input)
+    return isNaN(d.getTime()) ? undefined : d.toISOString()
+  }
+  // number: treat > 2147483647 as ms, else seconds
+  const valueMs = input > 2147483647 ? input : input * 1000
+  const d = new Date(valueMs)
+  return isNaN(d.getTime()) ? undefined : d.toISOString()
+}
+
+// Validate PATCH payload and allow numeric/ISO datetime for scheduled_date
+const patchSchema = zod.object({
+  booking_id: zod.string().uuid(),
+  action: zod.enum(['approve', 'decline', 'reschedule', 'complete', 'cancel']),
+  scheduled_date: zod.union([zod.string().datetime(), zod.number()]).optional(),
+  reason: zod.string().max(500).optional(),
+  // Optional timestamps client may send; we normalize and ignore if invalid
+  approved_at: zod.union([zod.string().datetime(), zod.number()]).optional()
+})
+
 export async function PATCH(request: NextRequest) {
   try {
     console.log('🔍 Bookings API PATCH called')
@@ -559,20 +583,14 @@ export async function PATCH(request: NextRequest) {
     console.log('🔍 API: User email:', user.email)
 
     const body = await request.json()
-    const schema = z.object({
-      booking_id: z.string().uuid(),
-      action: z.enum(['approve', 'decline', 'reschedule', 'complete', 'cancel']),
-      scheduled_date: z.string().datetime().optional(),
-      reason: z.string().max(500).optional()
-    })
-    const parsed = schema.safeParse(body)
+    const parsed = patchSchema.safeParse(body)
     if (!parsed.success) {
       const response = NextResponse.json({ error: 'Invalid request data', details: parsed.error.errors }, { status: 400 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
-    const { booking_id, action, scheduled_date, reason } = parsed.data
+    const { booking_id, action, scheduled_date, reason, approved_at } = parsed.data
 
     // Fetch booking to validate permissions
     console.log('🔍 API: Fetching booking with ID:', booking_id)
@@ -729,7 +747,11 @@ export async function PATCH(request: NextRequest) {
           console.log('Approval denied: User is not a provider')
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
-        updates = { status: 'approved', approval_status: 'approved' }
+        updates = {
+          status: 'approved',
+          approval_status: 'approved',
+          approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
+        }
         notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
         console.log('Approval updates:', updates)
         break
@@ -745,7 +767,7 @@ export async function PATCH(request: NextRequest) {
       case 'reschedule':
         if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
         if (!isProvider && !isClient) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-        updates = { scheduled_date, status: 'rescheduled' }
+        updates = { scheduled_date: normalizeToISO(scheduled_date)!, status: 'rescheduled' }
         notification = { user_id: isProvider ? booking.client_id : booking.provider_id, title: 'Reschedule Proposed', message: `New time proposed: ${new Date(scheduled_date).toLocaleString()}`, type: 'booking_updated' }
         break
       case 'complete':
