@@ -435,6 +435,49 @@ export class DocumentManagementService {
         .single()
 
       if (error) throw error
+
+      // Best-effort: notify the other party via Messages API so provider/client sees it
+      try {
+        // Lookup booking and participants from the document -> booking
+        const { data: docRow } = await supabase
+          .from('documents')
+          .select('booking_id, original_name')
+          .eq('id', documentId)
+          .single()
+
+        if (docRow?.booking_id) {
+          const { data: booking } = await supabase
+            .from('bookings')
+            .select('client_id, provider_id')
+            .eq('id', docRow.booking_id)
+            .single()
+
+          if (booking) {
+            const receiverId = user.id === booking.client_id ? booking.provider_id : booking.client_id
+            if (receiverId) {
+              const { data: { session } } = await supabase.auth.getSession()
+              if (session?.access_token) {
+                const content = `Document comment on ${docRow.original_name || 'a document'}:\n\n${form.content}`
+                await fetch('/api/messages', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                  },
+                  body: JSON.stringify({
+                    receiver_id: receiverId,
+                    subject: 'Document Comment',
+                    content,
+                    booking_id: docRow.booking_id
+                  })
+                }).catch(() => {})
+              }
+            }
+          }
+        }
+      } catch (notifyErr) {
+        console.warn('Document comment notification failed:', notifyErr)
+      }
       return data
     } catch (error) {
       console.error('Error adding document comment:', error)
