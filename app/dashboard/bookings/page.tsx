@@ -206,8 +206,8 @@ export default function BookingsPage() {
         
         // Handle 401 authentication errors
         if (res.status === 401) {
-          console.log('🔐 Authentication required, redirecting to sign-in')
-          router.push('/auth/sign-in')
+          console.log('🔐 Authentication required (401). Showing session expired state')
+          setError('Your session has expired. Please sign in again to continue.')
           return
         }
         
