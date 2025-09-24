@@ -154,7 +154,7 @@ export function EnhancedClientKPIGrid({ data }: KPIGridProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Service Overview</h2>
-          <p className="text-sm sm:text-base text-gray-600">Track your bookings and spending at a glance</p>
+          <p className="text-sm sm:text-base text-gray-600">Track your bookings at a glance</p>
         </div>
         <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -162,18 +162,7 @@ export function EnhancedClientKPIGrid({ data }: KPIGridProps) {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <EnhancedKPICard
-          title="Total Spent"
-          value={formatCurrency(data.totalSpent)}
-          change={calculateMonthlyGrowth()}
-          changeType={calculateMonthlyGrowth() > 0 ? 'increase' : 'neutral'}
-          icon={Wallet}
-          tooltip="Total amount spent on all completed and active bookings"
-          className="bg-gradient-to-br from-green-50 to-emerald-100 border-green-200"
-          gradient="from-green-500 to-emerald-600"
-        />
-        
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <EnhancedKPICard
           title="Active Bookings"
           value={data.activeBookings}
