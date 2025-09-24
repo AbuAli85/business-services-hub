@@ -83,6 +83,12 @@ export function DocumentManager({
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [showRequestDialog, setShowRequestDialog] = useState(false)
   const [showFilterDialog, setShowFilterDialog] = useState(false)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState<string>('')
+  const [showCommentDialog, setShowCommentDialog] = useState(false)
+  const [commentTargetId, setCommentTargetId] = useState<string | null>(null)
+  const [commentContent, setCommentContent] = useState<string>('')
   
   // Form states
   const [uploadForm, setUploadForm] = useState<DocumentUploadForm>({
@@ -310,21 +316,63 @@ export function DocumentManager({
     }
   }
 
-  const handleDeleteDocument = async (documentId: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return
-
+  // Force direct file download
+  const handleDirectDownload = async (url: string, filename: string) => {
     try {
-      const success = await documentManagementService.deleteDocument(documentId)
-      if (success) {
-        setDocuments(prev => prev.filter(doc => doc.id !== documentId))
-        toast.success('Document deleted')
-      } else {
-        toast.error('Failed to delete document')
-      }
-    } catch (error) {
-      console.error('Delete error:', error)
-      toast.error('Failed to delete document')
+      const res = await fetch(url, { mode: 'cors' })
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = filename || 'download'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch (e) {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename || 'download'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
     }
+  }
+
+  const openRejectModal = (docId: string) => {
+    setRejectTargetId(docId)
+    setRejectReason('')
+    setShowRejectDialog(true)
+  }
+
+  const submitReject = async () => {
+    if (!rejectTargetId) return
+    await handleRejectDocument(rejectTargetId, rejectReason || 'Not specified')
+    setShowRejectDialog(false)
+    setRejectTargetId(null)
+    setRejectReason('')
+  }
+
+  const openCommentModal = (docId: string) => {
+    setCommentTargetId(docId)
+    setCommentContent('')
+    setShowCommentDialog(true)
+  }
+
+  const submitComment = async () => {
+    if (!commentTargetId || !commentContent.trim()) {
+      toast.error('Please enter a comment')
+      return
+    }
+    const created = await documentManagementService.addComment(commentTargetId, { content: commentContent.trim(), is_internal: false })
+    if (created) {
+      toast.success('Comment added')
+    } else {
+      toast.error('Failed to add comment')
+    }
+    setShowCommentDialog(false)
+    setCommentTargetId(null)
+    setCommentContent('')
   }
 
   // Request status handlers
@@ -647,16 +695,16 @@ export function DocumentManager({
                           <Button size="sm" variant="outline" asChild>
                             <a href={doc.file_url} target="_blank" rel="noreferrer">View</a>
                           </Button>
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={doc.file_url} download={doc.original_name}>Download</a>
+                          <Button size="sm" variant="outline" onClick={() => handleDirectDownload(doc.file_url, doc.original_name)}>
+                            Download
                           </Button>
+                          <Button size="sm" variant="outline" onClick={() => openCommentModal(doc.id)}>Comment</Button>
                           {userRole==='provider' && doc.status==='uploaded' && (
                             <>
                               <Button size="sm" onClick={()=>handleApproveDocument(doc.id)} className="bg-green-600 hover:bg-green-700 text-white">Approve</Button>
-                              <Button size="sm" onClick={()=>handleRejectDocument(doc.id,'Not suitable')} className="bg-red-600 hover:bg-red-700 text-white">Reject</Button>
+                              <Button size="sm" onClick={()=>openRejectModal(doc.id)} className="bg-red-600 hover:bg-red-700 text-white">Reject</Button>
                             </>
                           )}
-                          <Button size="sm" variant="outline" onClick={()=>handleDeleteDocument(doc.id)}>Delete</Button>
                         </div>
                       </td>
                     </tr>
@@ -672,11 +720,7 @@ export function DocumentManager({
                       setDocuments(prev=> prev.map(d=> selectedIds.includes(d.id)? { ...d, status:'approved'}: d));
                       setSelectedIds([])
                     }} className="bg-green-600 hover:bg-green-700">Approve selected</Button>
-                    <Button size="sm" onClick={async()=>{
-                      for (const id of selectedIds) await documentManagementService.deleteDocument(id);
-                      setDocuments(prev=> prev.filter(d=> !selectedIds.includes(d.id)));
-                      setSelectedIds([])
-                    }} variant="outline">Delete selected</Button>
+                    {/* Removed bulk delete for client safety */}
                   </div>
                 </div>
               )}
@@ -843,6 +887,39 @@ export function DocumentManager({
               <Button onClick={handleUpload}>
                 Upload
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">Please provide a reason for rejection.</p>
+            <Textarea rows={4} value={rejectReason} onChange={(e)=> setRejectReason(e.target.value)} placeholder="Reason or comment" />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=> setShowRejectDialog(false)}>Cancel</Button>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={submitReject}>Reject</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comment Dialog */}
+      <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea rows={4} value={commentContent} onChange={(e)=> setCommentContent(e.target.value)} placeholder="Write your comment..." />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=> setShowCommentDialog(false)}>Cancel</Button>
+              <Button onClick={submitComment}>Add Comment</Button>
             </div>
           </div>
         </DialogContent>
