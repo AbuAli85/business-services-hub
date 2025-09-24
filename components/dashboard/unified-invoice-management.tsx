@@ -608,27 +608,29 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-600">
-                    {userRole === 'client' ? 'Total Spent' : 'Total Revenue'}
-                  </p>
-                  <p className="text-2xl font-bold text-purple-900">
-                    {formatCurrency(stats.totalAmount, 'OMR')}
-                  </p>
-                  {stats.revenueTrend && (
-                    <div className={`flex items-center gap-1 text-sm ${getTrendColor(stats.revenueTrend)}`}>
-                      {getTrendIcon(stats.revenueTrend)}
-                      <span>{Math.abs(stats.revenueTrend).toFixed(1)}% vs last month</span>
-                    </div>
-                  )}
+          {userRole !== 'client' && (
+            <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">
+                      Total Revenue
+                    </p>
+                    <p className="text-2xl font-bold text-purple-900">
+                      {formatCurrency(stats.totalAmount, 'OMR')}
+                    </p>
+                    {stats.revenueTrend && (
+                      <div className={`flex items-center gap-1 text-sm ${getTrendColor(stats.revenueTrend)}`}>
+                        {getTrendIcon(stats.revenueTrend)}
+                        <span>{Math.abs(stats.revenueTrend).toFixed(1)}% vs last month</span>
+                      </div>
+                    )}
+                  </div>
+                  <DollarSign className="h-8 w-8 text-purple-600" />
                 </div>
-                <DollarSign className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Filters and Search */}
