@@ -77,7 +77,7 @@ export function ClientMilestoneViewer({
   const [taskComments, setTaskComments] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState<'progress' | 'documents'>('progress')
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
   const [showCommentDialog, setShowCommentDialog] = useState(false)
   const [showApprovalDialog, setShowApprovalDialog] = useState(false)
@@ -87,6 +87,31 @@ export function ClientMilestoneViewer({
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [notifications, setNotifications] = useState(true)
+
+  const handleShare = async () => {
+    try {
+      const url = typeof window !== 'undefined'
+        ? `${window.location.origin}/dashboard/bookings/${bookingId}`
+        : `/dashboard/bookings/${bookingId}`
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Project Progress', text: 'View project progress', url })
+        } catch (err) {
+          // Ignore if user cancels share
+        }
+      } else if (navigator.clipboard && 'writeText' in navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        toast.success('Link copied to clipboard')
+      } else {
+        // Fallback: open in new tab
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (error) {
+      console.error('Share failed:', error)
+      toast.error('Unable to share link')
+    }
+  }
 
   // Load data
   useEffect(() => {
@@ -471,13 +496,35 @@ export function ClientMilestoneViewer({
             {notifications ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
             {notifications ? 'Notifications On' : 'Notifications Off'}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleShare}>
             <Share className="h-4 w-4 mr-1" />
             Share
           </Button>
         </div>
       </div>
 
+      {/* Tabs Switcher */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex">
+            <button
+              className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 ${activeTab === 'progress' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent hover:bg-gray-50'}`}
+              onClick={() => setActiveTab('progress')}
+            >
+              Project Progress
+            </button>
+            <button
+              className={`flex-1 px-4 py-3 text-sm font-medium border-b-2 ${activeTab === 'documents' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent hover:bg-gray-50'}`}
+              onClick={() => setActiveTab('documents')}
+            >
+              Document Management
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {activeTab === 'progress' && (
+      <>
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -625,29 +672,35 @@ export function ClientMilestoneViewer({
         ))}
       </div>
 
-      {/* Documents Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Document Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DocumentManager
-            bookingId={bookingId}
-            userRole="client"
-            onDocumentUploaded={(document) => {
-              console.log('Document uploaded:', document)
-              toast.success('Document uploaded successfully')
-            }}
-            onRequestCreated={(request) => {
-              console.log('Document request created:', request)
-              toast.success('Document request created successfully')
-            }}
-          />
-        </CardContent>
-      </Card>
+      </>
+      )}
+
+      {activeTab === 'documents' && (
+      <>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Document Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DocumentManager
+              bookingId={bookingId}
+              userRole="client"
+              onDocumentUploaded={(document) => {
+                console.log('Document uploaded:', document)
+                toast.success('Document uploaded successfully')
+              }}
+              onRequestCreated={(request) => {
+                console.log('Document request created:', request)
+                toast.success('Document request created successfully')
+              }}
+            />
+          </CardContent>
+        </Card>
+      </>
+      )}
 
       {/* Comment Dialog */}
       <Dialog open={showCommentDialog} onOpenChange={(open: boolean) => {

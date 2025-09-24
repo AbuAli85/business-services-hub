@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 // Uses shared dashboard layout (sidebar/header) from app/dashboard/layout.tsx
 import { EnhancedClientKPIGrid, EnhancedClientPerformanceMetrics } from '@/components/dashboard/enhanced-client-kpi-cards'
-import { AdvancedClientSpendingChart } from '@/components/dashboard/advanced-client-spending-chart'
 import { PremiumClientBookings } from '@/components/dashboard/premium-client-bookings'
 import { EliteServiceSuggestions } from '@/components/dashboard/elite-service-suggestions'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -407,10 +406,7 @@ export default function ClientDashboard() {
                     </div>
                     {/* Single highlight to avoid duplication */}
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
-                        <div className="text-xl font-semibold text-blue-600">{stats?.totalSpent ? formatCurrency(stats.totalSpent) : 'OMR 0'}</div>
-                        <div className="text-sm text-gray-700">Total Spent</div>
-                      </div>
+                      {/* Spending tiles removed for client privacy */}
                       <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
                         <div className="text-xl font-semibold text-green-600">{stats?.activeBookings || 0}</div>
                         <div className="text-sm text-gray-700">Active</div>
@@ -450,10 +446,7 @@ export default function ClientDashboard() {
             <EnhancedClientPerformanceMetrics data={stats} />
           </section>
 
-          {/* Spending Chart */}
-          <section className="mb-8 sm:mb-10">
-            <AdvancedClientSpendingChart data={stats} />
-          </section>
+          {/* Spending analytics removed */}
 
           {/* Bookings + Service Suggestions */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 mb-8 sm:mb-10">

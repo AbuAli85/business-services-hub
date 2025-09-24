@@ -55,6 +55,8 @@ export function SmartBookingStatusComponent({
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showActionDialog, setShowActionDialog] = useState(false)
   const [selectedAction, setSelectedAction] = useState<ContextualAction | null>(null)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackRating, setFeedbackRating] = useState<number | null>(null)
 
   useEffect(() => {
     loadSmartStatus()
@@ -313,36 +315,7 @@ export function SmartBookingStatusComponent({
           </div>
         )}
 
-        {/* Risks */}
-        {status.risks.length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
-              Risks & Alerts
-            </h4>
-            <div className="space-y-2">
-              {status.risks.map(risk => (
-                <div key={risk.id} className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-orange-900">{risk.description}</span>
-                      <Badge className={getRiskColor(risk.severity)} variant="outline">
-                        {risk.severity}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-orange-800">{risk.impact}</p>
-                    {risk.mitigation && (
-                      <p className="text-xs text-orange-700 mt-1">
-                        <strong>Mitigation:</strong> {risk.mitigation}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Risks intentionally hidden for simplified Smart Status Overview in Manage Bookings */}
 
         {/* Contextual Actions */}
         {status.contextual_actions.length > 0 && (
@@ -394,47 +367,7 @@ export function SmartBookingStatusComponent({
           </div>
         )}
 
-        {/* Quick Navigation */}
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push(`/dashboard/bookings/${bookingId}`)}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push(`/dashboard/bookings/${bookingId}/milestones`)}
-            >
-              <Target className="h-4 w-4 mr-2" />
-              Manage Milestones
-            </Button>
-            {userRole === 'provider' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/dashboard/provider/invoices`)}
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                Invoices
-              </Button>
-            )}
-            {userRole === 'admin' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/dashboard/admin/services`)}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Admin Tools
-              </Button>
-            )}
-          </div>
-        </div>
+        {/* Quick Navigation removed per requirements */}
 
         {/* Action Confirmation Dialog */}
         <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
@@ -460,6 +393,41 @@ export function SmartBookingStatusComponent({
                   </div>
                 )}
 
+                {/* Feedback fields for add_feedback action */}
+                {selectedAction.action === 'add_feedback' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Your Rating (optional)</label>
+                      <div className="flex gap-2">
+                        {[1,2,3,4,5].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            className={`h-8 w-8 rounded-full border ${feedbackRating && feedbackRating >= n ? 'bg-yellow-400 border-yellow-500' : 'bg-white hover:bg-gray-50'}`}
+                            onClick={() => setFeedbackRating(n)}
+                            aria-label={`Rate ${n}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                        {feedbackRating !== null && (
+                          <button type="button" className="text-xs text-gray-500 underline" onClick={() => setFeedbackRating(null)}>Clear</button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+                      <textarea
+                        value={feedbackText}
+                        onChange={(e) => setFeedbackText(e.target.value)}
+                        rows={4}
+                        placeholder="Share feedback on the current progress..."
+                        className="w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
@@ -473,7 +441,15 @@ export function SmartBookingStatusComponent({
                       selectedAction.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
                       'bg-blue-600 hover:bg-blue-700'
                     }
-                    onClick={() => executeAction(selectedAction)}
+                  onClick={() => {
+                    // If this is a feedback action, require input and send via API
+                    if (selectedAction?.action === 'add_feedback') {
+                      if (!feedbackText.trim() && (feedbackRating === null)) return
+                      executeAction(selectedAction, { comment: feedbackText.trim(), rating: feedbackRating ?? undefined })
+                      return
+                    }
+                    executeAction(selectedAction)
+                  }}
                     disabled={!!actionLoading}
                   >
                     {actionLoading === selectedAction.id ? 'Processing...' : 'Confirm'}

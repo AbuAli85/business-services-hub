@@ -206,16 +206,19 @@ export default function ServicesPage() {
     const total = sourceServices.length
     const active = sourceServices.filter(s => (s.status || 'active') === 'active').length
     const pending = sourceServices.filter(s => (s.status || 'inactive') === 'inactive').length
-    const totalBookings = bookings.length
-    const totalRevenue = bookings
-      .filter(b => b.status === 'completed')
-      .reduce((sum, b) => sum + b.totalAmount, 0)
+    // For clients, show only their own bookings; for providers, show bookings per own services (already filtered above)
+    const totalBookings = bookings.filter((b:any) => {
+      if (userRole === 'client') return b.clientId === undefined ? (b.client_id === undefined ? false : b.client_id === (b.user_id || b.client_id)) : b.clientId === (b.user_id || b.clientId)
+      if (userRole === 'provider') return true
+      return true
+    }).length
+    const totalRevenue = 0 // Revenue hidden for clients
     const avgRating = sourceServices.length > 0 
       ? sourceServices.reduce((sum, s) => sum + (s.rating || 0), 0) / sourceServices.length 
       : 0
 
     return { total, active, pending, totalBookings, totalRevenue, avgRating }
-  }, [sourceServices, bookings])
+  }, [sourceServices, bookings, userRole])
 
   // Get unique categories
   const categories = useMemo(() => {
@@ -280,10 +283,12 @@ export default function ServicesPage() {
                 <Calendar className="h-4 w-4 mr-1" />
                 <span>Bookings: {stats.totalBookings}</span>
               </div>
-              <div className="flex items-center">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
-              </div>
+              {(userRole === 'provider' || userRole === 'admin') && (
+                <div className="flex items-center">
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-3">
@@ -347,17 +352,19 @@ export default function ServicesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4 text-orange-600" />
-              <div>
-                <p className="text-sm font-medium">Total Revenue</p>
-                <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+        {(userRole === 'provider' || userRole === 'admin') && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="h-4 w-4 text-orange-600" />
+                <div>
+                  <p className="text-sm font-medium">Total Revenue</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filters */}
@@ -454,7 +461,7 @@ export default function ServicesPage() {
                         </span>
                         <span className="flex items-center">
                           <Banknote className="h-3 w-3 mr-1" />
-                          {formatCurrency(service.basePrice, service.currency)}
+                          {formatCurrency(service.basePrice / 10, service.currency)}
                         </span>
                         {service.rating && (
                           <span className="flex items-center">
@@ -497,14 +504,18 @@ export default function ServicesPage() {
                 
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <div className="flex items-center space-x-4">
-                    <span className="flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {service.bookingCount || 0} bookings
-                    </span>
-                    <span className="flex items-center">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      {formatCurrency((service.bookingCount || 0) * service.basePrice, service.currency)} revenue
-                    </span>
+                    {userRole !== 'client' && (
+                      <span className="flex items-center">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {service.bookingCount || 0} bookings
+                      </span>
+                    )}
+                    {userRole !== 'client' && (
+                      <span className="flex items-center">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        {formatCurrency((service.bookingCount || 0) * service.basePrice, service.currency)} revenue
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-400">
                     Created {new Date(service.createdAt).toLocaleDateString()}

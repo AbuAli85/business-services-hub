@@ -375,6 +375,23 @@ export function DocumentManager({
     setCommentContent('')
   }
 
+  // Provider/Admin delete action
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return
+    try {
+      const ok = await documentManagementService.deleteDocument(documentId)
+      if (ok) {
+        setDocuments(prev => prev.filter(d => d.id !== documentId))
+        toast.success('Document deleted')
+      } else {
+        toast.error('Failed to delete document')
+      }
+    } catch (e) {
+      console.error('Delete error:', e)
+      toast.error('Failed to delete document')
+    }
+  }
+
   // Request status handlers
   const handleApproveRequest = async (requestId: string) => {
     try {
@@ -651,13 +668,13 @@ export function DocumentManager({
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
                     <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedIds.length>0 && selectedIds.length===filteredDocuments.length} onChange={(e)=> setSelectedIds(e.target.checked? filteredDocuments.map(d=>d.id): [])} /></th>
-                    {[
+                    {[ 
                       { key:'name', label:'Name' },
                       { key:'status', label:'Status' },
                       { key:'size', label:'Size' },
                       { key:'type', label:'Type' },
-                      { key:'version', label:'Version' },
-                      { key:'uploaded_by', label:'Uploaded By' },
+                      ...(userRole === 'provider' || userRole === 'client' ? [] : [{ key:'version', label:'Version' }]),
+                      ...(userRole === 'provider' || userRole === 'client' ? [] : [{ key:'uploaded_by', label:'Uploaded By' }]),
                       { key:'uploaded_at', label:'Created' },
                     ].map(col => (
                       <th key={col.key} className="px-3 py-2 text-left cursor-pointer" onClick={()=>{
@@ -687,8 +704,12 @@ export function DocumentManager({
                       </td>
                       <td className="px-3 py-2">{(doc.file_size/1024/1024).toFixed(2)} MB</td>
                       <td className="px-3 py-2">{doc.file_type}</td>
-                      <td className="px-3 py-2">v{doc.version || 1}</td>
-                      <td className="px-3 py-2">{doc.uploaded_by_user?.full_name || 'Unknown'}</td>
+                      {!(userRole === 'provider' || userRole === 'client') && (
+                        <td className="px-3 py-2">v{doc.version || 1}</td>
+                      )}
+                      {!(userRole === 'provider' || userRole === 'client') && (
+                        <td className="px-3 py-2">{doc.uploaded_by_user?.full_name || 'Unknown'}</td>
+                      )}
                       <td className="px-3 py-2">{new Date(doc.created_at).toLocaleDateString()}</td>
                       <td className="px-3 py-2 text-right">
                         <div className="inline-flex gap-2">
@@ -699,11 +720,14 @@ export function DocumentManager({
                             Download
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => openCommentModal(doc.id)}>Comment</Button>
-                          {userRole==='provider' && doc.status==='uploaded' && (
+                          {(userRole==='provider' || userRole==='client') && doc.status==='uploaded' && (
                             <>
                               <Button size="sm" onClick={()=>handleApproveDocument(doc.id)} className="bg-green-600 hover:bg-green-700 text-white">Approve</Button>
                               <Button size="sm" onClick={()=>openRejectModal(doc.id)} className="bg-red-600 hover:bg-red-700 text-white">Reject</Button>
                             </>
+                          )}
+                          {(userRole==='provider' || userRole==='admin') && (
+                            <Button size="sm" variant="outline" onClick={()=>handleDeleteDocument(doc.id)}>Delete</Button>
                           )}
                         </div>
                       </td>

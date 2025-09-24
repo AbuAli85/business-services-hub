@@ -1865,7 +1865,7 @@ export default function CompanyPage() {
                   <Button 
                     variant="outline" 
                     onClick={() => setEditing(true)}
-                    className="border-white/60 text-white hover:bg-white/10"
+                    className="bg-transparent border-white/80 text-white hover:bg-white/10 hover:text-white"
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Profile
@@ -1873,7 +1873,7 @@ export default function CompanyPage() {
                   <Button 
                     variant="outline" 
                     onClick={() => duplicateCompany(currentCompany)}
-                    className="border-white/60 text-white hover:bg-white/10"
+                    className="bg-transparent border-white/80 text-white hover:bg-white/10 hover:text-white"
                   >
                     <Copy className="h-4 w-4 mr-2" />
                     Duplicate
