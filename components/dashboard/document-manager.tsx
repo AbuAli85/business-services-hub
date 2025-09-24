@@ -89,6 +89,10 @@ export function DocumentManager({
   const [showCommentDialog, setShowCommentDialog] = useState(false)
   const [commentTargetId, setCommentTargetId] = useState<string | null>(null)
   const [commentContent, setCommentContent] = useState<string>('')
+  const [showCommentsDialog, setShowCommentsDialog] = useState(false)
+  const [commentsDocId, setCommentsDocId] = useState<string | null>(null)
+  const [commentsList, setCommentsList] = useState<any[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
   
   // Form states
   const [uploadForm, setUploadForm] = useState<DocumentUploadForm>({
@@ -384,6 +388,33 @@ export function DocumentManager({
     setShowCommentDialog(false)
     setCommentTargetId(null)
     setCommentContent('')
+  }
+
+  // Open comments viewer dialog
+  const openCommentsViewer = async (docId: string) => {
+    try {
+      setCommentsLoading(true)
+      setCommentsList([])
+      setCommentsDocId(docId)
+      setShowCommentsDialog(true)
+      const supabase = await getSupabaseClient()
+      const { data: rows, error } = await supabase
+        .from('document_comments')
+        .select('id, author_name, author_role, content, created_at')
+        .eq('document_id', docId)
+        .order('created_at', { ascending: true })
+      if (error) {
+        console.error('Load comments error:', error)
+        setCommentsList([])
+      } else {
+        setCommentsList(rows || [])
+      }
+    } catch (e) {
+      console.error('Open comments viewer error:', e)
+      setCommentsList([])
+    } finally {
+      setCommentsLoading(false)
+    }
   }
 
   // Provider/Admin delete action
@@ -730,6 +761,7 @@ export function DocumentManager({
                           <Button size="sm" variant="outline" onClick={() => handleDirectDownload(doc.file_url, doc.original_name)}>
                             Download
                           </Button>
+                          <Button size="sm" variant="outline" onClick={() => openCommentsViewer(doc.id)}>View Comments</Button>
                           <Button size="sm" variant="outline" onClick={() => openCommentModal(doc.id)}>Comment</Button>
                           {(userRole==='provider' || userRole==='client') && doc.status==='uploaded' && (
                             <>
@@ -1077,6 +1109,33 @@ export function DocumentManager({
                 Create Request
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comments Viewer Dialog */}
+      <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Document Comments</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-auto">
+            {commentsLoading ? (
+              <div className="text-sm text-gray-600">Loading comments…</div>
+            ) : commentsList.length === 0 ? (
+              <div className="text-sm text-gray-600">No comments yet</div>
+            ) : (
+              commentsList.map((c)=> (
+                <div key={c.id} className="p-3 rounded border bg-gray-50">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-sm font-medium text-gray-900">{c.author_name || 'User'}</div>
+                    <div className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString()}</div>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-1">{c.author_role || 'user'}</div>
+                  <div className="text-sm text-gray-800 whitespace-pre-wrap">{c.content}</div>
+                </div>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>
