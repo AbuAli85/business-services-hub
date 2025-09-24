@@ -738,6 +738,37 @@ export function DocumentManager({
                       <td className="px-3 py-2">
                         <div className="font-medium text-gray-900 truncate max-w-[280px]" title={doc.original_name}>{doc.original_name}</div>
                         <div className="text-xs text-gray-500">{doc.file_path}</div>
+                        {Array.isArray((doc as any).comments) && (doc as any).comments.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {([...(doc as any).comments]
+                              .sort((a: any,b: any)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                              .slice(-2)
+                            ).map((c: any) => (
+                              <div key={c.id} className="rounded-md border bg-gray-50 px-2 py-1 max-w-[420px]">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-medium text-gray-700 truncate">
+                                    {(c.author_name || 'User')}{c.author_role ? ` (${c.author_role})` : ''}
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 ml-2">
+                                    {new Date(c.created_at).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-800 whitespace-pre-wrap mt-0.5 line-clamp-2">
+                                  {c.content}
+                                </div>
+                              </div>
+                            ))}
+                            {((doc as any).comments.length > 2) && (
+                              <button
+                                type="button"
+                                className="text-xs text-blue-600 hover:underline"
+                                onClick={() => openCommentsViewer(doc.id)}
+                              >
+                                View all {(doc as any).comments.length} comments
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <Badge className={doc.status==='approved'? 'bg-green-100 text-green-800': doc.status==='rejected'? 'bg-red-100 text-red-800': 'bg-blue-100 text-blue-800'}>
