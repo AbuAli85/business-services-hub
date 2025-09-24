@@ -197,12 +197,39 @@ export default function ProfilePage() {
     try {
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
-      
       if (!user) return
+
+      // Read current row to discover available columns and avoid 400s
+      const { data: existing, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const allowedKeys = Object.keys(existing || {})
+      const candidate: Record<string, any> = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        country: formData.country,
+        bio: formData.bio,
+        skills: formData.skills,
+        experience_years: formData.experience_years,
+        education: formData.education,
+        languages: formData.languages,
+        portfolio_url: formData.portfolio_url,
+        linkedin_url: formData.linkedin_url,
+        website_url: formData.website_url,
+        updated_at: new Date().toISOString()
+      }
+      const payload = Object.fromEntries(
+        Object.entries(candidate).filter(([key]) => allowedKeys.includes(key))
+      )
 
       const { error } = await supabase
         .from('profiles')
-        .update(formData)
+        .update(payload)
         .eq('id', user.id)
 
       if (error) throw error
@@ -210,7 +237,6 @@ export default function ProfilePage() {
       setSuccess('Profile updated successfully!')
       setEditing(false)
       fetchProfileData()
-      
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
       console.error('Error updating profile:', err)
