@@ -590,9 +590,38 @@ export class SmartBookingStatusService {
 
     try {
       switch (actionId) {
-        case 'approve':
-          await this.updateBookingStatus(bookingId, 'approved', userRole)
-          return { success: true, message: 'Booking approved successfully' }
+        case 'approve': {
+          // Use API endpoint to bypass RLS and run all side-effects (notifications/invoice)
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session?.access_token) {
+              return { success: false, message: 'Not authenticated' }
+            }
+
+            const res = await fetch('/api/bookings', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                booking_id: bookingId,
+                action: 'approve'
+              })
+            })
+
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}))
+              console.warn('Approve booking API failed:', res.status, data)
+              return { success: false, message: 'Failed to update booking' }
+            }
+
+            return { success: true, message: 'Booking approved successfully' }
+          } catch (err) {
+            console.error('Approve booking request error:', err)
+            return { success: false, message: 'Failed to update booking' }
+          }
+        }
 
         case 'decline':
           await this.updateBookingStatus(bookingId, 'cancelled', userRole)
