@@ -385,7 +385,8 @@ export default function ClientDashboard() {
             </Button>
           </div>
 
-          {/* Welcome Section (no duplicate KPI tiles) */}
+          {/* Welcome Section removed per request to avoid duplicate cards */}
+          {false && (
           <div className="mb-8 sm:mb-10">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-purple-50/60 rounded-3xl -m-6 sm:-m-8 lg:-m-10"></div>
@@ -416,7 +417,7 @@ export default function ClientDashboard() {
                         <div className="text-sm text-gray-700">Completed</div>
                       </div>
                       <div className="text-center p-4 bg-white/70 rounded-2xl border border-white/40 shadow">
-                        <div className="text-xl font-semibold text-orange-600">{stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}</div>
+                        <div className="text-xl font-semibold text-orange-600">{stats?.averageRating ? (stats?.averageRating as number).toFixed(1) : 'N/A'}</div>
                         <div className="text-sm text-gray-700">Avg Rating</div>
                       </div>
                     </div>
@@ -435,15 +436,16 @@ export default function ClientDashboard() {
               </div>
             </div>
           </div>
+          )}
 
-          {/* KPI Grid */}
+          {/* KPI Grid - keep this as the only top overview */}
           <section className="mb-8 sm:mb-10">
-            <EnhancedClientKPIGrid data={stats} />
+            {stats && <EnhancedClientKPIGrid data={stats} />}
           </section>
 
           {/* Performance Metrics */}
           <section className="mb-8 sm:mb-10">
-            <EnhancedClientPerformanceMetrics data={stats} />
+            {stats && <EnhancedClientPerformanceMetrics data={stats} />}
           </section>
 
           {/* Spending analytics removed */}
