@@ -185,13 +185,20 @@ export default function BookingsPage() {
       
       console.log('📡 Fetching from:', apiEndpoint)
       
-      const res = await fetch(apiEndpoint, { 
+      // Resilient fetch: always include cookies; retry once on 401 to allow session refresh
+      const doFetch = async () => fetch(apiEndpoint, { 
         cache: 'no-store',
-        credentials: 'same-origin',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         }
       })
+      let res = await doFetch()
+      if (res.status === 401) {
+        // brief delay to allow middleware/session refresh to complete
+        await new Promise(r => setTimeout(r, 250))
+        res = await doFetch()
+      }
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -241,7 +248,7 @@ export default function BookingsPage() {
         // Load invoices separately for non-admin users
         try {
           const invoiceRes = await fetch('/api/invoices', {
-            credentials: 'same-origin',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
           })
           if (invoiceRes.ok) {
