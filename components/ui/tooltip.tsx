@@ -12,23 +12,15 @@ interface TooltipProps {
 }
 
 type TooltipContextValue = {
-  isOpen: boolean
-  setIsOpen: (open: boolean) => void
   delayDuration: number
   skipDelayDuration: number
-  lastOpenAt: number
-  setLastOpenAt: (t: number) => void
   defaultSide: "top" | "bottom" | "left" | "right"
   defaultClassName?: string
 }
 
 const TooltipContext = React.createContext<TooltipContextValue>({
-  isOpen: false,
-  setIsOpen: () => {},
   delayDuration: 200,
   skipDelayDuration: 500,
-  lastOpenAt: 0,
-  setLastOpenAt: () => {},
   defaultSide: "top",
   defaultClassName: undefined
 })
@@ -42,18 +34,17 @@ type TooltipProviderProps = {
 }
 
 const TooltipProvider = ({ children, delayDuration = 200, skipDelayDuration = 500, defaultSide = "top", defaultClassName }: TooltipProviderProps) => {
-  const [isOpen, setIsOpen] = React.useState(false)
-  const [lastOpenAt, setLastOpenAt] = React.useState(0)
-  
   return (
-    <TooltipContext.Provider value={{ isOpen, setIsOpen, delayDuration, skipDelayDuration, lastOpenAt, setLastOpenAt, defaultSide, defaultClassName }}>
+    <TooltipContext.Provider value={{ delayDuration, skipDelayDuration, defaultSide, defaultClassName }}>
       {children}
     </TooltipContext.Provider>
   )
 }
 
 const Tooltip = ({ children, content, side, className }: TooltipProps) => {
-  const { isOpen, setIsOpen, delayDuration, skipDelayDuration, lastOpenAt, setLastOpenAt, defaultSide, defaultClassName } = React.useContext(TooltipContext)
+  const { delayDuration, skipDelayDuration, defaultSide, defaultClassName } = React.useContext(TooltipContext)
+  const [isOpen, setIsOpen] = React.useState(false)
+  const [lastOpenAt, setLastOpenAt] = React.useState(0)
   const [position, setPosition] = React.useState({ top: 0, left: 0 })
   const triggerRef = React.useRef<HTMLDivElement>(null)
   const contentRef = React.useRef<HTMLDivElement>(null)

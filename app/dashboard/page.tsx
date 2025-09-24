@@ -37,6 +37,22 @@ export default function DashboardPage() {
     checkAuth()
   }, [])
 
+  // Once we know the user's role, send them to their role-specific dashboard
+  useEffect(() => {
+    if (!user) return
+    if (!userRole) return
+    // Redirect providers and clients to their dedicated dashboards
+    if (userRole === 'provider') {
+      router.replace('/dashboard/provider')
+      return
+    }
+    if (userRole === 'client') {
+      router.replace('/dashboard/client')
+      return
+    }
+    // Admins remain on this page (admin overview)
+  }, [user, userRole, router])
+
   // Set up real-time refresh every 30 seconds
   useEffect(() => {
     if (user?.id) {
@@ -58,8 +74,19 @@ export default function DashboardPage() {
       }
 
       setUser(user)
-      const role = user.user_metadata?.role || 'client'
-      setUserRole(role)
+      // Prefer role from profiles table when available; fallback to metadata
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        const role = (profile?.role as string) || (user.user_metadata?.role as string) || 'client'
+        setUserRole(role)
+      } catch {
+        const role = (user.user_metadata?.role as string) || 'client'
+        setUserRole(role)
+      }
     } catch (error) {
       router.push('/auth/sign-in')
     }

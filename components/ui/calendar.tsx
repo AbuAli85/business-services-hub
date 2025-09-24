@@ -15,6 +15,12 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  // When using captionLayout="dropdown" in react-day-picker, the default caption_label
+  // still renders alongside the dropdowns, which looks like duplicated month/year.
+  // Hide the caption label in dropdown modes to avoid the duplicate UI seen in booking form.
+  const isDropdownCaption =
+    (props as any)?.captionLayout === 'dropdown' || (props as any)?.captionLayout === 'dropdown-buttons'
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -23,7 +29,7 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: cn("text-sm font-medium", isDropdownCaption && "sr-only"),
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
