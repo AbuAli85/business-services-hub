@@ -443,10 +443,7 @@ export default function ClientDashboard() {
             {stats && <EnhancedClientKPIGrid data={stats} />}
           </section>
 
-          {/* Performance Metrics */}
-          <section className="mb-8 sm:mb-10">
-            {stats && <EnhancedClientPerformanceMetrics data={stats} />}
-          </section>
+          {/* Performance Analytics removed per request */}
 
           {/* Spending analytics removed */}
 
