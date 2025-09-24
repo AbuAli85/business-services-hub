@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { AuthMiddleware } from '@/lib/auth-middleware'
+import { updateSession } from '@/utils/supabase/middleware'
 
 // Basic edge middleware for CORS + security headers + simple rate limiting bucket
 const ENV_ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_APP_URL || ''
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 let SUPABASE_HOST = ''
 try { if (SUPABASE_URL) SUPABASE_HOST = new URL(SUPABASE_URL).host } catch {}
 
@@ -42,9 +44,16 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // For protected app routes, enforce auth using AuthMiddleware
+  // Determine if route needs auth checks
   const needsAuthCheck = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/onboarding') || pathname.startsWith('/auth/pending-approval')
+
+  // Only normalize Supabase session cookies for protected routes and when env is present
   let res = NextResponse.next()
+  if (needsAuthCheck && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      res = await updateSession(req)
+    } catch {}
+  }
   if (needsAuthCheck) {
     const auth = new AuthMiddleware()
     res = await auth.handleRequest(req)
@@ -94,7 +103,20 @@ export async function middleware(req: NextRequest) {
     return new NextResponse(null, { status: 204, headers: res.headers })
   }
 
-  return res
+  // For protected routes, preserve potential redirects from auth middleware
+  if (needsAuthCheck) {
+    return res
+  }
+
+  // For non-protected routes, optionally forward a minimal allow-listed header set upstream
+  const forwarded = new Headers()
+  req.headers.forEach((v, k) => {
+    const n = k.toLowerCase()
+    if (!n.startsWith('x-') && n !== 'authorization' && n !== 'cookie') {
+      forwarded.set(k, v)
+    }
+  })
+  return NextResponse.next({ request: { headers: forwarded }, headers: res.headers })
 }
 
 export const config = {

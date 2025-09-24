@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/server'
+import { requireRole } from '@/lib/authz'
+import { jsonError } from '@/lib/http'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { z as zod } from 'zod'
 
@@ -35,26 +37,22 @@ const CreateBookingSchema = z.object({
   location: z.string().optional()
 })
 
-// Helper function to authenticate user
+// Helper function to authenticate user (legacy for PATCH flow)
 async function authenticateUser(request: NextRequest) {
-  let user = null
-  let authError = null
+  let user: any = null
+  let authError: any = null
   
   try {
-    // Use admin client for server-side authentication
-    const supabase = await getSupabaseAdminClient()
+    const supabase = await createClient()
     
-    // Get cookies from the request
     const cookieHeader = request.headers.get('cookie')
     console.log('🔍 Cookie header present:', !!cookieHeader)
     
-    // Try to get user from Authorization header first
     const authHeader = request.headers.get('authorization')
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7)
       console.log('🔍 Bearer token found, length:', token.length)
       try {
-        // Verify the JWT token
         const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
         if (tokenUser && !tokenError) {
           user = tokenUser
@@ -70,11 +68,9 @@ async function authenticateUser(request: NextRequest) {
       }
     }
     
-    // If no Authorization header, try to extract session from cookies
     if (!user && cookieHeader) {
       try {
-        // Extract access token from cookies
-        const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+        const cookies = cookieHeader.split(';').reduce((acc: Record<string, string>, cookie: string) => {
           const [key, value] = cookie.trim().split('=')
           acc[key] = value
           return acc
@@ -82,7 +78,6 @@ async function authenticateUser(request: NextRequest) {
         
         console.log('🔍 Available cookies:', Object.keys(cookies))
         
-        // Try multiple possible cookie names for Supabase auth tokens
         const possibleTokenKeys = [
           'sb-access-token',
           'supabase-auth-token', 
@@ -91,7 +86,7 @@ async function authenticateUser(request: NextRequest) {
           'sb-' + (process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || 'default') + '-auth-token'
         ]
         
-        let accessToken = null
+        let accessToken: string | null = null
         for (const key of possibleTokenKeys) {
           if (cookies[key]) {
             accessToken = cookies[key]
@@ -135,29 +130,9 @@ async function authenticateUser(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔍 Bookings API POST called')
-    console.log('🔍 Environment check:', {
-      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      nodeEnv: process.env.NODE_ENV
-    })
-    
-    const { user, authError } = await authenticateUser(request)
-    
-    if (authError || !user) {
-      console.error('❌ Auth error:', authError)
-      const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
-        ? authError.message 
-        : 'Authentication failed'
-      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-      return response
-    }
-    
-    console.log('🔍 Attempting to get Supabase admin client...')
-    const supabase = await getSupabaseAdminClient()
-    console.log('✅ Supabase admin client obtained')
+    const supabase = await createClient()
+    const gate = await requireRole(['client', 'provider', 'admin'])
+    if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
     
     // Test database connection
     console.log('🔍 Testing database connection...')
@@ -178,7 +153,7 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ Database connection test passed')
 
-    console.log('✅ User authenticated:', user.id)
+    const user = gate.user
 
     const body = await request.json()
     
@@ -373,37 +348,16 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     const errorType = error instanceof Error ? error.constructor.name : typeof error
     
-    const response = NextResponse.json({ 
-      error: 'Internal server error', 
-      details: errorMessage,
-      type: errorType,
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-    return response
+    return jsonError(500, 'INTERNAL_ERROR', errorMessage)
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Bookings API GET called')
-    
-    const { user, authError } = await authenticateUser(request)
-    
-    if (authError || !user) {
-      console.error('❌ Auth error:', authError)
-      const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
-        ? authError.message 
-        : 'Authentication failed'
-      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-      return response
-    }
-    
-    const supabase = await getSupabaseAdminClient()
-    console.log('✅ Supabase admin client obtained')
-
-    console.log('✅ User authenticated:', user.id)
+    const supabase = await createClient()
+    const gate = await requireRole(['client', 'provider', 'admin'])
+    if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
+    const user = gate.user
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -488,9 +442,9 @@ export async function GET(request: NextRequest) {
 
     // Now enrich the bookings with profile data
     const enrichedBookings = await Promise.all(
-      (bookings || []).map(async (booking) => {
-        let clientProfile = null
-        let providerProfile = null
+      (bookings || []).map(async (booking: any) => {
+        let clientProfile: any = null
+        let providerProfile: any = null
         
         if (booking.client_id) {
           const { data: clientData } = await supabase
@@ -518,15 +472,11 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    const response = NextResponse.json({ bookings: enrichedBookings })
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-    return response
+    return Response.json({ bookings: enrichedBookings }, { headers: corsHeaders })
 
   } catch (error) {
     console.error('Error fetching bookings:', error)
-    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-    return response
+    return jsonError(500, 'INTERNAL_ERROR', 'Internal server error')
   }
 }
 
@@ -573,8 +523,8 @@ export async function PATCH(request: NextRequest) {
       return response
     }
     
-    const supabase = await getSupabaseAdminClient()
-    console.log('✅ Supabase admin client obtained')
+    const supabase = await createClient()
+    console.log('✅ Supabase client obtained')
 
     console.log('✅ User authenticated:', user.id)
     console.log('🔍 API: Full user object:', JSON.stringify(user, null, 2))
@@ -694,7 +644,7 @@ export async function PATCH(request: NextRequest) {
       }
       
       console.log('🔍 API: No booking found with ID:', booking_id)
-      console.log('🔍 API: Available user bookings:', userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status })))
+      console.log('🔍 API: Available user bookings:', (userBookings || []).map((b: any) => ({ id: b.id, title: b.title, status: b.status })))
       
       const response = NextResponse.json({ 
         error: 'Booking not found', 
@@ -703,9 +653,9 @@ export async function PATCH(request: NextRequest) {
           requested_booking_id: booking_id,
           user_id: user.id,
           user_role: user.user_metadata?.role,
-          available_bookings: userBookings?.map(b => ({ id: b.id, title: b.title, status: b.status })),
-          total_user_bookings: userBookings?.length || 0,
-          database_sample: allBookings?.slice(0, 3).map(b => ({ id: b.id, title: b.title || 'No title', status: b.status, created_at: b.created_at })),
+          available_bookings: (userBookings || []).map((b: any) => ({ id: b.id, title: b.title, status: b.status })),
+          total_user_bookings: (userBookings || []).length || 0,
+          database_sample: (allBookings || []).slice(0, 3).map((b: any) => ({ id: b.id, title: b.title || 'No title', status: b.status, created_at: b.created_at })),
           user_context: {
             user_id: user.id,
             user_email: user.email,
