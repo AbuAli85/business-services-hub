@@ -187,6 +187,7 @@ export default function BookingsPage() {
       
       const res = await fetch(apiEndpoint, { 
         cache: 'no-store',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json'
         }
@@ -195,6 +196,13 @@ export default function BookingsPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         console.error('❌ API request failed:', res.status, errorData)
+        
+        // Handle 401 authentication errors
+        if (res.status === 401) {
+          console.log('🔐 Authentication required, redirecting to sign-in')
+          router.push('/auth/sign-in')
+          return
+        }
         
         // For non-critical errors, show empty state instead of error
         if (res.status === 404 || res.status === 403) {
@@ -233,6 +241,7 @@ export default function BookingsPage() {
         // Load invoices separately for non-admin users
         try {
           const invoiceRes = await fetch('/api/invoices', {
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' }
           })
           if (invoiceRes.ok) {

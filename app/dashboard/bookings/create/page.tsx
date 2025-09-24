@@ -232,6 +232,7 @@ export default function CreateBookingPage() {
       // Call server API which validates, derives provider_id, creates notifications and milestones
       const res = await fetch('/api/bookings', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           service_id: selectedService.id,

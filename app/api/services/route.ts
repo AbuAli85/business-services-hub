@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/server'
 import { z } from 'zod'
 import { withCors, ok, created, badRequest, unauthorized, forbidden, handleOptions } from '@/lib/api-helpers'
 
@@ -26,7 +26,7 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await createClient()
     const { searchParams } = new URL(request.url)
     
     // Get query parameters
@@ -79,12 +79,10 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch provider information separately to avoid complex joins
-    const admin = getSupabaseAdminClient()
-
     const enrichedServices = await Promise.all(
       (services || []).map(async (service) => {
         try {
-          const { data: provider } = await admin
+          const { data: provider } = await supabase
             .from('profiles')
             .select('id, full_name, email, phone, company_name, avatar_url')
             .eq('id', service.provider_id)
@@ -140,7 +138,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await createClient()
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -212,7 +210,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await createClient()
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

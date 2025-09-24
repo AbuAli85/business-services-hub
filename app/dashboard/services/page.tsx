@@ -73,7 +73,7 @@ export default function ServicesPage() {
         if (role === 'provider') {
           // 1) Try direct provider_id query
           const params1 = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
-          let res = await fetch(`/api/services?${params1.toString()}`, { cache: 'no-store' })
+          let res = await fetch(`/api/services?${params1.toString()}`, { cache: 'no-store', credentials: 'same-origin' })
           if (res.ok) {
             const json = await res.json()
             list = json.services || []
@@ -81,7 +81,7 @@ export default function ServicesPage() {
           // 2) If empty, fetch all and filter by provider
           if (list.length === 0) {
             const params2 = new URLSearchParams({ limit: '200', page: '1' })
-            const resAll = await fetch(`/api/services?${params2.toString()}`, { cache: 'no-store' })
+            const resAll = await fetch(`/api/services?${params2.toString()}`, { cache: 'no-store', credentials: 'same-origin' })
             if (resAll.ok) {
               const jsonAll = await resAll.json()
               const all: any[] = jsonAll.services || []
@@ -91,7 +91,7 @@ export default function ServicesPage() {
         } else {
           // client/admin/staff: show all active
           const params = new URLSearchParams({ status: 'active', limit: '200', page: '1' })
-          const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store' })
+          const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store', credentials: 'same-origin' })
           if (res.ok) {
             const json = await res.json()
             list = json.services || []

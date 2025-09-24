@@ -85,9 +85,14 @@ export default function ServiceDetail() {
             setHasBooking(false)
           }
         } catch {}
-        const res = await fetch(`/api/services/${serviceId}`, { cache: 'no-store' })
+        const res = await fetch(`/api/services/${serviceId}`, { cache: 'no-store', credentials: 'same-origin' })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
+          if (res.status === 401) {
+            // Redirect to sign-in for authentication errors
+            window.location.href = '/auth/sign-in'
+            return
+          }
           throw new Error(body?.error || `Failed to load service (${res.status})`)
         }
         const data = await res.json()

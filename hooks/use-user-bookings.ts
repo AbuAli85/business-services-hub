@@ -35,8 +35,8 @@ export function useUserBookings() {
       }
 
       const [asClient, asProvider] = await Promise.all([
-        fetch('/api/bookings?role=client', { cache: 'no-store' }).then((r) => r.ok ? r.json() : r.json().then((x) => Promise.reject(x))).catch(() => ({ bookings: [] })),
-        fetch('/api/bookings?role=provider', { cache: 'no-store' }).then((r) => r.ok ? r.json() : r.json().then((x) => Promise.reject(x))).catch(() => ({ bookings: [] })),
+        fetch('/api/bookings?role=client', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.ok ? r.json() : r.json().then((x) => Promise.reject(x))).catch(() => ({ bookings: [] })),
+        fetch('/api/bookings?role=provider', { cache: 'no-store', credentials: 'same-origin' }).then((r) => r.ok ? r.json() : r.json().then((x) => Promise.reject(x))).catch(() => ({ bookings: [] })),
       ])
 
       const merged = [...(asClient.bookings || []), ...(asProvider.bookings || [])]

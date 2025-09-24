@@ -52,10 +52,18 @@ export default function ConsultationPage() {
     try {
       const res = await fetch('/api/consultation', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        if (res.status === 401) {
+          // Redirect to sign-in for authentication errors
+          window.location.href = '/auth/sign-in'
+          return
+        }
+        throw new Error(await res.text())
+      }
       setSubmitted(true)
     } catch (err) {
       console.error('Consultation submit failed', err)

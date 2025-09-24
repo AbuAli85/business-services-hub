@@ -50,7 +50,8 @@ async function fetchServicesSSR(params: { category?: string; search?: string; pa
   if (params.category && params.category !== 'all') query.set('category', params.category)
   if (params.search) query.set('search', params.search)
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/services?${query.toString()}`, {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  const res = await fetch(`${baseUrl}/api/services?${query.toString()}`, {
     // Use ISR; let upstream API be cached by Next
     next: { revalidate }
   })
