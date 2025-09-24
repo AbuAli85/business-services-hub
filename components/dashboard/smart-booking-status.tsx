@@ -446,6 +446,17 @@ export function SmartBookingStatusComponent({
                     if (selectedAction?.action === 'add_feedback') {
                       if (!feedbackText.trim() && (feedbackRating === null)) return
                       executeAction(selectedAction, { comment: feedbackText.trim(), rating: feedbackRating ?? undefined })
+                        .then((res:any) => {
+                          if (res?.success) {
+                            toast.success('Feedback submitted')
+                            setShowActionDialog(false)
+                            setFeedbackText('')
+                            setFeedbackRating(null)
+                            onStatusChange?.()
+                          } else {
+                            toast.error(res?.message || 'Failed to submit feedback')
+                          }
+                        })
                       return
                     }
                     executeAction(selectedAction)

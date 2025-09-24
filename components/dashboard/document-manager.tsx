@@ -367,6 +367,17 @@ export function DocumentManager({
     const created = await documentManagementService.addComment(commentTargetId, { content: commentContent.trim(), is_internal: false })
     if (created) {
       toast.success('Comment added')
+      // Update local documents array to show latest comment count by refetching a minimal row
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: refreshed } = await supabase
+          .from('documents')
+          .select('id')
+          .eq('id', commentTargetId)
+          .single()
+        // no-op, we just force a light refresh of the list by reloading page data
+        await loadData()
+      } catch {}
     } else {
       toast.error('Failed to add comment')
     }
