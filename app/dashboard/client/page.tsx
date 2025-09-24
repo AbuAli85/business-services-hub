@@ -471,12 +471,6 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Button onClick={() => router.push('/services')} className="h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
-                      <div className="text-center">
-                        <div className="text-base font-semibold">Browse Services</div>
-                        <div className="text-xs opacity-90">Find what you need</div>
-                      </div>
-                    </Button>
                     <Button onClick={() => router.push('/dashboard/bookings/create')} className="h-16 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
                       <div className="text-center">
                         <div className="text-base font-semibold">Book Service</div>
