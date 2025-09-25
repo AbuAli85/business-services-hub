@@ -361,7 +361,10 @@ export async function GET(request: NextRequest) {
     const cookieHeader = headersList.get('cookie') || ''
     const cookieTokenMatch = cookieHeader.match(/sb-access-token=([^;]+)/)
     const cookieToken = cookieTokenMatch ? decodeURIComponent(cookieTokenMatch[1]) : null
-    const resolvedToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : (xAuthHeader || cookieToken || null)
+    const cookieToken2 = request.cookies.get('sb-access-token')?.value || null
+    const resolvedToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.substring(7)
+      : (xAuthHeader || cookieToken2 || cookieToken || null)
     const useTokenClient = !!resolvedToken
     const token = resolvedToken
     const supabase = useTokenClient
@@ -385,7 +388,7 @@ export async function GET(request: NextRequest) {
     console.log('🔐 Token sources:', {
       hasAuthorization: !!authHeader,
       hasXAuth: !!xAuthHeader,
-      hasCookieToken: !!cookieToken,
+      hasCookieToken: !!cookieToken || !!cookieToken2,
       tokenPreview: token ? token.substring(0, 10) + '...' : 'none'
     })
 
