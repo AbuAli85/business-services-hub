@@ -69,6 +69,8 @@ export default function BookingsPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [lastRefreshTime, setLastRefreshTime] = useState(0)
+  const [realtimeReady, setRealtimeReady] = useState(false)
+  const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
 
   // Helper for custom tooltips
   const Tip: React.FC<{label: string; children: React.ReactNode}> = ({ label, children }) => (
@@ -322,7 +324,7 @@ export default function BookingsPage() {
 
   // Separate effect for refresh trigger to prevent infinite loops
   useEffect(() => {
-    if (refreshTrigger > 0 && user && userRole && !userLoading) {
+    if (refreshTrigger > 0 && user && userRole && !userLoading && realtimeReady) {
       const now = Date.now()
       // Only refresh if it's been at least 5 seconds since last refresh
       if (now - lastRefreshTime > 5000) {
@@ -333,11 +335,11 @@ export default function BookingsPage() {
         console.log('⏸️ Skipping refresh - too soon since last refresh (', now - lastRefreshTime, 'ms ago)')
       }
     }
-  }, [refreshTrigger, user, userRole, userLoading, loadSupabaseData, lastRefreshTime])
+  }, [refreshTrigger, user, userRole, userLoading, loadSupabaseData, lastRefreshTime, realtimeReady])
 
   // Realtime subscriptions for live updates
   useEffect(() => {
-    if (!user || !userRole) return
+    if (!user || !userRole || !enableRealtime) return
 
     let bookingsChannel: any
     let milestonesChannel: any  
@@ -346,6 +348,11 @@ export default function BookingsPage() {
 
     const setupRealtimeSubscriptions = async () => {
       try {
+        // Add a delay to prevent immediate refresh triggers after initial load
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        
+        if (!isMounted) return
+        
         console.log('🔄 Setting up realtime subscriptions for:', userRole)
         const supabase = await getSupabaseClient()
 
@@ -442,9 +449,11 @@ export default function BookingsPage() {
           .subscribe()
 
         console.log('✅ Realtime subscriptions active')
+        setRealtimeReady(true)
       } catch (error) {
         console.error('❌ Realtime subscription error:', error)
         // Non-blocking - continue without realtime if it fails
+        setRealtimeReady(true) // Still set ready even if realtime fails
   }
   }
 
@@ -453,6 +462,7 @@ export default function BookingsPage() {
     // Cleanup function
     return () => {
       isMounted = false
+      setRealtimeReady(false)
       console.log('🧹 Cleaning up realtime subscriptions')
       
       const cleanup = async () => {
@@ -468,7 +478,7 @@ export default function BookingsPage() {
       
       cleanup()
   }
-  }, [user, userRole])
+  }, [user, userRole, enableRealtime])
 
   // Debounce searchQuery for smoother UX
   useEffect(() => {
