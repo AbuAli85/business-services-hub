@@ -187,44 +187,42 @@ export default function BookingsPage() {
       
       // Use authenticated API request with fallback
       const { apiRequest } = await import('@/lib/api-utils')
-      
-      const doFetch = async () => apiRequest(apiEndpoint, { 
+
+      const doFetch = async () => apiRequest(apiEndpoint, {
         cache: 'no-store'
       })
+
+      // Try the request with automatic token refresh handling
       let res = await doFetch()
-      if (res.status === 401) {
-        // brief delay to allow middleware/session refresh to complete
-        await new Promise(r => setTimeout(r, 250))
-        res = await doFetch()
-      }
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         console.error('❌ API request failed:', res.status, errorData)
-        
-        // Handle 401 authentication errors
+
+        // Handle authentication errors (401)
         if (res.status === 401) {
-          console.log('🔐 Authentication required (401). Checking if we can refresh session...')
-          
-          // Try one more time to refresh session and reload
-          try {
-            const supabase = await getSupabaseClient()
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-            
-            if (!refreshError && refreshData.session) {
-              console.log('✅ Session refreshed, retrying data load...')
-              // Retry loading data after a short delay
-              setTimeout(() => loadSupabaseData(), 1000)
-              return
-            } else {
-              console.log('❌ Session refresh failed, showing expired state')
-              setError('Your session has expired. Please sign in again to continue.')
+          console.log('🔐 Authentication required (401). Token refresh should have been handled automatically.')
+
+          // Check if we have a valid session after the automatic refresh attempt
+          const supabase = await getSupabaseClient()
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+          if (sessionError || !session) {
+            console.log('❌ Session check failed after automatic refresh attempt')
+            setError('Your session has expired. Please sign in again to continue.')
+            router.push('/auth/sign-in')
+            return
+          } else {
+            console.log('✅ Session appears valid after refresh, but API still returned 401')
+            // Try one more time in case there was a timing issue
+            await new Promise(r => setTimeout(r, 500))
+            const retryRes = await doFetch()
+            if (!retryRes.ok) {
+              setError('Authentication failed. Please sign in again to continue.')
+              router.push('/auth/sign-in')
               return
             }
-          } catch (refreshError) {
-            console.log('❌ Session refresh error:', refreshError)
-            setError('Your session has expired. Please sign in again to continue.')
-            return
+            res = retryRes // Use the successful retry response
           }
         }
         
