@@ -171,12 +171,28 @@ export class AuthMiddleware {
   async handleRequest(req: NextRequest): Promise<NextResponse> {
     const { pathname } = req.nextUrl
 
+    console.log('🔍 Middleware: Processing request for:', pathname)
+
     // Skip middleware for static files and API routes that don't need auth
     if (pathname.startsWith('/_next') ||
         pathname.startsWith('/favicon') ||
         pathname.startsWith('/api/webhooks') ||
         pathname.startsWith('/api/auth/sync-token')) {
+      console.log('🔍 Middleware: Skipping middleware for:', pathname)
       return NextResponse.next()
+    }
+
+    // For API routes, check if they need authentication
+    if (pathname.startsWith('/api/')) {
+      const requiredRoute = this.getRequiredRole(pathname)
+      console.log('🔍 Middleware: API route check:', { pathname, requiredRoute: !!requiredRoute })
+      if (!requiredRoute) {
+        // API route doesn't need auth, skip middleware
+        console.log('🔍 Middleware: API route does not need auth, skipping:', pathname)
+        return NextResponse.next()
+      }
+      // API route needs auth, continue with middleware processing
+      console.log('🔍 Middleware: API route needs auth, processing:', pathname)
     }
 
     // Check if route is public
@@ -232,6 +248,13 @@ export class AuthMiddleware {
     const requestHeaders = new Headers(req.headers)
     if (authResult.accessToken) {
       requestHeaders.set('authorization', `Bearer ${authResult.accessToken}`)
+      console.log('🔍 Middleware: Forwarding access token to downstream:', {
+        hasToken: !!authResult.accessToken,
+        tokenPreview: authResult.accessToken ? `${authResult.accessToken.substring(0, 20)}...` : 'N/A',
+        pathname: req.nextUrl.pathname
+      })
+    } else {
+      console.log('⚠️ Middleware: No access token to forward')
     }
 
     // Add user info to response headers for debugging/observability
