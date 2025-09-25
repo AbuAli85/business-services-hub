@@ -358,6 +358,7 @@ export async function GET(request: NextRequest) {
     const headersList = request.headers
     const authHeader = headersList.get('authorization')
     const useTokenClient = !!authHeader && authHeader.startsWith('Bearer ')
+    const token = useTokenClient ? authHeader!.substring(7) : null
     const supabase = useTokenClient
       ? createSupabaseClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -368,10 +369,38 @@ export async function GET(request: NextRequest) {
                 Authorization: authHeader as string,
               },
             },
+            auth: {
+              persistSession: false,
+              detectSessionInUrl: false,
+            },
           }
         )
       : await createClient()
     console.log('🔐 Bookings GET auth path:', useTokenClient ? 'authorization_header' : 'cookies')
+    console.log('🔐 Has auth header:', !!authHeader, 'tokenPreview:', token ? token.substring(0, 10) + '...' : 'none')
+
+    // Ensure the client carries the token for PostgREST/RLS
+    if (useTokenClient && token) {
+      try {
+        await supabase.auth.setSession({ access_token: token, refresh_token: '' })
+        console.log('🔐 Session set on server client using bearer token')
+      } catch (e) {
+        console.log('⚠️ setSession failed:', e)
+      }
+    }
+
+    try {
+      const { data: uByCookie, error: uByCookieErr } = await supabase.auth.getUser()
+      const { data: uByToken, error: uByTokenErr } = token ? await supabase.auth.getUser(token) : { data: null, error: null }
+      console.log('👤 auth.getUser() results:', {
+        byCookieUserId: uByCookie?.user?.id || null,
+        byCookieErr: uByCookieErr?.message || null,
+        byTokenUserId: uByToken?.user?.id || null,
+        byTokenErr: uByTokenErr?.message || null,
+      })
+    } catch (e) {
+      console.log('⚠️ auth.getUser diagnostics failed:', e)
+    }
     const gate = await requireRole(['client', 'provider', 'admin'])
     if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
     const user = gate.user
