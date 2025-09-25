@@ -381,11 +381,11 @@ export async function GET(request: NextRequest) {
     // Get user profile to determine role
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, is_admin')
+    .select('role')
       .eq('id', user.id)
       .single()
     
-    const userRole = profile?.is_admin ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
+  const userRole = profile?.role === 'admin' ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
   console.log('🔎 Bookings GET params:', {
     userId: user.id,
     computedUserRole: userRole,
