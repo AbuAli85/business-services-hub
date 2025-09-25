@@ -9,9 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { 
   Table,
@@ -21,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { 
+import {
   Search,
   Eye,
   Calendar,
@@ -70,6 +68,13 @@ export default function BookingsPage() {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
+  // Helper for custom tooltips
+  const Tip: React.FC<{label: string; children: React.ReactNode}> = ({ label, children }) => (
+    <Tooltip content={label}>
+      {children}
+    </Tooltip>
+    )
+
   // Data sourced from centralized dashboard store
 
   // Safely resolve and format dates regardless of field naming or value shape
@@ -111,7 +116,7 @@ export default function BookingsPage() {
           console.error('❌ Authentication error:', userError)
           router.push('/auth/sign-in')
           return
-        }
+  }
         
         console.log('✅ User authenticated:', currentUser.id)
         setUser(currentUser)
@@ -131,17 +136,17 @@ export default function BookingsPage() {
             if (!profileError && profile) {
               detectedRole = profile.is_admin ? 'admin' : profile.role
               console.log('🔍 Role from profile:', detectedRole)
-            }
+  }
           } catch (profileError) {
             console.warn('⚠️ Could not fetch profile role:', profileError)
-          }
-        }
+  }
+  }
         
         // Default to client if no role found
         if (!detectedRole) {
           detectedRole = 'client'
           console.log('🔍 Using default role: client')
-        }
+  }
         
         setUserRole(detectedRole as 'client' | 'provider' | 'admin')
         console.log('✅ User role set:', detectedRole)
@@ -153,8 +158,8 @@ export default function BookingsPage() {
       } finally {
         setUserLoading(false)
         console.log('✅ User initialization complete')
-      }
-    }
+  }
+  }
     
     initializeUser()
   }, [router])
@@ -164,7 +169,7 @@ export default function BookingsPage() {
     if (!user || !userRole) {
       console.log('Skipping data load - user or role not ready:', { user: !!user, userRole })
       return
-    }
+  }
     
     try {
       console.log('📊 Loading bookings data for role:', userRole)
@@ -172,9 +177,11 @@ export default function BookingsPage() {
       setError(null)
       
       // Build query params for server-side pagination/filtering
+      // Map UI status to DB status
+      const statusForApi = statusFilter === 'confirmed' ? 'approved' : statusFilter
       const params = new URLSearchParams({
         role: userRole,
-        status: statusFilter,
+        status: statusForApi,
         q: debouncedQuery.replace(/^#/, '')
       })
       
@@ -221,10 +228,10 @@ export default function BookingsPage() {
               setError('Authentication failed. Please sign in again to continue.')
               router.push('/auth/sign-in')
               return
-            }
+  }
             res = retryRes // Use the successful retry response
-          }
-        }
+  }
+  }
         
         // For non-critical errors, show empty state instead of error
         if (res.status === 404 || res.status === 403) {
@@ -233,10 +240,10 @@ export default function BookingsPage() {
           setTotalCount(0)
           setInvoices([])
           return
-        }
+  }
         
         throw new Error(errorData?.error || `API request failed: ${res.status}`)
-      }
+  }
       
       const json = await res.json()
       console.log('📊 API Response received:', { 
@@ -274,12 +281,12 @@ export default function BookingsPage() {
           } else {
             console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
             setInvoices([]) // Continue without invoices if loading fails
-          }
+  }
         } catch (invoiceError) {
           console.warn('⚠️ Invoice loading error:', invoiceError)
           setInvoices([]) // Continue without invoices if loading fails
-        }
-      }
+  }
+  }
       
     } catch (e: any) {
       console.error('❌ Data loading error:', e)
@@ -287,8 +294,8 @@ export default function BookingsPage() {
     } finally {
       setDataLoading(false)
       console.log('✅ Data loading complete')
-    }
-  }, [user, userRole, currentPage, pageSize, statusFilter, sortBy, sortOrder, debouncedQuery])
+  }
+  }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery])
 
   // Only load data when user and role are ready
   useEffect(() => {
@@ -301,7 +308,7 @@ export default function BookingsPage() {
         userRole, 
         userLoading 
       })
-    }
+  }
   }, [user, userRole, userLoading, loadSupabaseData])
 
   // Realtime subscriptions for live updates
@@ -343,7 +350,7 @@ export default function BookingsPage() {
               toast.success('New booking received!')
             } else if (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status) {
               toast(`Booking status updated to ${payload.new.status}`)
-            }
+  }
           })
           .subscribe()
 
@@ -383,7 +390,7 @@ export default function BookingsPage() {
             
             if (payload.eventType === 'INSERT') {
               toast.success('New invoice created!')
-            }
+  }
           })
           .subscribe()
 
@@ -391,8 +398,8 @@ export default function BookingsPage() {
       } catch (error) {
         console.error('❌ Realtime subscription error:', error)
         // Non-blocking - continue without realtime if it fails
-      }
-    }
+  }
+  }
 
     setupRealtimeSubscriptions()
 
@@ -409,11 +416,11 @@ export default function BookingsPage() {
           if (invoicesChannel) supabase.removeChannel(invoicesChannel)
         } catch (error) {
           console.warn('Error cleaning up subscriptions:', error)
-        }
-      }
+  }
+  }
       
       cleanup()
-    }
+  }
   }, [user, userRole, loadSupabaseData])
 
   // Debounce searchQuery for smoother UX
@@ -431,7 +438,7 @@ export default function BookingsPage() {
     let filtered = bookingsSource.filter(booking => {
       const q = debouncedQuery.trim().replace(/^#/, '').toLowerCase()
       const matchesSearch = q === '' || 
-        ((booking as any).service?.title || booking.serviceTitle || '').toLowerCase().includes(q) ||
+        ((booking as any).services?.title || booking.serviceTitle || '').toLowerCase().includes(q) ||
         ((booking as any).client_profile?.full_name || booking.clientName || '').toLowerCase().includes(q) ||
         ((booking as any).provider_profile?.full_name || booking.providerName || '').toLowerCase().includes(q) ||
         String((booking as any).id || '').toLowerCase().includes(q)
@@ -448,30 +455,30 @@ export default function BookingsPage() {
         case 'createdAt': {
           const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
           return sortOrder === 'asc' ? av - bv : bv - av
-        }
+  }
         case 'totalAmount': {
           const av = safeNum(a.totalAmount ?? a.amount ?? a.total_price)
           const bv = safeNum(b.totalAmount ?? b.amount ?? b.total_price)
           return sortOrder === 'asc' ? av - bv : bv - av
-        }
+  }
         case 'serviceTitle': {
-          const av = safeStr(a.service?.title ?? a.serviceTitle)
-          const bv = safeStr(b.service?.title ?? b.serviceTitle)
+          const av = safeStr(a.services?.title ?? a.serviceTitle)
+          const bv = safeStr(b.services?.title ?? b.serviceTitle)
           const res = av.localeCompare(bv, undefined, { sensitivity: 'base' })
           return sortOrder === 'asc' ? res : -res
-        }
+  }
         case 'clientName': {
           const av = safeStr(a.client_profile?.full_name ?? a.clientName)
           const bv = safeStr(b.client_profile?.full_name ?? b.clientName)
           const res = av.localeCompare(bv, undefined, { sensitivity: 'base' })
           return sortOrder === 'asc' ? res : -res
-        }
+  }
         default: {
           const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
           return sortOrder === 'asc' ? av - bv : bv - av
-        }
-      }
-    }
+  }
+  }
+  }
     filtered.sort(cmp)
 
     return filtered
@@ -517,7 +524,7 @@ export default function BookingsPage() {
       case 'provider': return 'My Service Bookings'
       case 'client': return 'My Bookings'
       default: return 'Bookings'
-    }
+  }
   }
   
   const getPageDescription = () => {
@@ -526,7 +533,7 @@ export default function BookingsPage() {
       case 'provider': return 'Track and manage your service bookings'
       case 'client': return 'View and manage your service requests'
       default: return 'Manage bookings'
-    }
+  }
   }
 
   const handleCreateInvoice = useCallback(async (booking: any) => {
@@ -535,12 +542,12 @@ export default function BookingsPage() {
       if (!eligibleStatuses.includes(String(booking.status))) {
         toast.error('Invoice can be created only after approval')
         return
-      }
+  }
       
       if (!canCreateInvoice) {
         toast.error('You do not have permission to create invoices')
         return
-      }
+  }
       
       const supabase = await getSupabaseClient()
       const amount = Number(booking.totalAmount ?? booking.amount ?? booking.total_price ?? 0)
@@ -549,7 +556,7 @@ export default function BookingsPage() {
       if (amount <= 0) {
         toast.error('Invalid booking amount')
         return
-      }
+  }
       
       const payload: any = {
         booking_id: booking.id,
@@ -564,7 +571,7 @@ export default function BookingsPage() {
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }
+  }
       
       console.log('Creating invoice with payload:', payload)
       
@@ -577,7 +584,7 @@ export default function BookingsPage() {
       if (error) {
         console.error('Invoice creation error:', error)
         throw new Error(error.message || 'Failed to create invoice')
-      }
+  }
       
       // Update local invoices list
       setInvoices(prev => [{ 
@@ -592,7 +599,7 @@ export default function BookingsPage() {
     } catch (e: any) {
       console.error('Invoice creation failed:', e)
       toast.error(e?.message || 'Failed to create invoice')
-    }
+  }
   }, [canCreateInvoice, user])
 
   // Quick invoice actions
@@ -614,7 +621,7 @@ export default function BookingsPage() {
     } catch (e: any) {
       console.error('Send invoice failed:', e)
       toast.error(e?.message || 'Failed to send invoice')
-    }
+  }
   }, [loadSupabaseData])
 
   const handleMarkInvoicePaid = useCallback(async (invoiceId: string) => {
@@ -636,7 +643,7 @@ export default function BookingsPage() {
     } catch (e: any) {
       console.error('Mark paid failed:', e)
       toast.error(e?.message || 'Failed to mark invoice as paid')
-    }
+  }
   }, [loadSupabaseData])
 
   // Calculate statistics
@@ -764,9 +771,9 @@ export default function BookingsPage() {
       </div>
     )
   }
-
   return (
-    <div className="space-y-6">
+    <TooltipProvider>
+      <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
@@ -1135,10 +1142,10 @@ export default function BookingsPage() {
                         <TableCell>
                           <div className="font-medium">
                             <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="hover:underline text-blue-600">
-                              {(booking as any).service?.title || (booking as any).title || 'Service'}
+                              {(booking as any).services?.title || (booking as any).title || 'Service'}
                             </Link>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">ID: {booking.id.substring(0, 8)}...</div>
+                          <div className="text-xs text-gray-500 mt-1">ID: {String(booking.id).slice(0, 8)}...</div>
                           <div className="text-xs mt-1 space-x-2">
                             <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-blue-600 hover:underline">Details</Link>
                             <span className="text-gray-300">|</span>
@@ -1195,7 +1202,7 @@ export default function BookingsPage() {
                                 >
                                   {invoice.status}
                                 </Badge>
-                                <Tooltip content="View invoice details">
+                                <Tip label="View invoice details">
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -1203,14 +1210,14 @@ export default function BookingsPage() {
                                   >
                                     <Receipt className="h-3 w-3" />
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               </div>
                               
                               {/* Quick Invoice Actions */}
                               {canCreateInvoice && (
                                 <div className="flex gap-1">
                                   {invoice.status === 'draft' && (
-                                    <Tooltip content="Send invoice to client">
+                                    <Tip label="Send invoice to client">
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -1219,10 +1226,10 @@ export default function BookingsPage() {
                                       >
                                         Send
                                       </Button>
-                                    </Tooltip>
+                                    </Tip>
                                   )}
                                   {invoice.status === 'sent' && (
-                                    <Tooltip content="Mark invoice as paid">
+                                    <Tip label="Mark invoice as paid">
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -1231,7 +1238,7 @@ export default function BookingsPage() {
                                       >
                                         Mark Paid
                                       </Button>
-                                    </Tooltip>
+                                    </Tip>
                                   )}
                                 </div>
                               )}
@@ -1240,11 +1247,11 @@ export default function BookingsPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-gray-400 text-sm">No invoice</span>
                               {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
-                                <Tooltip content="Create invoice for this booking">
+                                <Tip label="Create invoice for this booking">
                                   <Button size="sm" variant="outline" onClick={() => handleCreateInvoice(booking)}>
                                     Create
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
                             </div>
                           )}
@@ -1260,104 +1267,102 @@ export default function BookingsPage() {
                         </TableCell>
                         
                         <TableCell>
-                          <TooltipProvider>
-                            <div className="flex items-center space-x-1">
+                          <div className="flex items-center space-x-1">
                               {/* Primary Action based on booking status and user role */}
                               {booking.status === 'pending' && userRole === 'provider' && (
-                                <Tooltip content="Approve this booking to start the project">
+                                <Tip label="Approve this booking to start the project">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                     Approve
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {booking.status === 'pending' && userRole === 'client' && (
-                                <Tooltip content="Waiting for provider approval">
+                                <Tip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
                                     Pending
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {booking.status === 'approved' && userRole === 'provider' && (
-                                <Tooltip content="Begin project work and create milestones">
+                                <Tip label="Begin project work and create milestones">
                                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
                                       <Play className="h-3 w-3 mr-1" />
                                       Start
                                     </Link>
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {booking.status === 'approved' && userRole === 'client' && (
-                                <Tooltip content="Waiting for provider to start work">
+                                <Tip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
                                     Approved
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {booking.status === 'in_progress' && (
-                                <Tooltip content="View progress and manage project milestones">
+                                <Tip label="View progress and manage project milestones">
                                   <Button size="sm" variant="outline" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
                                       <Target className="h-3 w-3 mr-1" />
                                       Manage
                                     </Link>
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {booking.status === 'completed' && userRole === 'client' && (
-                                <Tooltip content="Review completed project and provide feedback">
+                                <Tip label="Review completed project and provide feedback">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                                     <Award className="h-3 w-3 mr-1" />
                                     Review
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {booking.status === 'completed' && userRole === 'provider' && (
-                                <Tooltip content="Project completed - awaiting client review">
+                                <Tip label="Project completed - awaiting client review">
                                   <Button size="sm" variant="outline" disabled>
                                     <Award className="h-3 w-3 mr-1" />
                                     Complete
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
 
                               {/* Secondary Actions */}
-                              <Tooltip content="View detailed project information">
+                              <Tip label="View detailed project information">
                                 <Button size="sm" variant="ghost" asChild>
                                   <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
                                     <Eye className="h-3 w-3" />
                                   </Link>
                                 </Button>
-                              </Tooltip>
-                              
+                              </Tip>
+
                               {invoice && (
-                                <Tooltip content="View and manage invoice">
+                                <Tip label="View and manage invoice">
                                   <Button size="sm" variant="ghost" asChild>
                                     <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
                                       <Receipt className="h-3 w-3" />
                                     </Link>
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
-                              
+
                               {userRole === 'admin' && (
-                                <Tooltip content="Access admin management tools">
+                                <Tip label="Access admin management tools">
                                   <Button size="sm" variant="ghost">
                                     <Settings className="h-3 w-3" />
                                   </Button>
-                                </Tooltip>
+                                </Tip>
                               )}
                             </div>
-                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     )
@@ -1462,7 +1467,7 @@ export default function BookingsPage() {
                 {userRole === 'admin' 
                   ? `Page ${currentPage} of ${totalPages} • ${totalCount} total results`
                   : `Page ${currentPage} of ${totalPages} • ${filteredBookings.length} results`
-                }
+  }
                 {paginatedBookings.length !== filteredBookings.length && (
                   <span className="text-blue-600 ml-2">
                     (Showing {paginatedBookings.length} per page)
@@ -1551,6 +1556,7 @@ export default function BookingsPage() {
           </Badge>
         </div>
       )}
-    </div>
-  )
-}
+      </div>
+    </TooltipProvider>
+    )
+  }
