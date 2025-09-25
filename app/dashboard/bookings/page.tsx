@@ -302,8 +302,15 @@ export default function BookingsPage() {
   // Only load data when user and role are ready
   useEffect(() => {
     if (user && userRole && !userLoading) {
-      console.log('🚀 Triggering data load - user and role ready')
-      loadSupabaseData()
+      const now = Date.now()
+      // Add throttling to prevent excessive data loading
+      if (now - lastRefreshTime > 2000) {
+        console.log('🚀 Triggering data load - user and role ready')
+        setLastRefreshTime(now)
+        loadSupabaseData()
+      } else {
+        console.log('⏸️ Skipping data load - too soon since last load')
+      }
     } else {
       console.log('⏳ Waiting for user/role - not triggering data load yet', { 
         user: !!user, 
@@ -311,19 +318,19 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData, lastRefreshTime])
 
   // Separate effect for refresh trigger to prevent infinite loops
   useEffect(() => {
     if (refreshTrigger > 0 && user && userRole && !userLoading) {
       const now = Date.now()
-      // Only refresh if it's been at least 2 seconds since last refresh
-      if (now - lastRefreshTime > 2000) {
+      // Only refresh if it's been at least 5 seconds since last refresh
+      if (now - lastRefreshTime > 5000) {
         console.log('🔄 Refresh triggered by realtime update')
         setLastRefreshTime(now)
         loadSupabaseData()
       } else {
-        console.log('⏸️ Skipping refresh - too soon since last refresh')
+        console.log('⏸️ Skipping refresh - too soon since last refresh (', now - lastRefreshTime, 'ms ago)')
       }
     }
   }, [refreshTrigger, user, userRole, userLoading, loadSupabaseData, lastRefreshTime])
@@ -367,7 +374,7 @@ export default function BookingsPage() {
                   // Trigger data reload by updating refresh trigger
                   setRefreshTrigger(prev => prev + 1)
                 }
-              }, 1000) // Increased debounce time
+              }, 3000) // Increased debounce time to prevent loops
               
               // Show toast notification for important changes
               if (payload.eventType === 'INSERT') {
@@ -379,24 +386,27 @@ export default function BookingsPage() {
           })
           .subscribe()
 
-        // Subscribe to milestones changes for progress updates
+        // Subscribe to milestones changes for progress updates - only for user's bookings
         milestonesChannel = supabase
           .channel(`milestones-changes-${user.id}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'milestones'
+            table: 'milestones',
+            filter: userRole === 'admin' ? undefined :
+                   userRole === 'client' ? `booking_id.in.(select id from bookings where client_id=eq.${user.id})` :
+                   `booking_id.in.(select id from bookings where provider_id=eq.${user.id})`
           }, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Milestones realtime update:', payload.eventType)
-            // Only trigger refresh for milestone changes that affect bookings
+            console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
+            // Only trigger refresh for milestone changes that affect user's bookings
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               setTimeout(() => {
                 if (isMounted) {
                   // Trigger data reload by updating a dependency
                   setRefreshTrigger(prev => prev + 1)
                 }
-              }, 800) // Increased debounce time
+              }, 2000) // Increased debounce time to prevent loops
             }
           })
           .subscribe()
@@ -422,7 +432,7 @@ export default function BookingsPage() {
                   // Trigger data reload by updating a dependency
                   setRefreshTrigger(prev => prev + 1)
                 }
-              }, 600) // Increased debounce time
+              }, 4000) // Increased debounce time to prevent loops
             }
             
             if (payload.eventType === 'INSERT') {
