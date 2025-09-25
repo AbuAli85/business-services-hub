@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 
 export async function updateSession(req: NextRequest): Promise<NextResponse> {
   const res = NextResponse.next()
+  const authHeader = req.headers.get('authorization')
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,6 +27,22 @@ export async function updateSession(req: NextRequest): Promise<NextResponse> {
     }
   )
 
+  // If there's a Bearer token, try to set the session
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7)
+    console.log('🔍 updateSession: Setting session from Bearer token')
+    
+    try {
+      await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: ''
+      })
+      console.log('✅ updateSession: Session set from Bearer token')
+    } catch (sessionError) {
+      console.log('❌ updateSession: Failed to set session from Bearer token:', sessionError)
+    }
+  }
+
   // Touch session so the helper can refresh tokens/cookies if needed
   try { 
     const { data, error } = await supabase.auth.getUser()
@@ -33,7 +50,8 @@ export async function updateSession(req: NextRequest): Promise<NextResponse> {
       hasUser: !!data?.user,
       userId: data?.user?.id,
       error: error?.message,
-      url: req.url
+      url: req.url,
+      hasBearerToken: !!authHeader
     })
   } catch (middlewareError) {
     console.log('❌ updateSession: Session check failed:', middlewareError)
