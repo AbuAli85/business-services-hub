@@ -94,14 +94,33 @@ export async function apiRequest(
     if (response.status === 401) {
       console.log('🔄 Got 401, attempting one more session refresh...')
 
-      // Add a small delay to ensure any ongoing refresh operations complete
-      await new Promise(resolve => setTimeout(resolve, 100))
-
+      // Check if we already have a valid session first
       const supabase = await getSupabaseClient()
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+
+      if (currentSession) {
+        console.log('✅ Already have valid session, using it directly')
+
+        // Synchronize the current token to cookies for middleware compatibility
+        try {
+          await syncTokenToCookies(currentSession)
+          console.log('✅ Current token synchronized to cookies')
+
+          // Add a small delay to ensure cookies are properly set
+          await new Promise(resolve => setTimeout(resolve, 50))
+        } catch (syncError) {
+          console.warn('⚠️ Failed to sync current token to cookies:', syncError)
+        }
+
+        // Try the request again with the current session
+        return await authenticatedFetch(endpoint, options)
+      }
+
+      // No valid session, try refreshing
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
 
       if (!refreshError && refreshData.session) {
-        console.log('✅ Second refresh successful, retrying request...')
+        console.log('✅ Token refresh successful, retrying request...')
 
         // Synchronize the refreshed token to cookies for middleware compatibility
         try {
@@ -112,7 +131,6 @@ export async function apiRequest(
           await new Promise(resolve => setTimeout(resolve, 100))
         } catch (syncError) {
           console.warn('⚠️ Failed to sync refreshed token to cookies:', syncError)
-          // Still try the retry even if sync fails
         }
 
         // Retry the request with the new session

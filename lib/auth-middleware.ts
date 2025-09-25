@@ -53,10 +53,13 @@ export class AuthMiddleware {
       let token = req.cookies.get('sb-access-token')?.value
       let refreshToken = req.cookies.get('sb-refresh-token')?.value
 
-      // Also check Authorization header as fallback
+      // Also check Authorization header as fallback (always check, not just when no token)
       const authHeader = req.headers.get('authorization')
-      if (authHeader && authHeader.startsWith('Bearer ') && !token) {
-        token = authHeader.substring(7)
+      let bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null
+
+      // Use bearer token if available and no cookie token, or if bearer token is different (refreshed)
+      if (bearerToken && (!token || token !== bearerToken)) {
+        token = bearerToken
         console.log('🔍 Middleware: Using Bearer token from Authorization header')
       }
 
@@ -65,7 +68,7 @@ export class AuthMiddleware {
       console.log('🔍 Middleware auth check:', {
         hasAccessToken: !!token,
         hasRefreshToken: !!refreshToken,
-        hasBearerToken: !!(authHeader && authHeader.startsWith('Bearer ')),
+        hasBearerToken: !!bearerToken,
         allCookieNames: allCookies.map(c => c.name),
         pathname: req.nextUrl.pathname,
         tokenPreview: token ? `${token.substring(0, 20)}...` : 'N/A'
