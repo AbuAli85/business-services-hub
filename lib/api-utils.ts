@@ -75,6 +75,13 @@ export async function authenticatedFetch(
     credentials: 'include',
   }
 
+  console.log('🔍 authenticatedFetch: Sending request with headers:', {
+    'Content-Type': (headers as Record<string, string>)['Content-Type'],
+    'Authorization': (headers as Record<string, string>)['Authorization'] ? `${(headers as Record<string, string>)['Authorization'].substring(0, 20)}...` : 'missing',
+    'credentials': fetchOptions.credentials,
+    'url': finalEndpoint
+  })
+
   return fetch(finalEndpoint, fetchOptions)
 }
 
