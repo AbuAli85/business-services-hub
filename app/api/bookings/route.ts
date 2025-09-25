@@ -414,9 +414,9 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       console.log('⚠️ auth.getUser diagnostics failed:', e)
     }
-    const gate = await requireRole(['client', 'provider', 'admin'])
-    if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
-    const user = gate.user
+    const { data: authUser, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !authUser?.user) return jsonError(401, 'UNAUTHENTICATED', authErr?.message || 'No session')
+    const user = authUser.user
 
     const { searchParams } = new URL(request.url)
     const rawStatus = searchParams.get('status')
