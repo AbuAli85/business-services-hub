@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -68,9 +68,9 @@ export default function BookingsPage() {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const [lastRefreshTime, setLastRefreshTime] = useState(0)
   const [realtimeReady, setRealtimeReady] = useState(false)
   const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
+  const lastRefreshTimeRef = useRef(0)
 
   // Helper for custom tooltips
   const Tip: React.FC<{label: string; children: React.ReactNode}> = ({ label, children }) => (
@@ -173,7 +173,7 @@ export default function BookingsPage() {
     if (!user || !userRole) {
       console.log('Skipping data load - user or role not ready:', { user: !!user, userRole })
       return
-  }
+    }
     
     try {
       console.log('📊 Loading bookings data for role:', userRole)
@@ -232,10 +232,10 @@ export default function BookingsPage() {
               setError('Authentication failed. Please sign in again to continue.')
               router.push('/auth/sign-in')
               return
-  }
+            }
             res = retryRes // Use the successful retry response
-  }
-  }
+          }
+        }
         
         // For non-critical errors, show empty state instead of error
         if (res.status === 404 || res.status === 403) {
@@ -244,10 +244,10 @@ export default function BookingsPage() {
           setTotalCount(0)
           setInvoices([])
           return
-  }
+        }
         
         throw new Error(errorData?.error || `API request failed: ${res.status}`)
-  }
+      }
       
       const json = await res.json()
       console.log('📊 API Response received:', { 
@@ -285,12 +285,12 @@ export default function BookingsPage() {
           } else {
             console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
             setInvoices([]) // Continue without invoices if loading fails
-  }
+          }
         } catch (invoiceError) {
           console.warn('⚠️ Invoice loading error:', invoiceError)
           setInvoices([]) // Continue without invoices if loading fails
-  }
-  }
+        }
+      }
       
     } catch (e: any) {
       console.error('❌ Data loading error:', e)
@@ -298,17 +298,17 @@ export default function BookingsPage() {
     } finally {
       setDataLoading(false)
       console.log('✅ Data loading complete')
-  }
-  }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery])
+    }
+  }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery, router])
 
   // Only load data when user and role are ready
   useEffect(() => {
     if (user && userRole && !userLoading) {
       const now = Date.now()
       // Add throttling to prevent excessive data loading
-      if (now - lastRefreshTime > 2000) {
+      if (now - lastRefreshTimeRef.current > 2000) {
         console.log('🚀 Triggering data load - user and role ready')
-        setLastRefreshTime(now)
+        lastRefreshTimeRef.current = now
         loadSupabaseData()
       } else {
         console.log('⏸️ Skipping data load - too soon since last load')
@@ -320,22 +320,22 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData, lastRefreshTime])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery])
 
   // Separate effect for refresh trigger to prevent infinite loops
   useEffect(() => {
     if (refreshTrigger > 0 && user && userRole && !userLoading && realtimeReady) {
       const now = Date.now()
       // Only refresh if it's been at least 5 seconds since last refresh
-      if (now - lastRefreshTime > 5000) {
+      if (now - lastRefreshTimeRef.current > 5000) {
         console.log('🔄 Refresh triggered by realtime update')
-        setLastRefreshTime(now)
+        lastRefreshTimeRef.current = now
         loadSupabaseData()
       } else {
-        console.log('⏸️ Skipping refresh - too soon since last refresh (', now - lastRefreshTime, 'ms ago)')
+        console.log('⏸️ Skipping refresh - too soon since last refresh (', now - lastRefreshTimeRef.current, 'ms ago)')
       }
     }
-  }, [refreshTrigger, user, userRole, userLoading, loadSupabaseData, lastRefreshTime, realtimeReady])
+  }, [refreshTrigger, user, userRole, userLoading, realtimeReady])
 
   // Realtime subscriptions for live updates
   useEffect(() => {
