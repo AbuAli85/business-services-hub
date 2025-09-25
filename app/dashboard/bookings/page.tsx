@@ -113,10 +113,11 @@ export default function BookingsPage() {
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
         
         if (userError || !currentUser) {
-          console.error('❌ Authentication error:', userError)
-          router.push('/auth/sign-in')
+          console.warn('No authenticated user yet; waiting for middleware/session to settle')
+          setUser(null)
+          setUserRole(null)
           return
-  }
+        }
         
         console.log('✅ User authenticated:', currentUser.id)
         setUser(currentUser)
@@ -154,7 +155,6 @@ export default function BookingsPage() {
       } catch (error) {
         console.error('❌ User initialization error:', error)
         setError('Failed to initialize user session')
-        router.push('/auth/sign-in')
       } finally {
         setUserLoading(false)
         console.log('✅ User initialization complete')
