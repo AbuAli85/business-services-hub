@@ -15,28 +15,20 @@ import {
   Edit, 
   Trash2, 
   Link, 
-  Unlink, 
   Calendar, 
   Clock, 
   AlertTriangle, 
   CheckCircle, 
   Play, 
-  Pause,
-  Settings,
   Workflow,
   Target,
   Users,
-  FileText,
-  BarChart3,
   RefreshCw,
   ArrowRight,
   ArrowDown,
   ArrowUp,
-  GitBranch,
-  GitCommit,
   GripVertical,
   MessageSquare,
-  MoreVertical,
   Flag
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -85,7 +77,6 @@ export function ProfessionalMilestoneSystem({
   const [showDependencyForm, setShowDependencyForm] = useState(false)
   const [showPhaseForm, setShowPhaseForm] = useState(false)
   const [showTemplateForm, setShowTemplateForm] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   
   // Form states
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null)
@@ -975,15 +966,6 @@ export function ProfessionalMilestoneSystem({
     }
   }
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'critical': return 'bg-red-100 text-red-800'
-      case 'high': return 'bg-orange-100 text-orange-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
 
   if (loading) {
     return (
@@ -1018,14 +1000,6 @@ export function ProfessionalMilestoneSystem({
           <p className="text-gray-600">Advanced project management with dependencies and workflows</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowSettings(true)}
-            variant="outline"
-            size="sm"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
           <Button
             onClick={() => setShowPhaseForm(true)}
             variant="outline"
@@ -1083,7 +1057,7 @@ export function ProfessionalMilestoneSystem({
                 variant="outline"
                 onClick={loadData}
               >
-                <RefreshCw className="h-4 w-4 mr-2" /> Recalculate Progress
+                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
               </Button>
               <Button
                 type="button"
