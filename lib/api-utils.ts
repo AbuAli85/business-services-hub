@@ -29,7 +29,9 @@ export async function authenticatedFetch(
     currentDomain: typeof window !== 'undefined' ? window.location.origin : 'server-side',
     sessionExists: !!session,
     accessTokenExists: !!session.access_token,
-    tokenPreview: session.access_token ? `${session.access_token.substring(0, 20)}...` : 'N/A'
+    tokenPreview: session.access_token ? `${session.access_token.substring(0, 20)}...` : 'N/A',
+    userEmail: session.user?.email,
+    userId: session.user?.id
   })
 
   const headers: HeadersInit = {

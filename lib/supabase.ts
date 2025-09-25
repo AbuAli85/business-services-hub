@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient as createSSRClient } from '@/utils/supabase/client'
 
 // Environment variables should be available at build time
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -84,23 +85,9 @@ For production deployments, ensure environment variables are set in your hosting
   const url = envCheck.supabaseUrl!
   const key = envCheck.supabaseAnonKey!
   
-  // Create new client
-  supabaseClient = createClient(url, key, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce',
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      storageKey: 'sb-reootcngcptfogfozlmz-auth-token',
-      debug: process.env.NODE_ENV === 'development'
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'business-services-hub'
-      }
-    }
-  })
+  // Use SSR-compatible client for better cookie handling
+  console.log('✅ Creating SSR-compatible Supabase client')
+  supabaseClient = createSSRClient()
   
   // Set up background tasks without blocking the main thread
   if (typeof window !== 'undefined') {

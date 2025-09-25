@@ -27,7 +27,17 @@ export async function updateSession(req: NextRequest): Promise<NextResponse> {
   )
 
   // Touch session so the helper can refresh tokens/cookies if needed
-  try { await supabase.auth.getUser() } catch {}
+  try { 
+    const { data, error } = await supabase.auth.getUser()
+    console.log('🔍 updateSession: Session check result:', {
+      hasUser: !!data?.user,
+      userId: data?.user?.id,
+      error: error?.message,
+      url: req.url
+    })
+  } catch (middlewareError) {
+    console.log('❌ updateSession: Session check failed:', middlewareError)
+  }
 
   return res
 }
