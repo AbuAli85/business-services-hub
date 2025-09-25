@@ -15,7 +15,7 @@ export const protectedRoutes: RoleBasedRoute[] = [
   { path: '/dashboard/provider', roles: ['provider'], requireAuth: true, requireProfile: true },
   { path: '/dashboard/client', roles: ['client'], requireAuth: true, requireProfile: true },
   { path: '/auth/onboarding', roles: ['client', 'provider'], requireAuth: true, requireProfile: false },
-  { path: '/api/bookings', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: true },
+  { path: '/api/bookings', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/invoices', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: true },
   { path: '/api/services', roles: ['provider', 'admin'], requireAuth: true, requireProfile: true },
 ]
