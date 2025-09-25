@@ -132,27 +132,38 @@ async function authenticateUser(request: NextRequest) {
 
 // Helper function to get user from request (supports both cookies and Bearer token)
 async function getUserFromRequest(request: NextRequest) {
-  const supabase = await makeServerClient(request)
-  
-  // 1) Try cookie-backed session first
-  let { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    console.log('✅ User authenticated from cookies:', user.id)
-    return user
-  }
-
-  // 2) Fallback to Authorization: Bearer <jwt>
+  // 1) Try Bearer token first (most reliable for API calls)
   const auth = request.headers.get('authorization')
   if (auth?.startsWith('Bearer ')) {
     const jwt = auth.slice(7)
     console.log('🔍 Trying Bearer token authentication, length:', jwt.length)
-    const { data, error } = await supabase.auth.getUser(jwt)
+    
+    // Create a direct Supabase client for Bearer token validation
+    const { createClient } = await import('@supabase/supabase-js')
+    const directClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: { headers: { Authorization: `Bearer ${jwt}` } },
+        auth: { persistSession: false, detectSessionInUrl: false },
+      }
+    )
+    
+    const { data, error } = await directClient.auth.getUser()
     if (!error && data.user) {
       console.log('✅ User authenticated from Bearer token:', data.user.id)
       return data.user
     } else {
       console.log('❌ Bearer token auth failed:', error?.message)
     }
+  }
+
+  // 2) Fallback to cookie-based session
+  const supabase = await makeServerClient(request)
+  let { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    console.log('✅ User authenticated from cookies:', user.id)
+    return user
   }
   
   console.log('❌ No valid authentication found')
