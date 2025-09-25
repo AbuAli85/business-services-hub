@@ -67,6 +67,7 @@ export default function BookingsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Helper for custom tooltips
   const Tip: React.FC<{label: string; children: React.ReactNode}> = ({ label, children }) => (
@@ -309,7 +310,7 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, refreshTrigger])
 
   // Realtime subscriptions for live updates
   useEffect(() => {
@@ -343,8 +344,8 @@ export default function BookingsPage() {
             // Debounce the reload to avoid too many refreshes
             setTimeout(() => {
               if (isMounted) {
-                // Trigger data reload by updating a dependency
-                setDebouncedQuery(prev => prev + ' ')
+                // Trigger data reload by updating refresh trigger
+                setRefreshTrigger(prev => prev + 1)
               }
             }, 500)
             
@@ -371,7 +372,7 @@ export default function BookingsPage() {
             setTimeout(() => {
               if (isMounted) {
                 // Trigger data reload by updating a dependency
-                setDebouncedQuery(prev => prev + ' ')
+                setRefreshTrigger(prev => prev + 1)
               }
             }, 300)
           })
@@ -393,7 +394,7 @@ export default function BookingsPage() {
             setTimeout(() => {
               if (isMounted) {
                 // Trigger data reload by updating a dependency
-                setDebouncedQuery(prev => prev + ' ')
+                setRefreshTrigger(prev => prev + 1)
               }
             }, 400)
             
@@ -627,7 +628,7 @@ export default function BookingsPage() {
 
       toast.success('Invoice sent successfully')
       // Trigger data reload by updating a dependency
-      setDebouncedQuery(prev => prev + ' ')
+      setRefreshTrigger(prev => prev + 1)
     } catch (e: any) {
       console.error('Send invoice failed:', e)
       toast.error(e?.message || 'Failed to send invoice')
@@ -650,7 +651,7 @@ export default function BookingsPage() {
 
       toast.success('Invoice marked as paid')
       // Trigger data reload by updating a dependency
-      setDebouncedQuery(prev => prev + ' ')
+      setRefreshTrigger(prev => prev + 1)
     } catch (e: any) {
       console.error('Mark paid failed:', e)
       toast.error(e?.message || 'Failed to mark invoice as paid')
@@ -1191,7 +1192,7 @@ export default function BookingsPage() {
                           <CompactBookingStatus
                             bookingId={booking.id}
                             userRole={userRole as 'client' | 'provider' | 'admin'}
-                            onStatusChange={() => setDebouncedQuery(prev => prev + ' ')}
+                            onStatusChange={() => setRefreshTrigger(prev => prev + 1)}
                           />
                         </TableCell>
                         
