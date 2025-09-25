@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/server'
 import { requireRole } from '@/lib/authz'
 import { jsonError } from '@/lib/http'
@@ -354,7 +355,23 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const headersList = request.headers
+    const authHeader = headersList.get('authorization')
+    const useTokenClient = !!authHeader && authHeader.startsWith('Bearer ')
+    const supabase = useTokenClient
+      ? createSupabaseClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: authHeader as string,
+              },
+            },
+          }
+        )
+      : await createClient()
+    console.log('🔐 Bookings GET auth path:', useTokenClient ? 'authorization_header' : 'cookies')
     const gate = await requireRole(['client', 'provider', 'admin'])
     if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
     const user = gate.user
