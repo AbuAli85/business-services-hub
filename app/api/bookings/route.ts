@@ -386,25 +386,37 @@ export async function GET(request: NextRequest) {
       .single()
     
     const userRole = profile?.is_admin ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
+  console.log('🔎 Bookings GET params:', {
+    userId: user.id,
+    computedUserRole: userRole,
+    requestedRole: role,
+    status,
+    bookingId
+  })
     
     // Filter by user role - but if specific booking is requested, check access differently
     if (bookingId) {
       // For specific booking requests, check if user has access to this booking
       if (userRole === 'client') {
         query = query.eq('client_id', user.id)
+      console.log('🔧 Applying filter: client owns booking (by id)')
       } else if (userRole === 'provider') {
         query = query.eq('provider_id', user.id)
+      console.log('🔧 Applying filter: provider owns booking (by id)')
       } else if (userRole !== 'admin') {
         // Check if user has access to this specific booking
         query = query.or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
+      console.log('🔧 Applying filter: non-admin access (by id)')
       }
       // Admin can access any booking
     } else {
       // Regular role-based filtering for listing bookings
       if (role === 'client' || (role === 'all' && userRole === 'client')) {
         query = query.eq('client_id', user.id)
+      console.log('🔧 Applying filter: list client bookings')
       } else if (role === 'provider' || (role === 'all' && userRole === 'provider')) {
         query = query.eq('provider_id', user.id)
+      console.log('🔧 Applying filter: list provider bookings')
       } else if (role === 'admin' || (role === 'all' && userRole === 'admin')) {
         // Admin can see all bookings - no additional filter needed
         if (userRole !== 'admin') {
@@ -412,12 +424,15 @@ export async function GET(request: NextRequest) {
           Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
           return response
         }
+      console.log('🔧 Applying filter: admin (no filter)')
       } else {
         // Default to user's own bookings based on their role
         if (userRole === 'client') {
           query = query.eq('client_id', user.id)
+        console.log('🔧 Applying filter: default client')
         } else if (userRole === 'provider') {
           query = query.eq('provider_id', user.id)
+        console.log('🔧 Applying filter: default provider')
         } else if (userRole !== 'admin') {
           const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
           Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
@@ -432,6 +447,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: bookings, error } = await query
+  console.log('📊 Bookings query result:', { hasError: !!error, errorMessage: error?.message, count: bookings?.length ?? 0 })
 
     if (error) {
       console.error('Error fetching bookings:', error)
