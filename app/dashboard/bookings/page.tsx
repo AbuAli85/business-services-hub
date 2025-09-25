@@ -68,6 +68,7 @@ export default function BookingsPage() {
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [lastRefreshTime, setLastRefreshTime] = useState(0)
 
   // Helper for custom tooltips
   const Tip: React.FC<{label: string; children: React.ReactNode}> = ({ label, children }) => (
@@ -310,7 +311,22 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, refreshTrigger])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData])
+
+  // Separate effect for refresh trigger to prevent infinite loops
+  useEffect(() => {
+    if (refreshTrigger > 0 && user && userRole && !userLoading) {
+      const now = Date.now()
+      // Only refresh if it's been at least 2 seconds since last refresh
+      if (now - lastRefreshTime > 2000) {
+        console.log('🔄 Refresh triggered by realtime update')
+        setLastRefreshTime(now)
+        loadSupabaseData()
+      } else {
+        console.log('⏸️ Skipping refresh - too soon since last refresh')
+      }
+    }
+  }, [refreshTrigger, user, userRole, userLoading, loadSupabaseData, lastRefreshTime])
 
   // Realtime subscriptions for live updates
   useEffect(() => {
@@ -341,20 +357,25 @@ export default function BookingsPage() {
           }, (payload: any) => {
             if (!isMounted) return
             console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
-            // Debounce the reload to avoid too many refreshes
-            setTimeout(() => {
-              if (isMounted) {
-                // Trigger data reload by updating refresh trigger
-                setRefreshTrigger(prev => prev + 1)
-              }
-            }, 500)
             
-            // Show toast notification for important changes
-            if (payload.eventType === 'INSERT') {
-              toast.success('New booking received!')
-            } else if (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status) {
-              toast(`Booking status updated to ${payload.new.status}`)
-  }
+            // Only trigger refresh for important changes, not every update
+            if (payload.eventType === 'INSERT' || 
+                (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
+              // Debounce the reload to avoid too many refreshes
+              setTimeout(() => {
+                if (isMounted) {
+                  // Trigger data reload by updating refresh trigger
+                  setRefreshTrigger(prev => prev + 1)
+                }
+              }, 1000) // Increased debounce time
+              
+              // Show toast notification for important changes
+              if (payload.eventType === 'INSERT') {
+                toast.success('New booking received!')
+              } else if (payload.eventType === 'UPDATE') {
+                toast(`Booking status updated to ${payload.new.status}`)
+              }
+            }
           })
           .subscribe()
 
@@ -368,13 +389,15 @@ export default function BookingsPage() {
           }, (payload: any) => {
             if (!isMounted) return
             console.log('📡 Milestones realtime update:', payload.eventType)
-            // This will trigger CompactBookingStatus components to refresh
-            setTimeout(() => {
-              if (isMounted) {
-                // Trigger data reload by updating a dependency
-                setRefreshTrigger(prev => prev + 1)
-              }
-            }, 300)
+            // Only trigger refresh for milestone changes that affect bookings
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              setTimeout(() => {
+                if (isMounted) {
+                  // Trigger data reload by updating a dependency
+                  setRefreshTrigger(prev => prev + 1)
+                }
+              }, 800) // Increased debounce time
+            }
           })
           .subscribe()
 
@@ -391,12 +414,16 @@ export default function BookingsPage() {
           }, (payload: any) => {
             if (!isMounted) return
             console.log('📡 Invoices realtime update:', payload.eventType)
-            setTimeout(() => {
-              if (isMounted) {
-                // Trigger data reload by updating a dependency
-                setRefreshTrigger(prev => prev + 1)
-              }
-            }, 400)
+            // Only trigger refresh for important invoice changes
+            if (payload.eventType === 'INSERT' || 
+                (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
+              setTimeout(() => {
+                if (isMounted) {
+                  // Trigger data reload by updating a dependency
+                  setRefreshTrigger(prev => prev + 1)
+                }
+              }, 600) // Increased debounce time
+            }
             
             if (payload.eventType === 'INSERT') {
               toast.success('New invoice created!')
