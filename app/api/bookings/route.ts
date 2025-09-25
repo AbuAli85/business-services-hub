@@ -357,8 +357,13 @@ export async function GET(request: NextRequest) {
   try {
     const headersList = request.headers
     const authHeader = headersList.get('authorization')
-    const useTokenClient = !!authHeader && authHeader.startsWith('Bearer ')
-    const token = useTokenClient ? authHeader!.substring(7) : null
+    const xAuthHeader = headersList.get('x-supabase-auth') || headersList.get('x-supabase-access-token')
+    const cookieHeader = headersList.get('cookie') || ''
+    const cookieTokenMatch = cookieHeader.match(/sb-access-token=([^;]+)/)
+    const cookieToken = cookieTokenMatch ? decodeURIComponent(cookieTokenMatch[1]) : null
+    const resolvedToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : (xAuthHeader || cookieToken || null)
+    const useTokenClient = !!resolvedToken
+    const token = resolvedToken
     const supabase = useTokenClient
       ? createSupabaseClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -366,7 +371,7 @@ export async function GET(request: NextRequest) {
           {
             global: {
               headers: {
-                Authorization: authHeader as string,
+                Authorization: `Bearer ${token}`,
               },
             },
             auth: {
@@ -376,8 +381,13 @@ export async function GET(request: NextRequest) {
           }
         )
       : await createClient()
-    console.log('🔐 Bookings GET auth path:', useTokenClient ? 'authorization_header' : 'cookies')
-    console.log('🔐 Has auth header:', !!authHeader, 'tokenPreview:', token ? token.substring(0, 10) + '...' : 'none')
+    console.log('🔐 Bookings GET auth path:', useTokenClient ? 'token_client' : 'cookies')
+    console.log('🔐 Token sources:', {
+      hasAuthorization: !!authHeader,
+      hasXAuth: !!xAuthHeader,
+      hasCookieToken: !!cookieToken,
+      tokenPreview: token ? token.substring(0, 10) + '...' : 'none'
+    })
 
     // Ensure the client carries the token for PostgREST/RLS
     if (useTokenClient && token) {
