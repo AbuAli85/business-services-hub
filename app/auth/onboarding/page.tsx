@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, ArrowLeft, ArrowRight, Building2, CheckCircle, AlertCircle, Info, Sparkles, Target, Users, Briefcase, Star, Zap, Shield, Award, TrendingUp, Globe, Mail, Phone, MapPin, ExternalLink, Eye, EyeOff, Save, Clock, Lightbulb, ChevronDown, ChevronUp, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -69,13 +69,13 @@ function OnboardingForm() {
   
   // Removed console.log to prevent excessive re-rendering
   
-  // Get current role with fallback
-  const getCurrentRole = () => {
+  // Get current role with fallback - memoized to prevent re-renders
+  const currentRole = useMemo(() => {
     // Priority: userRole (from state) > role (from URL) > 'provider' (default for onboarding)
     const detectedRole = userRole || role || 'provider'
     console.log('🔍 Role detection:', { userRole, role, detectedRole })
     return detectedRole
-  }
+  }, [userRole, role])
   
   // Initialize component
   useEffect(() => {
@@ -143,7 +143,6 @@ function OnboardingForm() {
   // Enhanced validation function
   const validateStep = (stepNumber: number) => {
     const newErrors: Record<string, string> = {}
-    const currentRole = getCurrentRole()
     
     if (stepNumber === 1) {
       if (!formData.bio.trim()) {
@@ -212,7 +211,7 @@ function OnboardingForm() {
   }
   
   const getCompletionPercentage = () => {
-    const totalFields = getCurrentRole() === 'provider' ? 16 : 10
+    const totalFields = currentRole === 'provider' ? 16 : 10
     const filledFields = Object.values(formData).filter(value => value && value.trim().length > 0).length
     return Math.round((filledFields / totalFields) * 100)
   }
@@ -267,7 +266,7 @@ function OnboardingForm() {
       // Call the profile completion API
       console.log('🔍 Making API call with data:', {
         formDataKeys: Object.keys(formData),
-        role: getCurrentRole(),
+        role: currentRole,
         hasAuthHeader: !!headers.Authorization
       })
 
@@ -276,7 +275,7 @@ function OnboardingForm() {
         headers,
         body: JSON.stringify({
           formData,
-          role: getCurrentRole()
+          role: currentRole
         })
       })
 
@@ -292,7 +291,7 @@ function OnboardingForm() {
           statusText: response.statusText,
           error: result,
           formData: formData,
-          role: getCurrentRole()
+          role: currentRole
         })
         throw new Error(result.error || `Failed to complete profile (${response.status})`)
       }
@@ -326,13 +325,13 @@ function OnboardingForm() {
   // Get step title and description
   const getStepTitle = () => {
     if (step === 1) return 'Tell us about yourself'
-    if (step === 2) return getCurrentRole() === 'provider' ? 'Business Details' : 'Preferences'
+    if (step === 2) return currentRole === 'provider' ? 'Business Details' : 'Preferences'
     return 'Complete Profile'
   }
   
   const getStepDescription = () => {
     if (step === 1) return 'Help others get to know you better'
-    if (step === 2) return getCurrentRole() === 'provider' ? 'Tell us about your business' : 'Help us match you with the right providers'
+    if (step === 2) return currentRole === 'provider' ? 'Tell us about your business' : 'Help us match you with the right providers'
     return 'Review and complete your profile'
   }
   
@@ -407,7 +406,7 @@ function OnboardingForm() {
                   variant="outline" 
                   className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-700 font-semibold shadow-sm"
                 >
-                  {getCurrentRole() === 'provider' ? 'Service Provider' : 'Client'}
+                  {currentRole === 'provider' ? 'Service Provider' : 'Client'}
                 </Badge>
                 
                 {lastSaved && (
@@ -468,7 +467,7 @@ function OnboardingForm() {
                   <span className={`text-xs font-medium ${
                     step >= stepNum ? 'text-blue-600' : 'text-gray-400'
                   }`}>
-                    {stepNum === 1 ? 'Basic Info' : stepNum === 2 ? (getCurrentRole() === 'provider' ? 'Business' : 'Preferences') : 'Complete'}
+                    {stepNum === 1 ? 'Basic Info' : stepNum === 2 ? (currentRole === 'provider' ? 'Business' : 'Preferences') : 'Complete'}
                   </span>
                 </div>
               ))}
@@ -597,7 +596,7 @@ function OnboardingForm() {
                       <Separator className="my-8" />
                       
                       {/* Phone Number for Providers */}
-                      {getCurrentRole() === 'provider' && (
+                      {currentRole === 'provider' && (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <Label className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
@@ -711,7 +710,7 @@ function OnboardingForm() {
                     </div>
                   )}
 
-                  {step === 2 && getCurrentRole() === 'provider' && (
+                  {step === 2 && currentRole === 'provider' && (
                     <div className="space-y-8">
                       {/* Company Name */}
                       <div className="space-y-4">
@@ -1076,7 +1075,7 @@ function OnboardingForm() {
                     </div>
                   )}
 
-                  {step === 2 && getCurrentRole() === 'client' && (
+                  {step === 2 && currentRole === 'client' && (
                     <div className="space-y-8">
                       {/* Preferred Service Categories */}
                       <div className="space-y-4">
@@ -1298,7 +1297,7 @@ function OnboardingForm() {
                         <div>
                           <h3 className="text-3xl font-bold text-gray-900 mb-4">You're all set!</h3>
                           <p className="text-xl text-gray-600 mb-6">
-                            Your profile is complete and ready to help you {getCurrentRole() === 'provider' ? 'attract clients' : 'find the perfect service providers'}.
+                            Your profile is complete and ready to help you {currentRole === 'provider' ? 'attract clients' : 'find the perfect service providers'}.
                           </p>
                           <div className="flex items-center justify-center space-x-2 text-green-600">
                             <CheckCircle className="h-5 w-5" />
@@ -1308,7 +1307,7 @@ function OnboardingForm() {
                       </div>
                       
                       {/* Profile Summary for Providers */}
-                      {getCurrentRole() === 'provider' && (
+                      {currentRole === 'provider' && (
                         <div className="mt-8">
                           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
                             <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
@@ -1437,7 +1436,7 @@ function OnboardingForm() {
                       )}
                       
                       {/* Profile Summary for Clients */}
-                      {getCurrentRole() === 'client' && (
+                      {currentRole === 'client' && (
                         <div className="mt-8">
                           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
                             <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
@@ -1556,7 +1555,7 @@ function OnboardingForm() {
                   <div className="space-y-3">
                     {[
                       { num: 1, title: 'Basic Info', desc: 'Personal details' },
-                      { num: 2, title: getCurrentRole() === 'provider' ? 'Business' : 'Preferences', desc: getCurrentRole() === 'provider' ? 'Company info' : 'Your needs' },
+                      { num: 2, title: currentRole === 'provider' ? 'Business' : 'Preferences', desc: currentRole === 'provider' ? 'Company info' : 'Your needs' },
                       { num: 3, title: 'Complete', desc: 'Final review' }
                     ].map((item) => (
                       <div key={item.num} className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 ${

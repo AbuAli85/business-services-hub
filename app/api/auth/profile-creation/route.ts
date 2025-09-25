@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
     const phone = userMetadata.phone || ''
     const role = userMetadata.role || 'client'
 
-    // Call the profile creation function with 5 parameters to avoid ambiguity
-    const { data, error } = await supabase.rpc('create_user_profile', {
+    // Call the safe profile creation function
+    const { data, error } = await supabase.rpc('create_user_profile_safe', {
       user_id: userId,
       user_email: userEmail,
       user_role: role,

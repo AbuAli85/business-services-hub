@@ -186,13 +186,14 @@ export async function POST(request: NextRequest) {
         }, { status: 500 })
       }
 
-      // Create new profile
+      // Create new profile with safe email handling
+      const safeEmail = authUser.user?.email || `user-${userId}@placeholder.local`
       const { error: createError } = await admin
         .from('profiles')
         .insert({
           id: userId,
           full_name: authUser.user?.user_metadata?.full_name || authUser.user?.email?.split('@')[0] || 'User',
-          email: authUser.user?.email || null,
+          email: safeEmail,
           role: role || 'provider',
           ...profileData,
           created_at: new Date().toISOString()
