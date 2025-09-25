@@ -363,6 +363,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const role = searchParams.get('role') || 'all'
     const bookingId = searchParams.get('bookingId')
+  const debug = searchParams.get('debug') === '1'
 
     // First get the basic bookings data
     let query = supabase
@@ -373,10 +374,10 @@ export async function GET(request: NextRequest) {
       `)
       .order('created_at', { ascending: false })
 
-    // If specific booking ID is requested, filter by it
-    if (bookingId) {
-      query = query.eq('id', bookingId)
-    }
+  // If specific booking ID is requested, filter by it
+  if (bookingId) {
+    query = query.eq('id', bookingId)
+  }
 
     // Get user profile to determine role
     const { data: profile } = await supabase
@@ -395,7 +396,18 @@ export async function GET(request: NextRequest) {
   })
     
     // Filter by user role - but if specific booking is requested, check access differently
-    if (bookingId) {
+  if (debug) {
+    console.log('🧪 Debug mode enabled: bypassing role/status filters and limiting to 5')
+    // Rebuild query to ensure filters are clean
+    query = supabase
+      .from('bookings')
+      .select(`
+        *,
+        services(title, description, category)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(5)
+  } else if (bookingId) {
       // For specific booking requests, check if user has access to this booking
       if (userRole === 'client') {
         query = query.eq('client_id', user.id)
@@ -441,10 +453,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filter by status if specified
-    if (status && status !== 'all') {
-      query = query.eq('status', status)
-    }
+  // Filter by status if specified (unless debug)
+  if (!debug && status && status !== 'all') {
+    query = query.eq('status', status)
+  }
 
     const { data: bookings, error } = await query
   console.log('📊 Bookings query result:', { hasError: !!error, errorMessage: error?.message, count: bookings?.length ?? 0 })
