@@ -107,11 +107,19 @@ export class AuthMiddleware {
       }
 
       // Get user profile and role
+      console.log('🔍 Middleware: Looking up profile for user:', user.id)
       const { data: profile, error: profileError } = await this.supabase
         .from('profiles')
         .select('id, role, full_name, company_id')
         .eq('id', user.id)
         .single()
+
+      console.log('🔍 Middleware: Profile lookup result:', {
+        hasProfile: !!profile,
+        profileError: profileError?.message,
+        errorCode: profileError?.code,
+        userRole: user.user_metadata?.role
+      })
 
       if (profileError && profileError.code !== 'PGRST116') {
         return {
