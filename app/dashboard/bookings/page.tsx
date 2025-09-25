@@ -204,9 +204,28 @@ export default function BookingsPage() {
         
         // Handle 401 authentication errors
         if (res.status === 401) {
-          console.log('🔐 Authentication required (401). Showing session expired state')
-          setError('Your session has expired. Please sign in again to continue.')
-          return
+          console.log('🔐 Authentication required (401). Checking if we can refresh session...')
+          
+          // Try one more time to refresh session and reload
+          try {
+            const supabase = await getSupabaseClient()
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+            
+            if (!refreshError && refreshData.session) {
+              console.log('✅ Session refreshed, retrying data load...')
+              // Retry loading data after a short delay
+              setTimeout(() => loadSupabaseData(), 1000)
+              return
+            } else {
+              console.log('❌ Session refresh failed, showing expired state')
+              setError('Your session has expired. Please sign in again to continue.')
+              return
+            }
+          } catch (refreshError) {
+            console.log('❌ Session refresh error:', refreshError)
+            setError('Your session has expired. Please sign in again to continue.')
+            return
+          }
         }
         
         // For non-critical errors, show empty state instead of error

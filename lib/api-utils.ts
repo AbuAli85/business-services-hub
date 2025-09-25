@@ -9,10 +9,30 @@ export async function authenticatedFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const supabase = await getSupabaseClient()
-  const { data: { session } } = await supabase.auth.getSession()
   
-  if (!session) {
-    throw new Error('No active session found. Please sign in.')
+  // Try to refresh session first
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+  
+  if (!session || sessionError) {
+    console.log('🔄 No session found, attempting refresh...')
+    
+    // Try to refresh the session
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    
+    if (refreshError || !refreshData.session) {
+      console.log('❌ Session refresh failed:', refreshError?.message)
+      throw new Error('Session expired. Please sign in again.')
+    }
+    
+    console.log('✅ Session refreshed successfully')
+    // Use the refreshed session for the request
+  }
+
+  // Get the current session (either original or refreshed)
+  const { data: { session: currentSession } } = await supabase.auth.getSession()
+  
+  if (!currentSession) {
+    throw new Error('No active session available. Please sign in.')
   }
 
   // Force relative URLs regardless of current domain
@@ -27,16 +47,17 @@ export async function authenticatedFetch(
     originalEndpoint: endpoint,
     finalEndpoint,
     currentDomain: typeof window !== 'undefined' ? window.location.origin : 'server-side',
-    sessionExists: !!session,
-    accessTokenExists: !!session.access_token,
-    tokenPreview: session.access_token ? `${session.access_token.substring(0, 20)}...` : 'N/A',
-    userEmail: session.user?.email,
-    userId: session.user?.id
+    sessionExists: !!currentSession,
+    accessTokenExists: !!currentSession.access_token,
+    tokenPreview: currentSession.access_token ? `${currentSession.access_token.substring(0, 20)}...` : 'N/A',
+    userEmail: currentSession.user?.email,
+    userId: currentSession.user?.id,
+    expiresAt: currentSession.expires_at ? new Date(currentSession.expires_at * 1000).toISOString() : 'N/A'
   })
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session.access_token}`,
+    'Authorization': `Bearer ${currentSession.access_token}`,
     ...options.headers,
   }
 
@@ -59,7 +80,22 @@ export async function apiRequest(
 ): Promise<Response> {
   try {
     // Try with authentication token first
-    return await authenticatedFetch(endpoint, options)
+    const response = await authenticatedFetch(endpoint, options)
+    
+    // If we get a 401, try refreshing the session once more
+    if (response.status === 401) {
+      console.log('🔄 Got 401, attempting one more session refresh...')
+      const supabase = await getSupabaseClient()
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      
+      if (!refreshError && refreshData.session) {
+        console.log('✅ Second refresh successful, retrying request...')
+        // Retry the request with the new session
+        return await authenticatedFetch(endpoint, options)
+      }
+    }
+    
+    return response
   } catch (authError) {
     console.warn('🔄 Auth token failed, falling back to cookie auth:', authError)
     
@@ -73,7 +109,14 @@ export async function apiRequest(
       }
     }
     
-    return fetch(endpoint, fallbackOptions)
+    const fallbackResponse = await fetch(endpoint, fallbackOptions)
+    
+    // If fallback also fails with 401, the session is truly expired
+    if (fallbackResponse.status === 401) {
+      throw new Error('Session expired. Please sign in again.')
+    }
+    
+    return fallbackResponse
   }
 }
 

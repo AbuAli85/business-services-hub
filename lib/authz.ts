@@ -43,6 +43,12 @@ export async function requireRole(roles: AllowedRole[]) {
         if (tokenError) {
           console.log('❌ requireRole: Direct token verification failed:', tokenError)
           
+          // Check if it's an expired token error
+          if (tokenError.message?.includes('expired') || tokenError.message?.includes('JWT expired')) {
+            console.log('🔄 requireRole: Token expired, informing client to refresh')
+            return { ok: false as const, status: 401 as const, message: 'Token expired' }
+          }
+          
           // Fallback: Set the session with the token
           const { data: sessionData, error: sessionError } = await tokenClient.auth.setSession({
             access_token: token,
