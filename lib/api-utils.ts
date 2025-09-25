@@ -107,11 +107,16 @@ export async function apiRequest(
         try {
           await syncTokenToCookies(refreshData.session)
           console.log('✅ Refreshed token synchronized to cookies')
+
+          // Add a small delay to ensure cookies are properly set
+          await new Promise(resolve => setTimeout(resolve, 100))
         } catch (syncError) {
           console.warn('⚠️ Failed to sync refreshed token to cookies:', syncError)
+          // Still try the retry even if sync fails
         }
 
         // Retry the request with the new session
+        console.log('🔄 Retrying request with refreshed token...')
         const retryResponse = await authenticatedFetch(endpoint, options)
 
         // If the retry also fails with 401, the issue is not just token refresh
@@ -197,42 +202,91 @@ async function syncTokenToCookies(session: any): Promise<void> {
     throw new Error('No session or access token available')
   }
 
-  try {
-    // Set the access token in a cookie that the middleware can read
-    const response = await fetch('/api/auth/sync-token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+  console.log('🔄 Syncing token to cookies for middleware compatibility')
+
+  // Use document.cookie directly for immediate synchronization
+  if (typeof document !== 'undefined') {
+    try {
+      // Calculate cookie expiration time
+      const expiresAt = session.expires_at ? new Date(session.expires_at * 1000) : new Date(Date.now() + 3600 * 1000)
+      const maxAge = session.expires_at ? session.expires_at - Math.floor(Date.now() / 1000) : 3600
+
+      const cookieOptions = `; path=/; max-age=${maxAge}; secure; samesite=lax`
+
+      // Set access token cookie
+      document.cookie = `sb-access-token=${session.access_token}${cookieOptions}`
+
+      // Set refresh token cookie if available
+      if (session.refresh_token) {
+        document.cookie = `sb-refresh-token=${session.refresh_token}${cookieOptions}`
+      }
+
+      // Also try to set the standard Supabase cookie names
+      document.cookie = `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || 'default'}-auth-token=${JSON.stringify({
         access_token: session.access_token,
         refresh_token: session.refresh_token || '',
         expires_at: session.expires_at || 0,
         token_type: session.token_type || 'bearer'
-      }),
-      credentials: 'include'
-    })
+      })}${cookieOptions}`
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      console.warn('⚠️ Token sync API call failed:', response.status, errorData)
-    } else {
-      console.log('✅ Token synchronized to cookies successfully')
-    }
-  } catch (error) {
-    console.warn('⚠️ Token sync failed:', error)
-    // Try alternative method using document.cookie if available (client-side only)
-    if (typeof document !== 'undefined') {
+      console.log('✅ Token synchronized to cookies via document.cookie')
+
+      // Also try the API method as backup
       try {
-        const cookieOptions = `; path=/; max-age=${session.expires_at ? session.expires_at - Math.floor(Date.now() / 1000) : 3600}; secure; samesite=lax`
-        document.cookie = `sb-access-token=${session.access_token}${cookieOptions}`
-        if (session.refresh_token) {
-          document.cookie = `sb-refresh-token=${session.refresh_token}${cookieOptions}`
+        const response = await fetch('/api/auth/sync-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token || '',
+            expires_at: session.expires_at || 0,
+            token_type: session.token_type || 'bearer'
+          }),
+          credentials: 'include'
+        })
+
+        if (!response.ok) {
+          console.warn('⚠️ Token sync API call failed:', response.status)
+        } else {
+          console.log('✅ Token also synchronized via API')
         }
-        console.log('✅ Token synchronized to cookies via document.cookie')
-      } catch (cookieError) {
-        console.warn('⚠️ Document cookie sync also failed:', cookieError)
+      } catch (apiError) {
+        console.warn('⚠️ Token sync API call failed (non-critical):', apiError)
       }
+
+    } catch (cookieError) {
+      console.error('❌ Document cookie sync failed:', cookieError)
+      throw cookieError
+    }
+  } else {
+    // Server-side fallback - try API method
+    try {
+      const response = await fetch('/api/auth/sync-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token || '',
+          expires_at: session.expires_at || 0,
+          token_type: session.token_type || 'bearer'
+        }),
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Token sync API call failed:', response.status, errorData)
+        throw new Error(`Token sync failed: ${response.status}`)
+      } else {
+        console.log('✅ Token synchronized to cookies via API')
+      }
+    } catch (error) {
+      console.error('❌ Token sync failed:', error)
+      throw error
     }
   }
 }

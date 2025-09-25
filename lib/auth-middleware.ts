@@ -49,17 +49,26 @@ export class AuthMiddleware {
     error?: string
   }> {
     try {
-      // Get session from cookies
-      const token = req.cookies.get('sb-access-token')?.value
-      const refreshToken = req.cookies.get('sb-refresh-token')?.value
+      // Get session from cookies first
+      let token = req.cookies.get('sb-access-token')?.value
+      let refreshToken = req.cookies.get('sb-refresh-token')?.value
 
-      // Debug logging for cookie inspection
+      // Also check Authorization header as fallback
+      const authHeader = req.headers.get('authorization')
+      if (authHeader && authHeader.startsWith('Bearer ') && !token) {
+        token = authHeader.substring(7)
+        console.log('🔍 Middleware: Using Bearer token from Authorization header')
+      }
+
+      // Debug logging for cookie and header inspection
       const allCookies = req.cookies.getAll()
-      console.log('🔍 Middleware cookie check:', {
+      console.log('🔍 Middleware auth check:', {
         hasAccessToken: !!token,
         hasRefreshToken: !!refreshToken,
+        hasBearerToken: !!(authHeader && authHeader.startsWith('Bearer ')),
         allCookieNames: allCookies.map(c => c.name),
-        pathname: req.nextUrl.pathname
+        pathname: req.nextUrl.pathname,
+        tokenPreview: token ? `${token.substring(0, 20)}...` : 'N/A'
       })
 
       if (!token) {
@@ -68,7 +77,7 @@ export class AuthMiddleware {
           user: null,
           profile: null,
           role: null,
-          error: 'No session token found'
+          error: 'No session token found in cookies or Authorization header'
         }
       }
 
@@ -76,6 +85,12 @@ export class AuthMiddleware {
       const { data: { user }, error: userError } = await this.supabase.auth.getUser(token)
 
       if (userError || !user) {
+        console.log('❌ Middleware: Token validation failed:', {
+          tokenPreview: token ? `${token.substring(0, 20)}...` : 'N/A',
+          error: userError?.message,
+          hasToken: !!token,
+          tokenLength: token?.length
+        })
         return {
           isAuthenticated: false,
           user: null,
@@ -149,9 +164,10 @@ export class AuthMiddleware {
     const { pathname } = req.nextUrl
 
     // Skip middleware for static files and API routes that don't need auth
-    if (pathname.startsWith('/_next') || 
+    if (pathname.startsWith('/_next') ||
         pathname.startsWith('/favicon') ||
-        pathname.startsWith('/api/webhooks')) {
+        pathname.startsWith('/api/webhooks') ||
+        pathname.startsWith('/api/auth/sync-token')) {
       return NextResponse.next()
     }
 
