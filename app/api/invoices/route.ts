@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { makeServerClient } from '@/utils/supabase/makeServerClient'
 import { requireRole } from '@/lib/authz'
 import { jsonError } from '@/lib/http'
 
@@ -18,9 +18,11 @@ export async function OPTIONS() {
   })
 }
 
-export async function GET() {
-  const supabase = await createClient()
-  const gate = await requireRole(['admin'])
+export async function GET(request: Request) {
+  // NextRequest is ideal, but Request gives headers; cast minimal where needed
+  const req = request as any
+  const supabase = await makeServerClient(req)
+  const gate = await requireRole(supabase, ['admin'])
   if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
 
   const { data, error } = await supabase.from('invoices').select('*').limit(50)

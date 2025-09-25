@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/server'
 import { requireRole } from '@/lib/authz'
+import { makeServerClient } from '@/utils/supabase/makeServerClient'
 import { jsonError } from '@/lib/http'
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { z as zod } from 'zod'
@@ -131,8 +132,8 @@ async function authenticateUser(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const gate = await requireRole(['client', 'provider', 'admin'])
+    const supabase = await makeServerClient(request)
+    const gate = await requireRole(supabase, ['client', 'provider', 'admin'])
     if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
     
     // Test database connection
@@ -355,68 +356,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const headersList = request.headers
-    const authHeader = headersList.get('authorization')
-    const xAuthHeader = headersList.get('x-supabase-auth') || headersList.get('x-supabase-access-token')
-    const cookieHeader = headersList.get('cookie') || ''
-    const cookieTokenMatch = cookieHeader.match(/sb-access-token=([^;]+)/)
-    const cookieToken = cookieTokenMatch ? decodeURIComponent(cookieTokenMatch[1]) : null
-    const cookieToken2 = request.cookies.get('sb-access-token')?.value || null
-    const resolvedToken = authHeader?.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : (xAuthHeader || cookieToken2 || cookieToken || null)
-    const useTokenClient = !!resolvedToken
-    const token = resolvedToken
-    const supabase = useTokenClient
-      ? createSupabaseClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          {
-            global: {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            },
-            auth: {
-              persistSession: false,
-              detectSessionInUrl: false,
-            },
-          }
-        )
-      : await createClient()
-    console.log('🔐 Bookings GET auth path:', useTokenClient ? 'token_client' : 'cookies')
-    console.log('🔐 Token sources:', {
-      hasAuthorization: !!authHeader,
-      hasXAuth: !!xAuthHeader,
-      hasCookieToken: !!cookieToken || !!cookieToken2,
-      tokenPreview: token ? token.substring(0, 10) + '...' : 'none'
-    })
-
-    // Ensure the client carries the token for PostgREST/RLS
-    if (useTokenClient && token) {
-      try {
-        await supabase.auth.setSession({ access_token: token, refresh_token: '' })
-        console.log('🔐 Session set on server client using bearer token')
-      } catch (e) {
-        console.log('⚠️ setSession failed:', e)
-      }
-    }
-
-    try {
-      const { data: uByCookie, error: uByCookieErr } = await supabase.auth.getUser()
-      const { data: uByToken, error: uByTokenErr } = token ? await supabase.auth.getUser(token) : { data: null, error: null }
-      console.log('👤 auth.getUser() results:', {
-        byCookieUserId: uByCookie?.user?.id || null,
-        byCookieErr: uByCookieErr?.message || null,
-        byTokenUserId: uByToken?.user?.id || null,
-        byTokenErr: uByTokenErr?.message || null,
-      })
-    } catch (e) {
-      console.log('⚠️ auth.getUser diagnostics failed:', e)
-    }
-    const { data: authUser, error: authErr } = await supabase.auth.getUser()
-    if (authErr || !authUser?.user) return jsonError(401, 'UNAUTHENTICATED', authErr?.message || 'No session')
-    const user = authUser.user
+    const supabase = await makeServerClient(request)
+    const gate = await requireRole(supabase, ['client', 'provider', 'admin'])
+    if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
+    const user = gate.user
 
     const { searchParams } = new URL(request.url)
     const rawStatus = searchParams.get('status')
