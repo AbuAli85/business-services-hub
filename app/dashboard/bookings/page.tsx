@@ -308,8 +308,8 @@ export default function BookingsPage() {
         userRole, 
         userLoading 
       })
-  }
-  }, [user, userRole, userLoading, loadSupabaseData])
+    }
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery])
 
   // Realtime subscriptions for live updates
   useEffect(() => {
@@ -342,7 +342,10 @@ export default function BookingsPage() {
             console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
             // Debounce the reload to avoid too many refreshes
             setTimeout(() => {
-              if (isMounted) loadSupabaseData()
+              if (isMounted) {
+                // Trigger data reload by updating a dependency
+                setDebouncedQuery(prev => prev + ' ')
+              }
             }, 500)
             
             // Show toast notification for important changes
@@ -366,7 +369,10 @@ export default function BookingsPage() {
             console.log('📡 Milestones realtime update:', payload.eventType)
             // This will trigger CompactBookingStatus components to refresh
             setTimeout(() => {
-              if (isMounted) loadSupabaseData()
+              if (isMounted) {
+                // Trigger data reload by updating a dependency
+                setDebouncedQuery(prev => prev + ' ')
+              }
             }, 300)
           })
           .subscribe()
@@ -385,7 +391,10 @@ export default function BookingsPage() {
             if (!isMounted) return
             console.log('📡 Invoices realtime update:', payload.eventType)
             setTimeout(() => {
-              if (isMounted) loadSupabaseData()
+              if (isMounted) {
+                // Trigger data reload by updating a dependency
+                setDebouncedQuery(prev => prev + ' ')
+              }
             }, 400)
             
             if (payload.eventType === 'INSERT') {
@@ -421,7 +430,7 @@ export default function BookingsPage() {
       
       cleanup()
   }
-  }, [user, userRole, loadSupabaseData])
+  }, [user, userRole])
 
   // Debounce searchQuery for smoother UX
   useEffect(() => {
@@ -617,12 +626,13 @@ export default function BookingsPage() {
       if (error) throw error
 
       toast.success('Invoice sent successfully')
-      loadSupabaseData() // Refresh data
+      // Trigger data reload by updating a dependency
+      setDebouncedQuery(prev => prev + ' ')
     } catch (e: any) {
       console.error('Send invoice failed:', e)
       toast.error(e?.message || 'Failed to send invoice')
   }
-  }, [loadSupabaseData])
+  }, [])
 
   const handleMarkInvoicePaid = useCallback(async (invoiceId: string) => {
     try {
@@ -639,12 +649,13 @@ export default function BookingsPage() {
       if (error) throw error
 
       toast.success('Invoice marked as paid')
-      loadSupabaseData() // Refresh data
+      // Trigger data reload by updating a dependency
+      setDebouncedQuery(prev => prev + ' ')
     } catch (e: any) {
       console.error('Mark paid failed:', e)
       toast.error(e?.message || 'Failed to mark invoice as paid')
   }
-  }, [loadSupabaseData])
+  }, [])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -1180,7 +1191,7 @@ export default function BookingsPage() {
                           <CompactBookingStatus
                             bookingId={booking.id}
                             userRole={userRole as 'client' | 'provider' | 'admin'}
-                            onStatusChange={loadSupabaseData}
+                            onStatusChange={() => setDebouncedQuery(prev => prev + ' ')}
                           />
                         </TableCell>
                         
