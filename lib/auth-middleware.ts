@@ -237,8 +237,8 @@ export class AuthMiddleware {
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
 
-      // Check if profile is required but missing
-      if (requiredRoute.requireProfile && !authResult.profile) {
+      // Check if profile is required but missing (skip for API routes)
+      if (!pathname.startsWith('/api/') && requiredRoute.requireProfile && !authResult.profile) {
         authLogger.logAuthCallback({
           success: false,
           method: 'oauth',
