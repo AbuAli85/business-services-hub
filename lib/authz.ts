@@ -4,7 +4,11 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 type AllowedRole = 'admin' | 'provider' | 'client'
 
-export async function requireRole(roles: AllowedRole[]) {
+export type RoleGate =
+  | { ok: true; user: any; role: AllowedRole }
+  | { ok: false; status: 401 | 403; message: string }
+
+export async function requireRole(roles: AllowedRole[]): Promise<RoleGate> {
   console.log('🚨🚨🚨 REQUIREROLE DEBUG: FUNCTION STARTED 🚨🚨🚨')
   console.log('🚨 REQUIREROLE: FUNCTION CALLED - Starting authentication check for roles:', roles)
   console.log('🚨 REQUIREROLE: Current timestamp:', new Date().toISOString())
