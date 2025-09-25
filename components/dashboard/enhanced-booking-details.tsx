@@ -373,66 +373,26 @@ export default function EnhancedBookingDetails({
       }
       setUser(user)
 
-      // Load booking with enhanced data - graceful fallback for schema issues
+      // Load booking with enhanced data using API
       let bookingData, error
 
       try {
-        // Try enhanced query first
-        const result = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            service:services(
-              id, title, description, category, base_price, 
-              currency, estimated_duration, requirements
-            ),
-            client:profiles!client_id(
-              id, full_name, email, phone, company_name, 
-              avatar_url, timezone, preferred_contact_method
-            ),
-            provider:profiles!provider_id(
-              id, full_name, email, phone, company_name,
-              avatar_url, specialization, rating, response_time
-            )
-          `)
-          .eq('id', bookingId)
-          .single()
+        // Use API call instead of direct Supabase call
+        const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
         
-        bookingData = result.data
-        error = result.error
-      } catch (schemaError) {
-        console.warn('Enhanced query failed, trying fallback:', schemaError)
-        
-        // Fallback to simpler query without foreign key hints
-        try {
-          const simpleResult = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('id', bookingId)
-            .single()
-          
-          if (simpleResult.data) {
-            // Manually fetch related data
-            const [serviceRes, clientRes, providerRes] = await Promise.all([
-              supabase.from('services').select('*').eq('id', simpleResult.data.service_id).single(),
-              supabase.from('profiles').select('*').eq('id', simpleResult.data.client_id).single(),
-              supabase.from('profiles').select('*').eq('id', simpleResult.data.provider_id).single()
-            ])
-            
-            bookingData = {
-              ...simpleResult.data,
-              service: serviceRes.data,
-              client: clientRes.data,
-              provider: providerRes.data
-            }
-            error = null
-          } else {
-            error = simpleResult.error
-          }
-        } catch (fallbackError) {
-          console.error('Both queries failed:', fallbackError)
-          error = fallbackError
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`)
         }
+        
+        const { bookings } = await response.json()
+        bookingData = bookings?.[0]
+        error = bookingData ? null : new Error('Booking not found')
+      } catch (apiError) {
+        console.error('API call failed:', apiError)
+        error = apiError
       }
 
       if (error) {

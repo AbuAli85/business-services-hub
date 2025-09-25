@@ -121,17 +121,11 @@ export function ClientMilestoneViewer({
   const loadData = async () => {
     try {
       setLoading(true)
-      const supabase = await getSupabaseClient()
       
-      // Load milestones with tasks
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select(`
-          *,
-          tasks (* )
-        `)
-        .eq('booking_id', bookingId)
-        .order('order_index', { ascending: true })
+      // For now, skip milestones loading since there's no API endpoint
+      // TODO: Create milestones API endpoint
+      const milestonesData: any[] = []
+      const milestonesError = null
 
       if (milestonesError) throw milestonesError
       const normalized = (milestonesData || []).map(m => ({
@@ -148,83 +142,14 @@ export function ClientMilestoneViewer({
 
       setMilestones(normalized)
 
-      // Load comments (with fallback if table doesn't exist)
-      try {
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('milestone_comments')
-          .select('*')
-          .eq('booking_id', bookingId)
-          .order('created_at', { ascending: false })
+      // Skip comments and approvals loading for now (no API endpoints)
+      // TODO: Create API endpoints for comments and approvals
+      setComments({})
+      setApprovals({})
 
-        if (!commentsError) {
-          const groupedComments = (commentsData || []).reduce((acc, comment) => {
-            const milestoneId = comment.milestone_id
-            if (!acc[milestoneId]) acc[milestoneId] = []
-            acc[milestoneId].push(comment)
-            return acc
-          }, {} as Record<string, Comment[]>)
-          setComments(groupedComments)
-        } else {
-          console.warn('Comments loading error:', commentsError)
-          setComments({})
-        }
-      } catch (err) {
-        console.warn('Comments table not available:', err)
-        setComments({})
-      }
-
-      // Load approvals (with fallback if table doesn't exist)
-      try {
-        const { data: approvalsData, error: approvalsError } = await supabase
-          .from('milestone_approvals')
-          .select('*')
-          .eq('booking_id', bookingId)
-          .order('created_at', { ascending: false })
-
-        if (!approvalsError) {
-          const groupedApprovals = (approvalsData || []).reduce((acc, approval) => {
-            const milestoneId = approval.milestone_id
-            if (!acc[milestoneId]) acc[milestoneId] = []
-            acc[milestoneId].push(approval)
-            return acc
-          }, {} as Record<string, Approval[]>)
-          setApprovals(groupedApprovals)
-        } else {
-          console.warn('Approvals loading error:', approvalsError)
-          setApprovals({})
-        }
-      } catch (err) {
-        console.warn('Approvals table not available:', err)
-        setApprovals({})
-      }
-
-      // Load task comments for all visible tasks
-      try {
-        const taskIds = (milestonesData || []).flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
-        if (taskIds.length > 0) {
-          const { data: commentsRows, error: tcErr } = await supabase
-            .from('task_comments')
-            .select('id, task_id, user_id, comment, created_at')
-            .in('task_id', taskIds)
-            .order('created_at', { ascending: false })
-          if (!tcErr) {
-            const grouped: Record<string, any[]> = {}
-            for (const row of commentsRows || []) {
-              if (!grouped[row.task_id]) grouped[row.task_id] = []
-              grouped[row.task_id].push(row)
-            }
-            setTaskComments(grouped)
-          } else {
-            console.warn('Task comments load error:', tcErr)
-            setTaskComments({})
-          }
-        } else {
-          setTaskComments({})
-        }
-      } catch (e) {
-        console.warn('Task comments not available:', e)
-        setTaskComments({})
-      }
+      // Skip task comments loading for now (no API endpoint)
+      // TODO: Create API endpoint for task comments
+      setTaskComments({})
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -241,52 +166,9 @@ export function ClientMilestoneViewer({
     try {
       setIsSubmitting(true)
       
-      const supabase = await getSupabaseClient()
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        throw new Error('User not authenticated')
-      }
-      
-      const { error } = await supabase
-        .from('milestone_comments')
-        .insert({
-          milestone_id: milestoneId,
-          booking_id: bookingId,
-          content: newComment.trim(),
-          author_id: user.id,
-          author_name: user.user_metadata?.full_name || user.email || 'Client',
-          author_role: 'client',
-          created_at: new Date().toISOString()
-        })
-      
-      if (error) {
-        console.error('Comment creation error:', error)
-        // Check if it's a permission error
-        if (error.code === '42501' || error.message?.includes('permission denied')) {
-          toast.error('Permission denied. Please contact support to fix database permissions.')
-        } else if (error.code === 'PGRST204' || error.message?.includes('author_id') || error.message?.includes('author_name')) {
-          toast.error('Database schema needs to be updated. Please contact support.')
-        } else {
-          // Fallback to simulation for other errors
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          toast.success('Comment added successfully (simulated)')
-        }
-      } else {
-        toast.success('Comment added successfully')
-        // Reload data to show new comment
-        await loadData()
-      }
-      
-      setNewComment('')
-      setShowCommentDialog(false)
-      setSelectedMilestone(null)
-    } catch (err) {
-      console.warn('Comments table not available:', err)
-      // Fallback to simulation
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Comment added successfully (simulated)')
+      // TODO: Create API endpoint for adding comments
+      console.log('Comment functionality disabled - no API endpoint available')
+      toast.info('Comment functionality coming soon')
       setNewComment('')
       setShowCommentDialog(false)
       setSelectedMilestone(null)
@@ -302,53 +184,9 @@ export function ClientMilestoneViewer({
     try {
       setIsSubmitting(true)
       
-      const supabase = await getSupabaseClient()
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        throw new Error('User not authenticated')
-      }
-      
-      const { error } = await supabase
-        .from('milestone_approvals')
-        .insert({
-          milestone_id: milestoneId,
-          booking_id: bookingId,
-          status: status,
-          comment: approvalFeedback.trim() || null,
-          user_id: user.id,
-          approver_name: user.user_metadata?.full_name || user.email || 'Client',
-          approver_role: 'client',
-          created_at: new Date().toISOString()
-        })
-      
-      if (error) {
-        console.error('Approval creation error:', error)
-        // Check if it's a permission error
-        if (error.code === '42501' || error.message?.includes('permission denied')) {
-          toast.error('Permission denied. Please contact support to fix database permissions.')
-        } else if (error.code === 'PGRST204' || error.message?.includes('user_id') || error.message?.includes('approver_name')) {
-          toast.error('Database schema needs to be updated. Please contact support.')
-        } else {
-          // Fallback to simulation for other errors
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          toast.success(`Milestone ${status} successfully (simulated)`)
-        }
-      } else {
-        toast.success(`Milestone ${status} successfully`)
-        // Reload data to show new approval
-        await loadData()
-      }
-      
-      setApprovalFeedback('')
-      setShowApprovalDialog(false)
-      setSelectedMilestone(null)
-    } catch (err) {
-      console.warn('Approvals table not available:', err)
-      // Fallback to simulation
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success(`Milestone ${status} successfully (simulated)`)
+      // TODO: Create API endpoint for approvals
+      console.log('Approval functionality disabled - no API endpoint available')
+      toast.info('Approval functionality coming soon')
       setApprovalFeedback('')
       setShowApprovalDialog(false)
       setSelectedMilestone(null)

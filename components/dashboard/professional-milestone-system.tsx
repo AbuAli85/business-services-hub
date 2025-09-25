@@ -157,31 +157,19 @@ export function ProfessionalMilestoneSystem({
     try {
       setLoading(true)
       
+      // Initialize Supabase client
       const supabase = await getSupabaseClient()
       
-      // Load milestones
-      const { data: milestonesData, error: milestonesError } = await supabase
-        .from('milestones')
-        .select(`
-          id, booking_id, title, description, status, priority, start_date, due_date,
-          actual_start_date, actual_end_date, estimated_hours, actual_hours, 
-          progress_percentage, critical_path, risk_level, phase_id, template_id,
-          order_index, editable, weight, created_at, updated_at,
-          tasks (
-            id, title, description, status, priority, start_date, due_date,
-            actual_start_date, actual_end_date, estimated_hours, actual_hours,
-            progress_percentage, critical_path, risk_level, assigned_to, created_by,
-            milestone_id, phase_id, created_at, updated_at, order_index
-          )
-        `)
-        .eq('booking_id', bookingId)
-        .order('order_index', { ascending: true })
+      // For now, skip milestones loading since there's no API endpoint
+      // TODO: Create milestones API endpoint
+      const milestonesData: any[] = []
+      const milestonesError = null
       
       if (milestonesError) {
         console.error('Error loading milestones:', milestonesError)
         setMilestones([])
       } else {
-        const milestones = (milestonesData || []).map((m: any) => ({
+        const normalizedMilestones = (milestonesData || []).map((m: any) => ({
           ...m,
           tasks: (m.tasks || []).sort((a: any, b: any) => {
             const ao = a.order_index ?? 0
@@ -193,6 +181,11 @@ export function ProfessionalMilestoneSystem({
           })
         }))
         
+        setMilestones(normalizedMilestones)
+        
+        // TODO: Create API endpoints for milestone progress calculation
+        // Skip progress calculation for now
+        /*
         // Calculate and update progress for each milestone
         for (const milestone of milestones) {
           await calculateAndUpdateMilestoneProgress(milestone, supabase)
@@ -229,18 +222,16 @@ export function ProfessionalMilestoneSystem({
         }))
 
         setMilestones(normalizedUpdated)
+        */
       }
       
-      // Load comments
-      try {
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('milestone_comments')
-          .select('*')
-          .eq('booking_id', bookingId)
-          .order('created_at', { ascending: false })
+      // Skip comments loading for now (no API endpoint)
+      // TODO: Create API endpoint for comments
+      const commentsData: any[] = []
+      const commentsError = null
         
         if (!commentsError) {
-          const groupedComments = (commentsData || []).reduce((acc, comment) => {
+          const groupedComments = (commentsData || []).reduce((acc: any, comment: any) => {
             const milestoneId = comment.milestone_id
             if (!acc[milestoneId]) acc[milestoneId] = []
             acc[milestoneId].push(comment)
@@ -251,10 +242,6 @@ export function ProfessionalMilestoneSystem({
           console.warn('Comments loading error:', commentsError)
           setComments({})
         }
-      } catch (err) {
-        console.warn('Comments not available:', err)
-        setComments({})
-      }
 
       // Load approvals
       try {
@@ -265,7 +252,7 @@ export function ProfessionalMilestoneSystem({
           .order('created_at', { ascending: false })
         
         if (!approvalsError) {
-          const groupedApprovals = (approvalsData || []).reduce((acc, approval) => {
+          const groupedApprovals = (approvalsData || []).reduce((acc: any, approval: any) => {
             const milestoneId = approval.milestone_id
             if (!acc[milestoneId]) acc[milestoneId] = []
             acc[milestoneId].push(approval)

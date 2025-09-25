@@ -1,6 +1,7 @@
 -- Fix invoice linking and RLS policies for proper provider-client relationships
 -- Date: 2024-12-19
 -- Description: Ensure proper linking between invoices, providers, and clients with secure RLS policies
+-- Database: PostgreSQL (Supabase)
 
 -- First, ensure the invoices table has the correct structure
 CREATE TABLE IF NOT EXISTS public.invoices (
