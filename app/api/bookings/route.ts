@@ -416,10 +416,18 @@ export async function GET(request: NextRequest) {
     const user = gate.user
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
+    const rawStatus = searchParams.get('status')
     const role = searchParams.get('role') || 'all'
     const bookingId = searchParams.get('bookingId')
   const debug = searchParams.get('debug') === '1'
+
+    // Map UI terms to DB values
+    const mapUiStatusToDb = (s?: string | null) => {
+      if (!s) return s
+      const m: Record<string, string> = { confirmed: 'approved' }
+      return m[s] ?? s
+    }
+    const status = mapUiStatusToDb(rawStatus)
 
     // First get the basic bookings data
     let query = supabase
@@ -514,8 +522,13 @@ export async function GET(request: NextRequest) {
     query = query.eq('status', status)
   }
 
-    const { data: bookings, error } = await query
-  console.log('📊 Bookings query result:', { hasError: !!error, errorMessage: error?.message, count: bookings?.length ?? 0 })
+  const { data: bookings, error } = await query
+  const mapped = (bookings || []).map((b: any) => ({
+    ...b,
+    ui_status: (b.status === 'approved' ? 'confirmed' : b.status) || null,
+    ui_approval_status: (b.approval_status || null),
+  }))
+  console.log('📊 Bookings query result:', { hasError: !!error, errorMessage: error?.message, count: mapped?.length ?? 0 })
 
     if (error) {
       console.error('Error fetching bookings:', error)
