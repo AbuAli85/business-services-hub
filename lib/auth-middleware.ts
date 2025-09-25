@@ -46,6 +46,7 @@ export class AuthMiddleware {
     user: any | null
     profile: any | null
     role: string | null
+    accessToken?: string | null
     error?: string
   }> {
     try {
@@ -80,6 +81,7 @@ export class AuthMiddleware {
           user: null,
           profile: null,
           role: null,
+          accessToken: null,
           error: 'No session token found in cookies or Authorization header'
         }
       }
@@ -99,6 +101,7 @@ export class AuthMiddleware {
           user: null,
           profile: null,
           role: null,
+          accessToken: token || null,
           error: userError?.message || 'Invalid session'
         }
       }
@@ -127,6 +130,7 @@ export class AuthMiddleware {
         user,
         profile,
         role,
+        accessToken: token || null,
         error: profileError?.code === 'PGRST116' ? 'Profile not found' : undefined
       }
     } catch (error) {
@@ -142,6 +146,7 @@ export class AuthMiddleware {
         user: null,
         profile: null,
         role: null,
+        accessToken: null,
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
@@ -223,8 +228,18 @@ export class AuthMiddleware {
       }
     }
 
-    // Add user info to headers for downstream use
-    const response = NextResponse.next()
+    // Forward the access token to downstream by injecting Authorization into the request headers
+    const requestHeaders = new Headers(req.headers)
+    if (authResult.accessToken) {
+      requestHeaders.set('authorization', `Bearer ${authResult.accessToken}`)
+    }
+
+    // Add user info to response headers for debugging/observability
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders
+      }
+    })
     response.headers.set('x-user-id', authResult.user?.id || '')
     response.headers.set('x-user-role', authResult.role || '')
     response.headers.set('x-user-email', authResult.user?.email || '')
