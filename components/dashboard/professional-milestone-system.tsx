@@ -165,11 +165,13 @@ export function ProfessionalMilestoneSystem({
       const milestonesData: any[] = []
       const milestonesError = null
       
+      let normalizedMilestones: any[] = []
+      
       if (milestonesError) {
         console.error('Error loading milestones:', milestonesError)
         setMilestones([])
       } else {
-        const normalizedMilestones = (milestonesData || []).map((m: any) => ({
+        normalizedMilestones = (milestonesData || []).map((m: any) => ({
           ...m,
           tasks: (m.tasks || []).sort((a: any, b: any) => {
             const ao = a.order_index ?? 0
@@ -182,47 +184,6 @@ export function ProfessionalMilestoneSystem({
         }))
         
         setMilestones(normalizedMilestones)
-        
-        // TODO: Create API endpoints for milestone progress calculation
-        // Skip progress calculation for now
-        /*
-        // Calculate and update progress for each milestone
-        for (const milestone of milestones) {
-          await calculateAndUpdateMilestoneProgress(milestone, supabase)
-        }
-        
-        // Reload milestones with updated progress
-        const { data: updatedMilestones } = await supabase
-          .from('milestones')
-          .select(`
-            id, booking_id, title, description, status, priority, start_date, due_date,
-            actual_start_date, actual_end_date, estimated_hours, actual_hours, 
-            progress_percentage, critical_path, risk_level, phase_id, template_id,
-            order_index, editable, weight, created_at, updated_at,
-            tasks (
-              id, title, description, status, priority, start_date, due_date,
-              actual_start_date, actual_end_date, estimated_hours, actual_hours,
-              progress_percentage, critical_path, risk_level, assigned_to, created_by,
-              milestone_id, phase_id, created_at, updated_at, order_index
-            )
-          `)
-          .eq('booking_id', bookingId)
-          .order('order_index', { ascending: true })
-        
-        const normalizedUpdated = (updatedMilestones || []).map((m: any) => ({
-          ...m,
-          tasks: (m.tasks || []).sort((a: any, b: any) => {
-            const ao = a.order_index ?? 0
-            const bo = b.order_index ?? 0
-            if (ao !== bo) return ao - bo
-            const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-            const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-            return ad - bd
-          })
-        }))
-
-        setMilestones(normalizedUpdated)
-        */
       }
       
       // Skip comments loading for now (no API endpoint)
@@ -268,9 +229,9 @@ export function ProfessionalMilestoneSystem({
         setApprovals({})
       }
 
-      // Load task comments for all visible tasks
+      // Load task comments for all visible tasks - use fresh data, not stale state
       try {
-        const taskIds = (milestones || []).flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
+        const taskIds = normalizedMilestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
         if (taskIds.length > 0) {
           const { data: commentsRows, error: tcErr } = await supabase
             .from('task_comments')
@@ -485,37 +446,29 @@ export function ProfessionalMilestoneSystem({
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
       const supabase = await getSupabaseClient()
-      
+
       const { error } = await supabase
         .from('tasks')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', taskId)
-      
+
       if (error) throw error
-      
-      // Trigger notification for task completion
+
       if (status === 'completed') {
         try {
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
-          // Get task and milestone details for notification
-          const { data: taskData } = await supabase
-            .from('tasks')
-            .select(`
-              id, title, milestone_id,
-              milestones!inner(id, title, booking_id)
-            `)
-            .eq('id', taskId)
-            .single()
-          
-          if (taskData && taskData.milestones && Array.isArray(taskData.milestones) && taskData.milestones.length > 0) {
-            const milestone = taskData.milestones[0]
-            await notificationTriggerService.triggerTaskCompleted(
-              user.id,
-              {
+            const { data: taskData } = await supabase
+              .from('tasks')
+              .select('id, title, milestone_id, milestones!inner(id, title, booking_id)')
+              .eq('id', taskId)
+              .single()
+
+            const milestoneRef: any = taskData?.milestones
+            const milestone = Array.isArray(milestoneRef) ? milestoneRef[0] : milestoneRef
+
+            if (taskData && milestone) {
+              await notificationTriggerService.triggerTaskCompleted(user.id, {
                 task_id: taskData.id,
                 task_title: taskData.title,
                 milestone_id: taskData.milestone_id,
@@ -524,9 +477,8 @@ export function ProfessionalMilestoneSystem({
                 project_name: milestone.title,
                 actor_id: user.id,
                 actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
-              }
-            )
-          }
+              })
+            }
           }
         } catch (notificationError) {
           console.warn('Failed to send notification:', notificationError)
@@ -677,11 +629,12 @@ export function ProfessionalMilestoneSystem({
 
     try {
       setIsSubmitting(true)
-      
       const supabase = await getSupabaseClient()
-      
+
+      const isValidUUID = (v: string) =>
+        typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
+
       if (editingTask) {
-        // Update existing task
         const { error } = await supabase
           .from('tasks')
           .update({
@@ -692,40 +645,36 @@ export function ProfessionalMilestoneSystem({
             start_date: taskForm.start_date || null,
             due_date: taskForm.due_date || null,
             estimated_hours: taskForm.estimated_hours || 0,
-            assigned_to: (typeof taskForm.assigned_to === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(taskForm.assigned_to)) ? taskForm.assigned_to : null,
+            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null,
             risk_level: taskForm.risk_level,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingTask.id)
-        
+
         if (error) throw error
-        
-        // Trigger notification for task update
+
+        // Send notification for task update
         try {
           const { data: { user } } = await supabase.auth.getUser()
           if (user && selectedMilestone) {
-            await notificationTriggerService.triggerTaskCreated(
-              user.id,
-              {
-                task_id: editingTask.id,
-                task_title: taskForm.title,
-                milestone_id: selectedMilestone.id,
-                milestone_title: selectedMilestone.title,
-                booking_id: bookingId,
-                project_name: selectedMilestone.title,
-                actor_id: user.id,
-                actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
-              }
-            )
+            await notificationTriggerService.triggerTaskCreated(user.id, {
+              task_id: editingTask.id,
+              task_title: taskForm.title,
+              milestone_id: selectedMilestone.id,
+              milestone_title: selectedMilestone.title,
+              booking_id: bookingId,
+              project_name: selectedMilestone.title,
+              actor_id: user.id,
+              actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
+            })
           }
         } catch (notificationError) {
-          console.warn('Failed to send notification:', notificationError)
+          console.warn('Failed to send update notification:', notificationError)
         }
-        
+
         toast.success('Task updated successfully')
       } else {
-        // Create new task
-        const { error } = await supabase
+        const { data: insertedTask, error } = await supabase
           .from('tasks')
           .insert({
             milestone_id: selectedMilestone?.id,
@@ -738,36 +687,34 @@ export function ProfessionalMilestoneSystem({
             estimated_hours: taskForm.estimated_hours || 0,
             actual_hours: 0,
             progress_percentage: 0,
-            assigned_to: (typeof taskForm.assigned_to === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(taskForm.assigned_to)) ? taskForm.assigned_to : null,
+            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null,
             risk_level: taskForm.risk_level,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-        
+          .select('id, title, milestone_id')
+          .single()
+
         if (error) throw error
-        
-        // Trigger notification for task creation
+
         try {
           const { data: { user } } = await supabase.auth.getUser()
-          if (user && selectedMilestone) {
-            await notificationTriggerService.triggerTaskCreated(
-              user.id,
-              {
-                task_id: taskForm.title, // This will be the task ID after creation
-                task_title: taskForm.title,
-                milestone_id: selectedMilestone.id,
-                milestone_title: selectedMilestone.title,
-                booking_id: bookingId,
-                project_name: selectedMilestone.title,
-                actor_id: user.id,
-                actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
-              }
-            )
+          if (user && selectedMilestone && insertedTask) {
+            await notificationTriggerService.triggerTaskCreated(user.id, {
+              task_id: insertedTask.id,                 // ✅ correct ID
+              task_title: insertedTask.title,
+              milestone_id: selectedMilestone.id,
+              milestone_title: selectedMilestone.title,
+              booking_id: bookingId,
+              project_name: selectedMilestone.title,
+              actor_id: user.id,
+              actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
+            })
           }
         } catch (notificationError) {
-          console.warn('Failed to send notification:', notificationError)
+          console.warn('Failed to send creation notification:', notificationError)
         }
-        
+
         toast.success('Task created successfully')
       }
       
@@ -825,26 +772,6 @@ export function ProfessionalMilestoneSystem({
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800'
-      case 'in_progress': return 'bg-blue-100 text-blue-800'
-      case 'pending': return 'bg-gray-100 text-gray-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      case 'on_hold': return 'bg-yellow-100 text-yellow-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800'
-      case 'high': return 'bg-orange-100 text-orange-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
 
   // Drag & Drop handlers
   const handleDragStart = (e: React.DragEvent, milestoneId: string) => {
@@ -870,12 +797,12 @@ export function ProfessionalMilestoneSystem({
       const [item] = newMilestones.splice(index, 1)
       newMilestones.splice(targetIndex, 0, item)
 
-      // Persist order_index for all milestones
       const supabase = await getSupabaseClient()
-      for (let i = 0; i < newMilestones.length; i++) {
-        const m = newMilestones[i]
-        await supabase.from('milestones').update({ order_index: i }).eq('id', m.id)
-      }
+      await Promise.all(
+        newMilestones.map((m, i) =>
+          supabase.from('milestones').update({ order_index: i }).eq('id', m.id)
+        )
+      )
 
       setMilestones(newMilestones)
       toast.success('Milestone reordered')
@@ -891,7 +818,7 @@ export function ProfessionalMilestoneSystem({
 
   const handleDrop = async (e: React.DragEvent, targetMilestoneId: string) => {
     e.preventDefault()
-    
+
     if (!draggedMilestone || draggedMilestone === targetMilestoneId) {
       setDraggedMilestone(null)
       setDragOverMilestone(null)
@@ -899,36 +826,23 @@ export function ProfessionalMilestoneSystem({
     }
 
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Get current order indices
       const draggedIndex = milestones.findIndex(m => m.id === draggedMilestone)
-      const targetIndex = milestones.findIndex(m => m.id === targetMilestoneId)
-      
+      const targetIndex  = milestones.findIndex(m => m.id === targetMilestoneId)
       if (draggedIndex === -1 || targetIndex === -1) return
 
-      // Create new order
       const newMilestones = [...milestones]
       const [draggedItem] = newMilestones.splice(draggedIndex, 1)
       newMilestones.splice(targetIndex, 0, draggedItem)
 
-      // Update order indices in database
-      const updates = newMilestones.map((milestone, index) => ({
-        id: milestone.id,
-        order_index: index
-      }))
+      const supabase = await getSupabaseClient()
+      await Promise.all(
+        newMilestones.map((m, i) =>
+          supabase.from('milestones').update({ order_index: i }).eq('id', m.id)
+        )
+      )
 
-      for (const update of updates) {
-        await supabase
-          .from('milestones')
-          .update({ order_index: update.order_index })
-          .eq('id', update.id)
-      }
-
-      // Update local state
       setMilestones(newMilestones)
       toast.success('Milestone order updated successfully')
-      
     } catch (error) {
       console.error('Error reordering milestones:', error)
       toast.error('Failed to reorder milestones')
