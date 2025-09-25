@@ -5,6 +5,7 @@ type AllowedRole = 'admin' | 'provider' | 'client'
 export async function requireRole(roles: AllowedRole[]) {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.getUser()
+  
   if (error || !data?.user) {
     return { ok: false as const, status: 401 as const, message: 'Unauthenticated' }
   }

@@ -46,10 +46,13 @@ export async function middleware(req: NextRequest) {
 
   // Determine if route needs auth checks
   const needsAuthCheck = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/onboarding') || pathname.startsWith('/auth/pending-approval')
+  
+  // Determine if route needs session cookie normalization (includes API routes)
+  const needsSessionUpdate = needsAuthCheck || pathname.startsWith('/api/')
 
   // Only normalize Supabase session cookies for protected routes and when env is present
   let res = NextResponse.next()
-  if (needsAuthCheck && SUPABASE_URL && SUPABASE_ANON_KEY) {
+  if (needsSessionUpdate && SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       res = await updateSession(req)
     } catch {}
