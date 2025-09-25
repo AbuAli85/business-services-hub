@@ -28,7 +28,8 @@ export async function authenticatedFetch(
     finalEndpoint,
     currentDomain: typeof window !== 'undefined' ? window.location.origin : 'server-side',
     sessionExists: !!session,
-    accessTokenExists: !!session.access_token
+    accessTokenExists: !!session.access_token,
+    tokenPreview: session.access_token ? `${session.access_token.substring(0, 20)}...` : 'N/A'
   })
 
   const headers: HeadersInit = {
@@ -44,6 +45,34 @@ export async function authenticatedFetch(
   }
 
   return fetch(finalEndpoint, fetchOptions)
+}
+
+/**
+ * Helper to make API calls with automatic authentication
+ * Falls back to cookies if session token is not available
+ */
+export async function apiRequest(
+  endpoint: string, 
+  options: RequestInit = {}
+): Promise<Response> {
+  try {
+    // Try with authentication token first
+    return await authenticatedFetch(endpoint, options)
+  } catch (authError) {
+    console.warn('🔄 Auth token failed, falling back to cookie auth:', authError)
+    
+    // Fallback to cookie-based authentication
+    const fallbackOptions: RequestInit = {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      }
+    }
+    
+    return fetch(endpoint, fallbackOptions)
+  }
 }
 
 /**

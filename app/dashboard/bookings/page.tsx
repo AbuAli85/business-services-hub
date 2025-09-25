@@ -185,13 +185,11 @@ export default function BookingsPage() {
       
       console.log('📡 Fetching from:', apiEndpoint)
       
-      // Resilient fetch: always include cookies; retry once on 401 to allow session refresh
-      const doFetch = async () => fetch(apiEndpoint, { 
-        cache: 'no-store',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      // Use authenticated API request with fallback
+      const { apiRequest } = await import('@/lib/api-utils')
+      
+      const doFetch = async () => apiRequest(apiEndpoint, { 
+        cache: 'no-store'
       })
       let res = await doFetch()
       if (res.status === 401) {
