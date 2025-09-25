@@ -130,6 +130,35 @@ async function authenticateUser(request: NextRequest) {
   return { user, authError }
 }
 
+// Helper function to get user from request (supports both cookies and Bearer token)
+async function getUserFromRequest(request: NextRequest) {
+  const supabase = await makeServerClient(request)
+  
+  // 1) Try cookie-backed session first
+  let { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    console.log('✅ User authenticated from cookies:', user.id)
+    return user
+  }
+
+  // 2) Fallback to Authorization: Bearer <jwt>
+  const auth = request.headers.get('authorization')
+  if (auth?.startsWith('Bearer ')) {
+    const jwt = auth.slice(7)
+    console.log('🔍 Trying Bearer token authentication, length:', jwt.length)
+    const { data, error } = await supabase.auth.getUser(jwt)
+    if (!error && data.user) {
+      console.log('✅ User authenticated from Bearer token:', data.user.id)
+      return data.user
+    } else {
+      console.log('❌ Bearer token auth failed:', error?.message)
+    }
+  }
+  
+  console.log('❌ No valid authentication found')
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await makeServerClient(request)
@@ -357,9 +386,22 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await makeServerClient(request)
-    const gate = await requireRole(supabase, ['client', 'provider', 'admin'])
-    if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
-    const user = gate.user
+
+    // 🔐 Accept cookie OR bearer token
+    const user = await getUserFromRequest(request)
+    if (!user) return jsonError(401, 'UNAUTHENTICATED', 'No session')
+
+    // Get user profile to determine role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    const userRole = profile?.role ?? user.user_metadata?.role ?? 'client'
+    if (!['client', 'provider', 'admin'].includes(userRole)) {
+      return jsonError(403, 'FORBIDDEN', 'Insufficient role')
+    }
 
     const { searchParams } = new URL(request.url)
     const rawStatus = searchParams.get('status')
@@ -389,14 +431,6 @@ export async function GET(request: NextRequest) {
     query = query.eq('id', bookingId)
   }
 
-    // Get user profile to determine role
-    const { data: profile } = await supabase
-      .from('profiles')
-    .select('role')
-      .eq('id', user.id)
-      .single()
-    
-  const userRole = profile?.role === 'admin' ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
   console.log('🔎 Bookings GET params:', {
     userId: user.id,
     computedUserRole: userRole,
