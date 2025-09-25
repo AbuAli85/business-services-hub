@@ -132,8 +132,12 @@ async function authenticateUser(request: NextRequest) {
 
 // Helper function to get user from request (supports both cookies and Bearer token)
 async function getUserFromRequest(request: NextRequest) {
+  console.log('🔍 getUserFromRequest: Starting authentication check')
+  
   // 1) Try Bearer token first (most reliable for API calls)
   const auth = request.headers.get('authorization')
+  console.log('🔍 getUserFromRequest: Authorization header:', auth ? `${auth.substring(0, 20)}...` : 'null')
+  
   if (auth?.startsWith('Bearer ')) {
     const jwt = auth.slice(7)
     console.log('🔍 Trying Bearer token authentication, length:', jwt.length)
@@ -156,6 +160,8 @@ async function getUserFromRequest(request: NextRequest) {
     } else {
       console.log('❌ Bearer token auth failed:', error?.message)
     }
+  } else {
+    console.log('🔍 getUserFromRequest: No Bearer token found, trying cookies')
   }
 
   // 2) Fallback to cookie-based session
