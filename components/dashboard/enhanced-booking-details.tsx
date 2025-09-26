@@ -1754,12 +1754,19 @@ export default function EnhancedBookingDetails({
                   <h1 className="text-3xl font-bold text-gray-900">
                     {isProvider ? 'Project Management' : 'My Booking'} #{booking.id.slice(0, 8)}
                   </h1>
-                  <Badge className={`px-3 py-1 border ${getStatusColor(booking.status)}`}>
-                    <div className="flex items-center space-x-1">
-                      {getStatusIcon(booking.status)}
-                      <span className="font-medium capitalize">{booking.status.replace('_', ' ')}</span>
-                    </div>
-                  </Badge>
+                  {(() => {
+                    const displayStatus = (booking.approval_status === 'approved' && booking.status === 'pending')
+                      ? 'approved'
+                      : booking.status
+                    return (
+                      <Badge className={`px-3 py-1 border ${getStatusColor(displayStatus)}`}>
+                        <div className="flex items-center space-x-1">
+                          {getStatusIcon(displayStatus)}
+                          <span className="font-medium capitalize">{displayStatus.replace('_', ' ')}</span>
+                        </div>
+                      </Badge>
+                    )
+                  })()}
                   <Badge className={`px-2 py-1 ${getPriorityColor(booking.priority)}`}>
                     {booking.priority.toUpperCase()}
                   </Badge>
