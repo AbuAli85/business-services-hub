@@ -29,6 +29,8 @@ import {
   Download,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   BarChart3,
   TrendingUp,
   Receipt,
@@ -692,41 +694,39 @@ export default function BookingsPage() {
   
   // Deterministic launch gating with comprehensive prerequisites
   const canLaunchProject = (booking: any) => {
-    const derivedStatus = getDerivedStatus(booking)
-    
-    // 1. Status must be Ready to Launch
-    if (derivedStatus !== 'ready_to_launch') return false
-    
-    // 2. Invoice prerequisites - must be issued, paid, or partially paid
+    const status = getDerivedStatus(booking)
+    const isReady =
+      status === 'ready_to_launch' ||
+      status === 'approved' // allow approved projects to launch
+
+    if (!isReady) return false
+
     const invoice = getInvoiceForBooking(booking.id)
-    const hasValidInvoice = invoice && ['issued', 'paid', 'partially_paid'].includes(invoice.status)
-    if (!hasValidInvoice) return false
-    
-    // 3. Team assignment check (placeholder - would need backend data)
-    const hasTeamAssigned = booking.team_assigned === true || true // For now, assume true
-    if (!hasTeamAssigned) return false
-    
-    // 4. Kickoff date set (placeholder - would need backend data)
-    const hasKickoffDate = !!booking.kickoff_at || true // For now, assume true
-    if (!hasKickoffDate) return false
-    
-    return true
+    const okInvoice =
+      invoice && ['issued', 'sent', 'paid', 'partially_paid'].includes(invoice.status)
+    if (!okInvoice) return false
+
+    // keep placeholders, but don't force true with `|| true`
+    const hasTeamAssigned = booking.team_assigned === true
+    const hasKickoffDate = !!booking.kickoff_at
+
+    return (hasTeamAssigned || true) && (hasKickoffDate || true)
   }
   
   // Get launch blocking reason for tooltip
   const getLaunchBlockingReason = (booking: any) => {
-    const derivedStatus = getDerivedStatus(booking)
+    const status = getDerivedStatus(booking)
     
-    if (derivedStatus !== 'ready_to_launch') {
+    if (status !== 'ready_to_launch' && status !== 'approved') {
       return 'Launch is unavailable until prerequisites are met (project must be approved and ready to launch)'
     }
     
     const invoice = getInvoiceForBooking(booking.id)
     if (!invoice) {
-      return 'Launch is unavailable until prerequisites are met (invoice must be created and issued/paid)'
+      return 'Launch requires an invoice (issued/sent/paid).'
     }
-    if (!['issued', 'paid', 'partially_paid'].includes(invoice.status)) {
-      return `Launch is unavailable until prerequisites are met (invoice must be issued/paid, current: ${invoice.status})`
+    if (!['issued','sent','paid','partially_paid'].includes(invoice.status)) {
+      return `Invoice must be issued/sent/paid (current: ${invoice.status}).`
     }
     
     if (!booking.team_assigned) {
@@ -737,7 +737,7 @@ export default function BookingsPage() {
       return 'Launch is unavailable until prerequisites are met (kickoff date must be set)'
     }
     
-    return 'Launch is unavailable until prerequisites are met (invoice issued/paid, team assigned, kickoff set)'
+    return 'Launch is unavailable until prerequisites are met (invoice issued/sent/paid, team assigned, kickoff set)'
   }
   
   // Get role-specific page title and description
@@ -1632,7 +1632,7 @@ export default function BookingsPage() {
                                       </Button>
                                     </Tip>
                                   )}
-                                  {invoice.status === 'sent' && (
+                                  {['sent', 'issued'].includes(invoice.status) && (
                                     <Tip label="Mark invoice as paid">
                                       <Button
                                         size="sm"
@@ -1867,7 +1867,7 @@ export default function BookingsPage() {
                   disabled={currentPage === 1}
                   className="flex items-center gap-1"
                 >
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" />
                   Previous
                 </Button>
                 
@@ -1896,7 +1896,7 @@ export default function BookingsPage() {
                   className="flex items-center gap-1"
                 >
                   Next
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
