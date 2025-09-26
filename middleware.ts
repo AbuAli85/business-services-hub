@@ -12,8 +12,9 @@ try { if (SUPABASE_URL) SUPABASE_HOST = new URL(SUPABASE_URL).host } catch {}
 
 // naive in-memory bucket (per instance); for production, use Upstash or KV
 const buckets = new Map<string, { count: number; resetAt: number }>()
+// Increase window and limit slightly to reduce false positives on bursts
 const WINDOW_MS = 15_000
-const LIMIT = 30
+const LIMIT = 60
 
 function rateLimit(key: string): boolean {
   const now = Date.now()
@@ -35,7 +36,12 @@ export async function middleware(req: NextRequest) {
   // Simple rate limit for API routes
   if (pathname.startsWith('/api/')) {
     const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown'
-    const key = `${pathname}:${ip}`
+    // Special-case bookings GET: key by bookingId to avoid cross-entity throttling
+    let key = `${pathname}:${ip}`
+    if (pathname === '/api/bookings' && req.method === 'GET') {
+      const bookingId = req.nextUrl.searchParams.get('bookingId') || 'all'
+      key = `${pathname}:${bookingId}:${ip}`
+    }
     if (!rateLimit(key)) {
       return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
         status: 429,
