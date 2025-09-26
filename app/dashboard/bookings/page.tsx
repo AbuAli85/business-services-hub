@@ -618,20 +618,41 @@ export default function BookingsPage() {
   const canViewAllBookings = userRole === 'admin'
   const canCreateInvoice = userRole === 'provider' || userRole === 'admin'
   
-  // Check if project launch prerequisites are met
+  // Check if project launch prerequisites are met (deterministic gating)
   const canLaunchProject = (booking: any) => {
-    // Basic status check
-    const isApproved = booking.status === 'approved' || 
-      (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))
+    // 1. Status must be Ready to Launch (approved but not yet started)
+    const derivedStatus = getDerivedStatus(booking)
+    if (derivedStatus !== 'ready_to_launch') return false
     
-    if (!isApproved) return false
-    
-    // Billing prerequisites - for now, allow launch if invoice is issued or paid
-    // In the future, this could be more sophisticated (e.g., require deposit)
+    // 2. Invoice prerequisites - must be issued or paid
     const invoice = invoices.find(inv => inv.booking_id === booking.id)
     const hasValidInvoice = !invoice || ['issued', 'paid', 'partially_paid'].includes(invoice.status)
+    if (!hasValidInvoice) return false
     
-    return hasValidInvoice
+    // 3. Team assignment check (placeholder - would need backend data)
+    // const hasTeamAssigned = booking.team_assigned === true
+    // if (!hasTeamAssigned) return false
+    
+    // 4. Kickoff date set (placeholder - would need backend data)
+    // const hasKickoffDate = !!booking.kickoff_at
+    // if (!hasKickoffDate) return false
+    
+    return true
+  }
+  
+  // Get launch blocking reason for tooltip
+  const getLaunchBlockingReason = (booking: any) => {
+    const derivedStatus = getDerivedStatus(booking)
+    if (derivedStatus !== 'ready_to_launch') {
+      return 'Project must be approved and ready to launch'
+    }
+    
+    const invoice = invoices.find(inv => inv.booking_id === booking.id)
+    if (invoice && !['issued', 'paid', 'partially_paid'].includes(invoice.status)) {
+      return `Invoice must be issued or paid (current: ${invoice.status})`
+    }
+    
+    return 'All prerequisites must be met before launch'
   }
   
   // Get role-specific page title and description
@@ -763,6 +784,15 @@ export default function BookingsPage() {
       console.error('Mark paid failed:', e)
       toast.error(e?.message || 'Failed to mark invoice as paid')
   }
+  }, [])
+
+  // Consistent status derivation function
+  const getDerivedStatus = useCallback((booking: any) => {
+    // If approved but still pending, show as ready to launch
+    if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
+      return 'ready_to_launch'
+    }
+    return booking.status
   }, [])
 
   // Calculate statistics
@@ -953,7 +983,9 @@ export default function BookingsPage() {
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                 <div className="flex items-center gap-2 mb-1">
                   <DollarSign className="h-4 w-4 text-yellow-300" />
-                  <span className="text-sm text-blue-200 font-medium">Revenue (to date)</span>
+                  <Tip label="Sum of invoiced + paid amounts for delivered projects only">
+                    <span className="text-sm text-blue-200 font-medium cursor-help">Revenue (to date)</span>
+                  </Tip>
                 </div>
                 <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
               </div>
@@ -989,10 +1021,12 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Projects</p>
+                <Tip label="Projects currently in development phase (In Production status)">
+                  <p className="text-sm font-medium text-gray-600 cursor-help">Active Projects</p>
+                </Tip>
                 <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
                 <p className="text-xs text-blue-600 mt-1">
-                  {stats.total > 0 ? Math.min(100, Math.max(0, ((stats.inProgress / stats.total) * 100))).toFixed(1) : 0}% of portfolio
+                  {stats.total > 0 ? Math.min(100, Math.max(0, ((stats.inProgress / stats.total) * 100))).toFixed(1) : '—'}% of portfolio
                 </p>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
@@ -1013,7 +1047,9 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Delivered</p>
+                <Tip label="Customer-accepted projects that have been successfully delivered">
+                  <p className="text-sm font-medium text-gray-600 cursor-help">Delivered</p>
+                </Tip>
                 <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
                 <p className="text-xs text-green-600 mt-1">
                   {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}% success rate
@@ -1037,9 +1073,13 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  {userRole === 'provider' ? 'Projected Billings' : 'Total Value'}
-                </p>
+                <Tip label={userRole === 'provider' 
+                  ? 'Expected invoicing for approved and ready-to-launch projects not yet invoiced' 
+                  : 'Total value of all approved and ready projects'}>
+                  <p className="text-sm font-medium text-gray-600 cursor-help">
+                    {userRole === 'provider' ? 'Projected Billings' : 'Total Value'}
+                  </p>
+                </Tip>
                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.projectedBillings)}</p>
                 <p className="text-xs text-orange-600 mt-1">
                   {stats.total > 0 ? formatCurrency(stats.projectedBillings / stats.total) : formatCurrency(0)} avg
@@ -1433,10 +1473,17 @@ export default function BookingsPage() {
                             <div className="flex items-center gap-1">
                               <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                               <span className="text-xs text-gray-500 font-medium">
-                                {booking.status === 'completed' ? 'Project Delivered' : 
-                                 booking.status === 'in_progress' ? 'Project In Progress' :
-                                 booking.status === 'approved' ? 'Project Approved' : 
-                                 (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') ? 'Ready to Launch' : 'Project Pending'}
+                                {(() => {
+                                  const derivedStatus = getDerivedStatus(booking)
+                                  switch (derivedStatus) {
+                                    case 'completed': return 'Project Delivered'
+                                    case 'in_progress': return 'Project In Progress'
+                                    case 'approved': return 'Project Approved'
+                                    case 'ready_to_launch': return 'Ready to Launch'
+                                    case 'pending': return 'Project Pending'
+                                    default: return 'Project Pending'
+                                  }
+                                })()}
                               </span>
                             </div>
                           </div>
@@ -1612,7 +1659,7 @@ export default function BookingsPage() {
                                     </Button>
                                   </Tip>
                                 ) : (
-                                  <Tip label="Launch is unavailable until the invoice is issued or paid">
+                                  <Tip label={getLaunchBlockingReason(booking)}>
                                     <Button size="sm" disabled className="bg-gray-400 text-gray-600 cursor-not-allowed">
                                       <Play className="h-3 w-3 mr-1" />
                                       Launch Project
