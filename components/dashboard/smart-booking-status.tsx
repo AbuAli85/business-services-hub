@@ -510,6 +510,7 @@ export function CompactBookingStatus({
   const [status, setStatus] = useState<string>('pending')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const abortRef = React.useRef<AbortController | null>(null)
 
   // Simple in-memory cache and dedupe per bookingId
@@ -520,7 +521,6 @@ export function CompactBookingStatus({
   const counters = (CompactBookingStatus as any)._counter || ((CompactBookingStatus as any)._counter = { active: 0 })
   const STALE_MS = 5_000
 
-  useEffect(() => {
   const loadStatusAndProgress = async () => {
     try {
       setLoading(true)
@@ -582,7 +582,8 @@ export function CompactBookingStatus({
 
       if (!res!.ok) {
         console.error('Error fetching booking:', res!.status)
-        setStatus('unknown')
+        // Don't set to unknown, try to use a fallback status
+        setStatus('pending')
         setProgress(0)
         return
       }
@@ -597,17 +598,18 @@ export function CompactBookingStatus({
 
       if (!booking) {
         console.error('Booking not found')
-        setStatus('unknown')
+        setStatus('pending')
         setProgress(0)
         return
       }
 
       // Use the applyBooking function which has the correct approval status logic
-      applyBooking(json)
+      await applyBooking(json)
       } catch (e) {
         console.error('Failed to load booking progress:', e)
-        setStatus('unknown')
+        setStatus('pending')
         setProgress(0)
+        setError('Failed to load status')
       } finally {
         setLoading(false)
       }
@@ -616,7 +618,7 @@ export function CompactBookingStatus({
     const applyBooking = async (json: any) => {
       const booking = json?.bookings?.[0]
       if (!booking) {
-        setStatus('unknown')
+        setStatus('pending')
         setProgress(0)
         return
       }
@@ -657,6 +659,12 @@ export function CompactBookingStatus({
           let derivedStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
             ? 'approved'
             : booking.status
+            
+          // Handle case where status might be undefined or null
+          if (!derivedStatus || derivedStatus === 'unknown') {
+            derivedStatus = 'pending'
+          }
+          
           if (derivedStatus === 'approved' || derivedStatus === 'confirmed') {
             if (completed === data.length && data.length > 0) derivedStatus = 'completed'
             else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
@@ -670,10 +678,13 @@ export function CompactBookingStatus({
             booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
           setProgress(defaultProgress)
           setMilestones([])
-          setStatus(booking.status)
+          // Handle case where booking.status might be undefined or null
+          const fallbackStatus = booking.status || 'pending'
+          setStatus(fallbackStatus)
         }
       } catch (error) {
         console.error('Error loading milestones:', error)
+        setError('Failed to load milestones')
         // Fallback to default progress
         const defaultProgress =
           booking.status === 'completed' ? 100 :
@@ -681,12 +692,15 @@ export function CompactBookingStatus({
           booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
         setProgress(defaultProgress)
         setMilestones([])
-        setStatus(booking.status)
+        // Handle case where booking.status might be undefined or null
+        const fallbackStatus = booking.status || 'pending'
+        setStatus(fallbackStatus)
       }
       
       onStatusChangeAction?.()
     }
 
+  useEffect(() => {
     loadStatusAndProgress()
 
     return () => {
@@ -699,6 +713,27 @@ export function CompactBookingStatus({
       <div className="space-y-1">
         <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
         <div className="animate-pulse bg-gray-200 h-2 w-16 rounded"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-3 w-3 text-amber-500" />
+          <span className="text-xs text-amber-600">Error loading status</span>
+        </div>
+        <button 
+          onClick={() => {
+            setError(null)
+            setLoading(true)
+            loadStatusAndProgress()
+          }}
+          className="text-xs text-blue-600 hover:text-blue-800 underline"
+        >
+          Retry
+        </button>
       </div>
     )
   }
@@ -784,11 +819,18 @@ export function CompactBookingStatus({
         glow: 'shadow-red-200',
         priority: 'low'
       },
-      default: {
+      unknown: {
         icon: <Info className="h-3 w-3" />,
         label: 'Unknown',
         className: 'text-gray-700 border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50 shadow-sm',
         glow: 'shadow-gray-200',
+        priority: 'low'
+      },
+      default: {
+        icon: <Clock className="h-3 w-3" />,
+        label: 'Pending',
+        className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
+        glow: 'shadow-amber-200',
         priority: 'low'
       }
     }

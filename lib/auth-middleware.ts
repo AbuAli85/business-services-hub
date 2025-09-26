@@ -14,8 +14,11 @@ export const protectedRoutes: RoleBasedRoute[] = [
   { path: '/dashboard/admin', roles: ['admin'], requireAuth: true, requireProfile: true },
   { path: '/dashboard/provider', roles: ['provider'], requireAuth: true, requireProfile: true },
   { path: '/dashboard/client', roles: ['client'], requireAuth: true, requireProfile: true },
+  { path: '/dashboard/bookings', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/auth/onboarding', roles: ['client', 'provider'], requireAuth: true, requireProfile: false },
   { path: '/api/bookings', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
+  { path: '/api/milestones', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
+  { path: '/api/tasks', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/invoices', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/services', roles: ['provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/auth/complete-profile', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
@@ -170,7 +173,25 @@ export class AuthMiddleware {
   }
 
   getRequiredRole(pathname: string): RoleBasedRoute | null {
-    return protectedRoutes.find(route => pathname.startsWith(route.path)) || null
+    // First try exact matches
+    let route = protectedRoutes.find(route => pathname.startsWith(route.path))
+    
+    console.log('🔍 getRequiredRole: Exact match result:', { pathname, foundRoute: !!route })
+    
+    // If no exact match, try pattern matching for dynamic routes
+    if (!route) {
+      // Handle dynamic booking routes like /dashboard/bookings/[id]/milestones
+      const isBookingRoute = pathname.match(/^\/dashboard\/bookings\/[^\/]+(\/.*)?$/)
+      console.log('🔍 getRequiredRole: Dynamic route check:', { pathname, isBookingRoute: !!isBookingRoute })
+      
+      if (isBookingRoute) {
+        route = protectedRoutes.find(route => route.path === '/dashboard/bookings')
+        console.log('🔍 getRequiredRole: Found booking route:', { pathname, route: route?.path })
+      }
+      // Handle other dynamic routes as needed
+    }
+    
+    return route || null
   }
 
   hasRequiredRole(userRole: string | null, requiredRoles: string[]): boolean {
@@ -182,6 +203,16 @@ export class AuthMiddleware {
     const { pathname } = req.nextUrl
 
     console.log('🔍 Middleware: Processing request for:', pathname)
+
+    // Enhanced debugging for authentication issues
+    console.log('🔍 Middleware auth check:', {
+      hasAccessToken: !!req.cookies.get('sb-access-token'),
+      hasRefreshToken: !!req.cookies.get('sb-refresh-token'),
+      hasBearerToken: !!req.headers.get('authorization'),
+      allCookieNames: req.cookies.getAll().map(c => c.name),
+      pathname,
+      tokenPreview: req.headers.get('authorization')?.substring(0, 20) + '...' || 'N/A'
+    })
 
     // Skip middleware for static files and API routes that don't need auth
     if (pathname.startsWith('/_next') ||

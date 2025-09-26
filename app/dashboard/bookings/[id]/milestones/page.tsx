@@ -48,7 +48,12 @@ export default function MilestonesPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadBookingData()
+    // Add a small delay to allow middleware to process
+    const timer = setTimeout(() => {
+      loadBookingData()
+    }, 100)
+    
+    return () => clearTimeout(timer)
   }, [bookingId])
 
   // Realtime updates for this booking's milestones and booking status
@@ -114,9 +119,27 @@ export default function MilestonesPage() {
       const supabase = await getSupabaseClient()
       
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError || !user) {
-        throw new Error('User not authenticated')
+      let user = null
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+      if (userError || !authUser) {
+        console.error('Authentication error:', userError)
+        // Try to refresh the session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError || !session) {
+          throw new Error('User not authenticated. Please sign in again.')
+        }
+        // If we have a session but no user, try to get user from session
+        const { data: { user: sessionUser }, error: sessionUserError } = await supabase.auth.getUser()
+        if (sessionUserError || !sessionUser) {
+          throw new Error('User not authenticated. Please sign in again.')
+        }
+        user = sessionUser
+      } else {
+        user = authUser
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated. Please sign in again.')
       }
 
       // Load booking details with separate profile queries for reliability
