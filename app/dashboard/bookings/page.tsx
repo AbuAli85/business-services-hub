@@ -85,6 +85,51 @@ export default function BookingsPage() {
 
   // Data sourced from centralized dashboard store
 
+  // --- Hoisted pure helpers (avoid TDZ) ---
+  function getDerivedStatus(booking: any) {
+    // Handle the canonical status ladder: Pending Review → Approved → Ready to Launch → In Production → Delivered
+    
+    // If completed, always show as delivered
+    if (booking.status === 'completed') {
+      return 'delivered'
+    }
+    
+    // If in progress, show as in production
+    if (booking.status === 'in_progress') {
+      return 'in_production'
+    }
+    
+    // If approved (either via status or approval_status), show as ready to launch
+    if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') 
+        && booking.status === 'pending') {
+      return 'ready_to_launch'
+    }
+    
+    // If status is approved, show as approved
+    if (booking.status === 'approved') {
+      return 'approved'
+    }
+    
+    // If status is pending, show as pending review
+    if (booking.status === 'pending') {
+      return 'pending_review'
+    }
+    
+    // Default fallback
+    return booking.status || 'pending_review'
+  }
+
+  function getStatusSubtitle(status: string) {
+    switch (status) {
+      case 'delivered': return 'Project successfully delivered'
+      case 'in_production': return 'Active development in progress'
+      case 'ready_to_launch': return 'All prerequisites met'
+      case 'approved': return 'Waiting for team assignment'
+      case 'pending_review': return 'Awaiting provider approval'
+      default: return 'Project status being determined'
+    }
+  }
+
   // Safely resolve and format dates regardless of field naming or value shape
   const getCreatedAtTimestamp = useCallback((record: any): number => {
     const raw = record?.createdAt ?? record?.created_at ?? record?.created_at_utc ?? record?.created_at_iso
@@ -92,6 +137,17 @@ export default function BookingsPage() {
     const date = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
     const time = date.getTime()
     return Number.isNaN(time) ? 0 : time
+  }, [])
+
+  // NEW: proper "updated" resolver
+  const getUpdatedAtTimestamp = useCallback((record: any): number => {
+    const raw =
+      record?.updatedAt ?? record?.updated_at ??
+      record?.modified_at ?? record?.updated_at_utc ?? record?.updated_at_iso
+    if (!raw) return 0
+    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    const t = d.getTime()
+    return Number.isNaN(t) ? 0 : t
   }, [])
 
   const OMAN_TZ = 'Asia/Muscat'
@@ -566,10 +622,10 @@ export default function BookingsPage() {
     const cmp = (a: any, b: any) => {
       switch (sortBy) {
         case 'lastUpdated': {
-          // Use updated_at if available, otherwise fall back to created_at
-          const av = getCreatedAtTimestamp(a?.updated_at ?? a?.updatedAt ?? a)
-          const bv = getCreatedAtTimestamp(b?.updated_at ?? b?.updatedAt ?? b)
-          return sortOrder === 'asc' ? av - bv : bv - av
+          // Prefer updated_*; fall back to created_*
+          const au = getUpdatedAtTimestamp(a) || getCreatedAtTimestamp(a)
+          const bu = getUpdatedAtTimestamp(b) || getCreatedAtTimestamp(b)
+          return sortOrder === 'asc' ? au - bu : bu - au
   }
         case 'createdAt': {
           const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
@@ -815,50 +871,6 @@ export default function BookingsPage() {
   }
   }, [])
 
-  // Single source of truth for project status derivation
-  const getDerivedStatus = useCallback((booking: any) => {
-    // Handle the canonical status ladder: Pending Review → Approved → Ready to Launch → In Production → Delivered
-    
-    // If completed, always show as delivered
-    if (booking.status === 'completed') {
-      return 'delivered'
-    }
-    
-    // If in progress, show as in production
-    if (booking.status === 'in_progress') {
-      return 'in_production'
-    }
-    
-    // If approved but still pending, show as ready to launch
-    if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
-      return 'ready_to_launch'
-    }
-    
-    // If approved, show as approved
-    if (booking.status === 'approved') {
-      return 'approved'
-    }
-    
-    // If pending without approval, show as pending review
-    if (booking.status === 'pending') {
-      return 'pending_review'
-    }
-    
-    // Default fallback
-    return booking.status || 'pending_review'
-  }, [])
-  
-  // Get status display text for subtitles
-  const getStatusSubtitle = useCallback((status: string) => {
-    switch (status) {
-      case 'delivered': return 'Project successfully delivered'
-      case 'in_production': return 'Active development in progress'
-      case 'ready_to_launch': return 'All prerequisites met'
-      case 'approved': return 'Waiting for team assignment'
-      case 'pending_review': return 'Awaiting provider approval'
-      default: return 'Project status being determined'
-    }
-  }, [])
 
   // Calculate statistics
   const stats = useMemo(() => {
