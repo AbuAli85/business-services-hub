@@ -113,6 +113,7 @@ interface EnhancedBooking {
   description?: string
   status: 'pending' | 'approved' | 'declined' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' | 'rescheduled'
   approval_status?: 'pending' | 'approved' | 'rejected' | 'under_review'
+  ui_approval_status?: 'pending' | 'approved' | 'rejected' | 'under_review'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   created_at: string
   updated_at: string
@@ -1742,7 +1743,7 @@ export default function EnhancedBookingDetails({
                     {isProvider ? 'Project Management' : 'My Booking'} #{booking.id.slice(0, 8)}
                   </h1>
                   {(() => {
-                    const displayStatus = (booking.approval_status === 'approved' && booking.status === 'pending')
+                    const displayStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
                       ? 'approved'
                       : booking.status
                     return (
@@ -1833,7 +1834,7 @@ export default function EnhancedBookingDetails({
               </Button>
 
               {/* Approval Actions for Pending Bookings */}
-              {booking.status === 'pending' && booking.approval_status !== 'approved' && isProvider && (
+              {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && isProvider && (
                 <>
                   <Button 
                     onClick={() => handleApprovalAction('approve')}
@@ -1857,7 +1858,7 @@ export default function EnhancedBookingDetails({
           </div>
 
           {/* Client Action Requests Section */}
-          {isClient && (booking.status === 'approved' || (booking.status === 'pending' && booking.approval_status === 'approved')) && (
+          {isClient && (booking.status === 'approved' || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && (
             <Card className="mb-6 border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-800">
@@ -1935,7 +1936,7 @@ export default function EnhancedBookingDetails({
           )}
 
           {/* Single compact notice for Pending */}
-          {booking.status === 'pending' && booking.approval_status !== 'approved' && (
+          {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && (
             <Alert className="mb-6 border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
@@ -1972,7 +1973,7 @@ export default function EnhancedBookingDetails({
           )}
 
           {/* Pending Booking Status Card */}
-          {booking.status === 'pending' && booking.approval_status !== 'approved' && (
+          {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && (
             <Card className="border-l-4 border-l-yellow-500 bg-gradient-to-r from-yellow-50 to-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1998,7 +1999,7 @@ export default function EnhancedBookingDetails({
           )}
 
           {/* Approved-but-not-started bridge card */}
-          {booking.status === 'pending' && booking.approval_status === 'approved' && (
+          {booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && (
             <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-2">

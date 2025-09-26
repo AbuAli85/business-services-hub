@@ -693,6 +693,14 @@ export function CompactBookingStatus({
         return
       }
 
+      // Debug logging to see what data we're receiving
+      console.log('Smart Status Component - Booking Data:', {
+        bookingId: booking.id,
+        status: booking.status,
+        approval_status: booking.approval_status,
+        ui_approval_status: booking.ui_approval_status
+      })
+
       // Use the applyBooking function which has the correct approval status logic
       await applyBooking(json)
       } catch (e) {
@@ -790,7 +798,10 @@ export function CompactBookingStatus({
             derivedStatus,
             milestones: data.length,
             completed,
-            inProgress
+            inProgress,
+            isInProgress: booking.status === 'in_progress',
+            isApproved: booking.status === 'approved',
+            isApprovedPending: (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending'
           })
           
           // Handle case where status might be undefined or null
