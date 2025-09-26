@@ -1813,7 +1813,7 @@ export default function EnhancedBookingDetails({
             {/* Smart Action Buttons */}
             <div className="flex items-center space-x-3">
               
-              {isProvider && (
+              {isProvider && (booking.status !== 'pending' || booking.approval_status === 'approved') && (
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -1846,7 +1846,7 @@ export default function EnhancedBookingDetails({
               </Button>
 
               {/* Approval Actions for Pending Bookings */}
-              {booking.status === 'pending' && isProvider && (
+              {booking.status === 'pending' && booking.approval_status !== 'approved' && isProvider && (
                 <>
                   <Button 
                     onClick={() => handleApprovalAction('approve')}
@@ -1870,7 +1870,7 @@ export default function EnhancedBookingDetails({
           </div>
 
           {/* Client Action Requests Section */}
-          {isClient && booking.status === 'approved' && (
+          {isClient && (booking.status === 'approved' || (booking.status === 'pending' && booking.approval_status === 'approved')) && (
             <Card className="mb-6 border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-800">
@@ -2140,7 +2140,7 @@ export default function EnhancedBookingDetails({
             </Card>
 
             {/* Provider Actions */}
-            {isProvider && (
+            {isProvider && (booking.status !== 'pending' || booking.approval_status === 'approved') && (
               <Card className="border-0 shadow-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center space-x-2">
