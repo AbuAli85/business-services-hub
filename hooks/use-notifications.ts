@@ -167,13 +167,16 @@ export function useNotifications({
           channelRef.current = null
         }
 
+        // Create filter string inside the useEffect where userId is available
+        const userFilter = `user_id=eq.${userId}`
+
         const channel = supabase
           .channel(`notifications-${userId}`)
           .on('postgres_changes', {
             event: '*',
             schema: 'public',
             table: 'notifications',
-            filter: `user_id=eq.${userId}`
+            filter: userFilter
           }, (payload: any) => {
             // Lightweight state updates; fallback to refetch for safety
             if (!isMounted) return

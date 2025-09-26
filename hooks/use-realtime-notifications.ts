@@ -43,6 +43,9 @@ export function useRealtimeNotifications({ userId, enabled = true }: UseRealtime
 
         setNotifications(initialNotifications || [])
 
+        // Create filter string inside the useEffect where userId is available
+        const userFilter = `user_id=eq.${userId}`
+
         // Set up real-time subscription
         const channel = supabase
           .channel(`notifications:${userId}`)
@@ -52,7 +55,7 @@ export function useRealtimeNotifications({ userId, enabled = true }: UseRealtime
               event: '*',
               schema: 'public',
               table: 'notifications',
-              filter: `user_id=eq.${userId}`
+              filter: userFilter
             },
             (payload) => {
               console.log('🔔 Real-time notification update:', payload)

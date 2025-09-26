@@ -43,6 +43,12 @@ export function useRealtimeProgress({
         await supabase.removeChannel(channelRef.current)
       }
 
+      // Create filter strings inside the async function where bookingId is available
+      const milestoneFilter = `booking_id=eq.${bookingId}`
+      const bookingFilter = `id=eq.${bookingId}`
+      const milestoneIds = await getMilestoneIds(bookingId)
+      const taskFilter = `milestone_id=in.(${milestoneIds})`
+
       // Create new channel for this booking
       const channel = supabase
         .channel(`progress-${bookingId}`, {
@@ -57,7 +63,7 @@ export function useRealtimeProgress({
             event: '*',
             schema: 'public',
             table: 'tasks',
-            filter: `milestone_id=in.(${await getMilestoneIds(bookingId)})`
+            filter: taskFilter
           },
           async (payload) => {
             console.log('📋 Task update received:', payload)
@@ -69,7 +75,7 @@ export function useRealtimeProgress({
             event: '*',
             schema: 'public', 
             table: 'milestones',
-            filter: `booking_id=eq.${bookingId}`
+            filter: milestoneFilter
           },
           async (payload) => {
             console.log('🎯 Milestone update received:', payload)
@@ -81,7 +87,7 @@ export function useRealtimeProgress({
             event: 'UPDATE',
             schema: 'public',
             table: 'bookings',
-            filter: `id=eq.${bookingId}`
+            filter: bookingFilter
           },
           async (payload) => {
             console.log('📊 Booking update received:', payload)

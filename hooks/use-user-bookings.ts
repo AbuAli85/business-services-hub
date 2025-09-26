@@ -65,13 +65,17 @@ export function useUserBookings() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || cancelled) return
 
+      // Create filter strings inside the useEffect where user.id is available
+      const clientFilter = `client_id=eq.${user.id}`
+      const providerFilter = `provider_id=eq.${user.id}`
+
       const ch1 = supabase
         .channel(`bookings-rt-client-${user.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `client_id=eq.${user.id}` }, () => fetchAll())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: clientFilter }, () => fetchAll())
         .subscribe()
       const ch2 = supabase
         .channel(`bookings-rt-provider-${user.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `provider_id=eq.${user.id}` }, () => fetchAll())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: providerFilter }, () => fetchAll())
         .subscribe()
       subs = [ch1, ch2]
     }

@@ -20,10 +20,14 @@ export function useBookingsRealtime(onChange: ChangeHandler, enabled: boolean = 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || isCancelled) return
 
+      // Create filter strings inside the async function where user.id is available
+      const clientFilter = `client_id=eq.${user.id}`
+      const providerFilter = `provider_id=eq.${user.id}`
+
       // Subscribe to bookings where user is client
       const chClient = supabase
         .channel(`bookings-client-${user.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `client_id=eq.${user.id}` }, (payload) => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: clientFilter }, (payload) => {
           onChange({ type: payload.eventType as any, new: payload.new, old: payload.old })
         })
         .subscribe()
@@ -32,7 +36,7 @@ export function useBookingsRealtime(onChange: ChangeHandler, enabled: boolean = 
       // Subscribe to bookings where user is provider
       const chProvider = supabase
         .channel(`bookings-provider-${user.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `provider_id=eq.${user.id}` }, (payload) => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: providerFilter }, (payload) => {
           onChange({ type: payload.eventType as any, new: payload.new, old: payload.old })
         })
         .subscribe()
