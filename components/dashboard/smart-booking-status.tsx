@@ -500,10 +500,12 @@ export function CompactBookingStatus({
   const abortRef = React.useRef<AbortController | null>(null)
 
   // Simple in-memory cache and dedupe per bookingId
-  const cache = (CompactBookingStatus as any)._cache || ((CompactBookingStatus as any)._cache = new Map<string, any>())
+  type Cached = { json: any; ts: number }
+  const cache = (CompactBookingStatus as any)._cache || ((CompactBookingStatus as any)._cache = new Map<string, Cached>())
   const inflight = (CompactBookingStatus as any)._inflight || ((CompactBookingStatus as any)._inflight = new Map<string, Promise<any>>())
   const maxConcurrent = 4
   const counters = (CompactBookingStatus as any)._counter || ((CompactBookingStatus as any)._counter = { active: 0 })
+  const STALE_MS = 5_000
 
   useEffect(() => {
   const loadStatusAndProgress = async () => {
@@ -511,9 +513,9 @@ export function CompactBookingStatus({
       setLoading(true)
 
       // Cached?
-      const cached = cache.get(bookingId)
-      if (cached) {
-        applyBooking(cached)
+      const cached = cache.get(bookingId) as Cached | undefined
+      if (cached && Date.now() - cached.ts < STALE_MS) {
+        applyBooking(cached.json)
         setLoading(false)
         return
       }
@@ -575,7 +577,7 @@ export function CompactBookingStatus({
       const p = res!.json()
       inflight.set(bookingId, p)
       const json = await p.finally(() => inflight.delete(bookingId))
-      cache.set(bookingId, json)
+      cache.set(bookingId, { json, ts: Date.now() })
 
       const { bookings } = json
       const booking = bookings?.[0]
@@ -665,8 +667,11 @@ export function CompactBookingStatus({
       }
       const completed = data.filter(m => m.status === 'completed').length
       const inProgress = data.filter(m => m.status === 'in_progress').length
-      let derivedStatus = booking.status
-      if (booking.status === 'approved' || booking.status === 'confirmed') {
+      // Bridge: treat approval_status=approved as "approved" even if status stays pending until work starts
+      let derivedStatus = (booking.approval_status === 'approved' && booking.status === 'pending')
+        ? 'approved'
+        : booking.status
+      if (derivedStatus === 'approved' || derivedStatus === 'confirmed') {
         if (completed === data.length) derivedStatus = 'completed'
         else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
       }
