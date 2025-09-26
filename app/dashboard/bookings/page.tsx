@@ -52,6 +52,7 @@ export default function BookingsPage() {
   const router = useRouter()
   const [userLoading, setUserLoading] = useState(true)
   const [dataLoading, setDataLoading] = useState(false)
+  const isLoadingRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [bookings, setBookings] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
@@ -170,8 +171,14 @@ export default function BookingsPage() {
 
   // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log('⏸️ Skipping load - request already in progress')
+      return
+    }
+    isLoadingRef.current = true
     if (!user || !userRole) {
       console.log('Skipping data load - user or role not ready:', { user: !!user, userRole })
+      isLoadingRef.current = false
       return
     }
     
@@ -313,6 +320,7 @@ export default function BookingsPage() {
     } finally {
       setDataLoading(false)
       console.log('✅ Data loading complete')
+      isLoadingRef.current = false
     }
   }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery, router])
 
