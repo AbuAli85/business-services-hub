@@ -377,6 +377,13 @@ export default function BookingsPage() {
     let invoicesChannel: any
     let isMounted = true
 
+    // Get userId outside the async function to avoid hoisting issues
+    const userId = user?.id
+    if (!userId) {
+      console.warn('⚠️ User ID not available for realtime subscriptions')
+      return
+    }
+
     const setupRealtimeSubscriptions = async () => {
       try {
         // Add a delay to prevent immediate refresh triggers after initial load
@@ -388,13 +395,6 @@ export default function BookingsPage() {
         const supabase = await getSupabaseClient()
 
         if (!isMounted) return
-
-        // Subscribe to bookings changes
-        const userId = user?.id
-        if (!userId) {
-          console.warn('⚠️ User ID not available for realtime subscriptions')
-          return
-        }
         
         bookingsChannel = supabase
           .channel(`bookings-changes-${userId}`)
