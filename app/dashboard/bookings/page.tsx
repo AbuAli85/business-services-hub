@@ -199,9 +199,24 @@ export default function BookingsPage() {
       // Use authenticated API request with fallback
       const { apiRequest } = await import('@/lib/api-utils')
 
-      const doFetch = async () => apiRequest(apiEndpoint, {
-        cache: 'no-store'
-      })
+      // 429-aware backoff wrapper with jitter
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+      const doFetch = async () => {
+        let attempt = 0
+        const maxRetries = 4
+        const base = 300
+        const cap = 5000
+        while (true) {
+          const res = await apiRequest(apiEndpoint, { cache: 'no-store' })
+          if (res.status !== 429) return res
+          const ra = res.headers.get('retry-after')
+          const delay = ra ? Number(ra) * 1000 : Math.min(cap, base * 2 ** attempt)
+          const wait = Math.floor(Math.random() * Math.max(300, delay))
+          if (attempt >= maxRetries) return res
+          await sleep(wait)
+          attempt++
+        }
+      }
 
       // Try the request with automatic token refresh handling
       let res = await doFetch()

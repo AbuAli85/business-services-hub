@@ -43,10 +43,18 @@ export async function middleware(req: NextRequest) {
       key = `${pathname}:${bookingId}:${ip}`
     }
     if (!rateLimit(key)) {
-      return new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
+      // Provide actionable headers for clients
+      const now = Date.now()
+      const retryAfterSec = Math.ceil(WINDOW_MS / 1000)
+      const resp = new NextResponse(JSON.stringify({ error: 'Too many requests' }), {
         status: 429,
         headers: { 'Content-Type': 'application/json' }
       })
+      resp.headers.set('Retry-After', String(retryAfterSec))
+      resp.headers.set('X-RateLimit-Limit', String(LIMIT))
+      resp.headers.set('X-RateLimit-Remaining', '0')
+      resp.headers.set('X-RateLimit-Reset', String(Math.ceil((now + WINDOW_MS) / 1000)))
+      return resp
     }
   }
 
