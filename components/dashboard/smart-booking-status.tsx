@@ -903,15 +903,17 @@ export function CompactBookingStatus({
             {/* Enhanced Milestone Summary */}
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <Target className="h-3 w-3 text-gray-500" />
-                  <span className="text-gray-600 font-medium">
-                    {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
-                  </span>
-                  <span className="text-gray-500">milestones</span>
-                </div>
+                {milestones.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Target className="h-3 w-3 text-gray-500" />
+                    <span className="text-gray-600 font-medium">
+                      {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
+                    </span>
+                    <span className="text-gray-500">milestones</span>
+                  </div>
+                )}
                 
-                {milestones.some(m => m.status === 'in_progress') && (
+                {milestones.length > 0 && milestones.some(m => m.status === 'in_progress') && (
                   <div className="flex items-center gap-1 text-blue-600">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                     <span className="font-medium">

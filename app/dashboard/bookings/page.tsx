@@ -607,6 +607,22 @@ export default function BookingsPage() {
   const canViewAllBookings = userRole === 'admin'
   const canCreateInvoice = userRole === 'provider' || userRole === 'admin'
   
+  // Check if project launch prerequisites are met
+  const canLaunchProject = (booking: any) => {
+    // Basic status check
+    const isApproved = booking.status === 'approved' || 
+      (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))
+    
+    if (!isApproved) return false
+    
+    // Billing prerequisites - for now, allow launch if invoice is issued or paid
+    // In the future, this could be more sophisticated (e.g., require deposit)
+    const invoice = invoices.find(inv => inv.booking_id === booking.id)
+    const hasValidInvoice = !invoice || ['issued', 'paid', 'partially_paid'].includes(invoice.status)
+    
+    return hasValidInvoice
+  }
+  
   // Get role-specific page title and description
   const getPageTitle = () => {
     switch (userRole) {
@@ -749,12 +765,19 @@ export default function BookingsPage() {
     const approved = bookingsSource.filter((b:any) => 
       b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))
     ).length
+    // Revenue (to date) - only completed/delivered projects that are invoiced/paid
     const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
       .reduce((sum: number, b: any) => sum + (b.totalAmount ?? b.amount ?? b.total_price ?? 0), 0)
+    
+    // Projected billings - approved/ready projects not yet invoiced
+    const projectedBillings = bookingsSource
+      .filter(b => (b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))) && b.status !== 'completed')
+      .reduce((sum: number, b: any) => sum + (b.totalAmount ?? b.amount ?? b.total_price ?? 0), 0)
+    
     const avgCompletionTime = 7.2 // Mock data
 
-    return { total, completed, inProgress, pending, approved, totalRevenue, avgCompletionTime }
+    return { total, completed, inProgress, pending, approved, totalRevenue, projectedBillings, avgCompletionTime }
   }, [bookingsSource])
 
   // Show loading skeleton only during initial user loading
@@ -919,7 +942,7 @@ export default function BookingsPage() {
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                 <div className="flex items-center gap-2 mb-1">
                   <DollarSign className="h-4 w-4 text-yellow-300" />
-                  <span className="text-sm text-blue-200 font-medium">Revenue</span>
+                  <span className="text-sm text-blue-200 font-medium">Revenue (to date)</span>
                 </div>
                 <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
               </div>
@@ -958,7 +981,7 @@ export default function BookingsPage() {
                 <p className="text-sm font-medium text-gray-600">Active Projects</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
                 <p className="text-xs text-blue-600 mt-1">
-                  {stats.total > 0 ? ((stats.inProgress / stats.total) * 100).toFixed(1) : 0}% of portfolio
+                  {stats.total > 0 ? Math.min(100, Math.max(0, ((stats.inProgress / stats.total) * 100))).toFixed(1) : 0}% of portfolio
                 </p>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
@@ -979,7 +1002,7 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-sm font-medium text-gray-600">Delivered</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
                 <p className="text-xs text-green-600 mt-1">
                   {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}% success rate
@@ -1004,11 +1027,11 @@ export default function BookingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">
-                  {userRole === 'provider' ? 'Earnings' : 'Total Value'}
+                  {userRole === 'provider' ? 'Projected Billings' : 'Total Value'}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.projectedBillings)}</p>
                 <p className="text-xs text-orange-600 mt-1">
-                  {stats.total > 0 ? formatCurrency(stats.totalRevenue / stats.total) : formatCurrency(0)} avg
+                  {stats.total > 0 ? formatCurrency(stats.projectedBillings / stats.total) : formatCurrency(0)} avg
                 </p>
               </div>
               <div className="p-3 bg-orange-100 rounded-full">
@@ -1547,14 +1570,23 @@ export default function BookingsPage() {
 
                               {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
-                                <Tip label="Begin project work and create milestones">
-                                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-purple-200 transition-all duration-200" asChild>
-                                    <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                canLaunchProject(booking) ? (
+                                  <Tip label="Begin project work and create milestones">
+                                    <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-purple-200 transition-all duration-200" asChild>
+                                      <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                        <Play className="h-3 w-3 mr-1" />
+                                        Launch Project
+                                      </Link>
+                                    </Button>
+                                  </Tip>
+                                ) : (
+                                  <Tip label="Launch is unavailable until the invoice is issued or paid">
+                                    <Button size="sm" disabled className="bg-gray-400 text-gray-600 cursor-not-allowed">
                                       <Play className="h-3 w-3 mr-1" />
                                       Launch Project
-                                    </Link>
-                                  </Button>
-                                </Tip>
+                                    </Button>
+                                  </Tip>
+                                )
                               )}
 
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
