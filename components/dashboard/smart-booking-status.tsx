@@ -18,6 +18,7 @@ import {
   Receipt,
   Settings,
   Shield,
+  X,
   XCircle,
   ThumbsUp,
   Calendar,
@@ -655,20 +656,39 @@ export function CompactBookingStatus({
           const completed = data.filter(m => m.status === 'completed').length
           const inProgress = data.filter(m => m.status === 'in_progress').length
           
-          // Bridge: treat approval_status=approved as "ready_to_launch" even if status stays pending until work starts
-          let derivedStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
-            ? 'ready_to_launch'
-            : booking.status
-            
-          // Handle case where status might be undefined or null
-          if (!derivedStatus || derivedStatus === 'unknown') {
-            derivedStatus = 'pending'
+          // Canonical status ladder: Pending Review → Approved → Ready to Launch → In Production → Delivered
+          let derivedStatus: string
+          
+          // If completed, always show as delivered
+          if (booking.status === 'completed') {
+            derivedStatus = 'delivered'
+          }
+          // If in progress, show as in production
+          else if (booking.status === 'in_progress') {
+            derivedStatus = 'in_production'
+          }
+          // If approved but still pending, show as ready to launch
+          else if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
+            derivedStatus = 'ready_to_launch'
+          }
+          // If approved, show as approved
+          else if (booking.status === 'approved') {
+            derivedStatus = 'approved'
+          }
+          // If pending without approval, show as pending review
+          else if (booking.status === 'pending') {
+            derivedStatus = 'pending_review'
+          }
+          // Default fallback
+          else {
+            derivedStatus = booking.status || 'pending_review'
           }
           
-          if (derivedStatus === 'approved' || derivedStatus === 'confirmed' || derivedStatus === 'ready_to_launch') {
-            if (completed === data.length && data.length > 0) derivedStatus = 'completed'
-            else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
+          // Handle case where status might be undefined or null
+          if (!derivedStatus || derivedStatus === 'unknown') {
+            derivedStatus = 'pending_review'
           }
+          
           setStatus(derivedStatus)
         } else {
           // Fallback to default progress if milestones API fails
@@ -823,6 +843,34 @@ export function CompactBookingStatus({
         label: 'Ready to Launch',
         className: 'text-purple-700 border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm',
         glow: 'shadow-purple-200',
+        priority: 'medium'
+      },
+      delivered: {
+        icon: <Crown className="h-3 w-3" />,
+        label: 'Delivered',
+        className: 'text-emerald-700 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm',
+        glow: 'shadow-emerald-200',
+        priority: 'high'
+      },
+      in_production: {
+        icon: <Rocket className="h-3 w-3" />,
+        label: 'In Production',
+        className: 'text-blue-700 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm',
+        glow: 'shadow-blue-200',
+        priority: 'high'
+      },
+      pending_review: {
+        icon: <Clock className="h-3 w-3" />,
+        label: 'Pending Review',
+        className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
+        glow: 'shadow-amber-200',
+        priority: 'low'
+      },
+      on_hold: {
+        icon: <Pause className="h-3 w-3" />,
+        label: 'On Hold',
+        className: 'text-orange-700 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 shadow-sm',
+        glow: 'shadow-orange-200',
         priority: 'medium'
       },
       cancelled: {
