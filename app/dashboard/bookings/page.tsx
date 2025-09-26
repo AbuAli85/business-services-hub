@@ -508,9 +508,18 @@ export default function BookingsPage() {
 
   // Debounce searchQuery for smoother UX
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery), 250)
+    const t = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+      // Reset to page 1 when search query changes
+      setCurrentPage(1)
+    }, 250)
     return () => clearTimeout(t)
   }, [searchQuery])
+
+  // Reset to page 1 when status filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [statusFilter])
 
   // Always use Supabase data on this page to avoid mock IDs in routes
   const bookingsSource = bookings
@@ -567,11 +576,9 @@ export default function BookingsPage() {
     return filtered
   }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder, getCreatedAtTimestamp])
 
-  // Pagination: server returns paged items and total count for admin, client-side for others
-  const totalPages = Math.max(1, Math.ceil((totalCount || filteredBookings.length) / pageSize))
-  const paginatedBookings = userRole === 'admin' 
-    ? bookingsSource // Server-side pagination for admin
-    : filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize) // Client-side for others
+  // Pagination: Use filtered results for all users to ensure filters work with pagination
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize))
+  const paginatedBookings = filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   // Memoized invoice lookup for performance
   const invoiceByBooking = useMemo(() => {
@@ -751,59 +758,59 @@ export default function BookingsPage() {
   }, [bookingsSource])
 
   // Show loading skeleton only during initial user loading
-  if (userLoading) {
+  if (userLoading || dataLoading) {
     return (
       <div className="space-y-6">
-        {/* Header Skeleton */}
-        <Skeleton className="h-40 w-full rounded-xl" />
-        
-        {/* Statistics Cards Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="border-l-4 border-l-gray-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-8 w-16" />
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                  <Skeleton className="h-12 w-12 rounded-full" />
+        {/* Enhanced Professional Header Skeleton */}
+        <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden">
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                  <BarChart3 className="h-6 w-6 text-white" />
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        
-        {/* Filters Skeleton */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-20 rounded-full" />
+                <Skeleton className="h-8 w-64 bg-white/20" />
+              </div>
+              <Skeleton className="h-5 w-80 bg-white/20 mb-6" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                    <Skeleton className="h-4 w-24 bg-white/20 mb-2" />
+                    <Skeleton className="h-6 w-16 bg-white/20" />
+                  </div>
                 ))}
               </div>
-              <div className="flex gap-4">
-                <Skeleton className="h-10 flex-1" />
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-10 w-10" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-32 bg-white/20" />
+              <Skeleton className="h-10 w-10 bg-white/20 rounded-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Skeleton */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <Skeleton className="h-10 w-64" />
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-24" />
               </div>
+              <Skeleton className="h-8 w-24" />
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Table Skeleton */}
-        <Card>
-          <CardHeader>
+        <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
+          <CardHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
             <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-64" />
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
+                <div key={i} className="flex items-center space-x-4 p-4 border-b border-gray-100">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-4 w-24" />
@@ -1189,14 +1196,19 @@ export default function BookingsPage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
                   setSearchQuery('')
                   setStatusFilter('all')
                   setSortBy('createdAt')
                   setSortOrder('desc')
                   setCurrentPage(1)
+                  // Force a data reload to ensure filters are cleared
+                  setRefreshTrigger(prev => prev + 1)
                 }}
-                className="text-blue-600 border-blue-300"
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                type="button"
               >
                 Clear Filters
               </Button>
@@ -1656,13 +1668,10 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
-                {userRole === 'admin' 
-                  ? `Page ${currentPage} of ${totalPages} • ${totalCount} total results`
-                  : `Page ${currentPage} of ${totalPages} • ${filteredBookings.length} results`
-                }
+                {`Page ${currentPage} of ${totalPages} • ${filteredBookings.length} results`}
                 {paginatedBookings.length !== filteredBookings.length && (
                   <span className="text-blue-600 ml-2">
-                    (Showing {paginatedBookings.length} per page)
+                    (Showing {paginatedBookings.length} of {filteredBookings.length} on this page)
                   </span>
                 )}
               </div>
