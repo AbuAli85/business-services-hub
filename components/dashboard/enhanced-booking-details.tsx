@@ -1948,7 +1948,7 @@ export default function EnhancedBookingDetails({
           )}
 
           {/* Single compact notice for Pending */}
-          {booking.status === 'pending' && (
+          {booking.status === 'pending' && booking.approval_status !== 'approved' && (
             <Alert className="mb-6 border-blue-200 bg-blue-50">
               <Info className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
@@ -1958,7 +1958,7 @@ export default function EnhancedBookingDetails({
           )}
 
           {/* Smart Progress Indicator - Only show for approved/in-progress bookings (optional) */}
-          {showProgressCard && booking.status !== 'pending' && booking.status !== 'cancelled' && booking.status !== 'declined' && (
+          {showProgressCard && (booking.status !== 'pending' || booking.approval_status === 'approved') && booking.status !== 'cancelled' && booking.status !== 'declined' && (
           <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1985,7 +1985,7 @@ export default function EnhancedBookingDetails({
           )}
 
           {/* Pending Booking Status Card */}
-          {booking.status === 'pending' && (
+          {booking.status === 'pending' && booking.approval_status !== 'approved' && (
             <Card className="border-l-4 border-l-yellow-500 bg-gradient-to-r from-yellow-50 to-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -2005,6 +2005,24 @@ export default function EnhancedBookingDetails({
                   <span>Under Review</span>
                   <span>Approved</span>
                   <span>In Progress</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Approved-but-not-started bridge card */}
+          {booking.status === 'pending' && booking.approval_status === 'approved' && (
+            <Card className="border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Booking Approved</h3>
+                    <p className="text-gray-600 text-sm">Provider approved. Project will begin when work is started.</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-600">Approved</div>
+                    <div className="text-sm text-gray-500">Awaiting Start</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
