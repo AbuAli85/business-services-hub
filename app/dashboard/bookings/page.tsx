@@ -77,11 +77,11 @@ export default function BookingsPage() {
   const lastRefreshTimeRef = useRef(0)
 
   // Helper for custom tooltips
-  const Tip: React.FC<{label: string; children: React.ReactNode}> = ({ label, children }) => (
-    <Tooltip content={label}>
+  const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+    <Tooltip content={<p className="max-w-xs text-sm">{label}</p>}>
       {children}
     </Tooltip>
-    )
+  )
 
   // Data sourced from centralized dashboard store
 
@@ -698,7 +698,7 @@ export default function BookingsPage() {
     if (derivedStatus !== 'ready_to_launch') return false
     
     // 2. Invoice prerequisites - must be issued, paid, or partially paid
-    const invoice = invoices.find(inv => inv.booking_id === booking.id)
+    const invoice = getInvoiceForBooking(booking.id)
     const hasValidInvoice = invoice && ['issued', 'paid', 'partially_paid'].includes(invoice.status)
     if (!hasValidInvoice) return false
     
@@ -721,7 +721,7 @@ export default function BookingsPage() {
       return 'Launch is unavailable until prerequisites are met (project must be approved and ready to launch)'
     }
     
-    const invoice = invoices.find(inv => inv.booking_id === booking.id)
+    const invoice = getInvoiceForBooking(booking.id)
     if (!invoice) {
       return 'Launch is unavailable until prerequisites are met (invoice must be created and issued/paid)'
     }
@@ -1663,7 +1663,12 @@ export default function BookingsPage() {
                                 </Badge>
                                 {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
                                   <Tip label="Create invoice for this booking">
-                                    <Button size="sm" variant="outline" className="text-xs h-6 px-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline" 
+                                      className="text-xs h-6 px-2"
+                                      onClick={() => handleCreateInvoice(booking)}
+                                    >
                                       Create
                                     </Button>
                                   </Tip>
