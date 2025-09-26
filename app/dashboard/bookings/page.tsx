@@ -1205,16 +1205,50 @@ export default function BookingsPage() {
         </Card>
       )}
 
-      {/* Professional Bookings Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Project Portfolio
-          </CardTitle>
-          <CardDescription>
-            Professional project management with intelligent status tracking
-          </CardDescription>
+      {/* Enhanced Professional Bookings Table */}
+      <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
+        <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Target className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold text-gray-900">Project Portfolio</CardTitle>
+                  <CardDescription className="text-gray-600 mt-1">
+                    Professional project management with intelligent status tracking
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <span>Live Status Updates</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span>Real-time Progress</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span>Smart Analytics</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadSupabaseData}
+                disabled={dataLoading}
+                className="flex items-center space-x-1 bg-white hover:bg-gray-50 border-gray-300"
+              >
+                <RefreshCw className={`h-4 w-4 ${dataLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border relative">
@@ -1227,57 +1261,57 @@ export default function BookingsPage() {
               </div>
             )}
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
+              <TableHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
+                <TableRow className="border-b-2 border-gray-200">
+                  <TableHead className="font-semibold text-gray-700 py-4">
                     <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4" />
-                      Project
+                      <Target className="h-4 w-4 text-blue-600" />
+                      Project Details
                     </div>
                   </TableHead>
                   {userRole === 'admin' && (
-                    <TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4">
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
+                        <User className="h-4 w-4 text-blue-600" />
                         Client
                       </div>
                     </TableHead>
                   )}
                   {(userRole === 'admin' || userRole === 'client') && (
-                    <TableHead>
+                    <TableHead className="font-semibold text-gray-700 py-4">
                       <div className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
+                        <Settings className="h-4 w-4 text-blue-600" />
                         Provider
                       </div>
                     </TableHead>
                   )}
-                  <TableHead>
+                  <TableHead className="font-semibold text-gray-700 py-4">
                     <div className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4" />
-                      Value
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      Investment
                     </div>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="font-semibold text-gray-700 py-4">
                     <div className="flex items-center gap-2">
-                      <Play className="h-4 w-4" />
+                      <BarChart3 className="h-4 w-4 text-purple-600" />
                       Smart Status
                     </div>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="font-semibold text-gray-700 py-4">
                     <div className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4" />
-                      Billing
+                      <Receipt className="h-4 w-4 text-amber-600" />
+                      Billing Status
                     </div>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="font-semibold text-gray-700 py-4">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
+                      <Calendar className="h-4 w-4 text-cyan-600" />
                       Timeline
                     </div>
                   </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
+                  <TableHead className="font-semibold text-gray-700 py-4 text-center">
+                    <div className="flex items-center gap-2 justify-center">
+                      <Zap className="h-4 w-4 text-orange-600" />
                       Actions
                     </div>
                   </TableHead>
@@ -1295,23 +1329,39 @@ export default function BookingsPage() {
                         status: booking.status,
                         userRole,
                         approval_status: booking.approval_status,
-                        ui_approval_status: booking.ui_approval_status
+                        ui_approval_status: booking.ui_approval_status,
+                        shouldShowReview: userRole === 'client',
+                        shouldShowDelivered: userRole === 'provider'
                       })
                     }
                     
                     return (
-                      <TableRow key={booking.id} className="hover:bg-gray-50">
-                        <TableCell>
-                          <div className="font-medium">
-                            <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="hover:underline text-blue-600">
-                              {(booking as any).services?.title || (booking as any).title || 'Service'}
-                            </Link>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">ID: {String(booking.id).slice(0, 8)}...</div>
-                          <div className="text-xs mt-1 space-x-2">
-                            <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-blue-600 hover:underline">Details</Link>
-                            <span className="text-gray-300">|</span>
-                            <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-purple-600 hover:underline">Milestones</Link>
+                      <TableRow key={booking.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                        <TableCell className="py-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition-colors">
+                                {(booking as any).services?.title || (booking as any).title || 'Service'}
+                              </Link>
+                              {booking.status === 'completed' && (
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                              )}
+                              {booking.status === 'in_progress' && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                              ID: {String(booking.id).slice(0, 8)}...
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                                View Details
+                              </Link>
+                              <span className="text-gray-300">•</span>
+                              <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-xs text-purple-600 hover:text-purple-800 hover:underline font-medium">
+                                Track Progress
+                              </Link>
+                            </div>
                           </div>
                         </TableCell>
                         
@@ -1329,12 +1379,19 @@ export default function BookingsPage() {
                           </TableCell>
                         )}
                         
-                        <TableCell>
-                          <div className="font-medium">
-                            {formatCurrency(
-                              Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0),
-                              String((booking as any).currency ?? 'OMR')
-                            )}
+                        <TableCell className="py-4">
+                          <div className="space-y-1">
+                            <div className="font-bold text-lg text-gray-900">
+                              {formatCurrency(
+                                Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0),
+                                String((booking as any).currency ?? 'OMR')
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {booking.status === 'completed' ? 'Paid' : 
+                               booking.status === 'in_progress' ? 'In Progress' :
+                               booking.status === 'approved' ? 'Approved' : 'Pending'}
+                            </div>
                           </div>
                         </TableCell>
                         
@@ -1453,11 +1510,11 @@ export default function BookingsPage() {
                                     </Tip>
                                   )}
                                   
-                                  {!userRole && (
+                                  {(!userRole || userRole === 'admin') && (
                                     <Tip label="Project completed">
                                       <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
                                         <Award className="h-3 w-3 mr-1" />
-                                        Complete
+                                        Delivered
                                       </Button>
                                     </Tip>
                                   )}
@@ -1549,84 +1606,39 @@ export default function BookingsPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <div className="flex flex-col items-center space-y-4 py-8">
-                        <div className={`p-6 rounded-full ${
-                          userRole === 'client' ? 'bg-blue-100' :
-                          userRole === 'provider' ? 'bg-purple-100' :
-                          'bg-gray-100'
-                        }`}>
-                          <Calendar className={`h-12 w-12 ${
-                            userRole === 'client' ? 'text-blue-600' :
-                            userRole === 'provider' ? 'text-purple-600' :
-                            'text-gray-400'
-                          }`} />
+                    <TableCell colSpan={userRole === 'admin' ? 7 : (userRole === 'client' ? 6 : 5)} className="py-12">
+                      <div className="text-center space-y-4">
+                        <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                          <BarChart3 className="h-12 w-12 text-blue-600" />
                         </div>
-                        
-                        <div className="text-center space-y-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {searchQuery || statusFilter !== 'all' ? 'No Results Found' : 'No Bookings Yet'}
-                          </h3>
-                          <p className="text-sm text-gray-600 max-w-md">
-                            {searchQuery || statusFilter !== 'all'
-                              ? 'Try adjusting your search filters or check different status categories to find what you\'re looking for.'
-                              : userRole === 'client' 
-                                ? 'Ready to get started? Create your first booking to begin working with our professional service providers.'
-                                : userRole === 'provider'
-                                ? 'Your service bookings from clients will appear here. Make sure your services are published and visible.'
-                                : 'Bookings from across the platform will appear here as they are created by clients and providers.'}
+                        <div className="space-y-2">
+                          <h3 className="text-lg font-semibold text-gray-900">No Projects Found</h3>
+                          <p className="text-gray-500 max-w-md mx-auto">
+                            {userRole === 'provider' 
+                              ? "You don't have any service bookings yet. Start by creating a service to attract clients."
+                              : userRole === 'client'
+                              ? "You haven't booked any services yet. Browse our available services to get started."
+                              : "No bookings found in the system. Bookings will appear here once created."
+                            }
                           </p>
                         </div>
-
-                        {/* Role-specific CTAs */}
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          {userRole === 'client' && !searchQuery && statusFilter === 'all' && (
-                            <>
-                              <Button 
-                                className="bg-blue-600 hover:bg-blue-700"
-                                onClick={() => router.push('/dashboard/bookings/create')}
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                Create Your First Booking
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                onClick={() => router.push('/services')}
-                              >
-                                <Eye className="h-4 w-4 mr-2" />
-                                Browse Services
-                              </Button>
-                            </>
-                          )}
-                          
-                          {userRole === 'provider' && !searchQuery && statusFilter === 'all' && (
-                            <>
-                              <Button 
-                                className="bg-purple-600 hover:bg-purple-700"
-                                onClick={() => router.push('/dashboard/provider/provider-services')}
-                              >
-                                <Settings className="h-4 w-4 mr-2" />
-                                Manage Your Services
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                onClick={() => router.push('/dashboard/provider/create-service')}
-                              >
-                                <Target className="h-4 w-4 mr-2" />
-                                Create New Service
-                              </Button>
-                            </>
-                          )}
-                          
-                          {userRole === 'admin' && !searchQuery && statusFilter === 'all' && (
-                            <Button 
-                              variant="outline"
-                              onClick={() => router.push('/dashboard/admin/analytics')}
-                            >
-                              <BarChart3 className="h-4 w-4 mr-2" />
-                              View Platform Analytics
+                        <div className="flex justify-center gap-3">
+                          {userRole === 'provider' && (
+                            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+                              <Settings className="h-4 w-4 mr-2" />
+                              Create Service
                             </Button>
                           )}
+                          {userRole === 'client' && (
+                            <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white">
+                              <Search className="h-4 w-4 mr-2" />
+                              Browse Services
+                            </Button>
+                          )}
+                          <Button variant="outline" onClick={loadSupabaseData}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Refresh
+                          </Button>
                         </div>
                       </div>
                     </TableCell>
@@ -1647,7 +1659,7 @@ export default function BookingsPage() {
                 {userRole === 'admin' 
                   ? `Page ${currentPage} of ${totalPages} • ${totalCount} total results`
                   : `Page ${currentPage} of ${totalPages} • ${filteredBookings.length} results`
-  }
+                }
                 {paginatedBookings.length !== filteredBookings.length && (
                   <span className="text-blue-600 ml-2">
                     (Showing {paginatedBookings.length} per page)
@@ -1656,70 +1668,43 @@ export default function BookingsPage() {
               </div>
               
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  disabled={currentPage === 1} 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1"
                 >
-                  <ChevronDown className="h-4 w-4 rotate-90" />
+                  <ChevronUp className="h-4 w-4" />
                   Previous
                 </Button>
                 
-                {/* Page numbers for better navigation */}
-                {totalPages <= 7 ? (
-                  // Show all pages if 7 or fewer
-                  Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <Button
-                      key={page}
-                      variant={page === currentPage ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className="w-10"
-                    >
-                      {page}
-                    </Button>
-                  ))
-                ) : (
-                  // Show abbreviated pagination for many pages
-                  <>
-                    {currentPage > 3 && (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} className="w-10">1</Button>
-                        {currentPage > 4 && <span className="text-gray-400">...</span>}
-                      </>
-                    )}
-                    {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                      const page = Math.max(1, Math.min(totalPages - 2, currentPage - 1)) + i
-                      return page <= totalPages ? (
-                        <Button
-                          key={page}
-                          variant={page === currentPage ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className="w-10"
-                        >
-                          {page}
-                        </Button>
-                      ) : null
-                    })}
-                    {currentPage < totalPages - 2 && (
-                      <>
-                        {currentPage < totalPages - 3 && <span className="text-gray-400">...</span>}
-                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} className="w-10">{totalPages}</Button>
-                      </>
-                    )}
-                  </>
-                )}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const page = i + 1
+                    return (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    )
+                  })}
+                </div>
                 
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  disabled={currentPage === totalPages} 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1"
                 >
                   Next
-                  <ChevronDown className="h-4 w-4 -rotate-90" />
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -1740,4 +1725,3 @@ export default function BookingsPage() {
     </TooltipProvider>
   )
 }
-
