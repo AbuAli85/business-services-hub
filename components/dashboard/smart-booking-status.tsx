@@ -589,49 +589,8 @@ export function CompactBookingStatus({
         return
       }
 
-      // For now, skip milestones API call and use booking status directly
-      // TODO: Create milestones API endpoint if needed
-      const data: Milestone[] = []
-      setMilestones(data)
-
-      // Calculate weighted progress based on milestone completion and individual progress
-      if (data.length === 0) {
-        // No milestones yet: derive a sensible default progress from booking status
-        const defaultProgress =
-          booking.status === 'completed' ? 100 :
-          booking.status === 'in_progress' ? 50 :
-          booking.status === 'approved' || booking.status === 'confirmed' || (booking.approval_status === 'approved' && booking.status === 'pending') ? 10 : 0
-        setProgress(defaultProgress)
-      } else {
-        let totalProgress = 0
-        data.forEach(milestone => {
-          if (milestone.status === 'completed') {
-            totalProgress += 100
-          } else if (milestone.status === 'in_progress') {
-            totalProgress += (milestone.progress_percentage || 0)
-          }
-          // Pending milestones contribute 0
-        })
-
-        const calculatedProgress = Math.round(totalProgress / data.length)
-        setProgress(Number.isFinite(calculatedProgress) ? calculatedProgress : 0)
-      }
-
-        // Derive intelligent booking status from milestones
-        const completed = data.filter(m => m.status === 'completed').length
-        const inProgress = data.filter(m => m.status === 'in_progress').length
-        
-        let derivedStatus = booking.status
-        if (booking.status === 'approved' || booking.status === 'confirmed') {
-          if (completed === data.length) {
-            derivedStatus = 'completed'
-          } else if (completed > 0 || inProgress > 0) {
-            derivedStatus = 'in_progress'
-          }
-        }
-
-        setStatus(derivedStatus)
-        onStatusChangeAction?.()
+      // Use the applyBooking function which has the correct approval status logic
+      applyBooking(json)
       } catch (e) {
         console.error('Failed to load booking progress:', e)
         setStatus('unknown')
@@ -654,7 +613,7 @@ export function CompactBookingStatus({
         const defaultProgress =
           booking.status === 'completed' ? 100 :
           booking.status === 'in_progress' ? 50 :
-          booking.status === 'approved' || booking.status === 'confirmed' || (booking.approval_status === 'approved' && booking.status === 'pending') ? 10 : 0
+          booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
         setProgress(defaultProgress)
       } else {
         let totalProgress = 0
@@ -668,7 +627,7 @@ export function CompactBookingStatus({
       const completed = data.filter(m => m.status === 'completed').length
       const inProgress = data.filter(m => m.status === 'in_progress').length
       // Bridge: treat approval_status=approved as "approved" even if status stays pending until work starts
-      let derivedStatus = (booking.approval_status === 'approved' && booking.status === 'pending')
+      let derivedStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
         ? 'approved'
         : booking.status
       if (derivedStatus === 'approved' || derivedStatus === 'confirmed') {

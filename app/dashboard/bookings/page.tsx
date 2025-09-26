@@ -734,10 +734,10 @@ export default function BookingsPage() {
     const completed = bookingsSource.filter((b:any) => b.status === 'completed').length
     const inProgress = bookingsSource.filter((b:any) => b.status === 'in_progress').length
     // Only count truly pending bookings (not approved yet)
-    const pending = bookingsSource.filter((b:any) => b.status === 'pending' && b.approval_status !== 'approved').length
+    const pending = bookingsSource.filter((b:any) => b.status === 'pending' && b.approval_status !== 'approved' && b.ui_approval_status !== 'approved').length
     // Count approved bookings waiting to start
     const approved = bookingsSource.filter((b:any) => 
-      b.status === 'approved' || (b.status === 'pending' && b.approval_status === 'approved')
+      b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))
     ).length
     const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
@@ -1423,7 +1423,7 @@ export default function BookingsPage() {
                               )}
 
                               {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) */}
-                              {((booking.status === 'approved') || (booking.status === 'pending' && booking.approval_status === 'approved')) && userRole === 'provider' && (
+                              {((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
                                 <Tip label="Begin project work and create milestones">
                                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
@@ -1434,7 +1434,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {((booking.status === 'approved') || (booking.status === 'pending' && booking.approval_status === 'approved')) && userRole === 'client' && (
+                              {((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
                                 <Tip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
@@ -1444,7 +1444,7 @@ export default function BookingsPage() {
                               )}
 
                               {/* 4. PENDING BOOKINGS (not approved yet) */}
-                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'provider' && (
+                              {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
                                 <Tip label="Approve this booking to start the project">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -1453,7 +1453,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'client' && (
+                              {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'client' && (
                                 <Tip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
