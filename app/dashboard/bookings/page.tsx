@@ -396,15 +396,18 @@ export default function BookingsPage() {
 
         if (!isMounted) return
         
+        // Create filter strings inside the async function where userId is available
+        const bookingsFilter = userRole === 'admin' ? undefined : 
+                              userRole === 'client' ? `client_id=eq.${userId}` :
+                              `provider_id=eq.${userId}`
+        
         bookingsChannel = supabase
           .channel(`bookings-changes-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
             table: 'bookings',
-            filter: userRole === 'admin' ? undefined : 
-                   userRole === 'client' ? `client_id=eq.${userId}` :
-                   `provider_id=eq.${userId}`
+            filter: bookingsFilter
           }, (payload: any) => {
             if (!isMounted) return
             console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
@@ -431,15 +434,18 @@ export default function BookingsPage() {
           .subscribe()
 
         // Subscribe to milestones changes for progress updates - only for user's bookings
+        // Create milestones filter string inside the async function where userId is available
+        const milestonesFilter = userRole === 'admin' ? undefined :
+                                userRole === 'client' ? `booking_id.in.(select id from bookings where client_id=eq.${userId})` :
+                                `booking_id.in.(select id from bookings where provider_id=eq.${userId})`
+        
         milestonesChannel = supabase
           .channel(`milestones-changes-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
             table: 'milestones',
-            filter: userRole === 'admin' ? undefined :
-                   userRole === 'client' ? `booking_id.in.(select id from bookings where client_id=eq.${userId})` :
-                   `booking_id.in.(select id from bookings where provider_id=eq.${userId})`
+            filter: milestonesFilter
           }, (payload: any) => {
             if (!isMounted) return
             console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
@@ -456,15 +462,18 @@ export default function BookingsPage() {
           .subscribe()
 
         // Subscribe to invoices changes
+        // Create invoices filter string inside the async function where userId is available
+        const invoicesFilter = userRole === 'admin' ? undefined :
+                              userRole === 'client' ? `client_id=eq.${userId}` :
+                              `provider_id=eq.${userId}`
+        
         invoicesChannel = supabase
           .channel(`invoices-changes-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
             table: 'invoices',
-            filter: userRole === 'admin' ? undefined :
-                   userRole === 'client' ? `client_id=eq.${userId}` :
-                   `provider_id=eq.${userId}`
+            filter: invoicesFilter
           }, (payload: any) => {
             if (!isMounted) return
             console.log('📡 Invoices realtime update:', payload.eventType)
