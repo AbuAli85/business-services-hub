@@ -308,12 +308,16 @@ export default function EnhancedBookingDetails({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || !bookingId) return
 
+      // Create filter strings inside the useEffect where variables are available
+      const bookingFilter = `id=eq.${bookingId}`
+      const userFilter = `user_id=eq.${user.id}`
+
       // Listen to changes on this booking
       channel = supabase
         .channel(`booking-${bookingId}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'bookings', filter: `id=eq.${bookingId}` },
+          { event: '*', schema: 'public', table: 'bookings', filter: bookingFilter },
           payload => {
             // Soft merge new fields and refresh metrics
             setBooking(prev => prev ? { ...prev, ...(payload.new as any) } : prev)
@@ -327,7 +331,7 @@ export default function EnhancedBookingDetails({
         .channel(`notifications-${user.id}`)
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: userFilter },
           payload => {
             const note = payload.new as any
             setNotifications(prev => [note, ...prev])
