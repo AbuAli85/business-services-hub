@@ -1249,6 +1249,17 @@ export default function BookingsPage() {
                   paginatedBookings.map((booking) => {
                     const invoice = getInvoiceForBooking(booking.id)
                     
+                    // Debug logging for completed bookings
+                    if (booking.status === 'completed') {
+                      console.log('🔍 Completed booking debug:', {
+                        id: booking.id,
+                        status: booking.status,
+                        userRole,
+                        approval_status: booking.approval_status,
+                        ui_approval_status: booking.ui_approval_status
+                      })
+                    }
+                    
                     return (
                       <TableRow key={booking.id} className="hover:bg-gray-50">
                         <TableCell>
@@ -1383,31 +1394,35 @@ export default function BookingsPage() {
                               {/* Primary Action based on booking status and user role - ORDER MATTERS! */}
                               
                               {/* 1. COMPLETED BOOKINGS - Highest Priority */}
-                              {booking.status === 'completed' && userRole === 'client' && (
-                                <Tip label="Review completed project and provide feedback">
-                                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                    <Award className="h-3 w-3 mr-1" />
-                                    Review
-                                  </Button>
-                                </Tip>
-                              )}
-
-                              {booking.status === 'completed' && userRole === 'provider' && (
-                                <Tip label="Project completed - awaiting client review">
-                                  <Button size="sm" variant="outline" disabled>
-                                    <Award className="h-3 w-3 mr-1" />
-                                    Complete
-                                  </Button>
-                                </Tip>
-                              )}
-
-                              {booking.status === 'completed' && !userRole && (
-                                <Tip label="Project completed">
-                                  <Button size="sm" variant="outline" disabled>
-                                    <Award className="h-3 w-3 mr-1" />
-                                    Complete
-                                  </Button>
-                                </Tip>
+                              {booking.status === 'completed' && (
+                                <>
+                                  {userRole === 'client' && (
+                                    <Tip label="Review completed project and provide feedback">
+                                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                        <Award className="h-3 w-3 mr-1" />
+                                        Review
+                                      </Button>
+                                    </Tip>
+                                  )}
+                                  
+                                  {userRole === 'provider' && (
+                                    <Tip label="Project completed - awaiting client review">
+                                      <Button size="sm" variant="outline" disabled>
+                                        <Award className="h-3 w-3 mr-1" />
+                                        Complete
+                                      </Button>
+                                    </Tip>
+                                  )}
+                                  
+                                  {!userRole && (
+                                    <Tip label="Project completed">
+                                      <Button size="sm" variant="outline" disabled>
+                                        <Award className="h-3 w-3 mr-1" />
+                                        Complete
+                                      </Button>
+                                    </Tip>
+                                  )}
+                                </>
                               )}
 
                               {/* 2. IN PROGRESS BOOKINGS */}
@@ -1422,8 +1437,8 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) */}
-                              {((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
+                              {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
+                              {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
                                 <Tip label="Begin project work and create milestones">
                                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
@@ -1434,7 +1449,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
+                              {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
                                 <Tip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
@@ -1443,8 +1458,8 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {/* 4. PENDING BOOKINGS (not approved yet) */}
-                              {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
+                              {/* 4. PENDING BOOKINGS (not approved yet) - ONLY if NOT completed */}
+                              {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
                                 <Tip label="Approve this booking to start the project">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -1453,7 +1468,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'client' && (
+                              {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'client' && (
                                 <Tip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
