@@ -67,7 +67,7 @@ export default function BookingsPage() {
   const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [selectedBookings, setSelectedBookings] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
@@ -106,7 +106,12 @@ export default function BookingsPage() {
     if (!raw) return '—'
     const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
     if (Number.isNaN(d.getTime())) return '—'
-    return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, hour: '2-digit', minute: '2-digit' }).format(d)
+    return new Intl.DateTimeFormat(undefined, { 
+      timeZone: OMAN_TZ, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    }).format(d) + ' GST'
   }, [])
 
   // Initialize user authentication and role detection
@@ -544,6 +549,12 @@ export default function BookingsPage() {
     const safeNum = (v: any) => (typeof v === 'number' && !Number.isNaN(v)) ? v : Number(v ?? 0) || 0
     const cmp = (a: any, b: any) => {
       switch (sortBy) {
+        case 'lastUpdated': {
+          // Use updated_at if available, otherwise fall back to created_at
+          const av = getCreatedAtTimestamp(a?.updated_at ?? a?.updatedAt ?? a)
+          const bv = getCreatedAtTimestamp(b?.updated_at ?? b?.updatedAt ?? b)
+          return sortOrder === 'asc' ? av - bv : bv - av
+  }
         case 'createdAt': {
           const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
           return sortOrder === 'asc' ? av - bv : bv - av
@@ -1094,7 +1105,7 @@ export default function BookingsPage() {
               <div className="mt-4 pt-4 border-t border-emerald-200">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-emerald-700 font-medium">
-                    {userRole === 'provider' ? 'Ready to begin • Launch projects' : 'Provider will start soon'}
+                    {userRole === 'provider' ? 'All prerequisites met • Ready to launch projects' : 'Awaiting provider to begin work'}
                   </div>
                   <div className="flex items-center gap-1">
                     <TrendingUp className="h-4 w-4 text-emerald-600" />
@@ -1159,6 +1170,7 @@ export default function BookingsPage() {
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="lastUpdated">Last Updated</SelectItem>
                 <SelectItem value="createdAt">Date Created</SelectItem>
                 <SelectItem value="totalAmount">Amount</SelectItem>
                 <SelectItem value="serviceTitle">Service</SelectItem>
@@ -1187,7 +1199,7 @@ export default function BookingsPage() {
       </Card>
 
       {/* Active Filters Summary */}
-      {(searchQuery || statusFilter !== 'all' || sortBy !== 'createdAt' || sortOrder !== 'desc') && (
+      {(searchQuery || statusFilter !== 'all' || sortBy !== 'lastUpdated' || sortOrder !== 'desc') && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -1206,7 +1218,7 @@ export default function BookingsPage() {
                       Status: {statusFilter}
                     </Badge>
                   )}
-                  {sortBy !== 'createdAt' && (
+                  {sortBy !== 'lastUpdated' && (
                     <Badge className="bg-orange-600 text-white">
                       Sort: {sortBy} ({sortOrder})
                     </Badge>
@@ -1224,7 +1236,7 @@ export default function BookingsPage() {
                   e.stopPropagation()
                   setSearchQuery('')
                   setStatusFilter('all')
-                  setSortBy('createdAt')
+                  setSortBy('lastUpdated')
                   setSortOrder('desc')
                   setCurrentPage(1)
                   // Force a data reload to ensure filters are cleared
@@ -1388,13 +1400,9 @@ export default function BookingsPage() {
                             <div className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
                               ID: {String(booking.id).slice(0, 8)}...
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                               <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium">
                                 View Details
-                              </Link>
-                              <span className="text-gray-300">•</span>
-                              <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false} className="text-xs text-purple-600 hover:text-purple-800 hover:underline font-medium">
-                                Track Progress
                               </Link>
                             </div>
                           </div>
@@ -1422,10 +1430,14 @@ export default function BookingsPage() {
                                 String((booking as any).currency ?? 'OMR')
                               )}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {booking.status === 'completed' ? 'Paid' : 
-                               booking.status === 'in_progress' ? 'In Progress' :
-                               booking.status === 'approved' ? 'Approved' : 'Pending'}
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                              <span className="text-xs text-gray-500 font-medium">
+                                {booking.status === 'completed' ? 'Project Delivered' : 
+                                 booking.status === 'in_progress' ? 'Project In Progress' :
+                                 booking.status === 'approved' ? 'Project Approved' : 
+                                 (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') ? 'Ready to Launch' : 'Project Pending'}
+                              </span>
                             </div>
                           </div>
                         </TableCell>
@@ -1440,21 +1452,29 @@ export default function BookingsPage() {
                         
                         <TableCell>
                           {invoice ? (
-                            <div className="space-y-1">
+                            <div className="space-y-2">
+                              {/* Invoice Status - Distinct styling */}
                               <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-1">
+                                  <Receipt className="h-3 w-3 text-gray-500" />
+                                  <span className="text-xs text-gray-500 font-medium">Invoice:</span>
+                                </div>
                                 <Badge 
                                   variant="outline" 
-                                  className={`text-xs ${
+                                  className={`text-xs font-semibold ${
                                     invoice.status === 'paid' 
-                                      ? 'text-green-600 border-green-200 bg-green-50'
+                                      ? 'text-green-700 border-green-300 bg-green-100 shadow-sm'
                                       : invoice.status === 'sent'
-                                      ? 'text-yellow-600 border-yellow-200 bg-yellow-50'
+                                      ? 'text-yellow-700 border-yellow-300 bg-yellow-100 shadow-sm'
                                       : invoice.status === 'draft'
-                                      ? 'text-blue-600 border-blue-200 bg-blue-50'
-                                      : 'text-gray-600 border-gray-200 bg-gray-50'
+                                      ? 'text-blue-700 border-blue-300 bg-blue-100 shadow-sm'
+                                      : 'text-gray-700 border-gray-300 bg-gray-100 shadow-sm'
                                   }`}
                                 >
-                                  {invoice.status}
+                                  {invoice.status === 'paid' ? 'Paid' : 
+                                   invoice.status === 'sent' ? 'Sent' : 
+                                   invoice.status === 'draft' ? 'Draft' : 
+                                   invoice.status}
                                 </Badge>
                                 <Tip label="View invoice details">
                                   <Button
@@ -1498,15 +1518,27 @@ export default function BookingsPage() {
                               )}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-400 text-sm">No invoice</span>
-                              {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
-                                <Tip label="Create invoice for this booking">
-                                  <Button size="sm" variant="outline" onClick={() => handleCreateInvoice(booking)}>
-                                    Create
-                                  </Button>
-                                </Tip>
-                              )}
+                            <div className="space-y-2">
+                              {/* No Invoice Status - Distinct styling */}
+                              <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-1">
+                                  <Receipt className="h-3 w-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500 font-medium">Invoice:</span>
+                                </div>
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs font-semibold text-gray-600 border-gray-300 bg-gray-100 shadow-sm"
+                                >
+                                  No Invoice
+                                </Badge>
+                                {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
+                                  <Tip label="Create invoice for this booking">
+                                    <Button size="sm" variant="outline" className="text-xs h-6 px-2">
+                                      Create
+                                    </Button>
+                                  </Tip>
+                                )}
+                              </div>
                             </div>
                           )}
                         </TableCell>
@@ -1617,29 +1649,13 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {/* Secondary Actions */}
-                              <Tip label="View detailed project information">
-                                <Button size="sm" variant="ghost" asChild>
-                                  <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false}>
-                                    <Eye className="h-3 w-3" />
-                                  </Link>
-                                </Button>
-                              </Tip>
-
+                              {/* Secondary Actions - Only show invoice link if there's an invoice */}
                               {invoice && (
                                 <Tip label="View and manage invoice">
                                   <Button size="sm" variant="ghost" asChild>
                                     <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
                                       <Receipt className="h-3 w-3" />
                                     </Link>
-                                  </Button>
-                                </Tip>
-                              )}
-
-                              {userRole === 'admin' && (
-                                <Tip label="Access admin management tools">
-                                  <Button size="sm" variant="ghost">
-                                    <Settings className="h-3 w-3" />
                                   </Button>
                                 </Tip>
                               )}

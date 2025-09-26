@@ -973,10 +973,12 @@ export function CompactBookingStatus({
         {/* No Milestones State */}
         {!hasMilestones && (
           <div className="text-xs text-gray-500 italic">
-            {status === 'approved' ? 'Ready to begin development' :
-             status === 'pending' ? 'Awaiting approval' :
-             status === 'completed' ? 'Project completed' :
-             'Status pending'}
+            {status === 'ready_to_launch' ? 'All prerequisites met • Ready to begin development' :
+             status === 'approved' ? 'Project approved • Waiting for team assignment' :
+             status === 'pending' ? 'Awaiting provider approval' :
+             status === 'completed' ? 'Project successfully delivered' :
+             status === 'in_progress' ? 'Active development in progress' :
+             'Project status being determined'}
           </div>
         )}
       </div>
