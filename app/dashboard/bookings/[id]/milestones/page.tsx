@@ -67,13 +67,17 @@ export default function MilestonesPage() {
         const supabase = await getSupabaseClient()
         if (!isMounted) return
 
+        // Create filter strings inside the useEffect where bookingId is available
+        const milestoneFilter = `booking_id=eq.${bookingId}`
+        const bookingFilter = `id=eq.${bookingId}`
+
         channelMilestones = supabase
           .channel(`milestones-${bookingId}`)
           .on('postgres_changes', {
             event: '*',
             schema: 'public',
             table: 'milestones',
-            filter: `booking_id=eq.${bookingId}`
+            filter: milestoneFilter
           }, () => {
             if (!isMounted) return
             loadBookingData()
@@ -86,7 +90,7 @@ export default function MilestonesPage() {
             event: '*',
             schema: 'public',
             table: 'bookings',
-            filter: `id=eq.${bookingId}`
+            filter: bookingFilter
           }, () => {
             if (!isMounted) return
             loadBookingData()

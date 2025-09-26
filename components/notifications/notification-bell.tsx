@@ -47,13 +47,16 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
           await supabase.removeChannel(channelRef.current)
           channelRef.current = null
         }
+        // Create filter string inside the useEffect where userId is available
+        const userFilter = `user_id=eq.${userId}`
+
         const channel = supabase
           .channel(`notifications-${userId}`)
           .on('postgres_changes', {
             event: '*',
             schema: 'public',
             table: 'notifications',
-            filter: `user_id=eq.${userId}`
+            filter: userFilter
           }, (payload: any) => {
             if (!isMounted) return
             // Keep the bell fast: update the in-memory list for unread view and refresh stats

@@ -64,6 +64,12 @@ export class RealtimeProgressService {
 
       // Create channel if it doesn't exist
       if (!this.channels.has(channelKey)) {
+        // Create filter strings inside the function where bookingId is available
+        const milestoneFilter = `booking_id=eq.${bookingId}`
+        const bookingFilter = `id=eq.${bookingId}`
+        const milestoneIds = await this.getMilestoneIds(bookingId)
+        const taskFilter = `milestone_id=in.(${milestoneIds})`
+
         const channel = supabase
           .channel(channelKey, {
             config: {
@@ -77,7 +83,7 @@ export class RealtimeProgressService {
               event: '*',
               schema: 'public',
               table: 'tasks',
-              filter: `milestone_id=in.(${await this.getMilestoneIds(bookingId)})`
+              filter: taskFilter
             },
             (payload) => this.handleTaskUpdate(bookingId, payload)
           )
@@ -86,7 +92,7 @@ export class RealtimeProgressService {
               event: '*',
               schema: 'public', 
               table: 'milestones',
-              filter: `booking_id=eq.${bookingId}`
+              filter: milestoneFilter
             },
             (payload) => this.handleMilestoneUpdate(bookingId, payload)
           )
@@ -95,7 +101,7 @@ export class RealtimeProgressService {
               event: 'UPDATE',
               schema: 'public',
               table: 'bookings',
-              filter: `id=eq.${bookingId}`
+              filter: bookingFilter
             },
             (payload) => this.handleBookingUpdate(bookingId, payload)
           )

@@ -573,6 +573,9 @@ export class ProgressDataService {
   // Subscribe to real-time progress updates
   static async subscribeToProgressUpdates(bookingId: string, callback: () => void) {
     try {
+      // Create filter string inside the function where bookingId is available
+      const milestoneFilter = `booking_id=eq.${bookingId}`
+
       const subscription = supabase
         .channel(`progress-updates-${bookingId}`)
       .on(
@@ -581,7 +584,7 @@ export class ProgressDataService {
           event: '*',
           schema: 'public',
           table: 'milestones',
-          filter: `booking_id=eq.${bookingId}`
+          filter: milestoneFilter
         },
           callback
       )
@@ -600,7 +603,7 @@ export class ProgressDataService {
           event: '*',
           schema: 'public',
           table: 'time_entries',
-          filter: `booking_id=eq.${bookingId}`
+          filter: milestoneFilter
         },
           callback
         )
@@ -610,7 +613,7 @@ export class ProgressDataService {
             event: '*',
             schema: 'public',
             table: 'comments',
-            filter: `booking_id=eq.${bookingId}`
+            filter: milestoneFilter
           },
           callback
         )
@@ -653,6 +656,9 @@ export class ProgressDataService {
   // Subscribe to comments updates
   static async subscribeToComments(bookingId: string, callback: () => void) {
     try {
+      // Create filter string inside the function where bookingId is available
+      const commentsFilter = `booking_id=eq.${bookingId}`
+
       const subscription = supabase
         .channel(`comments-updates-${bookingId}`)
         .on(
@@ -661,7 +667,7 @@ export class ProgressDataService {
             event: '*',
             schema: 'public',
             table: 'comments',
-            filter: `booking_id=eq.${bookingId}`
+            filter: commentsFilter
           },
           callback
         )

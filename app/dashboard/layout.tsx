@@ -79,9 +79,12 @@ export default function DashboardLayout({
     ;(async () => {
       try {
         const supabase = await getSupabaseClient()
+        // Create filter string inside the useEffect where user.id is available
+        const userFilter = `user_id=eq.${user.id}`
+
         const channel = supabase
           .channel(`notifications-${user.id}`)
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, (payload: any) => {
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: userFilter }, (payload: any) => {
             const n = payload.new
             const item: any = {
               id: n.id,
