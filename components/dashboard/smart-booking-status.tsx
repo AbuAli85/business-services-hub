@@ -613,41 +613,77 @@ export function CompactBookingStatus({
       }
     }
 
-    const applyBooking = (json: any) => {
+    const applyBooking = async (json: any) => {
       const booking = json?.bookings?.[0]
       if (!booking) {
         setStatus('unknown')
         setProgress(0)
         return
       }
-      const data: Milestone[] = []
-      setMilestones(data)
-      if (data.length === 0) {
+
+      // Load actual milestones for this booking
+      try {
+        const milestonesRes = await fetch(`/api/milestones?bookingId=${bookingId}`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store'
+        })
+        
+        if (milestonesRes.ok) {
+          const milestonesData = await milestonesRes.json()
+          const data: Milestone[] = milestonesData.milestones || []
+          setMilestones(data)
+          
+          if (data.length === 0) {
+            const defaultProgress =
+              booking.status === 'completed' ? 100 :
+              booking.status === 'in_progress' ? 50 :
+              booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
+            setProgress(defaultProgress)
+          } else {
+            // Calculate weighted progress
+            const totalWeight = data.reduce((sum, m) => sum + ((m as any).weight || 1), 0)
+            const weightedProgress = data.reduce((sum, m) => 
+              sum + ((m.progress_percentage || 0) * ((m as any).weight || 1)), 0
+            )
+            const calculated = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
+            setProgress(Number.isFinite(calculated) ? calculated : 0)
+          }
+          
+          const completed = data.filter(m => m.status === 'completed').length
+          const inProgress = data.filter(m => m.status === 'in_progress').length
+          
+          // Bridge: treat approval_status=approved as "approved" even if status stays pending until work starts
+          let derivedStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
+            ? 'approved'
+            : booking.status
+          if (derivedStatus === 'approved' || derivedStatus === 'confirmed') {
+            if (completed === data.length && data.length > 0) derivedStatus = 'completed'
+            else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
+          }
+          setStatus(derivedStatus)
+        } else {
+          // Fallback to default progress if milestones API fails
+          const defaultProgress =
+            booking.status === 'completed' ? 100 :
+            booking.status === 'in_progress' ? 50 :
+            booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
+          setProgress(defaultProgress)
+          setMilestones([])
+          setStatus(booking.status)
+        }
+      } catch (error) {
+        console.error('Error loading milestones:', error)
+        // Fallback to default progress
         const defaultProgress =
           booking.status === 'completed' ? 100 :
           booking.status === 'in_progress' ? 50 :
           booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
         setProgress(defaultProgress)
-      } else {
-        let totalProgress = 0
-        data.forEach(milestone => {
-          if (milestone.status === 'completed') totalProgress += 100
-          else if (milestone.status === 'in_progress') totalProgress += (milestone.progress_percentage || 0)
-        })
-        const calculated = Math.round(totalProgress / data.length)
-        setProgress(Number.isFinite(calculated) ? calculated : 0)
+        setMilestones([])
+        setStatus(booking.status)
       }
-      const completed = data.filter(m => m.status === 'completed').length
-      const inProgress = data.filter(m => m.status === 'in_progress').length
-      // Bridge: treat approval_status=approved as "approved" even if status stays pending until work starts
-      let derivedStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
-        ? 'approved'
-        : booking.status
-      if (derivedStatus === 'approved' || derivedStatus === 'confirmed') {
-        if (completed === data.length) derivedStatus = 'completed'
-        else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
-      }
-      setStatus(derivedStatus)
+      
       onStatusChangeAction?.()
     }
 

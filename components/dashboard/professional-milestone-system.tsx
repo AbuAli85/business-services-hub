@@ -151,31 +151,31 @@ export function ProfessionalMilestoneSystem({
       // Initialize Supabase client
       const supabase = await getSupabaseClient()
       
-      // For now, skip milestones loading since there's no API endpoint
-      // TODO: Create milestones API endpoint
-      const milestonesData: any[] = []
-      const milestonesError = null
-      
-      let normalizedMilestones: any[] = []
-      
-      if (milestonesError) {
-        console.error('Error loading milestones:', milestonesError)
-        setMilestones([])
-      } else {
-        normalizedMilestones = (milestonesData || []).map((m: any) => ({
-          ...m,
-          tasks: (m.tasks || []).sort((a: any, b: any) => {
-            const ao = a.order_index ?? 0
-            const bo = b.order_index ?? 0
-            if (ao !== bo) return ao - bo
-            const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-            const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-            return ad - bd
-          })
-        }))
-        
-        setMilestones(normalizedMilestones)
+      // Load milestones from API
+      const milestonesRes = await fetch(`/api/milestones?bookingId=${bookingId}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      })
+
+      if (!milestonesRes.ok) {
+        throw new Error(`Failed to load milestones: ${milestonesRes.statusText}`)
       }
+
+      const milestonesData = await milestonesRes.json()
+      const normalizedMilestones = (milestonesData.milestones || []).map((m: any) => ({
+        ...m,
+        tasks: (m.tasks || []).sort((a: any, b: any) => {
+          const ao = a.order_index ?? 0
+          const bo = b.order_index ?? 0
+          if (ao !== bo) return ao - bo
+          const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+          const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+          return ad - bd
+        })
+      }))
+      
+      setMilestones(normalizedMilestones)
       
       // Skip comments loading for now (no API endpoint)
       // TODO: Create API endpoint for comments

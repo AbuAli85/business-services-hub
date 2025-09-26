@@ -122,13 +122,19 @@ export function ClientMilestoneViewer({
     try {
       setLoading(true)
       
-      // For now, skip milestones loading since there's no API endpoint
-      // TODO: Create milestones API endpoint
-      const milestonesData: any[] = []
-      const milestonesError = null
+      // Load milestones from API
+      const milestonesRes = await fetch(`/api/milestones?bookingId=${bookingId}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      })
 
-      if (milestonesError) throw milestonesError
-      const normalized = (milestonesData || []).map(m => ({
+      if (!milestonesRes.ok) {
+        throw new Error(`Failed to load milestones: ${milestonesRes.statusText}`)
+      }
+
+      const milestonesData = await milestonesRes.json()
+      const normalized = (milestonesData.milestones || []).map((m: any) => ({
         ...m,
         tasks: (m.tasks || []).sort((a: any, b: any) => {
           const ao = a.order_index ?? 0
@@ -142,13 +148,9 @@ export function ClientMilestoneViewer({
 
       setMilestones(normalized)
 
-      // Skip comments and approvals loading for now (no API endpoints)
-      // TODO: Create API endpoints for comments and approvals
+      // Load comments and approvals (placeholder for now)
       setComments({})
       setApprovals({})
-
-      // Skip task comments loading for now (no API endpoint)
-      // TODO: Create API endpoint for task comments
       setTaskComments({})
 
     } catch (err) {
