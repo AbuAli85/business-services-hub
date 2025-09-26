@@ -1262,7 +1262,7 @@ export default function BookingsPage() {
                           <CompactBookingStatus
                             bookingId={booking.id}
                             userRole={userRole as 'client' | 'provider' | 'admin'}
-                            onStatusChange={() => setRefreshTrigger(prev => prev + 1)}
+                            onStatusChangeAction={() => setRefreshTrigger(prev => prev + 1)}
                           />
                         </TableCell>
                         

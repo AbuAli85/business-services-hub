@@ -35,14 +35,14 @@ interface SmartBookingStatusProps {
   bookingId: string
   userRole: 'client' | 'provider' | 'admin'
   compact?: boolean
-  onStatusChange?: () => void
+  onStatusChangeAction?: () => void
 }
 
 export function SmartBookingStatusComponent({
   bookingId,
   userRole,
   compact = false,
-  onStatusChange
+  onStatusChangeAction
 }: SmartBookingStatusProps) {
   const router = useRouter()
   const [status, setStatus] = useState<SmartBookingStatus | null>(null)
@@ -85,7 +85,7 @@ export function SmartBookingStatusComponent({
       if (result.success) {
         toast.success(result.message)
         await loadSmartStatus() // Reload status
-        onStatusChange?.()
+        onStatusChangeAction?.()
       } else {
         toast.error(result.message)
       }
@@ -445,7 +445,7 @@ export function SmartBookingStatusComponent({
                       setShowActionDialog(false)
                       setFeedbackText('')
                       setFeedbackRating(null)
-                      onStatusChange?.()
+                      onStatusChangeAction?.()
                       return
                     }
                     await executeAction(selectedAction)
@@ -487,11 +487,11 @@ const statusStyles: Record<string, { badge: string; tone: string }> = {
 export function CompactBookingStatus({
   bookingId,
   userRole,
-  onStatusChange
+  onStatusChangeAction
 }: {
   bookingId: string
   userRole: 'client' | 'provider' | 'admin'
-  onStatusChange?: () => void
+  onStatusChangeAction?: () => void
 }) {
   const [progress, setProgress] = useState<number>(0)
   const [status, setStatus] = useState<string>('pending')
@@ -629,7 +629,7 @@ export function CompactBookingStatus({
         }
 
         setStatus(derivedStatus)
-        onStatusChange?.()
+        onStatusChangeAction?.()
       } catch (e) {
         console.error('Failed to load booking progress:', e)
         setStatus('unknown')
@@ -671,7 +671,7 @@ export function CompactBookingStatus({
         else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
       }
       setStatus(derivedStatus)
-      onStatusChange?.()
+      onStatusChangeAction?.()
     }
 
     loadStatusAndProgress()
