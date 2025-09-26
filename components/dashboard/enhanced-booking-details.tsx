@@ -1223,28 +1223,11 @@ export default function EnhancedBookingDetails({
   }
 
   // Provider Actions
-  const handleMarkInProgress = async () => {
+  const handleMarkInProgress = () => {
     if (!booking) return
     
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const { error } = await supabase
-        .from('bookings')
-        .update({ 
-          status: 'in_progress',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', booking.id)
-      
-      if (error) throw error
-      
-      setBooking({ ...booking, status: 'in_progress' })
-      toast.success('Booking marked as in progress')
-    } catch (error) {
-      console.error('Error updating booking status:', error)
-      toast.error('Failed to update booking status')
-    }
+    // Redirect to milestones page to start working on the project
+    router.push(`/dashboard/bookings/${booking.id}/milestones`)
   }
 
   const handleMarkComplete = async () => {
@@ -2157,11 +2140,10 @@ export default function EnhancedBookingDetails({
                     <Button 
                       variant="outline" 
                       onClick={handleMarkInProgress}
-                      disabled={booking?.status === 'in_progress'}
                       className="justify-start"
                     >
                       <Play className="h-4 w-4 mr-2" />
-                      Mark In Progress
+                      Start Project
                     </Button>
                     <Button 
                       onClick={handleMarkComplete}
