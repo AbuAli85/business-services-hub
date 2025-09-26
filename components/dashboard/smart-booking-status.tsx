@@ -13,7 +13,6 @@ import {
   Pause,
   AlertTriangle,
   Target,
-  TrendingUp,
   Award,
   MessageSquare,
   Receipt,
@@ -21,17 +20,14 @@ import {
   Shield,
   XCircle,
   ThumbsUp,
-  Eye,
   Calendar,
-  Users,
   BarChart3,
   Zap,
-  Bell,
-  ExternalLink
+  Bell
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { getSupabaseClient } from '@/lib/supabase'
-import { SmartBookingStatus, ContextualAction, Risk, smartBookingStatusService } from '@/lib/smart-booking-status'
+import { SmartBookingStatus, ContextualAction, smartBookingStatusService } from '@/lib/smart-booking-status'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -240,7 +236,7 @@ export function SmartBookingStatusComponent({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${getStatusColor(status.overall_status).replace('text-', 'bg-').replace('-800', '-600')}`}>
+            <div className={`p-2 rounded-lg ${statusStyles[status.overall_status]?.tone ?? statusStyles.default.tone}`}>
               {getStatusIcon(status.overall_status)}
             </div>
             <div>
@@ -318,14 +314,14 @@ export function SmartBookingStatusComponent({
         {/* Risks intentionally hidden for simplified Smart Status Overview in Manage Bookings */}
 
         {/* Contextual Actions */}
-        {status.contextual_actions.length > 0 && (
+        {(status.contextual_actions?.length ?? 0) > 0 && (
           <div>
             <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-blue-600" />
               Available Actions
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {status.contextual_actions.map(action => (
+              {status.contextual_actions?.map(action => (
                 <Button
                   key={action.id}
                   variant={action.type === 'primary' ? 'default' : 'outline'}
@@ -441,26 +437,20 @@ export function SmartBookingStatusComponent({
                       selectedAction.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
                       'bg-blue-600 hover:bg-blue-700'
                     }
-                  onClick={() => {
-                    // If this is a feedback action, require input and send via API
-                    if (selectedAction?.action === 'add_feedback') {
+                  onClick={async () => {
+                    if (!selectedAction) return
+                    if (selectedAction.action === 'add_feedback') {
                       if (!feedbackText.trim() && (feedbackRating === null)) return
-                      executeAction(selectedAction, { comment: feedbackText.trim(), rating: feedbackRating ?? undefined })
-                        .then((res:any) => {
-                          if (res?.success) {
-                            toast.success('Feedback submitted')
-                            setShowActionDialog(false)
-                            setFeedbackText('')
-                            setFeedbackRating(null)
-                            onStatusChange?.()
-                          } else {
-                            toast.error(res?.message || 'Failed to submit feedback')
-                          }
-                        })
+                      await executeAction(selectedAction, { comment: feedbackText.trim(), rating: feedbackRating ?? undefined })
+                      setShowActionDialog(false)
+                      setFeedbackText('')
+                      setFeedbackRating(null)
+                      onStatusChange?.()
                       return
                     }
-                    executeAction(selectedAction)
+                    await executeAction(selectedAction)
                   }}
+                    aria-busy={actionLoading === selectedAction?.id}
                     disabled={!!actionLoading}
                   >
                     {actionLoading === selectedAction.id ? 'Processing...' : 'Confirm'}
@@ -480,6 +470,17 @@ interface Milestone {
   title: string
   status: string
   progress_percentage?: number
+}
+
+// Structured styles for statuses
+const statusStyles: Record<string, { badge: string; tone: string }> = {
+  pending:   { badge: 'bg-yellow-100 text-yellow-800 border-yellow-200', tone: 'bg-yellow-100 text-yellow-600' },
+  approved:  { badge: 'bg-blue-100 text-blue-800 border-blue-200',      tone: 'bg-blue-100 text-blue-600' },
+  in_progress:{ badge:'bg-purple-100 text-purple-800 border-purple-200', tone: 'bg-purple-100 text-purple-600' },
+  completed: { badge: 'bg-green-100 text-green-800 border-green-200',   tone: 'bg-green-100 text-green-600' },
+  cancelled: { badge: 'bg-red-100 text-red-800 border-red-200',         tone: 'bg-red-100 text-red-600' },
+  on_hold:   { badge: 'bg-gray-100 text-gray-800 border-gray-200',      tone: 'bg-gray-100 text-gray-600' },
+  default:   { badge: 'bg-gray-100 text-gray-800 border-gray-200',      tone: 'bg-gray-100 text-gray-600' }
 }
 
 // Enhanced Compact status for table cells with milestone-based progress
@@ -651,7 +652,6 @@ export function CompactBookingStatus({
               {getStatusIcon(status)}
               <span className="capitalize">{status.replace('_', ' ')}</span>
             </Badge>
-
             {/* Progress Bar and Details */}
             {milestones.length > 0 && (
               <div className="space-y-1">
@@ -668,7 +668,6 @@ export function CompactBookingStatus({
                   />
                   <span className="text-xs font-medium text-gray-700">{progress}%</span>
                 </div>
-                
                 {/* Milestone Summary */}
                 <div className="text-xs text-gray-500">
                   {milestones.filter(m => m.status === 'completed').length}/{milestones.length} milestones
@@ -678,7 +677,6 @@ export function CompactBookingStatus({
                     </span>
                   )}
                 </div>
-
                 {/* Current Activity Indicator */}
                 {milestones.some(m => m.status === 'in_progress') && (
                   <div className="text-xs text-purple-600 flex items-center gap-1">
