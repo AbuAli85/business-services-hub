@@ -39,7 +39,7 @@ import {
   Gem,
   Flame
 } from 'lucide-react'
-import { Tooltip } from '@/components/ui/tooltip'
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { getSupabaseClient } from '@/lib/supabase'
 import { SmartBookingStatus, ContextualAction, smartBookingStatusService } from '@/lib/smart-booking-status'
 import { toast } from 'sonner'
@@ -50,6 +50,105 @@ interface SmartBookingStatusProps {
   userRole: 'client' | 'provider' | 'admin'
   compact?: boolean
   onStatusChangeAction?: () => void
+}
+
+// Helper function to convert strings to Title Case
+const toTitle = (str: string) => {
+  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+// Helper function to clamp percentage values
+const clampPct = (value: number) => Math.min(100, Math.max(0, value))
+
+// Status styles map - moved to top to avoid TDZ issues
+const statusStyles = {
+  pending_review: {
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Pending Review',
+    className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
+    glow: 'shadow-amber-200',
+    priority: 'low'
+  },
+  approved: {
+    icon: <Gem className="h-3 w-3" />,
+    label: 'Approved',
+    className: 'text-purple-700 border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm',
+    glow: 'shadow-purple-200',
+    priority: 'medium'
+  },
+  ready_to_launch: {
+    icon: <Rocket className="h-3 w-3" />,
+    label: 'Ready to Launch',
+    className: 'text-blue-700 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm',
+    glow: 'shadow-blue-200',
+    priority: 'high'
+  },
+  in_production: {
+    icon: <Flame className="h-3 w-3" />,
+    label: 'In Production',
+    className: 'text-orange-700 border-orange-200 bg-gradient-to-r from-orange-50 to-red-50 shadow-sm',
+    glow: 'shadow-orange-200',
+    priority: 'high'
+  },
+  delivered: {
+    icon: <Crown className="h-3 w-3" />,
+    label: 'Delivered',
+    className: 'text-emerald-700 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm',
+    glow: 'shadow-emerald-200',
+    priority: 'high'
+  },
+  on_hold: {
+    icon: <Pause className="h-3 w-3" />,
+    label: 'On Hold',
+    className: 'text-gray-700 border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50 shadow-sm',
+    glow: 'shadow-gray-200',
+    priority: 'medium'
+  },
+  cancelled: {
+    icon: <XCircle className="h-3 w-3" />,
+    label: 'Cancelled',
+    className: 'text-red-700 border-red-200 bg-gradient-to-r from-red-50 to-rose-50 shadow-sm',
+    glow: 'shadow-red-200',
+    priority: 'low'
+  },
+  completed: {
+    icon: <CheckCircle className="h-3 w-3" />,
+    label: 'Completed',
+    className: 'text-emerald-700 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm',
+    glow: 'shadow-emerald-200',
+    priority: 'high'
+  },
+  pending: {
+    icon: <Clock className="h-3 w-3" />,
+    label: 'Pending',
+    className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
+    glow: 'shadow-amber-200',
+    priority: 'low'
+  },
+  in_progress: {
+    icon: <Play className="h-3 w-3" />,
+    label: 'In Progress',
+    className: 'text-blue-700 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm',
+    glow: 'shadow-blue-200',
+    priority: 'high'
+  },
+  unknown: {
+    icon: <AlertTriangle className="h-3 w-3" />,
+    label: 'Unknown',
+    className: 'text-gray-700 border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50 shadow-sm',
+    glow: 'shadow-gray-200',
+    priority: 'low'
+  }
+}
+
+// Action icons map
+const actionIcons = {
+  approve: <ThumbsUp className="h-3 w-3" />,
+  decline: <X className="h-3 w-3" />,
+  manage: <Settings className="h-3 w-3" />,
+  view: <Info className="h-3 w-3" />,
+  invoice: <Receipt className="h-3 w-3" />,
+  message: <MessageSquare className="h-3 w-3" />
 }
 
 export function SmartBookingStatusComponent({
@@ -250,7 +349,7 @@ export function SmartBookingStatusComponent({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${statusStyles[status.overall_status]?.tone ?? statusStyles.default.tone}`}>
+            <div className={`p-2 rounded-lg ${statusStyles[status.overall_status]?.className ?? statusStyles.unknown.className}`}>
               {getStatusIcon(status.overall_status)}
             </div>
             <div>
@@ -486,16 +585,6 @@ interface Milestone {
   progress_percentage?: number
 }
 
-// Structured styles for statuses
-const statusStyles: Record<string, { badge: string; tone: string }> = {
-  pending:   { badge: 'bg-yellow-100 text-yellow-800 border-yellow-200', tone: 'bg-yellow-100 text-yellow-600' },
-  approved:  { badge: 'bg-blue-100 text-blue-800 border-blue-200',      tone: 'bg-blue-100 text-blue-600' },
-  in_progress:{ badge:'bg-purple-100 text-purple-800 border-purple-200', tone: 'bg-purple-100 text-purple-600' },
-  completed: { badge: 'bg-green-100 text-green-800 border-green-200',   tone: 'bg-green-100 text-green-600' },
-  cancelled: { badge: 'bg-red-100 text-red-800 border-red-200',         tone: 'bg-red-100 text-red-600' },
-  on_hold:   { badge: 'bg-gray-100 text-gray-800 border-gray-200',      tone: 'bg-gray-100 text-gray-600' },
-  default:   { badge: 'bg-gray-100 text-gray-800 border-gray-200',      tone: 'bg-gray-100 text-gray-600' }
-}
 
 // Enhanced Compact status for table cells with milestone-based progress
 export function CompactBookingStatus({
@@ -737,7 +826,7 @@ export function CompactBookingStatus({
     return () => {
       abortRef.current?.abort()
     }
-  }, [bookingId])
+  }, [bookingId, userRole])
 
   if (loading) {
     return (
@@ -792,7 +881,7 @@ export function CompactBookingStatus({
     const pending = milestones.filter(m => m.status === 'pending')
 
     const lines = []
-    lines.push(`${completed.length}/${milestones.length} milestones completed (${progress}%)`)
+    lines.push(`${completed.length}/${milestones.length} milestones completed (${clampPct(progress)}%)`)
     
     if (completed.length > 0) {
       const completedTitles = completed.slice(0, 3).map(m => m.title).join(', ')
@@ -812,101 +901,15 @@ export function CompactBookingStatus({
     return lines.join('\n')
   }
 
-  // Enhanced status styling with business-level sophistication
+  // Use the global statusStyles
   const getStatusConfig = (status: string) => {
-    const configs = {
-      completed: {
-        icon: <Crown className="h-3 w-3" />,
-        label: 'Delivered',
-        className: 'text-emerald-700 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm',
-        glow: 'shadow-emerald-200',
-        priority: 'high'
-      },
-      in_progress: {
-        icon: <Rocket className="h-3 w-3" />,
-        label: 'In Production',
-        className: 'text-blue-700 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm',
-        glow: 'shadow-blue-200',
-        priority: 'high'
-      },
-      approved: {
-        icon: <Gem className="h-3 w-3" />,
-        label: 'Approved',
-        className: 'text-purple-700 border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm',
-        glow: 'shadow-purple-200',
-        priority: 'medium'
-      },
-      pending: {
-        icon: <Clock className="h-3 w-3" />,
-        label: 'Pending Review',
-        className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
-        glow: 'shadow-amber-200',
-        priority: 'low'
-      },
-      ready_to_launch: {
-        icon: <Rocket className="h-3 w-3" />,
-        label: 'Ready to Launch',
-        className: 'text-purple-700 border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm',
-        glow: 'shadow-purple-200',
-        priority: 'medium'
-      },
-      delivered: {
-        icon: <Crown className="h-3 w-3" />,
-        label: 'Delivered',
-        className: 'text-emerald-700 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm',
-        glow: 'shadow-emerald-200',
-        priority: 'high'
-      },
-      in_production: {
-        icon: <Rocket className="h-3 w-3" />,
-        label: 'In Production',
-        className: 'text-blue-700 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm',
-        glow: 'shadow-blue-200',
-        priority: 'high'
-      },
-      pending_review: {
-        icon: <Clock className="h-3 w-3" />,
-        label: 'Pending Review',
-        className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
-        glow: 'shadow-amber-200',
-        priority: 'low'
-      },
-      on_hold: {
-        icon: <Pause className="h-3 w-3" />,
-        label: 'On Hold',
-        className: 'text-orange-700 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50 shadow-sm',
-        glow: 'shadow-orange-200',
-        priority: 'medium'
-      },
-      cancelled: {
-        icon: <XCircle className="h-3 w-3" />,
-        label: 'Cancelled',
-        className: 'text-red-700 border-red-200 bg-gradient-to-r from-red-50 to-rose-50 shadow-sm',
-        glow: 'shadow-red-200',
-        priority: 'low'
-      },
-      unknown: {
-        icon: <Info className="h-3 w-3" />,
-        label: 'Unknown',
-        className: 'text-gray-700 border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50 shadow-sm',
-        glow: 'shadow-gray-200',
-        priority: 'low'
-      },
-      default: {
-        icon: <Clock className="h-3 w-3" />,
-        label: 'Pending',
-        className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
-        glow: 'shadow-amber-200',
-        priority: 'low'
-      }
-    }
-    return configs[status as keyof typeof configs] || configs.default
+    return statusStyles[status as keyof typeof statusStyles] || statusStyles.unknown
   }
 
   const statusConfig = getStatusConfig(status)
   const isHighPriority = statusConfig.priority === 'high'
-  const isCompleted = status === 'completed'
-  const isInProgress = status === 'in_progress'
+  const isCompleted = status === 'delivered' || status === 'completed'
+  const isInProgress = status === 'in_production' || status === 'in_progress'
   const hasMilestones = milestones.length > 0
 
   return (
@@ -927,8 +930,9 @@ export function CompactBookingStatus({
           
           {/* Status Indicator Line */}
           <div className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${
-            isCompleted ? 'bg-gradient-to-r from-emerald-400 to-green-400' :
-            isInProgress ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
+            status === 'delivered' ? 'bg-gradient-to-r from-emerald-400 to-green-400' :
+            status === 'in_production' ? 'bg-gradient-to-r from-orange-400 to-red-400' :
+            status === 'ready_to_launch' ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
             status === 'approved' ? 'bg-gradient-to-r from-purple-400 to-violet-400' :
             'bg-gradient-to-r from-amber-400 to-yellow-400'
           }`}></div>
@@ -941,13 +945,13 @@ export function CompactBookingStatus({
             <div className="flex items-center gap-3">
               <div className="flex-1 relative">
                 <Progress 
-                  value={progress} 
+                  value={clampPct(progress)} 
                   className={`h-2.5 rounded-full ${
-                    progress === 100 ? '[&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-500' :
-                    progress >= 75 ? '[&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-cyan-500' :
-                    progress >= 50 ? '[&>div]:bg-gradient-to-r [&>div]:from-yellow-500 [&>div]:to-amber-500' :
-                    progress >= 25 ? '[&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-red-500' :
-                    '[&>div]:bg-gradient-to-r [&>div]:from-gray-400 [&>div]:to-slate-400'
+                    status === 'delivered' || progress === 100 ? '[&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-500' :
+                    status === 'in_production' || progress >= 75 ? '[&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-red-500' :
+                    status === 'ready_to_launch' || progress >= 50 ? '[&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-cyan-500' :
+                    status === 'approved' || progress >= 25 ? '[&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-500' :
+                    '[&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-500'
                   }`}
                 />
                 {/* Progress Glow Effect */}
@@ -960,7 +964,7 @@ export function CompactBookingStatus({
                 }`}></div>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-sm font-bold text-gray-800">{progress}%</span>
+                <span className="text-sm font-bold text-gray-800">{clampPct(progress)}%</span>
                 {progress === 100 && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 {isInProgress && <Flame className="h-4 w-4 text-blue-600 animate-pulse" />}
               </div>
@@ -1026,11 +1030,11 @@ export function CompactBookingStatus({
         {/* No Milestones State */}
         {!hasMilestones && (
           <div className="text-xs text-gray-500 italic">
-            {status === 'ready_to_launch' ? 'All prerequisites met • Ready to begin development' :
+            {status === 'delivered' ? 'Project successfully delivered' :
+             status === 'in_production' ? 'Active development in progress' :
+             status === 'ready_to_launch' ? 'All prerequisites met • Ready to begin development' :
              status === 'approved' ? 'Project approved • Waiting for team assignment' :
-             status === 'pending' ? 'Awaiting provider approval' :
-             status === 'completed' ? 'Project successfully delivered' :
-             status === 'in_progress' ? 'Active development in progress' :
+             status === 'pending_review' ? 'Awaiting provider approval' :
              'Project status being determined'}
           </div>
         )}
