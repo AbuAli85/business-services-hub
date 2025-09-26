@@ -1673,6 +1673,13 @@ export default function BookingsPage() {
                                     </Button>
                                   </Tip>
                                 )}
+                                {/* Debug info for missing Create button */}
+                                {!canCreateInvoice && (
+                                  <span className="text-xs text-red-500">No permission</span>
+                                )}
+                                {canCreateInvoice && !['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
+                                  <span className="text-xs text-red-500">Status: {String(booking.status)}</span>
+                                )}
                               </div>
                             </div>
                           )}

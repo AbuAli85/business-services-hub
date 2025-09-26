@@ -734,10 +734,13 @@ export function CompactBookingStatus({
               booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
             setProgress(defaultProgress)
           } else {
-            // Calculate progress based on completed milestones
+            // Calculate progress based on completed and in-progress milestones
             const completed = data.filter(m => m.status === 'completed').length
+            const inProgress = data.filter(m => m.status === 'in_progress').length
             const total = data.length
-            const milestoneProgress = total > 0 ? Math.round((completed / total) * 100) : 0
+            
+            // Progress calculation: completed milestones + 50% of in-progress milestones
+            const milestoneProgress = total > 0 ? Math.round(((completed + (inProgress * 0.5)) / total) * 100) : 0
             
             // Use milestone progress, not weighted progress
             setProgress(Number.isFinite(milestoneProgress) ? milestoneProgress : 0)
@@ -777,6 +780,18 @@ export function CompactBookingStatus({
           else {
             derivedStatus = booking.status || 'pending_review'
           }
+          
+          // Debug logging to identify status derivation issues
+          console.log('Smart Status Debug:', {
+            bookingId: booking.id,
+            bookingStatus: booking.status,
+            approvalStatus: booking.approval_status,
+            uiApprovalStatus: booking.ui_approval_status,
+            derivedStatus,
+            milestones: data.length,
+            completed,
+            inProgress
+          })
           
           // Handle case where status might be undefined or null
           if (!derivedStatus || derivedStatus === 'unknown') {
@@ -980,6 +995,11 @@ export function CompactBookingStatus({
                       {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
                     </span>
                     <span className="text-gray-500">milestones</span>
+                    {milestones.filter(m => m.status === 'in_progress').length > 0 && (
+                      <span className="text-blue-600 text-xs">
+                        • {milestones.filter(m => m.status === 'in_progress').length} active
+                      </span>
+                    )}
                   </div>
                 )}
                 
