@@ -29,7 +29,10 @@ import {
   ArrowUp,
   GripVertical,
   MessageSquare,
-  Flag
+  Flag,
+  Search,
+  FileText,
+  File
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { DependencyManagement } from './dependency-management'
@@ -992,48 +995,82 @@ export function ProfessionalMilestoneSystem({
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Professional Milestone System</h1>
-          <p className="text-gray-600">Advanced project management with dependencies and workflows</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowPhaseForm(true)}
-            variant="outline"
-            size="sm"
-          >
-            <Workflow className="h-4 w-4 mr-2" />
-            New Phase
-          </Button>
-          <Button
-            onClick={() => setShowMilestoneForm(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-            size="sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Milestone
-          </Button>
+    <div className={`space-y-8 ${className}`}>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-4 mb-3">
+              <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
+                <Target className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                  Professional Milestone System
+                </h1>
+                <p className="text-blue-100 text-lg font-medium">
+                  Advanced project management with dependencies and workflows
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                <span className="text-sm text-blue-100">Real-time Updates</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                <span className="text-sm text-blue-100">Smart Dependencies</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
+                <span className="text-sm text-blue-100">Workflow Automation</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setShowPhaseForm(true)}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+            >
+              <Workflow className="h-4 w-4 mr-2" />
+              New Phase
+            </Button>
+            <Button
+              onClick={() => setShowMilestoneForm(true)}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-blue-200 transition-all duration-200"
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Milestone
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Smart Toolbar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-3">
+      {/* Enhanced Smart Toolbar */}
+      <Card className="shadow-xl border-0 bg-gradient-to-r from-white to-gray-50">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex-1">
-              <Input
-                placeholder="Search milestones..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  placeholder="Search milestones, tasks, or dependencies..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-12 text-lg border-2 border-gray-200 focus:border-blue-500 rounded-xl"
+                />
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Status" />
+                <SelectTrigger className="w-48 h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl">
+                  <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
@@ -1048,16 +1085,23 @@ export function ProfessionalMilestoneSystem({
                 type="button"
                 variant={highRiskOnly ? 'default' : 'outline'}
                 onClick={() => setHighRiskOnly(v => !v)}
-                className={highRiskOnly ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
+                className={`h-12 px-6 rounded-xl font-medium transition-all duration-200 ${
+                  highRiskOnly 
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg' 
+                    : 'border-2 border-gray-200 hover:border-red-300 hover:bg-red-50'
+                }`}
               >
-                <AlertTriangle className="h-4 w-4 mr-2" /> High Risk Only
+                <AlertTriangle className="h-4 w-4 mr-2" /> 
+                High Risk Only
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={loadData}
+                className="h-12 px-6 border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-xl font-medium"
               >
-                <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                <RefreshCw className="h-4 w-4 mr-2" /> 
+                Refresh
               </Button>
               <Button
                 type="button"
@@ -1067,94 +1111,197 @@ export function ProfessionalMilestoneSystem({
                   setStatusFilter('all')
                   setHighRiskOnly(false)
                 }}
+                className="h-12 px-6 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl font-medium"
               >
                 Clear
               </Button>
             </div>
           </div>
           {(searchQuery || statusFilter !== 'all' || highRiskOnly) && (
-            <div className="mt-3 flex items-center gap-2 text-sm">
-              <Badge variant="outline">Active Filters</Badge>
-              {searchQuery && <Badge className="bg-blue-600 text-white">Search: "{searchQuery}"</Badge>}
-              {statusFilter !== 'all' && <Badge className="bg-purple-600 text-white">Status: {statusFilter}</Badge>}
-              {highRiskOnly && <Badge className="bg-red-600 text-white">High Risk</Badge>}
-              <span className="text-gray-500 ml-auto">{filteredMilestones.length} shown</span>
+            <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+              <div className="flex items-center gap-3 text-sm">
+                <Badge className="bg-blue-600 text-white px-3 py-1 rounded-full font-medium">Active Filters</Badge>
+                {searchQuery && <Badge className="bg-blue-500 text-white px-3 py-1 rounded-full">Search: "{searchQuery}"</Badge>}
+                {statusFilter !== 'all' && <Badge className="bg-purple-500 text-white px-3 py-1 rounded-full">Status: {statusFilter}</Badge>}
+                {highRiskOnly && <Badge className="bg-red-500 text-white px-3 py-1 rounded-full">High Risk</Badge>}
+                <span className="text-gray-600 ml-auto font-medium">{filteredMilestones.length} milestone{filteredMilestones.length !== 1 ? 's' : ''} shown</span>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Tabs */}
+      {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="phases">Phases</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-        </TabsList>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          <TabsList className="grid w-full grid-cols-6 h-14 bg-gradient-to-r from-gray-50 to-blue-50 p-1">
+            <TabsTrigger 
+              value="overview" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Target className="h-4 w-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="timeline" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger 
+              value="dependencies" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Link className="h-4 w-4 mr-2" />
+              Dependencies
+            </TabsTrigger>
+            <TabsTrigger 
+              value="documents" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Documents
+            </TabsTrigger>
+            <TabsTrigger 
+              value="phases" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Workflow className="h-4 w-4 mr-2" />
+              Phases
+            </TabsTrigger>
+            <TabsTrigger 
+              value="templates" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <File className="h-4 w-4 mr-2" />
+              Templates
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          {/* Project Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
+          {/* Enhanced Project Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Milestones</p>
-                    <p className="text-2xl font-bold text-gray-900">{milestones.length}</p>
+                    <p className="text-sm font-medium text-blue-700 mb-1">Total Milestones</p>
+                    <p className="text-3xl font-bold text-blue-900">{milestones.length}</p>
+                    <p className="text-xs text-blue-600 mt-1">Project phases</p>
                   </div>
-                  <Target className="h-8 w-8 text-blue-600" />
+                  <div className="p-3 bg-blue-500 rounded-xl">
+                    <Target className="h-8 w-8 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className="text-sm font-medium text-green-700 mb-1">Completed</p>
+                    <p className="text-3xl font-bold text-green-900">
                       {milestones.filter(m => m.status === 'completed').length}
                     </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      {milestones.length > 0 ? Math.round((milestones.filter(m => m.status === 'completed').length / milestones.length) * 100) : 0}% complete
+                    </p>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <div className="p-3 bg-green-500 rounded-xl">
+                    <CheckCircle className="h-8 w-8 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">In Progress</p>
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className="text-sm font-medium text-orange-700 mb-1">In Progress</p>
+                    <p className="text-3xl font-bold text-orange-900">
                       {milestones.filter(m => m.status === 'in_progress').length}
                     </p>
+                    <p className="text-xs text-orange-600 mt-1">Active work</p>
                   </div>
-                  <Play className="h-8 w-8 text-blue-600" />
+                  <div className="p-3 bg-orange-500 rounded-xl">
+                    <Play className="h-8 w-8 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
+            <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 shadow-lg hover:shadow-xl transition-all duration-200">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Critical Path</p>
-                    <p className="text-2xl font-bold text-red-600">
+                    <p className="text-sm font-medium text-red-700 mb-1">Critical Path</p>
+                    <p className="text-3xl font-bold text-red-900">
                       {milestones.filter(m => m.critical_path).length}
                     </p>
+                    <p className="text-xs text-red-600 mt-1">High priority</p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                  <div className="p-3 bg-red-500 rounded-xl">
+                    <AlertTriangle className="h-8 w-8 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Milestones List */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Project Milestones</h3>
-            {filteredMilestones.map((milestone) => (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-gray-900">Project Milestones</h3>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {filteredMilestones.length} milestone{filteredMilestones.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            </div>
+            
+            {filteredMilestones.length === 0 ? (
+              <Card className="bg-gradient-to-br from-gray-50 to-blue-50 border-gray-200">
+                <CardContent className="p-12 text-center">
+                  <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                    <Target className="h-12 w-12 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Milestones Found</h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    {searchQuery || statusFilter !== 'all' || highRiskOnly 
+                      ? 'No milestones match your current filters. Try adjusting your search criteria.'
+                      : 'Get started by creating your first milestone to track project progress.'
+                    }
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    {searchQuery || statusFilter !== 'all' || highRiskOnly ? (
+                      <Button
+                        onClick={() => {
+                          setSearchQuery('')
+                          setStatusFilter('all')
+                          setHighRiskOnly(false)
+                        }}
+                        variant="outline"
+                        className="px-6"
+                      >
+                        Clear Filters
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setShowMilestoneForm(true)}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create First Milestone
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {filteredMilestones.map((milestone) => (
               <MilestoneCard
                 key={milestone.id}
                 milestone={milestone}
@@ -1186,7 +1333,9 @@ export function ProfessionalMilestoneSystem({
                 isDragging={draggedMilestone === milestone.id}
                 isDragOver={dragOverMilestone === milestone.id}
               />
-            ))}
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
 

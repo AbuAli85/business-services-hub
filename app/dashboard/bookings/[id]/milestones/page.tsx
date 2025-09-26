@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, RefreshCw, Download, Share2, Settings, User, Shield, Eye } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Download, Share2, Settings, User, Shield, Eye, AlertTriangle, Target } from 'lucide-react'
 import { ProfessionalMilestoneSystem } from '@/components/dashboard/professional-milestone-system'
 import { ProfessionalMilestoneManager } from '@/components/dashboard/professional-milestone-manager'
 import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-viewer'
@@ -349,85 +349,95 @@ export default function MilestonesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      {/* Enhanced Professional Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white shadow-2xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBack}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  {booking.title}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  {booking.service.name} • {booking.client.full_name}
-                </p>
+          <div className="py-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBack}
+                  className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Bookings
+                </Button>
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                    {booking.title}
+                  </h1>
+                  <p className="text-blue-100 text-lg mt-1">
+                    {booking.service.name} • {booking.client.full_name}
+                  </p>
+                  <div className="flex items-center gap-4 mt-2">
+                    <Badge className="bg-white/20 text-white border-white/30">
+                      {booking.status}
+                    </Badge>
+                    <span className="text-sm text-blue-200">
+                      Created {new Date(booking.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Role Badge */}
-              <Badge 
-                className={
-                  userRole === 'provider' ? 'bg-blue-100 text-blue-800' :
-                  userRole === 'client' ? 'bg-green-100 text-green-800' :
-                  'bg-purple-100 text-purple-800'
-                }
-              >
-                {userRole === 'provider' ? (
-                  <>
-                    <Settings className="h-3 w-3 mr-1" />
-                    Provider
-                  </>
-                ) : userRole === 'client' ? (
-                  <>
-                    <Eye className="h-3 w-3 mr-1" />
-                    Client
-                  </>
-                ) : (
-                  <>
-                    <Shield className="h-3 w-3 mr-1" />
-                    Admin
-                  </>
-                )}
-              </Badge>
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Share2 className="h-4 w-4" />
-                Share
-              </Button>
+              <div className="flex items-center gap-3">
+                {/* Role Badge */}
+                <Badge 
+                  className={
+                    userRole === 'provider' ? 'bg-blue-500/20 text-blue-100 border-blue-300/30' :
+                    userRole === 'client' ? 'bg-green-500/20 text-green-100 border-green-300/30' :
+                    'bg-purple-500/20 text-purple-100 border-purple-300/30'
+                  }
+                >
+                  {userRole === 'provider' ? (
+                    <>
+                      <Settings className="h-3 w-3 mr-1" />
+                      Provider
+                    </>
+                  ) : userRole === 'client' ? (
+                    <>
+                      <Eye className="h-3 w-3 mr-1" />
+                      Client
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-3 w-3 mr-1" />
+                      Admin
+                    </>
+                  )}
+                </Badge>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -435,83 +445,134 @@ export default function MilestonesPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Project Info Card */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Project Details</h3>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">Service:</span> {booking.service.name}
+        {/* Enhanced Project Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Project Details Card */}
+          <Card className="bg-gradient-to-br from-white to-blue-50 border-blue-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Project Details</h3>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Service</p>
+                  <p className="text-gray-900 font-medium">{booking.service.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Status</p>
+                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                    {booking.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Created</p>
+                  <p className="text-gray-900">{new Date(booking.created_at).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Value</p>
+                  <p className="text-gray-900 font-semibold">{booking.total_price} {booking.currency}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Client Information Card */}
+          <Card className="bg-gradient-to-br from-white to-green-50 border-green-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <User className="h-5 w-5 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Client Information</h3>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Name</p>
+                  <p className={`text-gray-900 ${booking.client.full_name.includes('Client (') ? 'italic text-gray-500' : 'font-medium'}`}>
+                    {booking.client.full_name}
                   </p>
-                  <div className="text-sm text-gray-900">
-                    <span className="font-medium">Status:</span> 
-                    <Badge className="ml-2 bg-blue-100 text-blue-800">
-                      {booking.status}
-                    </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Email</p>
+                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`}>
+                    {booking.client.email}
+                  </p>
+                </div>
+                {booking.client.full_name.includes('Client (') && (
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-700 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Profile data not available
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">Created:</span> {new Date(booking.created_at).toLocaleDateString()}
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Provider Information Card */}
+          <Card className="bg-gradient-to-br from-white to-purple-50 border-purple-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Shield className="h-5 w-5 text-purple-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Provider Information</h3>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Name</p>
+                  <p className={`text-gray-900 ${booking.provider.full_name.includes('Provider (') ? 'italic text-gray-500' : 'font-medium'}`}>
+                    {booking.provider.full_name}
                   </p>
                 </div>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Client Information</h3>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">Name:</span> 
-                    <span className={booking.client.full_name.includes('Client (') ? 'text-gray-500 italic' : ''}>
-                      {booking.client.full_name}
-                    </span>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Email</p>
+                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`}>
+                    {booking.provider.email}
                   </p>
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">Email:</span> 
-                    <span className={booking.client.email === 'No email available' ? 'text-gray-500 italic' : ''}>
-                      {booking.client.email}
-                    </span>
-                  </p>
-                  {booking.client.full_name.includes('Client (') && (
-                    <p className="text-xs text-amber-600">
-                      ⚠️ Profile data not available
+                </div>
+                {booking.provider.full_name.includes('Provider (') && (
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-700 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Profile data not available
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Provider Information</h3>
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">Name:</span> 
-                    <span className={booking.provider.full_name.includes('Provider (') ? 'text-gray-500 italic' : ''}>
-                      {booking.provider.full_name}
-                    </span>
-                  </p>
-                  <p className="text-sm text-gray-900">
-                    <span className="font-medium">Email:</span> 
-                    <span className={booking.provider.email === 'No email available' ? 'text-gray-500 italic' : ''}>
-                      {booking.provider.email}
-                    </span>
-                  </p>
-                  {booking.provider.full_name.includes('Provider (') && (
-                    <p className="text-xs text-amber-600">
-                      ⚠️ Profile data not available
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Smart Status Overview */}
-        <Card className="mb-6 border-blue-200">
-          <CardHeader>
-            <CardTitle className="text-base">Smart Status Overview</CardTitle>
+        {/* Enhanced Smart Status Overview */}
+        <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Target className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl text-white">Smart Status Overview</CardTitle>
+                  <p className="text-blue-100 text-sm">Real-time project progress and status tracking</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Status
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <SmartBookingStatusComponent 
               bookingId={bookingId} 
               userRole={userRole}
