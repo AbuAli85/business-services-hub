@@ -39,7 +39,10 @@ import {
   Settings,
   Play,
   Award,
-  User
+  User,
+  Rocket,
+  DollarSign,
+  Gem
 } from 'lucide-react'
 import { CompactBookingStatus } from '@/components/dashboard/smart-booking-status'
 import { useRouter } from 'next/navigation'
@@ -861,30 +864,57 @@ export default function BookingsPage() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl p-8 text-white">
-        <div className="flex items-center justify-between">
+      {/* Enhanced Professional Header */}
+      <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="w-full h-full" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundRepeat: 'repeat'
+          }}></div>
+        </div>
+        
+        <div className="relative z-10 flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">{getPageTitle()}</h1>
-            <p className="text-green-100 text-lg mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <BarChart3 className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                {getPageTitle()}
+              </h1>
+            </div>
+            <p className="text-blue-100 text-lg mb-6 font-medium">
               {getPageDescription()}
             </p>
-            <div className="flex items-center space-x-6 text-sm">
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-1" />
-                <span>Total: {stats.total} bookings</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="h-4 w-4 text-blue-300" />
+                  <span className="text-sm text-blue-200 font-medium">Total Projects</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{stats.total}</div>
               </div>
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                <span>Completed: {stats.completed}</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle className="h-4 w-4 text-emerald-300" />
+                  <span className="text-sm text-blue-200 font-medium">Delivered</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{stats.completed}</div>
               </div>
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>In Progress: {stats.inProgress}</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Rocket className="h-4 w-4 text-cyan-300" />
+                  <span className="text-sm text-blue-200 font-medium">In Production</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{stats.inProgress}</div>
               </div>
-              <div className="flex items-center">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="h-4 w-4 text-yellow-300" />
+                  <span className="text-sm text-blue-200 font-medium">Revenue</span>
+                </div>
+                <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
               </div>
             </div>
           </div>
@@ -1014,23 +1044,32 @@ export default function BookingsPage() {
 
         {/* Approved Bookings Card - Show when there are approved bookings */}
         {stats.approved > 0 && (
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardContent className="p-4">
+          <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-50 to-green-50 shadow-lg hover:shadow-emerald-200 transition-all duration-300">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Approved & Ready</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.approved}</p>
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {userRole === 'provider' ? 'Ready to start work' : 'Awaiting provider to begin'}
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-sm font-semibold text-emerald-800">Approved & Ready</p>
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <p className="text-3xl font-bold text-emerald-900 mb-1">{stats.approved}</p>
+                  <p className="text-sm text-emerald-700 font-medium">
+                    {userRole === 'provider' ? 'Ready to launch projects' : 'Awaiting provider to begin'}
                   </p>
                 </div>
-                <div className="p-3 bg-emerald-100 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-emerald-600" />
+                <div className="p-4 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full shadow-lg">
+                  <Gem className="h-8 w-8 text-emerald-600" />
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
-                  {userRole === 'provider' ? 'Ready to begin • Start projects' : 'Provider will start soon'}
+              <div className="mt-4 pt-4 border-t border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-emerald-700 font-medium">
+                    {userRole === 'provider' ? 'Ready to begin • Launch projects' : 'Provider will start soon'}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs text-emerald-600 font-semibold">Active</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1398,25 +1437,25 @@ export default function BookingsPage() {
                                 <>
                                   {userRole === 'client' && (
                                     <Tip label="Review completed project and provide feedback">
-                                      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                      <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200">
                                         <Award className="h-3 w-3 mr-1" />
-                                        Review
+                                        Review Project
                                       </Button>
                                     </Tip>
                                   )}
                                   
                                   {userRole === 'provider' && (
                                     <Tip label="Project completed - awaiting client review">
-                                      <Button size="sm" variant="outline" disabled>
+                                      <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
                                         <Award className="h-3 w-3 mr-1" />
-                                        Complete
+                                        Delivered
                                       </Button>
                                     </Tip>
                                   )}
                                   
                                   {!userRole && (
                                     <Tip label="Project completed">
-                                      <Button size="sm" variant="outline" disabled>
+                                      <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
                                         <Award className="h-3 w-3 mr-1" />
                                         Complete
                                       </Button>
@@ -1428,10 +1467,10 @@ export default function BookingsPage() {
                               {/* 2. IN PROGRESS BOOKINGS */}
                               {booking.status === 'in_progress' && (
                                 <Tip label="View progress and manage project milestones">
-                                  <Button size="sm" variant="outline" asChild>
+                                  <Button size="sm" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-blue-200 transition-all duration-200" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
                                       <Target className="h-3 w-3 mr-1" />
-                                      Manage
+                                      Manage Project
                                     </Link>
                                   </Button>
                                 </Tip>
@@ -1440,10 +1479,10 @@ export default function BookingsPage() {
                               {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
                                 <Tip label="Begin project work and create milestones">
-                                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
+                                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-purple-200 transition-all duration-200" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
                                       <Play className="h-3 w-3 mr-1" />
-                                      Start
+                                      Launch Project
                                     </Link>
                                   </Button>
                                 </Tip>
@@ -1451,7 +1490,7 @@ export default function BookingsPage() {
 
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
                                 <Tip label="Waiting for provider to start work">
-                                  <Button size="sm" variant="outline" disabled>
+                                  <Button size="sm" variant="outline" disabled className="border-purple-200 text-purple-700 bg-purple-50">
                                     <Clock className="h-3 w-3 mr-1" />
                                     Approved
                                   </Button>
@@ -1461,18 +1500,18 @@ export default function BookingsPage() {
                               {/* 4. PENDING BOOKINGS (not approved yet) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
                                 <Tip label="Approve this booking to start the project">
-                                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                  <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200">
                                     <CheckCircle className="h-3 w-3 mr-1" />
-                                    Approve
+                                    Approve Project
                                   </Button>
                                 </Tip>
                               )}
 
                               {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'client' && (
                                 <Tip label="Waiting for provider approval">
-                                  <Button size="sm" variant="outline" disabled>
+                                  <Button size="sm" variant="outline" disabled className="border-amber-200 text-amber-700 bg-amber-50">
                                     <Clock className="h-3 w-3 mr-1" />
-                                    Pending
+                                    Under Review
                                   </Button>
                                 </Tip>
                               )}
@@ -1699,5 +1738,6 @@ export default function BookingsPage() {
       )}
       </div>
     </TooltipProvider>
-    )
-  }
+  )
+}
+

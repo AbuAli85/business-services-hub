@@ -23,7 +23,20 @@ import {
   Calendar,
   BarChart3,
   Zap,
-  Bell
+  Bell,
+  TrendingUp,
+  Star,
+  Users,
+  DollarSign,
+  Timer,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  Sparkles,
+  Rocket,
+  Crown,
+  Gem,
+  Flame
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -697,61 +710,182 @@ export function CompactBookingStatus({
     return lines.join('\n')
   }
 
+  // Enhanced status styling with business-level sophistication
+  const getStatusConfig = (status: string) => {
+    const configs = {
+      completed: {
+        icon: <Crown className="h-3 w-3" />,
+        label: 'Delivered',
+        className: 'text-emerald-700 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 shadow-sm',
+        glow: 'shadow-emerald-200',
+        priority: 'high'
+      },
+      in_progress: {
+        icon: <Rocket className="h-3 w-3" />,
+        label: 'In Production',
+        className: 'text-blue-700 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm',
+        glow: 'shadow-blue-200',
+        priority: 'high'
+      },
+      approved: {
+        icon: <Gem className="h-3 w-3" />,
+        label: 'Approved',
+        className: 'text-purple-700 border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm',
+        glow: 'shadow-purple-200',
+        priority: 'medium'
+      },
+      pending: {
+        icon: <Clock className="h-3 w-3" />,
+        label: 'Pending Review',
+        className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
+        glow: 'shadow-amber-200',
+        priority: 'low'
+      },
+      cancelled: {
+        icon: <XCircle className="h-3 w-3" />,
+        label: 'Cancelled',
+        className: 'text-red-700 border-red-200 bg-gradient-to-r from-red-50 to-rose-50 shadow-sm',
+        glow: 'shadow-red-200',
+        priority: 'low'
+      },
+      default: {
+        icon: <Info className="h-3 w-3" />,
+        label: 'Unknown',
+        className: 'text-gray-700 border-gray-200 bg-gradient-to-r from-gray-50 to-slate-50 shadow-sm',
+        glow: 'shadow-gray-200',
+        priority: 'low'
+      }
+    }
+    return configs[status as keyof typeof configs] || configs.default
+  }
+
+  const statusConfig = getStatusConfig(status)
+  const isHighPriority = statusConfig.priority === 'high'
+  const isCompleted = status === 'completed'
+  const isInProgress = status === 'in_progress'
+  const hasMilestones = milestones.length > 0
+
   return (
     <Tooltip content={<div className="max-w-xs whitespace-pre-line">{getTooltipContent()}</div>}>
-      <div className="space-y-1 cursor-pointer">
-            {/* Status Badge */}
-            <Badge
-              variant="outline"
-              className={`flex items-center gap-1 text-xs ${
-                status === 'completed'
-                  ? 'text-green-600 border-green-200 bg-green-50'
-                  : status === 'in_progress'
-                  ? 'text-blue-600 border-blue-200 bg-blue-50'
-                  : status === 'approved'
-                  ? 'text-purple-600 border-purple-200 bg-purple-50'
-                  : 'text-gray-600 border-gray-200 bg-gray-50'
-              }`}
-            >
-              {getStatusIcon(status)}
-              <span className="capitalize">{status.replace('_', ' ')}</span>
-            </Badge>
-            {/* Progress Bar and Details */}
-            {milestones.length > 0 && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Progress 
-                    value={progress} 
-                    className={`h-2 w-20 ${
-                      progress === 100 ? '[&>div]:bg-green-500' :
-                      progress >= 75 ? '[&>div]:bg-blue-500' :
-                      progress >= 50 ? '[&>div]:bg-yellow-500' :
-                      progress >= 25 ? '[&>div]:bg-orange-500' :
-                      '[&>div]:bg-gray-400'
-                    }`}
-                  />
-                  <span className="text-xs font-medium text-gray-700">{progress}%</span>
+      <div className="space-y-2 cursor-pointer group">
+        {/* Enhanced Status Badge */}
+        <div className={`relative ${isHighPriority ? 'animate-pulse' : ''}`}>
+          <Badge
+            variant="outline"
+            className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 group-hover:scale-105 ${statusConfig.className} ${statusConfig.glow}`}
+          >
+            {statusConfig.icon}
+            <span className="capitalize tracking-wide">{statusConfig.label}</span>
+            {isHighPriority && (
+              <div className="w-2 h-2 bg-current rounded-full animate-ping opacity-75"></div>
+            )}
+          </Badge>
+          
+          {/* Status Indicator Line */}
+          <div className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${
+            isCompleted ? 'bg-gradient-to-r from-emerald-400 to-green-400' :
+            isInProgress ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
+            status === 'approved' ? 'bg-gradient-to-r from-purple-400 to-violet-400' :
+            'bg-gradient-to-r from-amber-400 to-yellow-400'
+          }`}></div>
+        </div>
+
+        {/* Enhanced Progress Section */}
+        {hasMilestones && (
+          <div className="space-y-2">
+            {/* Progress Bar with Enhanced Styling */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 relative">
+                <Progress 
+                  value={progress} 
+                  className={`h-2.5 rounded-full ${
+                    progress === 100 ? '[&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-500' :
+                    progress >= 75 ? '[&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-cyan-500' :
+                    progress >= 50 ? '[&>div]:bg-gradient-to-r [&>div]:from-yellow-500 [&>div]:to-amber-500' :
+                    progress >= 25 ? '[&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-red-500' :
+                    '[&>div]:bg-gradient-to-r [&>div]:from-gray-400 [&>div]:to-slate-400'
+                  }`}
+                />
+                {/* Progress Glow Effect */}
+                <div className={`absolute inset-0 rounded-full blur-sm opacity-30 ${
+                  progress === 100 ? 'bg-emerald-400' :
+                  progress >= 75 ? 'bg-blue-400' :
+                  progress >= 50 ? 'bg-yellow-400' :
+                  progress >= 25 ? 'bg-orange-400' :
+                  'bg-gray-400'
+                }`}></div>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-bold text-gray-800">{progress}%</span>
+                {progress === 100 && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                {isInProgress && <Flame className="h-4 w-4 text-blue-600 animate-pulse" />}
+              </div>
+            </div>
+
+            {/* Enhanced Milestone Summary */}
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <Target className="h-3 w-3 text-gray-500" />
+                  <span className="text-gray-600 font-medium">
+                    {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
+                  </span>
+                  <span className="text-gray-500">milestones</span>
                 </div>
-                {/* Milestone Summary */}
-                <div className="text-xs text-gray-500">
-                  {milestones.filter(m => m.status === 'completed').length}/{milestones.length} milestones
-                  {milestones.some(m => m.status === 'in_progress') && (
-                    <span className="text-purple-600 ml-1">
-                      • {milestones.filter(m => m.status === 'in_progress').length} active
-                    </span>
-                  )}
-                </div>
-                {/* Current Activity Indicator */}
+                
                 {milestones.some(m => m.status === 'in_progress') && (
-                  <div className="text-xs text-purple-600 flex items-center gap-1">
-                    <div className="w-1 h-1 bg-purple-600 rounded-full animate-pulse"></div>
-                    <span className="truncate max-w-32">
-                      {milestones.find(m => m.status === 'in_progress')?.title}
+                  <div className="flex items-center gap-1 text-blue-600">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">
+                      {milestones.filter(m => m.status === 'in_progress').length} active
                     </span>
                   </div>
                 )}
               </div>
+              
+              {/* Performance Indicator */}
+              {progress > 0 && (
+                <div className="flex items-center gap-1">
+                  {progress === 100 ? (
+                    <Star className="h-3 w-3 text-yellow-500" />
+                  ) : progress >= 75 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <Timer className="h-3 w-3 text-amber-500" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Current Activity Status */}
+            {milestones.some(m => m.status === 'in_progress') && (
+              <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="font-medium">Active development in progress</span>
+                <Sparkles className="h-3 w-3 text-blue-500" />
+              </div>
             )}
+
+            {/* Completion Celebration */}
+            {isCompleted && (
+              <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">
+                <Award className="h-3 w-3 text-emerald-600" />
+                <span className="font-medium">Project successfully delivered</span>
+                <Crown className="h-3 w-3 text-yellow-500" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* No Milestones State */}
+        {!hasMilestones && (
+          <div className="text-xs text-gray-500 italic">
+            {status === 'approved' ? 'Ready to begin development' :
+             status === 'pending' ? 'Awaiting approval' :
+             status === 'completed' ? 'Project completed' :
+             'Status pending'}
+          </div>
+        )}
       </div>
     </Tooltip>
   )
