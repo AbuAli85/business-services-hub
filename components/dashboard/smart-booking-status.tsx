@@ -655,9 +655,9 @@ export function CompactBookingStatus({
           const completed = data.filter(m => m.status === 'completed').length
           const inProgress = data.filter(m => m.status === 'in_progress').length
           
-          // Bridge: treat approval_status=approved as "approved" even if status stays pending until work starts
+          // Bridge: treat approval_status=approved as "ready_to_launch" even if status stays pending until work starts
           let derivedStatus = ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending')
-            ? 'approved'
+            ? 'ready_to_launch'
             : booking.status
             
           // Handle case where status might be undefined or null
@@ -665,7 +665,7 @@ export function CompactBookingStatus({
             derivedStatus = 'pending'
           }
           
-          if (derivedStatus === 'approved' || derivedStatus === 'confirmed') {
+          if (derivedStatus === 'approved' || derivedStatus === 'confirmed' || derivedStatus === 'ready_to_launch') {
             if (completed === data.length && data.length > 0) derivedStatus = 'completed'
             else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
           }
@@ -679,7 +679,10 @@ export function CompactBookingStatus({
           setProgress(defaultProgress)
           setMilestones([])
           // Handle case where booking.status might be undefined or null
-          const fallbackStatus = booking.status || 'pending'
+          let fallbackStatus = booking.status || 'pending'
+          if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
+            fallbackStatus = 'ready_to_launch'
+          }
           setStatus(fallbackStatus)
         }
       } catch (error) {
@@ -693,7 +696,10 @@ export function CompactBookingStatus({
         setProgress(defaultProgress)
         setMilestones([])
         // Handle case where booking.status might be undefined or null
-        const fallbackStatus = booking.status || 'pending'
+        let fallbackStatus = booking.status || 'pending'
+        if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
+          fallbackStatus = 'ready_to_launch'
+        }
         setStatus(fallbackStatus)
       }
       
@@ -811,6 +817,13 @@ export function CompactBookingStatus({
         className: 'text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 shadow-sm',
         glow: 'shadow-amber-200',
         priority: 'low'
+      },
+      ready_to_launch: {
+        icon: <Rocket className="h-3 w-3" />,
+        label: 'Ready to Launch',
+        className: 'text-purple-700 border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm',
+        glow: 'shadow-purple-200',
+        priority: 'medium'
       },
       cancelled: {
         icon: <XCircle className="h-3 w-3" />,

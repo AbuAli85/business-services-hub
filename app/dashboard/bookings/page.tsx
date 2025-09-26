@@ -1079,7 +1079,7 @@ export default function BookingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <p className="text-sm font-semibold text-emerald-800">Approved & Ready</p>
+                    <p className="text-sm font-semibold text-emerald-800">Ready to Launch</p>
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                   </div>
                   <p className="text-3xl font-bold text-emerald-900 mb-1">{stats.approved}</p>
@@ -1088,7 +1088,7 @@ export default function BookingsPage() {
                   </p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full shadow-lg">
-                  <Gem className="h-8 w-8 text-emerald-600" />
+                  <Rocket className="h-8 w-8 text-emerald-600" />
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-emerald-200">
@@ -1568,7 +1568,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
+                              {/* 3. READY TO LAUNCH BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
                                 canLaunchProject(booking) ? (
                                   <Tip label="Begin project work and create milestones">
@@ -1593,7 +1593,7 @@ export default function BookingsPage() {
                                 <Tip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled className="border-purple-200 text-purple-700 bg-purple-50">
                                     <Clock className="h-3 w-3 mr-1" />
-                                    Approved
+                                    Ready to Launch
                                   </Button>
                                 </Tip>
                               )}
