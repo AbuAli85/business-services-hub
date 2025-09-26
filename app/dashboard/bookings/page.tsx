@@ -540,7 +540,8 @@ export default function BookingsPage() {
         ((booking as any).provider_profile?.full_name || booking.providerName || '').toLowerCase().includes(q) ||
         String((booking as any).id || '').toLowerCase().includes(q)
       
-      const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
+      const derivedStatus = getDerivedStatus(booking)
+      const matchesStatus = statusFilter === 'all' || derivedStatus === statusFilter
       
       return matchesSearch && matchesStatus
     })
@@ -627,7 +628,7 @@ export default function BookingsPage() {
     
     // 2. Invoice prerequisites - must be issued, paid, or partially paid
     const invoice = invoices.find(inv => inv.booking_id === booking.id)
-    const hasValidInvoice = !invoice || ['issued', 'paid', 'partially_paid'].includes(invoice.status)
+    const hasValidInvoice = invoice && ['issued', 'paid', 'partially_paid'].includes(invoice.status)
     if (!hasValidInvoice) return false
     
     // 3. Team assignment check (placeholder - would need backend data)
@@ -650,7 +651,10 @@ export default function BookingsPage() {
     }
     
     const invoice = invoices.find(inv => inv.booking_id === booking.id)
-    if (invoice && !['issued', 'paid', 'partially_paid'].includes(invoice.status)) {
+    if (!invoice) {
+      return 'Launch is unavailable until prerequisites are met (invoice must be created and issued/paid)'
+    }
+    if (!['issued', 'paid', 'partially_paid'].includes(invoice.status)) {
       return `Launch is unavailable until prerequisites are met (invoice must be issued/paid, current: ${invoice.status})`
     }
     
@@ -1074,6 +1078,13 @@ export default function BookingsPage() {
                 <p className="text-xs text-blue-600 mt-1">
                   {(() => {
                     if (stats.total === 0) return '—'
+                    // Debug logging
+                    console.log('🔍 Portfolio calculation:', { 
+                      inProgress: stats.inProgress, 
+                      total: stats.total, 
+                      raw: (stats.inProgress / stats.total) * 100,
+                      rounded: Math.round((stats.inProgress / stats.total) * 1000) / 10
+                    })
                     const pct = Math.round((stats.inProgress / stats.total) * 1000) / 10 // 1 decimal place
                     const clampedPct = Math.min(100, Math.max(0, pct))
                     return `${clampedPct.toFixed(1)}% of portfolio`
@@ -1217,10 +1228,12 @@ export default function BookingsPage() {
             <div className="flex flex-wrap gap-2">
               {[
                 { key: 'all', label: 'All' },
-                { key: 'pending', label: 'Pending' },
-                { key: 'confirmed', label: 'Confirmed' },
-                { key: 'in_progress', label: 'In Progress' },
-                { key: 'completed', label: 'Completed' },
+                { key: 'pending_review', label: 'Pending Review' },
+                { key: 'approved', label: 'Approved' },
+                { key: 'ready_to_launch', label: 'Ready to Launch' },
+                { key: 'in_production', label: 'In Production' },
+                { key: 'delivered', label: 'Delivered' },
+                { key: 'on_hold', label: 'On Hold' },
                 { key: 'cancelled', label: 'Cancelled' }
               ].map(s => (
                 <button
@@ -1249,10 +1262,12 @@ export default function BookingsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="pending_review">Pending Review</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="ready_to_launch">Ready to Launch</SelectItem>
+                <SelectItem value="in_production">In Production</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="on_hold">On Hold</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>

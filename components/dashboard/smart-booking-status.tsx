@@ -638,19 +638,20 @@ export function CompactBookingStatus({
           setMilestones(data)
           
           if (data.length === 0) {
+            // No milestones - use simple progress based on status
             const defaultProgress =
               booking.status === 'completed' ? 100 :
               booking.status === 'in_progress' ? 50 :
               booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
             setProgress(defaultProgress)
           } else {
-            // Calculate weighted progress
-            const totalWeight = data.reduce((sum, m) => sum + ((m as any).weight || 1), 0)
-            const weightedProgress = data.reduce((sum, m) => 
-              sum + ((m.progress_percentage || 0) * ((m as any).weight || 1)), 0
-            )
-            const calculated = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
-            setProgress(Number.isFinite(calculated) ? calculated : 0)
+            // Calculate progress based on completed milestones
+            const completed = data.filter(m => m.status === 'completed').length
+            const total = data.length
+            const milestoneProgress = total > 0 ? Math.round((completed / total) * 100) : 0
+            
+            // Use milestone progress, not weighted progress
+            setProgress(Number.isFinite(milestoneProgress) ? milestoneProgress : 0)
           }
           
           const completed = data.filter(m => m.status === 'completed').length
@@ -659,8 +660,12 @@ export function CompactBookingStatus({
           // Canonical status ladder: Pending Review → Approved → Ready to Launch → In Production → Delivered
           let derivedStatus: string
           
+          // Auto-advance: If all milestones are completed, auto-advance to delivered
+          if (data.length > 0 && completed === data.length && data.length > 0) {
+            derivedStatus = 'delivered'
+          }
           // If completed, always show as delivered
-          if (booking.status === 'completed') {
+          else if (booking.status === 'completed') {
             derivedStatus = 'delivered'
           }
           // If in progress, show as in production
