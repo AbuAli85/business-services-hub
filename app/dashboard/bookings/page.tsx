@@ -733,13 +733,18 @@ export default function BookingsPage() {
     const total = bookingsSource.length
     const completed = bookingsSource.filter((b:any) => b.status === 'completed').length
     const inProgress = bookingsSource.filter((b:any) => b.status === 'in_progress').length
-    const pending = bookingsSource.filter((b:any) => b.status === 'pending').length
+    // Only count truly pending bookings (not approved yet)
+    const pending = bookingsSource.filter((b:any) => b.status === 'pending' && b.approval_status !== 'approved').length
+    // Count approved bookings waiting to start
+    const approved = bookingsSource.filter((b:any) => 
+      b.status === 'approved' || (b.status === 'pending' && b.approval_status === 'approved')
+    ).length
     const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
       .reduce((sum: number, b: any) => sum + (b.totalAmount ?? b.amount ?? b.total_price ?? 0), 0)
     const avgCompletionTime = 7.2 // Mock data
 
-    return { total, completed, inProgress, pending, totalRevenue, avgCompletionTime }
+    return { total, completed, inProgress, pending, approved, totalRevenue, avgCompletionTime }
   }, [bookingsSource])
 
   // Show loading skeleton only during initial user loading
@@ -1006,6 +1011,31 @@ export default function BookingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Approved Bookings Card - Show when there are approved bookings */}
+        {stats.approved > 0 && (
+          <Card className="border-l-4 border-l-emerald-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Approved & Ready</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.approved}</p>
+                  <p className="text-xs text-emerald-600 mt-1">
+                    {userRole === 'provider' ? 'Ready to start work' : 'Awaiting provider to begin'}
+                  </p>
+                </div>
+                <div className="p-3 bg-emerald-100 rounded-full">
+                  <CheckCircle className="h-6 w-6 text-emerald-600" />
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="text-xs text-gray-500">
+                  {userRole === 'provider' ? 'Ready to begin • Start projects' : 'Provider will start soon'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filters */}
@@ -1350,25 +1380,49 @@ export default function BookingsPage() {
                         
                         <TableCell>
                           <div className="flex items-center space-x-1">
-                              {/* Primary Action based on booking status and user role */}
-                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'provider' && (
-                                <Tip label="Approve this booking to start the project">
+                              {/* Primary Action based on booking status and user role - ORDER MATTERS! */}
+                              
+                              {/* 1. COMPLETED BOOKINGS - Highest Priority */}
+                              {booking.status === 'completed' && userRole === 'client' && (
+                                <Tip label="Review completed project and provide feedback">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Approve
+                                    <Award className="h-3 w-3 mr-1" />
+                                    Review
                                   </Button>
                                 </Tip>
                               )}
 
-                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'client' && (
-                                <Tip label="Waiting for provider approval">
+                              {booking.status === 'completed' && userRole === 'provider' && (
+                                <Tip label="Project completed - awaiting client review">
                                   <Button size="sm" variant="outline" disabled>
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Pending
+                                    <Award className="h-3 w-3 mr-1" />
+                                    Complete
                                   </Button>
                                 </Tip>
                               )}
 
+                              {booking.status === 'completed' && !userRole && (
+                                <Tip label="Project completed">
+                                  <Button size="sm" variant="outline" disabled>
+                                    <Award className="h-3 w-3 mr-1" />
+                                    Complete
+                                  </Button>
+                                </Tip>
+                              )}
+
+                              {/* 2. IN PROGRESS BOOKINGS */}
+                              {booking.status === 'in_progress' && (
+                                <Tip label="View progress and manage project milestones">
+                                  <Button size="sm" variant="outline" asChild>
+                                    <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
+                                      <Target className="h-3 w-3 mr-1" />
+                                      Manage
+                                    </Link>
+                                  </Button>
+                                </Tip>
+                              )}
+
+                              {/* 3. APPROVED BOOKINGS (including pending with approval_status = approved) */}
                               {((booking.status === 'approved') || (booking.status === 'pending' && booking.approval_status === 'approved')) && userRole === 'provider' && (
                                 <Tip label="Begin project work and create milestones">
                                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
@@ -1389,31 +1443,21 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {booking.status === 'in_progress' && (
-                                <Tip label="View progress and manage project milestones">
-                                  <Button size="sm" variant="outline" asChild>
-                                    <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
-                                      <Target className="h-3 w-3 mr-1" />
-                                      Manage
-                                    </Link>
-                                  </Button>
-                                </Tip>
-                              )}
-
-                              {booking.status === 'completed' && userRole === 'client' && (
-                                <Tip label="Review completed project and provide feedback">
+                              {/* 4. PENDING BOOKINGS (not approved yet) */}
+                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'provider' && (
+                                <Tip label="Approve this booking to start the project">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                    <Award className="h-3 w-3 mr-1" />
-                                    Review
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Approve
                                   </Button>
                                 </Tip>
                               )}
 
-                              {booking.status === 'completed' && userRole === 'provider' && (
-                                <Tip label="Project completed - awaiting client review">
+                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'client' && (
+                                <Tip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled>
-                                    <Award className="h-3 w-3 mr-1" />
-                                    Complete
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Pending
                                   </Button>
                                 </Tip>
                               )}
