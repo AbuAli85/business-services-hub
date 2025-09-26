@@ -497,26 +497,87 @@ export function CompactBookingStatus({
   const [status, setStatus] = useState<string>('pending')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [loading, setLoading] = useState(true)
+  const abortRef = React.useRef<AbortController | null>(null)
+
+  // Simple in-memory cache and dedupe per bookingId
+  const cache = (CompactBookingStatus as any)._cache || ((CompactBookingStatus as any)._cache = new Map<string, any>())
+  const inflight = (CompactBookingStatus as any)._inflight || ((CompactBookingStatus as any)._inflight = new Map<string, Promise<any>>())
+  const maxConcurrent = 4
+  const counters = (CompactBookingStatus as any)._counter || ((CompactBookingStatus as any)._counter = { active: 0 })
 
   useEffect(() => {
   const loadStatusAndProgress = async () => {
     try {
       setLoading(true)
 
-      // Use API call instead of direct Supabase call
-      const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      })
+      // Cached?
+      const cached = cache.get(bookingId)
+      if (cached) {
+        applyBooking(cached)
+        setLoading(false)
+        return
+      }
 
-      if (!response.ok) {
-        console.error('Error fetching booking:', response.status)
+      // Concurrency gating
+      while (counters.active >= maxConcurrent) {
+        await new Promise(r => setTimeout(r, 50))
+      }
+
+      // Dedupe identical requests
+      if (inflight.has(bookingId)) {
+        const json = await inflight.get(bookingId)!
+        applyBooking(json)
+        setLoading(false)
+        return
+      }
+
+      const fetchOnce = async () => {
+        abortRef.current?.abort()
+        const ctrl = new AbortController()
+        abortRef.current = ctrl
+        const res = await fetch(`/api/bookings?bookingId=${bookingId}`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          signal: ctrl.signal,
+          cache: 'no-store'
+        })
+        return res
+      }
+
+      // Backoff on 429
+      let attempt = 0
+      const maxRetries = 3
+      const base = 300
+      const cap = 2000
+
+      counters.active++
+      let res: Response
+      try {
+        while (true) {
+          res = await fetchOnce()
+          if (res.status !== 429) break
+          const ra = res.headers.get('retry-after')
+          const delay = ra ? Number(ra) * 1000 : Math.min(cap, base * 2 ** attempt)
+          await new Promise(r => setTimeout(r, Math.floor(Math.random() * Math.max(200, delay))))
+          if (attempt++ >= maxRetries) break
+        }
+      } finally {
+        counters.active = Math.max(0, counters.active - 1)
+      }
+
+      if (!res!.ok) {
+        console.error('Error fetching booking:', res!.status)
         setStatus('unknown')
         setProgress(0)
         return
       }
 
-      const { bookings } = await response.json()
+      const p = res!.json()
+      inflight.set(bookingId, p)
+      const json = await p.finally(() => inflight.delete(bookingId))
+      cache.set(bookingId, json)
+
+      const { bookings } = json
       const booking = bookings?.[0]
 
       if (!booking) {
@@ -578,8 +639,47 @@ export function CompactBookingStatus({
       }
     }
 
+    const applyBooking = (json: any) => {
+      const booking = json?.bookings?.[0]
+      if (!booking) {
+        setStatus('unknown')
+        setProgress(0)
+        return
+      }
+      const data: Milestone[] = []
+      setMilestones(data)
+      if (data.length === 0) {
+        const defaultProgress =
+          booking.status === 'completed' ? 100 :
+          booking.status === 'in_progress' ? 50 :
+          booking.status === 'approved' || booking.status === 'confirmed' ? 10 : 0
+        setProgress(defaultProgress)
+      } else {
+        let totalProgress = 0
+        data.forEach(milestone => {
+          if (milestone.status === 'completed') totalProgress += 100
+          else if (milestone.status === 'in_progress') totalProgress += (milestone.progress_percentage || 0)
+        })
+        const calculated = Math.round(totalProgress / data.length)
+        setProgress(Number.isFinite(calculated) ? calculated : 0)
+      }
+      const completed = data.filter(m => m.status === 'completed').length
+      const inProgress = data.filter(m => m.status === 'in_progress').length
+      let derivedStatus = booking.status
+      if (booking.status === 'approved' || booking.status === 'confirmed') {
+        if (completed === data.length) derivedStatus = 'completed'
+        else if (completed > 0 || inProgress > 0) derivedStatus = 'in_progress'
+      }
+      setStatus(derivedStatus)
+      onStatusChange?.()
+    }
+
     loadStatusAndProgress()
-  }, [bookingId, onStatusChange])
+
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [bookingId])
 
   if (loading) {
     return (
