@@ -515,7 +515,7 @@ export default function MilestonesPage() {
             <SmartBookingStatusComponent 
               bookingId={bookingId} 
               userRole={userRole}
-              onStatusChange={() => loadBookingData()}
+              onStatusChangeAction={() => loadBookingData()}
             />
           </CardContent>
         </Card>
