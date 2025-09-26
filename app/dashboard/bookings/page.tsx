@@ -703,7 +703,7 @@ export default function BookingsPage() {
 
     const invoice = getInvoiceForBooking(booking.id)
     const okInvoice =
-      invoice && ['issued', 'sent', 'paid', 'partially_paid'].includes(invoice.status)
+      invoice && ['issued', 'paid'].includes(invoice.status)
     if (!okInvoice) return false
 
     // keep placeholders, but don't force true with `|| true`
@@ -723,10 +723,10 @@ export default function BookingsPage() {
     
     const invoice = getInvoiceForBooking(booking.id)
     if (!invoice) {
-      return 'Launch requires an invoice (issued/sent/paid).'
+      return 'Launch requires an invoice (issued/paid).'
     }
-    if (!['issued','sent','paid','partially_paid'].includes(invoice.status)) {
-      return `Invoice must be issued/sent/paid (current: ${invoice.status}).`
+    if (!['issued','paid'].includes(invoice.status)) {
+      return `Invoice must be issued/paid (current: ${invoice.status}).`
     }
     
     if (!booking.team_assigned) {
@@ -737,7 +737,7 @@ export default function BookingsPage() {
       return 'Launch is unavailable until prerequisites are met (kickoff date must be set)'
     }
     
-    return 'Launch is unavailable until prerequisites are met (invoice issued/sent/paid, team assigned, kickoff set)'
+    return 'Launch is unavailable until prerequisites are met (invoice issued/paid, team assigned, kickoff set)'
   }
   
   // Get role-specific page title and description
@@ -832,7 +832,7 @@ export default function BookingsPage() {
       const { error } = await supabase
         .from('invoices')
         .update({ 
-          status: 'sent',
+          status: 'issued',
           updated_at: new Date().toISOString()
         })
         .eq('id', invoiceId)
@@ -1594,7 +1594,7 @@ export default function BookingsPage() {
                                   className={`text-xs font-semibold ${
                                     invoice.status === 'paid' 
                                       ? 'text-green-700 border-green-300 bg-green-100 shadow-sm'
-                                      : invoice.status === 'sent'
+                                      : invoice.status === 'issued'
                                       ? 'text-yellow-700 border-yellow-300 bg-yellow-100 shadow-sm'
                                       : invoice.status === 'draft'
                                       ? 'text-blue-700 border-blue-300 bg-blue-100 shadow-sm'
@@ -1602,7 +1602,7 @@ export default function BookingsPage() {
                                   }`}
                                 >
                                   {invoice.status === 'paid' ? 'Paid' : 
-                                   invoice.status === 'sent' ? 'Sent' : 
+                                   invoice.status === 'issued' ? 'Issued' : 
                                    invoice.status === 'draft' ? 'Draft' : 
                                    invoice.status}
                                 </Badge>
@@ -1632,7 +1632,7 @@ export default function BookingsPage() {
                                       </Button>
                                     </Tip>
                                   )}
-                                  {['sent', 'issued'].includes(invoice.status) && (
+                                  {invoice.status === 'issued' && (
                                     <Tip label="Mark invoice as paid">
                                       <Button
                                         size="sm"
