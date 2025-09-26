@@ -1351,7 +1351,7 @@ export default function BookingsPage() {
                         <TableCell>
                           <div className="flex items-center space-x-1">
                               {/* Primary Action based on booking status and user role */}
-                              {booking.status === 'pending' && userRole === 'provider' && (
+                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'provider' && (
                                 <Tip label="Approve this booking to start the project">
                                   <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -1360,7 +1360,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {booking.status === 'pending' && userRole === 'client' && (
+                              {booking.status === 'pending' && booking.approval_status !== 'approved' && userRole === 'client' && (
                                 <Tip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />
@@ -1369,7 +1369,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {booking.status === 'approved' && userRole === 'provider' && (
+                              {((booking.status === 'approved') || (booking.status === 'pending' && booking.approval_status === 'approved')) && userRole === 'provider' && (
                                 <Tip label="Begin project work and create milestones">
                                   <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
@@ -1380,7 +1380,7 @@ export default function BookingsPage() {
                                 </Tip>
                               )}
 
-                              {booking.status === 'approved' && userRole === 'client' && (
+                              {((booking.status === 'approved') || (booking.status === 'pending' && booking.approval_status === 'approved')) && userRole === 'client' && (
                                 <Tip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled>
                                     <Clock className="h-3 w-3 mr-1" />

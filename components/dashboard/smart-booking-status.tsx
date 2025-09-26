@@ -600,7 +600,7 @@ export function CompactBookingStatus({
         const defaultProgress =
           booking.status === 'completed' ? 100 :
           booking.status === 'in_progress' ? 50 :
-          booking.status === 'approved' || booking.status === 'confirmed' ? 10 : 0
+          booking.status === 'approved' || booking.status === 'confirmed' || (booking.approval_status === 'approved' && booking.status === 'pending') ? 10 : 0
         setProgress(defaultProgress)
       } else {
         let totalProgress = 0
@@ -654,7 +654,7 @@ export function CompactBookingStatus({
         const defaultProgress =
           booking.status === 'completed' ? 100 :
           booking.status === 'in_progress' ? 50 :
-          booking.status === 'approved' || booking.status === 'confirmed' ? 10 : 0
+          booking.status === 'approved' || booking.status === 'confirmed' || (booking.approval_status === 'approved' && booking.status === 'pending') ? 10 : 0
         setProgress(defaultProgress)
       } else {
         let totalProgress = 0
