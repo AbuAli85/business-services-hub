@@ -125,20 +125,10 @@ export async function GET(
     console.log('🔍 User ID:', user.id)
     console.log('🔍 User role:', userRole)
     
+    // First try a simple query to get basic booking data
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
-        *,
-        services (
-          id,
-          title,
-          description,
-          category,
-          base_price,
-          currency,
-          estimated_duration
-        )
-      `)
+      .select('*')
       .eq('id', params.id)
       .single()
     
@@ -236,11 +226,29 @@ export async function GET(
       }
     }
 
+    // Load service data separately
+    let serviceData = null
+    if (booking.service_id) {
+      const { data: service, error: serviceError } = await supabase
+        .from('services')
+        .select('id, title, description, category, base_price, currency, estimated_duration')
+        .eq('id', booking.service_id)
+        .maybeSingle()
+      
+      if (!serviceError && service) {
+        serviceData = service
+        console.log('✅ Service data loaded:', service.title)
+      } else {
+        console.warn('Could not load service data:', serviceError)
+      }
+    }
+
     // Enrich booking with profile data
     const enrichedBooking = {
       ...booking,
       client_profile: clientProfile,
       provider_profile: providerProfile,
+      service: serviceData,
       // Also include client and provider data in the expected format
       client: clientProfile ? {
         id: clientProfile.id,
@@ -271,7 +279,8 @@ export async function GET(
     console.log(`✅ Booking details loaded with profiles:`, {
       id: booking.id,
       clientName: clientProfile?.full_name || 'Unknown',
-      providerName: providerProfile?.full_name || 'Unknown'
+      providerName: providerProfile?.full_name || 'Unknown',
+      serviceName: serviceData?.title || 'Unknown'
     })
 
     const response = NextResponse.json({ booking: enrichedBooking })
