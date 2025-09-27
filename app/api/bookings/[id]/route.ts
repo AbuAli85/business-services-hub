@@ -118,27 +118,48 @@ export async function GET(
     
     const userRole = profile?.is_admin ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
 
-    // Load booking with basic details
+    // Load booking with comprehensive details
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
         id,
         title,
         status,
+        approval_status,
+        progress_percentage,
+        priority,
         created_at,
+        updated_at,
         scheduled_date,
+        scheduled_time,
+        estimated_completion,
+        actual_completion,
         total_price,
         amount,
         currency,
+        payment_status,
+        payment_method,
+        estimated_duration,
+        actual_duration,
+        location,
+        location_type,
+        rating,
+        review,
+        client_satisfaction,
+        provider_rating,
+        notes,
+        tags,
         client_id,
         provider_id,
         service_id,
-        notes,
         services (
           id,
           title,
           description,
-          category
+          category,
+          base_price,
+          currency,
+          estimated_duration
         )
       `)
       .eq('id', params.id)
@@ -172,7 +193,7 @@ export async function GET(
     if (booking.client_id) {
       const { data: clientData, error: clientError } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone')
+        .select('id, full_name, email, phone, company_name, avatar_url, timezone, preferred_contact_method, response_time')
         .eq('id', booking.client_id)
         .maybeSingle()
       
@@ -188,7 +209,7 @@ export async function GET(
     if (booking.provider_id) {
       const { data: providerData, error: providerError } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone')
+        .select('id, full_name, email, phone, company_name, avatar_url, specialization, rating, total_reviews, response_time, availability_status')
         .eq('id', booking.provider_id)
         .maybeSingle()
       
@@ -203,7 +224,32 @@ export async function GET(
     const enrichedBooking = {
       ...booking,
       client_profile: clientProfile,
-      provider_profile: providerProfile
+      provider_profile: providerProfile,
+      // Also include client and provider data in the expected format
+      client: clientProfile ? {
+        id: clientProfile.id,
+        full_name: clientProfile.full_name,
+        email: clientProfile.email,
+        phone: clientProfile.phone,
+        company_name: clientProfile.company_name,
+        avatar_url: clientProfile.avatar_url,
+        timezone: clientProfile.timezone,
+        preferred_contact: clientProfile.preferred_contact_method,
+        response_time: clientProfile.response_time
+      } : null,
+      provider: providerProfile ? {
+        id: providerProfile.id,
+        full_name: providerProfile.full_name,
+        email: providerProfile.email,
+        phone: providerProfile.phone,
+        company_name: providerProfile.company_name,
+        avatar_url: providerProfile.avatar_url,
+        specialization: providerProfile.specialization,
+        rating: providerProfile.rating,
+        total_reviews: providerProfile.total_reviews,
+        response_time: providerProfile.response_time,
+        availability_status: providerProfile.availability_status
+      } : null
     }
 
     console.log(`✅ Booking details loaded with profiles:`, {
