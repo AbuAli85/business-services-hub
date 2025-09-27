@@ -655,13 +655,61 @@ export async function PATCH(request: NextRequest) {
           console.log('❌ Start project denied: Booking not approved')
           return NextResponse.json({ error: 'Booking must be approved before starting project' }, { status: 400 })
         }
-        // Update status to in_progress
-        updates = {
-          status: 'in_progress',
-          updated_at: new Date().toISOString()
+        
+        // Handle two-step update if status is pending but approval_status is approved
+        if (booking.status === 'pending' && booking.approval_status === 'approved') {
+          console.log('📝 Two-step update: First updating status to approved, then to in_progress')
+          
+          // Step 1: Update status from pending to approved
+          const { data: step1Result, error: step1Error } = await supabase
+            .from('bookings')
+            .update({ 
+              status: 'approved',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', booking_id)
+            .select()
+          
+          if (step1Error) {
+            console.error('❌ Step 1 failed:', step1Error)
+            return NextResponse.json({ error: `Failed to update status to approved: ${step1Error.message}` }, { status: 500 })
+          }
+          
+          console.log('✅ Step 1 completed: Status updated to approved')
+          
+          // Step 2: Update status from approved to in_progress
+          const { data: step2Result, error: step2Error } = await supabase
+            .from('bookings')
+            .update({ 
+              status: 'in_progress',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', booking_id)
+            .select()
+          
+          if (step2Error) {
+            console.error('❌ Step 2 failed:', step2Error)
+            return NextResponse.json({ error: `Failed to update status to in_progress: ${step2Error.message}` }, { status: 500 })
+          }
+          
+          console.log('✅ Step 2 completed: Status updated to in_progress')
+          
+          // Return success without going through the normal update flow
+          return NextResponse.json({ 
+            success: true, 
+            booking: step2Result?.[0],
+            message: 'Project started successfully' 
+          })
+        } else {
+          // Direct update if status is already approved
+          console.log('📝 Direct update: Status is already approved, updating to in_progress')
+          updates = {
+            status: 'in_progress',
+            updated_at: new Date().toISOString()
+          }
+          notification = { user_id: booking.client_id, title: 'Project Started', message: 'Your project has been started', type: 'project_started' }
+          console.log('✅ Start project updates:', updates)
         }
-        notification = { user_id: booking.client_id, title: 'Project Started', message: 'Your project has been started', type: 'project_started' }
-        console.log('✅ Start project updates:', updates)
         break
       case 'reschedule':
         if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
