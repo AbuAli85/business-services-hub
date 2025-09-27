@@ -32,9 +32,10 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 export default function ServicesPage() {
   const router = useRouter()
-  const { services, bookings, loading, error, refresh } = useDashboardData()
-  const [providerServices, setProviderServices] = useState<any[]>([])
-  const [providerLoading, setProviderLoading] = useState(false)
+  const { bookings, loading: bookingsLoading, error: bookingsError, refresh: refreshBookings } = useDashboardData()
+  const [services, setServices] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -45,18 +46,20 @@ export default function ServicesPage() {
   const [ratingFilter, setRatingFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
-  // Load dataset based on role (provider: own services; client/admin: all active services)
+  // Load services based on role
   useEffect(() => {
     (async () => {
       try {
-        setProviderLoading(true)
+        setLoading(true)
+        setError(null)
         const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          setProviderServices([])
-          setProviderLoading(false)
+          setServices([])
+          setLoading(false)
           return
         }
+        
         // detect role
         let role: any = user.user_metadata?.role
         if (!role) {
@@ -71,30 +74,36 @@ export default function ServicesPage() {
 
         let list: any[] = []
         if (role === 'provider') {
-          // 1) Try direct provider_id query
-          const params1 = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
-          let res = await fetch(`/api/services?${params1.toString()}`, { cache: 'no-store', credentials: 'same-origin' })
+          // Provider: fetch own services
+          const params = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
+          const res = await fetch(`/api/services?${params.toString()}`, { 
+            cache: 'no-store', 
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          })
           if (res.ok) {
             const json = await res.json()
             list = json.services || []
-          }
-          // 2) If empty, fetch all and filter by provider
-          if (list.length === 0) {
-            const params2 = new URLSearchParams({ limit: '200', page: '1' })
-            const resAll = await fetch(`/api/services?${params2.toString()}`, { cache: 'no-store', credentials: 'same-origin' })
-            if (resAll.ok) {
-              const jsonAll = await resAll.json()
-              const all: any[] = jsonAll.services || []
-              list = all.filter((s: any) => s.provider_id === user.id || s?.provider?.email === user.email)
-            }
+          } else {
+            console.error('Failed to fetch provider services:', res.status, res.statusText)
           }
         } else {
-          // client/admin/staff: show all active
+          // Client/Admin/Staff: fetch all active services
           const params = new URLSearchParams({ status: 'active', limit: '200', page: '1' })
-          const res = await fetch(`/api/services?${params.toString()}`, { cache: 'no-store', credentials: 'same-origin' })
+          const res = await fetch(`/api/services?${params.toString()}`, { 
+            cache: 'no-store', 
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          })
           if (res.ok) {
             const json = await res.json()
             list = json.services || []
+          } else {
+            console.error('Failed to fetch services:', res.status, res.statusText)
           }
         }
 
@@ -109,22 +118,23 @@ export default function ServicesPage() {
           providerName: s.provider?.full_name || 'Service Provider',
           status: s.status || 'active',
           rating: s.rating || 0,
-          bookingCount: s.bookings_count || 0,
+          bookingCount: s._count?.bookings || 0,
           createdAt: s.created_at || new Date().toISOString(),
           cover_image_url: s.cover_image_url,
         }))
-        setProviderServices(mapped)
+        setServices(mapped)
       } catch (e) {
-        // On failure, do not show mock; prefer empty state for accuracy
-        setProviderServices([])
+        console.error('Error loading services:', e)
+        setError('Failed to load services')
+        setServices([])
       } finally {
-        setProviderLoading(false)
+        setLoading(false)
       }
     })()
   }, [])
 
-  // For provider view, prefer providerServices. If none, show empty state (not mock).
-  const sourceServices = providerServices.length > 0 ? providerServices : []
+  // Use the services state directly
+  const sourceServices = services
 
   // Filter and sort services
   const filteredServices = useMemo(() => {
@@ -243,7 +253,79 @@ export default function ServicesPage() {
     )
   }
 
-  if (loading || providerLoading) {
+  // Refresh function
+  const refresh = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setServices([])
+        setLoading(false)
+        return
+      }
+      
+      let role: any = user.user_metadata?.role
+      if (!role) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle()
+        role = profile?.role || null
+      }
+
+      let list: any[] = []
+      if (role === 'provider') {
+        const params = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
+        const res = await fetch(`/api/services?${params.toString()}`, { 
+          cache: 'no-store', 
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        if (res.ok) {
+          const json = await res.json()
+          list = json.services || []
+        }
+      } else {
+        const params = new URLSearchParams({ status: 'active', limit: '200', page: '1' })
+        const res = await fetch(`/api/services?${params.toString()}`, { 
+          cache: 'no-store', 
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        if (res.ok) {
+          const json = await res.json()
+          list = json.services || []
+        }
+      }
+
+      const mapped = (list || []).map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description || '',
+        category: s.category || 'Uncategorized',
+        basePrice: s.base_price ?? 0,
+        currency: s.currency || 'OMR',
+        providerId: s.provider_id,
+        providerName: s.provider?.full_name || 'Service Provider',
+        status: s.status || 'active',
+        rating: s.rating || 0,
+        bookingCount: s._count?.bookings || 0,
+        createdAt: s.created_at || new Date().toISOString(),
+        cover_image_url: s.cover_image_url,
+      }))
+      setServices(mapped)
+    } catch (e) {
+      console.error('Error refreshing services:', e)
+      setError('Failed to refresh services')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>

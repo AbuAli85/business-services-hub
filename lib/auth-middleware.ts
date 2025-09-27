@@ -20,7 +20,7 @@ export const protectedRoutes: RoleBasedRoute[] = [
   { path: '/api/milestones', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/tasks', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/invoices', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
-  { path: '/api/services', roles: ['provider', 'admin'], requireAuth: true, requireProfile: false },
+  { path: '/api/services', roles: ['client', 'provider', 'admin'], requireAuth: false, requireProfile: false },
   { path: '/api/auth/complete-profile', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
   { path: '/api/auth/profile-creation', roles: ['client', 'provider', 'admin'], requireAuth: true, requireProfile: false },
 ]

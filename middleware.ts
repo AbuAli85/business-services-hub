@@ -62,7 +62,7 @@ export async function middleware(req: NextRequest) {
   const needsAuthCheck = pathname.startsWith('/dashboard') || pathname.startsWith('/auth/onboarding') || pathname.startsWith('/auth/pending-approval')
   
   // Determine if API route needs auth checks
-  const needsApiAuthCheck = pathname.startsWith('/api/') && !pathname.startsWith('/api/webhooks') && !pathname.startsWith('/api/auth/sync-token')
+  const needsApiAuthCheck = pathname.startsWith('/api/') && !pathname.startsWith('/api/webhooks') && !pathname.startsWith('/api/auth/sync-token') && !pathname.startsWith('/api/services')
   
   // Determine if route needs session cookie normalization (includes API routes)
   const needsSessionUpdate = needsAuthCheck || pathname.startsWith('/api/')

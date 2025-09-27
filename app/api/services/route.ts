@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { createClient as createPublicClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { withCors, ok, created, badRequest, unauthorized, forbidden, handleOptions } from '@/lib/api-helpers'
 
@@ -26,7 +27,11 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    // Create a public client for services (no authentication required)
+    const supabase = createPublicClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
     const { searchParams } = new URL(request.url)
     
     // Get query parameters
