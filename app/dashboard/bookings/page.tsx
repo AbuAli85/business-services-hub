@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Tooltip,
+  TooltipContent,
   TooltipProvider,
+  TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { 
   Table,
@@ -78,12 +80,34 @@ export default function BookingsPage() {
   const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
   const lastRefreshTimeRef = useRef(0)
 
-  // Helper for custom tooltips
+  // Helper for custom tooltips - simplified for now
   const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-    <Tooltip content={<p className="max-w-xs text-sm">{label}</p>}>
+    <div title={label}>
       {children}
-    </Tooltip>
+    </div>
   )
+
+  // Approve booking function
+  const approveBooking = async (id: string) => {
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ booking_id: id, action: 'approve' })
+      })
+      if (res.ok) {
+        // Trigger refresh
+        setRefreshTrigger(prev => prev + 1)
+        // Show success message (you can add toast here if available)
+        console.log('Booking approved successfully')
+      } else {
+        console.error('Approval failed')
+      }
+    } catch (error) {
+      console.error('Error approving booking:', error)
+    }
+  }
 
   // Data sourced from centralized dashboard store
 
@@ -110,6 +134,11 @@ export default function BookingsPage() {
     // If status is approved, show as approved
     if (booking.status === 'approved') {
       return 'approved'
+    }
+    
+    // If rescheduled, show as pending review (or you can add a separate rescheduled status)
+    if (booking.status === 'rescheduled') {
+      return 'pending_review'
     }
     
     // If status is pending, show as pending review
@@ -417,22 +446,21 @@ export default function BookingsPage() {
         if (!isMounted) return
         
         // Create filter strings inside the async function where userId is available
-        const bookingsFilter = userRole === 'admin' ? undefined : 
-                              userRole === 'client' ? `client_id=eq.${userId}` :
-                              `provider_id=eq.${userId}`
-        
         bookingsChannel = supabase
-          .channel(`bookings-changes-${userId}`)
+          .channel(`bookings-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'bookings',
-            filter: bookingsFilter
+            table: 'bookings'
           }, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
             
-            // Only trigger refresh for important changes, not every update
+            // Filter events not related to the user
+            const row = payload.new ?? payload.old
+            if (row && (row.client_id === userId || row.provider_id === userId || userRole === 'admin')) {
+              console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
+              
+              // Only trigger refresh for important changes, not every update
             if (payload.eventType === 'INSERT' || 
                 (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
               // Debounce the reload to avoid too many refreshes
@@ -450,26 +478,27 @@ export default function BookingsPage() {
                 toast(`Booking status updated to ${payload.new.status}`)
               }
             }
+          }
           })
           .subscribe()
 
-        // Subscribe to milestones changes for progress updates - only for user's bookings
-        // Create milestones filter string inside the async function where userId is available
-        const milestonesFilter = userRole === 'admin' ? undefined :
-                                userRole === 'client' ? `booking_id.in.(select id from bookings where client_id=eq.${userId})` :
-                                `booking_id.in.(select id from bookings where provider_id=eq.${userId})`
-        
+        // Subscribe to milestones changes for progress updates
         milestonesChannel = supabase
-          .channel(`milestones-changes-${userId}`)
+          .channel(`milestones-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'milestones',
-            filter: milestonesFilter
+            table: 'milestones'
           }, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
-            // Only trigger refresh for milestone changes that affect user's bookings
+            
+            // Filter events not related to the user's bookings
+            const row = payload.new ?? payload.old
+            if (row && (userRole === 'admin' || 
+                       (userRole === 'client' && bookings.some(b => b.id === row.booking_id)) ||
+                       (userRole === 'provider' && bookings.some(b => b.id === row.booking_id)))) {
+              console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
+              // Only trigger refresh for milestone changes that affect user's bookings
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               setTimeout(() => {
                 if (isMounted) {
@@ -478,26 +507,25 @@ export default function BookingsPage() {
                 }
               }, 2000) // Increased debounce time to prevent loops
             }
+          }
           })
           .subscribe()
 
         // Subscribe to invoices changes
-        // Create invoices filter string inside the async function where userId is available
-        const invoicesFilter = userRole === 'admin' ? undefined :
-                              userRole === 'client' ? `client_id=eq.${userId}` :
-                              `provider_id=eq.${userId}`
-        
         invoicesChannel = supabase
-          .channel(`invoices-changes-${userId}`)
+          .channel(`invoices-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'invoices',
-            filter: invoicesFilter
+            table: 'invoices'
           }, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Invoices realtime update:', payload.eventType)
-            // Only trigger refresh for important invoice changes
+            
+            // Filter events not related to the user
+            const row = payload.new ?? payload.old
+            if (row && (row.client_id === userId || row.provider_id === userId || userRole === 'admin')) {
+              console.log('📡 Invoices realtime update:', payload.eventType)
+              // Only trigger refresh for important invoice changes
             if (payload.eventType === 'INSERT' || 
                 (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
               setTimeout(() => {
@@ -510,7 +538,8 @@ export default function BookingsPage() {
             
             if (payload.eventType === 'INSERT') {
               toast.success('New invoice created!')
-  }
+            }
+          }
           })
           .subscribe()
 
@@ -794,12 +823,12 @@ export default function BookingsPage() {
     // Revenue (to date) - only completed/delivered projects that are invoiced/paid
     const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
-      .reduce((sum: number, b: any) => sum + (b.amount_cents / 100), 0)
+      .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
     
     // Projected billings - approved/ready projects not yet invoiced
     const projectedBillings = bookingsSource
       .filter(b => (b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))) && b.status !== 'completed')
-      .reduce((sum: number, b: any) => sum + (b.amount_cents / 100), 0)
+      .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
     
     const avgCompletionTime = 7.2 // Mock data
 
@@ -1469,7 +1498,7 @@ export default function BookingsPage() {
                           <div className="space-y-1">
                             <div className="font-bold text-lg text-gray-900">
                               {formatCurrency(
-                                Number(booking.amount_cents / 100),
+                                Number((booking.amount_cents ?? 0) / 100),
                                 String(booking.currency ?? 'OMR')
                               )}
                             </div>
@@ -1685,7 +1714,11 @@ export default function BookingsPage() {
                               {/* 4. PENDING BOOKINGS (not approved yet) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
                                 <Tip label="Approve this booking to start the project">
-                                  <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200">
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200"
+                                    onClick={() => approveBooking(booking.id)}
+                                  >
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                     Approve Project
                                   </Button>
@@ -1718,7 +1751,7 @@ export default function BookingsPage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={userRole === 'admin' ? 7 : (userRole === 'client' ? 6 : 5)} className="py-12">
+                    <TableCell colSpan={userRole === 'admin' ? 8 : (userRole === 'client' ? 7 : 6)} className="py-12">
                       <div className="text-center space-y-4">
                         <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
                           <BarChart3 className="h-12 w-12 text-blue-600" />
