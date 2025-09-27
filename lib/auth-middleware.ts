@@ -126,6 +126,63 @@ export class AuthMiddleware {
         userRole: user.user_metadata?.role
       })
 
+      // If profile doesn't exist, try to create one
+      if (profileError && profileError.code === 'PGRST116') {
+        console.log('🔍 Middleware: Profile not found, attempting to create one for user:', user.id)
+        
+        try {
+          const { data: newProfile, error: createError } = await this.supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+              role: user.user_metadata?.role || 'client',
+              avatar_url: user.user_metadata?.avatar_url || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select('id, role, full_name, company_id')
+            .single()
+
+          if (createError) {
+            console.warn('⚠️ Middleware: Failed to create profile:', createError.message)
+            // Continue with user metadata role if profile creation fails
+            const role = user.user_metadata?.role || null
+            return {
+              isAuthenticated: true,
+              user,
+              profile: null,
+              role,
+              accessToken: token || null,
+              error: 'Profile creation failed, using metadata role'
+            }
+          }
+
+          console.log('✅ Middleware: Profile created successfully:', newProfile)
+          const role = newProfile?.role || user.user_metadata?.role || null
+          return {
+            isAuthenticated: true,
+            user,
+            profile: newProfile,
+            role,
+            accessToken: token || null
+          }
+        } catch (createError) {
+          console.warn('⚠️ Middleware: Profile creation exception:', createError)
+          // Continue with user metadata role if profile creation fails
+          const role = user.user_metadata?.role || null
+          return {
+            isAuthenticated: true,
+            user,
+            profile: null,
+            role,
+            accessToken: token || null,
+            error: 'Profile creation failed, using metadata role'
+          }
+        }
+      }
+
       if (profileError && profileError.code !== 'PGRST116') {
         return {
           isAuthenticated: true,
@@ -144,7 +201,7 @@ export class AuthMiddleware {
         profile,
         role,
         accessToken: token || null,
-        error: profileError?.code === 'PGRST116' ? 'Profile not found' : undefined
+        error: undefined
       }
     } catch (error) {
       authLogger.logAuthCallback({
