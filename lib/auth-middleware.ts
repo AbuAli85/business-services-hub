@@ -154,7 +154,27 @@ export class AuthMiddleware {
             throw new Error('Admin client does not have insert method for profiles table')
           }
           
-          console.log('🔍 Middleware: Admin client validated, attempting profile creation...')
+          // First, try to find existing profile by email to avoid duplicate key errors
+          console.log('🔍 Middleware: Checking for existing profile by email...')
+          const { data: existingProfileByEmail, error: emailLookupError } = await adminClient
+            .from('profiles')
+            .select('id, role, full_name, company_id')
+            .eq('email', user.email || '')
+            .single()
+          
+          if (existingProfileByEmail && !emailLookupError) {
+            console.log('✅ Middleware: Found existing profile by email:', existingProfileByEmail)
+            const role = existingProfileByEmail?.role || user.user_metadata?.role || null
+            return {
+              isAuthenticated: true,
+              user,
+              profile: existingProfileByEmail,
+              role,
+              accessToken: token || null
+            }
+          }
+          
+          console.log('🔍 Middleware: No existing profile found by email, attempting profile creation...')
           const { data: newProfile, error: createError } = await adminClient
             .from('profiles')
             .insert({
@@ -171,7 +191,46 @@ export class AuthMiddleware {
 
           if (createError) {
             console.warn('⚠️ Middleware: Failed to create profile:', createError.message)
-            // Continue with user metadata role if profile creation fails
+            console.log('🔍 Middleware: Create error details:', {
+              code: createError.code,
+              message: createError.message,
+              details: createError.details,
+              hint: createError.hint
+            })
+            
+            // If it's a duplicate key error, try to fetch the existing profile
+            if (createError.code === '23505' || 
+                createError.message.includes('duplicate key') || 
+                createError.message.includes('profiles_email_key') ||
+                createError.message.includes('unique constraint')) {
+              console.log('🔍 Middleware: Duplicate key error, attempting to fetch existing profile...')
+              
+              try {
+                const { data: existingProfile, error: fetchError } = await adminClient
+                  .from('profiles')
+                  .select('id, role, full_name, company_id')
+                  .eq('id', user.id)
+                  .single()
+                
+                if (existingProfile && !fetchError) {
+                  console.log('✅ Middleware: Found existing profile:', existingProfile)
+                  const role = existingProfile?.role || user.user_metadata?.role || null
+                  return {
+                    isAuthenticated: true,
+                    user,
+                    profile: existingProfile,
+                    role,
+                    accessToken: token || null
+                  }
+                } else {
+                  console.warn('⚠️ Middleware: Could not fetch existing profile:', fetchError?.message)
+                }
+              } catch (fetchError) {
+                console.warn('⚠️ Middleware: Exception while fetching existing profile:', fetchError)
+              }
+            }
+            
+            // Continue with user metadata role if profile creation/fetch fails
             const role = user.user_metadata?.role || null
             return {
               isAuthenticated: true,
