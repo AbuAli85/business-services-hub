@@ -11,24 +11,39 @@ import {
   triggerBookingApproved
 } from '@/lib/notification-triggers-simple'
 import { createNotification } from '@/lib/notification-service'
+
+// Production error guard
+const isProd = process.env.NODE_ENV === 'production'
 // CORS headers for cross-domain access
 const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS ?? '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean)
-const originOk = (o?: string | null) => !!o && (ALLOWED_ORIGINS.includes(o) || ALLOWED_ORIGINS.includes('*'))
-const corsHeadersFor = (origin?: string | null) => ({
-  'Access-Control-Allow-Origin': originOk(origin) ? origin! : '',
-  'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400',
-  'Vary': 'Origin',
-})
+const originOk = (o?: string | null) =>
+  !!o && (ALLOWED_ORIGINS.includes(o) || ALLOWED_ORIGINS.includes('*'))
+
+const corsHeadersFor = (origin?: string | null) => {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  }
+
+  // Only echo an origin if it's explicitly allowed (or '*' is in the list)
+  if (originOk(origin) && origin) {
+    headers['Access-Control-Allow-Origin'] = origin
+    headers['Access-Control-Allow-Credentials'] = 'true'
+  }
+  // NOTE: do NOT set ACAO at all if not allowed.
+
+  return headers
+}
 
 // Helper to add CORS headers to any response
 const withCors = (res: Response, req: NextRequest) => {
-  Object.entries(corsHeadersFor(req.headers.get('origin'))).forEach(([k,v]) => res.headers.set(k, v))
+  const h = corsHeadersFor(req.headers.get('origin'))
+  for (const [k, v] of Object.entries(h)) res.headers.set(k, v)
   return res
 }
 
@@ -49,143 +64,6 @@ const CreateBookingSchema = zod.object({
   estimated_duration: zod.string().optional(),
   location: zod.string().optional()
 })
-
-// Helper function to authenticate user (legacy for PATCH flow)
-async function authenticateUser(request: NextRequest) {
-  let user: any = null
-  let authError: any = null
-  
-  try {
-    const supabase = await createClient()
-    
-    const cookieHeader = request.headers.get('cookie')
-    console.log('🔍 Cookie header present:', !!cookieHeader)
-    
-    const authHeader = request.headers.get('authorization')
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-      console.log('🔍 Bearer token found, length:', token.length)
-      try {
-        const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token)
-        if (tokenUser && !tokenError) {
-          user = tokenUser
-          console.log('✅ User authenticated from token:', user.id)
-          return { user, authError }
-        } else {
-          console.log('❌ Token auth failed:', tokenError)
-          authError = tokenError
-        }
-      } catch (tokenAuthError) {
-        console.log('❌ Token auth exception:', tokenAuthError)
-        authError = tokenAuthError
-      }
-    }
-    
-    if (!user && cookieHeader) {
-      try {
-        const cookies = cookieHeader.split(';').reduce((acc: Record<string, string>, cookie: string) => {
-          const [key, value] = cookie.trim().split('=')
-          acc[key] = value
-          return acc
-        }, {} as Record<string, string>)
-        
-        console.log('🔍 Available cookies:', Object.keys(cookies))
-        
-        const possibleTokenKeys = [
-          'sb-access-token',
-          'supabase-auth-token', 
-          'sb-access-token',
-          'supabase.auth.token',
-          'sb-' + (process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || 'default') + '-auth-token'
-        ]
-        
-        let accessToken: string | null = null
-        for (const key of possibleTokenKeys) {
-          if (cookies[key]) {
-            accessToken = cookies[key]
-            console.log('🔍 Found token in cookie:', key)
-            break
-          }
-        }
-        
-        if (accessToken) {
-          console.log('🔍 Access token found in cookies, length:', accessToken.length)
-          const { data: { user: cookieUser }, error: cookieError } = await supabase.auth.getUser(accessToken)
-          if (cookieUser && !cookieError) {
-            user = cookieUser
-            console.log('✅ User authenticated from cookies:', user.id)
-            return { user, authError }
-          } else {
-            console.log('❌ Cookie auth failed:', cookieError)
-            authError = cookieError
-          }
-        } else {
-          console.log('❌ No access token found in any expected cookie')
-        }
-      } catch (cookieError) {
-        console.log('❌ Cookie parsing error:', cookieError)
-        authError = cookieError
-      }
-    }
-    
-    if (!user) {
-      console.log('⚠️ No valid authentication found')
-      authError = new Error('Auth session missing!')
-    }
-    
-  } catch (error) {
-    console.log('❌ Authentication error:', error)
-    authError = error
-  }
-  
-  return { user, authError }
-}
-
-// Helper function to get user from request (supports both cookies and Bearer token)
-async function getUserFromRequest(request: NextRequest) {
-  console.log('🔍 getUserFromRequest: Starting authentication check')
-  
-  // 1) Try Bearer token first (most reliable for API calls)
-  const auth = request.headers.get('authorization')
-  console.log('🔍 getUserFromRequest: Authorization header:', auth ? `${auth.substring(0, 20)}...` : 'null')
-  
-  if (auth?.startsWith('Bearer ')) {
-    const jwt = auth.slice(7)
-    console.log('🔍 Trying Bearer token authentication, length:', jwt.length)
-    
-    // Create a direct Supabase client for Bearer token validation
-    const { createClient } = await import('@supabase/supabase-js')
-    const directClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: `Bearer ${jwt}` } },
-        auth: { persistSession: false, detectSessionInUrl: false },
-      }
-    )
-    
-    const { data, error } = await directClient.auth.getUser()
-    if (!error && data.user) {
-      console.log('✅ User authenticated from Bearer token:', data.user.id)
-      return data.user
-    } else {
-      console.log('❌ Bearer token auth failed:', error?.message)
-    }
-  } else {
-    console.log('🔍 getUserFromRequest: No Bearer token found, trying cookies')
-  }
-
-  // 2) Fallback to cookie-based session
-  const supabase = await makeServerClient(request)
-  let { data: { user } } = await supabase.auth.getUser()
-  if (user) {
-    console.log('✅ User authenticated from cookies:', user.id)
-    return user
-  }
-  
-  console.log('❌ No valid authentication found')
-  return null
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -344,9 +222,9 @@ export async function POST(request: NextRequest) {
       
       const response = NextResponse.json({ 
         error: 'Failed to create booking', 
-        details: bookingError.message,
+        details: isProd ? undefined : bookingError.message,
         type: 'booking_creation_error',
-        debug: {
+        debug: isProd ? undefined : {
           bookingError: bookingError,
           serviceId: service_id,
           userId: user.id,
@@ -438,12 +316,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await makeServerClient(request)
-
-    // 🔐 Accept cookie OR bearer token
-    const user = await getUserFromRequest(request)
-    if (!user) {
-      return withCors(jsonError(401, 'UNAUTHENTICATED', 'No session'), request)
-    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return withCors(jsonError(401, 'UNAUTHENTICATED', 'No session'), request)
 
     // Get user profile to determine role
     const { data: profile } = await supabase
@@ -507,7 +381,8 @@ export async function GET(request: NextRequest) {
           query = query.eq('status', 'approved')
           break
         case 'ready_to_launch':
-          query = query.eq('status', 'pending').eq('approval_status', 'approved')
+          // either status=approved OR pending + approval_status=approved
+          query = query.or('and(status.eq.pending,approval_status.eq.approved),status.eq.approved')
           break
         case 'in_production':
           query = query.eq('status', 'in_progress')
@@ -565,10 +440,10 @@ export async function GET(request: NextRequest) {
     // Pagination
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
-    const { data, count, error } = await query.range(from, to)
+    const { data, count, error: queryError } = await query.range(from, to)
 
-    if (error) {
-      const response = NextResponse.json({ error: error.message }, { status: 400 })
+    if (queryError) {
+      const response = NextResponse.json({ error: queryError.message }, { status: 400 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
@@ -625,17 +500,11 @@ const patchSchema = zod.object({
 
 export async function PATCH(request: NextRequest) {
   try {
-    // 🔐 Use session-bound client for RLS consistency
     const supabase = await makeServerClient(request)
-    
-    // Authenticate user
-    const { user, authError } = await authenticateUser(request)
-    
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      console.error('❌ Auth error:', authError?.message || 'Authentication failed')
-      const response = NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
-      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
-      return response
+      return withCors(NextResponse.json({ error: 'Authentication failed' }, { status: 401 }), request)
     }
 
     const body = await request.json()

@@ -303,7 +303,9 @@ export default function BookingsPage() {
     setError(null)
     
     try {
-      console.log('📊 Loading bookings data for role:', userRole)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('📊 Loading bookings data for role:', userRole)
+      }
       
       // Build query params for server-side pagination/filtering
       const params = new URLSearchParams({
@@ -318,7 +320,9 @@ export default function BookingsPage() {
       // Use the new bookings API endpoint
       const apiEndpoint = `/api/bookings?${params}`
       
-      console.log('📡 Fetching from:', apiEndpoint)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('📡 Fetching from:', apiEndpoint)
+      }
       
       const res = await fetch(apiEndpoint, {
         credentials: 'include',
@@ -470,19 +474,18 @@ export default function BookingsPage() {
         
         // Create filter strings inside the async function where userId is available
         // Create server-side filter to reduce noise
-        const bookingsFilter = userRole === 'admin' ? undefined :
-                              `or(client_id.eq.${userId},provider_id.eq.${userId})`
+        const base = { event: '*', schema: 'public', table: 'bookings' } as any
+        const bookingsOpts = userRole === 'admin'
+          ? base
+          : { ...base, filter: `or(client_id.eq.${userId},provider_id.eq.${userId})` }
         
         bookingsChannel = supabase
           .channel(`bookings-${userId}`)
-          .on('postgres_changes', { 
-            event: '*', 
-            schema: 'public', 
-            table: 'bookings',
-            filter: bookingsFilter
-          }, (payload: any) => {
+          .on('postgres_changes', bookingsOpts, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
+            }
             
             // Only trigger refresh for important changes, not every update
             if (payload.eventType === 'INSERT' || 
@@ -506,19 +509,18 @@ export default function BookingsPage() {
           .subscribe()
 
         // Subscribe to milestones changes for progress updates
-        const milestonesFilter = userRole === 'admin' ? undefined :
-                                `booking_id.in.(select id from bookings where or(client_id.eq.${userId},provider_id.eq.${userId}))`
+        const milestonesBase = { event: '*', schema: 'public', table: 'milestones' } as any
+        const milestonesOpts = userRole === 'admin'
+          ? milestonesBase
+          : { ...milestonesBase, filter: `booking_id.in.(select id from bookings where or(client_id.eq.${userId},provider_id.eq.${userId}))` }
         
         milestonesChannel = supabase
           .channel(`milestones-${userId}`)
-          .on('postgres_changes', { 
-            event: '*', 
-            schema: 'public', 
-            table: 'milestones',
-            filter: milestonesFilter
-          }, (payload: any) => {
+          .on('postgres_changes', milestonesOpts, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
+            }
             // Only trigger refresh for milestone changes that affect user's bookings
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               setTimeout(() => {
@@ -532,19 +534,18 @@ export default function BookingsPage() {
           .subscribe()
 
         // Subscribe to invoices changes
-        const invoicesFilter = userRole === 'admin' ? undefined :
-                              `or(client_id.eq.${userId},provider_id.eq.${userId})`
+        const invoicesBase = { event: '*', schema: 'public', table: 'invoices' } as any
+        const invoicesOpts = userRole === 'admin'
+          ? invoicesBase
+          : { ...invoicesBase, filter: `or(client_id.eq.${userId},provider_id.eq.${userId})` }
         
         invoicesChannel = supabase
           .channel(`invoices-${userId}`)
-          .on('postgres_changes', { 
-            event: '*', 
-            schema: 'public', 
-            table: 'invoices',
-            filter: invoicesFilter
-          }, (payload: any) => {
+          .on('postgres_changes', invoicesOpts, (payload: any) => {
             if (!isMounted) return
-            console.log('📡 Invoices realtime update:', payload.eventType)
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('📡 Invoices realtime update:', payload.eventType)
+            }
             // Only trigger refresh for important invoice changes
             if (payload.eventType === 'INSERT' || 
                 (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
@@ -680,6 +681,10 @@ export default function BookingsPage() {
   // Get launch blocking reason for tooltip
   const getLaunchBlockingReason = (booking: any) => {
     const status = getDerivedStatus(booking)
+    
+    if (booking.status === 'pending' && !(booking.approval_status === 'approved' || booking.ui_approval_status === 'approved')) {
+      return 'Launch unavailable: provider must approve the booking first.'
+    }
     
     if (status !== 'ready_to_launch' && status !== 'approved') {
       return 'Launch is unavailable until prerequisites are met (project must be approved and ready to launch)'
@@ -1656,10 +1661,10 @@ export default function BookingsPage() {
                         
                         <TableCell>
                           <div className="text-sm">
-                            {formatLocalDate((booking as any).createdAt ?? (booking as any).created_at)}
+                            {formatLocalDate(booking.scheduled_date)}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {formatLocalTime((booking as any).createdAt ?? (booking as any).created_at)}
+                            {formatLocalTime(booking.scheduled_date)}
                           </div>
                         </TableCell>
                         
