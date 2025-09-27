@@ -1,189 +1,198 @@
-'use client'
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import React from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { 
-  Package, 
+  Briefcase, 
   TrendingUp, 
-  Star, 
-  Calendar, 
-  DollarSign, 
-  Eye,
+  Star,
+  Calendar,
+  DollarSign,
   Plus,
-  Edit,
   BarChart3,
-  Clock,
-  Users
+  Clock
 } from 'lucide-react'
 
+interface ProviderStats {
+  totalServices: number
+  activeServices: number
+  totalBookings: number
+  totalRevenue: number
+  avgRating: number
+  pendingBookings: number
+  completedBookings: number
+  monthlyRevenue: number
+  monthlyGrowth: number
+}
+
 interface ProviderDashboardWidgetsProps {
-  stats: {
-    totalServices: number
-    activeServices: number
-    totalBookings: number
-    totalRevenue: number
-    avgRating: number
-    pendingBookings: number
-    completedBookings: number
-    monthlyRevenue: number
-    monthlyGrowth: number
-  }
+  stats: ProviderStats
   onViewServices: () => void
   onViewBookings: () => void
   onViewAnalytics: () => void
   onCreateService: () => void
 }
 
-export function ProviderDashboardWidgets({ 
-  stats, 
-  onViewServices, 
-  onViewBookings, 
-  onViewAnalytics, 
-  onCreateService 
+export function ProviderDashboardWidgets({
+  stats,
+  onViewServices,
+  onViewBookings,
+  onViewAnalytics,
+  onCreateService
 }: ProviderDashboardWidgetsProps) {
-  const revenueGrowthColor = stats.monthlyGrowth >= 0 ? 'text-green-600' : 'text-red-600'
-  const revenueGrowthIcon = stats.monthlyGrowth >= 0 ? '↗' : '↘'
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const getGrowthColor = (growth: number) => {
+    if (growth > 0) return 'text-green-600 bg-green-100'
+    if (growth < 0) return 'text-red-600 bg-red-100'
+    return 'text-gray-600 bg-gray-100'
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Services Overview */}
-      <Card className="border-l-4 border-l-blue-500">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Revenue Overview */}
+      <Card className="border-l-4 border-l-green-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">My Services</CardTitle>
-          <Package className="h-4 w-4 text-blue-500" />
+          <CardTitle className="text-sm font-medium">Revenue Overview</CardTitle>
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalServices}</div>
-          <p className="text-xs text-muted-foreground">
-            {stats.activeServices} active
-          </p>
-          <div className="mt-2">
-            <Progress value={(stats.activeServices / stats.totalServices) * 100} className="h-2" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Revenue</span>
+              <span className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">This Month</span>
+              <span className="text-sm font-medium">{formatCurrency(stats.monthlyRevenue)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Growth</span>
+              <Badge className={getGrowthColor(stats.monthlyGrowth)}>
+                {stats.monthlyGrowth > 0 ? '+' : ''}{stats.monthlyGrowth}%
+              </Badge>
+            </div>
           </div>
-          <Button variant="outline" size="sm" className="mt-2" onClick={onViewServices}>
-            <Eye className="h-3 w-3 mr-1" />
-            Manage
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full mt-3"
+            onClick={onViewAnalytics}
+          >
+            View Details
           </Button>
         </CardContent>
       </Card>
 
-      {/* Revenue */}
-      <Card className="border-l-4 border-l-green-500">
+      {/* Services Management */}
+      <Card className="border-l-4 border-l-blue-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-          <DollarSign className="h-4 w-4 text-green-500" />
+          <CardTitle className="text-sm font-medium">Services</CardTitle>
+          <Briefcase className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">Total Revenue</p>
-          <div className="flex items-center mt-1">
-            <span className={`text-xs ${revenueGrowthColor}`}>
-              {revenueGrowthIcon} {Math.abs(stats.monthlyGrowth)}% this month
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Services</span>
+              <span className="text-2xl font-bold">{stats.totalServices}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Active</span>
+              <Badge variant="secondary">{stats.activeServices}</Badge>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={onViewServices}
+            >
+              View All
+            </Button>
+            <Button 
+              size="sm" 
+              className="flex-1"
+              onClick={onCreateService}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Create
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Bookings */}
+      {/* Bookings Overview */}
       <Card className="border-l-4 border-l-purple-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Bookings</CardTitle>
-          <Calendar className="h-4 w-4 text-purple-500" />
+          <Calendar className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalBookings}</div>
-          <p className="text-xs text-muted-foreground">
-            {stats.pendingBookings} pending
-          </p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={onViewBookings}>
-            <Clock className="h-3 w-3 mr-1" />
-            View All
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Bookings</span>
+              <span className="text-2xl font-bold">{stats.totalBookings}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Pending</span>
+              <Badge variant={stats.pendingBookings > 0 ? "destructive" : "secondary"}>
+                {stats.pendingBookings}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Completed</span>
+              <Badge variant="secondary">{stats.completedBookings}</Badge>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full mt-3"
+            onClick={onViewBookings}
+          >
+            Manage Bookings
           </Button>
         </CardContent>
       </Card>
 
-      {/* Rating */}
-      <Card className="border-l-4 border-l-yellow-500">
+      {/* Performance Metrics */}
+      <Card className="border-l-4 border-l-orange-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Rating</CardTitle>
-          <Star className="h-4 w-4 text-yellow-500" />
+          <CardTitle className="text-sm font-medium">Performance</CardTitle>
+          <BarChart3 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.avgRating.toFixed(1)}</div>
-          <p className="text-xs text-muted-foreground">Average Rating</p>
-          <div className="flex items-center mt-1">
-            {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                className={`h-3 w-3 ${
-                  i < Math.floor(stats.avgRating) ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                }`} 
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Performance Insights */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle>Performance Insights</CardTitle>
-          <CardDescription>Your business metrics and trends</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Completion Rate</span>
-                <span className="text-sm font-medium">
-                  {stats.totalBookings > 0 ? Math.round((stats.completedBookings / stats.totalBookings) * 100) : 0}%
-                </span>
-              </div>
-              <Progress 
-                value={stats.totalBookings > 0 ? (stats.completedBookings / stats.totalBookings) * 100 : 0} 
-                className="h-2" 
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Monthly Revenue</span>
-                <span className="text-sm font-medium">${stats.monthlyRevenue.toLocaleString()}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {stats.monthlyGrowth >= 0 ? '+' : ''}{stats.monthlyGrowth}% vs last month
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Avg Rating</span>
+              <div className="flex items-center">
+                <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                <span className="text-sm font-medium">{stats.avgRating.toFixed(1)}</span>
               </div>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Completion Rate</span>
+              <span className="text-sm font-medium">
+                {stats.totalBookings > 0 
+                  ? Math.round((stats.completedBookings / stats.totalBookings) * 100)
+                  : 0}%
+              </span>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Manage your business efficiently</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button onClick={onCreateService}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Service
-            </Button>
-            <Button variant="outline" onClick={onViewServices}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Services
-            </Button>
-            <Button variant="outline" onClick={onViewBookings}>
-              <Calendar className="h-4 w-4 mr-2" />
-              View Bookings
-            </Button>
-            <Button variant="outline" onClick={onViewAnalytics}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full mt-3"
+            onClick={onViewAnalytics}
+          >
+            View Analytics
+          </Button>
         </CardContent>
       </Card>
     </div>

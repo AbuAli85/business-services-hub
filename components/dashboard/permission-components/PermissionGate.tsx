@@ -1,99 +1,138 @@
-'use client'
-
-import { ReactNode } from 'react'
-import { Permission, usePermissions } from '@/lib/permissions'
+import React from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
-import { Lock, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 
 interface PermissionGateProps {
-  permission: Permission | Permission[]
-  fallback?: ReactNode
-  showError?: boolean
-  children: ReactNode
+  permission: string
   userRole: string | null
   userId: string | null
+  children: React.ReactNode
+  fallback?: React.ReactNode
+  showError?: boolean
 }
 
-export function PermissionGate({ 
-  permission, 
-  fallback, 
-  showError = true, 
-  children, 
-  userRole, 
-  userId 
+export function PermissionGate({
+  permission,
+  userRole,
+  userId,
+  children,
+  fallback = null,
+  showError = true
 }: PermissionGateProps) {
-  const { hasPermission, hasAnyPermission } = usePermissions(
-    userRole as any, 
-    userId
-  )
+  const hasPermission = checkPermission(permission, userRole, userId)
 
-  const hasAccess = Array.isArray(permission) 
-    ? hasAnyPermission(permission)
-    : hasPermission(permission)
-
-  if (hasAccess) {
+  if (hasPermission) {
     return <>{children}</>
-  }
-
-  if (fallback) {
-    return <>{fallback}</>
   }
 
   if (showError) {
     return (
-      <Alert className="border-orange-200 bg-orange-50">
-        <Lock className="h-4 w-4 text-orange-600" />
-        <AlertDescription className="text-orange-800">
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
           You don't have permission to access this feature.
         </AlertDescription>
       </Alert>
     )
   }
 
-  return null
-}
-
-interface ConditionalRenderProps {
-  condition: boolean
-  fallback?: ReactNode
-  children: ReactNode
-}
-
-export function ConditionalRender({ condition, fallback, children }: ConditionalRenderProps) {
-  if (condition) {
-    return <>{children}</>
-  }
-
-  if (fallback) {
-    return <>{fallback}</>
-  }
-
-  return null
+  return <>{fallback}</>
 }
 
 interface RoleBasedContentProps {
   allowedRoles: string[]
   userRole: string | null
-  children: ReactNode
-  fallback?: ReactNode
+  children: React.ReactNode
+  fallback?: React.ReactNode
 }
 
-export function RoleBasedContent({ 
-  allowedRoles, 
-  userRole, 
-  children, 
-  fallback 
+export function RoleBasedContent({
+  allowedRoles,
+  userRole,
+  children,
+  fallback = null
 }: RoleBasedContentProps) {
-  const hasAccess = userRole && allowedRoles.includes(userRole)
-
-  if (hasAccess) {
-    return <>{children}</>
-  }
-
-  if (fallback) {
+  if (!userRole || !allowedRoles.includes(userRole)) {
     return <>{fallback}</>
   }
 
-  return null
+  return <>{children}</>
+}
+
+function checkPermission(permission: string, userRole: string | null, userId: string | null): boolean {
+  if (!userRole || !userId) return false
+
+  // Define permission mappings for each role
+  const rolePermissions: Record<string, string[]> = {
+    admin: [
+      'all',
+      'users:read',
+      'users:create',
+      'users:update',
+      'users:delete',
+      'services:read',
+      'services:create',
+      'services:update',
+      'services:delete',
+      'bookings:read',
+      'bookings:create',
+      'bookings:update',
+      'bookings:delete',
+      'invoices:read',
+      'invoices:create',
+      'invoices:update',
+      'invoices:delete',
+      'analytics:read',
+      'reports:read',
+      'reports:create',
+      'settings:read',
+      'settings:update'
+    ],
+    provider: [
+      'services:read',
+      'services:create',
+      'services:update',
+      'services:delete',
+      'bookings:read',
+      'bookings:update',
+      'invoices:read',
+      'invoices:create',
+      'invoices:update',
+      'analytics:read',
+      'reports:read',
+      'settings:read',
+      'settings:update'
+    ],
+    client: [
+      'services:read',
+      'bookings:read',
+      'bookings:create',
+      'invoices:read',
+      'reviews:read',
+      'reviews:create',
+      'settings:read',
+      'settings:update'
+    ],
+    staff: [
+      'bookings:read',
+      'bookings:update',
+      'users:read',
+      'reports:read',
+      'settings:read'
+    ],
+    manager: [
+      'providers:read',
+      'providers:update',
+      'bookings:read',
+      'bookings:update',
+      'reports:read',
+      'reports:create',
+      'settings:read'
+    ]
+  }
+
+  const userPermissions = rolePermissions[userRole] || []
+  
+  // Check if user has the specific permission or 'all' permission
+  return userPermissions.includes(permission) || userPermissions.includes('all')
 }

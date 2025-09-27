@@ -1,84 +1,56 @@
-'use client'
-
-import { ReactNode } from 'react'
+import React from 'react'
 import { Button, ButtonProps } from '@/components/ui/button'
-import { Permission, usePermissions } from '@/lib/permissions'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Lock } from 'lucide-react'
+import { PermissionGate } from './PermissionGate'
 
 interface ActionButtonProps extends Omit<ButtonProps, 'onClick'> {
-  permission: Permission | Permission[]
-  onClick?: () => void
-  children: ReactNode
+  permission: string
   userRole: string | null
   userId: string | null
-  disabled?: boolean
+  onClick: () => void
   tooltip?: string
-  showLockIcon?: boolean
+  showError?: boolean
 }
 
 export function ActionButton({
   permission,
-  onClick,
-  children,
   userRole,
   userId,
-  disabled = false,
+  onClick,
   tooltip,
-  showLockIcon = true,
+  showError = false,
   ...buttonProps
 }: ActionButtonProps) {
-  const { hasPermission, hasAnyPermission } = usePermissions(
-    userRole as any, 
-    userId
-  )
-
-  const hasAccess = Array.isArray(permission) 
-    ? hasAnyPermission(permission)
-    : hasPermission(permission)
-
-  const isDisabled = disabled || !hasAccess
-
-  const button = (
-    <Button
-      {...buttonProps}
-      onClick={hasAccess ? onClick : undefined}
-      disabled={isDisabled}
-      className={`${buttonProps.className || ''} ${!hasAccess ? 'opacity-50 cursor-not-allowed' : ''}`}
+  return (
+    <PermissionGate
+      permission={permission}
+      userRole={userRole}
+      userId={userId}
+      showError={showError}
     >
-      {!hasAccess && showLockIcon && <Lock className="h-4 w-4 mr-2" />}
-      {children}
-    </Button>
+      <Button
+        {...buttonProps}
+        onClick={onClick}
+        title={tooltip}
+      />
+    </PermissionGate>
   )
-
-  if (tooltip && !hasAccess) {
-    return (
-      <TooltipProvider>
-        <Tooltip content={tooltip || 'You need permission to perform this action'}>
-          {button}
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
-  return button
 }
 
 interface PermissionButtonGroupProps {
-  children: ReactNode
   userRole: string | null
   userId: string | null
+  children: React.ReactNode
   className?: string
 }
 
-export function PermissionButtonGroup({ 
-  children, 
-  userRole, 
-  userId, 
-  className = '' 
+export function PermissionButtonGroup({
+  userRole,
+  userId,
+  children,
+  className
 }: PermissionButtonGroupProps) {
   return (
-    <div className={`flex flex-wrap gap-2 ${className}`}>
+    <div className={`flex items-center space-x-2 ${className || ''}`}>
       {children}
     </div>
   )
