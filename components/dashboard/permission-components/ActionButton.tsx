@@ -20,6 +20,17 @@ export function ActionButton({
   showError = false,
   ...buttonProps
 }: ActionButtonProps) {
+  // Add error handling for invalid inputs
+  if (!permission) {
+    console.warn('ActionButton: permission prop is required')
+    return null
+  }
+
+  if (!onClick) {
+    console.warn('ActionButton: onClick prop is required')
+    return null
+  }
+
   return (
     <PermissionGate
       permission={permission}

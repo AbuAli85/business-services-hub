@@ -28,6 +28,25 @@ export function RoleBasedLayout({
   notifications = 0
 }: RoleBasedLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Add error boundary
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const getRoleColor = (role: string | null) => {
     switch (role) {

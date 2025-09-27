@@ -88,20 +88,33 @@ export function usePermissions(userRole: string | null, userId: string | null) {
       }
     }
 
-    const permissions = rolePermissions[userRole] || []
+    try {
+      const permissions = rolePermissions[userRole] || []
 
-    const hasPermission = (permission: string): boolean => {
-      return permissions.some(p => p.name === permission) || permissions.some(p => p.name === 'all')
-    }
+      const hasPermission = (permission: string): boolean => {
+        if (!permission) {
+          console.warn('usePermissions: permission parameter is required')
+          return false
+        }
+        return permissions.some(p => p.name === permission) || permissions.some(p => p.name === 'all')
+      }
 
-    const canAccess = (permission: string): boolean => {
-      return hasPermission(permission)
-    }
+      const canAccess = (permission: string): boolean => {
+        return hasPermission(permission)
+      }
 
-    return {
-      permissions,
-      hasPermission,
-      canAccess
+      return {
+        permissions,
+        hasPermission,
+        canAccess
+      }
+    } catch (error) {
+      console.error('usePermissions error:', error)
+      return {
+        permissions: [],
+        hasPermission: () => false,
+        canAccess: () => false
+      }
     }
   }, [userRole, userId])
 }

@@ -19,24 +19,59 @@ export function PermissionGate({
   fallback = null,
   showError = true
 }: PermissionGateProps) {
-  const hasPermission = checkPermission(permission, userRole, userId)
-
-  if (hasPermission) {
-    return <>{children}</>
+  // Add error handling for invalid inputs
+  if (!permission) {
+    console.warn('PermissionGate: permission prop is required')
+    return <>{fallback}</>
   }
 
-  if (showError) {
-    return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          You don't have permission to access this feature.
-        </AlertDescription>
-      </Alert>
-    )
+  if (!userRole || !userId) {
+    if (showError) {
+      return (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Authentication required to access this feature.
+          </AlertDescription>
+        </Alert>
+      )
+    }
+    return <>{fallback}</>
   }
 
-  return <>{fallback}</>
+  try {
+    const hasPermission = checkPermission(permission, userRole, userId)
+
+    if (hasPermission) {
+      return <>{children}</>
+    }
+
+    if (showError) {
+      return (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You don't have permission to access this feature.
+          </AlertDescription>
+        </Alert>
+      )
+    }
+
+    return <>{fallback}</>
+  } catch (error) {
+    console.error('PermissionGate error:', error)
+    if (showError) {
+      return (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Error checking permissions. Please try again.
+          </AlertDescription>
+        </Alert>
+      )
+    }
+    return <>{fallback}</>
+  }
 }
 
 interface RoleBasedContentProps {
