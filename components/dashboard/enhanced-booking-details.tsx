@@ -1404,24 +1404,62 @@ export default function EnhancedBookingDetails({
       console.log('📝 Updating booking status to in_progress...')
       console.log('📊 Current booking status from check:', currentBooking)
       
-      // Prepare update data - if status is pending but approval_status is approved, update both
-      const updateData: any = {
-        status: 'in_progress',
-        updated_at: new Date().toISOString()
-      }
+      let updateResult: any = null
+      let error: any = null
       
-      // If the main status is still pending but approval_status is approved, update both
+      // If status is pending but approval_status is approved, we need to do a two-step update
       if (currentBooking.status === 'pending' && currentBooking.approval_status === 'approved') {
-        updateData.status = 'in_progress'
-        console.log('📝 Updating both status and approval_status since status was pending')
+        console.log('📝 Two-step update: First updating status to approved, then to in_progress')
+        
+        // Step 1: Update status from pending to approved
+        const { data: step1Result, error: step1Error } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'approved',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.id)
+          .select()
+        
+        if (step1Error) {
+          console.error('❌ Step 1 failed:', step1Error)
+          throw new Error(`Failed to update status to approved: ${step1Error.message}`)
+        }
+        
+        console.log('✅ Step 1 completed: Status updated to approved')
+        
+        // Step 2: Update status from approved to in_progress
+        const { data: step2Result, error: step2Error } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'in_progress',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.id)
+          .select()
+        
+        if (step2Error) {
+          console.error('❌ Step 2 failed:', step2Error)
+          throw new Error(`Failed to update status to in_progress: ${step2Error.message}`)
+        }
+        
+        console.log('✅ Step 2 completed: Status updated to in_progress')
+        updateResult = step2Result
+      } else {
+        // Direct update if status is already approved
+        console.log('📝 Direct update: Status is already approved, updating to in_progress')
+        const { data: directResult, error: directError } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'in_progress',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.id)
+          .select()
+        
+        updateResult = directResult
+        error = directError
       }
-      
-      // Try to update the booking status
-      const { data: updateResult, error } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', booking.id)
-        .select()
       
       console.log('📊 Database update result:', { 
         hasData: !!updateResult, 
