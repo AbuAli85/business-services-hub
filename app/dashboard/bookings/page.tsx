@@ -46,6 +46,16 @@ import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase'
 
+// Constants outside component to avoid re-allocation
+const OMAN_TZ = 'Asia/Muscat'
+
+// Helper for custom tooltips - simplified for now
+const TitleTip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div title={label}>
+    {children}
+  </div>
+)
+
 export default function BookingsPage() {
   const router = useRouter()
   const [userLoading, setUserLoading] = useState(true)
@@ -70,18 +80,14 @@ export default function BookingsPage() {
   const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set())
   const lastRefreshTimeRef = useRef(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Helper for custom tooltips - simplified for now
-  const Tip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-    <div title={label}>
-      {children}
-    </div>
-  )
-
-  // Approve booking function
+  // Approve booking function with optimistic UI
   const approveBooking = async (id: string) => {
     if (approvingIds.has(id)) return
-    setApprovingIds(prev => new Set(prev).add(id))
+    setApprovingIds(s => new Set(s).add(id))
+    const prev = bookings
+    setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'approved' } : x))
     const dismiss = toast.loading('Approving booking…')
     try {
       const res = await fetch('/api/bookings', {
@@ -97,12 +103,11 @@ export default function BookingsPage() {
       toast.success('Booking approved')
       setRefreshTrigger(prev => prev + 1)
     } catch (err: any) {
+      setBookings(prev) // revert on error
       toast.error(err?.message || 'Approval failed')
     } finally {
       toast.dismiss(dismiss)
-      setApprovingIds(prev => {
-        const next = new Set(prev); next.delete(id); return next
-      })
+      setApprovingIds(s => { const n = new Set(s); n.delete(id); return n })
     }
   }
 
@@ -133,6 +138,11 @@ export default function BookingsPage() {
       return 'approved'
     }
     
+    // If declined, show as cancelled
+    if (booking.status === 'declined' || booking.approval_status === 'declined') {
+      return 'cancelled'
+    }
+    
     // If rescheduled, show as pending review (or you can add a separate rescheduled status)
     if (booking.status === 'rescheduled') {
       return 'pending_review'
@@ -154,6 +164,7 @@ export default function BookingsPage() {
       case 'ready_to_launch': return 'All prerequisites met'
       case 'approved': return 'Waiting for team assignment'
       case 'pending_review': return 'Awaiting provider approval'
+      case 'cancelled': return 'Project was declined or cancelled'
       default: return 'Project status being determined'
     }
   }
@@ -178,7 +189,6 @@ export default function BookingsPage() {
     return Number.isNaN(t) ? 0 : t
   }, [])
 
-  const OMAN_TZ = 'Asia/Muscat'
   const formatLocalDate = useCallback((raw: any): string => {
     if (!raw) return '—'
     const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
@@ -276,21 +286,24 @@ export default function BookingsPage() {
 
   // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
-    if (isLoadingRef.current) {
-      console.log('⏸️ Skipping load - request already in progress')
-      return
-    }
-    isLoadingRef.current = true
-    if (!user || !userRole) {
-      console.log('Skipping data load - user or role not ready:', { user: !!user, userRole })
-      isLoadingRef.current = false
+    if (isLoadingRef.current || !user || !userRole) {
+      console.log('⏸️ Skipping load - request already in progress or user not ready')
       return
     }
     
+    // Abort any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    const ac = new AbortController()
+    abortControllerRef.current = ac
+    isLoadingRef.current = true
+    setDataLoading(true)
+    setError(null)
+    
     try {
       console.log('📊 Loading bookings data for role:', userRole)
-      setDataLoading(true)
-      setError(null)
       
       // Build query params for server-side pagination/filtering
       const params = new URLSearchParams({
@@ -309,7 +322,8 @@ export default function BookingsPage() {
       
       const res = await fetch(apiEndpoint, {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        signal: ac.signal
       })
       
       if (!res.ok) {
@@ -352,7 +366,8 @@ export default function BookingsPage() {
       try {
         const invoiceRes = await fetch('/api/invoices', {
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          signal: ac.signal
         })
         if (invoiceRes.ok) {
           const invoiceJson = await invoiceRes.json()
@@ -369,8 +384,10 @@ export default function BookingsPage() {
       }
       
     } catch (e: any) {
-      console.error('❌ Data loading error:', e)
-      setError(e?.message || 'Failed to load bookings data')
+      if (e?.name !== 'AbortError') {
+        console.error('❌ Data loading error:', e)
+        setError(e?.message || 'Failed to load bookings data')
+      }
     } finally {
       setDataLoading(false)
       console.log('✅ Data loading complete')
@@ -397,7 +414,16 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData])
+
+  // Cleanup effect to abort requests on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [])
 
   // Separate effect for refresh trigger to prevent infinite loops
   useEffect(() => {
@@ -594,6 +620,14 @@ export default function BookingsPage() {
   // Pagination: Use server-side pagination results
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const paginatedBookings = filteredBookings // Already paginated by the API
+
+  // Pagination window: show pages around current
+  const pageWindow = useMemo(() => {
+    const radius = 2
+    const start = Math.max(1, currentPage - radius)
+    const end = Math.min(totalPages, currentPage + radius)
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  }, [currentPage, totalPages])
 
   // Memoized invoice lookup for performance
   const invoiceByBooking = useMemo(() => {
@@ -833,7 +867,7 @@ export default function BookingsPage() {
   }, [bookingsSource, totalCount])
 
   // Show loading skeleton only during initial user loading
-  if (userLoading || dataLoading) {
+  if (userLoading) {
     return (
       <div className="space-y-6">
         {/* Enhanced Professional Header Skeleton */}
@@ -993,9 +1027,9 @@ export default function BookingsPage() {
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                 <div className="flex items-center gap-2 mb-1">
                   <DollarSign className="h-4 w-4 text-yellow-300" />
-                  <Tip label="Sum of invoiced + paid amounts for delivered projects only">
+                  <TitleTip label="Sum of invoiced + paid amounts for delivered projects only">
                     <span className="text-sm text-blue-200 font-medium cursor-help">Revenue (to date)</span>
-                  </Tip>
+                  </TitleTip>
                 </div>
                 <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
               </div>
@@ -1031,9 +1065,9 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <Tip label="Projects currently in development phase (In Production status)">
+                <TitleTip label="Projects currently in development phase (In Production status)">
                   <p className="text-sm font-medium text-gray-600 cursor-help">Active Projects</p>
-                </Tip>
+                </TitleTip>
                 <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
                 <p className="text-xs text-blue-600 mt-1">
                   {(() => {
@@ -1069,9 +1103,9 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <Tip label="Customer-accepted projects that have been successfully delivered">
+                <TitleTip label="Customer-accepted projects that have been successfully delivered">
                   <p className="text-sm font-medium text-gray-600 cursor-help">Delivered</p>
-                </Tip>
+                </TitleTip>
                 <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
                 <p className="text-xs text-green-600 mt-1">
                   {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}% success rate
@@ -1095,13 +1129,13 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <Tip label={userRole === 'provider' 
+                <TitleTip label={userRole === 'provider' 
                   ? 'Expected invoicing for approved and ready-to-launch projects not yet invoiced' 
                   : 'Total value of all approved and ready projects'}>
                   <p className="text-sm font-medium text-gray-600 cursor-help">
                     {userRole === 'provider' ? 'Projected Billings' : 'Total Value'}
                   </p>
-                </Tip>
+                </TitleTip>
                 <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.projectedBillings)}</p>
                 <p className="text-xs text-orange-600 mt-1">
                   {stats.total > 0 ? formatCurrency(stats.projectedBillings / stats.total) : formatCurrency(0)} avg
@@ -1366,7 +1400,7 @@ export default function BookingsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border relative">
+          <div className="rounded-md border relative" aria-busy={dataLoading}>
             {dataLoading && (
               <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
                 <div className="text-center">
@@ -1378,14 +1412,14 @@ export default function BookingsPage() {
             <Table>
               <TableHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
                 <TableRow className="border-b-2 border-gray-200">
-                  <TableHead className="font-semibold text-gray-700 py-4">
+                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                     <div className="flex items-center gap-2">
                       <Target className="h-4 w-4 text-blue-600" />
                       Project Details
                     </div>
                   </TableHead>
                   {userRole === 'admin' && (
-                    <TableHead className="font-semibold text-gray-700 py-4">
+                    <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-blue-600" />
                         Client
@@ -1393,38 +1427,38 @@ export default function BookingsPage() {
                     </TableHead>
                   )}
                   {(userRole === 'admin' || userRole === 'client') && (
-                    <TableHead className="font-semibold text-gray-700 py-4">
+                    <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                       <div className="flex items-center gap-2">
                         <Settings className="h-4 w-4 text-blue-600" />
                         Provider
                       </div>
                     </TableHead>
                   )}
-                  <TableHead className="font-semibold text-gray-700 py-4">
+                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-green-600" />
                       Investment
                     </div>
                   </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4">
+                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                     <div className="flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-purple-600" />
                       Smart Status
                     </div>
                   </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4">
+                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                     <div className="flex items-center gap-2">
                       <Receipt className="h-4 w-4 text-amber-600" />
                       Billing Status
                     </div>
                   </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4">
+                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-cyan-600" />
                       Timeline
                     </div>
                   </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4 text-center">
+                  <TableHead className="font-semibold text-gray-700 py-4 text-center" scope="col">
                     <div className="flex items-center gap-2 justify-center">
                       <Zap className="h-4 w-4 text-orange-600" />
                       Actions
@@ -1541,7 +1575,7 @@ export default function BookingsPage() {
                                    invoice.status === 'draft' ? 'Draft' : 
                                    invoice.status}
                                 </Badge>
-                                <Tip label="View invoice details">
+                                <TitleTip label="View invoice details">
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -1549,14 +1583,14 @@ export default function BookingsPage() {
                                   >
                                     <Receipt className="h-3 w-3" />
                                   </Button>
-                                </Tip>
+                                </TitleTip>
                               </div>
                               
                               {/* Quick Invoice Actions */}
                               {canCreateInvoice && (
                                 <div className="flex gap-1">
                                   {invoice.status === 'draft' && (
-                                    <Tip label="Send invoice to client">
+                                    <TitleTip label="Send invoice to client">
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -1565,10 +1599,10 @@ export default function BookingsPage() {
                                       >
                                         Send
                                       </Button>
-                                    </Tip>
+                                    </TitleTip>
                                   )}
                                   {invoice.status === 'issued' && (
-                                    <Tip label="Mark invoice as paid">
+                                    <TitleTip label="Mark invoice as paid">
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -1577,7 +1611,7 @@ export default function BookingsPage() {
                                       >
                                         Mark Paid
                                       </Button>
-                                    </Tip>
+                                    </TitleTip>
                                   )}
                                 </div>
                               )}
@@ -1597,7 +1631,7 @@ export default function BookingsPage() {
                                   No Invoice
                                 </Badge>
                                 {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
-                                  <Tip label="Create invoice for this booking">
+                                  <TitleTip label="Create invoice for this booking">
                                     <Button 
                                       size="sm" 
                                       variant="outline" 
@@ -1606,7 +1640,7 @@ export default function BookingsPage() {
                                     >
                                       Create
                                     </Button>
-                                  </Tip>
+                                  </TitleTip>
                                 )}
                                 {/* Debug info for missing Create button */}
                                 {!canCreateInvoice && (
@@ -1637,79 +1671,79 @@ export default function BookingsPage() {
                               {booking.status === 'completed' && (
                                 <>
                                   {userRole === 'client' && (
-                                    <Tip label="Review completed project and provide feedback">
+                                    <TitleTip label="Review completed project and provide feedback">
                                       <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200">
                                         <Award className="h-3 w-3 mr-1" />
                                         Review Project
                                       </Button>
-                                    </Tip>
+                                    </TitleTip>
                                   )}
                                   
                                   {userRole === 'provider' && (
-                                    <Tip label="Project completed - awaiting client review">
+                                    <TitleTip label="Project completed - awaiting client review">
                                       <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
                                         <Award className="h-3 w-3 mr-1" />
                                         Delivered
                                       </Button>
-                                    </Tip>
+                                    </TitleTip>
                                   )}
                                   
                                   {(!userRole || userRole === 'admin') && (
-                                    <Tip label="Project completed">
+                                    <TitleTip label="Project completed">
                                       <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
                                         <Award className="h-3 w-3 mr-1" />
                                         Delivered
                                       </Button>
-                                    </Tip>
+                                    </TitleTip>
                                   )}
                                 </>
                               )}
 
                               {/* 2. IN PROGRESS BOOKINGS */}
                               {booking.status === 'in_progress' && (
-                                <Tip label="View progress and manage project milestones">
+                                <TitleTip label="View progress and manage project milestones">
                                   <Button size="sm" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-blue-200 transition-all duration-200" asChild>
                                     <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
                                       <Target className="h-3 w-3 mr-1" />
                                       Manage Project
                                     </Link>
                                   </Button>
-                                </Tip>
+                                </TitleTip>
                               )}
 
                               {/* 3. READY TO LAUNCH BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
                                 canLaunchProject(booking) ? (
-                                  <Tip label="Begin project work and create milestones">
+                                  <TitleTip label="Begin project work and create milestones">
                                     <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-purple-200 transition-all duration-200" asChild>
                                       <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
                                         <Play className="h-3 w-3 mr-1" />
                                         Launch Project
                                       </Link>
                                     </Button>
-                                  </Tip>
+                                  </TitleTip>
                                 ) : (
-                                  <Tip label={getLaunchBlockingReason(booking)}>
+                                  <TitleTip label={getLaunchBlockingReason(booking)}>
                                     <Button size="sm" disabled className="bg-gray-400 text-gray-600 cursor-not-allowed">
                                       <Play className="h-3 w-3 mr-1" />
                                       Launch Project
                                     </Button>
-                                  </Tip>
+                                  </TitleTip>
                                 )
                               )}
 
                               {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
-                                <Tip label="Waiting for provider to start work">
+                                <TitleTip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled className="border-purple-200 text-purple-700 bg-purple-50">
                                     <Clock className="h-3 w-3 mr-1" />
                                     Ready to Launch
                                   </Button>
-                                </Tip>
+                                </TitleTip>
                               )}
 
                               {/* 4. PENDING BOOKINGS (not approved yet) - ONLY if NOT completed */}
                               {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
-                                <Tip label="Approve this booking to start the project">
+                                <TitleTip label="Approve this booking to start the project">
                                   <Button 
                                     size="sm" 
                                     className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200 disabled:opacity-60"
@@ -1719,27 +1753,27 @@ export default function BookingsPage() {
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                     {approvingIds.has(booking.id) ? 'Approving…' : 'Approve Project'}
                                   </Button>
-                                </Tip>
+                                </TitleTip>
                               )}
 
                               {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'client' && (
-                                <Tip label="Waiting for provider approval">
+                                <TitleTip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled className="border-amber-200 text-amber-700 bg-amber-50">
                                     <Clock className="h-3 w-3 mr-1" />
                                     Under Review
                                   </Button>
-                                </Tip>
+                                </TitleTip>
                               )}
 
                               {/* Secondary Actions - Only show invoice link if there's an invoice */}
                               {invoice && (
-                                <Tip label="View and manage invoice">
-                                  <Button size="sm" variant="ghost" asChild>
+                                <TitleTip label="View and manage invoice">
+                                  <Button size="sm" variant="ghost" asChild aria-label="View invoice">
                                     <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
                                       <Receipt className="h-3 w-3" />
                                     </Link>
                                   </Button>
-                                </Tip>
+                                </TitleTip>
                               )}
                             </div>
                         </TableCell>
@@ -1817,20 +1851,17 @@ export default function BookingsPage() {
                 </Button>
                 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = i + 1
-                    return (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {page}
-                      </Button>
-                    )
-                  })}
+                  {pageWindow.map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  ))}
                 </div>
                 
                 <Button
