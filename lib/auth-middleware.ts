@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createMiddlewareClient } from './supabase-middleware'
+import { getSupabaseAdminClient } from './supabase'
 import { authLogger } from './auth-logger'
 
 export interface RoleBasedRoute {
@@ -131,7 +132,9 @@ export class AuthMiddleware {
         console.log('🔍 Middleware: Profile not found, attempting to create one for user:', user.id)
         
         try {
-          const { data: newProfile, error: createError } = await this.supabase
+          // Use admin client for profile creation
+          const adminClient = await getSupabaseAdminClient()
+          const { data: newProfile, error: createError } = await adminClient
             .from('profiles')
             .insert({
               id: user.id,
