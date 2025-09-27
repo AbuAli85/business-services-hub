@@ -128,6 +128,13 @@ export default function BookingsPage() {
       return 'in_production'
     }
     
+    // Check if there's an invoice issued - this indicates ready to launch
+    const invoice = getInvoiceForBooking(booking.id)
+    if (invoice && ['issued', 'paid'].includes(invoice.status)) {
+      // If invoice is issued/paid, it's ready to launch regardless of booking status
+      return 'ready_to_launch'
+    }
+    
     // If approved (either via status or approval_status), show as approved
     if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') {
       return 'approved'
@@ -136,13 +143,6 @@ export default function BookingsPage() {
     // If pending with approval, show as approved (waiting for invoice)
     if (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved')) {
       return 'approved'
-    }
-    
-    // Check if there's an invoice issued - this indicates ready to launch
-    const invoice = getInvoiceForBooking(booking.id)
-    if (invoice && ['issued', 'paid'].includes(invoice.status)) {
-      // If invoice is issued/paid, it's ready to launch regardless of booking status
-      return 'ready_to_launch'
     }
     
     // If declined, show as cancelled
