@@ -251,7 +251,7 @@ class DashboardDataManager {
           featured: service.featured || false,
           rating: service.rating || 0,
           reviewCount: service.review_count || 0,
-          bookingCount: service._count?.bookings || 0,
+          bookingCount: service.bookingCount || 0,
           createdAt: service.created_at || new Date().toISOString(),
           updatedAt: service.updated_at || new Date().toISOString(),
           cover_image_url: service.cover_image_url

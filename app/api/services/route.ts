@@ -53,8 +53,7 @@ export async function GET(request: NextRequest) {
           description,
           price,
           features
-        ),
-        _count:bookings(count)
+        )
       `)
       .eq('status', status)
       .order('created_at', { ascending: false })
@@ -88,66 +87,72 @@ export async function GET(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
     }
     
-    // Fetch provider information separately to avoid complex joins
+    // Get booking counts and provider info for each service
     const enrichedServices = await Promise.all(
       (services || []).map(async (service) => {
         try {
-          // First try to get provider from profiles table
-          const { data: provider, error: providerError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, phone, company_name, avatar_url')
-            .eq('id', service.provider_id)
-            .single()
+          // Get booking count for this service
+          const { count: bookingCount, error: bookingError } = await supabase
+            .from('bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('service_id', service.id)
           
-          if (providerError || !provider) {
-            // If no profile found, try to get from auth.users
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`Service ${service.id} (${service.title}): ${bookingCount} bookings, error:`, bookingError)
+          }
+          
+          // Try to get provider info from profiles table
+          let providerName = 'Service Provider'
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('full_name, company_name')
+              .eq('id', service.provider_id)
+              .single()
+            
             if (process.env.NODE_ENV !== 'production') {
-              console.log(`No profile found for provider_id: ${service.provider_id}, error:`, providerError)
+              console.log(`Profile lookup for ${service.provider_id}:`, profile, 'error:', profileError)
             }
             
-            const { data: authUser } = await supabase.auth.admin.getUserById(service.provider_id)
-            
-            if (authUser?.user) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.log(`Found auth user for provider_id: ${service.provider_id}`, authUser.user.email)
-              }
-              return {
-                ...service,
-                provider: {
-                  id: authUser.user.id,
-                  full_name: authUser.user.user_metadata?.full_name || authUser.user.email?.split('@')[0] || 'Service Provider',
-                  email: authUser.user.email || '',
-                  phone: authUser.user.user_metadata?.phone || '',
-                  company_name: authUser.user.user_metadata?.company_name || '',
-                  avatar_url: authUser.user.user_metadata?.avatar_url || ''
-                }
-              }
+            if (profile) {
+              providerName = profile.full_name || profile.company_name || `Provider ${service.provider_id.slice(0, 8)}...`
+            } else {
+              providerName = `Provider ${service.provider_id.slice(0, 8)}...`
             }
+          } catch (profileError) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`No profile found for provider ${service.provider_id}:`, profileError)
+            }
+            providerName = `Provider ${service.provider_id.slice(0, 8)}...`
           }
           
           return {
             ...service,
-            provider: provider || { 
-              id: service.provider_id || '', 
-              full_name: 'Service Provider', 
-              email: '', 
-              phone: '', 
-              company_name: '', 
-              avatar_url: '' 
-            }
+            provider: {
+              id: service.provider_id || '',
+              full_name: providerName,
+              email: '',
+              phone: '',
+              company_name: '',
+              avatar_url: ''
+            },
+            bookingCount: bookingCount || 0
           }
         } catch (error) {
-          console.error('Error enriching service:', error)
+          console.error('Error getting booking count for service:', service.id, error)
           return {
             ...service,
-            provider: { 
-              id: service.provider_id || '', 
-              full_name: 'Service Provider', 
-              email: '', 
-              phone: '', 
-              company_name: '', 
-              avatar_url: '' 
-            }
+            provider: {
+              id: service.provider_id || '',
+              full_name: service.provider_id 
+                ? `Provider ${service.provider_id.slice(0, 8)}...` 
+                : 'Service Provider',
+              email: '',
+              phone: '',
+              company_name: '',
+              avatar_url: ''
+            },
+            bookingCount: 0
           }
         }
       })
