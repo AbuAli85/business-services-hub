@@ -355,14 +355,15 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') || '').trim()
     const status = (searchParams.get('status') || '').trim()
 
-    // Build base query by role with explicit columns
-    // Use basic columns without denormalized fields for now
+    // Build base query using enriched view for better performance
     let query = supabase
-      .from('bookings')
+      .from('booking_enriched')
       .select(`
-        id, service_id, client_id, provider_id, status, approval_status, operational_status, 
-        amount_cents, currency, created_at, updated_at, scheduled_date, start_time, end_time, 
-        notes, location, estimated_duration, payment_status, total_amount
+        id, service_id, client_id, provider_id, status, approval_status, 
+        amount_cents, currency, created_at, updated_at, scheduled_date, 
+        notes, location, estimated_duration, payment_status, total_amount,
+        service_title, client_name, provider_name, service_category,
+        client_email, provider_email, invoice_status, invoice_amount
       `, { count: 'exact' })
 
     if (userRole === 'provider') {
@@ -404,13 +405,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Search functionality - simplified for now
+    // Search functionality using enriched fields
     if (search) {
       if (search.startsWith('#')) {
         // Direct ID lookup
         query = query.eq('id', search.slice(1))
+      } else {
+        // Text search across enriched fields
+        query = query.or(`
+          service_title.ilike.%${search}%,
+          client_name.ilike.%${search}%,
+          provider_name.ilike.%${search}%,
+          service_category.ilike.%${search}%,
+          client_email.ilike.%${search}%,
+          provider_email.ilike.%${search}%
+        `)
       }
-      // Note: Text search disabled until denormalized columns are available
     }
 
     // Sorting
@@ -422,16 +432,13 @@ export async function GET(request: NextRequest) {
         query = query.order('amount_cents', { ascending: order === 'asc' })
         break
       case 'title':
-        // Title sorting disabled until denormalized columns are available
-        query = query.order('created_at', { ascending: order === 'asc' })
+        query = query.order('service_title', { ascending: order === 'asc' })
         break
       case 'client_name':
-        // Client name sorting disabled until denormalized columns are available
-        query = query.order('created_at', { ascending: order === 'asc' })
+        query = query.order('client_name', { ascending: order === 'asc' })
         break
       case 'provider_name':
-        // Provider name sorting disabled until denormalized columns are available
-        query = query.order('created_at', { ascending: order === 'asc' })
+        query = query.order('provider_name', { ascending: order === 'asc' })
         break
       default:
         query = query.order('created_at', { ascending: order === 'asc' })
@@ -448,13 +455,8 @@ export async function GET(request: NextRequest) {
       return response
     }
 
-    // Add placeholder fields for missing denormalized columns
-    const transformedData = (data ?? []).map((booking: any) => ({
-      ...booking,
-      service_title: 'Service', // Placeholder until denormalized column is available
-      client_name: 'Client', // Placeholder until denormalized column is available
-      provider_name: 'Provider', // Placeholder until denormalized column is available
-    }))
+    // Data is already enriched from the view, no transformation needed
+    const transformedData = data ?? []
 
     const payload = {
       data: transformedData,

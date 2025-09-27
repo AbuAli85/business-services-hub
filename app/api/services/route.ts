@@ -42,18 +42,15 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search')
     
-    // Build query
+    // Build query using enriched view for better performance
     let query = supabase
-      .from('services')
+      .from('service_enriched')
       .select(`
-        *,
-        service_packages(
-          id,
-          name,
-          description,
-          price,
-          features
-        )
+        id, title, description, category, status, base_price, currency, 
+        cover_image_url, featured, created_at, updated_at,
+        provider_id, provider_name, provider_email, provider_phone,
+        company_id, company_name, company_cr_number, company_vat_number,
+        booking_count, total_revenue, avg_rating, review_count
       `)
       .eq('status', status)
       .order('created_at', { ascending: false })
@@ -68,7 +65,12 @@ export async function GET(request: NextRequest) {
     }
     
     if (search) {
-      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+      query = query.or(`
+        title.ilike.%${search}%,
+        description.ilike.%${search}%,
+        provider_name.ilike.%${search}%,
+        category.ilike.%${search}%
+      `)
     }
     
     // Apply pagination
@@ -87,86 +89,8 @@ export async function GET(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
     }
     
-    // Get booking counts and provider info for each service
-    const enrichedServices = await Promise.all(
-      (services || []).map(async (service) => {
-        try {
-          // Get booking count for this service
-          const { count: bookingCount, error: bookingError } = await supabase
-            .from('bookings')
-            .select('*', { count: 'exact', head: true })
-            .eq('service_id', service.id)
-          
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(`Service ${service.id} (${service.title}): ${bookingCount} bookings, error:`, bookingError)
-          }
-          
-          // Try to get provider info from profiles table
-          let providerName = 'Service Provider'
-          try {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('full_name, company_name')
-              .eq('id', service.provider_id)
-              .single()
-            
-            if (profile && (profile.full_name || profile.company_name)) {
-              providerName = profile.full_name || profile.company_name
-            } else {
-              // If no profile found, try to get from auth.users
-              try {
-                const { data: authUser } = await supabase.auth.admin.getUserById(service.provider_id)
-                if (authUser?.user) {
-                  providerName = authUser.user.user_metadata?.full_name || 
-                                authUser.user.user_metadata?.company_name || 
-                                authUser.user.email?.split('@')[0] || 
-                                `Provider ${service.provider_id.slice(0, 8)}...`
-                }
-              } catch (authError) {
-                // Use a more descriptive fallback
-                providerName = `Provider ${service.provider_id.slice(0, 8)}...`
-              }
-            }
-          } catch (profileError) {
-            // Use a more descriptive fallback
-            providerName = `Provider ${service.provider_id.slice(0, 8)}...`
-          }
-          
-          return {
-            ...service,
-            provider: {
-              id: service.provider_id || '',
-              full_name: providerName,
-              email: '',
-              phone: '',
-              company_name: '',
-              avatar_url: ''
-            },
-            bookingCount: bookingCount || 0,
-            providerName: providerName
-          }
-        } catch (error) {
-          console.error('Error getting booking count for service:', service.id, error)
-          return {
-            ...service,
-            provider: {
-              id: service.provider_id || '',
-              full_name: service.provider_id 
-                ? `Provider ${service.provider_id.slice(0, 8)}...` 
-                : 'Service Provider',
-              email: '',
-              phone: '',
-              company_name: '',
-              avatar_url: ''
-            },
-            bookingCount: 0,
-            providerName: service.provider_id 
-              ? `Provider ${service.provider_id.slice(0, 8)}...` 
-              : 'Service Provider'
-          }
-        }
-      })
-    )
+    // Data is already enriched from the view, no additional processing needed
+    const enrichedServices = services || []
     
     // Debug logging for enriched services
     if (process.env.NODE_ENV !== 'production') {

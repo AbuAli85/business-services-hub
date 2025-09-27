@@ -36,12 +36,15 @@ import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 import { getSupabaseClient } from '@/lib/supabase'
-import { getUserAuth, type UserAuthResult } from '@/lib/user-auth'
+import { getUserAuth, hasRoleV2, type UserAuthResult } from '@/lib/user-auth'
 
 export default function ServicesPage() {
   const router = useRouter()
   const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isProvider, setIsProvider] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const { services, bookings, loading, error, refresh } = useDashboardData(userRole || undefined, userId || undefined)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -68,12 +71,26 @@ export default function ServicesPage() {
         setUserId(authResult.user.id)
         setUserRole(authResult.role as 'provider' | 'client' | 'admin' | 'staff' | null)
         
+        // Check specific roles using the new efficient function
+        const [adminCheck, providerCheck, clientCheck] = await Promise.all([
+          hasRoleV2('admin'),
+          hasRoleV2('provider'),
+          hasRoleV2('client')
+        ])
+        
+        setIsAdmin(adminCheck)
+        setIsProvider(providerCheck)
+        setIsClient(clientCheck)
+        
         if (process.env.NODE_ENV !== 'production') {
           console.log('User auth result:', {
             userId: authResult.user.id,
             role: authResult.role,
             hasProfile: !!authResult.profile,
-            profileName: authResult.profile?.full_name
+            profileName: authResult.profile?.full_name,
+            isAdmin: adminCheck,
+            isProvider: providerCheck,
+            isClient: clientCheck
           })
         }
       } catch (e) {
@@ -181,10 +198,10 @@ export default function ServicesPage() {
     // For clients, show only their own bookings; for providers, show bookings per own services (already filtered above)
     const totalBookings = bookings.filter((b:any) => {
       if (userRole === 'client') return b.clientId === undefined ? (b.client_id === undefined ? false : b.client_id === (b.user_id || b.client_id)) : b.clientId === (b.user_id || b.clientId)
-      if (userRole === 'provider') return true
+      if (isProvider) return true
       return true
     }).length
-    const totalRevenue = userRole === 'provider' 
+    const totalRevenue = isProvider 
       ? sourceServices.reduce((sum, s) => sum + ((s.bookingCount || 0) * (s.basePrice || 0)), 0)
       : 0 // Revenue hidden for clients
     const avgRating = sourceServices.length > 0 
@@ -244,8 +261,8 @@ export default function ServicesPage() {
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">{userRole === 'provider' ? 'My Services' : 'Services'}</h1>
-            <p className="text-blue-100 text-lg mb-4">{userRole === 'provider' ? 'Manage your services and bookings' : 'Browse available services and book what you need'}</p>
+            <h1 className="text-4xl font-bold mb-2">{isProvider ? 'My Services' : 'Services'}</h1>
+            <p className="text-blue-100 text-lg mb-4">{isProvider ? 'Manage your services and bookings' : 'Browse available services and book what you need'}</p>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">
                 <Package className="h-4 w-4 mr-1" />
@@ -259,13 +276,13 @@ export default function ServicesPage() {
                 <Calendar className="h-4 w-4 mr-1" />
                 <span>Bookings: {stats.totalBookings}</span>
               </div>
-              {(userRole === 'provider' || userRole === 'admin') && (
+              {(isProvider || isAdmin) && (
                 <div className="flex items-center">
                   <TrendingUp className="h-4 w-4 mr-1" />
                   <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
                 </div>
               )}
-              {userRole === 'provider' && (
+              {isProvider && (
                 <div className="flex items-center">
                   <Star className="h-4 w-4 mr-1" />
                   <span>Avg Rating: {stats.avgRating.toFixed(1)}</span>
@@ -282,7 +299,7 @@ export default function ServicesPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            {userRole === 'provider' && (
+            {isProvider && (
               <Button 
                 variant="secondary"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
@@ -334,7 +351,7 @@ export default function ServicesPage() {
             </div>
           </CardContent>
         </Card>
-        {(userRole === 'provider' || userRole === 'admin') && (
+        {(isProvider || isAdmin) && (
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
@@ -350,7 +367,7 @@ export default function ServicesPage() {
       </div>
 
       {/* Provider Analytics Section */}
-      {userRole === 'provider' && (
+      {isProvider && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
@@ -687,7 +704,7 @@ export default function ServicesPage() {
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-gray-600">{service.bookingCount || 0} bookings</span>
                       </div>
-                      {userRole === 'provider' && (
+                      {isProvider && (
                         <div className="flex items-center space-x-1">
                           <DollarSign className="h-4 w-4 text-green-500" />
                           <span className="text-green-600 font-medium">
@@ -707,7 +724,7 @@ export default function ServicesPage() {
                     </span>
                     <span className="text-xs text-gray-500 font-medium">Starting price</span>
                   </div>
-                  {userRole === 'provider' ? (
+                  {isProvider ? (
                     <div className="flex flex-col gap-2">
                       <Button
                         variant="outline"
@@ -776,11 +793,11 @@ export default function ServicesPage() {
                 ? 'Please wait while we load your services...'
                 : searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
                   ? 'Try adjusting your filters to see more services.'
-                  : userRole === 'provider' 
+                  : isProvider 
                     ? 'Services will appear here when you create them. Click "Create Service" to get started!' 
                     : 'No active services available at the moment.'}
             </p>
-            {userRole === 'provider' ? (
+            {isProvider ? (
               <Button onClick={() => router.push('/dashboard/services/create')} variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Service
@@ -795,7 +812,7 @@ export default function ServicesPage() {
       )}
 
       {/* Provider Service Performance Insights */}
-      {userRole === 'provider' && filteredServices.length > 0 && (
+      {isProvider && filteredServices.length > 0 && (
         <div className="mt-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Service Performance Insights</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
