@@ -632,6 +632,8 @@ export async function PATCH(request: NextRequest) {
         }
         notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
         console.log('✅ Approval updates:', updates)
+        console.log('✅ Current booking status before update:', booking.status)
+        console.log('✅ Current booking approval_status before update:', booking.approval_status)
         break
       case 'decline':
         if (!isProvider) {
@@ -688,7 +690,9 @@ export async function PATCH(request: NextRequest) {
       hasData: !!updated, 
       hasError: !!updateError,
       errorMessage: updateError?.message,
-      updatedId: updated?.id
+      updatedId: updated?.id,
+      updatedStatus: updated?.status,
+      updatedApprovalStatus: updated?.approval_status
     })
 
     if (updateError) {

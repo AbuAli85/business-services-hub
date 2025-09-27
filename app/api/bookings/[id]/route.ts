@@ -121,6 +121,10 @@ export async function GET(
     const userRole = profile?.is_admin ? 'admin' : (profile?.role || user.user_metadata?.role || 'client')
 
     // Load booking with comprehensive details
+    console.log('🔍 Searching for booking with ID:', params.id)
+    console.log('🔍 User ID:', user.id)
+    console.log('🔍 User role:', userRole)
+    
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -166,6 +170,13 @@ export async function GET(
       `)
       .eq('id', params.id)
       .single()
+    
+    console.log('🔍 Booking query result:', { 
+      hasData: !!booking, 
+      hasError: !!bookingError,
+      errorMessage: bookingError?.message,
+      bookingId: booking?.id 
+    })
 
     if (bookingError) {
       console.error('❌ Booking fetch error:', bookingError)
@@ -194,7 +205,16 @@ export async function GET(
                      booking.client_id === user.id || 
                      booking.provider_id === user.id
 
+    console.log('🔍 Access check:', {
+      userRole,
+      userId: user.id,
+      bookingClientId: booking.client_id,
+      bookingProviderId: booking.provider_id,
+      hasAccess
+    })
+
     if (!hasAccess) {
+      console.error('❌ Access denied for booking:', params.id)
       const response = NextResponse.json({ 
         error: 'Access denied' 
       }, { status: 403 })
@@ -205,17 +225,28 @@ export async function GET(
     // Load client profile
     let clientProfile = null
     if (booking.client_id) {
+      console.log('🔍 Loading client profile for ID:', booking.client_id)
       const { data: clientData, error: clientError } = await supabase
         .from('profiles')
         .select('id, full_name, email, phone, company_name, avatar_url, timezone, preferred_contact_method, response_time')
         .eq('id', booking.client_id)
         .maybeSingle()
       
+      console.log('🔍 Client profile query result:', {
+        hasData: !!clientData,
+        hasError: !!clientError,
+        errorMessage: clientError?.message,
+        clientName: clientData?.full_name
+      })
+      
       if (!clientError && clientData) {
         clientProfile = clientData
+        console.log('✅ Client profile loaded:', clientData.full_name)
       } else {
-        console.warn('Could not load client profile:', clientError)
+        console.warn('❌ Could not load client profile:', clientError)
       }
+    } else {
+      console.warn('❌ No client_id found in booking')
     }
 
     // Load provider profile
