@@ -78,6 +78,11 @@ export async function GET(request: NextRequest) {
     
     const { data: services, error, count } = await query
     
+    // Debug logging
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Raw services from DB:', services?.slice(0, 2)) // Log first 2 services
+    }
+    
     if (error) {
       console.error('Error fetching services:', error)
       return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
@@ -87,25 +92,71 @@ export async function GET(request: NextRequest) {
     const enrichedServices = await Promise.all(
       (services || []).map(async (service) => {
         try {
-          const { data: provider } = await supabase
+          // First try to get provider from profiles table
+          const { data: provider, error: providerError } = await supabase
             .from('profiles')
             .select('id, full_name, email, phone, company_name, avatar_url')
             .eq('id', service.provider_id)
             .single()
           
+          if (providerError || !provider) {
+            // If no profile found, try to get from auth.users
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`No profile found for provider_id: ${service.provider_id}, error:`, providerError)
+            }
+            
+            const { data: authUser } = await supabase.auth.admin.getUserById(service.provider_id)
+            
+            if (authUser?.user) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.log(`Found auth user for provider_id: ${service.provider_id}`, authUser.user.email)
+              }
+              return {
+                ...service,
+                provider: {
+                  id: authUser.user.id,
+                  full_name: authUser.user.user_metadata?.full_name || authUser.user.email?.split('@')[0] || 'Service Provider',
+                  email: authUser.user.email || '',
+                  phone: authUser.user.user_metadata?.phone || '',
+                  company_name: authUser.user.user_metadata?.company_name || '',
+                  avatar_url: authUser.user.user_metadata?.avatar_url || ''
+                }
+              }
+            }
+          }
+          
           return {
             ...service,
-            provider: provider || { id: '', full_name: 'Unknown Provider', email: '', phone: '', company_name: '', avatar_url: '' }
+            provider: provider || { 
+              id: service.provider_id || '', 
+              full_name: 'Service Provider', 
+              email: '', 
+              phone: '', 
+              company_name: '', 
+              avatar_url: '' 
+            }
           }
         } catch (error) {
           console.error('Error enriching service:', error)
           return {
             ...service,
-            provider: { id: '', full_name: 'Unknown Provider', email: '', phone: '', company_name: '', avatar_url: '' }
+            provider: { 
+              id: service.provider_id || '', 
+              full_name: 'Service Provider', 
+              email: '', 
+              phone: '', 
+              company_name: '', 
+              avatar_url: '' 
+            }
           }
         }
       })
     )
+    
+    // Debug logging for enriched services
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Enriched services:', enrichedServices?.slice(0, 2)) // Log first 2 enriched services
+    }
     
     // Get total count for pagination (respecting filters)
     let countQuery = supabase

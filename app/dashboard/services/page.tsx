@@ -82,6 +82,15 @@ export default function ServicesPage() {
   // Use the services state directly
   const sourceServices = services
 
+  // Debug logging
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Services data:', sourceServices)
+      console.log('User role:', userRole)
+      console.log('User ID:', userId)
+    }
+  }, [sourceServices, userRole, userId])
+
 
   // Filter and sort services
   const filteredServices = useMemo(() => {
@@ -172,7 +181,9 @@ export default function ServicesPage() {
       if (userRole === 'provider') return true
       return true
     }).length
-    const totalRevenue = 0 // Revenue hidden for clients
+    const totalRevenue = userRole === 'provider' 
+      ? sourceServices.reduce((sum, s) => sum + ((s.bookingCount || 0) * (s.basePrice || 0)), 0)
+      : 0 // Revenue hidden for clients
     const avgRating = sourceServices.length > 0 
       ? sourceServices.reduce((sum, s) => sum + (s.rating || 0), 0) / sourceServices.length 
       : 0
@@ -563,7 +574,24 @@ export default function ServicesPage() {
       </Card>
 
       {/* Services Grid/List */}
-      {filteredServices.length > 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <div className="h-48 bg-gray-200 rounded-t-lg"></div>
+              <CardContent className="p-6">
+                <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                <div className="flex justify-between items-center">
+                  <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  <div className="h-8 bg-gray-200 rounded w-16"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filteredServices.length > 0 ? (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
           {filteredServices.map((service) => (
             <Card key={service.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white overflow-hidden">
@@ -604,7 +632,7 @@ export default function ServicesPage() {
                   </h3>
                   <p className="text-sm text-gray-600 flex items-center">
                     <User className="h-3 w-3 mr-1" />
-                    {service.providerName}
+                    {service.providerName || 'Service Provider'}
                   </p>
                 </div>
 
@@ -634,7 +662,7 @@ export default function ServicesPage() {
                     </span>
                     {userRole === 'provider' && (
                       <span className="text-green-600 font-medium">
-                        {formatCurrency((service.bookingCount || 0) * service.basePrice / 10, service.currency)} revenue
+                        {formatCurrency((service.bookingCount || 0) * (service.basePrice || 0), service.currency)} revenue
                       </span>
                     )}
                   </div>
@@ -644,7 +672,7 @@ export default function ServicesPage() {
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex flex-col">
                     <span className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(service.basePrice / 10, service.currency)}
+                      {formatCurrency(service.basePrice || 0, service.currency)}
                     </span>
                     <span className="text-xs text-gray-500">Starting price</span>
                   </div>
@@ -702,11 +730,17 @@ export default function ServicesPage() {
         <Card>
           <CardContent className="p-8 text-center">
             <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No services found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {loading ? 'Loading services...' : 'No services found'}
+            </h3>
             <p className="text-gray-600 mb-4">
-              {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
-                ? 'Try adjusting your filters to see more services.'
-                : userRole === 'provider' ? 'Services will appear here when you create them.' : 'No active services available at the moment.'}
+              {loading 
+                ? 'Please wait while we load your services...'
+                : searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
+                  ? 'Try adjusting your filters to see more services.'
+                  : userRole === 'provider' 
+                    ? 'Services will appear here when you create them. Click "Create Service" to get started!' 
+                    : 'No active services available at the moment.'}
             </p>
             {userRole === 'provider' ? (
               <Button onClick={() => router.push('/dashboard/services/create')} variant="outline">
@@ -754,7 +788,7 @@ export default function ServicesPage() {
                         <div className="text-right">
                           <p className="font-bold text-gray-900">{service.bookingCount || 0} bookings</p>
                           <p className="text-sm text-green-600">
-                            {formatCurrency((service.bookingCount || 0) * service.basePrice / 10, service.currency)}
+                            {formatCurrency((service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
                           </p>
                         </div>
                       </div>
