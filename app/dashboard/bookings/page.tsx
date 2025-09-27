@@ -235,6 +235,19 @@ export default function BookingsPage() {
     initializeUser()
   }, [router])
 
+  // Map UI sort keys to API sort keys
+  const mapSortKeyToApi = (key: string): string => {
+    switch (key) {
+      case 'lastUpdated': return 'updated_at'
+      case 'createdAt': return 'created_at'
+      case 'totalAmount': return 'amount'
+      case 'serviceTitle': return 'title'
+      case 'clientName': return 'client_name'
+      case 'providerName': return 'provider_name'
+      default: return 'created_at'
+    }
+  }
+
   // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
     if (isLoadingRef.current) {
@@ -254,45 +267,24 @@ export default function BookingsPage() {
       setError(null)
       
       // Build query params for server-side pagination/filtering
-      // Map UI status to DB status
-      const statusForApi = statusFilter === 'confirmed' ? 'approved' : statusFilter
       const params = new URLSearchParams({
-        role: userRole,
-        status: statusForApi,
-        q: debouncedQuery.replace(/^#/, '')
+        page: String(currentPage),
+        pageSize: String(pageSize),
+        search: debouncedQuery.replace(/^#/, ''),
+        status: statusFilter === 'all' ? '' : statusFilter,
+        sort: mapSortKeyToApi(sortBy),
+        order: sortOrder
       })
       
-      // Use appropriate API endpoint based on role
-      const apiEndpoint = userRole === 'admin' 
-        ? `/api/admin/bookings?page=${currentPage}&pageSize=${pageSize}&${params}`
-        : `/api/bookings?${params}`
+      // Use the new bookings API endpoint
+      const apiEndpoint = `/api/bookings?${params}`
       
       console.log('📡 Fetching from:', apiEndpoint)
       
-      // Use authenticated API request with fallback
-      const { apiRequest } = await import('@/lib/api-utils')
-
-      // 429-aware backoff wrapper with jitter
-      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-      const doFetch = async () => {
-        let attempt = 0
-        const maxRetries = 4
-        const base = 300
-        const cap = 5000
-        while (true) {
-          const res = await apiRequest(apiEndpoint, { cache: 'no-store' })
-          if (res.status !== 429) return res
-          const ra = res.headers.get('retry-after')
-          const delay = ra ? Number(ra) * 1000 : Math.min(cap, base * 2 ** attempt)
-          const wait = Math.floor(Math.random() * Math.max(300, delay))
-          if (attempt >= maxRetries) return res
-          await sleep(wait)
-          attempt++
-        }
-      }
-
-      // Try the request with automatic token refresh handling
-      let res = await doFetch()
+      const res = await fetch(apiEndpoint, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      })
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -300,29 +292,10 @@ export default function BookingsPage() {
 
         // Handle authentication errors (401)
         if (res.status === 401) {
-          console.log('🔐 Authentication required (401). Token refresh should have been handled automatically.')
-
-          // Check if we have a valid session after the automatic refresh attempt
-          const supabase = await getSupabaseClient()
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-          if (sessionError || !session) {
-            console.log('❌ Session check failed after automatic refresh attempt')
-            setError('Your session has expired. Please sign in again to continue.')
-            router.push('/auth/sign-in')
-            return
-          } else {
-            console.log('✅ Session appears valid after refresh, but API still returned 401')
-            // Try one more time in case there was a timing issue
-            await new Promise(r => setTimeout(r, 500))
-            const retryRes = await doFetch()
-            if (!retryRes.ok) {
-              setError('Authentication failed. Please sign in again to continue.')
-              router.push('/auth/sign-in')
-              return
-            }
-            res = retryRes // Use the successful retry response
-          }
+          console.log('🔐 Authentication required (401)')
+          setError('Your session has expired. Please sign in again to continue.')
+          router.push('/auth/sign-in')
+          return
         }
         
         // For non-critical errors, show empty state instead of error
@@ -339,45 +312,34 @@ export default function BookingsPage() {
       
       const json = await res.json()
       console.log('📊 API Response received:', { 
-        type: userRole === 'admin' ? 'admin' : 'standard',
-        itemCount: userRole === 'admin' ? json.items?.length : json.bookings?.length
+        dataCount: json.data?.length,
+        total: json.total
       })
       
-      // Handle different response formats
-      if (userRole === 'admin') {
-        const items = json.items || []
-        setBookings(items)
-        setTotalCount(Number(json.total || 0))
-        // Extract invoices from embedded data
-        const embedded = items.flatMap((r: any) => r.invoices || [])
-        setInvoices(embedded)
-        console.log('✅ Admin data loaded:', { bookings: items.length, invoices: embedded.length })
-      } else {
-        // Standard bookings API response
-        const bookingsData = json.bookings || []
-        setBookings(bookingsData)
-        setTotalCount(bookingsData.length)
-        console.log('✅ Bookings data loaded:', bookingsData.length)
-        
-        // Load invoices separately for non-admin users
-        try {
-          const invoiceRes = await fetch('/api/invoices', {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          if (invoiceRes.ok) {
-            const invoiceJson = await invoiceRes.json()
-            const invoicesData = invoiceJson.invoices || []
-            setInvoices(invoicesData)
-            console.log('✅ Invoices data loaded:', invoicesData.length)
-          } else {
-            console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
-            setInvoices([]) // Continue without invoices if loading fails
-          }
-        } catch (invoiceError) {
-          console.warn('⚠️ Invoice loading error:', invoiceError)
+      // Handle the new API response format
+      const bookingsData = json.data || []
+      setBookings(bookingsData)
+      setTotalCount(Number(json.total || 0))
+      console.log('✅ Bookings data loaded:', bookingsData.length)
+      
+      // Load invoices separately
+      try {
+        const invoiceRes = await fetch('/api/invoices', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        if (invoiceRes.ok) {
+          const invoiceJson = await invoiceRes.json()
+          const invoicesData = invoiceJson.invoices || []
+          setInvoices(invoicesData)
+          console.log('✅ Invoices data loaded:', invoicesData.length)
+        } else {
+          console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
           setInvoices([]) // Continue without invoices if loading fails
         }
+      } catch (invoiceError) {
+        console.warn('⚠️ Invoice loading error:', invoiceError)
+        setInvoices([]) // Continue without invoices if loading fails
       }
       
     } catch (e: any) {
@@ -388,7 +350,7 @@ export default function BookingsPage() {
       console.log('✅ Data loading complete')
       isLoadingRef.current = false
     }
-  }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery, router])
+  }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery, sortBy, sortOrder, router])
 
   // Only load data when user and role are ready
   useEffect(() => {
@@ -603,67 +565,13 @@ export default function BookingsPage() {
   const bookingsSource = bookings
   const invoicesSource = invoices
 
-  // Filter and sort bookings
-  const filteredBookings = useMemo(() => {
-    let filtered = bookingsSource.filter(booking => {
-      const q = debouncedQuery.trim().replace(/^#/, '').toLowerCase()
-      const matchesSearch = q === '' || 
-        ((booking as any).services?.title || booking.serviceTitle || '').toLowerCase().includes(q) ||
-        ((booking as any).client_profile?.full_name || booking.clientName || '').toLowerCase().includes(q) ||
-        ((booking as any).provider_profile?.full_name || booking.providerName || '').toLowerCase().includes(q) ||
-        String((booking as any).id || '').toLowerCase().includes(q)
-      
-      const derivedStatus = getDerivedStatus(booking)
-      const matchesStatus = statusFilter === 'all' || derivedStatus === statusFilter
-      
-      return matchesSearch && matchesStatus
-    })
+  // Since we're using server-side pagination, we don't need client-side filtering
+  // The API handles all filtering and sorting
+  const filteredBookings = bookingsSource
 
-    const safeStr = (v: any) => (v ?? '').toString()
-    const safeNum = (v: any) => (typeof v === 'number' && !Number.isNaN(v)) ? v : Number(v ?? 0) || 0
-    const cmp = (a: any, b: any) => {
-      switch (sortBy) {
-        case 'lastUpdated': {
-          // Prefer updated_*; fall back to created_*
-          const au = getUpdatedAtTimestamp(a) || getCreatedAtTimestamp(a)
-          const bu = getUpdatedAtTimestamp(b) || getCreatedAtTimestamp(b)
-          return sortOrder === 'asc' ? au - bu : bu - au
-  }
-        case 'createdAt': {
-          const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
-          return sortOrder === 'asc' ? av - bv : bv - av
-  }
-        case 'totalAmount': {
-          const av = safeNum(a.totalAmount ?? a.amount ?? a.total_price)
-          const bv = safeNum(b.totalAmount ?? b.amount ?? b.total_price)
-          return sortOrder === 'asc' ? av - bv : bv - av
-  }
-        case 'serviceTitle': {
-          const av = safeStr(a.services?.title ?? a.serviceTitle)
-          const bv = safeStr(b.services?.title ?? b.serviceTitle)
-          const res = av.localeCompare(bv, undefined, { sensitivity: 'base' })
-          return sortOrder === 'asc' ? res : -res
-  }
-        case 'clientName': {
-          const av = safeStr(a.client_profile?.full_name ?? a.clientName)
-          const bv = safeStr(b.client_profile?.full_name ?? b.clientName)
-          const res = av.localeCompare(bv, undefined, { sensitivity: 'base' })
-          return sortOrder === 'asc' ? res : -res
-  }
-        default: {
-          const av = getCreatedAtTimestamp(a); const bv = getCreatedAtTimestamp(b)
-          return sortOrder === 'asc' ? av - bv : bv - av
-  }
-  }
-  }
-    filtered.sort(cmp)
-
-    return filtered
-  }, [bookingsSource, debouncedQuery, statusFilter, sortBy, sortOrder, getCreatedAtTimestamp])
-
-  // Pagination: Use filtered results for all users to ensure filters work with pagination
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize))
-  const paginatedBookings = filteredBookings.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  // Pagination: Use server-side pagination results
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const paginatedBookings = filteredBookings // Already paginated by the API
 
   // Memoized invoice lookup for performance
   const invoiceByBooking = useMemo(() => {
@@ -874,7 +782,7 @@ export default function BookingsPage() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = bookingsSource.length
+    const total = totalCount
     const completed = bookingsSource.filter((b:any) => b.status === 'completed').length
     const inProgress = bookingsSource.filter((b:any) => b.status === 'in_progress').length
     // Only count truly pending bookings (not approved yet)
@@ -886,17 +794,17 @@ export default function BookingsPage() {
     // Revenue (to date) - only completed/delivered projects that are invoiced/paid
     const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
-      .reduce((sum: number, b: any) => sum + (b.totalAmount ?? b.amount ?? b.total_price ?? 0), 0)
+      .reduce((sum: number, b: any) => sum + (b.amount_cents / 100), 0)
     
     // Projected billings - approved/ready projects not yet invoiced
     const projectedBillings = bookingsSource
       .filter(b => (b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))) && b.status !== 'completed')
-      .reduce((sum: number, b: any) => sum + (b.totalAmount ?? b.amount ?? b.total_price ?? 0), 0)
+      .reduce((sum: number, b: any) => sum + (b.amount_cents / 100), 0)
     
     const avgCompletionTime = 7.2 // Mock data
 
     return { total, completed, inProgress, pending, approved, totalRevenue, projectedBillings, avgCompletionTime }
-  }, [bookingsSource])
+  }, [bookingsSource, totalCount])
 
   // Show loading skeleton only during initial user loading
   if (userLoading || dataLoading) {
@@ -1308,6 +1216,7 @@ export default function BookingsPage() {
                 <SelectItem value="totalAmount">Amount</SelectItem>
                 <SelectItem value="serviceTitle">Service</SelectItem>
                 <SelectItem value="clientName">Client</SelectItem>
+                <SelectItem value="providerName">Provider</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -1358,7 +1267,7 @@ export default function BookingsPage() {
                   )}
                 </div>
                 <div className="text-sm text-blue-700">
-                  {filteredBookings.length} result{filteredBookings.length !== 1 ? 's' : ''} found
+                  {totalCount} result{totalCount !== 1 ? 's' : ''} found
                 </div>
               </div>
               <Button
@@ -1521,7 +1430,7 @@ export default function BookingsPage() {
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition-colors">
-                                {(booking as any).services?.title || (booking as any).title || 'Service'}
+                                {booking.service_title || 'Service'}
                               </Link>
                               {booking.status === 'completed' && (
                                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -1543,15 +1452,15 @@ export default function BookingsPage() {
                         
                         {userRole === 'admin' && (
                           <TableCell>
-                            <div className="font-medium">{(booking as any).client_profile?.full_name || 'Client'}</div>
-                            <div className="text-sm text-gray-500">{(booking as any).client_profile?.email || 'No email'}</div>
+                            <div className="font-medium">{booking.client_name || 'Client'}</div>
+                            <div className="text-sm text-gray-500">Client ID: {booking.client_id || 'N/A'}</div>
                           </TableCell>
                         )}
                         
                         {(userRole === 'admin' || userRole === 'client') && (
                           <TableCell>
-                            <div className="font-medium">{(booking as any).provider_profile?.full_name || 'Provider'}</div>
-                            <div className="text-sm text-gray-500">{(booking as any).provider_profile?.email || 'No email'}</div>
+                            <div className="font-medium">{booking.provider_name || 'Provider'}</div>
+                            <div className="text-sm text-gray-500">Provider ID: {booking.provider_id || 'N/A'}</div>
                           </TableCell>
                         )}
                         
@@ -1559,8 +1468,8 @@ export default function BookingsPage() {
                           <div className="space-y-1">
                             <div className="font-bold text-lg text-gray-900">
                               {formatCurrency(
-                                Number((booking as any).totalAmount ?? (booking as any).amount ?? (booking as any).total_price ?? 0),
-                                String((booking as any).currency ?? 'OMR')
+                                Number(booking.amount_cents / 100),
+                                String(booking.currency ?? 'OMR')
                               )}
                             </div>
                             <div className="flex items-center gap-1">
@@ -1858,12 +1767,10 @@ export default function BookingsPage() {
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
-                {`Page ${currentPage} of ${totalPages} • ${filteredBookings.length} results`}
-                {paginatedBookings.length !== filteredBookings.length && (
-                  <span className="text-blue-600 ml-2">
-                    (Showing {paginatedBookings.length} of {filteredBookings.length} on this page)
-                  </span>
-                )}
+                {`Page ${currentPage} of ${totalPages} • ${totalCount} total results`}
+                <span className="text-blue-600 ml-2">
+                  (Showing {paginatedBookings.length} on this page)
+                </span>
               </div>
               
               <div className="flex items-center gap-2">
@@ -1912,11 +1819,11 @@ export default function BookingsPage() {
       )}
       
       {/* Smart Results Summary */}
-      {!dataLoading && totalPages <= 1 && bookings.length > 0 && (
+      {!dataLoading && totalPages <= 1 && totalCount > 0 && (
         <div className="text-center">
           <Badge variant="outline" className="text-gray-600">
             <BarChart3 className="h-3 w-3 mr-1" />
-            {bookings.length} project{bookings.length !== 1 ? 's' : ''} in your portfolio
+            {totalCount} project{totalCount !== 1 ? 's' : ''} in your portfolio
           </Badge>
         </div>
       )}

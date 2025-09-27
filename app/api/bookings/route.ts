@@ -222,10 +222,9 @@ export async function POST(request: NextRequest) {
     const { data: service, error: serviceError } = await supabase
       .from('services')
       .select(`
-        *,
-        provider_id,
-        base_price,
-        service_packages(*)
+        id, title, status, provider_id, base_price, currency,
+        service_packages(id, price),
+        provider:profiles!services_provider_id_fkey(full_name, email)
       `)
       .eq('id', service_id)
       .eq('status', 'active')
@@ -252,6 +251,9 @@ export async function POST(request: NextRequest) {
         amount = selectedPackage.price
       }
     }
+    
+    // Convert to cents for consistent storage
+    const amount_cents = Math.round((amount ?? 0) * 100)
 
     // Create booking with approval workflow
     const { data: booking, error: bookingError } = await supabase
@@ -260,7 +262,7 @@ export async function POST(request: NextRequest) {
         service_id,
         client_id: user.id,
         provider_id: service.provider_id,
-        title: service.title || 'Service Booking',
+        service_title: service.title || 'Service Booking',
         scheduled_date,
         start_time: scheduled_date, // Use scheduled_date as start_time
         end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add 2 hours for end_time
@@ -268,13 +270,14 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         approval_status: 'pending',
         operational_status: 'new',
-        amount,
+        amount_cents,
         currency: service.currency || 'OMR',
         payment_status: 'pending',
         estimated_duration,
         location,
-        total_price: amount, // Add required total_price field (matches existing schema)
-        total_amount: amount // Add required total_amount field (for webhook trigger)
+        total_price: amount, // Keep legacy fields for compatibility
+        total_amount: amount,
+        amount: amount // Keep legacy field for compatibility
       })
       .select(`
         *,
@@ -331,6 +334,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     // Create notification for provider
+    const providerName = (service.provider as any)?.full_name || 'Service Provider'
     await supabase.from('notifications').insert({
       user_id: service.provider_id,
       type: 'booking_created',
@@ -347,7 +351,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('services')
       .update({ 
-        bookings_count: (service.bookings_count || 0) + 1 
+        bookings_count: ((service as any).bookings_count || 0) + 1 
       })
       .eq('id', service_id)
 
@@ -358,7 +362,7 @@ export async function POST(request: NextRequest) {
         client_id: user.id,
         client_name: clientProfile?.full_name || 'Client',
         provider_id: service.provider_id,
-        provider_name: service.provider?.full_name || 'Service Provider',
+        provider_name: providerName,
         service_name: service.title,
         booking_title: booking.title,
         scheduled_date: booking.scheduled_date,
@@ -421,156 +425,105 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const rawStatus = searchParams.get('status')
-    const role = searchParams.get('role') || 'all'
-    const bookingId = searchParams.get('bookingId')
-  const debug = searchParams.get('debug') === '1'
+    const page = Number(searchParams.get('page')) || 1
+    const pageSize = Number(searchParams.get('pageSize')) || 25
+    const search = searchParams.get('search') || ''
+    const status = searchParams.get('status') || ''
+    const sort = searchParams.get('sort') || 'created_at'
+    const order = searchParams.get('order') || 'desc'
 
-    // Map UI terms to DB values
-    const mapUiStatusToDb = (s?: string | null) => {
-      if (!s) return s
-      const m: Record<string, string> = { confirmed: 'approved' }
-      return m[s] ?? s
-    }
-    const status = mapUiStatusToDb(rawStatus)
-
-    // First get the basic bookings data
+    // Build base query by role
     let query = supabase
       .from('bookings')
-      .select(`
-        *,
-        services(title, description, category)
-      `)
-      .order('created_at', { ascending: false })
+      .select('*', { count: 'exact' })
 
-  // If specific booking ID is requested, filter by it
-  if (bookingId) {
-    query = query.eq('id', bookingId)
-  }
+    if (userRole === 'provider') {
+      query = query.eq('provider_id', user.id)
+    } else if (userRole === 'client') {
+      query = query.eq('client_id', user.id)
+    }
 
-  console.log('🔎 Bookings GET params:', {
-    userId: user.id,
-    computedUserRole: userRole,
-    requestedRole: role,
-    status,
-    bookingId
-  })
-    
-    // Filter by user role - but if specific booking is requested, check access differently
-  if (debug) {
-    console.log('🧪 Debug mode enabled: bypassing role/status filters and limiting to 5')
-    // Rebuild query to ensure filters are clean
-    query = supabase
-      .from('bookings')
-      .select(`
-        *,
-        services(title, description, category)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(5)
-  } else if (bookingId) {
-      // For specific booking requests, check if user has access to this booking
-      if (userRole === 'client') {
-        query = query.eq('client_id', user.id)
-      console.log('🔧 Applying filter: client owns booking (by id)')
-      } else if (userRole === 'provider') {
-        query = query.eq('provider_id', user.id)
-      console.log('🔧 Applying filter: provider owns booking (by id)')
-      } else if (userRole !== 'admin') {
-        // Check if user has access to this specific booking
-        query = query.or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
-      console.log('🔧 Applying filter: non-admin access (by id)')
-      }
-      // Admin can access any booking
-    } else {
-      // Regular role-based filtering for listing bookings
-      if (role === 'client' || (role === 'all' && userRole === 'client')) {
-        query = query.eq('client_id', user.id)
-      console.log('🔧 Applying filter: list client bookings')
-      } else if (role === 'provider' || (role === 'all' && userRole === 'provider')) {
-        query = query.eq('provider_id', user.id)
-      console.log('🔧 Applying filter: list provider bookings')
-      } else if (role === 'admin' || (role === 'all' && userRole === 'admin')) {
-        // Admin can see all bookings - no additional filter needed
-        if (userRole !== 'admin') {
-          const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
-          Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-          return response
-        }
-      console.log('🔧 Applying filter: admin (no filter)')
-      } else {
-        // Default to user's own bookings based on their role
-        if (userRole === 'client') {
-          query = query.eq('client_id', user.id)
-        console.log('🔧 Applying filter: default client')
-        } else if (userRole === 'provider') {
-          query = query.eq('provider_id', user.id)
-        console.log('🔧 Applying filter: default provider')
-        } else if (userRole !== 'admin') {
-          const response = NextResponse.json({ error: 'Access denied' }, { status: 403 })
-          Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-          return response
-        }
+    // Status filter: handle derived statuses
+    if (status) {
+      switch (status) {
+        case 'pending_review':
+          query = query.eq('status', 'pending').neq('approval_status', 'approved')
+          break
+        case 'approved':
+          query = query.eq('status', 'approved')
+          break
+        case 'ready_to_launch':
+          query = query.eq('status', 'pending').eq('approval_status', 'approved')
+          break
+        case 'in_production':
+          query = query.eq('status', 'in_progress')
+          break
+        case 'delivered':
+          query = query.eq('status', 'completed')
+          break
+        default:
+          query = query.eq('status', status)
       }
     }
 
-  // Filter by status if specified (unless debug)
-  if (!debug && status && status !== 'all') {
-    query = query.eq('status', status)
-  }
+    // Search functionality
+    if (search) {
+      query = query.or([
+        `service_title.ilike.%${search}%`,
+        `client_name.ilike.%${search}%`,
+        `provider_name.ilike.%${search}%`,
+      ].join(','))
+    }
 
-  const { data: bookings, error } = await query
-  const mapped = (bookings || []).map((b: any) => ({
-    ...b,
-    ui_status: (b.status === 'approved' ? 'confirmed' : b.status) || null,
-    ui_approval_status: (b.approval_status || null),
-  }))
-  console.log('📊 Bookings query result:', { hasError: !!error, errorMessage: error?.message, count: mapped?.length ?? 0 })
+    // Sorting
+    switch (sort) {
+      case 'updated_at':
+        query = query.order('updated_at', { ascending: order === 'asc', nullsFirst: false })
+        break
+      case 'amount':
+        query = query.order('amount_cents', { ascending: order === 'asc' })
+        break
+      case 'title':
+        query = query.order('service_title', { ascending: order === 'asc' })
+        break
+      case 'client_name':
+        query = query.order('client_name', { ascending: order === 'asc', nullsFirst: true })
+        break
+      case 'provider_name':
+        query = query.order('provider_name', { ascending: order === 'asc', nullsFirst: true })
+        break
+      default:
+        query = query.order('created_at', { ascending: order === 'asc' })
+    }
+
+    // Pagination
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const { data, count, error } = await query.range(from, to)
 
     if (error) {
-      console.error('Error fetching bookings:', error)
-      const response = NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 })
+      const response = NextResponse.json({ error: error.message }, { status: 400 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
-    // Now enrich the bookings with profile data
-    const enrichedBookings = await Promise.all(
-      (bookings || []).map(async (booking: any) => {
-        let clientProfile: any = null
-        let providerProfile: any = null
-        
-        if (booking.client_id) {
-          const { data: clientData } = await supabase
-            .from('profiles')
-            .select('full_name, email, phone')
-            .eq('id', booking.client_id)
-            .single()
-          clientProfile = clientData
-        }
-        
-        if (booking.provider_id) {
-          const { data: providerData } = await supabase
-            .from('profiles')
-            .select('full_name, email, phone')
-            .eq('id', booking.provider_id)
-            .single()
-          providerProfile = providerData
-        }
-        
-        return {
-          ...booking,
-          client_profile: clientProfile,
-          provider_profile: providerProfile
-        }
-      })
-    )
+    const payload = {
+      data: (data ?? []) as any[],
+      page,
+      pageSize,
+      total: count ?? 0,
+    }
 
-    return Response.json({ bookings: enrichedBookings }, { headers: corsHeaders })
+    return NextResponse.json(payload, { 
+      status: 200, 
+      headers: corsHeaders,
+    })
 
   } catch (error) {
     console.error('Error fetching bookings:', error)
-    return jsonError(500, 'INTERNAL_ERROR', 'Internal server error')
+    const response = jsonError(500, 'INTERNAL_ERROR', 'Internal server error')
+    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    return response
   }
 }
 
@@ -601,30 +554,21 @@ const patchSchema = zod.object({
 export async function PATCH(request: NextRequest) {
   try {
     console.log('🔍 Bookings API PATCH called')
-    console.log('🔍 API: Request URL:', request.url)
-    console.log('🔍 API: Request method:', request.method)
-    console.log('🔍 API: Request headers:', Object.fromEntries(request.headers.entries()))
     
+    // 🔐 Use session-bound client for RLS consistency
+    const supabase = await makeServerClient(request)
+    
+    // Authenticate user
     const { user, authError } = await authenticateUser(request)
     
     if (authError || !user) {
-      console.error('❌ Auth error:', authError)
-      const errorMessage = authError && typeof authError === 'object' && 'message' in authError 
-        ? authError.message 
-        : 'Authentication failed'
-      const response = NextResponse.json({ error: 'Authentication failed', details: errorMessage }, { status: 401 })
+      console.error('❌ Auth error:', authError?.message || 'Authentication failed')
+      const response = NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
     
-    const supabase = await createClient()
-    console.log('✅ Supabase client obtained')
-
-    console.log('✅ User authenticated:', user.id)
-    console.log('🔍 API: Full user object:', JSON.stringify(user, null, 2))
-    console.log('🔍 API: User metadata:', user.user_metadata)
-    console.log('🔍 API: User role:', user.user_metadata?.role)
-    console.log('🔍 API: User email:', user.email)
+    console.log('✅ User authenticated:', user.id, 'Role:', user.user_metadata?.role)
 
     const body = await request.json()
     const parsed = patchSchema.safeParse(body)
