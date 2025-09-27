@@ -382,8 +382,8 @@ export default function EnhancedBookingDetails({
       let bookingData, error
 
       try {
-        // Use API call instead of direct Supabase call
-        const response = await fetch(`/api/bookings?bookingId=${bookingId}`, {
+        // Use the dedicated booking details API
+        const response = await fetch(`/api/bookings/${bookingId}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
         })
@@ -392,8 +392,8 @@ export default function EnhancedBookingDetails({
           throw new Error(`API request failed: ${response.status}`)
         }
         
-        const { bookings } = await response.json()
-        bookingData = bookings?.[0]
+        const { booking } = await response.json()
+        bookingData = booking
         error = bookingData ? null : new Error('Booking not found')
       } catch (apiError) {
         console.error('API call failed:', apiError)

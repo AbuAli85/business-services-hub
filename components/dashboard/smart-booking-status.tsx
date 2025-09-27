@@ -640,7 +640,7 @@ export function CompactBookingStatus({
         abortRef.current?.abort()
         const ctrl = new AbortController()
         abortRef.current = ctrl
-        const res = await fetch(`/api/bookings?bookingId=${bookingId}`, {
+        const res = await fetch(`/api/bookings/${bookingId}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           signal: ctrl.signal,
@@ -683,8 +683,7 @@ export function CompactBookingStatus({
       const json = await p.finally(() => inflight.delete(bookingId))
       cache.set(bookingId, { json, ts: Date.now() })
 
-      const { bookings } = json
-      const booking = bookings?.[0]
+      const { booking } = json
 
       if (!booking) {
         console.error('Booking not found')
