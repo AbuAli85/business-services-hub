@@ -68,12 +68,18 @@ export interface Service {
   currency: string
   providerId: string
   providerName: string
+  provider_name?: string // API field name
   status: 'active' | 'inactive' | 'suspended'
   approvalStatus: 'pending' | 'approved' | 'rejected'
   featured: boolean
   rating?: number
   reviewCount?: number
   bookingCount?: number
+  // API field names
+  avg_rating?: number
+  review_count?: number
+  booking_count?: number
+  total_revenue?: number
   createdAt: string
   updatedAt: string
 }

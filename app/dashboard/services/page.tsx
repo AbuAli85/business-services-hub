@@ -214,10 +214,10 @@ export default function ServicesPage() {
       return true
     }).length
     const totalRevenue = isProvider 
-      ? sourceServices.reduce((sum, s) => sum + ((s.bookingCount || 0) * (s.basePrice || 0)), 0)
+      ? sourceServices.reduce((sum, s) => sum + ((s.booking_count || s.bookingCount || 0) * (s.basePrice || 0)), 0)
       : 0 // Revenue hidden for clients
     const avgRating = sourceServices.length > 0 
-      ? sourceServices.reduce((sum, s) => sum + (s.rating || 0), 0) / sourceServices.length 
+      ? sourceServices.reduce((sum, s) => sum + (s.avg_rating || s.rating || 0), 0) / sourceServices.length 
       : 0
 
     return { total, active, pending, totalBookings, totalRevenue, avgRating }
@@ -275,63 +275,6 @@ export default function ServicesPage() {
       notifications={0}
     >
       <div className="space-y-6">
-        {/* Role-Based Dashboard Widgets */}
-        <RoleBasedContent allowedRoles={['admin']} userRole={userRole}>
-          <AdminDashboardWidgets
-            stats={{
-              totalUsers: 0, // This would come from API
-              totalServices: stats.total,
-              totalBookings: stats.totalBookings,
-              totalRevenue: stats.totalRevenue,
-              pendingApprovals: 0, // This would come from API
-              systemHealth: 'good' as const,
-              recentActivity: 0 // This would come from API
-            }}
-            onViewUsers={() => router.push('/dashboard/users')}
-            onViewAnalytics={() => router.push('/dashboard/analytics')}
-            onViewSystemHealth={() => router.push('/dashboard/system')}
-            onViewPendingApprovals={() => router.push('/dashboard/approvals')}
-          />
-        </RoleBasedContent>
-
-        <RoleBasedContent allowedRoles={['provider']} userRole={userRole}>
-          <ProviderDashboardWidgets
-            stats={{
-              totalServices: stats.total,
-              activeServices: stats.active,
-              totalBookings: stats.totalBookings,
-              totalRevenue: stats.totalRevenue,
-              avgRating: stats.avgRating,
-              pendingBookings: 0, // This would come from API
-              completedBookings: 0, // This would come from API
-              monthlyRevenue: stats.totalRevenue * 0.1, // Mock data
-              monthlyGrowth: 15 // Mock data
-            }}
-            onViewServices={() => {}}
-            onViewBookings={() => router.push('/dashboard/bookings')}
-            onViewAnalytics={() => router.push('/dashboard/analytics')}
-            onCreateService={() => router.push('/dashboard/services/create')}
-          />
-        </RoleBasedContent>
-
-        <RoleBasedContent allowedRoles={['client']} userRole={userRole}>
-          <ClientDashboardWidgets
-            stats={{
-              totalBookings: stats.totalBookings,
-              activeBookings: 0, // This would come from API
-              completedBookings: 0, // This would come from API
-              totalSpent: 0, // This would come from API
-              favoriteCategories: categories.slice(0, 3),
-              upcomingBookings: 0, // This would come from API
-              savedServices: 0, // This would come from API
-              notifications: 0 // This would come from API
-            }}
-            onViewBookings={() => router.push('/dashboard/bookings')}
-            onBrowseServices={() => {}}
-            onViewFavorites={() => router.push('/dashboard/favorites')}
-            onViewHistory={() => router.push('/dashboard/history')}
-          />
-        </RoleBasedContent>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
@@ -442,57 +385,6 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {/* Provider Analytics Section */}
-      {isProvider && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Package className="h-4 w-4 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium">Services Created</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium">Active Services</p>
-                  <p className="text-2xl font-bold">{stats.active}</p>
-                  <p className="text-xs text-gray-500">{stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : 0}% of total</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-purple-600" />
-                <div>
-                  <p className="text-sm font-medium">Total Bookings</p>
-                  <p className="text-2xl font-bold">{stats.totalBookings}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Star className="h-4 w-4 text-yellow-600" />
-                <div>
-                  <p className="text-sm font-medium">Average Rating</p>
-                  <p className="text-2xl font-bold">{stats.avgRating.toFixed(1)}</p>
-                  <p className="text-xs text-gray-500">Based on reviews</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Enhanced Search and Filters */}
       <Card className="shadow-sm">
@@ -744,7 +636,7 @@ export default function ServicesPage() {
                     </div>
                     <div className="flex flex-col">
                       <span className="font-semibold text-sm text-gray-800">
-                        {service.providerName || 'Service Provider'}
+                        {service.provider_name || service.providerName || 'Service Provider'}
                       </span>
                       <span className="text-xs text-gray-500">Service Provider</span>
                     </div>
@@ -765,11 +657,11 @@ export default function ServicesPage() {
                       </div>
                       <span className="text-sm font-medium text-gray-700">{service.category}</span>
                     </div>
-                    {(service.rating || 0) > 0 && (
+                    {(service.avg_rating || service.rating || 0) > 0 && (
                       <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full">
                         <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                        <span className="text-sm font-bold text-gray-800">{(service.rating || 0).toFixed(1)}</span>
-                        <span className="text-xs text-gray-500">({service.reviewCount || 0})</span>
+                        <span className="text-sm font-bold text-gray-800">{(service.avg_rating || service.rating || 0).toFixed(1)}</span>
+                        <span className="text-xs text-gray-500">({service.review_count || service.reviewCount || 0})</span>
                       </div>
                     )}
                   </div>
@@ -778,13 +670,13 @@ export default function ServicesPage() {
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4 text-gray-500" />
-                        <span className="text-gray-600">{service.bookingCount || 0} bookings</span>
+                        <span className="text-gray-600">{service.booking_count || service.bookingCount || 0} bookings</span>
                       </div>
                       {isProvider && (
                         <div className="flex items-center space-x-1">
                           <DollarSign className="h-4 w-4 text-green-500" />
                           <span className="text-green-600 font-medium">
-                            {formatCurrency((service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
+                            {formatCurrency((service.booking_count || service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
                           </span>
                         </div>
                       )}
