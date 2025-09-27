@@ -741,12 +741,32 @@ export async function PATCH(request: NextRequest) {
         } else {
           // Direct update if status is already approved
           console.log('📝 Direct update: Status is already approved, updating to in_progress')
-          updates = {
-            status: 'in_progress',
-            updated_at: new Date().toISOString()
+          
+          const { data: directResult, error: directError } = await supabase
+            .from('bookings')
+            .update({
+              status: 'in_progress',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', booking_id)
+            .select()
+            .single()
+          
+          if (directError) {
+            console.error('❌ Direct update failed:', directError)
+            return NextResponse.json({ 
+              error: 'Failed to start project', 
+              details: directError.message 
+            }, { status: 500 })
           }
-          notification = { user_id: booking.client_id, title: 'Project Started', message: 'Your project has been started', type: 'project_started' }
-          console.log('✅ Start project updates:', updates)
+          
+          console.log('✅ Direct update completed: Status updated to in_progress')
+          return NextResponse.json({ 
+            success: true, 
+            booking: directResult,
+            message: 'Project started successfully',
+            updated_fields: ['status']
+          })
         }
         break
       case 'reschedule':
