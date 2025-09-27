@@ -38,8 +38,9 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 export default function ServicesPage() {
   const router = useRouter()
-  const { services, bookings, loading, error, refresh } = useDashboardData()
   const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const { services, bookings, loading, error, refresh } = useDashboardData(userRole || undefined, userId || undefined)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -51,13 +52,15 @@ export default function ServicesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [featuredOnly, setFeaturedOnly] = useState(false)
 
-  // Get user role
+  // Get user role and ID
   useEffect(() => {
     (async () => {
       try {
         const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        
+        setUserId(user.id)
         
         // detect role
         let role: any = user.user_metadata?.role
@@ -248,6 +251,12 @@ export default function ServicesPage() {
                   <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
                 </div>
               )}
+              {userRole === 'provider' && (
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 mr-1" />
+                  <span>Avg Rating: {stats.avgRating.toFixed(1)}</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-3">
@@ -325,6 +334,58 @@ export default function ServicesPage() {
           </Card>
         )}
       </div>
+
+      {/* Provider Analytics Section */}
+      {userRole === 'provider' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Package className="h-4 w-4 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium">Services Created</p>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium">Active Services</p>
+                  <p className="text-2xl font-bold">{stats.active}</p>
+                  <p className="text-xs text-gray-500">{stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : 0}% of total</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium">Total Bookings</p>
+                  <p className="text-2xl font-bold">{stats.totalBookings}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Star className="h-4 w-4 text-yellow-600" />
+                <div>
+                  <p className="text-sm font-medium">Average Rating</p>
+                  <p className="text-2xl font-bold">{stats.avgRating.toFixed(1)}</p>
+                  <p className="text-xs text-gray-500">Based on reviews</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Enhanced Search and Filters */}
       <Card className="shadow-sm">
@@ -567,9 +628,16 @@ export default function ServicesPage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-gray-500">
-                    {service.bookingCount} bookings
-                  </span>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-gray-500">
+                      {service.bookingCount} bookings
+                    </span>
+                    {userRole === 'provider' && (
+                      <span className="text-green-600 font-medium">
+                        {formatCurrency((service.bookingCount || 0) * service.basePrice / 10, service.currency)} revenue
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Price and Action */}
@@ -581,14 +649,30 @@ export default function ServicesPage() {
                     <span className="text-xs text-gray-500">Starting price</span>
                   </div>
                   {userRole === 'provider' ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
-                      title="Edit Service"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                        title="Edit Service"
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant={service.status === 'active' ? 'destructive' : 'default'}
+                        size="sm"
+                        onClick={() => {
+                          // Toggle service status
+                          const newStatus = service.status === 'active' ? 'inactive' : 'active'
+                          // TODO: Implement status update API call
+                          console.log(`Toggle service ${service.id} status to ${newStatus}`)
+                        }}
+                        title={service.status === 'active' ? 'Deactivate Service' : 'Activate Service'}
+                      >
+                        {service.status === 'active' ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
@@ -636,6 +720,95 @@ export default function ServicesPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Provider Service Performance Insights */}
+      {userRole === 'provider' && filteredServices.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Service Performance Insights</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Performing Services */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
+                  Top Performing Services
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {filteredServices
+                    .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
+                    .slice(0, 3)
+                    .map((service, index) => (
+                      <div key={service.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{service.title}</p>
+                            <p className="text-sm text-gray-500">{service.category}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">{service.bookingCount || 0} bookings</p>
+                          <p className="text-sm text-green-600">
+                            {formatCurrency((service.bookingCount || 0) * service.basePrice / 10, service.currency)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Service Status Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2 text-blue-600" />
+                  Service Status Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Active Services</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full" 
+                          style={{ width: `${stats.total > 0 ? (stats.active / stats.total) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-bold text-gray-900">{stats.active}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Inactive Services</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-red-500 h-2 rounded-full" 
+                          style={{ width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-bold text-gray-900">{stats.pending}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Average Rating</span>
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                      <span className="text-sm font-bold text-gray-900">{stats.avgRating.toFixed(1)}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { dashboardData, DashboardMetrics, Booking, Invoice, User, Service } from '@/lib/dashboard-data'
 
-export function useDashboardData() {
+export function useDashboardData(userRole?: string, userId?: string) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -30,7 +30,7 @@ export function useDashboardData() {
       try {
         setLoading(true)
         setError(null)
-        await dashboardData.loadData()
+        await dashboardData.loadData(userRole, userId)
         updateData()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -40,7 +40,7 @@ export function useDashboardData() {
     }
 
     loadData()
-  }, [updateData])
+  }, [updateData, userRole, userId])
 
   // Subscribe to data changes
   useEffect(() => {
@@ -55,14 +55,14 @@ export function useDashboardData() {
     try {
       setLoading(true)
       setError(null)
-      await dashboardData.loadData()
+      await dashboardData.loadData(userRole, userId)
       updateData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh data')
     } finally {
       setLoading(false)
     }
-  }, [updateData])
+  }, [updateData, userRole, userId])
 
   // Get specific items
   const getBookingById = useCallback((id: string) => {

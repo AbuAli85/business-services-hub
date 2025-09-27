@@ -158,11 +158,11 @@ class DashboardDataManager {
   }
 
   // Load data from API (simulated)
-  async loadData() {
+  async loadData(userRole?: string, userId?: string) {
     try {
       // Simulate API calls
       await this.loadUsers()
-      await this.loadServices()
+      await this.loadServices(userRole, userId)
       await this.loadBookings()
       await this.loadInvoices()
       
@@ -213,11 +213,18 @@ class DashboardDataManager {
     ]
   }
 
-  // Load services
-  private async loadServices() {
+  // Load services based on user role
+  private async loadServices(userRole?: string, userId?: string) {
     try {
-      // Fetch real services from the API
-      const response = await fetch('/api/services?status=active&limit=100', {
+      let apiUrl = '/api/services?status=active&limit=100'
+      
+      // For providers, only fetch their own services
+      if (userRole === 'provider' && userId) {
+        apiUrl = `/api/services?provider_id=${userId}&limit=100`
+      }
+      
+      // Fetch services from the API
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
