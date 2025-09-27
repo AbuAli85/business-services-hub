@@ -2,8 +2,11 @@
 -- Description: Replace denormalized columns with proper joins
 -- Date: 2025-01-25
 
--- 1. Create booking_enriched view with all necessary joins
-CREATE OR REPLACE VIEW public.booking_enriched AS
+-- 1. Drop existing view if it exists to avoid column conflicts
+DROP VIEW IF EXISTS public.booking_enriched CASCADE;
+
+-- 2. Create booking_enriched view with all necessary joins
+CREATE VIEW public.booking_enriched AS
 SELECT
   b.id,
   b.booking_number,
@@ -18,6 +21,11 @@ SELECT
   b.amount_cents,
   b.due_at,
   b.scheduled_date,
+  b.notes,
+  b.location,
+  b.estimated_duration,
+  b.payment_status,
+  b.operational_status,
   b.created_at,
   b.updated_at,
 
@@ -87,8 +95,11 @@ LEFT JOIN public.service_packages sp ON b.package_id = sp.id
 LEFT JOIN public.invoices i ON b.id = i.booking_id
 LEFT JOIN public.reviews r ON b.id = r.booking_id;
 
--- 2. Create service_enriched view
-CREATE OR REPLACE VIEW public.service_enriched AS
+-- 3. Drop existing service_enriched view if it exists
+DROP VIEW IF EXISTS public.service_enriched CASCADE;
+
+-- 4. Create service_enriched view
+CREATE VIEW public.service_enriched AS
 SELECT
   s.id,
   s.title,
@@ -142,8 +153,11 @@ LEFT JOIN LATERAL (
   WHERE b.service_id = s.id
 ) review_stats ON true;
 
--- 3. Create user_enriched view
-CREATE OR REPLACE VIEW public.user_enriched AS
+-- 5. Drop existing user_enriched view if it exists
+DROP VIEW IF EXISTS public.user_enriched CASCADE;
+
+-- 6. Create user_enriched view
+CREATE VIEW public.user_enriched AS
 SELECT
   p.id,
   p.email,
@@ -218,7 +232,7 @@ GROUP BY p.id, p.email, p.full_name, p.phone, p.country, p.company_id, p.is_veri
          ur.role_name, ur.role_display_name, ur.role_active, ur.role_assigned_at,
          client_stats.booking_count, provider_stats.service_count, provider_stats.booking_count, provider_stats.total_revenue;
 
--- 4. Create RPC functions for common queries
+-- 7. Create RPC functions for common queries
 CREATE OR REPLACE FUNCTION public.get_bookings_for_user_v2(
   user_uuid UUID,
   user_role TEXT,
@@ -305,7 +319,7 @@ AS $$
   OFFSET offset_count;
 $$;
 
--- 5. Grant permissions
+-- 8. Grant permissions
 GRANT SELECT ON public.booking_enriched TO authenticated;
 GRANT SELECT ON public.service_enriched TO authenticated;
 GRANT SELECT ON public.user_enriched TO authenticated;

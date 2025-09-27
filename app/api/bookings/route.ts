@@ -355,15 +355,14 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') || '').trim()
     const status = (searchParams.get('status') || '').trim()
 
-    // Build base query using enriched view for better performance
+    // Use regular bookings table with manual enrichment (enriched views not yet available)
     let query = supabase
-      .from('booking_enriched')
+      .from('bookings')
       .select(`
         id, service_id, client_id, provider_id, status, approval_status, 
         amount_cents, currency, created_at, updated_at, scheduled_date, 
         notes, location, estimated_duration, payment_status, total_amount,
-        service_title, client_name, provider_name, service_category,
-        client_email, provider_email, invoice_status, invoice_amount
+        operational_status, booking_number, requirements, subtotal, vat_percent, vat_amount, due_at
       `, { count: 'exact' })
 
     if (userRole === 'provider') {
@@ -405,20 +404,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Search functionality using enriched fields
+    // Search functionality using available fields
     if (search) {
       if (search.startsWith('#')) {
         // Direct ID lookup
         query = query.eq('id', search.slice(1))
       } else {
-        // Text search across enriched fields
+        // Text search across available fields
         query = query.or(`
-          service_title.ilike.%${search}%,
-          client_name.ilike.%${search}%,
-          provider_name.ilike.%${search}%,
-          service_category.ilike.%${search}%,
-          client_email.ilike.%${search}%,
-          provider_email.ilike.%${search}%
+          notes.ilike.%${search}%,
+          location.ilike.%${search}%,
+          booking_number.ilike.%${search}%
         `)
       }
     }
@@ -432,13 +428,13 @@ export async function GET(request: NextRequest) {
         query = query.order('amount_cents', { ascending: order === 'asc' })
         break
       case 'title':
-        query = query.order('service_title', { ascending: order === 'asc' })
+        query = query.order('booking_number', { ascending: order === 'asc' })
         break
       case 'client_name':
-        query = query.order('client_name', { ascending: order === 'asc' })
+        query = query.order('client_id', { ascending: order === 'asc' })
         break
       case 'provider_name':
-        query = query.order('provider_name', { ascending: order === 'asc' })
+        query = query.order('provider_id', { ascending: order === 'asc' })
         break
       default:
         query = query.order('created_at', { ascending: order === 'asc' })
@@ -455,8 +451,51 @@ export async function GET(request: NextRequest) {
       return response
     }
 
-    // Data is already enriched from the view, no transformation needed
-    const transformedData = data ?? []
+    // Manual enrichment of booking data
+    const transformedData = await Promise.all(
+      (data ?? []).map(async (booking) => {
+        // Get service information
+        const { data: service } = await supabase
+          .from('services')
+          .select('title, description, category')
+          .eq('id', booking.service_id)
+          .single()
+        
+        // Get client information
+        const { data: client } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', booking.client_id)
+          .single()
+        
+        // Get provider information
+        const { data: provider } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', booking.provider_id)
+          .single()
+        
+        // Get invoice information
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('status, amount')
+          .eq('booking_id', booking.id)
+          .single()
+        
+        return {
+          ...booking,
+          service_title: service?.title || 'Service',
+          service_description: service?.description || '',
+          service_category: service?.category || '',
+          client_name: client?.full_name || 'Client',
+          client_email: client?.email || '',
+          provider_name: provider?.full_name || 'Provider',
+          provider_email: provider?.email || '',
+          invoice_status: invoice?.status || null,
+          invoice_amount: invoice?.amount || null
+        }
+      })
+    )
 
     const payload = {
       data: transformedData,
