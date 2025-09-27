@@ -12,6 +12,9 @@ import {
 } from '@/lib/notification-triggers-simple'
 import { createNotification } from '@/lib/notification-service'
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 // Production error guard
 const isProd = process.env.NODE_ENV === 'production'
 // CORS headers for cross-domain access

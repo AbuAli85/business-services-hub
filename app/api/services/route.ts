@@ -6,6 +6,10 @@ import { z } from 'zod'
 import { withCors, ok, created, badRequest, unauthorized, forbidden, handleOptions } from '@/lib/api-helpers'
 
 import { triggerServiceCreated } from '@/lib/notification-triggers-simple'
+
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 // Validation schema for service creation
 const CreateServiceSchema = z.object({
   title: z.string().min(3).max(100),
