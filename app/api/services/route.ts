@@ -114,10 +114,26 @@ export async function GET(request: NextRequest) {
               console.log(`Profile lookup for ${service.provider_id}:`, profile, 'error:', profileError)
             }
             
-            if (profile) {
-              providerName = profile.full_name || profile.company_name || `Provider ${service.provider_id.slice(0, 8)}...`
+            if (profile && (profile.full_name || profile.company_name)) {
+              providerName = profile.full_name || profile.company_name
             } else {
-              providerName = `Provider ${service.provider_id.slice(0, 8)}...`
+              // If no profile found, try to get from auth.users
+              try {
+                const { data: authUser } = await supabase.auth.admin.getUserById(service.provider_id)
+                if (authUser?.user) {
+                  providerName = authUser.user.user_metadata?.full_name || 
+                                authUser.user.user_metadata?.company_name || 
+                                authUser.user.email?.split('@')[0] || 
+                                `Provider ${service.provider_id.slice(0, 8)}...`
+                } else {
+                  providerName = `Provider ${service.provider_id.slice(0, 8)}...`
+                }
+              } catch (authError) {
+                if (process.env.NODE_ENV !== 'production') {
+                  console.log(`Auth lookup failed for ${service.provider_id}:`, authError)
+                }
+                providerName = `Provider ${service.provider_id.slice(0, 8)}...`
+              }
             }
           } catch (profileError) {
             if (process.env.NODE_ENV !== 'production') {
