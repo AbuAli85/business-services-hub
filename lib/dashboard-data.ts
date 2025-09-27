@@ -215,46 +215,49 @@ class DashboardDataManager {
 
   // Load services
   private async loadServices() {
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    this.services = [
-      {
-        id: '1',
-        title: 'Digital Marketing Strategy',
-        description: 'Comprehensive digital marketing solutions for businesses',
-        category: 'Digital Marketing',
-        basePrice: 500,
-        currency: 'OMR',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        status: 'active',
-        approvalStatus: 'approved',
-        featured: true,
-        rating: 4.8,
-        reviewCount: 12,
-        bookingCount: 8,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-01-18T14:30:00Z'
-      },
-      {
-        id: '2',
-        title: 'Legal Consultation',
-        description: 'Professional legal advice for business matters',
-        category: 'Legal Services',
-        basePrice: 300,
-        currency: 'OMR',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        status: 'active',
-        approvalStatus: 'approved',
-        featured: false,
-        rating: 4.6,
-        reviewCount: 5,
-        bookingCount: 3,
-        createdAt: '2024-01-12T09:00:00Z',
-        updatedAt: '2024-01-15T11:20:00Z'
+    try {
+      // Fetch real services from the API
+      const response = await fetch('/api/services?status=active&limit=100', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const services = data.services || []
+        
+        // Map the API response to our Service interface
+        this.services = services.map((service: any) => ({
+          id: service.id,
+          title: service.title,
+          description: service.description || '',
+          category: service.category || 'Uncategorized',
+          basePrice: service.base_price || 0,
+          currency: service.currency || 'OMR',
+          providerId: service.provider_id,
+          providerName: service.provider?.full_name || 'Service Provider',
+          status: service.status || 'active',
+          approvalStatus: service.approval_status || 'approved',
+          featured: service.featured || false,
+          rating: service.rating || 0,
+          reviewCount: service.review_count || 0,
+          bookingCount: service._count?.bookings || 0,
+          createdAt: service.created_at || new Date().toISOString(),
+          updatedAt: service.updated_at || new Date().toISOString()
+        }))
+      } else {
+        console.error('Failed to fetch services:', response.status, response.statusText)
+        // Fallback to empty array if API fails
+        this.services = []
       }
-    ]
+    } catch (error) {
+      console.error('Error loading services:', error)
+      // Fallback to empty array if API fails
+      this.services = []
+    }
   }
 
   // Load bookings

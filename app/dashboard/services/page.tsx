@@ -32,10 +32,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 export default function ServicesPage() {
   const router = useRouter()
-  const { bookings, loading: bookingsLoading, error: bookingsError, refresh: refreshBookings } = useDashboardData()
-  const [services, setServices] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { services, bookings, loading, error, refresh } = useDashboardData()
   const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -46,19 +43,13 @@ export default function ServicesPage() {
   const [ratingFilter, setRatingFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
-  // Load services based on role
+  // Get user role
   useEffect(() => {
     (async () => {
       try {
-        setLoading(true)
-        setError(null)
         const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          setServices([])
-          setLoading(false)
-          return
-        }
+        if (!user) return
         
         // detect role
         let role: any = user.user_metadata?.role
@@ -71,64 +62,8 @@ export default function ServicesPage() {
           role = profile?.role || null
         }
         setUserRole(role)
-
-        let list: any[] = []
-        if (role === 'provider') {
-          // Provider: fetch own services
-          const params = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
-          const res = await fetch(`/api/services?${params.toString()}`, { 
-            cache: 'no-store', 
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          })
-          if (res.ok) {
-            const json = await res.json()
-            list = json.services || []
-          } else {
-            console.error('Failed to fetch provider services:', res.status, res.statusText)
-          }
-        } else {
-          // Client/Admin/Staff: fetch all active services
-          const params = new URLSearchParams({ status: 'active', limit: '200', page: '1' })
-          const res = await fetch(`/api/services?${params.toString()}`, { 
-            cache: 'no-store', 
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          })
-          if (res.ok) {
-            const json = await res.json()
-            list = json.services || []
-          } else {
-            console.error('Failed to fetch services:', res.status, res.statusText)
-          }
-        }
-
-        const mapped = (list || []).map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          description: s.description || '',
-          category: s.category || 'Uncategorized',
-          basePrice: s.base_price ?? 0,
-          currency: s.currency || 'OMR',
-          providerId: s.provider_id,
-          providerName: s.provider?.full_name || 'Service Provider',
-          status: s.status || 'active',
-          rating: s.rating || 0,
-          bookingCount: s._count?.bookings || 0,
-          createdAt: s.created_at || new Date().toISOString(),
-          cover_image_url: s.cover_image_url,
-        }))
-        setServices(mapped)
       } catch (e) {
-        console.error('Error loading services:', e)
-        setError('Failed to load services')
-        setServices([])
-      } finally {
-        setLoading(false)
+        console.error('Error getting user role:', e)
       }
     })()
   }, [])
@@ -253,77 +188,6 @@ export default function ServicesPage() {
     )
   }
 
-  // Refresh function
-  const refresh = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const supabase = await getSupabaseClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setServices([])
-        setLoading(false)
-        return
-      }
-      
-      let role: any = user.user_metadata?.role
-      if (!role) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle()
-        role = profile?.role || null
-      }
-
-      let list: any[] = []
-      if (role === 'provider') {
-        const params = new URLSearchParams({ provider_id: user.id, limit: '200', page: '1' })
-        const res = await fetch(`/api/services?${params.toString()}`, { 
-          cache: 'no-store', 
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-        if (res.ok) {
-          const json = await res.json()
-          list = json.services || []
-        }
-      } else {
-        const params = new URLSearchParams({ status: 'active', limit: '200', page: '1' })
-        const res = await fetch(`/api/services?${params.toString()}`, { 
-          cache: 'no-store', 
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-        if (res.ok) {
-          const json = await res.json()
-          list = json.services || []
-        }
-      }
-
-      const mapped = (list || []).map((s: any) => ({
-        id: s.id,
-        title: s.title,
-        description: s.description || '',
-        category: s.category || 'Uncategorized',
-        basePrice: s.base_price ?? 0,
-        currency: s.currency || 'OMR',
-        providerId: s.provider_id,
-        providerName: s.provider?.full_name || 'Service Provider',
-        status: s.status || 'active',
-        rating: s.rating || 0,
-        bookingCount: s._count?.bookings || 0,
-        createdAt: s.created_at || new Date().toISOString(),
-        cover_image_url: s.cover_image_url,
-      }))
-      setServices(mapped)
-    } catch (e) {
-      console.error('Error refreshing services:', e)
-      setError('Failed to refresh services')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading) {
     return (
