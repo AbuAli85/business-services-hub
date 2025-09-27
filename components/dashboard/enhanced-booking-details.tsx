@@ -1400,94 +1400,35 @@ export default function EnhancedBookingDetails({
       
       console.log('✅ Booking is approved, proceeding with start project...')
 
-      // Update booking status to in_progress
-      console.log('📝 Updating booking status to in_progress...')
+      // Update booking status to in_progress using the API endpoint
+      console.log('📝 Updating booking status to in_progress via API...')
       console.log('📊 Current booking status from check:', currentBooking)
       
-      let updateResult: any = null
-      let error: any = null
-      
-      // If status is pending but approval_status is approved, we need to do a two-step update
-      if (currentBooking.status === 'pending' && currentBooking.approval_status === 'approved') {
-        console.log('📝 Two-step update: First updating status to approved, then to in_progress')
-        
-        // Step 1: Update status from pending to approved
-        const { data: step1Result, error: step1Error } = await supabase
-          .from('bookings')
-          .update({ 
-            status: 'approved',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.id)
-          .select()
-        
-        if (step1Error) {
-          console.error('❌ Step 1 failed:', step1Error)
-          throw new Error(`Failed to update status to approved: ${step1Error.message}`)
-        }
-        
-        console.log('✅ Step 1 completed: Status updated to approved')
-        
-        // Step 2: Update status from approved to in_progress
-        const { data: step2Result, error: step2Error } = await supabase
-          .from('bookings')
-          .update({ 
-            status: 'in_progress',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.id)
-          .select()
-        
-        if (step2Error) {
-          console.error('❌ Step 2 failed:', step2Error)
-          throw new Error(`Failed to update status to in_progress: ${step2Error.message}`)
-        }
-        
-        console.log('✅ Step 2 completed: Status updated to in_progress')
-        updateResult = step2Result
-      } else {
-        // Direct update if status is already approved
-        console.log('📝 Direct update: Status is already approved, updating to in_progress')
-        const { data: directResult, error: directError } = await supabase
-          .from('bookings')
-          .update({ 
-            status: 'in_progress',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.id)
-          .select()
-        
-        updateResult = directResult
-        error = directError
-      }
-      
-      console.log('📊 Database update result:', { 
-        hasData: !!updateResult, 
-        hasError: !!error,
-        errorMessage: error?.message,
-        updatedRows: updateResult?.length,
-        updatedStatus: updateResult?.[0]?.status
+      // Use the API endpoint instead of direct database updates to respect business logic
+      const response = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          action: 'start_project' // New action for starting project
+        })
       })
       
-      if (error) {
-        console.error('❌ Database update error:', error)
-        if (error.message?.includes('Invalid status transition')) {
-          throw new Error('Cannot start project. Please ensure the booking is approved first.')
-        }
-        throw error
+      console.log('📡 API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ API error:', errorData)
+        throw new Error(errorData.error || `Failed to start project (${response.status})`)
       }
       
-      if (!updateResult || updateResult.length === 0) {
-        // If no rows were updated, let's check what the current status actually is
-        const { data: checkBooking, error: checkError } = await supabase
-          .from('bookings')
-          .select('status, approval_status')
-          .eq('id', booking.id)
-          .single()
-        
-        console.error('❌ No rows updated. Current booking status:', checkBooking)
-        throw new Error(`Cannot start project. Current status: ${checkBooking?.status}, Approval status: ${checkBooking?.approval_status}`)
-      }
+      const result = await response.json()
+      console.log('✅ API response result:', result)
+      
+      console.log('✅ Project started successfully via API')
       
       // Update local state immediately
       const updatedBooking: EnhancedBooking = { 

@@ -535,7 +535,7 @@ function normalizeToISO(input?: string | number | null): string | undefined {
 // Validate PATCH payload and allow numeric/ISO datetime for scheduled_date
 const patchSchema = zod.object({
   booking_id: zod.string().uuid(),
-  action: zod.enum(['approve', 'decline', 'reschedule', 'complete', 'cancel']),
+  action: zod.enum(['approve', 'decline', 'reschedule', 'complete', 'cancel', 'start_project']),
   scheduled_date: zod.union([zod.string().datetime(), zod.number()]).optional(),
   reason: zod.string().max(500).optional(),
   // Optional timestamps client may send; we normalize and ignore if invalid
@@ -643,6 +643,25 @@ export async function PATCH(request: NextRequest) {
         updates = { status: 'declined', approval_status: 'rejected', decline_reason: reason || null }
         notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking_cancelled' }
         console.log('Decline updates:', updates)
+        break
+      case 'start_project':
+        console.log('🔍 Processing start_project action:', { isProvider, userId: user.id, providerId: booking.provider_id })
+        if (!isProvider) {
+          console.log('❌ Start project denied: User is not a provider')
+          return NextResponse.json({ error: 'Only provider can start project' }, { status: 403 })
+        }
+        // Check if booking is approved
+        if (booking.status !== 'approved' && booking.approval_status !== 'approved') {
+          console.log('❌ Start project denied: Booking not approved')
+          return NextResponse.json({ error: 'Booking must be approved before starting project' }, { status: 400 })
+        }
+        // Update status to in_progress
+        updates = {
+          status: 'in_progress',
+          updated_at: new Date().toISOString()
+        }
+        notification = { user_id: booking.client_id, title: 'Project Started', message: 'Your project has been started', type: 'project_started' }
+        console.log('✅ Start project updates:', updates)
         break
       case 'reschedule':
         if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
