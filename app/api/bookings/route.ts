@@ -11,7 +11,6 @@ import {
   triggerBookingCreated,
   triggerBookingApproved
 } from '@/lib/notification-triggers-simple'
-import { z } from 'zod'
 import { createNotification } from '@/lib/notification-service'
 // CORS headers for cross-domain access
 const corsHeaders = {
@@ -30,13 +29,13 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 // Validation schema for booking creation
-const CreateBookingSchema = z.object({
-  service_id: z.string().uuid(),
-  scheduled_date: z.string().datetime(),
-  notes: z.string().max(500).optional(),
-  service_package_id: z.string().uuid().optional(),
-  estimated_duration: z.string().optional(),
-  location: z.string().optional()
+const CreateBookingSchema = zod.object({
+  service_id: zod.string().uuid(),
+  scheduled_date: zod.string().datetime(),
+  notes: zod.string().max(500).optional(),
+  service_package_id: zod.string().uuid().optional(),
+  estimated_duration: zod.string().optional(),
+  location: zod.string().optional()
 })
 
 // Helper function to authenticate user (legacy for PATCH flow)
@@ -252,8 +251,20 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Convert to cents for consistent storage
-    const amount_cents = Math.round((amount ?? 0) * 100)
+    // Convert to cents for consistent storage with validation
+    const amount_cents = Math.max(0, Math.round((amount ?? 0) * 100))
+    if (!Number.isFinite(amount_cents)) {
+      const response = NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v))
+      return response
+    }
+    
+    // Sanity check date is ISO-ish and not in 1970
+    if (isNaN(new Date(scheduled_date).getTime())) {
+      const response = NextResponse.json({ error: 'Invalid scheduled_date' }, { status: 400 })
+      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v))
+      return response
+    }
 
     // Create booking with approval workflow
     const { data: booking, error: bookingError } = await supabase
@@ -364,9 +375,9 @@ export async function POST(request: NextRequest) {
         provider_id: service.provider_id,
         provider_name: providerName,
         service_name: service.title,
-        booking_title: booking.title,
+        booking_title: booking.service_title,
         scheduled_date: booking.scheduled_date,
-        total_amount: booking.amount,
+        total_amount: (booking.amount_cents ?? 0) / 100,
         currency: booking.currency
       })
     } catch (notificationError) {
@@ -410,7 +421,11 @@ export async function GET(request: NextRequest) {
 
     // 🔐 Accept cookie OR bearer token
     const user = await getUserFromRequest(request)
-    if (!user) return jsonError(401, 'UNAUTHENTICATED', 'No session')
+    if (!user) {
+      const response = jsonError(401, 'UNAUTHENTICATED', 'No session')
+      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v as string))
+      return response
+    }
 
     // Get user profile to determine role
     const { data: profile } = await supabase
@@ -421,21 +436,34 @@ export async function GET(request: NextRequest) {
     
     const userRole = profile?.role ?? user.user_metadata?.role ?? 'client'
     if (!['client', 'provider', 'admin'].includes(userRole)) {
-      return jsonError(403, 'FORBIDDEN', 'Insufficient role')
+      const response = jsonError(403, 'FORBIDDEN', 'Insufficient role')
+      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v as string))
+      return response
     }
 
     const { searchParams } = new URL(request.url)
-    const page = Number(searchParams.get('page')) || 1
-    const pageSize = Number(searchParams.get('pageSize')) || 25
-    const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
-    const sort = searchParams.get('sort') || 'created_at'
-    const order = searchParams.get('order') || 'desc'
+    
+    // Validate and normalize query params
+    const toPosInt = (v: string | null, def: number, min = 1, max = 1000) => {
+      const n = Number(v)
+      if (!Number.isFinite(n)) return def
+      return Math.min(max, Math.max(min, Math.trunc(n)))
+    }
+    const page = toPosInt(searchParams.get('page'), 1)
+    const pageSize = toPosInt(searchParams.get('pageSize'), 25, 1, 100)
+    const rawSort = (searchParams.get('sort') || 'created_at').toLowerCase()
+    const sort: 'created_at'|'updated_at'|'amount'|'title'|'client_name'|'provider_name' =
+      ['created_at','updated_at','amount','title','client_name','provider_name'].includes(rawSort as any)
+        ? (rawSort as any)
+        : 'created_at'
+    const order: 'asc'|'desc' = (searchParams.get('order') === 'asc' ? 'asc' : 'desc')
+    const search = (searchParams.get('search') || '').trim()
+    const status = (searchParams.get('status') || '').trim()
 
-    // Build base query by role
+    // Build base query by role with explicit columns
     let query = supabase
       .from('bookings')
-      .select('*', { count: 'exact' })
+      .select('id, service_id, client_id, provider_id, service_title, client_name, provider_name, status, approval_status, operational_status, amount_cents, currency, created_at, updated_at, scheduled_date, start_time, end_time, notes, location, estimated_duration, payment_status', { count: 'exact' })
 
     if (userRole === 'provider') {
       query = query.eq('provider_id', user.id)
@@ -461,18 +489,22 @@ export async function GET(request: NextRequest) {
         case 'delivered':
           query = query.eq('status', 'completed')
           break
+        case 'on_hold':
+          query = query.eq('status', 'on_hold')
+          break
+        case 'cancelled':
+          query = query.eq('status', 'cancelled')
+          break
         default:
           query = query.eq('status', status)
       }
     }
 
-    // Search functionality
+    // Search functionality - resilient to NULL/missing columns
     if (search) {
-      query = query.or([
-        `service_title.ilike.%${search}%`,
-        `client_name.ilike.%${search}%`,
-        `provider_name.ilike.%${search}%`,
-      ].join(','))
+      // Prefer a broad OR; Supabase handles the OR list safely
+      const like = (col: string) => `${col}.ilike.%${search.replace(/%/g,'').replace(/,/g,' ')}%`
+      query = query.or([like('service_title'), like('client_name'), like('provider_name')].join(','))
     }
 
     // Sorting
@@ -553,8 +585,6 @@ const patchSchema = zod.object({
 
 export async function PATCH(request: NextRequest) {
   try {
-    console.log('🔍 Bookings API PATCH called')
-    
     // 🔐 Use session-bound client for RLS consistency
     const supabase = await makeServerClient(request)
     
@@ -567,8 +597,6 @@ export async function PATCH(request: NextRequest) {
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
-    
-    console.log('✅ User authenticated:', user.id, 'Role:', user.user_metadata?.role)
 
     const body = await request.json()
     const parsed = patchSchema.safeParse(body)
@@ -581,137 +609,23 @@ export async function PATCH(request: NextRequest) {
     const { booking_id, action, scheduled_date, reason, approved_at } = parsed.data
 
     // Fetch booking to validate permissions
-    console.log('🔍 API: Fetching booking with ID:', booking_id)
-    console.log('🔍 API: User ID:', user.id)
-    console.log('🔍 API: User Role:', user.user_metadata?.role || 'unknown')
-    console.log('🔍 API: Request body:', body)
-    
-    // First, let's check what bookings exist for this user
-    console.log('🔍 API: Checking user bookings with user ID:', user.id)
-    
-    // Try different query approaches to debug the issue
-    const { data: userBookings, error: userBookingsError } = await supabase
-      .from('bookings')
-      .select('id, client_id, provider_id, status, title')
-      .or(`client_id.eq.${user.id},provider_id.eq.${user.id}`)
-    
-    console.log('🔍 API: User bookings found:', userBookings)
-    console.log('🔍 API: User bookings error:', userBookingsError)
-    
-    // Also try a simple count query to see if there are any bookings at all
-    const { count: totalBookingsCount, error: countError } = await supabase
-      .from('bookings')
-      .select('*', { count: 'exact', head: true })
-    
-    console.log('🔍 API: Total bookings in database:', totalBookingsCount)
-    console.log('🔍 API: Count error:', countError)
-    
-    // Try to get any booking to see if the table is accessible
-    const { data: anyBooking, error: anyError } = await supabase
-      .from('bookings')
-      .select('id, client_id, provider_id, status')
-      .limit(1)
-    
-    console.log('🔍 API: Any booking found:', anyBooking)
-    console.log('🔍 API: Any booking error:', anyError)
-   
-    // Now try to fetch the specific booking
-    console.log('🔍 API: Attempting to fetch specific booking:', booking_id)
+    console.log('🔍 PATCH', { booking_id, action, user_id: user.id })
     
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
       .select('*')
       .eq('id', booking_id)
       .single()
-    
-    console.log('🔍 API: Supabase response:', { data: booking, error: fetchError })
-    console.log('🔍 API: Booking data:', booking)
-    console.log('🔍 API: Fetch error:', fetchError)
-    
-    // Also try without .single() to see if the booking exists at all
-    const { data: bookingMaybe, error: fetchMaybeError } = await supabase
-      .from('bookings')
-      .select('id, client_id, provider_id, status')
-      .eq('id', booking_id)
-    
-    console.log('🔍 API: Maybe booking response:', { data: bookingMaybe, error: fetchMaybeError })
 
     if (fetchError || !booking) {
-      console.error('❌ API: Failed to fetch booking:', fetchError)
-      console.error('❌ API: Booking ID requested:', booking_id)
-      console.error('❌ API: User ID:', user.id)
-      
-      // Try to check if the booking exists at all
-      const { data: allBookings, error: listError } = await supabase
-        .from('bookings')
-        .select('id, client_id, provider_id, status, created_at, title')
-        .limit(10)
-      
-      console.log('🔍 API: Sample bookings in database:', allBookings)
-      console.log('🔍 API: List error:', listError)
-      
-      // Also check if there are any bookings at all
-      const { count: totalBookings, error: countError } = await supabase
-        .from('bookings')
-        .select('*', { count: 'exact', head: true })
-      
-      console.log('🔍 API: Total bookings in database:', totalBookings)
-      console.log('🔍 API: Count error:', countError)
-      
-      // Check if the booking ID exists but belongs to a different user
-      const { data: anyBooking, error: anyBookingError } = await supabase
-        .from('bookings')
-        .select('id, client_id, provider_id')
-        .eq('id', booking_id)
-        .maybeSingle()
-      
-      if (anyBooking) {
-        console.log('🔍 API: Booking exists but belongs to different user:', anyBooking)
-        const response = NextResponse.json({ 
-          error: 'Booking not found or access denied',
-          details: 'The booking exists but you do not have permission to access it',
-          debug: {
-            requested_booking_id: booking_id,
-            user_id: user.id,
-            user_role: user.user_metadata?.role,
-            existing_booking: anyBooking
-          }
-        }, { status: 404 })
-        Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
-        return response
-      }
-      
-      console.log('🔍 API: No booking found with ID:', booking_id)
-      console.log('🔍 API: Available user bookings:', (userBookings || []).map((b: any) => ({ id: b.id, title: b.title, status: b.status })))
-      
+      console.error('❌ Failed to fetch booking:', fetchError?.message)
       const response = NextResponse.json({ 
-        error: 'Booking not found', 
-        details: 'The specified booking ID does not exist in the database',
-        debug: {
-          requested_booking_id: booking_id,
-          user_id: user.id,
-          user_role: user.user_metadata?.role,
-          available_bookings: (userBookings || []).map((b: any) => ({ id: b.id, title: b.title, status: b.status })),
-          total_user_bookings: (userBookings || []).length || 0,
-          database_sample: (allBookings || []).slice(0, 3).map((b: any) => ({ id: b.id, title: b.title || 'No title', status: b.status, created_at: b.created_at })),
-          user_context: {
-            user_id: user.id,
-            user_email: user.email,
-            user_role: user.user_metadata?.role,
-            user_metadata: user.user_metadata
-          },
-          database_connection: {
-            total_bookings: totalBookings,
-            any_booking: anyBooking,
-            user_bookings_error: userBookingsError
-          }
-        }
+        error: 'Booking not found or access denied',
+        details: 'The booking does not exist or you do not have permission to access it'
       }, { status: 404 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
-
-    console.log('✅ API: Booking found:', booking)
 
     const isClient = booking.client_id === user.id
     const isProvider = booking.provider_id === user.id
@@ -818,10 +732,10 @@ export async function PATCH(request: NextRequest) {
             client_name: clientName,
             provider_id: user.id,
             provider_name: actorName,
-            service_name: booking.service?.title || 'Service',
-            booking_title: booking.title,
+            service_name: booking.service_title || 'Service',
+            booking_title: booking.service_title || 'Booking',
             scheduled_date: booking.scheduled_date,
-            total_amount: booking.amount,
+            total_amount: (booking.amount_cents ?? 0) / 100,
             currency: booking.currency
           })
 
@@ -862,10 +776,10 @@ export async function PATCH(request: NextRequest) {
               booking_id,
               actor_id: user.id,
               actor_name: actorName,
-              service_name: booking.service?.title || 'Service',
-              booking_title: booking.title,
+              service_name: booking.service_title || 'Service',
+              booking_title: booking.service_title || 'Booking',
               scheduled_date: booking.scheduled_date,
-              amount: booking.amount,
+              amount: (booking.amount_cents ?? 0) / 100,
               currency: booking.currency
             },
             'high'
