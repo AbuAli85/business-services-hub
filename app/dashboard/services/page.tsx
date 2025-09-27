@@ -79,39 +79,8 @@ export default function ServicesPage() {
     })()
   }, [])
 
-  // Use the services state directly with mock data for testing
-  const sourceServices = useMemo(() => {
-    if (!services || services.length === 0) return []
-    
-    // Add consistent mock booking data for testing
-    return services.map((service, index) => {
-      // Use service ID to generate consistent mock data
-      const seed = service.id.charCodeAt(0) + service.id.charCodeAt(1)
-      const bookingCount = (seed % 8) + 1 // 1-8 bookings
-      const rating = 3.5 + ((seed % 15) / 10) // 3.5-5.0 rating
-      const reviewCount = (seed % 20) + 1 // 1-20 reviews
-      
-      // Mock provider names for better display
-      const mockProviderNames = [
-        'Fahad Alamri',
-        'Digital Morph Inc.',
-        'Oman Business Solutions',
-        'Professional Services Co.',
-        'Expert Consultants LLC'
-      ]
-      const providerName = mockProviderNames[seed % mockProviderNames.length]
-      
-      return {
-        ...service,
-        bookingCount,
-        rating: Math.round(rating * 10) / 10, // Round to 1 decimal
-        reviewCount,
-        providerName: service.providerName && service.providerName !== 'Service Provider' && !service.providerName.includes('Provider ')
-          ? service.providerName 
-          : providerName
-      }
-    })
-  }, [services])
+  // Use the services state directly from API
+  const sourceServices = services || []
 
   // Debug logging
   useEffect(() => {
@@ -274,11 +243,6 @@ export default function ServicesPage() {
           <div>
             <h1 className="text-4xl font-bold mb-2">{userRole === 'provider' ? 'My Services' : 'Services'}</h1>
             <p className="text-blue-100 text-lg mb-4">{userRole === 'provider' ? 'Manage your services and bookings' : 'Browse available services and book what you need'}</p>
-            {process.env.NODE_ENV !== 'production' && (
-              <div className="mb-4 p-3 bg-yellow-100/20 border border-yellow-300/30 rounded-lg text-sm text-yellow-100">
-                <strong>Development Mode:</strong> Mock booking counts, ratings, and provider names are being used for testing purposes.
-              </div>
-            )}
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">
                 <Package className="h-4 w-4 mr-1" />
@@ -668,11 +632,7 @@ export default function ServicesPage() {
                   </h3>
                   <p className="text-sm text-gray-600 flex items-center">
                     <User className="h-3 w-3 mr-1" />
-                    {service.providerName && service.providerName !== 'Service Provider' && !service.providerName.includes('Provider ')
-                      ? service.providerName 
-                      : service.providerId 
-                        ? `Provider ${service.providerId.slice(0, 8)}...`
-                        : 'Service Provider'}
+                    {service.providerName || 'Service Provider'}
                   </p>
                 </div>
 
@@ -823,11 +783,7 @@ export default function ServicesPage() {
                           <div>
                             <p className="font-medium text-gray-900">{service.title}</p>
                             <p className="text-sm text-gray-500">
-                              {service.category} • {service.providerName && service.providerName !== 'Service Provider' && !service.providerName.includes('Provider ')
-                                ? service.providerName 
-                                : service.providerId 
-                                  ? `Provider ${service.providerId.slice(0, 8)}...`
-                                  : 'Service Provider'}
+                              {service.category} • {service.providerName || 'Service Provider'}
                             </p>
                           </div>
                         </div>

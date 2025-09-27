@@ -110,10 +110,6 @@ export async function GET(request: NextRequest) {
               .eq('id', service.provider_id)
               .single()
             
-            if (process.env.NODE_ENV !== 'production') {
-              console.log(`Profile lookup for ${service.provider_id}:`, profile, 'error:', profileError)
-            }
-            
             if (profile && (profile.full_name || profile.company_name)) {
               providerName = profile.full_name || profile.company_name
             } else {
@@ -124,22 +120,14 @@ export async function GET(request: NextRequest) {
                   providerName = authUser.user.user_metadata?.full_name || 
                                 authUser.user.user_metadata?.company_name || 
                                 authUser.user.email?.split('@')[0] || 
-                                `Provider ${service.provider_id.slice(0, 8)}...`
-                } else {
-                  providerName = `Provider ${service.provider_id.slice(0, 8)}...`
+                                'Service Provider'
                 }
               } catch (authError) {
-                if (process.env.NODE_ENV !== 'production') {
-                  console.log(`Auth lookup failed for ${service.provider_id}:`, authError)
-                }
-                providerName = `Provider ${service.provider_id.slice(0, 8)}...`
+                // Keep default 'Service Provider' if auth lookup fails
               }
             }
           } catch (profileError) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.log(`No profile found for provider ${service.provider_id}:`, profileError)
-            }
-            providerName = `Provider ${service.provider_id.slice(0, 8)}...`
+            // Keep default 'Service Provider' if profile lookup fails
           }
           
           return {
