@@ -36,6 +36,7 @@ import {
   Play,
   Award,
   User,
+  FileText,
   Rocket,
   DollarSign
 } from 'lucide-react'
@@ -127,21 +128,16 @@ export default function BookingsPage() {
       return 'in_production'
     }
     
-    // If status is approved, show as approved
-    if (booking.status === 'approved') {
-      return 'approved'
-    }
-    
-    // If approved (either via status or approval_status), show as ready to launch
-    if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') 
-        && booking.status === 'pending') {
-      return 'ready_to_launch'
-    }
-    
     // Check if there's an invoice issued - this indicates ready to launch
     const invoice = getInvoiceForBooking(booking.id)
-    if (invoice && ['issued', 'paid'].includes(invoice.status) && booking.status === 'pending') {
+    if (invoice && ['issued', 'paid'].includes(invoice.status)) {
+      // If invoice is issued/paid, it's ready to launch regardless of booking status
       return 'ready_to_launch'
+    }
+    
+    // If approved (either via status or approval_status), show as approved
+    if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') {
+      return 'approved'
     }
     
     // If declined, show as cancelled
@@ -167,8 +163,8 @@ export default function BookingsPage() {
     switch (status) {
       case 'delivered': return 'Project successfully delivered'
       case 'in_production': return 'Active development in progress'
-      case 'ready_to_launch': return 'All prerequisites met'
-      case 'approved': return 'Waiting for team assignment'
+      case 'ready_to_launch': return 'All prerequisites met • Ready to launch'
+      case 'approved': return 'Approved • Waiting for invoice'
       case 'pending_review': return 'Awaiting provider approval'
       case 'cancelled': return 'Project was declined or cancelled'
       default: return 'Project status being determined'
@@ -666,15 +662,12 @@ export default function BookingsPage() {
   // Deterministic launch gating with comprehensive prerequisites
   const canLaunchProject = (booking: any) => {
     const status = getDerivedStatus(booking)
-    const isReady =
-      status === 'ready_to_launch' ||
-      status === 'approved' // allow approved projects to launch
-
-    if (!isReady) return false
+    
+    // Only allow launch for ready_to_launch status
+    if (status !== 'ready_to_launch') return false
 
     const invoice = getInvoiceForBooking(booking.id)
-    const okInvoice =
-      invoice && ['issued', 'paid'].includes(invoice.status)
+    const okInvoice = invoice && ['issued', 'paid'].includes(invoice.status)
     if (!okInvoice) return false
 
     // For now, allow launch if invoice is ready - team assignment and kickoff can be done after launch
@@ -686,12 +679,16 @@ export default function BookingsPage() {
   const getLaunchBlockingReason = (booking: any) => {
     const status = getDerivedStatus(booking)
     
-    if (booking.status === 'pending' && !(booking.approval_status === 'approved' || booking.ui_approval_status === 'approved')) {
+    if (status === 'pending_review') {
       return 'Launch unavailable: provider must approve the booking first.'
     }
     
-    if (status !== 'ready_to_launch' && status !== 'approved') {
-      return 'Launch is unavailable until prerequisites are met (project must be approved and ready to launch)'
+    if (status === 'approved') {
+      return 'Launch unavailable: invoice must be issued first.'
+    }
+    
+    if (status !== 'ready_to_launch') {
+      return 'Launch is unavailable until project is ready to launch'
     }
     
     const invoice = getInvoiceForBooking(booking.id)
@@ -702,15 +699,7 @@ export default function BookingsPage() {
       return `Invoice must be issued/paid (current: ${invoice.status}).`
     }
     
-    if (!booking.team_assigned) {
-      return 'Launch is unavailable until prerequisites are met (team must be assigned)'
-    }
-    
-    if (!booking.kickoff_at) {
-      return 'Launch is unavailable until prerequisites are met (kickoff date must be set)'
-    }
-    
-    return 'Launch is unavailable until prerequisites are met (invoice issued/paid, team assigned, kickoff set)'
+    return 'Launch is available'
   }
   
   // Get role-specific page title and description
@@ -1568,6 +1557,8 @@ export default function BookingsPage() {
                                     ? 'text-purple-700 border-purple-300 bg-purple-100'
                                     : getDerivedStatus(booking) === 'approved'
                                     ? 'text-orange-700 border-orange-300 bg-orange-100'
+                                    : getDerivedStatus(booking) === 'cancelled'
+                                    ? 'text-red-700 border-red-300 bg-red-100'
                                     : 'text-yellow-700 border-yellow-300 bg-yellow-100'
                                 }`}
                               >
@@ -1575,6 +1566,7 @@ export default function BookingsPage() {
                                  getDerivedStatus(booking) === 'in_production' ? 'In Production' :
                                  getDerivedStatus(booking) === 'ready_to_launch' ? 'Ready to Launch' :
                                  getDerivedStatus(booking) === 'approved' ? 'Approved' :
+                                 getDerivedStatus(booking) === 'cancelled' ? 'Cancelled' :
                                  'Pending'}
                               </Badge>
                             </div>
@@ -1739,8 +1731,8 @@ export default function BookingsPage() {
                                 </TitleTip>
                               )}
 
-                              {/* 3. READY TO LAUNCH BOOKINGS (including pending with approval_status = approved) - ONLY if NOT completed */}
-                              {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'provider' && (
+                              {/* 3. READY TO LAUNCH BOOKINGS - Use derived status */}
+                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'ready_to_launch' && userRole === 'provider' && (
                                 canLaunchProject(booking) ? (
                                   <TitleTip label="Begin project work and create milestones">
                                     <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-purple-200 transition-all duration-200" asChild>
@@ -1760,7 +1752,7 @@ export default function BookingsPage() {
                                 )
                               )}
 
-                              {booking.status !== 'completed' && ((booking.status === 'approved') || (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'))) && userRole === 'client' && (
+                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'ready_to_launch' && userRole === 'client' && (
                                 <TitleTip label="Waiting for provider to start work">
                                   <Button size="sm" variant="outline" disabled className="border-purple-200 text-purple-700 bg-purple-50">
                                     <Clock className="h-3 w-3 mr-1" />
@@ -1770,7 +1762,7 @@ export default function BookingsPage() {
                               )}
 
                               {/* 4. PENDING BOOKINGS (not approved yet) - ONLY if NOT completed */}
-                              {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'provider' && (
+                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'pending_review' && userRole === 'provider' && (
                                 <TitleTip label="Approve this booking to start the project">
                                   <Button 
                                     size="sm" 
@@ -1784,11 +1776,40 @@ export default function BookingsPage() {
                                 </TitleTip>
                               )}
 
-                              {booking.status !== 'completed' && booking.status === 'pending' && booking.approval_status !== 'approved' && booking.ui_approval_status !== 'approved' && userRole === 'client' && (
+                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'pending_review' && userRole === 'client' && (
                                 <TitleTip label="Waiting for provider approval">
                                   <Button size="sm" variant="outline" disabled className="border-amber-200 text-amber-700 bg-amber-50">
                                     <Clock className="h-3 w-3 mr-1" />
                                     Under Review
+                                  </Button>
+                                </TitleTip>
+                              )}
+
+                              {/* 5. APPROVED BOOKINGS (waiting for invoice) */}
+                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'approved' && userRole === 'provider' && (
+                                <TitleTip label="Create invoice to proceed with project launch">
+                                  <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 bg-orange-50">
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Create Invoice
+                                  </Button>
+                                </TitleTip>
+                              )}
+
+                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'approved' && userRole === 'client' && (
+                                <TitleTip label="Waiting for provider to create invoice">
+                                  <Button size="sm" variant="outline" disabled className="border-orange-200 text-orange-700 bg-orange-50">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Waiting for Invoice
+                                  </Button>
+                                </TitleTip>
+                              )}
+
+                              {/* 6. CANCELLED BOOKINGS */}
+                              {getDerivedStatus(booking) === 'cancelled' && (
+                                <TitleTip label="This project was cancelled or declined">
+                                  <Button size="sm" variant="outline" disabled className="border-red-200 text-red-700 bg-red-50">
+                                    <AlertTriangle className="h-3 w-3 mr-1" />
+                                    Cancelled
                                   </Button>
                                 </TitleTip>
                               )}
