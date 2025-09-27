@@ -626,15 +626,25 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
         
-        // Always try to update both status and approval_status for approval
-        console.log('📝 Updating both status and approval_status for approval')
-        updates = {
-          status: 'approved',
-          approval_status: 'approved',
-          approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
+        // Handle different approval status cases
+        if (booking.approval_status === 'in_progress') {
+          console.log('📝 Booking is already in progress, updating status to approved')
+          updates = {
+            status: 'approved',
+            approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
+          }
+          notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
+          console.log('✅ Approval updates (status only, already in_progress):', updates)
+        } else {
+          console.log('📝 Updating both status and approval_status for approval')
+          updates = {
+            status: 'approved',
+            approval_status: 'approved',
+            approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
+          }
+          notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
+          console.log('✅ Approval updates (both status and approval_status):', updates)
         }
-        notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-        console.log('✅ Approval updates (both status and approval_status):', updates)
         console.log('✅ Current booking status before update:', booking.status)
         console.log('✅ Current booking approval_status before update:', booking.approval_status)
         break
@@ -815,7 +825,8 @@ export async function PATCH(request: NextRequest) {
     // Add race-safe guards based on action
     if (action === 'approve') {
       // Allow approve if approval_status is pending, approved, or in_progress (idempotent)
-      query = query.in('approval_status', ['pending', 'approved', 'in_progress'])
+      // Also allow if status is pending (for cases where approval_status is in_progress)
+      query = query.or('approval_status.in(pending,approved,in_progress),status.eq.pending')
     } else if (action === 'complete') {
       query = query.in('status', ['approved', 'in_progress'])
     } else if (action === 'decline') {
