@@ -36,6 +36,7 @@ import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 import { getSupabaseClient } from '@/lib/supabase'
+import { getUserAuth, type UserAuthResult } from '@/lib/user-auth'
 
 export default function ServicesPage() {
   const router = useRouter()
@@ -53,29 +54,30 @@ export default function ServicesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [featuredOnly, setFeaturedOnly] = useState(false)
 
-  // Get user role and ID
+  // Get user role and ID using standardized auth
   useEffect(() => {
     (async () => {
       try {
-        const supabase = await getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        const authResult: UserAuthResult = await getUserAuth()
         
-        setUserId(user.id)
-        
-        // detect role
-        let role: any = user.user_metadata?.role
-        if (!role) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .maybeSingle()
-          role = profile?.role || null
+        if (!authResult.isAuthenticated || !authResult.user) {
+          console.warn('User not authenticated')
+          return
         }
-        setUserRole(role)
+        
+        setUserId(authResult.user.id)
+        setUserRole(authResult.role as 'provider' | 'client' | 'admin' | 'staff' | null)
+        
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('User auth result:', {
+            userId: authResult.user.id,
+            role: authResult.role,
+            hasProfile: !!authResult.profile,
+            profileName: authResult.profile?.full_name
+          })
+        }
       } catch (e) {
-        console.error('Error getting user role:', e)
+        console.error('Error getting user auth:', e)
       }
     })()
   }, [])
