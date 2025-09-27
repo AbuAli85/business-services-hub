@@ -1357,9 +1357,19 @@ export default function EnhancedBookingDetails({
   const handleMarkInProgress = async () => {
     if (!booking) return
     
+    // Check if booking is approved first
+    if (booking.status !== 'approved' && booking.approval_status !== 'approved') {
+      toast.error('Please approve the booking first before starting the project.')
+      return
+    }
+    
     try {
       setIsUpdating(true)
-      console.log('🚀 Starting project:', { bookingId: booking.id })
+      console.log('🚀 Starting project:', { 
+        bookingId: booking.id, 
+        currentStatus: booking.status, 
+        approvalStatus: booking.approval_status 
+      })
       
       // Get authenticated Supabase client
       const supabase = await getSupabaseClient()
@@ -1400,10 +1410,10 @@ export default function EnhancedBookingDetails({
       // Regenerate smart suggestions based on new status
       generateSmartSuggestions()
       
-      // Redirect to milestones page to start working on the project
+      // Wait a bit longer to ensure the status update is visible, then redirect
       setTimeout(() => {
         router.push(`/dashboard/bookings/${booking.id}/milestones`)
-      }, 1000)
+      }, 2000)
       
     } catch (error) {
       console.error('❌ Failed to start project:', error)
@@ -2371,7 +2381,7 @@ export default function EnhancedBookingDetails({
                     <Button 
                       variant="outline" 
                       onClick={handleMarkInProgress}
-                      disabled={isUpdating}
+                      disabled={isUpdating || (booking?.status !== 'approved' && booking?.approval_status !== 'approved')}
                       className="justify-start"
                     >
                       <Play className="h-4 w-4 mr-2" />
