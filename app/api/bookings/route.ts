@@ -563,6 +563,7 @@ export async function PATCH(request: NextRequest) {
 
     // Fetch booking to validate permissions
     console.log('🔍 PATCH', { booking_id, action, user_id: user.id })
+    console.log('🔍 Request body:', { booking_id, action, scheduled_date, reason, approved_at })
     
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
@@ -789,6 +790,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     console.log('📝 Updating booking with:', updates)
+    
+    // Check if updates object is defined
+    if (!updates || Object.keys(updates).length === 0) {
+      console.error('❌ Updates object is empty or undefined:', updates)
+      const response = NextResponse.json({ 
+        error: 'No updates specified for this action', 
+        details: `Action: ${action}, Updates: ${JSON.stringify(updates)}` 
+      }, { status: 400 })
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+      return response
+    }
     
     // Race-safe update with preconditions
     let query = supabase
