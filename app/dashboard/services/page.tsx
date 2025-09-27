@@ -38,6 +38,15 @@ import { getServiceCardImageUrl } from '@/lib/service-images'
 import { getSupabaseClient } from '@/lib/supabase'
 import { getUserAuth, hasRoleV2, type UserAuthResult } from '@/lib/user-auth'
 
+// Import new role-based components
+import { AdminDashboardWidgets } from '@/components/dashboard/role-widgets/AdminDashboardWidgets'
+import { ProviderDashboardWidgets } from '@/components/dashboard/role-widgets/ProviderDashboardWidgets'
+import { ClientDashboardWidgets } from '@/components/dashboard/role-widgets/ClientDashboardWidgets'
+import { RoleBasedLayout } from '@/components/dashboard/role-layouts/RoleBasedLayout'
+import { PermissionGate, RoleBasedContent } from '@/components/dashboard/permission-components/PermissionGate'
+import { ActionButton, PermissionButtonGroup } from '@/components/dashboard/permission-components/ActionButton'
+import { usePermissions } from '@/lib/permissions'
+
 export default function ServicesPage() {
   const router = useRouter()
   const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
@@ -46,6 +55,9 @@ export default function ServicesPage() {
   const [isProvider, setIsProvider] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const { services, bookings, loading, error, refresh } = useDashboardData(userRole || undefined, userId || undefined)
+  
+  // Initialize permissions
+  const permissions = usePermissions(userRole, userId)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -256,9 +268,73 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
+    <RoleBasedLayout
+      role={userRole}
+      onNavigate={(path) => router.push(path)}
+      onLogout={() => router.push('/auth/signout')}
+      notifications={0}
+    >
+      <div className="space-y-6">
+        {/* Role-Based Dashboard Widgets */}
+        <RoleBasedContent allowedRoles={['admin']} userRole={userRole}>
+          <AdminDashboardWidgets
+            stats={{
+              totalUsers: 0, // This would come from API
+              totalServices: stats.total,
+              totalBookings: stats.totalBookings,
+              totalRevenue: stats.totalRevenue,
+              pendingApprovals: 0, // This would come from API
+              systemHealth: 'good' as const,
+              recentActivity: 0 // This would come from API
+            }}
+            onViewUsers={() => router.push('/dashboard/users')}
+            onViewAnalytics={() => router.push('/dashboard/analytics')}
+            onViewSystemHealth={() => router.push('/dashboard/system')}
+            onViewPendingApprovals={() => router.push('/dashboard/approvals')}
+          />
+        </RoleBasedContent>
+
+        <RoleBasedContent allowedRoles={['provider']} userRole={userRole}>
+          <ProviderDashboardWidgets
+            stats={{
+              totalServices: stats.total,
+              activeServices: stats.active,
+              totalBookings: stats.totalBookings,
+              totalRevenue: stats.totalRevenue,
+              avgRating: stats.avgRating,
+              pendingBookings: 0, // This would come from API
+              completedBookings: 0, // This would come from API
+              monthlyRevenue: stats.totalRevenue * 0.1, // Mock data
+              monthlyGrowth: 15 // Mock data
+            }}
+            onViewServices={() => {}}
+            onViewBookings={() => router.push('/dashboard/bookings')}
+            onViewAnalytics={() => router.push('/dashboard/analytics')}
+            onCreateService={() => router.push('/dashboard/services/create')}
+          />
+        </RoleBasedContent>
+
+        <RoleBasedContent allowedRoles={['client']} userRole={userRole}>
+          <ClientDashboardWidgets
+            stats={{
+              totalBookings: stats.totalBookings,
+              activeBookings: 0, // This would come from API
+              completedBookings: 0, // This would come from API
+              totalSpent: 0, // This would come from API
+              favoriteCategories: categories.slice(0, 3),
+              upcomingBookings: 0, // This would come from API
+              savedServices: 0, // This would come from API
+              notifications: 0 // This would come from API
+            }}
+            onViewBookings={() => router.push('/dashboard/bookings')}
+            onBrowseServices={() => {}}
+            onViewFavorites={() => router.push('/dashboard/favorites')}
+            onViewHistory={() => router.push('/dashboard/history')}
+          />
+        </RoleBasedContent>
+
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold mb-2">{isProvider ? 'My Services' : 'Services'}</h1>
@@ -724,19 +800,38 @@ export default function ServicesPage() {
                     </span>
                     <span className="text-xs text-gray-500 font-medium">Starting price</span>
                   </div>
-                  {isProvider ? (
-                    <div className="flex flex-col gap-2">
-                      <Button
+                  <PermissionButtonGroup userRole={userRole} userId={userId}>
+                    <PermissionGate 
+                      permission="services:update" 
+                      userRole={userRole} 
+                      userId={userId}
+                      showError={false}
+                    >
+                      <ActionButton
+                        permission="services:update"
+                        userRole={userRole}
+                        userId={userId}
                         variant="outline"
                         size="sm"
                         onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
                         className="flex items-center px-3 py-1.5 rounded-md border-2 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200 font-medium text-xs"
-                        title="Edit Service"
+                        tooltip="Edit Service"
                       >
                         <Edit className="h-3 w-3 mr-1" />
                         Edit
-                      </Button>
-                      <Button
+                      </ActionButton>
+                    </PermissionGate>
+
+                    <PermissionGate 
+                      permission="services:update" 
+                      userRole={userRole} 
+                      userId={userId}
+                      showError={false}
+                    >
+                      <ActionButton
+                        permission="services:update"
+                        userRole={userRole}
+                        userId={userId}
                         variant={service.status === 'active' ? 'destructive' : 'default'}
                         size="sm"
                         onClick={() => {
@@ -750,20 +845,31 @@ export default function ServicesPage() {
                             ? 'bg-red-500 hover:bg-red-600 text-white' 
                             : 'bg-green-500 hover:bg-green-600 text-white'
                         }`}
-                        title={service.status === 'active' ? 'Deactivate Service' : 'Activate Service'}
+                        tooltip={service.status === 'active' ? 'Deactivate Service' : 'Activate Service'}
                       >
                         {service.status === 'active' ? 'Deactivate' : 'Activate'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      className="flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                      onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
+                      </ActionButton>
+                    </PermissionGate>
+
+                    <PermissionGate 
+                      permission="bookings:create" 
+                      userRole={userRole} 
+                      userId={userId}
+                      showError={false}
                     >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Book Now
-                    </Button>
-                  )}
+                      <ActionButton
+                        permission="bookings:create"
+                        userRole={userRole}
+                        userId={userId}
+                        className="flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                        onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
+                        tooltip="Book this service"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Book Now
+                      </ActionButton>
+                    </PermissionGate>
+                  </PermissionButtonGroup>
                 </div>
                 
                 {/* Service Footer */}
@@ -901,6 +1007,7 @@ export default function ServicesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </RoleBasedLayout>
   )
 }
