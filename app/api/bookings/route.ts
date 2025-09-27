@@ -626,25 +626,15 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
         
-        // Handle database constraint by updating only approval_status first
-        if (booking.status === 'pending' && booking.approval_status !== 'approved') {
-          console.log('📝 Special case: Status is pending, updating only approval_status to avoid constraint')
-          updates = {
-            approval_status: 'approved',
-            approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
-          }
-          notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-          console.log('✅ Approval updates (approval_status only):', updates)
-        } else {
-          // Normal case: update both status and approval_status
-          updates = {
-            status: 'approved',
-            approval_status: 'approved',
-            approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
-          }
-          notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-          console.log('✅ Approval updates (both status and approval_status):', updates)
+        // Always try to update both status and approval_status for approval
+        console.log('📝 Updating both status and approval_status for approval')
+        updates = {
+          status: 'approved',
+          approval_status: 'approved',
+          approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
         }
+        notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
+        console.log('✅ Approval updates (both status and approval_status):', updates)
         console.log('✅ Current booking status before update:', booking.status)
         console.log('✅ Current booking approval_status before update:', booking.approval_status)
         break

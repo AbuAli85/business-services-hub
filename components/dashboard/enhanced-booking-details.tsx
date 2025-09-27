@@ -1839,14 +1839,19 @@ export default function EnhancedBookingDetails({
 
         const result = await response.json()
         console.log('✅ API response result:', result)
+        console.log('📊 API response booking data:', result.booking)
+        console.log('📊 Current booking state before update:', booking)
         
-        // Only update local state after successful API response
+        // Update local state based on actual API response
         const updatedBooking: EnhancedBooking = { 
           ...booking, 
-          status: action === 'approve' ? 'approved' : 'declined',
-          approval_status: action === 'approve' ? 'approved' : 'rejected',
-          updated_at: new Date().toISOString()
+          status: result.booking?.status || (action === 'approve' ? 'approved' : 'declined'),
+          approval_status: result.booking?.approval_status || (action === 'approve' ? 'approved' : 'rejected'),
+          updated_at: result.booking?.updated_at || new Date().toISOString()
         }
+        console.log('🔄 Updated booking state:', updatedBooking)
+        console.log('🔄 Status change:', { from: booking.status, to: updatedBooking.status })
+        console.log('🔄 Approval status change:', { from: booking.approval_status, to: updatedBooking.approval_status })
         setBooking(updatedBooking)
 
         toast.success(`Booking ${action === 'approve' ? 'approved' : 'declined'} successfully`)
