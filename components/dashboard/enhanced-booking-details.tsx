@@ -1680,10 +1680,13 @@ export default function EnhancedBookingDetails({
   const handleApprovalAction = async (action: 'approve' | 'decline') => {
     if (!booking) return
 
+    console.log('🚀 Starting approval action:', { action, bookingId: booking.id })
+
     // Defer heavy operations to prevent UI blocking
     const processApproval = async () => {
       try {
         setIsUpdating(true)
+        console.log('📝 Processing approval action:', action)
         
         // Show confirmation dialog for decline (defer to next tick)
         let reason = ''
@@ -1701,6 +1704,14 @@ export default function EnhancedBookingDetails({
         }
 
         // Make authenticated request with proper headers
+        console.log('📡 Making API request:', {
+          url: '/api/bookings',
+          method: 'PATCH',
+          booking_id: booking.id,
+          action: action,
+          reason: reason
+        })
+        
         const response = await fetch('/api/bookings', {
           method: 'PATCH',
           headers: {
@@ -1713,6 +1724,8 @@ export default function EnhancedBookingDetails({
             reason: reason
           })
         })
+        
+        console.log('📡 API response status:', response.status)
 
         if (!response.ok) {
           const errorData = await response.json()
@@ -1751,12 +1764,8 @@ export default function EnhancedBookingDetails({
       }
     }
 
-    // Use requestIdleCallback or setTimeout to defer heavy work
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(() => processApproval(), { timeout: 100 })
-    } else {
-      setTimeout(() => processApproval(), 0)
-    }
+    // Execute the approval process
+    processApproval()
   }
 
   const formatCurrency = (amount: number, currency: string = 'OMR') => {

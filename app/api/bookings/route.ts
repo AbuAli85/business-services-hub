@@ -583,7 +583,16 @@ export async function PATCH(request: NextRequest) {
     const isClient = booking.client_id === user.id
     const isProvider = booking.provider_id === user.id
 
+    console.log('🔍 User role check:', {
+      userId: user.id,
+      bookingClientId: booking.client_id,
+      bookingProviderId: booking.provider_id,
+      isClient,
+      isProvider
+    })
+
     if (!isClient && !isProvider) {
+      console.log('❌ Access denied: User is neither client nor provider')
       const response = NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
@@ -610,8 +619,9 @@ export async function PATCH(request: NextRequest) {
 
     switch (action) {
       case 'approve':
+        console.log('🔍 Processing approve action:', { isProvider, userId: user.id, providerId: booking.provider_id })
         if (!isProvider) {
-          console.log('Approval denied: User is not a provider')
+          console.log('❌ Approval denied: User is not a provider')
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
         // Respect DB workflow: only flip approval_status; do NOT change status here
@@ -620,7 +630,7 @@ export async function PATCH(request: NextRequest) {
           approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
         }
         notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-        console.log('Approval updates:', updates)
+        console.log('✅ Approval updates:', updates)
         break
       case 'decline':
         if (!isProvider) {
@@ -650,15 +660,15 @@ export async function PATCH(request: NextRequest) {
         break
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Updating booking with:', updates)
-    }
+    console.log('📝 Updating booking with:', updates)
     
     // Race-safe update with preconditions
     let query = supabase
       .from('bookings')
       .update(updates)
       .eq('id', booking_id)
+    
+    console.log('🔍 Query conditions:', { booking_id, action })
     
     // Add race-safe guards based on action
     if (action === 'approve') {
@@ -672,6 +682,13 @@ export async function PATCH(request: NextRequest) {
     const { data: updated, error: updateError } = await query
       .select('*')
       .single()
+
+    console.log('📊 Database update result:', { 
+      hasData: !!updated, 
+      hasError: !!updateError,
+      errorMessage: updateError?.message,
+      updatedId: updated?.id
+    })
 
     if (updateError) {
       console.error('❌ Booking update error:', updateError)
