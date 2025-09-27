@@ -133,7 +133,28 @@ export class AuthMiddleware {
         
         try {
           // Use admin client for profile creation
-          const adminClient = await getSupabaseAdminClient()
+          console.log('🔍 Middleware: Getting admin client for profile creation...')
+          let adminClient
+          try {
+            adminClient = await getSupabaseAdminClient()
+            console.log('🔍 Middleware: Admin client obtained successfully')
+          } catch (adminClientError) {
+            console.error('❌ Middleware: Failed to get admin client:', adminClientError)
+            throw new Error(`Admin client creation failed: ${adminClientError instanceof Error ? adminClientError.message : 'Unknown error'}`)
+          }
+          
+          console.log('🔍 Middleware: Admin client obtained, checking insert method...')
+          
+          if (!adminClient || !adminClient.from || typeof adminClient.from !== 'function') {
+            throw new Error('Admin client is not properly initialized')
+          }
+          
+          const profilesTable = adminClient.from('profiles')
+          if (!profilesTable || !profilesTable.insert || typeof profilesTable.insert !== 'function') {
+            throw new Error('Admin client does not have insert method for profiles table')
+          }
+          
+          console.log('🔍 Middleware: Admin client validated, attempting profile creation...')
           const { data: newProfile, error: createError } = await adminClient
             .from('profiles')
             .insert({
