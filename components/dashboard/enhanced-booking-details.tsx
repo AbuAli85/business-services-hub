@@ -1357,12 +1357,6 @@ export default function EnhancedBookingDetails({
   const handleMarkInProgress = async () => {
     if (!booking) return
     
-    // Check if booking is approved first
-    if (booking.status !== 'approved' && booking.approval_status !== 'approved') {
-      toast.error('Please approve the booking first before starting the project.')
-      return
-    }
-    
     try {
       setIsUpdating(true)
       console.log('🚀 Starting project:', { 
@@ -1379,8 +1373,30 @@ export default function EnhancedBookingDetails({
         throw new Error('No active session. Please sign in again.')
       }
 
+      // First, check the current booking status from database
+      console.log('🔍 Checking current booking status from database...')
+      const { data: currentBooking, error: fetchError } = await supabase
+        .from('bookings')
+        .select('status, approval_status')
+        .eq('id', booking.id)
+        .single()
+      
+      if (fetchError) {
+        throw new Error(`Failed to fetch booking status: ${fetchError.message}`)
+      }
+      
+      console.log('📊 Current booking status from DB:', currentBooking)
+      
+      // Check if booking is approved
+      if (currentBooking.status !== 'approved' && currentBooking.approval_status !== 'approved') {
+        toast.error('Please approve the booking first before starting the project.')
+        console.log('❌ Booking not approved in database:', currentBooking)
+        return
+      }
+
       // Update booking status to in_progress (only if currently approved)
-      const { error } = await supabase
+      console.log('📝 Updating booking status to in_progress...')
+      const { data: updateResult, error } = await supabase
         .from('bookings')
         .update({ 
           status: 'in_progress',
@@ -1388,6 +1404,14 @@ export default function EnhancedBookingDetails({
         })
         .eq('id', booking.id)
         .eq('status', 'approved') // Only allow transition from approved to in_progress
+        .select()
+      
+      console.log('📊 Database update result:', { 
+        hasData: !!updateResult, 
+        hasError: !!error,
+        errorMessage: error?.message,
+        updatedRows: updateResult?.length
+      })
       
       if (error) {
         console.error('❌ Database update error:', error)
@@ -1395,6 +1419,10 @@ export default function EnhancedBookingDetails({
           throw new Error('Cannot start project. Please ensure the booking is approved first.')
         }
         throw error
+      }
+      
+      if (!updateResult || updateResult.length === 0) {
+        throw new Error('No rows were updated. The booking may not be in approved status.')
       }
       
       // Update local state immediately
@@ -1798,9 +1826,9 @@ export default function EnhancedBookingDetails({
         }
 
         const result = await response.json()
-        // Booking action completed successfully
+        console.log('✅ API response result:', result)
         
-        // Update local state immediately for better UX
+        // Only update local state after successful API response
         const updatedBooking: EnhancedBooking = { 
           ...booking, 
           status: action === 'approve' ? 'approved' : 'declined',
@@ -1814,11 +1842,12 @@ export default function EnhancedBookingDetails({
         // Update smart suggestions based on new status
         generateSmartSuggestions()
         
-        // Reload booking data to ensure consistency
+        // Reload booking data to ensure consistency with database
         setTimeout(async () => {
+          console.log('🔄 Reloading booking data after approval...')
           await loadBookingData()
           await loadMilestoneData()
-        }, 100)
+        }, 500)
       } catch (error) {
         // Error performing booking action
         const errorMessage = error instanceof Error ? error.message : `Failed to ${action} booking`
