@@ -638,7 +638,7 @@ export default function ServicesPage() {
                       <span className="font-semibold text-sm text-gray-800">
                         {service.provider_name || service.providerName || 'Service Provider'}
                       </span>
-                      <span className="text-xs text-gray-500">Service Provider</span>
+                      <span className="text-xs text-gray-500">Provider</span>
                     </div>
                   </div>
                 </div>
@@ -825,7 +825,7 @@ export default function ServicesPage() {
               <CardContent>
                 <div className="space-y-3">
                   {filteredServices
-                    .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
+                    .sort((a, b) => (b.booking_count || b.bookingCount || 0) - (a.booking_count || a.bookingCount || 0))
                     .slice(0, 3)
                     .map((service, index) => (
                       <div key={service.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -836,14 +836,14 @@ export default function ServicesPage() {
                           <div>
                             <p className="font-medium text-gray-900">{service.title}</p>
                             <p className="text-sm text-gray-500">
-                              {service.category} • {service.providerName || 'Service Provider'}
+                              {service.category} • {service.provider_name || service.providerName || 'Service Provider'}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gray-900">{service.bookingCount || 0} bookings</p>
+                          <p className="font-bold text-gray-900">{service.booking_count || service.bookingCount || 0} bookings</p>
                           <p className="text-sm text-green-600">
-                            {formatCurrency((service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
+                            {formatCurrency((service.booking_count || service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
                           </p>
                         </div>
                       </div>
