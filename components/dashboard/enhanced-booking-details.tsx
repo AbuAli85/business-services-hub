@@ -1369,7 +1369,7 @@ export default function EnhancedBookingDetails({
         throw new Error('No active session. Please sign in again.')
       }
 
-      // Update booking status to in_progress
+      // Update booking status to in_progress (only if currently approved)
       const { error } = await supabase
         .from('bookings')
         .update({ 
@@ -1377,8 +1377,15 @@ export default function EnhancedBookingDetails({
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)
+        .eq('status', 'approved') // Only allow transition from approved to in_progress
       
-      if (error) throw error
+      if (error) {
+        console.error('❌ Database update error:', error)
+        if (error.message?.includes('Invalid status transition')) {
+          throw new Error('Cannot start project. Please ensure the booking is approved first.')
+        }
+        throw error
+      }
       
       // Update local state immediately
       const updatedBooking: EnhancedBooking = { 

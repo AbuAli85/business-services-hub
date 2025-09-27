@@ -94,6 +94,8 @@ export async function GET(
 ) {
   try {
     console.log('🔍 Booking details API called for ID:', params.id)
+    console.log('🔍 Request URL:', request.url)
+    console.log('🔍 Request method:', request.method)
     
     const { user, authError } = await authenticateUser(request)
     
@@ -167,9 +169,21 @@ export async function GET(
 
     if (bookingError) {
       console.error('❌ Booking fetch error:', bookingError)
+      console.error('❌ Booking ID being searched:', params.id)
+      console.error('❌ User ID:', user.id)
       const response = NextResponse.json({ 
         error: 'Booking not found',
         details: bookingError.message
+      }, { status: 404 })
+      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      return response
+    }
+
+    if (!booking) {
+      console.error('❌ No booking found for ID:', params.id)
+      const response = NextResponse.json({ 
+        error: 'Booking not found',
+        details: 'No booking with this ID exists'
       }, { status: 404 })
       Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
       return response

@@ -624,8 +624,9 @@ export async function PATCH(request: NextRequest) {
           console.log('❌ Approval denied: User is not a provider')
           return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
         }
-        // Respect DB workflow: only flip approval_status; do NOT change status here
+        // Update both approval_status and status when approving
         updates = {
+          status: 'approved',
           approval_status: 'approved',
           approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
         }
