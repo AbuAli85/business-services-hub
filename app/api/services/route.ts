@@ -120,14 +120,16 @@ export async function GET(request: NextRequest) {
                   providerName = authUser.user.user_metadata?.full_name || 
                                 authUser.user.user_metadata?.company_name || 
                                 authUser.user.email?.split('@')[0] || 
-                                'Service Provider'
+                                `Provider ${service.provider_id.slice(0, 8)}...`
                 }
               } catch (authError) {
-                // Keep default 'Service Provider' if auth lookup fails
+                // Use a more descriptive fallback
+                providerName = `Provider ${service.provider_id.slice(0, 8)}...`
               }
             }
           } catch (profileError) {
-            // Keep default 'Service Provider' if profile lookup fails
+            // Use a more descriptive fallback
+            providerName = `Provider ${service.provider_id.slice(0, 8)}...`
           }
           
           return {
@@ -140,7 +142,8 @@ export async function GET(request: NextRequest) {
               company_name: '',
               avatar_url: ''
             },
-            bookingCount: bookingCount || 0
+            bookingCount: bookingCount || 0,
+            providerName: providerName
           }
         } catch (error) {
           console.error('Error getting booking count for service:', service.id, error)
@@ -156,7 +159,10 @@ export async function GET(request: NextRequest) {
               company_name: '',
               avatar_url: ''
             },
-            bookingCount: 0
+            bookingCount: 0,
+            providerName: service.provider_id 
+              ? `Provider ${service.provider_id.slice(0, 8)}...` 
+              : 'Service Provider'
           }
         }
       })
