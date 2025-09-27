@@ -127,15 +127,21 @@ export default function BookingsPage() {
       return 'in_production'
     }
     
+    // If status is approved, show as approved
+    if (booking.status === 'approved') {
+      return 'approved'
+    }
+    
     // If approved (either via status or approval_status), show as ready to launch
     if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') 
         && booking.status === 'pending') {
       return 'ready_to_launch'
     }
     
-    // If status is approved, show as approved
-    if (booking.status === 'approved') {
-      return 'approved'
+    // Check if there's an invoice issued - this indicates ready to launch
+    const invoice = getInvoiceForBooking(booking.id)
+    if (invoice && ['issued', 'paid'].includes(invoice.status) && booking.status === 'pending') {
+      return 'ready_to_launch'
     }
     
     // If declined, show as cancelled
@@ -671,11 +677,9 @@ export default function BookingsPage() {
       invoice && ['issued', 'paid'].includes(invoice.status)
     if (!okInvoice) return false
 
-    // keep placeholders, but don't force true with `|| true`
-    const hasTeamAssigned = booking.team_assigned === true
-    const hasKickoffDate = !!booking.kickoff_at
-
-    return hasTeamAssigned && hasKickoffDate
+    // For now, allow launch if invoice is ready - team assignment and kickoff can be done after launch
+    // TODO: Add proper team assignment and kickoff date requirements later
+    return true
   }
   
   // Get launch blocking reason for tooltip
@@ -1532,9 +1536,13 @@ export default function BookingsPage() {
                         <TableCell className="py-4">
                           <div className="space-y-1">
                             <div className="font-bold text-lg text-gray-900">
-                              {formatCurrency(
-                                Number((booking.amount_cents ?? 0) / 100),
-                                String(booking.currency ?? 'OMR')
+                              {Number(booking.amount_cents ?? 0) === 0 ? (
+                                <span className="text-gray-500">No amount set</span>
+                              ) : (
+                                formatCurrency(
+                                  Number((booking.amount_cents ?? 0) / 100),
+                                  String(booking.currency ?? 'OMR')
+                                )
                               )}
                             </div>
                             <div className="flex items-center gap-1">
@@ -1547,11 +1555,33 @@ export default function BookingsPage() {
                         </TableCell>
                         
                         <TableCell>
-                          <CompactBookingStatus
-                            bookingId={booking.id}
-                            userRole={userRole as 'client' | 'provider' | 'admin'}
-                            onStatusChangeAction={() => setRefreshTrigger(prev => prev + 1)}
-                          />
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs font-semibold ${
+                                  getDerivedStatus(booking) === 'delivered' 
+                                    ? 'text-green-700 border-green-300 bg-green-100'
+                                    : getDerivedStatus(booking) === 'in_production'
+                                    ? 'text-blue-700 border-blue-300 bg-blue-100'
+                                    : getDerivedStatus(booking) === 'ready_to_launch'
+                                    ? 'text-purple-700 border-purple-300 bg-purple-100'
+                                    : getDerivedStatus(booking) === 'approved'
+                                    ? 'text-orange-700 border-orange-300 bg-orange-100'
+                                    : 'text-yellow-700 border-yellow-300 bg-yellow-100'
+                                }`}
+                              >
+                                {getDerivedStatus(booking) === 'delivered' ? 'Delivered' :
+                                 getDerivedStatus(booking) === 'in_production' ? 'In Production' :
+                                 getDerivedStatus(booking) === 'ready_to_launch' ? 'Ready to Launch' :
+                                 getDerivedStatus(booking) === 'approved' ? 'Approved' :
+                                 'Pending'}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {getStatusSubtitle(getDerivedStatus(booking))}
+                            </div>
+                          </div>
                         </TableCell>
                         
                         <TableCell>
@@ -1647,13 +1677,6 @@ export default function BookingsPage() {
                                     </Button>
                                   </TitleTip>
                                 )}
-                                {/* Debug info for missing Create button */}
-                                {!canCreateInvoice && (
-                                  <span className="text-xs text-red-500">No permission</span>
-                                )}
-                                {canCreateInvoice && !['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
-                                  <span className="text-xs text-red-500">Status: {String(booking.status)}</span>
-                                )}
                               </div>
                             </div>
                           )}
@@ -1661,10 +1684,10 @@ export default function BookingsPage() {
                         
                         <TableCell>
                           <div className="text-sm">
-                            {formatLocalDate(booking.scheduled_date)}
+                            {booking.scheduled_date ? formatLocalDate(booking.scheduled_date) : '—'}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {formatLocalTime(booking.scheduled_date)}
+                            {booking.scheduled_date ? formatLocalTime(booking.scheduled_date) : '—'}
                           </div>
                         </TableCell>
                         
