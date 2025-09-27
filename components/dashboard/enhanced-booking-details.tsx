@@ -1387,30 +1387,48 @@ export default function EnhancedBookingDetails({
       
       console.log('📊 Current booking status from DB:', currentBooking)
       
-      // Check if booking is approved
-      if (currentBooking.status !== 'approved' && currentBooking.approval_status !== 'approved') {
+      // Check if booking is approved (be more flexible with the check)
+      const isApproved = currentBooking.status === 'approved' || 
+                        currentBooking.approval_status === 'approved' ||
+                        (currentBooking.status === 'pending' && currentBooking.approval_status === 'approved')
+      
+      if (!isApproved) {
         toast.error('Please approve the booking first before starting the project.')
         console.log('❌ Booking not approved in database:', currentBooking)
         return
       }
+      
+      console.log('✅ Booking is approved, proceeding with start project...')
 
-      // Update booking status to in_progress (only if currently approved)
+      // Update booking status to in_progress
       console.log('📝 Updating booking status to in_progress...')
+      console.log('📊 Current booking status from check:', currentBooking)
+      
+      // Prepare update data - if status is pending but approval_status is approved, update both
+      const updateData: any = {
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      }
+      
+      // If the main status is still pending but approval_status is approved, update both
+      if (currentBooking.status === 'pending' && currentBooking.approval_status === 'approved') {
+        updateData.status = 'in_progress'
+        console.log('📝 Updating both status and approval_status since status was pending')
+      }
+      
+      // Try to update the booking status
       const { data: updateResult, error } = await supabase
         .from('bookings')
-        .update({ 
-          status: 'in_progress',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', booking.id)
-        .eq('status', 'approved') // Only allow transition from approved to in_progress
         .select()
       
       console.log('📊 Database update result:', { 
         hasData: !!updateResult, 
         hasError: !!error,
         errorMessage: error?.message,
-        updatedRows: updateResult?.length
+        updatedRows: updateResult?.length,
+        updatedStatus: updateResult?.[0]?.status
       })
       
       if (error) {
@@ -1422,7 +1440,15 @@ export default function EnhancedBookingDetails({
       }
       
       if (!updateResult || updateResult.length === 0) {
-        throw new Error('No rows were updated. The booking may not be in approved status.')
+        // If no rows were updated, let's check what the current status actually is
+        const { data: checkBooking, error: checkError } = await supabase
+          .from('bookings')
+          .select('status, approval_status')
+          .eq('id', booking.id)
+          .single()
+        
+        console.error('❌ No rows updated. Current booking status:', checkBooking)
+        throw new Error(`Cannot start project. Current status: ${checkBooking?.status}, Approval status: ${checkBooking?.approval_status}`)
       }
       
       // Update local state immediately
