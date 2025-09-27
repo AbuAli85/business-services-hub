@@ -695,18 +695,46 @@ export async function PATCH(request: NextRequest) {
             }
             
             console.log('✅ Fallback completed: Updated approval_status to in_progress')
+            console.log('📊 Fallback result:', { 
+              hasData: !!fallbackResult, 
+              dataLength: fallbackResult?.length,
+              firstItem: fallbackResult?.[0] 
+            })
+            
+            // Ensure we have a valid booking object
+            const updatedBooking = fallbackResult?.[0] || {
+              id: booking_id,
+              status: booking.status,
+              approval_status: 'in_progress',
+              updated_at: new Date().toISOString()
+            }
+            
             return NextResponse.json({ 
               success: true, 
-              booking: fallbackResult?.[0],
+              booking: updatedBooking,
               message: 'Project started successfully (approval status updated)',
               updated_fields: ['approval_status']
             })
           }
           
           console.log('✅ Direct update completed: Status updated to in_progress')
+          console.log('📊 Direct result:', { 
+            hasData: !!directResult, 
+            dataLength: directResult?.length,
+            firstItem: directResult?.[0] 
+          })
+          
+          // Ensure we have a valid booking object
+          const updatedBooking = directResult?.[0] || {
+            id: booking_id,
+            status: 'in_progress',
+            approval_status: booking.approval_status,
+            updated_at: new Date().toISOString()
+          }
+          
           return NextResponse.json({ 
             success: true, 
-            booking: directResult?.[0],
+            booking: updatedBooking,
             message: 'Project started successfully',
             updated_fields: ['status']
           })
