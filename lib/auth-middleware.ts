@@ -127,7 +127,7 @@ export class AuthMiddleware {
       })
 
       // If profile doesn't exist, try to create one
-      if (profileError && profileError.code === 'PGRST116') {
+      if ((profileError && profileError.code === 'PGRST116') || (!profile && !profileError)) {
         console.log('🔍 Middleware: Profile not found, attempting to create one for user:', user.id)
         
         try {
@@ -183,7 +183,7 @@ export class AuthMiddleware {
         }
       }
 
-      if (profileError && profileError.code !== 'PGRST116') {
+      if (profileError && profileError.code !== 'PGRST116' && !(!profile && !profileError)) {
         return {
           isAuthenticated: true,
           user,
