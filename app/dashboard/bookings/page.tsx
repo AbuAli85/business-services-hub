@@ -7,12 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+// Tooltip imports removed - using native title attribute
 import { 
   Table,
   TableBody,
@@ -23,12 +18,10 @@ import {
 } from '@/components/ui/table'
 import {
   Search,
-  Eye,
   Calendar,
   RefreshCw,
   Clock,
   CheckCircle,
-  Download,
   ChevronUp,
   ChevronDown,
   ChevronLeft,
@@ -36,7 +29,6 @@ import {
   BarChart3,
   TrendingUp,
   Receipt,
-  ExternalLink,
   AlertTriangle,
   Target,
   Zap,
@@ -45,8 +37,7 @@ import {
   Award,
   User,
   Rocket,
-  DollarSign,
-  Gem
+  DollarSign
 } from 'lucide-react'
 import { CompactBookingStatus } from '@/components/dashboard/smart-booking-status'
 import { useRouter } from 'next/navigation'
@@ -73,11 +64,11 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [selectedBookings, setSelectedBookings] = useState<string[]>([])
-  const [showFilters, setShowFilters] = useState(false)
+  // Removed unused selectedBookings and showFilters state
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [realtimeReady, setRealtimeReady] = useState(false)
   const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set())
   const lastRefreshTimeRef = useRef(0)
 
   // Helper for custom tooltips - simplified for now
@@ -89,6 +80,9 @@ export default function BookingsPage() {
 
   // Approve booking function
   const approveBooking = async (id: string) => {
+    if (approvingIds.has(id)) return
+    setApprovingIds(prev => new Set(prev).add(id))
+    const dismiss = toast.loading('Approving booking…')
     try {
       const res = await fetch('/api/bookings', {
         method: 'PATCH',
@@ -96,16 +90,19 @@ export default function BookingsPage() {
         credentials: 'include',
         body: JSON.stringify({ booking_id: id, action: 'approve' })
       })
-      if (res.ok) {
-        // Trigger refresh
-        setRefreshTrigger(prev => prev + 1)
-        // Show success message (you can add toast here if available)
-        console.log('Booking approved successfully')
-      } else {
-        console.error('Approval failed')
+      if (!res.ok) {
+        const { error, details } = await res.json().catch(() => ({}))
+        throw new Error(error || details || `Request failed: ${res.status}`)
       }
-    } catch (error) {
-      console.error('Error approving booking:', error)
+      toast.success('Booking approved')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (err: any) {
+      toast.error(err?.message || 'Approval failed')
+    } finally {
+      toast.dismiss(dismiss)
+      setApprovingIds(prev => {
+        const next = new Set(prev); next.delete(id); return next
+      })
     }
   }
 
@@ -299,7 +296,7 @@ export default function BookingsPage() {
       const params = new URLSearchParams({
         page: String(currentPage),
         pageSize: String(pageSize),
-        search: debouncedQuery.replace(/^#/, ''),
+        search: debouncedQuery,              // ← keep '#' for ID lookup
         status: statusFilter === 'all' ? '' : statusFilter,
         sort: mapSortKeyToApi(sortBy),
         order: sortOrder
@@ -446,21 +443,22 @@ export default function BookingsPage() {
         if (!isMounted) return
         
         // Create filter strings inside the async function where userId is available
+        // Create server-side filter to reduce noise
+        const bookingsFilter = userRole === 'admin' ? undefined :
+                              `or(client_id.eq.${userId},provider_id.eq.${userId})`
+        
         bookingsChannel = supabase
           .channel(`bookings-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'bookings'
+            table: 'bookings',
+            filter: bookingsFilter
           }, (payload: any) => {
             if (!isMounted) return
+            console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
             
-            // Filter events not related to the user
-            const row = payload.new ?? payload.old
-            if (row && (row.client_id === userId || row.provider_id === userId || userRole === 'admin')) {
-              console.log('📡 Bookings realtime update:', payload.eventType, payload.new?.id)
-              
-              // Only trigger refresh for important changes, not every update
+            // Only trigger refresh for important changes, not every update
             if (payload.eventType === 'INSERT' || 
                 (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
               // Debounce the reload to avoid too many refreshes
@@ -478,27 +476,24 @@ export default function BookingsPage() {
                 toast(`Booking status updated to ${payload.new.status}`)
               }
             }
-          }
           })
           .subscribe()
 
         // Subscribe to milestones changes for progress updates
+        const milestonesFilter = userRole === 'admin' ? undefined :
+                                `booking_id.in.(select id from bookings where or(client_id.eq.${userId},provider_id.eq.${userId}))`
+        
         milestonesChannel = supabase
           .channel(`milestones-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'milestones'
+            table: 'milestones',
+            filter: milestonesFilter
           }, (payload: any) => {
             if (!isMounted) return
-            
-            // Filter events not related to the user's bookings
-            const row = payload.new ?? payload.old
-            if (row && (userRole === 'admin' || 
-                       (userRole === 'client' && bookings.some(b => b.id === row.booking_id)) ||
-                       (userRole === 'provider' && bookings.some(b => b.id === row.booking_id)))) {
-              console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
-              // Only trigger refresh for milestone changes that affect user's bookings
+            console.log('📡 Milestones realtime update:', payload.eventType, payload.new?.booking_id)
+            // Only trigger refresh for milestone changes that affect user's bookings
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               setTimeout(() => {
                 if (isMounted) {
@@ -507,25 +502,24 @@ export default function BookingsPage() {
                 }
               }, 2000) // Increased debounce time to prevent loops
             }
-          }
           })
           .subscribe()
 
         // Subscribe to invoices changes
+        const invoicesFilter = userRole === 'admin' ? undefined :
+                              `or(client_id.eq.${userId},provider_id.eq.${userId})`
+        
         invoicesChannel = supabase
           .channel(`invoices-${userId}`)
           .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: 'invoices'
+            table: 'invoices',
+            filter: invoicesFilter
           }, (payload: any) => {
             if (!isMounted) return
-            
-            // Filter events not related to the user
-            const row = payload.new ?? payload.old
-            if (row && (row.client_id === userId || row.provider_id === userId || userRole === 'admin')) {
-              console.log('📡 Invoices realtime update:', payload.eventType)
-              // Only trigger refresh for important invoice changes
+            console.log('📡 Invoices realtime update:', payload.eventType)
+            // Only trigger refresh for important invoice changes
             if (payload.eventType === 'INSERT' || 
                 (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
               setTimeout(() => {
@@ -539,7 +533,6 @@ export default function BookingsPage() {
             if (payload.eventType === 'INSERT') {
               toast.success('New invoice created!')
             }
-          }
           })
           .subscribe()
 
@@ -549,8 +542,8 @@ export default function BookingsPage() {
         console.error('❌ Realtime subscription error:', error)
         // Non-blocking - continue without realtime if it fails
         setRealtimeReady(true) // Still set ready even if realtime fails
-  }
-  }
+      }
+    }
 
     setupRealtimeSubscriptions()
 
@@ -568,11 +561,11 @@ export default function BookingsPage() {
           if (invoicesChannel) supabase.removeChannel(invoicesChannel)
         } catch (error) {
           console.warn('Error cleaning up subscriptions:', error)
-  }
-  }
+        }
+      }
       
       cleanup()
-  }
+    }
   }, [user, userRole, enableRealtime])
 
   // Debounce searchQuery for smoother UX
@@ -647,7 +640,7 @@ export default function BookingsPage() {
     const hasTeamAssigned = booking.team_assigned === true
     const hasKickoffDate = !!booking.kickoff_at
 
-    return (hasTeamAssigned || true) && (hasKickoffDate || true)
+    return hasTeamAssigned && hasKickoffDate
   }
   
   // Get launch blocking reason for tooltip
@@ -710,7 +703,11 @@ export default function BookingsPage() {
   }
       
       const supabase = await getSupabaseClient()
-      const amount = Number(booking.totalAmount ?? booking.amount ?? booking.total_price ?? 0)
+      const amount = Number(
+        (booking.amount_cents ?? null) !== null
+          ? (booking.amount_cents as number) / 100
+          : booking.totalAmount ?? booking.amount ?? booking.total_price ?? 0
+      )
       const currency = String(booking.currency ?? 'OMR')
       
       if (amount <= 0) {
@@ -947,8 +944,7 @@ export default function BookingsPage() {
     )
   }
   return (
-    <TooltipProvider>
-      <div className="space-y-6">
+    <div className="space-y-6">
       {/* Enhanced Professional Header */}
       <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden">
         {/* Background Pattern */}
@@ -1716,11 +1712,12 @@ export default function BookingsPage() {
                                 <Tip label="Approve this booking to start the project">
                                   <Button 
                                     size="sm" 
-                                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200"
+                                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200 disabled:opacity-60"
+                                    disabled={approvingIds.has(booking.id)}
                                     onClick={() => approveBooking(booking.id)}
                                   >
                                     <CheckCircle className="h-3 w-3 mr-1" />
-                                    Approve Project
+                                    {approvingIds.has(booking.id) ? 'Approving…' : 'Approve Project'}
                                   </Button>
                                 </Tip>
                               )}
@@ -1862,6 +1859,5 @@ export default function BookingsPage() {
         </div>
       )}
       </div>
-    </TooltipProvider>
   )
 }

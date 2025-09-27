@@ -482,9 +482,14 @@ export async function GET(request: NextRequest) {
     const status = (searchParams.get('status') || '').trim()
 
     // Build base query by role with explicit columns
+    // Use basic columns without denormalized fields for now
     let query = supabase
       .from('bookings')
-      .select('id, service_id, client_id, provider_id, service_title, client_name, provider_name, status, approval_status, operational_status, amount_cents, currency, created_at, updated_at, scheduled_date, start_time, end_time, notes, location, estimated_duration, payment_status', { count: 'exact' })
+      .select(`
+        id, service_id, client_id, provider_id, status, approval_status, operational_status, 
+        amount_cents, currency, created_at, updated_at, scheduled_date, start_time, end_time, 
+        notes, location, estimated_duration, payment_status, total_amount
+      `, { count: 'exact' })
 
     if (userRole === 'provider') {
       query = query.eq('provider_id', user.id)
@@ -524,16 +529,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Search functionality - resilient to NULL/missing columns
+    // Search functionality - simplified for now
     if (search) {
       if (search.startsWith('#')) {
         // Direct ID lookup
         query = query.eq('id', search.slice(1))
-      } else if (search.length >= 2) {
-        // Text search across multiple fields (avoid seq scans with short queries)
-        const like = (col: string) => `${col}.ilike.%${search.replace(/%/g,'').replace(/,/g,' ')}%`
-        query = query.or([like('service_title'), like('client_name'), like('provider_name')].join(','))
       }
+      // Note: Text search disabled until denormalized columns are available
     }
 
     // Sorting
@@ -545,13 +547,16 @@ export async function GET(request: NextRequest) {
         query = query.order('amount_cents', { ascending: order === 'asc' })
         break
       case 'title':
-        query = query.order('service_title', { ascending: order === 'asc' })
+        // Title sorting disabled until denormalized columns are available
+        query = query.order('created_at', { ascending: order === 'asc' })
         break
       case 'client_name':
-        query = query.order('client_name', { ascending: order === 'asc', nullsFirst: true })
+        // Client name sorting disabled until denormalized columns are available
+        query = query.order('created_at', { ascending: order === 'asc' })
         break
       case 'provider_name':
-        query = query.order('provider_name', { ascending: order === 'asc', nullsFirst: true })
+        // Provider name sorting disabled until denormalized columns are available
+        query = query.order('created_at', { ascending: order === 'asc' })
         break
       default:
         query = query.order('created_at', { ascending: order === 'asc' })
@@ -568,8 +573,16 @@ export async function GET(request: NextRequest) {
       return response
     }
 
+    // Add placeholder fields for missing denormalized columns
+    const transformedData = (data ?? []).map((booking: any) => ({
+      ...booking,
+      service_title: 'Service', // Placeholder until denormalized column is available
+      client_name: 'Client', // Placeholder until denormalized column is available
+      provider_name: 'Provider', // Placeholder until denormalized column is available
+    }))
+
     const payload = {
-      data: (data ?? []) as any[],
+      data: transformedData,
       page,
       pageSize,
       total: count ?? 0,
