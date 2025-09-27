@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/server'
 import { requireRole } from '@/lib/authz'
 import { makeServerClient } from '@/utils/supabase/makeServerClient'
@@ -13,18 +12,21 @@ import {
 } from '@/lib/notification-triggers-simple'
 import { createNotification } from '@/lib/notification-service'
 // CORS headers for cross-domain access
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Allow all origins in production, or use process.env.NEXT_PUBLIC_ALLOWED_ORIGINS
+const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS || '').split(',').map(s => s.trim())
+const originOk = (o?: string | null) => !!o && (ALLOWED_ORIGINS.includes(o) || ALLOWED_ORIGINS.includes('*'))
+const corsHeadersFor = (origin?: string | null) => ({
+  'Access-Control-Allow-Origin': originOk(origin) ? origin! : 'null',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400'
-}
+  'Access-Control-Max-Age': '86400',
+  'Vary': 'Origin',
+})
 
 // Handle preflight OPTIONS request
 export async function OPTIONS(request: NextRequest) {
   return new Response(null, {
     status: 200,
-    headers: corsHeaders,
+    headers: corsHeadersFor(request.headers.get('origin')),
   })
 }
 
@@ -195,7 +197,7 @@ export async function POST(request: NextRequest) {
         details: testError.message,
         type: 'database_connection_error'
       }, { status: 500 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
     console.log('✅ Database connection test passed')
@@ -211,7 +213,7 @@ export async function POST(request: NextRequest) {
         error: 'Invalid request data', 
         details: validationResult.error.errors 
       }, { status: 400 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -231,14 +233,14 @@ export async function POST(request: NextRequest) {
 
     if (serviceError || !service) {
       const response = NextResponse.json({ error: 'Service not found or inactive' }, { status: 404 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
     // Check if user is trying to book their own service
     if (service.provider_id === user.id) {
       const response = NextResponse.json({ error: 'Cannot book your own service' }, { status: 400 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -255,14 +257,14 @@ export async function POST(request: NextRequest) {
     const amount_cents = Math.max(0, Math.round((amount ?? 0) * 100))
     if (!Number.isFinite(amount_cents)) {
       const response = NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
-      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v))
       return response
     }
     
     // Sanity check date is ISO-ish and not in 1970
     if (isNaN(new Date(scheduled_date).getTime())) {
       const response = NextResponse.json({ error: 'Invalid scheduled_date' }, { status: 400 })
-      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v))
       return response
     }
 
@@ -333,7 +335,7 @@ export async function POST(request: NextRequest) {
           providerId: service.provider_id
         }
       }, { status: 500 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -399,7 +401,7 @@ export async function POST(request: NextRequest) {
       booking,
       message: 'Booking created successfully and sent for approval'
     })
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
     return response
 
   } catch (error) {
@@ -423,7 +425,7 @@ export async function GET(request: NextRequest) {
     const user = await getUserFromRequest(request)
     if (!user) {
       const response = jsonError(401, 'UNAUTHENTICATED', 'No session')
-      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v as string))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v as string))
       return response
     }
 
@@ -437,7 +439,7 @@ export async function GET(request: NextRequest) {
     const userRole = profile?.role ?? user.user_metadata?.role ?? 'client'
     if (!['client', 'provider', 'admin'].includes(userRole)) {
       const response = jsonError(403, 'FORBIDDEN', 'Insufficient role')
-      Object.entries(corsHeaders).forEach(([k,v]) => response.headers.set(k, v as string))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v as string))
       return response
     }
 
@@ -451,11 +453,16 @@ export async function GET(request: NextRequest) {
     }
     const page = toPosInt(searchParams.get('page'), 1)
     const pageSize = toPosInt(searchParams.get('pageSize'), 25, 1, 100)
-    const rawSort = (searchParams.get('sort') || 'created_at').toLowerCase()
-    const sort: 'created_at'|'updated_at'|'amount'|'title'|'client_name'|'provider_name' =
-      ['created_at','updated_at','amount','title','client_name','provider_name'].includes(rawSort as any)
-        ? (rawSort as any)
-        : 'created_at'
+    const rawSort = (searchParams.get('sort') || 'createdAt').toLowerCase()
+    const sortMap: Record<string, 'created_at'|'updated_at'|'amount'|'title'|'client_name'|'provider_name'> = {
+      createdat: 'created_at',
+      lastupdated: 'updated_at',
+      totalamount: 'amount',
+      servicetitle: 'title',
+      clientname: 'client_name',
+      providername: 'provider_name',
+    }
+    const sort = sortMap[rawSort] ?? 'created_at'
     const order: 'asc'|'desc' = (searchParams.get('order') === 'asc' ? 'asc' : 'desc')
     const search = (searchParams.get('search') || '').trim()
     const status = (searchParams.get('status') || '').trim()
@@ -495,6 +502,9 @@ export async function GET(request: NextRequest) {
         case 'cancelled':
           query = query.eq('status', 'cancelled')
           break
+        case 'rescheduled':
+          query = query.eq('status', 'rescheduled')
+          break
         default:
           query = query.eq('status', status)
       }
@@ -502,9 +512,14 @@ export async function GET(request: NextRequest) {
 
     // Search functionality - resilient to NULL/missing columns
     if (search) {
-      // Prefer a broad OR; Supabase handles the OR list safely
-      const like = (col: string) => `${col}.ilike.%${search.replace(/%/g,'').replace(/,/g,' ')}%`
-      query = query.or([like('service_title'), like('client_name'), like('provider_name')].join(','))
+      if (search.startsWith('#')) {
+        // Direct ID lookup
+        query = query.eq('id', search.slice(1))
+      } else {
+        // Text search across multiple fields
+        const like = (col: string) => `${col}.ilike.%${search.replace(/%/g,'').replace(/,/g,' ')}%`
+        query = query.or([like('service_title'), like('client_name'), like('provider_name')].join(','))
+      }
     }
 
     // Sorting
@@ -535,7 +550,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       const response = NextResponse.json({ error: error.message }, { status: 400 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -548,13 +563,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(payload, { 
       status: 200, 
-      headers: corsHeaders,
+      headers: corsHeadersFor(request.headers.get('origin')),
     })
 
   } catch (error) {
     console.error('Error fetching bookings:', error)
     const response = jsonError(500, 'INTERNAL_ERROR', 'Internal server error')
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
     return response
   }
 }
@@ -594,7 +609,7 @@ export async function PATCH(request: NextRequest) {
     if (authError || !user) {
       console.error('❌ Auth error:', authError?.message || 'Authentication failed')
       const response = NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -602,7 +617,7 @@ export async function PATCH(request: NextRequest) {
     const parsed = patchSchema.safeParse(body)
     if (!parsed.success) {
       const response = NextResponse.json({ error: 'Invalid request data', details: parsed.error.errors }, { status: 400 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -623,7 +638,7 @@ export async function PATCH(request: NextRequest) {
         error: 'Booking not found or access denied',
         details: 'The booking does not exist or you do not have permission to access it'
       }, { status: 404 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -632,7 +647,19 @@ export async function PATCH(request: NextRequest) {
 
     if (!isClient && !isProvider) {
       const response = NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+      return response
+    }
+
+    // State transition guards for race safety
+    if (action === 'approve' && booking.approval_status === 'approved') {
+      const response = NextResponse.json({ success: true, booking }, { status: 200 })
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+      return response
+    }
+    if (action === 'complete' && booking.status !== 'in_progress' && booking.status !== 'approved') {
+      const response = NextResponse.json({ error: 'Cannot complete from current state' }, { status: 409 })
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -669,8 +696,9 @@ export async function PATCH(request: NextRequest) {
       case 'reschedule':
         if (!scheduled_date) return NextResponse.json({ error: 'scheduled_date required' }, { status: 400 })
         if (!isProvider && !isClient) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-        updates = { scheduled_date: normalizeToISO(scheduled_date)!, status: 'rescheduled' }
-        notification = { user_id: isProvider ? booking.client_id : booking.provider_id, title: 'Reschedule Proposed', message: `New time proposed: ${new Date(scheduled_date).toLocaleString()}`, type: 'booking_updated' }
+        const normalized = normalizeToISO(scheduled_date)!
+        updates = { scheduled_date: normalized, status: 'rescheduled' }
+        notification = { user_id: isProvider ? booking.client_id : booking.provider_id, title: 'Reschedule Proposed', message: `New time proposed: ${new Date(normalized).toLocaleString()}`, type: 'booking_updated' }
         break
       case 'complete':
         if (!isProvider) return NextResponse.json({ error: 'Only provider can complete' }, { status: 403 })
@@ -698,7 +726,7 @@ export async function PATCH(request: NextRequest) {
       console.error('Update data:', updates)
       console.error('Booking ID:', booking_id)
       const response = NextResponse.json({ error: 'Failed to update booking', details: updateError.message }, { status: 500 })
-      Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
     }
 
@@ -795,7 +823,7 @@ export async function PATCH(request: NextRequest) {
 
     console.log('✅ PATCH method completed successfully')
     const response = NextResponse.json({ success: true, booking: updated })
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
     return response
   } catch (error) {
     console.error('❌ Unexpected error in PATCH method:', error)
@@ -809,7 +837,7 @@ export async function PATCH(request: NextRequest) {
       details: errorMessage,
       type: 'patch_method_error'
     }, { status: 500 })
-    Object.entries(corsHeaders).forEach(([key, value]) => response.headers.set(key, value))
+    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
     return response
   }
 }

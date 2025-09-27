@@ -1204,6 +1204,7 @@ export default function BookingsPage() {
                 <SelectItem value="delivered">Delivered</SelectItem>
                 <SelectItem value="on_hold">On Hold</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="rescheduled">Rescheduled</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
