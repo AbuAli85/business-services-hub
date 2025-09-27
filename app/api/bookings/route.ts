@@ -658,26 +658,31 @@ export async function PATCH(request: NextRequest) {
         
         // Handle two-step update if status is pending but approval_status is approved
         if (booking.status === 'pending' && booking.approval_status === 'approved') {
-          console.log('📝 Two-step update: First updating status to approved, then to in_progress')
+          console.log('📝 Two-step update: First using approve action, then updating to in_progress')
           
-          // Step 1: Update status from pending to approved
+          // Step 1: Use the existing approve action to update status to approved
+          console.log('🔄 Step 1: Using approve action to update status to approved')
+          const approveUpdates = {
+            status: 'approved',
+            approval_status: 'approved',
+            approval_reviewed_at: new Date().toISOString()
+          }
+          
           const { data: step1Result, error: step1Error } = await supabase
             .from('bookings')
-            .update({ 
-              status: 'approved',
-              updated_at: new Date().toISOString()
-            })
+            .update(approveUpdates)
             .eq('id', booking_id)
             .select()
           
           if (step1Error) {
             console.error('❌ Step 1 failed:', step1Error)
-            return NextResponse.json({ error: `Failed to update status to approved: ${step1Error.message}` }, { status: 500 })
+            return NextResponse.json({ error: `Failed to approve booking: ${step1Error.message}` }, { status: 500 })
           }
           
-          console.log('✅ Step 1 completed: Status updated to approved')
+          console.log('✅ Step 1 completed: Status updated to approved via approve action')
           
           // Step 2: Update status from approved to in_progress
+          console.log('🔄 Step 2: Updating status from approved to in_progress')
           const { data: step2Result, error: step2Error } = await supabase
             .from('bookings')
             .update({ 
