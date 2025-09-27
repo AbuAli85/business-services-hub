@@ -44,7 +44,8 @@ import {
   Users,
   Info,
   MessageCircle,
-  Share2
+  Share2,
+  BarChart3
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -1353,11 +1354,57 @@ export default function EnhancedBookingDetails({
   }
 
   // Provider Actions
-  const handleMarkInProgress = () => {
+  const handleMarkInProgress = async () => {
     if (!booking) return
     
-    // Redirect to milestones page to start working on the project
-    router.push(`/dashboard/bookings/${booking.id}/milestones`)
+    try {
+      setIsUpdating(true)
+      console.log('🚀 Starting project:', { bookingId: booking.id })
+      
+      // Get authenticated Supabase client
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('No active session. Please sign in again.')
+      }
+
+      // Update booking status to in_progress
+      const { error } = await supabase
+        .from('bookings')
+        .update({ 
+          status: 'in_progress',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id)
+      
+      if (error) throw error
+      
+      // Update local state immediately
+      const updatedBooking: EnhancedBooking = { 
+        ...booking, 
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      }
+      setBooking(updatedBooking)
+      
+      toast.success('Project started successfully!')
+      
+      // Regenerate smart suggestions based on new status
+      generateSmartSuggestions()
+      
+      // Redirect to milestones page to start working on the project
+      setTimeout(() => {
+        router.push(`/dashboard/bookings/${booking.id}/milestones`)
+      }, 1000)
+      
+    } catch (error) {
+      console.error('❌ Failed to start project:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start project'
+      toast.error(errorMessage)
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const handleMarkComplete = async () => {
@@ -2317,10 +2364,20 @@ export default function EnhancedBookingDetails({
                     <Button 
                       variant="outline" 
                       onClick={handleMarkInProgress}
+                      disabled={isUpdating}
                       className="justify-start"
                     >
                       <Play className="h-4 w-4 mr-2" />
-                      Start Project
+                      {isUpdating ? 'Starting...' : 'Start Project'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowProgressModal(true)}
+                      disabled={booking?.status === 'pending' || booking?.status === 'declined'}
+                      className="justify-start"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Update Progress
                     </Button>
                     <Button 
                       onClick={handleMarkComplete}
