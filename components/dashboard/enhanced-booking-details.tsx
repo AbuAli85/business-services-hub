@@ -445,9 +445,77 @@ export default function EnhancedBookingDetails({
         const { booking } = await response.json()
         bookingData = booking
         error = bookingData ? null : new Error('Booking not found')
+        
+        // Debug: Log the received booking data structure
+        console.log('📊 Received booking data:', {
+          id: bookingData?.id,
+          status: bookingData?.status,
+          approval_status: bookingData?.approval_status,
+          hasService: !!bookingData?.service,
+          hasClient: !!bookingData?.client,
+          hasProvider: !!bookingData?.provider,
+          clientProfile: bookingData?.client_profile,
+          providerProfile: bookingData?.provider_profile
+        })
       } catch (apiError) {
         // API call failed, will fallback to direct database query
-        error = apiError
+        console.warn('API call failed, trying direct database query:', apiError)
+        
+        try {
+          // Fallback: Direct database query with all required fields
+          const { data: directBooking, error: directError } = await supabase
+            .from('bookings')
+            .select(`
+              *,
+              services (
+                id,
+                title,
+                description,
+                category,
+                base_price,
+                currency,
+                estimated_duration
+              ),
+              client_profile:profiles!bookings_client_id_fkey (
+                id,
+                full_name,
+                email,
+                phone,
+                company_name,
+                avatar_url
+              ),
+              provider_profile:profiles!bookings_provider_id_fkey (
+                id,
+                full_name,
+                email,
+                phone,
+                company_name,
+                avatar_url
+              )
+            `)
+            .eq('id', bookingId)
+            .single()
+          
+          if (directError) {
+            throw directError
+          }
+          
+          bookingData = directBooking
+          error = null
+          
+          // Debug: Log the direct database query result
+          console.log('📊 Direct database query result:', {
+            id: directBooking?.id,
+            status: directBooking?.status,
+            approval_status: directBooking?.approval_status,
+            hasService: !!directBooking?.services,
+            hasClientProfile: !!directBooking?.client_profile,
+            hasProviderProfile: !!directBooking?.provider_profile
+          })
+        } catch (directError) {
+          console.error('Direct database query also failed:', directError)
+          error = directError
+        }
       }
 
       if (error) {
@@ -461,7 +529,11 @@ export default function EnhancedBookingDetails({
         ...bookingData,
         // Core booking data with fallbacks
         id: bookingData.id,
+        title: bookingData.title || bookingData.service_title || 'Booking',
+        description: bookingData.description || bookingData.notes || '',
         status: bookingData.status || 'pending',
+        approval_status: bookingData.approval_status || 'pending',
+        ui_approval_status: bookingData.ui_approval_status || 'pending',
         priority: bookingData.priority || 'normal',
         created_at: bookingData.created_at,
         updated_at: bookingData.updated_at || bookingData.created_at,
@@ -503,9 +575,9 @@ export default function EnhancedBookingDetails({
         // Service data with fallbacks
         service: {
           id: bookingData.service?.id || bookingData.service_id || '',
-          title: bookingData.service?.title || bookingData.service?.name || 'Service',
-          description: bookingData.service?.description || '',
-          category: bookingData.service?.category || 'General',
+          title: bookingData.service?.title || bookingData.service?.name || bookingData.service_title || 'Service',
+          description: bookingData.service?.description || bookingData.service_description || '',
+          category: bookingData.service?.category || bookingData.service_category || 'General',
           base_price: bookingData.service?.base_price || bookingData.amount || 0,
           currency: bookingData.service?.currency || bookingData.currency || 'OMR',
           duration: bookingData.service?.estimated_duration || bookingData.estimated_duration || '2 hours',
@@ -515,10 +587,10 @@ export default function EnhancedBookingDetails({
         
         // Client data with fallbacks
         client: {
-          id: bookingData.client?.id || bookingData.client_id || '',
-          full_name: bookingData.client?.full_name || 'Client',
-          email: bookingData.client?.email || '',
-          phone: bookingData.client?.phone || '',
+          id: bookingData.client?.id || bookingData.client_id || bookingData.client_profile?.id || '',
+          full_name: bookingData.client?.full_name || bookingData.client_profile?.full_name || bookingData.client_name || 'Client',
+          email: bookingData.client?.email || bookingData.client_profile?.email || bookingData.client_email || '',
+          phone: bookingData.client?.phone || bookingData.client_profile?.phone || '',
           company_name: bookingData.client?.company_name || '',
           avatar_url: bookingData.client?.avatar_url || '',
           timezone: bookingData.client?.timezone || 'Asia/Muscat',
@@ -528,10 +600,10 @@ export default function EnhancedBookingDetails({
         
         // Provider data with fallbacks
         provider: {
-          id: bookingData.provider?.id || bookingData.provider_id || '',
-          full_name: bookingData.provider?.full_name || 'Provider',
-          email: bookingData.provider?.email || '',
-          phone: bookingData.provider?.phone || '',
+          id: bookingData.provider?.id || bookingData.provider_id || bookingData.provider_profile?.id || '',
+          full_name: bookingData.provider?.full_name || bookingData.provider_profile?.full_name || bookingData.provider_name || 'Provider',
+          email: bookingData.provider?.email || bookingData.provider_profile?.email || bookingData.provider_email || '',
+          phone: bookingData.provider?.phone || bookingData.provider_profile?.phone || '',
           company_name: bookingData.provider?.company_name || '',
           avatar_url: bookingData.provider?.avatar_url || '',
           specialization: bookingData.provider?.specialization || [],
@@ -542,6 +614,18 @@ export default function EnhancedBookingDetails({
         }
       }
 
+      // Debug: Log the final enhanced booking data
+      console.log('🎯 Final enhanced booking data:', {
+        id: enhancedBooking.id,
+        title: enhancedBooking.title,
+        status: enhancedBooking.status,
+        approval_status: enhancedBooking.approval_status,
+        progress_percentage: enhancedBooking.progress_percentage,
+        serviceTitle: enhancedBooking.service.title,
+        clientName: enhancedBooking.client.full_name,
+        providerName: enhancedBooking.provider.full_name
+      })
+      
       setBooking(enhancedBooking)
     } catch (error) {
       // Error occurred during booking data processing
