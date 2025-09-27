@@ -128,16 +128,21 @@ export default function BookingsPage() {
       return 'in_production'
     }
     
+    // If approved (either via status or approval_status), show as approved
+    if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') {
+      return 'approved'
+    }
+    
+    // If pending with approval, show as approved (waiting for invoice)
+    if (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved')) {
+      return 'approved'
+    }
+    
     // Check if there's an invoice issued - this indicates ready to launch
     const invoice = getInvoiceForBooking(booking.id)
     if (invoice && ['issued', 'paid'].includes(invoice.status)) {
       // If invoice is issued/paid, it's ready to launch regardless of booking status
       return 'ready_to_launch'
-    }
-    
-    // If approved (either via status or approval_status), show as approved
-    if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') {
-      return 'approved'
     }
     
     // If declined, show as cancelled
@@ -164,7 +169,7 @@ export default function BookingsPage() {
       case 'delivered': return 'Project successfully delivered'
       case 'in_production': return 'Active development in progress'
       case 'ready_to_launch': return 'All prerequisites met • Ready to launch'
-      case 'approved': return 'Approved • Waiting for invoice'
+      case 'approved': return 'Approved • Create invoice to proceed'
       case 'pending_review': return 'Awaiting provider approval'
       case 'cancelled': return 'Project was declined or cancelled'
       default: return 'Project status being determined'
@@ -1743,10 +1748,10 @@ export default function BookingsPage() {
                                     </Button>
                                   </TitleTip>
                                 ) : (
-                                  <TitleTip label={getLaunchBlockingReason(booking)}>
-                                    <Button size="sm" disabled className="bg-gray-400 text-gray-600 cursor-not-allowed">
-                                      <Play className="h-3 w-3 mr-1" />
-                                      Launch Project
+                                  <TitleTip label="Create invoice first to launch project">
+                                    <Button size="sm" className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white shadow-lg hover:shadow-orange-200 transition-all duration-200">
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      Create Invoice
                                     </Button>
                                   </TitleTip>
                                 )
