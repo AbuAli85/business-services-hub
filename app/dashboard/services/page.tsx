@@ -592,99 +592,121 @@ export default function ServicesPage() {
           ))}
         </div>
       ) : filteredServices.length > 0 ? (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8' : 'space-y-6'}>
           {filteredServices.map((service) => (
-            <Card key={service.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white overflow-hidden">
+            <Card key={service.id} className="group hover:shadow-2xl transition-all duration-500 border-0 shadow-xl bg-white overflow-hidden rounded-3xl hover:-translate-y-2 hover:scale-[1.02]">
               {/* Service Image Header */}
-              <div className="relative h-48 overflow-hidden">
+              <div className="relative h-56 overflow-hidden">
                 <img
                   src={getServiceCardImageUrl(service.category, service.title, (service as any).cover_image_url, 400, 200)}
                   alt={`${service.title} - ${service.category} service`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
-                <div className="absolute top-3 left-3 flex gap-2">
-                  {getStatusBadge(service.status)}
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                {/* Status and Featured Badges */}
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                  <Badge className={`px-4 py-2 text-xs font-bold rounded-full shadow-lg ${
+                    service.status === 'active' 
+                      ? 'bg-emerald-500 text-white border-0' 
+                      : 'bg-gray-500 text-white border-0'
+                  }`}>
+                    {service.status === 'active' ? '✓ Active' : service.status}
+                  </Badge>
                   {service.featured && (
-                    <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0">
-                      <Star className="h-3 w-3 mr-1" />
-                      Featured
+                    <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 px-4 py-2 text-xs font-bold rounded-full shadow-lg">
+                      ⭐ Featured
                     </Badge>
                   )}
                 </div>
-                <div className="absolute top-3 right-3">
+                
+                {/* View Button */}
+                <div className="absolute top-4 right-4">
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white shadow-md"
+                    className="h-10 w-10 p-0 rounded-full bg-white/95 hover:bg-white shadow-lg hover:shadow-xl transition-all duration-300 opacity-0 group-hover:opacity-100"
                     onClick={() => router.push(`/services/${service.id}`)}
                     title="View Details"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
 
-              <CardContent className="p-6">
+              <CardContent className="p-8">
                 {/* Service Title and Provider */}
-                <div className="mb-3">
-                  <h3 className="font-bold text-xl mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                <div className="mb-6">
+                  <h3 className="font-bold text-2xl mb-3 group-hover:text-indigo-600 transition-colors line-clamp-1">
                     {service.title}
                   </h3>
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <User className="h-3 w-3 mr-1" />
-                    {service.providerName || 'Service Provider'}
-                  </p>
+                  <div className="flex items-center text-gray-600">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
+                      <User className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="font-semibold text-lg">{service.providerName || 'Service Provider'}</span>
+                  </div>
                 </div>
 
                 {/* Service Description */}
-                <p className="text-gray-700 text-sm mb-4 line-clamp-2 leading-relaxed">
+                <p className="text-gray-600 text-sm mb-6 line-clamp-3 leading-relaxed">
                   {service.description}
                 </p>
 
                 {/* Service Stats */}
-                <div className="flex items-center justify-between mb-4 text-sm">
-                  <div className="flex items-center space-x-4">
-                    <span className="flex items-center text-gray-600">
-                      <Package className="h-4 w-4 mr-1" />
-                      {service.category}
-                    </span>
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <Package className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700">{service.category}</span>
+                    </div>
                     {(service.rating || 0) > 0 && (
-                      <span className="flex items-center text-yellow-600 font-medium">
-                        <Star className="h-4 w-4 mr-1 fill-current" />
-                        {(service.rating || 0).toFixed(1)}
-                        <span className="text-gray-500 ml-1">({service.reviewCount || 0})</span>
-                      </span>
+                      <div className="flex items-center space-x-1 bg-yellow-50 px-4 py-2 rounded-full">
+                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                        <span className="text-sm font-bold text-gray-800">{(service.rating || 0).toFixed(1)}</span>
+                        <span className="text-xs text-gray-500">({service.reviewCount || 0})</span>
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-gray-500">
-                      {service.bookingCount} bookings
-                    </span>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 text-center">
+                      <div className="text-3xl font-bold text-gray-900 mb-1">{service.bookingCount || 0}</div>
+                      <div className="text-xs text-gray-600 font-semibold uppercase tracking-wide">Bookings</div>
+                    </div>
                     {userRole === 'provider' && (
-                      <span className="text-green-600 font-medium">
-                        {formatCurrency((service.bookingCount || 0) * (service.basePrice || 0), service.currency)} revenue
-                      </span>
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-4 text-center">
+                        <div className="text-xl font-bold text-green-700 mb-1">
+                          {formatCurrency((service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
+                        </div>
+                        <div className="text-xs text-green-600 font-semibold uppercase tracking-wide">Revenue</div>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Price and Action */}
-                <div className="flex items-center justify-between pt-4 border-t">
+                <div className="flex items-center justify-between pt-6 border-t border-gray-100">
                   <div className="flex flex-col">
-                    <span className="text-2xl font-bold text-gray-900">
+                    <span className="text-4xl font-bold text-gray-900 mb-1">
                       {formatCurrency(service.basePrice || 0, service.currency)}
                     </span>
-                    <span className="text-xs text-gray-500">Starting price</span>
+                    <span className="text-sm text-gray-500 font-medium">Starting price</span>
                   </div>
                   {userRole === 'provider' ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                        className="flex items-center px-5 py-2.5 rounded-xl border-2 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200 font-semibold"
                         title="Edit Service"
                       >
-                        <Edit className="h-4 w-4 mr-1" />
+                        <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
                       <Button
@@ -696,6 +718,11 @@ export default function ServicesPage() {
                           // TODO: Implement status update API call
                           console.log(`Toggle service ${service.id} status to ${newStatus}`)
                         }}
+                        className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
+                          service.status === 'active' 
+                            ? 'bg-red-500 hover:bg-red-600 text-white' 
+                            : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
                         title={service.status === 'active' ? 'Deactivate Service' : 'Activate Service'}
                       >
                         {service.status === 'active' ? 'Deactivate' : 'Activate'}
@@ -703,23 +730,24 @@ export default function ServicesPage() {
                     </div>
                   ) : (
                     <Button
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      className="flex items-center px-8 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200"
                       onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
                     >
-                      <Calendar className="h-4 w-4 mr-2" />
+                      <Calendar className="h-5 w-5 mr-2" />
                       Book Now
                     </Button>
                   )}
                 </div>
                 
                 {/* Service Footer */}
-                <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
-                  <span>Created {new Date(service.createdAt).toLocaleDateString()}</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Updated {new Date(service.updatedAt).toLocaleDateString()}
-                    </span>
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-6 pt-4 border-t border-gray-100">
+                  <div className="flex items-center">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    <span>Created {new Date(service.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="h-3 w-3 mr-1" />
+                    <span>Updated {new Date(service.updatedAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               </CardContent>
