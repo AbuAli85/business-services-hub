@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MessagesThread } from './messages-thread'
@@ -20,87 +20,31 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  User,
   Package,
   MessageSquare,
   CheckCircle,
   AlertTriangle,
   Phone,
   Mail,
-  MapPin,
   Banknote,
   FileText,
   RefreshCw,
-  Upload,
   Download,
   Star,
   Edit,
-  Save,
   Video,
-  Share2,
   Bell,
   TrendingUp,
-  BarChart3,
-  Clock3,
-  Target,
   Award,
-  Shield,
   Zap,
   Eye,
-  Building,
-  Lightbulb,
   Play,
   Pause,
-  MoreHorizontal,
-  ThumbsUp,
-  ThumbsDown,
-  Heart,
-  Bookmark,
-  ExternalLink,
-  QrCode,
-  CreditCard,
-  Calendar as CalendarIcon,
-  Clock4,
-  MapPin as LocationIcon,
-  Users,
-  CheckCheck,
-  AlertCircle,
-  Info,
-  Wallet,
-  Receipt,
-  Activity,
-  MessageCircle,
-  PhoneCall,
-  VideoIcon,
-  Camera,
-  Mic,
-  Settings,
-  Filter,
-  Search,
-  Plus,
-  Minus,
   X,
-  Send,
-  Paperclip,
-  Image,
-  FileIcon,
-  Copy,
-  Link2,
-  Globe,
-  Smartphone,
-  Monitor,
-  Tablet,
-  Headphones,
-  Printer,
-  Wifi,
-  Signal,
-  Battery,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
-  RotateCcw,
-  RotateCw
+  Users,
+  Info,
+  MessageCircle,
+  Share2
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -300,6 +244,112 @@ export default function EnhancedBookingDetails({
     }
   }, [showProgressModal, booking])
 
+  const generateSmartSuggestions = useCallback(() => {
+    if (!booking) return
+    
+    // AI-powered suggestions based on booking status and patterns
+    const suggestions: SmartSuggestion[] = []
+    
+    // Status-based suggestions
+    if (booking.status === 'pending' && booking.approval_status !== 'approved') {
+      suggestions.push({
+        type: 'scheduling',
+        title: 'Review Booking Details',
+        description: 'Review and approve this booking to begin work',
+        action: 'Review details',
+        priority: 'high',
+        estimated_impact: 'Start project timeline'
+      })
+    }
+    
+    if (booking.status === 'approved' || (booking.status === 'pending' && booking.approval_status === 'approved')) {
+      suggestions.push({
+        type: 'service_improvement',
+        title: 'Start Project',
+        description: 'Begin work on the approved booking',
+        action: 'Start project',
+        priority: 'high',
+        estimated_impact: 'Meet client expectations'
+      })
+      
+      if (booking.progress_percentage === 0) {
+        suggestions.push({
+          type: 'progress_update',
+          title: 'Create Project Milestones',
+          description: 'Set up project milestones for better tracking',
+          action: 'Create milestones',
+          priority: 'normal',
+          estimated_impact: 'Better project management'
+        })
+      }
+    }
+    
+    if (booking.status === 'in_progress') {
+      suggestions.push({
+        type: 'progress_update',
+        title: 'Update Progress',
+        description: `Project is ${booking.progress_percentage}% complete`,
+        action: 'Update progress',
+        priority: 'normal',
+        estimated_impact: 'Keep client informed'
+      })
+    }
+    
+    if (booking.payment_status === 'pending' && booking.status !== 'pending') {
+      suggestions.push({
+        type: 'payment_reminder',
+        title: 'Payment Reminder',
+        description: 'Invoice is pending payment',
+        action: 'Send payment reminder',
+        priority: 'normal',
+        estimated_impact: 'Faster payment processing'
+      })
+    }
+    
+    if (booking.status === 'completed') {
+      suggestions.push({
+        type: 'follow_up',
+        title: 'Request Feedback',
+        description: 'Ask client for project feedback',
+        action: 'Request review',
+        priority: 'low',
+        estimated_impact: 'Improve future services'
+      })
+    }
+    
+    // Add milestone-based suggestions
+    if (milestones.length > 0) {
+      const overdueMilestones = milestones.filter(m => {
+        if (!m.due_date || m.status === 'completed') return false
+        try {
+          return new Date(m.due_date) < new Date() && m.status !== 'completed'
+        } catch {
+          return false
+        }
+      }).length
+      
+      if (overdueMilestones > 0) {
+        suggestions.push({
+          type: 'scheduling',
+          title: 'Overdue Milestones',
+          description: `${overdueMilestones} milestone(s) are overdue`,
+          action: 'Update milestones',
+          priority: 'urgent',
+          estimated_impact: 'Maintain project timeline'
+        })
+      }
+    }
+    
+    setSmartSuggestions(suggestions)
+  }, [booking, milestones])
+
+  // Regenerate smart suggestions when milestones change
+  useEffect(() => {
+    if (booking) {
+      generateSmartSuggestions()
+    }
+  }, [milestones, booking, generateSmartSuggestions])
+
   // Realtime: listen for booking updates and notifications
   useEffect(() => {
     let channel: any
@@ -396,12 +446,12 @@ export default function EnhancedBookingDetails({
         bookingData = booking
         error = bookingData ? null : new Error('Booking not found')
       } catch (apiError) {
-        console.error('API call failed:', apiError)
+        // API call failed, will fallback to direct database query
         error = apiError
       }
 
       if (error) {
-        console.error('Error loading booking:', error)
+        // Error loading booking data
         toast.error('Failed to load booking details')
         return
       }
@@ -494,14 +544,14 @@ export default function EnhancedBookingDetails({
 
       setBooking(enhancedBooking)
     } catch (error) {
-      console.error('Error:', error)
+      // Error occurred during booking data processing
       toast.error('Failed to load booking')
     } finally {
       setLoading(false)
     }
   }
 
-  const initializeCommunicationChannels = () => {
+  const initializeCommunicationChannels = useCallback(() => {
     setCommunicationChannels([
       {
         type: 'message',
@@ -529,31 +579,7 @@ export default function EnhancedBookingDetails({
         available: true
       }
     ])
-  }
-
-  const generateSmartSuggestions = () => {
-    // AI-powered suggestions based on booking status and patterns
-    const suggestions: SmartSuggestion[] = [
-      {
-        type: 'follow_up',
-        title: 'Schedule Follow-up',
-        description: '4 milestones due soon',
-        action: 'Schedule meeting',
-        priority: 'normal',
-        estimated_impact: 'Better project tracking'
-      },
-      {
-        type: 'payment_reminder',
-        title: 'Payment Reminder',
-        description: 'Invoice due in 3 days',
-        action: 'Send reminder',
-        priority: 'normal',
-        estimated_impact: 'Faster payment'
-      }
-    ]
-    setSmartSuggestions(suggestions)
-  }
-
+  }, [])
 
   const loadMilestoneData = async () => {
     try {
@@ -584,7 +610,7 @@ export default function EnhancedBookingDetails({
         .order('created_at', { ascending: true })
       
       if (milestonesError) {
-        console.warn('Error loading milestones:', milestonesError)
+        // Milestones data not available
         // Fallback to empty data
         setMilestones([])
         setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
@@ -606,7 +632,7 @@ export default function EnhancedBookingDetails({
           const dueDate = new Date(m.due_date)
           return !isNaN(dueDate.getTime()) && dueDate < new Date() && m.status !== 'completed'
         } catch (error) {
-          console.warn('Date comparison error:', error)
+          // Date comparison error, using current date
           return false
         }
       }).length || 0
@@ -614,7 +640,7 @@ export default function EnhancedBookingDetails({
       setMilestoneStats({ completed, total, overdue })
       
     } catch (error) {
-      console.error('Error loading milestone data:', error)
+      // Error loading milestone data
       setMilestones([])
       setMilestoneStats({ completed: 0, total: 0, overdue: 0 })
     }
@@ -674,7 +700,7 @@ export default function EnhancedBookingDetails({
       })
       setSixMonthTrend(Object.values(trend))
     } catch (e) {
-      console.warn('Monthly summary error:', e)
+      // Monthly summary data not available
       setMonthlySummary({ monthLabel:'This month', bookings:0, amount:0, paid:0, pending:0 })
       setSixMonthTrend([])
     }
@@ -707,7 +733,7 @@ export default function EnhancedBookingDetails({
       acts.sort((a,b)=> new Date(b.when).getTime() - new Date(a.when).getTime())
       setRecentActivity(acts.slice(0,5))
     } catch (e) {
-      console.warn('Overview extras error:', e)
+      // Overview extras data not available
       setRecentActivity([])
       setRecentFiles([])
     }
@@ -749,7 +775,7 @@ export default function EnhancedBookingDetails({
         .eq('id', taskId)
       
       if (taskFetchError) {
-        console.error('Error fetching task data:', taskFetchError)
+        // Task data not available
         throw new Error(`Failed to fetch task: ${taskFetchError.message}`)
       }
       
@@ -758,7 +784,7 @@ export default function EnhancedBookingDetails({
       }
       
       if (taskData.length > 1) {
-        console.warn('Multiple tasks found with same ID, using first one')
+        // Multiple tasks found with same ID, using first one
       }
       
       const task = taskData[0]
@@ -770,11 +796,11 @@ export default function EnhancedBookingDetails({
         })
         
         if (progressError) {
-          console.warn('Error updating milestone progress:', progressError)
+          // Error updating milestone progress
           // Don't fail the operation if progress update fails
         }
       } catch (rpcError) {
-        console.warn('RPC function update_milestone_progress not available:', rpcError)
+        // RPC function update_milestone_progress not available
         // Continue without failing
       }
       
@@ -785,11 +811,11 @@ export default function EnhancedBookingDetails({
         })
         
         if (bookingProgressError) {
-          console.warn('Error updating booking progress:', bookingProgressError)
+          // Error updating booking progress
           // Don't fail the operation if booking progress update fails
         }
       } catch (rpcError) {
-        console.warn('RPC function calculate_booking_progress not available:', rpcError)
+        // RPC function calculate_booking_progress not available
         // Continue without failing - the UI will still update
       }
       
@@ -802,7 +828,7 @@ export default function EnhancedBookingDetails({
       toast.success('Task status updated successfully')
       
     } catch (error) {
-      console.error('Error updating task status:', error)
+      // Error updating task status
       toast.error('Failed to update task status')
     }
   }
@@ -813,21 +839,41 @@ export default function EnhancedBookingDetails({
     try {
       const supabase = await getSupabaseClient()
       
+      // Determine if status should change based on progress
+      let newStatus = booking.status
+      if (progressValue === 100 && booking.status !== 'completed') {
+        newStatus = 'completed'
+      } else if (progressValue > 0 && booking.status === 'approved') {
+        newStatus = 'in_progress'
+      }
+      
       const { error } = await supabase
         .from('bookings')
         .update({ 
           progress_percentage: progressValue,
+          status: newStatus,
           updated_at: new Date().toISOString()
         })
         .eq('id', booking.id)
       
       if (error) throw error
       
-      setBooking({ ...booking, progress_percentage: progressValue })
+      const updatedBooking = { 
+        ...booking, 
+        progress_percentage: progressValue,
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      }
+      setBooking(updatedBooking)
+      
       toast.success('Progress updated successfully')
       setShowProgressModal(false)
+      
+      // Regenerate smart suggestions based on new status/progress
+      generateSmartSuggestions()
+      
     } catch (error) {
-      console.error('Error updating progress:', error)
+      // Error updating progress
       toast.error('Failed to update progress')
     }
   }
@@ -842,7 +888,7 @@ export default function EnhancedBookingDetails({
       setMeetingTime('')
       setMeetingNotes('')
     } catch (error) {
-      console.error('Error scheduling meeting:', error)
+      // Error scheduling meeting
       toast.error('Failed to schedule meeting')
     }
   }
@@ -851,29 +897,28 @@ export default function EnhancedBookingDetails({
     if (!newTaskTitle.trim() || !bookingId) return
     
     try {
-      console.log('🔄 Adding task:', newTaskTitle.trim())
+      // Adding new task
       const supabase = await getSupabaseClient()
       
       // Check authentication first
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       if (sessionError) {
-        console.error('❌ Session error:', sessionError)
+        // Session error
         throw new Error('Authentication error: ' + sessionError.message)
       }
       
       if (!session) {
-        console.error('❌ No active session')
+        // No active session
         throw new Error('No active session. Please sign in again.')
       }
       
-      console.log('✅ User authenticated:', session.user.id)
-      console.log('🔑 Session token:', session.access_token ? 'Present' : 'Missing')
+      // User authenticated successfully
       
       // Get the first milestone for this booking (or create a default one)
       let milestoneId = milestones[0]?.id
       
       if (!milestoneId) {
-        console.log('📝 Creating default milestone...')
+        // Creating default milestone
         // Create a default milestone if none exists
         const { data: newMilestone, error: milestoneError } = await supabase
           .from('milestones')
@@ -888,17 +933,17 @@ export default function EnhancedBookingDetails({
           .single()
         
         if (milestoneError) {
-          console.error('❌ Milestone creation error:', milestoneError)
+          // Milestone creation error
           throw milestoneError
         }
         milestoneId = newMilestone.id
-        console.log('✅ Milestone created:', milestoneId)
+        // Milestone created successfully
       } else {
-        console.log('✅ Using existing milestone:', milestoneId)
+        // Using existing milestone
       }
       
       // Create the new task
-      console.log('📝 Creating task...')
+      // Creating task
       const { data: newTask, error: taskError } = await supabase
         .from('tasks')
         .insert({
@@ -912,11 +957,11 @@ export default function EnhancedBookingDetails({
         .single()
       
       if (taskError) {
-        console.error('❌ Task creation error:', taskError)
+        // Task creation error
         throw taskError
       }
       
-      console.log('✅ Task created successfully:', newTask.id)
+      // Task created successfully
       
       // Clear form
       setNewTaskTitle('')
@@ -929,7 +974,7 @@ export default function EnhancedBookingDetails({
       toast.success('Task added successfully')
       
     } catch (error) {
-      console.error('❌ Error adding task:', error)
+      // Error adding task
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       toast.error('Failed to add task: ' + errorMessage)
     }
@@ -1011,12 +1056,12 @@ export default function EnhancedBookingDetails({
 
       toast.success(`${format.toUpperCase()} exported successfully`)
     } catch (error) {
-      console.error('Error exporting:', error)
+      // Error exporting data
       toast.error('Failed to export file')
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = useCallback((status: string) => {
     const icons = {
       pending: <Clock className="h-4 w-4" />,
       approved: <CheckCircle className="h-4 w-4" />,
@@ -1028,9 +1073,9 @@ export default function EnhancedBookingDetails({
       rescheduled: <RefreshCw className="h-4 w-4" />
     }
     return icons[status as keyof typeof icons] || <Clock className="h-4 w-4" />
-  }
+  }, [])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       approved: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -1042,9 +1087,9 @@ export default function EnhancedBookingDetails({
       rescheduled: 'bg-orange-100 text-orange-800 border-orange-300'
     }
     return colors[status as keyof typeof colors] || colors.pending
-  }
+  }, [])
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = useCallback((priority: string) => {
     const colors = {
       low: 'bg-green-100 text-green-800',
       normal: 'bg-blue-100 text-blue-800',
@@ -1052,7 +1097,7 @@ export default function EnhancedBookingDetails({
       urgent: 'bg-red-100 text-red-800'
     }
     return colors[priority as keyof typeof colors] || colors.normal
-  }
+  }, [])
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!booking) return
@@ -1111,12 +1156,12 @@ export default function EnhancedBookingDetails({
         }).catch(() => {})
           }
         } catch (emailError) {
-          console.log('Email notification failed:', emailError)
+          // Email notification failed
         }
       }
       
     } catch (error) {
-      console.error('Error updating status:', error)
+      // Error updating status
       toast.error('Failed to update status')
     } finally {
       setIsUpdating(false)
@@ -1131,7 +1176,7 @@ export default function EnhancedBookingDetails({
       user: user?.email || 'System'
     }
     // This would typically save to a booking_activities table
-    console.log('Activity logged:', activity)
+    // Activity logged successfully
   }
 
   // Button handlers
@@ -1218,7 +1263,7 @@ export default function EnhancedBookingDetails({
       
       toast.success('Notification sent successfully')
     } catch (error) {
-      console.error('Error sending notification:', error)
+      // Error sending notification
       toast.error('Failed to send notification')
     }
   }
@@ -1251,7 +1296,7 @@ export default function EnhancedBookingDetails({
       setBooking({ ...booking, status: 'completed', progress_percentage: 100 })
       toast.success('Booking marked as completed')
     } catch (error) {
-      console.error('Error updating booking status:', error)
+      // Error updating booking status
       toast.error('Failed to update booking status')
     }
   }
@@ -1275,7 +1320,7 @@ export default function EnhancedBookingDetails({
       setBooking({ ...booking, status: 'on_hold' })
       toast.success('Booking put on hold')
     } catch (error) {
-      console.error('Error updating booking status:', error)
+      // Error updating booking status
       toast.error('Failed to update booking status')
     }
   }
@@ -1303,7 +1348,7 @@ export default function EnhancedBookingDetails({
       
       toast.success('Progress update sent successfully')
     } catch (error) {
-      console.error('Error sending progress update:', error)
+      // Error sending progress update
       toast.error('Failed to send progress update')
     }
   }
@@ -1330,7 +1375,7 @@ export default function EnhancedBookingDetails({
       
       toast.success('Payment reminder sent successfully')
     } catch (error) {
-      console.error('Error sending payment reminder:', error)
+      // Error sending payment reminder
       toast.error('Failed to send payment reminder')
     }
   }
@@ -1355,7 +1400,7 @@ export default function EnhancedBookingDetails({
       toast.success('Payment processed successfully')
       setBooking({ ...booking, payment_status: 'paid' })
     } catch (error) {
-      console.error('Error processing payment:', error)
+      // Error processing payment
       toast.error('Failed to process payment')
     }
   }
@@ -1376,10 +1421,10 @@ export default function EnhancedBookingDetails({
       }
       
       // In a real app, this would generate a PDF invoice
-      console.log('Generating invoice:', invoiceData)
+      // Generating invoice
       toast.success('Invoice generated successfully')
     } catch (error) {
-      console.error('Error generating invoice:', error)
+      // Error generating invoice
       toast.error('Failed to generate invoice')
     }
   }
@@ -1391,7 +1436,7 @@ export default function EnhancedBookingDetails({
       // In a real app, this would generate and download a receipt PDF
       toast.success('Receipt downloaded successfully')
     } catch (error) {
-      console.error('Error downloading receipt:', error)
+      // Error downloading receipt
       toast.error('Failed to download receipt')
     }
   }
@@ -1402,19 +1447,44 @@ export default function EnhancedBookingDetails({
         setShowMessageModal(true)
         break
       case 'scheduling':
-        handleScheduleFollowUp()
+        if (suggestion.action === 'Review details') {
+          // Scroll to booking details section
+          const detailsSection = document.getElementById('booking-details')
+          if (detailsSection) {
+            detailsSection.scrollIntoView({ behavior: 'smooth' })
+          }
+        } else if (suggestion.action === 'Update milestones') {
+          setShowAddTaskModal(true)
+        } else {
+          handleScheduleFollowUp()
+        }
         break
       case 'payment':
         handleSendPaymentReminder()
         break
       case 'service_improvement':
-        setShowEditModal(true)
+        if (suggestion.action === 'Start project') {
+          // Update status to in_progress
+          await handleStatusUpdate('in_progress')
+        } else {
+          setShowEditModal(true)
+        }
         break
       case 'progress_update':
-        handleSendProgressUpdate()
+        if (suggestion.action === 'Create milestones') {
+          setShowAddTaskModal(true)
+        } else if (suggestion.action === 'Update progress') {
+          setShowProgressModal(true)
+        } else {
+          handleSendProgressUpdate()
+        }
         break
       case 'follow_up':
-        handleScheduleFollowUp()
+        if (suggestion.action === 'Request review') {
+          setShowActionRequestModal('other')
+        } else {
+          handleScheduleFollowUp()
+        }
         break
       case 'payment_reminder':
         handleSendPaymentReminder()
@@ -1425,7 +1495,7 @@ export default function EnhancedBookingDetails({
         } else if (suggestion.action === 'Send reminder') {
           handleSendPaymentReminder()
         } else {
-        toast.success(`Action: ${suggestion.action}`)
+          toast.success(`Action: ${suggestion.action}`)
         }
     }
   }
@@ -1450,7 +1520,7 @@ export default function EnhancedBookingDetails({
       toast.success('Progress updated successfully')
       setShowProgressModal(false)
     } catch (error) {
-      console.error('Error updating progress:', error)
+      // Error updating progress
       toast.error('Failed to update progress')
     }
   }
@@ -1478,7 +1548,7 @@ export default function EnhancedBookingDetails({
       setShowMessageModal(false)
       
     } catch (error) {
-      console.error('Error sending message:', error)
+      // Error sending message
       toast.error('Failed to send message')
     }
   }
@@ -1516,7 +1586,7 @@ export default function EnhancedBookingDetails({
       setShowActionRequestModal(null)
       
     } catch (error) {
-      console.error('Error sending action request:', error)
+      // Error sending action request
       toast.error('Failed to send action request')
     } finally {
       setIsUpdating(false)
@@ -1562,32 +1632,34 @@ export default function EnhancedBookingDetails({
 
         if (!response.ok) {
           const errorData = await response.json()
-          console.error(`API Error (${response.status}):`, errorData)
+          // API Error occurred
           throw new Error(errorData.error || `Failed to ${action} booking (${response.status})`)
         }
 
         const result = await response.json()
-        console.log(`Booking ${action} result:`, result)
+        // Booking action completed successfully
         
         // Update local state immediately for better UX
-        setBooking({ 
+        const updatedBooking: EnhancedBooking = { 
           ...booking, 
           status: action === 'approve' ? 'approved' : 'declined',
-          approval_status: action === 'approve' ? 'approved' : 'rejected'
-        })
+          approval_status: action === 'approve' ? 'approved' : 'rejected',
+          updated_at: new Date().toISOString()
+        }
+        setBooking(updatedBooking)
 
         toast.success(`Booking ${action === 'approve' ? 'approved' : 'declined'} successfully`)
         
-        // Defer heavy operations to background
+        // Update smart suggestions based on new status
+        generateSmartSuggestions()
+        
+        // Reload booking data to ensure consistency
         setTimeout(async () => {
           await loadBookingData()
-          // Force a page refresh to ensure UI is updated
-          setTimeout(() => {
-            window.location.reload()
-          }, 500)
+          await loadMilestoneData()
         }, 100)
       } catch (error) {
-        console.error(`Error ${action}ing booking:`, error)
+        // Error performing booking action
         const errorMessage = error instanceof Error ? error.message : `Failed to ${action} booking`
         toast.error(errorMessage)
       } finally {
@@ -1626,20 +1698,31 @@ export default function EnhancedBookingDetails({
     }
   }
 
-  const formatDate = (date: any) => {
+  const formatDate = useCallback((date: any) => {
     const d = parseToValidDate(date)
     return d ? format(d, 'PPP') : '—'
-  }
+  }, [])
 
-  const formatTime = (date: any) => {
+  const formatTime = useCallback((date: any) => {
     const d = parseToValidDate(date)
     return d ? format(d, 'p') : '—'
-  }
+  }, [])
 
-  const formatFromNow = (date: any) => {
+  const formatFromNow = useCallback((date: any) => {
     const d = parseToValidDate(date)
     return d ? `${formatDistanceToNow(d)} ago` : 'recently'
-  }
+  }, [])
+
+  // Memoized values for expensive computations
+  const bookingStatusDisplay = useMemo(() => {
+    if (!booking) return null
+    return {
+      status: booking.status,
+      statusIcon: getStatusIcon(booking.status),
+      statusColor: getStatusColor(booking.status),
+      priorityColor: getPriorityColor(booking.priority)
+    }
+  }, [booking, getStatusIcon, getStatusColor, getPriorityColor])
 
   if (loading) {
     return (
@@ -1790,7 +1873,7 @@ export default function EnhancedBookingDetails({
                     try {
                       return formatDistanceToNow(parseISO(booking.updated_at)) + ' ago'
                     } catch (error) {
-                      console.warn('Date parsing error for updated_at:', booking.updated_at, error)
+                      // Date parsing error for updated_at
                       return 'recently'
                     }
                   })() : 'recently'}
@@ -2188,7 +2271,7 @@ export default function EnhancedBookingDetails({
               </TabsList>
 
               {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-4">
+              <TabsContent value="overview" id="booking-details" className="space-y-4">
                 {/* Key Metrics Dashboard + Progress Ring */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
@@ -2204,7 +2287,7 @@ export default function EnhancedBookingDetails({
                                 if (isNaN(createdDate.getTime())) return 0
                                 return Math.ceil((new Date().getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
                               } catch (error) {
-                                console.warn('Date calculation error:', error)
+                                // Date calculation error
                                 return 0
                               }
                             })()}
