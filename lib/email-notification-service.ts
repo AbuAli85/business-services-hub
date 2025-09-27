@@ -83,12 +83,14 @@ export class EmailNotificationService {
     userName: string,
     preferences: any
   ): Promise<boolean> {
+    // Use absolute URL for server-side requests
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+    const emailApiUrl = `${baseUrl}/api/notifications/email`
+    
     try {
       const emailContent = this.generateEmailContent(notification, userName, preferences)
       
-      // Use absolute URL for server-side requests
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
-      const emailApiUrl = `${baseUrl}/api/notifications/email`
+      console.log('📧 Attempting to send email via:', emailApiUrl)
       
       const response = await fetch(emailApiUrl, {
         method: 'POST',
@@ -111,7 +113,22 @@ export class EmailNotificationService {
       console.log(`Email sent successfully to ${userEmail} for notification ${notification.id}`)
       return true
     } catch (error) {
-      console.error('Error sending immediate email:', error)
+      // Check for DNS resolution errors
+      if (error instanceof Error && error.message.includes('ENOTFOUND')) {
+        console.warn('⚠️ Email notification skipped due to DNS resolution error:', {
+          message: error.message,
+          url: emailApiUrl,
+          suggestion: 'Check if the domain is accessible from the server environment'
+        })
+      } else if (error instanceof Error && error.message.includes('fetch failed')) {
+        console.warn('⚠️ Email notification skipped due to network error:', {
+          message: error.message,
+          url: emailApiUrl,
+          suggestion: 'Check network connectivity and URL accessibility'
+        })
+      } else {
+        console.error('❌ Error sending immediate email:', error)
+      }
       return false
     }
   }
