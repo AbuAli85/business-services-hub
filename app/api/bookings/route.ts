@@ -698,7 +698,8 @@ export async function PATCH(request: NextRequest) {
             return NextResponse.json({ 
               success: true, 
               booking: fallbackResult?.[0],
-              message: 'Project started successfully (approval status updated)' 
+              message: 'Project started successfully (approval status updated)',
+              updated_fields: ['approval_status']
             })
           }
           
@@ -706,7 +707,8 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ 
             success: true, 
             booking: directResult?.[0],
-            message: 'Project started successfully' 
+            message: 'Project started successfully',
+            updated_fields: ['status']
           })
         } else {
           // Direct update if status is already approved

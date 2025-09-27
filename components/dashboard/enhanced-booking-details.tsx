@@ -1430,13 +1430,20 @@ export default function EnhancedBookingDetails({
       
       console.log('✅ Project started successfully via API')
       
-      // Update local state immediately
+      // Update local state based on what was actually updated
       const updatedBooking: EnhancedBooking = { 
         ...booking, 
-        status: 'in_progress',
+        status: result.booking?.status || (result.updated_fields?.includes('status') ? 'in_progress' : booking.status),
+        approval_status: result.booking?.approval_status || (result.updated_fields?.includes('approval_status') ? 'in_progress' : booking.approval_status),
         updated_at: new Date().toISOString()
       }
       setBooking(updatedBooking)
+      
+      console.log('🔄 Updated local booking state:', {
+        status: updatedBooking.status,
+        approval_status: updatedBooking.approval_status,
+        updated_fields: result.updated_fields
+      })
       
       toast.success('Project started successfully!')
       
