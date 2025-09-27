@@ -12,15 +12,25 @@ import {
 } from '@/lib/notification-triggers-simple'
 import { createNotification } from '@/lib/notification-service'
 // CORS headers for cross-domain access
-const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS || '').split(',').map(s => s.trim())
+const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
 const originOk = (o?: string | null) => !!o && (ALLOWED_ORIGINS.includes(o) || ALLOWED_ORIGINS.includes('*'))
 const corsHeadersFor = (origin?: string | null) => ({
-  'Access-Control-Allow-Origin': originOk(origin) ? origin! : 'null',
+  'Access-Control-Allow-Origin': originOk(origin) ? origin! : '',
+  'Access-Control-Allow-Credentials': 'true',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
   'Vary': 'Origin',
 })
+
+// Helper to add CORS headers to any response
+const withCors = (res: Response, req: NextRequest) => {
+  Object.entries(corsHeadersFor(req.headers.get('origin'))).forEach(([k,v]) => res.headers.set(k, v))
+  return res
+}
 
 // Handle preflight OPTIONS request
 export async function OPTIONS(request: NextRequest) {
@@ -32,10 +42,10 @@ export async function OPTIONS(request: NextRequest) {
 
 // Validation schema for booking creation
 const CreateBookingSchema = zod.object({
-  service_id: zod.string().uuid(),
-  scheduled_date: zod.string().datetime(),
-  notes: zod.string().max(500).optional(),
-  service_package_id: zod.string().uuid().optional(),
+  service_id: zod.string().uuid({ message: 'Invalid service_id format' }),
+  scheduled_date: zod.string().datetime({ message: 'scheduled_date must be ISO 8601 format' }),
+  notes: zod.string().max(500, 'Notes must be 500 characters or less').optional(),
+  service_package_id: zod.string().uuid({ message: 'Invalid service_package_id format' }).optional(),
   estimated_duration: zod.string().optional(),
   location: zod.string().optional()
 })
@@ -278,7 +288,15 @@ export async function POST(request: NextRequest) {
         service_title: service.title || 'Service Booking',
         scheduled_date,
         start_time: scheduled_date, // Use scheduled_date as start_time
-        end_time: new Date(new Date(scheduled_date).getTime() + 2 * 60 * 60 * 1000).toISOString(), // Add 2 hours for end_time
+        end_time: (() => {
+          const start = new Date(scheduled_date)
+          if (Number.isNaN(start.getTime())) {
+            throw new Error('Invalid scheduled_date')
+          }
+          const end = new Date(start.getTime())
+          end.setHours(end.getHours() + 2) // DST-safe
+          return end.toISOString()
+        })(),
         notes,
         status: 'pending',
         approval_status: 'pending',
@@ -424,9 +442,7 @@ export async function GET(request: NextRequest) {
     // 🔐 Accept cookie OR bearer token
     const user = await getUserFromRequest(request)
     if (!user) {
-      const response = jsonError(401, 'UNAUTHENTICATED', 'No session')
-      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v as string))
-      return response
+      return withCors(jsonError(401, 'UNAUTHENTICATED', 'No session'), request)
     }
 
     // Get user profile to determine role
@@ -438,9 +454,7 @@ export async function GET(request: NextRequest) {
     
     const userRole = profile?.role ?? user.user_metadata?.role ?? 'client'
     if (!['client', 'provider', 'admin'].includes(userRole)) {
-      const response = jsonError(403, 'FORBIDDEN', 'Insufficient role')
-      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v as string))
-      return response
+      return withCors(jsonError(403, 'FORBIDDEN', 'Insufficient role'), request)
     }
 
     const { searchParams } = new URL(request.url)
@@ -515,8 +529,8 @@ export async function GET(request: NextRequest) {
       if (search.startsWith('#')) {
         // Direct ID lookup
         query = query.eq('id', search.slice(1))
-      } else {
-        // Text search across multiple fields
+      } else if (search.length >= 2) {
+        // Text search across multiple fields (avoid seq scans with short queries)
         const like = (col: string) => `${col}.ilike.%${search.replace(/%/g,'').replace(/,/g,' ')}%`
         query = query.or([like('service_title'), like('client_name'), like('provider_name')].join(','))
       }
@@ -568,9 +582,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching bookings:', error)
-    const response = jsonError(500, 'INTERNAL_ERROR', 'Internal server error')
-    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
-    return response
+    return withCors(jsonError(500, 'INTERNAL_ERROR', 'Internal server error'), request)
   }
 }
 
@@ -634,13 +646,13 @@ export async function PATCH(request: NextRequest) {
 
     if (fetchError || !booking) {
       console.error('❌ Failed to fetch booking:', fetchError?.message)
-      const response = NextResponse.json({ 
-        error: 'Booking not found or access denied',
+        const response = NextResponse.json({ 
+          error: 'Booking not found or access denied',
         details: 'The booking does not exist or you do not have permission to access it'
-      }, { status: 404 })
+        }, { status: 404 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
-      return response
-    }
+        return response
+      }
 
     const isClient = booking.client_id === user.id
     const isProvider = booking.provider_id === user.id
@@ -712,12 +724,26 @@ export async function PATCH(request: NextRequest) {
         break
     }
 
-    console.log('Updating booking with:', updates)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Updating booking with:', updates)
+    }
     
-    const { data: updated, error: updateError } = await supabase
+    // Race-safe update with preconditions
+    let query = supabase
       .from('bookings')
       .update(updates)
       .eq('id', booking_id)
+    
+    // Add race-safe guards based on action
+    if (action === 'approve') {
+      query = query.eq('approval_status', 'pending')
+    } else if (action === 'complete') {
+      query = query.in('status', ['approved', 'in_progress'])
+    } else if (action === 'decline') {
+      query = query.eq('approval_status', 'pending')
+    }
+    
+    const { data: updated, error: updateError } = await query
       .select('*')
       .single()
 
@@ -730,7 +756,19 @@ export async function PATCH(request: NextRequest) {
       return response
     }
 
-    console.log('✅ Booking updated successfully:', updated)
+    if (!updated) {
+      // Race condition: no row matched the update conditions
+      const response = NextResponse.json({ 
+        error: 'Booking state changed during update', 
+        details: 'Another user may have modified this booking. Please refresh and try again.' 
+      }, { status: 409 })
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+      return response
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('✅ Booking updated successfully:', updated)
+    }
 
     if (notification) {
       console.log('🔔 Creating comprehensive notification with email:', notification)
