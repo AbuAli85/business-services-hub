@@ -825,8 +825,7 @@ export async function PATCH(request: NextRequest) {
     // Add race-safe guards based on action
     if (action === 'approve') {
       // Allow approve if approval_status is pending, approved, or in_progress (idempotent)
-      // Also allow if status is pending (for cases where approval_status is in_progress)
-      query = query.or('approval_status.in(pending,approved,in_progress),status.eq.pending')
+      query = query.in('approval_status', ['pending', 'approved', 'in_progress'])
     } else if (action === 'complete') {
       query = query.in('status', ['approved', 'in_progress'])
     } else if (action === 'decline') {
