@@ -671,6 +671,7 @@ export async function PATCH(request: NextRequest) {
             .eq('id', booking_id)
             .eq('approval_status', 'approved') // Add this condition to ensure it's approved
             .select()
+            .single()
           
           if (directError) {
             console.error('❌ Direct update failed:', directError)
@@ -685,6 +686,7 @@ export async function PATCH(request: NextRequest) {
               })
               .eq('id', booking_id)
               .select()
+              .single()
             
             if (fallbackError) {
               console.error('❌ Fallback update failed:', fallbackError)
@@ -697,12 +699,11 @@ export async function PATCH(request: NextRequest) {
             console.log('✅ Fallback completed: Updated approval_status to in_progress')
             console.log('📊 Fallback result:', { 
               hasData: !!fallbackResult, 
-              dataLength: fallbackResult?.length,
-              firstItem: fallbackResult?.[0] 
+              result: fallbackResult
             })
             
             // Ensure we have a valid booking object
-            const updatedBooking = fallbackResult?.[0] || {
+            const updatedBooking = fallbackResult || {
               id: booking_id,
               status: booking.status,
               approval_status: 'in_progress',
@@ -720,12 +721,11 @@ export async function PATCH(request: NextRequest) {
           console.log('✅ Direct update completed: Status updated to in_progress')
           console.log('📊 Direct result:', { 
             hasData: !!directResult, 
-            dataLength: directResult?.length,
-            firstItem: directResult?.[0] 
+            result: directResult
           })
           
           // Ensure we have a valid booking object
-          const updatedBooking = directResult?.[0] || {
+          const updatedBooking = directResult || {
             id: booking_id,
             status: 'in_progress',
             approval_status: booking.approval_status,
