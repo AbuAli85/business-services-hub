@@ -246,7 +246,8 @@ class DashboardDataManager {
           reviewCount: service.review_count || 0,
           bookingCount: service._count?.bookings || 0,
           createdAt: service.created_at || new Date().toISOString(),
-          updatedAt: service.updated_at || new Date().toISOString()
+          updatedAt: service.updated_at || new Date().toISOString(),
+          cover_image_url: service.cover_image_url
         }))
       } else {
         console.error('Failed to fetch services:', response.status, response.statusText)

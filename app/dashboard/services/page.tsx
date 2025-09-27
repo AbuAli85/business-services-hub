@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { 
   Plus, 
   Edit, 
@@ -22,7 +24,11 @@ import {
   Grid3X3,
   List,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  User,
+  Filter,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
@@ -42,6 +48,8 @@ export default function ServicesPage() {
   const [priceRange, setPriceRange] = useState({ min: '', max: '' })
   const [ratingFilter, setRatingFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showFilters, setShowFilters] = useState(false)
+  const [featuredOnly, setFeaturedOnly] = useState(false)
 
   // Get user role
   useEffect(() => {
@@ -71,13 +79,15 @@ export default function ServicesPage() {
   // Use the services state directly
   const sourceServices = services
 
+
   // Filter and sort services
   const filteredServices = useMemo(() => {
     let filtered = sourceServices.filter(service => {
       const matchesSearch = searchTerm === '' || 
         service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchTerm.toLowerCase())
+        service.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.providerName.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || (service.status || 'active') === statusFilter
       const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
@@ -103,7 +113,9 @@ export default function ServicesPage() {
         }
       })()
       
-      return matchesSearch && matchesStatus && matchesCategory && matchesPrice && matchesRating
+      const matchesFeatured = !featuredOnly || service.featured
+      
+      return matchesSearch && matchesStatus && matchesCategory && matchesPrice && matchesRating && matchesFeatured
     })
 
     // Sort services
@@ -144,7 +156,7 @@ export default function ServicesPage() {
     })
 
     return filtered
-  }, [sourceServices, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder, priceRange, ratingFilter])
+  }, [sourceServices, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder, priceRange, ratingFilter, featuredOnly])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -167,7 +179,8 @@ export default function ServicesPage() {
 
   // Get unique categories
   const categories = useMemo(() => {
-    return Array.from(new Set(sourceServices.map((s: any) => s.category))).sort()
+    const uniqueCategories = new Set(sourceServices.map((s: any) => s.category).filter(Boolean))
+    return Array.from(uniqueCategories).sort()
   }, [sourceServices])
 
   // Get status badge
@@ -313,68 +326,177 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search services..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* Enhanced Search and Filters */}
+      <Card className="shadow-sm">
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {/* Main Search and Controls */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search services, providers, or categories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-11 text-base"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="h-11 px-4"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Advanced Filters
+                  {showFilters && <Badge variant="secondary" className="ml-2">Active</Badge>}
+                </Button>
+                
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-48 h-11">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="createdAt">Newest First</SelectItem>
+                    <SelectItem value="title">Title A-Z</SelectItem>
+                    <SelectItem value="base_price">Price Low-High</SelectItem>
+                    <SelectItem value="rating">Highest Rated</SelectItem>
+                    <SelectItem value="booking_count">Most Popular</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="h-11 px-3"
+                >
+                  {sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                </Button>
+                
+                <div className="flex border rounded-md">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="rounded-r-none h-11"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className="rounded-l-none h-11"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="createdAt">Date Created</SelectItem>
-                <SelectItem value="base_price">Price</SelectItem>
-                <SelectItem value="title">Title</SelectItem>
-                <SelectItem value="rating">Rating</SelectItem>
-                <SelectItem value="booking_count">Bookings</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              >
-                {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              >
-                {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid3X3 className="h-4 w-4" />}
-              </Button>
-            </div>
+
+            {/* Advanced Filters Panel */}
+            {showFilters && (
+              <div className="bg-gray-50 p-6 rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Status</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Category</Label>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map(category => (
+                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Price Range (OMR)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Min"
+                        value={priceRange.min}
+                        onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                        type="number"
+                        className="h-10"
+                      />
+                      <Input
+                        placeholder="Max"
+                        value={priceRange.max}
+                        onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                        type="number"
+                        className="h-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Rating</Label>
+                    <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Ratings" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Ratings</SelectItem>
+                        <SelectItem value="5">5 Stars</SelectItem>
+                        <SelectItem value="4">4+ Stars</SelectItem>
+                        <SelectItem value="3">3+ Stars</SelectItem>
+                        <SelectItem value="2">2+ Stars</SelectItem>
+                        <SelectItem value="1">1+ Stars</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="featured"
+                        checked={featuredOnly}
+                        onCheckedChange={(checked) => setFeaturedOnly(checked as boolean)}
+                      />
+                      <Label htmlFor="featured" className="text-sm">Featured Services Only</Label>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('')
+                      setStatusFilter('all')
+                      setCategoryFilter('all')
+                      setPriceRange({ min: '', max: '' })
+                      setRatingFilter('all')
+                      setFeaturedOnly(false)
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -383,88 +505,109 @@ export default function ServicesPage() {
       {filteredServices.length > 0 ? (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
           {filteredServices.map((service) => (
-            <Card key={service.id} className="hover:shadow-md transition-shadow">
+            <Card key={service.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white overflow-hidden">
+              {/* Service Image Header */}
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src={getServiceCardImageUrl(service.category, service.title, (service as any).cover_image_url, 400, 200)}
+                  alt={`${service.title} - ${service.category} service`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-3 left-3 flex gap-2">
+                  {getStatusBadge(service.status)}
+                  {service.featured && (
+                    <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0">
+                      <Star className="h-3 w-3 mr-1" />
+                      Featured
+                    </Badge>
+                  )}
+                </div>
+                <div className="absolute top-3 right-3">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white shadow-md"
+                    onClick={() => router.push(`/services/${service.id}`)}
+                    title="View Details"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
               <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start space-x-4 flex-1">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                      <img
-                        src={getServiceCardImageUrl(service.category, service.title, (service as any).cover_image_url, 64, 64)}
-                        alt={`${service.title} - ${service.category} service`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-semibold text-lg">{service.title}</h3>
-                        {getStatusBadge(service.status)}
-                      </div>
-                      <p className="text-gray-600 text-sm mb-2 line-clamp-2">{service.description}</p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span className="flex items-center">
-                          <Package className="h-3 w-3 mr-1" />
-                          {service.category}
-                        </span>
-                        <span className="flex items-center">
-                          <Banknote className="h-3 w-3 mr-1" />
-                          {formatCurrency(service.basePrice / 10, service.currency)}
-                        </span>
-                        {service.rating && (
-                          <span className="flex items-center">
-                            <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                            {service.rating.toFixed(1)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push(`/services/${service.id}`)}
-                      title="View Details"
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                    {userRole === 'provider' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
-                        title="Edit Service"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
-                        title="Book Service"
-                      >
-                        Book
-                      </Button>
+                {/* Service Title and Provider */}
+                <div className="mb-3">
+                  <h3 className="font-bold text-xl mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    {service.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 flex items-center">
+                    <User className="h-3 w-3 mr-1" />
+                    {service.providerName}
+                  </p>
+                </div>
+
+                {/* Service Description */}
+                <p className="text-gray-700 text-sm mb-4 line-clamp-2 leading-relaxed">
+                  {service.description}
+                </p>
+
+                {/* Service Stats */}
+                <div className="flex items-center justify-between mb-4 text-sm">
+                  <div className="flex items-center space-x-4">
+                    <span className="flex items-center text-gray-600">
+                      <Package className="h-4 w-4 mr-1" />
+                      {service.category}
+                    </span>
+                    {(service.rating || 0) > 0 && (
+                      <span className="flex items-center text-yellow-600 font-medium">
+                        <Star className="h-4 w-4 mr-1 fill-current" />
+                        {(service.rating || 0).toFixed(1)}
+                        <span className="text-gray-500 ml-1">({service.reviewCount || 0})</span>
+                      </span>
                     )}
                   </div>
+                  <span className="text-gray-500">
+                    {service.bookingCount} bookings
+                  </span>
+                </div>
+
+                {/* Price and Action */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(service.basePrice / 10, service.currency)}
+                    </span>
+                    <span className="text-xs text-gray-500">Starting price</span>
+                  </div>
+                  {userRole === 'provider' ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                      title="Edit Service"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <Button
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      onClick={() => router.push(`/dashboard/bookings/create?service=${service.id}`)}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Book Now
+                    </Button>
+                  )}
                 </div>
                 
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center space-x-4">
-                    {userRole !== 'client' && (
-                      <span className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {service.bookingCount || 0} bookings
-                      </span>
-                    )}
-                    {userRole !== 'client' && (
-                      <span className="flex items-center">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        {formatCurrency((service.bookingCount || 0) * service.basePrice, service.currency)} revenue
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    Created {new Date(service.createdAt).toLocaleDateString()}
+                {/* Service Footer */}
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
+                  <span>Created {new Date(service.createdAt).toLocaleDateString()}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Updated {new Date(service.updatedAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </CardContent>
