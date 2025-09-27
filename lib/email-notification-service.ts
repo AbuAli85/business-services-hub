@@ -86,7 +86,11 @@ export class EmailNotificationService {
     try {
       const emailContent = this.generateEmailContent(notification, userName, preferences)
       
-      const response = await fetch('/api/notifications/email', {
+      // Use absolute URL for server-side requests
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+      const emailApiUrl = `${baseUrl}/api/notifications/email`
+      
+      const response = await fetch(emailApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

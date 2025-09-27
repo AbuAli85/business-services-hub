@@ -674,11 +674,11 @@ export async function PATCH(request: NextRequest) {
           console.log('📝 Special case: Status is pending but approval_status is approved')
           console.log('🔄 Attempting direct update to in_progress (bypassing status transition rules)')
           
-          // Try to update directly to in_progress, bypassing the status transition
+          // Try to update only approval_status to in_progress (avoid status field entirely)
           const { data: directResult, error: directError } = await supabase
             .from('bookings')
             .update({ 
-              status: 'in_progress',
+              approval_status: 'in_progress',
               updated_at: new Date().toISOString()
             })
             .eq('id', booking_id)
@@ -748,17 +748,17 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ 
             success: true, 
             booking: updatedBooking,
-            message: 'Project started successfully',
-            updated_fields: ['status']
+            message: 'Project started successfully (approval status updated)',
+            updated_fields: ['approval_status']
           })
         } else {
           // Direct update if status is already approved
-          console.log('📝 Direct update: Status is already approved, updating to in_progress')
+          console.log('📝 Direct update: Status is already approved, updating approval_status to in_progress')
           
           const { data: directResult, error: directError } = await supabase
             .from('bookings')
             .update({
-              status: 'in_progress',
+              approval_status: 'in_progress',
               updated_at: new Date().toISOString()
             })
             .eq('id', booking_id)
@@ -773,12 +773,12 @@ export async function PATCH(request: NextRequest) {
             }, { status: 500 })
           }
           
-          console.log('✅ Direct update completed: Status updated to in_progress')
+          console.log('✅ Direct update completed: Approval status updated to in_progress')
           return NextResponse.json({ 
             success: true, 
             booking: directResult,
-            message: 'Project started successfully',
-            updated_fields: ['status']
+            message: 'Project started successfully (approval status updated)',
+            updated_fields: ['approval_status']
           })
         }
         break
@@ -922,11 +922,19 @@ export async function PATCH(request: NextRequest) {
               console.log('ℹ️ Invoice generation skipped (may already exist or failed)')
             }
           } catch (invoiceError) {
-            console.error('❌ Failed to generate invoice automatically:', {
-              error: invoiceError,
-              message: invoiceError instanceof Error ? invoiceError.message : 'Unknown error',
-              booking_id
-            })
+            // Check if it's a module import error (deployment issue)
+            if (invoiceError instanceof Error && invoiceError.message.includes('Cannot find module')) {
+              console.warn('⚠️ Invoice generation skipped due to missing module in production:', {
+                message: invoiceError.message,
+                booking_id
+              })
+            } else {
+              console.error('❌ Failed to generate invoice automatically:', {
+                error: invoiceError,
+                message: invoiceError instanceof Error ? invoiceError.message : 'Unknown error',
+                booking_id
+              })
+            }
             // Non-blocking - don't fail the approval if invoice generation fails
           }
         } else {
