@@ -901,7 +901,24 @@ export default function BookingsPage() {
     
     const avgCompletionTime = 7.2 // Mock data
 
-    return { total, completed, inProgress, pending, approved, totalRevenue, projectedBillings, avgCompletionTime }
+    // Calculate additional stats for the overview cards
+    const pendingApproval = pending
+    const readyToLaunch = bookingsSource.filter((b:any) => 
+      (b.status === 'approved' || b.approval_status === 'approved') && b.status !== 'completed' && b.status !== 'in_progress'
+    ).length
+
+    return { 
+      total, 
+      completed, 
+      inProgress, 
+      pending, 
+      approved, 
+      totalRevenue, 
+      projectedBillings, 
+      avgCompletionTime,
+      pendingApproval,
+      readyToLaunch
+    }
   }, [bookingsSource, totalCount])
 
   // Show loading skeleton only during initial user loading
@@ -1087,6 +1104,90 @@ export default function BookingsPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Status Overview Cards - Matching Screenshot */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        {/* Next Actions Required */}
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-900 mb-1">
+                  {stats.pendingApproval} {stats.pendingApproval > 0 ? `${((stats.pendingApproval / stats.total) * 100).toFixed(1)}% of portfolio` : '0 0.0% of portfolio'}
+                </div>
+                <div className="text-sm text-green-700 font-medium">Next actions required • High priority</div>
+              </div>
+              <Play className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Success Rate */}
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-emerald-900 mb-1">
+                  {stats.completed} {stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(1)}% success rate` : '0 0.0% success rate'}
+                </div>
+                <div className="text-sm text-emerald-700 font-medium">Completed projects</div>
+              </div>
+              <CheckCircle className="h-8 w-8 text-emerald-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue */}
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-orange-900 mb-1">
+                  {formatCurrency(stats.totalRevenue)}
+                </div>
+                <div className="text-sm text-orange-700 font-medium">
+                  OMR {(stats.totalRevenue / Math.max(stats.total, 1)).toFixed(2)} avg
+                </div>
+              </div>
+              <TrendingUp className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Awaiting Decision */}
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-purple-900 mb-1">
+                  {stats.pendingApproval} Awaiting your decision
+                </div>
+                <div className="text-sm text-purple-700 font-medium">
+                  Action needed • {stats.pendingApproval} waiting
+                </div>
+              </div>
+              <Clock className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Ready to Launch */}
+        <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-cyan-900 mb-1">
+                  {stats.readyToLaunch} Ready to launch projects
+                </div>
+                <div className="text-sm text-cyan-700 font-medium">
+                  All prerequisites met • Ready to launch projects • Active
+                </div>
+              </div>
+              <Rocket className="h-8 w-8 text-cyan-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Key Metrics Cards */}
@@ -1298,143 +1399,135 @@ export default function BookingsPage() {
                 const derivedStatus = getDerivedStatus(booking)
                 
                 return (
-                  <div key={booking.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={booking.id} className="p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-between">
-                      {/* Left side - Service info */}
+                      {/* Service Title */}
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 text-lg">
-                              {booking.service_title || 'Service'}
-                            </h3>
-                            {booking.status === 'in_progress' && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
-                          </div>
-                        </div>
+                        <h3 className="font-semibold text-gray-900 text-base mb-1">
+                          {booking.service_title || 'Service'}
+                        </h3>
                         
-                        <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
+                        {/* ID and View Details */}
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                           <span className="font-mono">ID: {String(booking.id).slice(0, 8)}...</span>
                           <Link href={`/dashboard/bookings/${booking.id}`} className="text-blue-600 hover:underline">
                             View Details
                           </Link>
                         </div>
                         
-                        <div className="flex items-center gap-6">
-                          {/* Price */}
-                          <div className="text-lg font-bold text-gray-900">
-                            {Number(booking.amount_cents ?? 0) === 0 ? (
-                              <span className="text-gray-500">No amount set</span>
-                            ) : (
-                              formatCurrency(
-                                Number((booking.amount_cents ?? 0) / 100),
-                                String(booking.currency ?? 'OMR')
-                              )
-                            )}
-                          </div>
-                          
-                          {/* Status */}
-                          <div className="flex items-center gap-2">
-                            <Badge 
-                              variant="outline" 
-                              className={`text-xs font-semibold px-2 py-1 ${
-                                derivedStatus === 'delivered' 
-                                  ? 'text-green-700 border-green-300 bg-green-100'
-                                  : derivedStatus === 'in_production'
-                                  ? 'text-blue-700 border-blue-300 bg-blue-100'
-                                  : derivedStatus === 'ready_to_launch'
-                                  ? 'text-purple-700 border-purple-300 bg-purple-100'
-                                  : derivedStatus === 'approved'
-                                  ? 'text-orange-700 border-orange-300 bg-orange-100'
-                                  : derivedStatus === 'cancelled'
-                                  ? 'text-red-700 border-red-300 bg-red-100'
-                                  : 'text-yellow-700 border-yellow-300 bg-yellow-100'
-                              }`}
-                            >
-                              {derivedStatus === 'delivered' ? 'Delivered' :
-                               derivedStatus === 'in_production' ? 'In Production' :
-                               derivedStatus === 'ready_to_launch' ? 'Ready to Launch' :
-                               derivedStatus === 'approved' ? 'Approved' :
-                               derivedStatus === 'cancelled' ? 'Cancelled' :
-                               'Pending'}
-                            </Badge>
-                            <span className="text-sm text-gray-600">
-                              {getStatusSubtitle(derivedStatus)}
-                            </span>
-                          </div>
-                          
-                          {/* Invoice Status */}
-                          <div className="flex items-center gap-2">
-                            {invoice ? (
-                              <>
-                                <span className="text-sm text-gray-500">Invoice:</span>
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs font-semibold ${
-                                    invoice.status === 'paid' 
-                                      ? 'text-green-700 border-green-300 bg-green-100'
-                                      : invoice.status === 'issued'
-                                      ? 'text-yellow-700 border-yellow-300 bg-yellow-100'
-                                      : 'text-gray-700 border-gray-300 bg-gray-100'
-                                  }`}
+                        {/* Price */}
+                        <div className="text-lg font-bold text-gray-900 mb-2">
+                          {Number(booking.amount_cents ?? 0) === 0 ? (
+                            <span className="text-gray-500">No amount set</span>
+                          ) : (
+                            formatCurrency(
+                              Number((booking.amount_cents ?? 0) / 100),
+                              String(booking.currency ?? 'OMR')
+                            )
+                          )}
+                        </div>
+                        
+                        {/* Status Badge */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs font-semibold px-2 py-1 ${
+                              derivedStatus === 'delivered' 
+                                ? 'text-green-700 border-green-300 bg-green-100'
+                                : derivedStatus === 'in_production'
+                                ? 'text-blue-700 border-blue-300 bg-blue-100'
+                                : derivedStatus === 'ready_to_launch'
+                                ? 'text-purple-700 border-purple-300 bg-purple-100'
+                                : derivedStatus === 'approved'
+                                ? 'text-orange-700 border-orange-300 bg-orange-100'
+                                : derivedStatus === 'cancelled'
+                                ? 'text-red-700 border-red-300 bg-red-100'
+                                : 'text-yellow-700 border-yellow-300 bg-yellow-100'
+                            }`}
+                          >
+                            {derivedStatus === 'delivered' ? 'Delivered' :
+                             derivedStatus === 'in_production' ? 'In Production' :
+                             derivedStatus === 'ready_to_launch' ? 'Ready to Launch' :
+                             derivedStatus === 'approved' ? 'Approved' :
+                             derivedStatus === 'cancelled' ? 'Cancelled' :
+                             'Pending'}
+                          </Badge>
+                          <span className="text-sm text-gray-600">
+                            {getStatusSubtitle(derivedStatus)}
+                          </span>
+                        </div>
+                        
+                        {/* Invoice Status */}
+                        <div className="flex items-center gap-2 mb-2">
+                          {invoice ? (
+                            <>
+                              <span className="text-sm text-gray-500">Invoice:</span>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs font-semibold ${
+                                  invoice.status === 'paid' 
+                                    ? 'text-green-700 border-green-300 bg-green-100'
+                                    : invoice.status === 'issued'
+                                    ? 'text-yellow-700 border-yellow-300 bg-yellow-100'
+                                    : 'text-gray-700 border-gray-300 bg-gray-100'
+                                }`}
+                              >
+                                {invoice.status === 'paid' ? 'Paid' : 
+                                 invoice.status === 'issued' ? 'Issued' : 
+                                 invoice.status}
+                              </Badge>
+                              {invoice.status === 'draft' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-6 px-2 text-blue-600 border-blue-300"
+                                  onClick={() => handleSendInvoice(invoice.id)}
                                 >
-                                  {invoice.status === 'paid' ? 'Paid' : 
-                                   invoice.status === 'issued' ? 'Issued' : 
-                                   invoice.status}
-                                </Badge>
-                                {invoice.status === 'draft' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-6 px-2 text-blue-600 border-blue-300"
-                                    onClick={() => handleSendInvoice(invoice.id)}
-                                  >
-                                    Send Invoice
-                                  </Button>
-                                )}
-                                {invoice.status === 'issued' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-6 px-2 text-green-600 border-green-300"
-                                    onClick={() => handleMarkInvoicePaid(invoice.id)}
-                                  >
-                                    Mark Paid
-                                  </Button>
-                                )}
-                              </>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">Invoice:</span>
-                                <Badge 
-                                  variant="outline" 
-                                  className="text-xs font-semibold text-gray-600 border-gray-300 bg-gray-100"
+                                  Send Invoice
+                                </Button>
+                              )}
+                              {invoice.status === 'issued' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-6 px-2 text-green-600 border-green-300"
+                                  onClick={() => handleMarkInvoicePaid(invoice.id)}
                                 >
-                                  No Invoice
-                                </Badge>
-                                {canCreateInvoice && (['approved','confirmed','in_progress','completed'].includes(String(booking.status)) || booking.approval_status === 'approved') && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    className="text-xs h-6 px-2"
-                                    onClick={() => handleCreateInvoice(booking)}
-                                  >
-                                    Create
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Date */}
-                          <div className="text-sm text-gray-500">
-                            {booking.scheduled_date ? formatLocalDate(booking.scheduled_date) : '—'} {booking.scheduled_date ? formatLocalTime(booking.scheduled_date) : ''}
-                          </div>
+                                  Mark Paid
+                                </Button>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500">Invoice:</span>
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs font-semibold text-gray-600 border-gray-300 bg-gray-100"
+                              >
+                                No Invoice
+                              </Badge>
+                              {canCreateInvoice && (['approved','confirmed','in_progress','completed'].includes(String(booking.status)) || booking.approval_status === 'approved') && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="text-xs h-6 px-2"
+                                  onClick={() => handleCreateInvoice(booking)}
+                                >
+                                  Create
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Date */}
+                        <div className="text-sm text-gray-500">
+                          {booking.scheduled_date ? formatLocalDate(booking.scheduled_date) : '—'} {booking.scheduled_date ? formatLocalTime(booking.scheduled_date) : ''}
                         </div>
                       </div>
                       
-                      {/* Right side - Action button */}
-                      <div className="ml-6">
+                      {/* Action Button */}
+                      <div className="ml-4">
                         {/* Primary Action based on booking status and user role - ORDER MATTERS! */}
                         {booking.status === 'completed' && userRole === 'client' && (
                           <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white">
