@@ -47,7 +47,7 @@ import {
   Share2,
   BarChart3
 } from 'lucide-react'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import toast from 'react-hot-toast'
 import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'

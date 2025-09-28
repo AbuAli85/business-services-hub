@@ -17,7 +17,7 @@ export default function BookingDetailsPage() {
     let mounted = true
     ;(async () => {
       try {
-        const { getSupabaseClient } = await import('@/lib/supabase')
+        const { getSupabaseClient } = await import('@/lib/supabase-client')
         const supabase = await getSupabaseClient()
         const { data: authData } = await supabase.auth.getUser()
         const userId = authData.user?.id
