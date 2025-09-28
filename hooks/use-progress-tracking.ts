@@ -38,6 +38,19 @@ export function useProgressTracking({
   const updateTaskProgress = useCallback(async (taskId: string, updates: Partial<Task>) => {
     try {
       setIsUpdating(true)
+      
+      // Validate that taskId is a valid UUID and not a booking ID
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(taskId)) {
+        console.error('❌ Invalid UUID format for taskId in useProgressTracking:', taskId)
+        throw new Error('Invalid task ID format')
+      }
+      
+      if (taskId === bookingId) {
+        console.error('❌ Booking ID being used as task ID in useProgressTracking:', taskId, 'bookingId:', bookingId)
+        throw new Error('Invalid task ID: booking ID cannot be used as task ID')
+      }
+      
       await ProgressDataService.updateTask(taskId, updates)
       
       // Calculate milestone progress if task status changed

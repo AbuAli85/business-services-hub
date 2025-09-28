@@ -300,6 +300,13 @@ export class ProgressTrackingService {
   }
 
   static async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+    // Validate that id is a valid UUID and not a booking ID
+    const isUuid = (taskId: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(taskId)
+    if (!isUuid(id)) {
+      console.error('❌ Invalid UUID format for taskId in ProgressTracking:', id)
+      throw new Error('Invalid task ID format')
+    }
+    
     const supabase = await getSupabaseClient()
     const { data, error } = await supabase
       .from('tasks')

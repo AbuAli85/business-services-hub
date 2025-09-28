@@ -239,6 +239,13 @@ export class ProgressDataService {
       // Update task
   static async updateTask(taskId: string, updates: Partial<Task>) {
     try {
+      // Validate that taskId is a valid UUID and not a booking ID
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(taskId)) {
+        console.error('❌ Invalid UUID format for taskId in ProgressDataService:', taskId)
+        throw new Error('Invalid task ID format')
+      }
+      
       const { data, error } = await supabase
         .from('tasks')
         .update({ 
