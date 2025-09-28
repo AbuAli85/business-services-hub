@@ -222,9 +222,18 @@ export default function BookingsPage() {
         console.log('📡 Fetching from:', apiEndpoint)
       }
       
+      // Get the current session token for authentication
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const res = await fetch(apiEndpoint, {
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         signal: ac.signal
       })
       
@@ -266,9 +275,14 @@ export default function BookingsPage() {
       
       // Load invoices separately
       try {
+        const invoiceHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (session?.access_token) {
+          invoiceHeaders['Authorization'] = `Bearer ${session.access_token}`
+        }
+        
         const invoiceRes = await fetch('/api/invoices', {
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: invoiceHeaders,
           signal: ac.signal
         })
         if (invoiceRes.ok) {
@@ -582,9 +596,18 @@ export default function BookingsPage() {
     setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'approved' } : x))
     const dismiss = toast.loading('Approving booking…')
     try {
+      // Get the current session token for authentication
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const res = await fetch('/api/bookings', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({ booking_id: id, action: 'approve' })
       })
