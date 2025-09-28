@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
     const status = statusMap[eventType] || 'sent'
 
-    const supabase = getSupabaseAdminClient()
+    const supabase = await getSupabaseAdminClient()
     // We may not have notification_id in webhook; store minimal record
     await supabase.from('email_notification_logs').insert({
       notification_id: null,

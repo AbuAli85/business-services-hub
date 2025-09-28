@@ -12,7 +12,7 @@ type CleanupBody = {
 
 export async function POST(req: NextRequest) {
   try {
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
 
     // Auth guard (admin only)
     const authHeader = req.headers.get('authorization') || ''

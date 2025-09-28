@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   let userId: string | null = null
   
   try {
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
     
     // Get the session from the request headers
     const authHeader = request.headers.get('authorization')

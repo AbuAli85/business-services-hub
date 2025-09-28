@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   try {
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
 
     // Authenticate admin via Bearer token
     const authHeader = req.headers.get('authorization') || ''

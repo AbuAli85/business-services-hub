@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'user_id is required' }, { status: 400 })
     }
 
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
     const supabase = await getSupabaseClient()
 
     // Require admin via Bearer token (works from client fetch)

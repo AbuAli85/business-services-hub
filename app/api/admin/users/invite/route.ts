@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   try {
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
     const authHeader = req.headers.get('authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : ''
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

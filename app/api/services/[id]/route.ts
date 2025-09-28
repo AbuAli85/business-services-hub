@@ -58,7 +58,7 @@ export async function GET(
     // Enrich with provider profile (use admin client to bypass RLS for public view)
     let provider: any = null
     try {
-      const admin = getSupabaseAdminClient()
+      const admin = await getSupabaseAdminClient()
       const { data: providerRow } = await admin
         .from('profiles')
         .select('id, full_name, email, phone, company_name, avatar_url')

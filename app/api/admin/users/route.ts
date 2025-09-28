@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     // Initialize clients with explicit error handling for env misconfig
     let admin
     try {
-      admin = getSupabaseAdminClient()
+      admin = await getSupabaseAdminClient()
     } catch (clientErr: any) {
       console.error('❌ Admin client initialization failed:', clientErr)
       return NextResponse.json({

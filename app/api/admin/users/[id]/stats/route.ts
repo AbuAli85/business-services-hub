@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
     const userId = params.id
     if (!userId) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 

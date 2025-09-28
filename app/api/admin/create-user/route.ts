@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
   try {
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
     const body = await req.json()
     
     const { email, password, full_name, phone, company_name, role } = body

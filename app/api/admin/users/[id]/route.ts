@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const userIdParam = params.id
     if (!userIdParam) return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
 
-    const admin = getSupabaseAdminClient()
+    const admin = await getSupabaseAdminClient()
     const supabase = await getSupabaseClient()
 
     // Auth via Bearer token and admin role
