@@ -18,6 +18,7 @@ import {
   Calendar, 
   Clock, 
   AlertTriangle, 
+  AlertCircle,
   CheckCircle, 
   Play, 
   Workflow,
@@ -161,6 +162,7 @@ export function ProfessionalMilestoneSystem({
   const loadData = async () => {
     try {
       setLoading(true)
+      setError(null)
       
       // Initialize Supabase client
       const supabase = await getSupabaseClient()
@@ -173,7 +175,22 @@ export function ProfessionalMilestoneSystem({
       })
 
       if (!milestonesRes.ok) {
-        throw new Error(`Failed to load milestones: ${milestonesRes.statusText}`)
+        // Check if it's an authentication error
+        if (milestonesRes.status === 401) {
+          throw new Error('Authentication required. Please sign in to view milestones.')
+        } else if (milestonesRes.status === 403) {
+          throw new Error('Access denied. You do not have permission to view these milestones.')
+        } else if (milestonesRes.status === 404) {
+          throw new Error('Booking not found. Please check the booking ID.')
+        } else {
+          throw new Error(`Failed to load milestones: ${milestonesRes.status} ${milestonesRes.statusText}`)
+        }
+      }
+
+      // Check if response is JSON
+      const contentType = milestonesRes.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response format. Please try refreshing the page.')
       }
 
       const milestonesData = await milestonesRes.json()
@@ -281,8 +298,25 @@ export function ProfessionalMilestoneSystem({
       
     } catch (err) {
       console.error('Error loading data:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load data')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load data'
+      setError(errorMessage)
       setMilestones([])
+      
+      // Show toast notification for better user feedback
+      if (errorMessage.includes('Authentication required')) {
+        toast.error('Please sign in to view milestones', {
+          action: {
+            label: 'Sign In',
+            onClick: () => window.location.href = '/auth/sign-in'
+          }
+        })
+      } else if (errorMessage.includes('Access denied')) {
+        toast.error('You do not have permission to view these milestones')
+      } else if (errorMessage.includes('Booking not found')) {
+        toast.error('Booking not found. Please check the URL.')
+      } else {
+        toast.error(`Failed to load milestones: ${errorMessage}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -1066,6 +1100,43 @@ export function ProfessionalMilestoneSystem({
         <Button onClick={loadData} variant="outline">
           Try Again
         </Button>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Milestones</h3>
+          <p className="text-gray-600">Please wait while we load your project data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Milestones</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="space-x-2">
+            <Button onClick={loadData} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+            {error.includes('Authentication required') && (
+              <Button onClick={() => window.location.href = '/auth/sign-in'}>
+                Sign In
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
