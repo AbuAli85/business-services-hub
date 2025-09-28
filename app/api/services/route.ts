@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
-import { createClient as createPublicClient } from '@supabase/supabase-js'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-client'
+import { getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 import { withCors, ok, created, badRequest, unauthorized, forbidden, handleOptions } from '@/lib/api-helpers'
 
@@ -33,10 +33,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Create a public client for services (no authentication required)
-    const supabase = createPublicClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = await getSupabaseClient()
     const { searchParams } = new URL(request.url)
     
     // Get query parameters
@@ -106,10 +103,7 @@ export async function GET(request: NextRequest) {
     
     if (!useEnrichedView) {
       // Create service client for provider lookups (bypasses RLS)
-      const serviceSupabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
+      const serviceSupabase = await getSupabaseAdminClient()
       
       // If we used the regular services table, we need to enrich the data manually
       enrichedServices = await Promise.all(
