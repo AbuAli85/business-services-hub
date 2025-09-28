@@ -1,5 +1,5 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { createClient as createSSRClient } from '@/utils/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Environment variables should be available at build time
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -263,46 +263,22 @@ Missing: ${envCheck.missingVars.join(', ')}`)
   const url = envCheck.supabaseUrl!
   const key = envCheck.supabaseAnonKey!
   
-  // Create new client only once
-  supabaseClient = createClient(url, key, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce'
-    }
-  })
+  // Create new client only once using SSR client
+  supabaseClient = createSSRClient()
   
   return supabaseClient
 }
 
 // Service role client for admin operations (server-side only)
-export function getSupabaseAdminClient(): SupabaseClient {
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  
-  if (!supabaseUrl || !supabaseKey) {
-    const missingVars = []
-    if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
-    if (!supabaseKey) missingVars.push('SUPABASE_SERVICE_ROLE_KEY')
-    
-    throw new Error(`Supabase admin environment variables not configured:
-Missing: ${missingVars.join(', ')}
-
-Please check your .env.local file and ensure all required variables are set.`)
-  }
-  
+export async function getSupabaseAdminClient(): Promise<SupabaseClient> {
   // Return existing admin client if already created
   if (supabaseAdminClient) {
     return supabaseAdminClient
   }
   
-  // At this point, we know both variables are defined due to the check above
-  // TypeScript assertion is safe here
-  const url = supabaseUrl!
-  const key = supabaseKey!
-  
-  // Create new admin client only once
-  supabaseAdminClient = createClient(url, key)
+  // Use server-side admin client
+  const { createAdminClient } = await import('@/utils/supabase/server')
+  supabaseAdminClient = await createAdminClient()
   
   return supabaseAdminClient
 }
