@@ -276,25 +276,57 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const body = await request.json()
     const { searchParams } = new URL(request.url)
     const taskId = searchParams.get('id')
 
     if (!taskId) {
       return NextResponse.json(
-        { error: 'taskId is required' },
+        { 
+          error: 'MISSING_ID', 
+          message: 'Query param "id" is required',
+          code: 'MISSING_ID'
+        },
         { status: 400, headers: corsHeaders }
       )
     }
 
-    // Validate input
-    const validatedData = UpdateTaskSchema.parse(body)
+    // Parse and validate request body
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      return NextResponse.json(
+        { 
+          error: 'INVALID_JSON', 
+          message: 'Body must be valid JSON',
+          code: 'INVALID_JSON'
+        },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
+    const validatedData = UpdateTaskSchema.safeParse(body)
+    if (!validatedData.success) {
+      return NextResponse.json(
+        { 
+          error: 'VALIDATION_ERROR', 
+          message: 'Invalid input fields',
+          details: validatedData.error.flatten(),
+          code: 'VALIDATION_ERROR'
+        },
+        { status: 422, headers: corsHeaders }
+      )
+    }
 
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: 'UNAUTHORIZED', 
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED'
+        },
         { status: 401, headers: corsHeaders }
       )
     }
@@ -312,38 +344,99 @@ export async function PATCH(request: NextRequest) {
       .eq('id', taskId)
       .single()
 
-    if (taskError || !task) {
+    if (taskError) {
+      console.error('Error fetching task:', taskError)
+      if (taskError.code === 'PGRST116') {
+        return NextResponse.json(
+          { 
+            error: 'TASK_NOT_FOUND', 
+            message: 'Task not found',
+            code: 'TASK_NOT_FOUND'
+          },
+          { status: 404, headers: corsHeaders }
+        )
+      }
       return NextResponse.json(
-        { error: 'Task not found' },
+        { 
+          error: 'FETCH_FAILED', 
+          message: 'Failed to fetch task',
+          details: taskError.message,
+          code: 'FETCH_FAILED'
+        },
+        { status: 500, headers: corsHeaders }
+      )
+    }
+
+    if (!task) {
+      return NextResponse.json(
+        { 
+          error: 'TASK_NOT_FOUND', 
+          message: 'Task not found',
+          code: 'TASK_NOT_FOUND'
+        },
         { status: 404, headers: corsHeaders }
       )
     }
 
     // Validate status transition if status is being changed
-    if (validatedData.status && validatedData.status !== task.status) {
-      const { data: canTransition, error: transitionError } = await supabase
-        .rpc('can_transition', {
-          current_status: task.status,
-          new_status: validatedData.status,
-          entity_type: 'task'
-        })
+    if (validatedData.data.status && validatedData.data.status !== task.status) {
+      // Client-side transition validation (fallback if RPC doesn't exist)
+      const canTransition = (from: string, to: string) => {
+        const allowed: Record<string, string[]> = {
+          pending: ['in_progress', 'cancelled'],
+          in_progress: ['on_hold', 'completed', 'cancelled'],
+          on_hold: ['in_progress', 'cancelled'],
+          completed: [],
+          cancelled: [],
+        }
+        return allowed[from]?.includes(to) ?? false
+      }
 
-      if (transitionError) {
-        console.error('Error checking transition:', transitionError)
+      if (!canTransition(task.status, validatedData.data.status)) {
         return NextResponse.json(
-          { error: 'Failed to validate status transition' },
-          { status: 500, headers: corsHeaders }
+          { 
+            error: 'INVALID_TRANSITION', 
+            message: `Cannot transition from ${task.status} to ${validatedData.data.status}`,
+            details: {
+              current_status: task.status,
+              attempted_status: validatedData.data.status,
+              allowed_transitions: {
+                pending: ['in_progress', 'cancelled'],
+                in_progress: ['on_hold', 'completed', 'cancelled'],
+                on_hold: ['in_progress', 'cancelled'],
+                completed: [],
+                cancelled: []
+              }
+            },
+            code: 'INVALID_TRANSITION'
+          },
+          { status: 422, headers: corsHeaders }
         )
       }
 
-      if (!canTransition) {
-        return NextResponse.json(
-          { 
-            error: 'Invalid status transition', 
-            details: `Cannot transition from ${task.status} to ${validatedData.status}` 
-          },
-          { status: 400, headers: corsHeaders }
-        )
+      // Try RPC validation if available (optional)
+      try {
+        const { data: rpcCanTransition, error: transitionError } = await supabase
+          .rpc('can_transition', {
+            current_status: task.status,
+            new_status: validatedData.data.status,
+            entity_type: 'task'
+          })
+
+        if (transitionError) {
+          console.warn('RPC transition check failed, using client-side validation:', transitionError)
+        } else if (!rpcCanTransition) {
+          return NextResponse.json(
+            { 
+              error: 'INVALID_TRANSITION', 
+              message: `Cannot transition from ${task.status} to ${validatedData.data.status}`,
+              code: 'INVALID_TRANSITION'
+            },
+            { status: 422, headers: corsHeaders }
+          )
+        }
+      } catch (rpcError) {
+        console.warn('RPC transition check not available, using client-side validation:', rpcError)
       }
     }
 
@@ -355,8 +448,13 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (milestoneError || !milestone) {
+      console.error('Error fetching milestone:', milestoneError)
       return NextResponse.json(
-        { error: 'Milestone not found' },
+        { 
+          error: 'MILESTONE_NOT_FOUND', 
+          message: 'Milestone not found',
+          code: 'MILESTONE_NOT_FOUND'
+        },
         { status: 404, headers: corsHeaders }
       )
     }
@@ -369,8 +467,13 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (bookingError || !booking) {
+      console.error('Error fetching booking:', bookingError)
       return NextResponse.json(
-        { error: 'Booking not found' },
+        { 
+          error: 'BOOKING_NOT_FOUND', 
+          message: 'Booking not found',
+          code: 'BOOKING_NOT_FOUND'
+        },
         { status: 404, headers: corsHeaders }
       )
     }
@@ -384,14 +487,18 @@ export async function PATCH(request: NextRequest) {
     // Providers, admins, creators, or assigned users can update tasks
     if (!isProvider && !isAdmin && !isCreator && !isAssigned) {
       return NextResponse.json(
-        { error: 'Access denied' },
+        { 
+          error: 'FORBIDDEN', 
+          message: 'You do not have permission to modify this task',
+          code: 'FORBIDDEN'
+        },
         { status: 403, headers: corsHeaders }
       )
     }
 
     // Update task
     const updateData = {
-      ...validatedData,
+      ...validatedData.data,
       updated_at: new Date().toISOString()
     }
 
@@ -404,24 +511,60 @@ export async function PATCH(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating task:', updateError)
+      
+      // Map common database errors to user-friendly messages
+      if (updateError.code === '42501') {
+        return NextResponse.json(
+          { 
+            error: 'FORBIDDEN', 
+            message: 'You do not have permission to modify this task',
+            code: 'FORBIDDEN'
+          },
+          { status: 403, headers: corsHeaders }
+        )
+      }
+      
+      if (updateError.code === 'P0001' || /Invalid .*transition/i.test(updateError.message)) {
+        return NextResponse.json(
+          { 
+            error: 'INVALID_TRANSITION', 
+            message: 'Invalid status transition',
+            details: updateError.message,
+            code: 'INVALID_TRANSITION'
+          },
+          { status: 422, headers: corsHeaders }
+        )
+      }
+
       return NextResponse.json(
-        { error: 'Failed to update task' },
+        { 
+          error: 'UPDATE_FAILED', 
+          message: 'Failed to update task',
+          details: updateError.message,
+          code: updateError.code || 'UPDATE_FAILED'
+        },
         { status: 500, headers: corsHeaders }
       )
     }
 
-    // Recalculate milestone progress using the new RPC function
-    const { data: milestoneProgress, error: progressError } = await supabase
-      .rpc('recalc_milestone_progress', {
-        p_milestone_id: task.milestone_id
-      })
+    // Recalculate milestone progress using the new RPC function (optional)
+    let milestoneProgress = null
+    try {
+      const { data: progressData, error: progressError } = await supabase
+        .rpc('recalc_milestone_progress', {
+          p_milestone_id: task.milestone_id
+        })
 
-    if (progressError) {
-      console.error('Error recalculating milestone progress:', progressError)
-      // Don't fail the request, just log the error
+      if (progressError) {
+        console.warn('Error recalculating milestone progress (non-critical):', progressError)
+      } else {
+        milestoneProgress = progressData
+      }
+    } catch (rpcError) {
+      console.warn('RPC recalc_milestone_progress not available (non-critical):', rpcError)
     }
 
-    // Broadcast realtime update to booking channel
+    // Broadcast realtime update to booking channel (optional)
     try {
       await supabase.channel(`booking:${milestone.booking_id}`)
         .send({
@@ -434,12 +577,12 @@ export async function PATCH(request: NextRequest) {
           }
         })
     } catch (realtimeError) {
-      console.error('Error broadcasting realtime update:', realtimeError)
-      // Don't fail the request, just log the error
+      console.warn('Error broadcasting realtime update (non-critical):', realtimeError)
     }
 
     return NextResponse.json(
       { 
+        success: true,
         task: updatedTask,
         milestone_progress: milestoneProgress
       },
@@ -447,16 +590,26 @@ export async function PATCH(request: NextRequest) {
     )
 
   } catch (error) {
+    console.error('Update task error:', error)
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { 
+          error: 'VALIDATION_ERROR', 
+          message: 'Invalid input',
+          details: error.flatten(),
+          code: 'VALIDATION_ERROR'
+        },
         { status: 400, headers: corsHeaders }
       )
     }
 
-    console.error('Update task error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'INTERNAL_ERROR', 
+        message: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      },
       { status: 500, headers: corsHeaders }
     )
   }
