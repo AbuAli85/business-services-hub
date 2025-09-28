@@ -27,6 +27,13 @@ export async function makeServerClient(req: NextRequest) {
         console.log('❌ makeServerClient: Invalid token or user not found:', error)
         return await createSSRClient() // Fallback to cookie-based auth
       }
+      
+      // Set the session so subsequent calls work
+      await client.auth.setSession({
+        access_token: token,
+        refresh_token: '' // We don't have refresh token from Bearer
+      })
+      
       console.log('✅ makeServerClient: Successfully authenticated with Bearer token for user:', user.id)
     } catch (sessionError) {
       console.log('❌ makeServerClient: Failed to validate Bearer token:', sessionError)
