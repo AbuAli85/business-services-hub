@@ -863,7 +863,8 @@ export default function BookingsPage() {
     // Use the actual bookings array, not bookingsSource
     const bookingsData = bookings || []
     
-    const total = bookingsData.length
+    // Use totalCount from API for total projects (across all pages)
+    const total = totalCount
     
     // Use getDerivedStatus for more accurate status detection
     const completed = bookingsData.filter((b:any) => getDerivedStatus(b) === 'delivered').length
@@ -904,6 +905,7 @@ export default function BookingsPage() {
       pendingApproval,
       readyToLaunch,
       bookingsCount: bookingsData.length,
+      totalCountFromAPI: totalCount,
       invoicesCount: invoices.length,
       bookingsSample: bookingsData.slice(0, 3).map(b => ({
         id: b.id,
@@ -1285,7 +1287,7 @@ export default function BookingsPage() {
                           )}
                         </div>
                         
-                        {/* Status Badge */}
+                        {/* Status Badge - Matching Screenshot */}
                         <div className="flex items-center gap-2 mb-2">
                           <Badge 
                             variant="outline" 
@@ -1311,11 +1313,14 @@ export default function BookingsPage() {
                              'Pending'}
                           </Badge>
                           <span className="text-sm text-gray-600">
-                            {getStatusSubtitle(derivedStatus)}
+                            {derivedStatus === 'ready_to_launch' ? 'All prerequisites met' : getStatusSubtitle(derivedStatus)}
                           </span>
+                          {derivedStatus === 'ready_to_launch' && (
+                            <span className="text-sm text-gray-600">• Ready to launch</span>
+                          )}
                         </div>
                         
-                        {/* Invoice Status */}
+                        {/* Invoice Status - Matching Screenshot */}
                         <div className="flex items-center gap-2 mb-2">
                           {invoice ? (
                             <>
@@ -1334,16 +1339,6 @@ export default function BookingsPage() {
                                  invoice.status === 'issued' ? 'Issued' : 
                                  invoice.status}
                               </Badge>
-                              {invoice.status === 'draft' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-6 px-2 text-blue-600 border-blue-300"
-                                  onClick={() => handleSendInvoice(invoice.id)}
-                                >
-                                  Send Invoice
-                                </Button>
-                              )}
                               {invoice.status === 'issued' && (
                                 <Button
                                   size="sm"
@@ -1352,6 +1347,16 @@ export default function BookingsPage() {
                                   onClick={() => handleMarkInvoicePaid(invoice.id)}
                                 >
                                   Mark Paid
+                                </Button>
+                              )}
+                              {invoice.status === 'draft' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs h-6 px-2 text-blue-600 border-blue-300"
+                                  onClick={() => handleSendInvoice(invoice.id)}
+                                >
+                                  Send Invoice
                                 </Button>
                               )}
                             </>
