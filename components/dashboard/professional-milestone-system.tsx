@@ -478,13 +478,12 @@ export function ProfessionalMilestoneSystem({
       }
 
       // Use our backend-driven API instead of direct Supabase calls
-      const response = await fetch('/api/tasks', {
+      const response = await fetch(`/api/tasks?id=${taskId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: taskId,
           status,
           updated_at: new Date().toISOString()
         })
@@ -550,12 +549,11 @@ export function ProfessionalMilestoneSystem({
       }
       
       // Use our backend-driven API for task deletion
-      const response = await fetch('/api/tasks', {
+      const response = await fetch(`/api/tasks?id=${taskId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: taskId })
+        }
       })
 
       if (!response.ok) {
@@ -691,13 +689,12 @@ export function ProfessionalMilestoneSystem({
 
       if (editingTask) {
         // Use our backend-driven API for task updates
-        const response = await fetch('/api/tasks', {
+        const response = await fetch(`/api/tasks?id=${editingTask.id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: editingTask.id,
             title: taskForm.title,
             description: taskForm.description || '',
             status: taskForm.status,
