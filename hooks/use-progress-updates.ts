@@ -51,6 +51,12 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         return { success: true, milestoneProgress: 0, overallProgress: 0 }
       }
       
+      // Additional validation: prevent booking ID from being used as task ID
+      if (taskId === bookingId) {
+        console.error('❌ Booking ID being used as task ID:', taskId, 'bookingId:', bookingId)
+        throw new Error('Invalid task ID: booking ID cannot be used as task ID')
+      }
+      
       // Update task via RPC to avoid RLS/schema issues
       const { getSupabaseClient } = await import('@/lib/supabase-client')
       const supabase = await getSupabaseClient()

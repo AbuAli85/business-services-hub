@@ -842,8 +842,16 @@ export default function EnhancedBookingDetails({
       
       // Validate that taskId is actually a task ID, not a booking ID
       if (!taskId || taskId === bookingId) {
-        console.error('Invalid taskId provided to onStepToggle:', taskId, 'bookingId:', bookingId)
+        console.error('❌ Invalid taskId provided to onStepToggle:', taskId, 'bookingId:', bookingId)
         toast.error('Invalid task ID provided')
+        return
+      }
+      
+      // Additional validation: ensure taskId is a valid UUID
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(taskId)) {
+        console.error('❌ Invalid UUID format for taskId:', taskId)
+        toast.error('Invalid task ID format')
         return
       }
       
