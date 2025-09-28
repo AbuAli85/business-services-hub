@@ -72,10 +72,30 @@ export default function BookingsPage() {
   const lastRefreshTimeRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  // Invoice lookup - moved up to avoid hoisting issues
+  const invoiceByBooking = useMemo(() => {
+    const m = new Map<string, any>()
+    invoices.forEach((invoice: any) => {
+      const bookingId = String(invoice.bookingId ?? invoice.booking_id)
+      m.set(bookingId, invoice)
+    })
+    return m
+  }, [invoices])
+  
+  const getInvoiceForBooking = useCallback((bookingId: string) => {
+    return invoiceByBooking.get(String(bookingId))
+  }, [invoiceByBooking])
+
   // Helper functions
   function getDerivedStatus(booking: any) {
     if (booking.status === 'completed') return 'delivered'
     if (booking.status === 'in_progress') return 'in_production'
+    
+    // Safety check to prevent hoisting issues
+    if (typeof getInvoiceForBooking !== 'function') {
+      console.warn('getInvoiceForBooking not available yet, skipping invoice check')
+      return booking.status === 'pending' ? 'pending_review' : booking.status || 'pending_review'
+    }
     
     const invoice = getInvoiceForBooking(booking.id)
     if (invoice && ['issued', 'paid'].includes(invoice.status)) {
@@ -146,19 +166,6 @@ export default function BookingsPage() {
     }
   }, [bookings, invoices])
 
-  // Invoice lookup
-  const invoiceByBooking = useMemo(() => {
-    const m = new Map<string, any>()
-    invoices.forEach((invoice: any) => {
-      const bookingId = String(invoice.bookingId ?? invoice.booking_id)
-      m.set(bookingId, invoice)
-    })
-    return m
-  }, [invoices])
-  
-  const getInvoiceForBooking = useCallback((bookingId: string) => {
-    return invoiceByBooking.get(String(bookingId))
-  }, [invoiceByBooking])
 
   // Map UI sort keys to API sort keys
   const mapSortKeyToApi = (key: string): string => {
@@ -271,8 +278,11 @@ export default function BookingsPage() {
           console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
           setInvoices([]) // Continue without invoices if loading fails
         }
-      } catch (invoiceError) {
-        console.warn('⚠️ Invoice loading error:', invoiceError)
+      } catch (invoiceError: any) {
+        // Only log non-abort errors to avoid noise
+        if (invoiceError?.name !== 'AbortError') {
+          console.warn('⚠️ Invoice loading error:', invoiceError)
+        }
         setInvoices([]) // Continue without invoices if loading fails
       }
       
