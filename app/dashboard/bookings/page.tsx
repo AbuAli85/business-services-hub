@@ -134,39 +134,6 @@ export default function BookingsPage() {
     }
   }
 
-  // Calculate key metrics
-  const keyMetrics = useMemo(() => {
-    const activeProjects = bookings.filter(b => getDerivedStatus(b) === 'in_production').length
-    const delivered = bookings.filter(b => getDerivedStatus(b) === 'delivered').length
-    const readyToLaunch = bookings.filter(b => getDerivedStatus(b) === 'ready_to_launch').length
-    const pendingApproval = bookings.filter(b => getDerivedStatus(b) === 'pending_review').length
-    
-    const totalRevenue = invoices
-      .filter(inv => inv.status === 'paid')
-      .reduce((sum, inv) => sum + (inv.amount || 0), 0)
-    
-    const projectedBillings = bookings
-      .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
-      .reduce((sum, b) => sum + (b.total_amount || b.amount_cents || 0), 0) / 100
-    
-    const totalProjects = bookings.length
-    const activePercentage = totalProjects > 0 ? (activeProjects / totalProjects) * 100 : 0
-    const successRate = totalProjects > 0 ? (delivered / totalProjects) * 100 : 0
-    const avgBilling = readyToLaunch > 0 ? projectedBillings / readyToLaunch : 0
-
-    return {
-      activeProjects,
-      delivered,
-      readyToLaunch,
-      pendingApproval,
-      totalRevenue,
-      projectedBillings,
-      totalProjects,
-      activePercentage,
-      successRate,
-      avgBilling
-    }
-  }, [bookings, invoices])
 
 
   // Map UI sort keys to API sort keys
@@ -308,7 +275,17 @@ export default function BookingsPage() {
       const bookingsData = json.data || []
       setBookings(bookingsData)
       setTotalCount(Number(json.total || 0))
-      console.log('✅ Bookings data loaded:', bookingsData.length)
+      console.log('✅ Bookings data loaded:', {
+        count: bookingsData.length,
+        total: json.total,
+        sample: bookingsData.slice(0, 2).map((b: any) => ({
+          id: b.id,
+          status: b.status,
+          approval_status: b.approval_status,
+          amount_cents: b.amount_cents,
+          service_title: b.service_title
+        }))
+      })
       
       // Load invoices separately
       try {
@@ -326,7 +303,15 @@ export default function BookingsPage() {
           const invoiceJson = await invoiceRes.json()
           const invoicesData = invoiceJson.invoices || []
           setInvoices(invoicesData)
-          console.log('✅ Invoices data loaded:', invoicesData.length)
+          console.log('✅ Invoices data loaded:', {
+            count: invoicesData.length,
+            sample: invoicesData.slice(0, 2).map((inv: any) => ({
+              id: inv.id,
+              booking_id: inv.booking_id,
+              status: inv.status,
+              amount: inv.amount
+            }))
+          })
         } else {
           console.warn('⚠️ Invoice loading failed:', invoiceRes.status)
           setInvoices([]) // Continue without invoices if loading fails
@@ -873,39 +858,61 @@ export default function BookingsPage() {
     return Array.from({ length: end - start + 1 }, (_, i) => start + i)
   }, [currentPage, totalPages])
 
-  // Calculate statistics
+  // Calculate statistics from actual bookings data using derived status
   const stats = useMemo(() => {
-    const total = totalCount
-    const completed = bookingsSource.filter((b:any) => b.status === 'completed').length
-    const inProgress = bookingsSource.filter((b:any) => b.status === 'in_progress').length
+    // Use the actual bookings array, not bookingsSource
+    const bookingsData = bookings || []
+    
+    const total = bookingsData.length
+    
+    // Use getDerivedStatus for more accurate status detection
+    const completed = bookingsData.filter((b:any) => getDerivedStatus(b) === 'delivered').length
+    const inProgress = bookingsData.filter((b:any) => getDerivedStatus(b) === 'in_production').length
     
     // Count approved bookings (either status='approved' or approval_status='approved')
-    const approved = bookingsSource.filter((b:any) => 
+    const approved = bookingsData.filter((b:any) => 
       b.status === 'approved' || b.approval_status === 'approved'
     ).length
     
     // Only count truly pending bookings (not approved yet)
-    const pending = bookingsSource.filter((b:any) => 
-      b.status === 'pending' && b.approval_status !== 'approved'
-    ).length
+    const pending = bookingsData.filter((b:any) => getDerivedStatus(b) === 'pending_review').length
     
-    // Revenue (to date) - only completed/delivered projects that are invoiced/paid
-    const totalRevenue = bookingsSource
-      .filter(b => b.status === 'completed')
-      .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
+    // Revenue (to date) - calculate from paid invoices, not just completed bookings
+    const totalRevenue = invoices
+      .filter(inv => inv.status === 'paid')
+      .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
     
     // Projected billings - approved/ready projects not yet invoiced
-    const projectedBillings = bookingsSource
-      .filter(b => (b.status === 'approved' || b.approval_status === 'approved') && b.status !== 'completed')
+    const projectedBillings = bookingsData
+      .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
       .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
     
     const avgCompletionTime = 7.2 // Mock data
 
     // Calculate additional stats for the overview cards
     const pendingApproval = pending
-    const readyToLaunch = bookingsSource.filter((b:any) => 
-      (b.status === 'approved' || b.approval_status === 'approved') && b.status !== 'completed' && b.status !== 'in_progress'
-    ).length
+    const readyToLaunch = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch').length
+
+    console.log('📊 Stats calculation:', {
+      total,
+      completed,
+      inProgress,
+      approved,
+      pending,
+      totalRevenue,
+      projectedBillings,
+      pendingApproval,
+      readyToLaunch,
+      bookingsCount: bookingsData.length,
+      invoicesCount: invoices.length,
+      bookingsSample: bookingsData.slice(0, 3).map(b => ({
+        id: b.id,
+        status: b.status,
+        approval_status: b.approval_status,
+        derivedStatus: getDerivedStatus(b),
+        amount_cents: b.amount_cents
+      }))
+    })
 
     return { 
       total, 
@@ -919,7 +926,7 @@ export default function BookingsPage() {
       pendingApproval,
       readyToLaunch
     }
-  }, [bookingsSource, totalCount])
+  }, [bookings, invoices, totalCount])
 
   // Show loading skeleton only during initial user loading
   if (userLoading) {
