@@ -24,7 +24,7 @@ export interface Booking {
   clientName: string
   providerId: string
   providerName: string
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'approved' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
   totalAmount: number
   currency: string
   createdAt: string
@@ -42,7 +42,7 @@ export interface Invoice {
   serviceTitle: string
   amount: number
   currency: string
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
+  status: 'draft' | 'issued' | 'sent' | 'paid' | 'overdue' | 'cancelled'
   issuedAt: string
   dueAt: string
   paidAt?: string
@@ -280,63 +280,138 @@ class DashboardDataManager {
     
     this.bookings = [
       {
-        id: '1',
+        id: '40431bef-1234-5678-9abc-def012345678',
         serviceId: '1',
-        serviceTitle: 'Digital Marketing Strategy',
+        serviceTitle: 'Accounting Services',
         clientId: '1',
         clientName: 'Ahmed Al-Rashid',
         providerId: '2',
         providerName: 'Fatima Al-Zahra',
-        status: 'completed',
-        totalAmount: 500,
+        status: 'pending',
+        totalAmount: 250,
         currency: 'OMR',
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-01-18T14:30:00Z',
-        invoiceId: '1'
+        createdAt: '2024-09-24T04:00:00Z',
+        updatedAt: '2024-09-24T04:00:00Z'
       },
       {
-        id: '2',
+        id: 'a89a8f68-1234-5678-9abc-def012345678',
         serviceId: '2',
-        serviceTitle: 'Legal Consultation',
+        serviceTitle: 'Graphic Design',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        status: 'approved',
+        totalAmount: 200,
+        currency: 'OMR',
+        createdAt: '2024-09-24T04:00:00Z',
+        updatedAt: '2024-09-24T04:00:00Z',
+        invoiceId: '2'
+      },
+      {
+        id: '789c854b-1234-5678-9abc-def012345678',
+        serviceId: '3',
+        serviceTitle: 'Digital Marketing Campaign',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        status: 'approved',
+        totalAmount: 500,
+        currency: 'OMR',
+        createdAt: '2024-09-24T04:00:00Z',
+        updatedAt: '2024-09-24T04:00:00Z',
+        invoiceId: '3'
+      },
+      {
+        id: '5c3f1125-1234-5678-9abc-def012345678',
+        serviceId: '4',
+        serviceTitle: 'Digital Marketing Campaign',
         clientId: '1',
         clientName: 'Ahmed Al-Rashid',
         providerId: '2',
         providerName: 'Fatima Al-Zahra',
         status: 'in_progress',
+        totalAmount: 500,
+        currency: 'OMR',
+        createdAt: '2024-09-14T04:00:00Z',
+        updatedAt: '2024-09-14T04:00:00Z',
+        invoiceId: '4'
+      },
+      {
+        id: 'e7fd3d8a-1234-5678-9abc-def012345678',
+        serviceId: '5',
+        serviceTitle: 'Business Consulting',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        status: 'approved',
         totalAmount: 300,
         currency: 'OMR',
-        createdAt: '2024-01-16T11:00:00Z',
-        updatedAt: '2024-01-19T09:15:00Z',
-        invoiceId: '2'
+        createdAt: '2024-09-13T04:00:00Z',
+        updatedAt: '2024-09-13T04:00:00Z',
+        invoiceId: '5'
       },
       {
-        id: '3',
-        serviceId: '1',
-        serviceTitle: 'Digital Marketing Strategy',
-        clientId: '3',
-        clientName: 'Mohammed Al-Balushi',
+        id: '087c823e-1234-5678-9abc-def012345678',
+        serviceId: '6',
+        serviceTitle: 'Website Development',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
         providerId: '2',
         providerName: 'Fatima Al-Zahra',
-        status: 'confirmed',
-        totalAmount: 750,
+        status: 'approved',
+        totalAmount: 800,
         currency: 'OMR',
-        createdAt: '2024-01-20T14:00:00Z',
-        updatedAt: '2024-01-20T14:00:00Z',
-        invoiceId: '3'
+        createdAt: '2024-09-11T04:00:00Z',
+        updatedAt: '2024-09-11T04:00:00Z',
+        invoiceId: '6'
       },
       {
-        id: '4',
-        serviceId: '2',
-        serviceTitle: 'Legal Consultation',
-        clientId: '3',
-        clientName: 'Mohammed Al-Balushi',
+        id: '60ced295-1234-5678-9abc-def012345678',
+        serviceId: '7',
+        serviceTitle: 'Accounting Services',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
         providerId: '2',
         providerName: 'Fatima Al-Zahra',
-        status: 'pending',
-        totalAmount: 200,
+        status: 'approved',
+        totalAmount: 250,
         currency: 'OMR',
-        createdAt: '2024-01-21T09:30:00Z',
-        updatedAt: '2024-01-21T09:30:00Z'
+        createdAt: '2024-09-12T04:00:00Z',
+        updatedAt: '2024-09-12T04:00:00Z',
+        invoiceId: '7'
+      },
+      {
+        id: '7c3ae238-1234-5678-9abc-def012345678',
+        serviceId: '8',
+        serviceTitle: 'Website Development',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        status: 'approved',
+        totalAmount: 800,
+        currency: 'OMR',
+        createdAt: '2024-09-09T04:00:00Z',
+        updatedAt: '2024-09-09T04:00:00Z',
+        invoiceId: '8'
+      },
+      {
+        id: 'cfb058a9-1234-5678-9abc-def012345678',
+        serviceId: '9',
+        serviceTitle: 'Business Consulting',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        status: 'approved',
+        totalAmount: 300,
+        currency: 'OMR',
+        createdAt: '2024-09-09T04:00:00Z',
+        updatedAt: '2024-09-09T04:00:00Z',
+        invoiceId: '9'
       }
     ]
   }
@@ -347,47 +422,116 @@ class DashboardDataManager {
     
     this.invoices = [
       {
-        id: '1',
-        bookingId: '1',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Digital Marketing Strategy',
-        amount: 500,
-        currency: 'OMR',
-        status: 'paid',
-        issuedAt: '2024-01-15T10:00:00Z',
-        dueAt: '2024-01-22T10:00:00Z',
-        paidAt: '2024-01-18T14:30:00Z'
-      },
-      {
         id: '2',
-        bookingId: '2',
+        bookingId: 'a89a8f68-1234-5678-9abc-def012345678',
         clientId: '1',
         clientName: 'Ahmed Al-Rashid',
         providerId: '2',
         providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Legal Consultation',
-        amount: 300,
+        serviceTitle: 'Graphic Design',
+        amount: 200,
         currency: 'OMR',
-        status: 'sent',
-        issuedAt: '2024-01-16T11:00:00Z',
-        dueAt: '2024-01-23T11:00:00Z'
+        status: 'issued',
+        issuedAt: '2024-09-24T04:00:00Z',
+        dueAt: '2024-10-01T04:00:00Z'
       },
       {
         id: '3',
-        bookingId: '3',
-        clientId: '3',
-        clientName: 'Mohammed Al-Balushi',
+        bookingId: '789c854b-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
         providerId: '2',
         providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Digital Marketing Strategy',
-        amount: 750,
+        serviceTitle: 'Digital Marketing Campaign',
+        amount: 500,
         currency: 'OMR',
-        status: 'sent',
-        issuedAt: '2024-01-20T14:00:00Z',
-        dueAt: '2024-01-27T14:00:00Z'
+        status: 'issued',
+        issuedAt: '2024-09-24T04:00:00Z',
+        dueAt: '2024-10-01T04:00:00Z'
+      },
+      {
+        id: '4',
+        bookingId: '5c3f1125-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        serviceTitle: 'Digital Marketing Campaign',
+        amount: 500,
+        currency: 'OMR',
+        status: 'issued',
+        issuedAt: '2024-09-14T04:00:00Z',
+        dueAt: '2024-09-21T04:00:00Z'
+      },
+      {
+        id: '5',
+        bookingId: 'e7fd3d8a-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        serviceTitle: 'Business Consulting',
+        amount: 300,
+        currency: 'OMR',
+        status: 'issued',
+        issuedAt: '2024-09-13T04:00:00Z',
+        dueAt: '2024-09-20T04:00:00Z'
+      },
+      {
+        id: '6',
+        bookingId: '087c823e-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        serviceTitle: 'Website Development',
+        amount: 800,
+        currency: 'OMR',
+        status: 'issued',
+        issuedAt: '2024-09-11T04:00:00Z',
+        dueAt: '2024-09-18T04:00:00Z'
+      },
+      {
+        id: '7',
+        bookingId: '60ced295-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        serviceTitle: 'Accounting Services',
+        amount: 250,
+        currency: 'OMR',
+        status: 'issued',
+        issuedAt: '2024-09-12T04:00:00Z',
+        dueAt: '2024-09-19T04:00:00Z'
+      },
+      {
+        id: '8',
+        bookingId: '7c3ae238-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        serviceTitle: 'Website Development',
+        amount: 800,
+        currency: 'OMR',
+        status: 'issued',
+        issuedAt: '2024-09-09T04:00:00Z',
+        dueAt: '2024-09-16T04:00:00Z'
+      },
+      {
+        id: '9',
+        bookingId: 'cfb058a9-1234-5678-9abc-def012345678',
+        clientId: '1',
+        clientName: 'Ahmed Al-Rashid',
+        providerId: '2',
+        providerName: 'Fatima Al-Zahra',
+        serviceTitle: 'Business Consulting',
+        amount: 300,
+        currency: 'OMR',
+        status: 'issued',
+        issuedAt: '2024-09-09T04:00:00Z',
+        dueAt: '2024-09-16T04:00:00Z'
       }
     ]
   }

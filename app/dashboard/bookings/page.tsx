@@ -7,15 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-// Tooltip imports removed - using native title attribute
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Search,
   Calendar,
@@ -40,14 +31,13 @@ import {
   Rocket,
   DollarSign
 } from 'lucide-react'
-import { CompactBookingStatus } from '@/components/dashboard/smart-booking-status'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase'
 
-// Constants outside component to avoid re-allocation
+// Constants
 const OMAN_TZ = 'Asia/Muscat'
 
 // Helper for custom tooltips - simplified for now
@@ -75,7 +65,6 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  // Removed unused selectedBookings and showFilters state
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [realtimeReady, setRealtimeReady] = useState(false)
   const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
@@ -83,84 +72,31 @@ export default function BookingsPage() {
   const lastRefreshTimeRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Approve booking function with optimistic UI
-  const approveBooking = async (id: string) => {
-    if (approvingIds.has(id)) return
-    setApprovingIds(s => new Set(s).add(id))
-    const prev = bookings
-    setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'approved' } : x))
-    const dismiss = toast.loading('Approving booking…')
-    try {
-      const res = await fetch('/api/bookings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ booking_id: id, action: 'approve' })
-      })
-      if (!res.ok) {
-        const { error, details } = await res.json().catch(() => ({}))
-        throw new Error(error || details || `Request failed: ${res.status}`)
-      }
-      toast.success('Booking approved')
-      setRefreshTrigger(prev => prev + 1)
-    } catch (err: any) {
-      setBookings(prev) // revert on error
-      toast.error(err?.message || 'Approval failed')
-    } finally {
-      toast.dismiss(dismiss)
-      setApprovingIds(s => { const n = new Set(s); n.delete(id); return n })
-    }
-  }
-
-  // Data sourced from centralized dashboard store
-
-  // --- Hoisted pure helpers (avoid TDZ) ---
+  // Helper functions
   function getDerivedStatus(booking: any) {
-    // Handle the canonical status ladder: Pending Review → Approved → Ready to Launch → In Production → Delivered
+    if (booking.status === 'completed') return 'delivered'
+    if (booking.status === 'in_progress') return 'in_production'
     
-    // If completed, always show as delivered
-    if (booking.status === 'completed') {
-      return 'delivered'
-    }
-    
-    // If in progress, show as in production
-    if (booking.status === 'in_progress') {
-      return 'in_production'
-    }
-    
-    // Check if there's an invoice issued - this indicates ready to launch
     const invoice = getInvoiceForBooking(booking.id)
     if (invoice && ['issued', 'paid'].includes(invoice.status)) {
-      // If invoice is issued/paid, it's ready to launch regardless of booking status
       return 'ready_to_launch'
     }
     
-    // If approved (either via status or approval_status), show as approved
-    if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') {
+    if (booking.status === 'approved' || booking.approval_status === 'approved') {
       return 'approved'
     }
     
-    // If pending with approval, show as approved (waiting for invoice)
-    if (booking.status === 'pending' && (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved')) {
+    if (booking.status === 'pending' && booking.approval_status === 'approved') {
       return 'approved'
     }
     
-    // If declined, show as cancelled
     if (booking.status === 'declined' || booking.approval_status === 'declined') {
       return 'cancelled'
     }
     
-    // If rescheduled, show as pending review (or you can add a separate rescheduled status)
-    if (booking.status === 'rescheduled') {
-      return 'pending_review'
-    }
+    if (booking.status === 'rescheduled') return 'pending_review'
+    if (booking.status === 'pending') return 'pending_review'
     
-    // If status is pending, show as pending review
-    if (booking.status === 'pending') {
-      return 'pending_review'
-    }
-    
-    // Default fallback
     return booking.status || 'pending_review'
   }
 
@@ -169,114 +105,60 @@ export default function BookingsPage() {
       case 'delivered': return 'Project successfully delivered'
       case 'in_production': return 'Active development in progress'
       case 'ready_to_launch': return 'All prerequisites met • Ready to launch'
-      case 'approved': return 'Approved • Create invoice to proceed'
+      case 'approved': return 'Approved and ready for next steps'
       case 'pending_review': return 'Awaiting provider approval'
-      case 'cancelled': return 'Project was declined or cancelled'
-      default: return 'Project status being determined'
+      case 'cancelled': return 'Project cancelled'
+      default: return 'Status unknown'
     }
   }
 
-  // Safely resolve and format dates regardless of field naming or value shape
-  const getCreatedAtTimestamp = useCallback((record: any): number => {
-    const raw = record?.createdAt ?? record?.created_at ?? record?.created_at_utc ?? record?.created_at_iso
-    if (!raw) return 0
-    const date = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
-    const time = date.getTime()
-    return Number.isNaN(time) ? 0 : time
-  }, [])
-
-  // NEW: proper "updated" resolver
-  const getUpdatedAtTimestamp = useCallback((record: any): number => {
-    const raw =
-      record?.updatedAt ?? record?.updated_at ??
-      record?.modified_at ?? record?.updated_at_utc ?? record?.updated_at_iso
-    if (!raw) return 0
-    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
-    const t = d.getTime()
-    return Number.isNaN(t) ? 0 : t
-  }, [])
-
-  const formatLocalDate = useCallback((raw: any): string => {
-    if (!raw) return '—'
-    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
-    if (Number.isNaN(d.getTime())) return '—'
-    return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, year: 'numeric', month: 'short', day: '2-digit' }).format(d)
-  }, [])
-
-  const formatLocalTime = useCallback((raw: any): string => {
-    if (!raw) return '—'
-    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
-    if (Number.isNaN(d.getTime())) return '—'
-    return new Intl.DateTimeFormat(undefined, { 
-      timeZone: OMAN_TZ, 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    }).format(d) + ' GST'
-  }, [])
-
-  // Initialize user authentication and role detection
-  useEffect(() => {
-    const initializeUser = async () => {
-      try {
-        console.log('🔄 Initializing user authentication...')
-        setUserLoading(true)
-        setError(null)
-        
-        const supabase = await getSupabaseClient()
-        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
-        
-        if (userError || !currentUser) {
-          console.warn('No authenticated user yet; waiting for middleware/session to settle')
-          setUser(null)
-          setUserRole(null)
-          return
-        }
-        
-        console.log('✅ User authenticated:', currentUser.id)
-        setUser(currentUser)
-        
-        // Determine user role from metadata first, then profile
-        let detectedRole = currentUser.user_metadata?.role
-        console.log('🔍 Role from metadata:', detectedRole)
-        
-        if (!detectedRole) {
-          try {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('role, is_admin')
-              .eq('id', currentUser.id)
-              .single()
-            
-            if (!profileError && profile) {
-              detectedRole = profile.is_admin ? 'admin' : profile.role
-              console.log('🔍 Role from profile:', detectedRole)
-  }
-          } catch (profileError) {
-            console.warn('⚠️ Could not fetch profile role:', profileError)
-  }
-  }
-        
-        // Default to client if no role found
-        if (!detectedRole) {
-          detectedRole = 'client'
-          console.log('🔍 Using default role: client')
-  }
-        
-        setUserRole(detectedRole as 'client' | 'provider' | 'admin')
-        console.log('✅ User role set:', detectedRole)
-        
-      } catch (error) {
-        console.error('❌ User initialization error:', error)
-        setError('Failed to initialize user session')
-      } finally {
-        setUserLoading(false)
-        console.log('✅ User initialization complete')
-  }
-  }
+  // Calculate key metrics
+  const keyMetrics = useMemo(() => {
+    const activeProjects = bookings.filter(b => getDerivedStatus(b) === 'in_production').length
+    const delivered = bookings.filter(b => getDerivedStatus(b) === 'delivered').length
+    const readyToLaunch = bookings.filter(b => getDerivedStatus(b) === 'ready_to_launch').length
+    const pendingApproval = bookings.filter(b => getDerivedStatus(b) === 'pending_review').length
     
-    initializeUser()
-  }, [router])
+    const totalRevenue = invoices
+      .filter(inv => inv.status === 'paid')
+      .reduce((sum, inv) => sum + (inv.amount || 0), 0)
+    
+    const projectedBillings = bookings
+      .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
+      .reduce((sum, b) => sum + (b.total_amount || b.amount_cents || 0), 0) / 100
+    
+    const totalProjects = bookings.length
+    const activePercentage = totalProjects > 0 ? (activeProjects / totalProjects) * 100 : 0
+    const successRate = totalProjects > 0 ? (delivered / totalProjects) * 100 : 0
+    const avgBilling = readyToLaunch > 0 ? projectedBillings / readyToLaunch : 0
+
+    return {
+      activeProjects,
+      delivered,
+      readyToLaunch,
+      pendingApproval,
+      totalRevenue,
+      projectedBillings,
+      totalProjects,
+      activePercentage,
+      successRate,
+      avgBilling
+    }
+  }, [bookings, invoices])
+
+  // Invoice lookup
+  const invoiceByBooking = useMemo(() => {
+    const m = new Map<string, any>()
+    invoices.forEach((invoice: any) => {
+      const bookingId = String(invoice.bookingId ?? invoice.booking_id)
+      m.set(bookingId, invoice)
+    })
+    return m
+  }, [invoices])
+  
+  const getInvoiceForBooking = useCallback((bookingId: string) => {
+    return invoiceByBooking.get(String(bookingId))
+  }, [invoiceByBooking])
 
   // Map UI sort keys to API sort keys
   const mapSortKeyToApi = (key: string): string => {
@@ -406,6 +288,69 @@ export default function BookingsPage() {
     }
   }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery, sortBy, sortOrder, router])
 
+  // Initialize user authentication and role detection
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        console.log('🔄 Initializing user authentication...')
+        setUserLoading(true)
+        setError(null)
+        
+        const supabase = await getSupabaseClient()
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !currentUser) {
+          console.warn('No authenticated user yet; waiting for middleware/session to settle')
+          setUser(null)
+          setUserRole(null)
+          return
+        }
+        
+        console.log('✅ User authenticated:', currentUser.id)
+        setUser(currentUser)
+        
+        // Determine user role from metadata first, then profile
+        let detectedRole = currentUser.user_metadata?.role
+        console.log('🔍 Role from metadata:', detectedRole)
+        
+        if (!detectedRole) {
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('role, is_admin')
+              .eq('id', currentUser.id)
+              .single()
+            
+            if (!profileError && profile) {
+              detectedRole = profile.is_admin ? 'admin' : profile.role
+              console.log('🔍 Role from profile:', detectedRole)
+            }
+          } catch (profileError) {
+            console.warn('⚠️ Could not fetch profile role:', profileError)
+          }
+        }
+        
+        // Default to client if no role found
+        if (!detectedRole) {
+          detectedRole = 'client'
+          console.log('🔍 Using default role: client')
+        }
+        
+        setUserRole(detectedRole as 'client' | 'provider' | 'admin')
+        console.log('✅ User role set:', detectedRole)
+        
+      } catch (error) {
+        console.error('❌ User initialization error:', error)
+        setError('Failed to initialize user session')
+      } finally {
+        setUserLoading(false)
+        console.log('✅ User initialization complete')
+      }
+    }
+    
+    initializeUser()
+  }, [router])
+
   // Only load data when user and role are ready
   useEffect(() => {
     if (user && userRole && !userLoading) {
@@ -450,6 +395,21 @@ export default function BookingsPage() {
       }
     }
   }, [refreshTrigger, user, userRole, userLoading, realtimeReady])
+
+  // Debounce searchQuery for smoother UX
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+      // Reset to page 1 when search query changes
+      setCurrentPage(1)
+    }, 250)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  // Reset to page 1 when status filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [statusFilter])
 
   // Realtime subscriptions for live updates
   useEffect(() => {
@@ -602,60 +562,33 @@ export default function BookingsPage() {
     }
   }, [user, userRole, enableRealtime])
 
-  // Debounce searchQuery for smoother UX
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedQuery(searchQuery)
-      // Reset to page 1 when search query changes
-      setCurrentPage(1)
-    }, 250)
-    return () => clearTimeout(t)
-  }, [searchQuery])
-
-  // Reset to page 1 when status filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [statusFilter])
-
-  // Always use Supabase data on this page to avoid mock IDs in routes
-  const bookingsSource = bookings
-  const invoicesSource = invoices
-
-  // Since we're using server-side pagination, we don't need client-side filtering
-  // The API handles all filtering and sorting
-  const filteredBookings = bookingsSource
-
-  // Pagination: Use server-side pagination results
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-  const paginatedBookings = filteredBookings // Already paginated by the API
-
-  // Pagination window: show pages around current
-  const pageWindow = useMemo(() => {
-    const radius = 2
-    const start = Math.max(1, currentPage - radius)
-    const end = Math.min(totalPages, currentPage + radius)
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
-  }, [currentPage, totalPages])
-
-  // Memoized invoice lookup for performance
-  const invoiceByBooking = useMemo(() => {
-    console.log('🔄 Rebuilding invoice lookup map with', invoicesSource.length, 'invoices')
-    const m = new Map<string, any>()
-    invoicesSource.forEach((invoice: any) => {
-      const bookingId = String(invoice.bookingId ?? invoice.booking_id)
-      m.set(bookingId, invoice)
-    })
-    return m
-  }, [invoicesSource])
-  
-  const getInvoiceForBooking = useCallback((bookingId: string) => {
-    return invoiceByBooking.get(String(bookingId))
-  }, [invoiceByBooking])
-
-  const getInvoiceHref = (invoiceId: string) => {
-    if (userRole === 'admin') return `/dashboard/invoices/template/${invoiceId}`
-    if (userRole === 'provider') return `/dashboard/provider/invoices/template/${invoiceId}`
-    return `/dashboard/client/invoices/template/${invoiceId}`
+  // Approve booking function with optimistic UI
+  const approveBooking = async (id: string) => {
+    if (approvingIds.has(id)) return
+    setApprovingIds(s => new Set(s).add(id))
+    const prev = bookings
+    setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'approved' } : x))
+    const dismiss = toast.loading('Approving booking…')
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ booking_id: id, action: 'approve' })
+      })
+      if (!res.ok) {
+        const { error, details } = await res.json().catch(() => ({}))
+        throw new Error(error || details || `Request failed: ${res.status}`)
+      }
+      toast.success('Booking approved')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (err: any) {
+      setBookings(prev) // revert on error
+      toast.error(err?.message || 'Approval failed')
+    } finally {
+      toast.dismiss(dismiss)
+      setApprovingIds(s => { const n = new Set(s); n.delete(id); return n })
+    }
   }
 
   // Role-based permissions
@@ -663,67 +596,11 @@ export default function BookingsPage() {
   const canManageBookings = userRole === 'admin'
   const canViewAllBookings = userRole === 'admin'
   const canCreateInvoice = userRole === 'provider' || userRole === 'admin'
-  
-  // Deterministic launch gating with comprehensive prerequisites
-  const canLaunchProject = (booking: any) => {
-    const status = getDerivedStatus(booking)
-    
-    // Only allow launch for ready_to_launch status
-    if (status !== 'ready_to_launch') return false
 
-    const invoice = getInvoiceForBooking(booking.id)
-    const okInvoice = invoice && ['issued', 'paid'].includes(invoice.status)
-    if (!okInvoice) return false
-
-    // For now, allow launch if invoice is ready - team assignment and kickoff can be done after launch
-    // TODO: Add proper team assignment and kickoff date requirements later
-    return true
-  }
-  
-  // Get launch blocking reason for tooltip
-  const getLaunchBlockingReason = (booking: any) => {
-    const status = getDerivedStatus(booking)
-    
-    if (status === 'pending_review') {
-      return 'Launch unavailable: provider must approve the booking first.'
-    }
-    
-    if (status === 'approved') {
-      return 'Launch unavailable: invoice must be issued first.'
-    }
-    
-    if (status !== 'ready_to_launch') {
-      return 'Launch is unavailable until project is ready to launch'
-    }
-    
-    const invoice = getInvoiceForBooking(booking.id)
-    if (!invoice) {
-      return 'Launch requires an invoice (issued/paid).'
-    }
-    if (!['issued','paid'].includes(invoice.status)) {
-      return `Invoice must be issued/paid (current: ${invoice.status}).`
-    }
-    
-    return 'Launch is available'
-  }
-  
-  // Get role-specific page title and description
-  const getPageTitle = () => {
-    switch (userRole) {
-      case 'admin': return 'All Bookings Management'
-      case 'provider': return 'My Service Bookings'
-      case 'client': return 'My Bookings'
-      default: return 'Bookings'
-  }
-  }
-  
-  const getPageDescription = () => {
-    switch (userRole) {
-      case 'admin': return 'Manage all bookings across the platform'
-      case 'provider': return 'Track and manage your service bookings'
-      case 'client': return 'View and manage your service requests'
-      default: return 'Manage bookings'
-  }
+  const getInvoiceHref = (invoiceId: string) => {
+    if (userRole === 'admin') return `/dashboard/invoices/template/${invoiceId}`
+    if (userRole === 'provider') return `/dashboard/provider/invoices/template/${invoiceId}`
+    return `/dashboard/client/invoices/template/${invoiceId}`
   }
 
   const handleCreateInvoice = useCallback(async (booking: any) => {
@@ -732,12 +609,12 @@ export default function BookingsPage() {
       if (!eligibleStatuses.includes(String(booking.status))) {
         toast.error('Invoice can be created only after approval')
         return
-  }
+      }
       
       if (!canCreateInvoice) {
         toast.error('You do not have permission to create invoices')
         return
-  }
+      }
       
       const supabase = await getSupabaseClient()
       const amount = Number(
@@ -750,7 +627,7 @@ export default function BookingsPage() {
       if (amount <= 0) {
         toast.error('Invalid booking amount')
         return
-  }
+      }
       
       const payload: any = {
         booking_id: booking.id,
@@ -765,7 +642,7 @@ export default function BookingsPage() {
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-  }
+      }
       
       console.log('Creating invoice with payload:', payload)
       
@@ -778,7 +655,7 @@ export default function BookingsPage() {
       if (error) {
         console.error('Invoice creation error:', error)
         throw new Error(error.message || 'Failed to create invoice')
-  }
+      }
       
       // Update local invoices list
       setInvoices(prev => [{ 
@@ -793,7 +670,7 @@ export default function BookingsPage() {
     } catch (e: any) {
       console.error('Invoice creation failed:', e)
       toast.error(e?.message || 'Failed to create invoice')
-  }
+    }
   }, [canCreateInvoice, user])
 
   // Quick invoice actions
@@ -816,7 +693,7 @@ export default function BookingsPage() {
     } catch (e: any) {
       console.error('Send invoice failed:', e)
       toast.error(e?.message || 'Failed to send invoice')
-  }
+    }
   }, [])
 
   const handleMarkInvoicePaid = useCallback(async (invoiceId: string) => {
@@ -839,9 +716,86 @@ export default function BookingsPage() {
     } catch (e: any) {
       console.error('Mark paid failed:', e)
       toast.error(e?.message || 'Failed to mark invoice as paid')
-  }
+    }
   }, [])
 
+  // Safely resolve and format dates regardless of field naming or value shape
+  const getCreatedAtTimestamp = useCallback((record: any): number => {
+    const raw = record?.createdAt ?? record?.created_at ?? record?.created_at_utc ?? record?.created_at_iso
+    if (!raw) return 0
+    const date = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    const time = date.getTime()
+    return Number.isNaN(time) ? 0 : time
+  }, [])
+
+  // NEW: proper "updated" resolver
+  const getUpdatedAtTimestamp = useCallback((record: any): number => {
+    const raw =
+      record?.updatedAt ?? record?.updated_at ??
+      record?.modified_at ?? record?.updated_at_utc ?? record?.updated_at_iso
+    if (!raw) return 0
+    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    const t = d.getTime()
+    return Number.isNaN(t) ? 0 : t
+  }, [])
+
+  const formatLocalDate = useCallback((raw: any): string => {
+    if (!raw) return '—'
+    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    if (Number.isNaN(d.getTime())) return '—'
+    return new Intl.DateTimeFormat(undefined, { timeZone: OMAN_TZ, year: 'numeric', month: 'short', day: '2-digit' }).format(d)
+  }, [])
+
+  const formatLocalTime = useCallback((raw: any): string => {
+    if (!raw) return '—'
+    const d = typeof raw === 'number' ? new Date(raw) : new Date(String(raw))
+    if (Number.isNaN(d.getTime())) return '—'
+    return new Intl.DateTimeFormat(undefined, { 
+      timeZone: OMAN_TZ, 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    }).format(d) + ' GST'
+  }, [])
+
+  // Get role-specific page title and description
+  const getPageTitle = () => {
+    switch (userRole) {
+      case 'admin': return 'All Bookings Management'
+      case 'provider': return 'My Service Bookings'
+      case 'client': return 'My Bookings'
+      default: return 'Bookings'
+    }
+  }
+  
+  const getPageDescription = () => {
+    switch (userRole) {
+      case 'admin': return 'Manage all bookings across the platform'
+      case 'provider': return 'Track and manage your service bookings'
+      case 'client': return 'View and manage your service requests'
+      default: return 'Manage bookings'
+    }
+  }
+
+  // Always use Supabase data on this page to avoid mock IDs in routes
+  const bookingsSource = bookings
+  const invoicesSource = invoices
+
+  // Since we're using server-side pagination, we don't need client-side filtering
+  // The API handles all filtering and sorting
+  const filteredBookings = bookingsSource
+
+  // Pagination: Use server-side pagination results
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const paginatedBookings = filteredBookings // Already paginated by the API
+
+  // Pagination window: show pages around current
+  const pageWindow = useMemo(() => {
+    const radius = 2
+    const start = Math.max(1, currentPage - radius)
+    const end = Math.min(totalPages, currentPage + radius)
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  }, [currentPage, totalPages])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -960,26 +914,20 @@ export default function BookingsPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center max-w-md mx-auto">
-          <div className="text-red-600 mb-4">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-2" />
-            <h3 className="text-lg font-semibold">Error Loading Bookings</h3>
-            <p className="text-sm mt-2 text-gray-600">{error}</p>
-          </div>
-          <div className="space-x-2">
-            <Button onClick={() => loadSupabaseData()} variant="default">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-            <Button onClick={() => router.push('/dashboard')} variant="outline">
-              Back to Dashboard
-            </Button>
-          </div>
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-red-500" />
+          <h3 className="text-lg font-semibold">Error Loading Bookings</h3>
+          <p className="text-sm mt-2 text-gray-600">{error}</p>
+          <Button onClick={loadSupabaseData} className="mt-4">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </div>
       </div>
     )
   }
+
   return (
     <div className="space-y-6">
       {/* Enhanced Professional Header */}
@@ -1008,7 +956,7 @@ export default function BookingsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                 <div className="flex items-center gap-2 mb-1">
-                  <Calendar className="h-4 w-4 text-blue-300" />
+                  <FileText className="h-4 w-4 text-blue-300" />
                   <span className="text-sm text-blue-200 font-medium">Total Projects</span>
                 </div>
                 <div className="text-2xl font-bold text-white">{stats.total}</div>
@@ -1030,9 +978,7 @@ export default function BookingsPage() {
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
                 <div className="flex items-center gap-2 mb-1">
                   <DollarSign className="h-4 w-4 text-yellow-300" />
-                  <TitleTip label="Sum of invoiced + paid amounts for delivered projects only">
-                    <span className="text-sm text-blue-200 font-medium cursor-help">Revenue (to date)</span>
-                  </TitleTip>
+                  <span className="text-sm text-blue-200 font-medium">Revenue (to date)</span>
                 </div>
                 <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
               </div>
@@ -1062,159 +1008,111 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Smart Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
+      {/* Key Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* Active Projects Card */}
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <TitleTip label="Projects currently in development phase (In Production status)">
-                  <p className="text-sm font-medium text-gray-600 cursor-help">Active Projects</p>
-                </TitleTip>
-                <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
-                <p className="text-xs text-blue-600 mt-1">
-                  {(() => {
-                    if (stats.total === 0) return '—'
-                    // Debug logging
-                    console.log('🔍 Portfolio calculation:', { 
-                      inProgress: stats.inProgress, 
-                      total: stats.total, 
-                      raw: (stats.inProgress / stats.total) * 100,
-                      rounded: Math.round((stats.inProgress / stats.total) * 1000) / 10
-                    })
-                    const pct = Math.round((stats.inProgress / stats.total) * 1000) / 10 // 1 decimal place
-                    const clampedPct = Math.min(100, Math.max(0, pct))
-                    return `${clampedPct.toFixed(1)}% of portfolio`
-                  })()}
-                </p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <Play className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-            {stats.inProgress > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-2xl font-bold text-green-900">{keyMetrics.activeProjects}</div>
+                  <div className="text-sm text-green-600 font-medium">
+                    {keyMetrics.activePercentage.toFixed(1)}% of portfolio
+                  </div>
+                </div>
+                <div className="text-sm text-green-700 font-medium mb-1">
                   Next actions required • High priority
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <TitleTip label="Customer-accepted projects that have been successfully delivered">
-                  <p className="text-sm font-medium text-gray-600 cursor-help">Delivered</p>
-                </TitleTip>
-                <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
-                <p className="text-xs text-green-600 mt-1">
-                  {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}% success rate
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <Award className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-green-200 rounded-full">
+                <Play className="h-5 w-5 text-green-600" />
               </div>
             </div>
-            {stats.completed > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
-                  Avg. completion: {stats.avgCompletionTime} days
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-500">
-          <CardContent className="p-4">
+        {/* Delivered Card */}
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <TitleTip label={userRole === 'provider' 
-                  ? 'Expected invoicing for approved and ready-to-launch projects not yet invoiced' 
-                  : 'Total value of all approved and ready projects'}>
-                  <p className="text-sm font-medium text-gray-600 cursor-help">
-                    {userRole === 'provider' ? 'Projected Billings' : 'Total Value'}
-                  </p>
-                </TitleTip>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.projectedBillings)}</p>
-                <p className="text-xs text-orange-600 mt-1">
-                  {stats.total > 0 ? formatCurrency(stats.projectedBillings / stats.total) : formatCurrency(0)} avg
-                </p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-full">
-                <TrendingUp className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-            {stats.totalRevenue > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
-                  Monthly trend: +12.5% ↗
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Approval</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-                <p className="text-xs text-purple-600 mt-1">
-                  {userRole === 'provider' ? 'Awaiting your decision' : 'Under review'}
-                </p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-full">
-                <Clock className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-            {stats.pending > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <div className="text-xs text-gray-500">
-                  Action needed • {stats.pending} waiting
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Approved Bookings Card - Show when there are approved bookings */}
-        {stats.approved > 0 && (
-          <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-50 to-green-50 shadow-lg hover:shadow-emerald-200 transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-sm font-semibold text-emerald-800">Ready to Launch</p>
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                  </div>
-                  <p className="text-3xl font-bold text-emerald-900 mb-1">{stats.approved}</p>
-                  <p className="text-sm text-emerald-700 font-medium">
-                    {userRole === 'provider' ? 'Ready to launch projects' : 'Awaiting provider to begin'}
-                  </p>
-                </div>
-                <div className="p-4 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full shadow-lg">
-                  <Rocket className="h-8 w-8 text-emerald-600" />
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-emerald-200">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-emerald-700 font-medium">
-                    {userRole === 'provider' ? 'All prerequisites met • Ready to launch projects' : 'Awaiting provider to begin work'}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs text-emerald-600 font-semibold">Active</span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-2xl font-bold text-emerald-900">{keyMetrics.delivered}</div>
+                  <div className="text-sm text-emerald-600 font-medium">
+                    {keyMetrics.successRate.toFixed(1)}% success rate
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div className="p-2 bg-emerald-200 rounded-full">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Projected Billings Card */}
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-5 w-5 text-orange-600" />
+                  <div className="text-2xl font-bold text-orange-900">
+                    {formatCurrency(keyMetrics.projectedBillings)}
+                  </div>
+                </div>
+                <div className="text-sm text-orange-600 font-medium">
+                  {formatCurrency(keyMetrics.avgBilling)} avg
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pending Approval Card */}
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-2xl font-bold text-purple-900">{keyMetrics.pendingApproval}</div>
+                  <div className="text-sm text-purple-600 font-medium">
+                    Awaiting your decision
+                  </div>
+                </div>
+                <div className="text-sm text-purple-700 font-medium">
+                  Action needed • {keyMetrics.pendingApproval} waiting
+                </div>
+              </div>
+              <div className="p-2 bg-purple-200 rounded-full">
+                <Clock className="h-5 w-5 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Ready to Launch Card */}
+        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-2xl font-bold text-emerald-900">{keyMetrics.readyToLaunch}</div>
+                  <div className="text-sm text-emerald-600 font-medium">
+                    Ready to launch projects
+                  </div>
+                </div>
+                <div className="text-sm text-emerald-700 font-medium">
+                  All prerequisites met • Ready to launch projects • Active
+                </div>
+              </div>
+              <div className="p-2 bg-emerald-200 rounded-full">
+                <Rocket className="h-5 w-5 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -1244,50 +1142,47 @@ export default function BookingsPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search bookings..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending_review">Pending Review</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="ready_to_launch">Ready to Launch</SelectItem>
-                <SelectItem value="in_production">In Production</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="on_hold">On Hold</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="rescheduled">Rescheduled</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lastUpdated">Last Updated</SelectItem>
-                <SelectItem value="createdAt">Date Created</SelectItem>
-                <SelectItem value="totalAmount">Amount</SelectItem>
-                <SelectItem value="serviceTitle">Service</SelectItem>
-                <SelectItem value="clientName">Client</SelectItem>
-                <SelectItem value="providerName">Provider</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            >
-              {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search bookings..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending_review">Pending Review</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="ready_to_launch">Ready to Launch</SelectItem>
+                  <SelectItem value="in_production">In Production</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lastUpdated">Last Updated</SelectItem>
+                  <SelectItem value="createdAt">Date Created</SelectItem>
+                  <SelectItem value="totalAmount">Amount</SelectItem>
+                  <SelectItem value="serviceTitle">Service</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              >
+                {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
               <Select value={String(pageSize)} onValueChange={(v)=> { setPageSize(Number(v)); setCurrentPage(1) }}>
                 <SelectTrigger className="w-28">
                   <SelectValue placeholder="Page size" />
@@ -1303,584 +1198,244 @@ export default function BookingsPage() {
         </CardContent>
       </Card>
 
-      {/* Active Filters Summary */}
-      {(searchQuery || statusFilter !== 'all' || sortBy !== 'lastUpdated' || sortOrder !== 'desc') && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-white">
-                    Active Filters
-                  </Badge>
-                  {searchQuery && (
-                    <Badge className="bg-blue-600 text-white">
-                      Search: "{searchQuery}"
-                    </Badge>
-                  )}
-                  {statusFilter !== 'all' && (
-                    <Badge className="bg-purple-600 text-white">
-                      Status: {statusFilter}
-                    </Badge>
-                  )}
-                  {sortBy !== 'lastUpdated' && (
-                    <Badge className="bg-orange-600 text-white">
-                      Sort: {sortBy} ({sortOrder})
-                    </Badge>
-                  )}
-                </div>
-                <div className="text-sm text-blue-700">
-                  {totalCount} result{totalCount !== 1 ? 's' : ''} found
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setSearchQuery('')
-                  setStatusFilter('all')
-                  setSortBy('lastUpdated')
-                  setSortOrder('desc')
-                  setCurrentPage(1)
-                  // Force a data reload to ensure filters are cleared
-                  setRefreshTrigger(prev => prev + 1)
-                }}
-                className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                type="button"
-              >
-                Clear Filters
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Enhanced Professional Bookings Table */}
-      <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
-        <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Target className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <CardTitle className="text-2xl font-bold text-gray-900">Project Portfolio</CardTitle>
-                  <CardDescription className="text-gray-600 mt-1">
-                    Professional project management with intelligent status tracking
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 mt-3">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <span>Live Status Updates</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>Real-time Progress</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span>Smart Analytics</span>
-                </div>
+      {/* Bookings List */}
+      <Card className="shadow-lg border-0 bg-white">
+        <CardContent className="p-0">
+          {dataLoading && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
+              <div className="text-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">Loading bookings...</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadSupabaseData}
-                disabled={dataLoading}
-                className="flex items-center space-x-1 bg-white hover:bg-gray-50 border-gray-300"
-              >
-                <RefreshCw className={`h-4 w-4 ${dataLoading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border relative" aria-busy={dataLoading}>
-            {dataLoading && (
-              <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
-                <div className="text-center">
-                  <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Loading bookings...</p>
-                </div>
-              </div>
-            )}
-            <Table>
-              <TableHeader className="bg-gradient-to-r from-gray-50 to-blue-50">
-                <TableRow className="border-b-2 border-gray-200">
-                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-blue-600" />
-                      Project Details
-                    </div>
-                  </TableHead>
-                  {userRole === 'admin' && (
-                    <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-blue-600" />
-                        Client
-                      </div>
-                    </TableHead>
-                  )}
-                  {(userRole === 'admin' || userRole === 'client') && (
-                    <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                      <div className="flex items-center gap-2">
-                        <Settings className="h-4 w-4 text-blue-600" />
-                        Provider
-                      </div>
-                    </TableHead>
-                  )}
-                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      Investment
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-purple-600" />
-                      Smart Status
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                    <div className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4 text-amber-600" />
-                      Billing Status
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4" scope="col">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-cyan-600" />
-                      Timeline
-                    </div>
-                  </TableHead>
-                  <TableHead className="font-semibold text-gray-700 py-4 text-center" scope="col">
-                    <div className="flex items-center gap-2 justify-center">
-                      <Zap className="h-4 w-4 text-orange-600" />
-                      Actions
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedBookings.length > 0 ? (
-                  paginatedBookings.map((booking) => {
-                    const invoice = getInvoiceForBooking(booking.id)
-                    
-                    // Debug logging for completed bookings
-                    if (booking.status === 'completed') {
-                      console.log('🔍 Completed booking debug:', {
-                        id: booking.id,
-                        status: booking.status,
-                        userRole,
-                        approval_status: booking.approval_status,
-                        ui_approval_status: booking.ui_approval_status,
-                        shouldShowReview: userRole === 'client',
-                        shouldShowDelivered: userRole === 'provider'
-                      })
-                    }
-                    
-                    return (
-                      <TableRow key={booking.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
-                        <TableCell className="py-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition-colors">
-                                {booking.service_title || 'Service'}
-                              </Link>
-                              {booking.status === 'completed' && (
-                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                              )}
-                              {booking.status === 'in_progress' && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
-                              ID: {String(booking.id).slice(0, 8)}...
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Link href={`/dashboard/bookings/${booking.id}`} prefetch={false} className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium">
-                                View Details
-                              </Link>
-                            </div>
+          )}
+          
+          {paginatedBookings.length > 0 ? (
+            <div className="divide-y divide-gray-200">
+              {paginatedBookings.map((booking) => {
+                const invoice = getInvoiceForBooking(booking.id)
+                const derivedStatus = getDerivedStatus(booking)
+                
+                return (
+                  <div key={booking.id} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      {/* Left side - Service info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 text-lg">
+                              {booking.service_title || 'Service'}
+                            </h3>
+                            {booking.status === 'in_progress' && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            )}
                           </div>
-                        </TableCell>
+                        </div>
                         
-                        {userRole === 'admin' && (
-                          <TableCell>
-                            <div className="font-medium">{booking.client_name || 'Client'}</div>
-                            <div className="text-sm text-gray-500">Client ID: {booking.client_id || 'N/A'}</div>
-                          </TableCell>
-                        )}
+                        <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
+                          <span className="font-mono">ID: {String(booking.id).slice(0, 8)}...</span>
+                          <Link href={`/dashboard/bookings/${booking.id}`} className="text-blue-600 hover:underline">
+                            View Details
+                          </Link>
+                        </div>
                         
-                        {(userRole === 'admin' || userRole === 'client') && (
-                          <TableCell>
-                            <div className="font-medium">{booking.provider_name || 'Provider'}</div>
-                            <div className="text-sm text-gray-500">Provider ID: {booking.provider_id || 'N/A'}</div>
-                          </TableCell>
-                        )}
-                        
-                        <TableCell className="py-4">
-                          <div className="space-y-1">
-                            <div className="font-bold text-lg text-gray-900">
-                              {Number(booking.amount_cents ?? 0) === 0 ? (
-                                <span className="text-gray-500">No amount set</span>
-                              ) : (
-                                formatCurrency(
-                                  Number((booking.amount_cents ?? 0) / 100),
-                                  String(booking.currency ?? 'OMR')
-                                )
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                              <span className="text-xs text-gray-500 font-medium">
-                                {getStatusSubtitle(getDerivedStatus(booking))}
-                              </span>
-                            </div>
+                        <div className="flex items-center gap-6">
+                          {/* Price */}
+                          <div className="text-lg font-bold text-gray-900">
+                            {Number(booking.amount_cents ?? 0) === 0 ? (
+                              <span className="text-gray-500">No amount set</span>
+                            ) : (
+                              formatCurrency(
+                                Number((booking.amount_cents ?? 0) / 100),
+                                String(booking.currency ?? 'OMR')
+                              )
+                            )}
                           </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs font-semibold ${
-                                  getDerivedStatus(booking) === 'delivered' 
-                                    ? 'text-green-700 border-green-300 bg-green-100'
-                                    : getDerivedStatus(booking) === 'in_production'
-                                    ? 'text-blue-700 border-blue-300 bg-blue-100'
-                                    : getDerivedStatus(booking) === 'ready_to_launch'
-                                    ? 'text-purple-700 border-purple-300 bg-purple-100'
-                                    : getDerivedStatus(booking) === 'approved'
-                                    ? 'text-orange-700 border-orange-300 bg-orange-100'
-                                    : getDerivedStatus(booking) === 'cancelled'
-                                    ? 'text-red-700 border-red-300 bg-red-100'
-                                    : 'text-yellow-700 border-yellow-300 bg-yellow-100'
-                                }`}
-                              >
-                                {getDerivedStatus(booking) === 'delivered' ? 'Delivered' :
-                                 getDerivedStatus(booking) === 'in_production' ? 'In Production' :
-                                 getDerivedStatus(booking) === 'ready_to_launch' ? 'Ready to Launch' :
-                                 getDerivedStatus(booking) === 'approved' ? 'Approved' :
-                                 getDerivedStatus(booking) === 'cancelled' ? 'Cancelled' :
-                                 'Pending'}
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {getStatusSubtitle(getDerivedStatus(booking))}
-                            </div>
+                          
+                          {/* Status */}
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs font-semibold px-2 py-1 ${
+                                derivedStatus === 'delivered' 
+                                  ? 'text-green-700 border-green-300 bg-green-100'
+                                  : derivedStatus === 'in_production'
+                                  ? 'text-blue-700 border-blue-300 bg-blue-100'
+                                  : derivedStatus === 'ready_to_launch'
+                                  ? 'text-purple-700 border-purple-300 bg-purple-100'
+                                  : derivedStatus === 'approved'
+                                  ? 'text-orange-700 border-orange-300 bg-orange-100'
+                                  : derivedStatus === 'cancelled'
+                                  ? 'text-red-700 border-red-300 bg-red-100'
+                                  : 'text-yellow-700 border-yellow-300 bg-yellow-100'
+                              }`}
+                            >
+                              {derivedStatus === 'delivered' ? 'Delivered' :
+                               derivedStatus === 'in_production' ? 'In Production' :
+                               derivedStatus === 'ready_to_launch' ? 'Ready to Launch' :
+                               derivedStatus === 'approved' ? 'Approved' :
+                               derivedStatus === 'cancelled' ? 'Cancelled' :
+                               'Pending'}
+                            </Badge>
+                            <span className="text-sm text-gray-600">
+                              {getStatusSubtitle(derivedStatus)}
+                            </span>
                           </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          {invoice ? (
-                            <div className="space-y-2">
-                              {/* Invoice Status - Distinct styling */}
-                              <div className="flex items-center space-x-2">
-                                <div className="flex items-center gap-1">
-                                  <Receipt className="h-3 w-3 text-gray-500" />
-                                  <span className="text-xs text-gray-500 font-medium">Invoice:</span>
-                                </div>
+                          
+                          {/* Invoice Status */}
+                          <div className="flex items-center gap-2">
+                            {invoice ? (
+                              <>
+                                <span className="text-sm text-gray-500">Invoice:</span>
                                 <Badge 
                                   variant="outline" 
                                   className={`text-xs font-semibold ${
                                     invoice.status === 'paid' 
-                                      ? 'text-green-700 border-green-300 bg-green-100 shadow-sm'
+                                      ? 'text-green-700 border-green-300 bg-green-100'
                                       : invoice.status === 'issued'
-                                      ? 'text-yellow-700 border-yellow-300 bg-yellow-100 shadow-sm'
-                                      : invoice.status === 'draft'
-                                      ? 'text-blue-700 border-blue-300 bg-blue-100 shadow-sm'
-                                      : 'text-gray-700 border-gray-300 bg-gray-100 shadow-sm'
+                                      ? 'text-yellow-700 border-yellow-300 bg-yellow-100'
+                                      : 'text-gray-700 border-gray-300 bg-gray-100'
                                   }`}
                                 >
                                   {invoice.status === 'paid' ? 'Paid' : 
                                    invoice.status === 'issued' ? 'Issued' : 
-                                   invoice.status === 'draft' ? 'Draft' : 
                                    invoice.status}
                                 </Badge>
-                                <TitleTip label="View invoice details">
+                                {invoice.status === 'issued' && (
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    onClick={() => router.push(getInvoiceHref(invoice.id))}
+                                    variant="outline"
+                                    className="text-xs h-6 px-2 text-green-600 border-green-300"
+                                    onClick={() => handleMarkInvoicePaid(invoice.id)}
                                   >
-                                    <Receipt className="h-3 w-3" />
+                                    Mark Paid
                                   </Button>
-                                </TitleTip>
-                              </div>
-                              
-                              {/* Quick Invoice Actions */}
-                              {canCreateInvoice && (
-                                <div className="flex gap-1">
-                                  {invoice.status === 'draft' && (
-                                    <TitleTip label="Send invoice to client">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-xs h-6 px-2"
-                                        onClick={() => handleSendInvoice(invoice.id)}
-                                      >
-                                        Send
-                                      </Button>
-                                    </TitleTip>
-                                  )}
-                                  {invoice.status === 'issued' && (
-                                    <TitleTip label="Mark invoice as paid">
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="text-xs h-6 px-2 text-green-600 border-green-300"
-                                        onClick={() => handleMarkInvoicePaid(invoice.id)}
-                                      >
-                                        Mark Paid
-                                      </Button>
-                                    </TitleTip>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {/* No Invoice Status - Distinct styling */}
-                              <div className="flex items-center space-x-2">
-                                <div className="flex items-center gap-1">
-                                  <Receipt className="h-3 w-3 text-gray-400" />
-                                  <span className="text-xs text-gray-500 font-medium">Invoice:</span>
-                                </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">Invoice:</span>
                                 <Badge 
                                   variant="outline" 
-                                  className="text-xs font-semibold text-gray-600 border-gray-300 bg-gray-100 shadow-sm"
+                                  className="text-xs font-semibold text-gray-600 border-gray-300 bg-gray-100"
                                 >
                                   No Invoice
                                 </Badge>
                                 {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
-                                  <TitleTip label="Create invoice for this booking">
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      className="text-xs h-6 px-2"
-                                      onClick={() => handleCreateInvoice(booking)}
-                                    >
-                                      Create
-                                    </Button>
-                                  </TitleTip>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="text-sm">
-                            {booking.scheduled_date ? formatLocalDate(booking.scheduled_date) : '—'}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {booking.scheduled_date ? formatLocalTime(booking.scheduled_date) : '—'}
-                          </div>
-                        </TableCell>
-                        
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                              {/* Primary Action based on booking status and user role - ORDER MATTERS! */}
-                              
-                              {/* 1. COMPLETED BOOKINGS - Highest Priority */}
-                              {booking.status === 'completed' && (
-                                <>
-                                  {userRole === 'client' && (
-                                    <TitleTip label="Review completed project and provide feedback">
-                                      <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200">
-                                        <Award className="h-3 w-3 mr-1" />
-                                        Review Project
-                                      </Button>
-                                    </TitleTip>
-                                  )}
-                                  
-                                  {userRole === 'provider' && (
-                                    <TitleTip label="Project completed - awaiting client review">
-                                      <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
-                                        <Award className="h-3 w-3 mr-1" />
-                                        Delivered
-                                      </Button>
-                                    </TitleTip>
-                                  )}
-                                  
-                                  {(!userRole || userRole === 'admin') && (
-                                    <TitleTip label="Project completed">
-                                      <Button size="sm" variant="outline" disabled className="border-emerald-200 text-emerald-700 bg-emerald-50">
-                                        <Award className="h-3 w-3 mr-1" />
-                                        Delivered
-                                      </Button>
-                                    </TitleTip>
-                                  )}
-                                </>
-                              )}
-
-                              {/* 2. IN PROGRESS BOOKINGS */}
-                              {booking.status === 'in_progress' && (
-                                <TitleTip label="View progress and manage project milestones">
-                                  <Button size="sm" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-blue-200 transition-all duration-200" asChild>
-                                    <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
-                                      <Target className="h-3 w-3 mr-1" />
-                                      Manage Project
-                                    </Link>
-                                  </Button>
-                                </TitleTip>
-                              )}
-
-                              {/* 3. READY TO LAUNCH BOOKINGS - Use derived status */}
-                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'ready_to_launch' && userRole === 'provider' && (
-                                canLaunchProject(booking) ? (
-                                  <TitleTip label="Begin project work and create milestones">
-                                    <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-purple-200 transition-all duration-200" asChild>
-                                      <Link href={`/dashboard/bookings/${booking.id}/milestones`} prefetch={false}>
-                                        <Play className="h-3 w-3 mr-1" />
-                                        Launch Project
-                                      </Link>
-                                    </Button>
-                                  </TitleTip>
-                                ) : (
-                                  <TitleTip label="Create invoice first to launch project">
-                                    <Button size="sm" className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white shadow-lg hover:shadow-orange-200 transition-all duration-200">
-                                      <FileText className="h-3 w-3 mr-1" />
-                                      Create Invoice
-                                    </Button>
-                                  </TitleTip>
-                                )
-                              )}
-
-                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'ready_to_launch' && userRole === 'client' && (
-                                <TitleTip label="Waiting for provider to start work">
-                                  <Button size="sm" variant="outline" disabled className="border-purple-200 text-purple-700 bg-purple-50">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Ready to Launch
-                                  </Button>
-                                </TitleTip>
-                              )}
-
-                              {/* 4. PENDING BOOKINGS (not approved yet) - ONLY if NOT completed */}
-                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'pending_review' && userRole === 'provider' && (
-                                <TitleTip label="Approve this booking to start the project">
                                   <Button 
                                     size="sm" 
-                                    className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg hover:shadow-emerald-200 transition-all duration-200 disabled:opacity-60"
-                                    disabled={approvingIds.has(booking.id)}
-                                    onClick={() => approveBooking(booking.id)}
+                                    variant="outline" 
+                                    className="text-xs h-6 px-2"
+                                    onClick={() => handleCreateInvoice(booking)}
                                   >
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    {approvingIds.has(booking.id) ? 'Approving…' : 'Approve Project'}
+                                    Create
                                   </Button>
-                                </TitleTip>
-                              )}
-
-                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'pending_review' && userRole === 'client' && (
-                                <TitleTip label="Waiting for provider approval">
-                                  <Button size="sm" variant="outline" disabled className="border-amber-200 text-amber-700 bg-amber-50">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Under Review
-                                  </Button>
-                                </TitleTip>
-                              )}
-
-                              {/* 5. APPROVED BOOKINGS (waiting for invoice) */}
-                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'approved' && userRole === 'provider' && (
-                                <TitleTip label="Create invoice to proceed with project launch">
-                                  <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 bg-orange-50">
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    Create Invoice
-                                  </Button>
-                                </TitleTip>
-                              )}
-
-                              {booking.status !== 'completed' && getDerivedStatus(booking) === 'approved' && userRole === 'client' && (
-                                <TitleTip label="Waiting for provider to create invoice">
-                                  <Button size="sm" variant="outline" disabled className="border-orange-200 text-orange-700 bg-orange-50">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Waiting for Invoice
-                                  </Button>
-                                </TitleTip>
-                              )}
-
-                              {/* 6. CANCELLED BOOKINGS */}
-                              {getDerivedStatus(booking) === 'cancelled' && (
-                                <TitleTip label="This project was cancelled or declined">
-                                  <Button size="sm" variant="outline" disabled className="border-red-200 text-red-700 bg-red-50">
-                                    <AlertTriangle className="h-3 w-3 mr-1" />
-                                    Cancelled
-                                  </Button>
-                                </TitleTip>
-                              )}
-
-                              {/* Secondary Actions - Only show invoice link if there's an invoice */}
-                              {invoice && (
-                                <TitleTip label="View and manage invoice">
-                                  <Button size="sm" variant="ghost" asChild aria-label="View invoice">
-                                    <Link href={getInvoiceHref(invoice.id)} prefetch={false}>
-                                      <Receipt className="h-3 w-3" />
-                                    </Link>
-                                  </Button>
-                                </TitleTip>
-                              )}
-                            </div>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={userRole === 'admin' ? 8 : (userRole === 'client' ? 7 : 6)} className="py-12">
-                      <div className="text-center space-y-4">
-                        <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                          <BarChart3 className="h-12 w-12 text-blue-600" />
-                        </div>
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-semibold text-gray-900">No Projects Found</h3>
-                          <p className="text-gray-500 max-w-md mx-auto">
-                            {userRole === 'provider' 
-                              ? "You don't have any service bookings yet. Start by creating a service to attract clients."
-                              : userRole === 'client'
-                              ? "You haven't booked any services yet. Browse our available services to get started."
-                              : "No bookings found in the system. Bookings will appear here once created."
-                            }
-                          </p>
-                        </div>
-                        <div className="flex justify-center gap-3">
-                          {userRole === 'provider' && (
-                            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
-                              <Settings className="h-4 w-4 mr-2" />
-                              Create Service
-                            </Button>
-                          )}
-                          {userRole === 'client' && (
-                            <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white">
-                              <Search className="h-4 w-4 mr-2" />
-                              Browse Services
-                            </Button>
-                          )}
-                          <Button variant="outline" onClick={loadSupabaseData}>
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Refresh
-                          </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Date */}
+                          <div className="text-sm text-gray-500">
+                            {booking.scheduled_date ? formatLocalDate(booking.scheduled_date) : '—'} {booking.scheduled_date ? formatLocalTime(booking.scheduled_date) : ''}
+                          </div>
                         </div>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      
+                      {/* Right side - Action button */}
+                      <div className="ml-6">
+                        {/* Primary Action based on booking status and user role - ORDER MATTERS! */}
+                        {booking.status === 'completed' && userRole === 'client' && (
+                          <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white">
+                            <Award className="h-4 w-4 mr-2" />
+                            Review Project
+                          </Button>
+                        )}
+                        
+                        {booking.status === 'in_progress' && (
+                          <Button size="sm" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white" asChild>
+                            <Link href={`/dashboard/bookings/${booking.id}/milestones`}>
+                              <Settings className="h-4 w-4 mr-2" />
+                              Manage Project
+                            </Link>
+                          </Button>
+                        )}
+                        
+                        {booking.status !== 'completed' && derivedStatus === 'ready_to_launch' && userRole === 'provider' && (
+                          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white" asChild>
+                            <Link href={`/dashboard/bookings/${booking.id}/milestones`}>
+                              <Play className="h-4 w-4 mr-2" />
+                              Launch Project
+                            </Link>
+                          </Button>
+                        )}
+                        
+                        {derivedStatus === 'pending_review' && userRole === 'provider' && (
+                          <Button 
+                            size="sm" 
+                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                            onClick={() => approveBooking(booking.id)}
+                            disabled={approvingIds.has(booking.id)}
+                          >
+                            {approvingIds.has(booking.id) ? (
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                            )}
+                            Approve Project
+                          </Button>
+                        )}
+                        
+                        {derivedStatus === 'approved' && userRole === 'provider' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-orange-200 text-orange-700 bg-orange-50"
+                            onClick={() => handleCreateInvoice(booking)}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Create Invoice
+                          </Button>
+                        )}
+                        
+                        {derivedStatus === 'cancelled' && (
+                          <Button size="sm" variant="outline" disabled className="border-red-200 text-red-700 bg-red-50">
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Cancelled
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="p-4 bg-gray-100 rounded-full">
+                  <Calendar className="h-8 w-8 text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No bookings found</h3>
+                  <p className="text-gray-500 mb-4">
+                    {searchQuery || statusFilter !== 'all' 
+                      ? 'No bookings match your current filters. Try adjusting your search criteria.'
+                      : userRole === 'provider' 
+                        ? 'You don\'t have any bookings yet. Create a service to start receiving bookings.'
+                        : userRole === 'client'
+                          ? 'You don\'t have any bookings yet. Browse services to make your first booking.'
+                          : 'No bookings have been created yet.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Smart Pagination - works for all user roles */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <Card>
           <CardContent className="p-4">
@@ -1898,9 +1453,8 @@ export default function BookingsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="flex items-center gap-1"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 mr-1" />
                   Previous
                 </Button>
                 
@@ -1923,26 +1477,15 @@ export default function BookingsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="flex items-center gap-1"
                 >
                   Next
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
-      
-      {/* Smart Results Summary */}
-      {!dataLoading && totalPages <= 1 && totalCount > 0 && (
-        <div className="text-center">
-          <Badge variant="outline" className="text-gray-600">
-            <BarChart3 className="h-3 w-3 mr-1" />
-            {totalCount} project{totalCount !== 1 ? 's' : ''} in your portfolio
-          </Badge>
-        </div>
-      )}
-      </div>
+    </div>
   )
 }
