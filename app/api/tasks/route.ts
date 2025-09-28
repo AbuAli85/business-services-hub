@@ -247,8 +247,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Update milestone task counts
-    await supabase.rpc('update_milestone_progress', {
-      milestone_uuid: validatedData.milestone_id
+    await supabase.rpc('recalc_milestone_progress', {
+      p_milestone_id: validatedData.milestone_id
     })
 
     return NextResponse.json(
@@ -558,8 +558,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Update milestone progress
-    await supabase.rpc('update_milestone_progress', {
-      milestone_uuid: task.milestone_id
+    await supabase.rpc('recalc_milestone_progress', {
+      p_milestone_id: task.milestone_id
     })
 
     return NextResponse.json(
