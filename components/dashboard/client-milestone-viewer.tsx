@@ -41,7 +41,7 @@ import {
 import { DocumentManager } from './document-manager'
 import { format, isAfter, isBefore, differenceInDays, differenceInHours } from 'date-fns'
 import { Milestone, Task } from '@/types/progress'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 
 interface ClientMilestoneViewerProps {

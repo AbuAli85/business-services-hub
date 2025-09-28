@@ -41,7 +41,7 @@ import { WorkflowManagement } from './workflow-management'
 import { TaskMilestoneLinking } from './task-milestone-linking'
 import { DocumentManager } from './document-manager'
 import { toast } from 'sonner'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { notificationTriggerService } from '@/lib/notification-triggers'
 import { 
   Milestone, 

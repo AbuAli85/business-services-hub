@@ -9,7 +9,7 @@ import { ArrowLeft, RefreshCw, Download, Share2, Settings, User, Shield, Eye, Al
 import { ProfessionalMilestoneSystem } from '@/components/dashboard/professional-milestone-system'
 import { ProfessionalMilestoneManager } from '@/components/dashboard/professional-milestone-manager'
 import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-viewer'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { SmartBookingStatusComponent } from '@/components/dashboard/smart-booking-status'
 
