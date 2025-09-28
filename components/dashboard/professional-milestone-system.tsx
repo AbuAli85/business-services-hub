@@ -322,6 +322,73 @@ export function ProfessionalMilestoneSystem({
     }
   }
 
+  // Milestone approval handler
+  const handleMilestoneApproval = async (milestoneId: string, action: 'approve' | 'reject', feedback?: string) => {
+    try {
+      const response = await fetch('/api/milestones/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          milestone_id: milestoneId,
+          action: action,
+          feedback: feedback || '',
+          approved_by: 'current-user' // This will be handled by the API
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to approve milestone')
+      }
+
+      const result = await response.json()
+      
+      // Reload data to get updated milestone status
+      await loadData()
+      
+      return result
+    } catch (error) {
+      console.error('Error approving milestone:', error)
+      throw error
+    }
+  }
+
+  // Milestone comment handler
+  const handleMilestoneComment = async (milestoneId: string, content: string, commentType: string = 'general') => {
+    try {
+      const response = await fetch('/api/milestones/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          milestone_id: milestoneId,
+          content: content,
+          comment_type: commentType
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add comment')
+      }
+
+      const result = await response.json()
+      
+      // Reload data to get updated comments
+      await loadData()
+      
+      return result
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      throw error
+    }
+  }
+
   // Derived, memoized filtered milestones for UI responsiveness
   const filteredMilestones = React.useMemo(() => {
     let list = [...milestones]
@@ -1563,6 +1630,12 @@ export function ProfessionalMilestoneSystem({
                 onProgressChange={async (milestoneId, progress) => {
                   // Handle progress updates
                   console.log('Progress update:', milestoneId, progress)
+                }}
+                onApprove={async (milestoneId, action, feedback) => {
+                  await handleMilestoneApproval(milestoneId, action, feedback)
+                }}
+                onComment={async (milestoneId, content, commentType) => {
+                  await handleMilestoneComment(milestoneId, content, commentType)
                 }}
               />
                 ))}

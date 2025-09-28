@@ -25,7 +25,9 @@ import {
   Target,
   GripVertical,
   Eye,
-  EyeOff
+  EyeOff,
+  MessageSquare,
+  XCircle
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
@@ -55,6 +57,8 @@ interface EnhancedMilestoneCardProps {
   onDelete: (milestoneId: string) => Promise<void>
   onStatusChange: (milestoneId: string, status: string) => Promise<void>
   onProgressChange: (milestoneId: string, progress: number) => Promise<void>
+  onApprove?: (milestoneId: string, action: 'approve' | 'reject', feedback?: string) => Promise<void>
+  onComment?: (milestoneId: string, content: string, commentType?: string) => Promise<void>
   className?: string
 }
 
@@ -64,6 +68,8 @@ export function EnhancedMilestoneCard({
   onDelete,
   onStatusChange,
   onProgressChange,
+  onApprove,
+  onComment,
   className
 }: EnhancedMilestoneCardProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -81,6 +87,12 @@ export function EnhancedMilestoneCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showProgressSlider, setShowProgressSlider] = useState(false)
   const [tempProgress, setTempProgress] = useState(milestone.progress_percentage)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [showCommentModal, setShowCommentModal] = useState(false)
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null)
+  const [approvalFeedback, setApprovalFeedback] = useState('')
+  const [newComment, setNewComment] = useState('')
+  const [commentType, setCommentType] = useState('general')
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -165,6 +177,36 @@ export function EnhancedMilestoneCard({
     } catch (error) {
       console.error('Error updating progress:', error)
       toast.error('Failed to update progress')
+    }
+  }
+
+  const handleApproval = async (action: 'approve' | 'reject') => {
+    if (!onApprove) return
+    
+    try {
+      await onApprove(milestone.id, action, approvalFeedback)
+      setShowApprovalModal(false)
+      setApprovalFeedback('')
+      setApprovalAction(null)
+      toast.success(`Milestone ${action}d successfully`)
+    } catch (error) {
+      console.error('Error approving milestone:', error)
+      toast.error(`Failed to ${action} milestone`)
+    }
+  }
+
+  const handleComment = async () => {
+    if (!onComment || !newComment.trim()) return
+    
+    try {
+      await onComment(milestone.id, newComment, commentType)
+      setShowCommentModal(false)
+      setNewComment('')
+      setCommentType('general')
+      toast.success('Comment added successfully')
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast.error('Failed to add comment')
     }
   }
 
@@ -532,6 +574,48 @@ export function EnhancedMilestoneCard({
                   </Select>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* Approval and Comment Buttons */}
+                  {onApprove && milestone.status !== 'completed' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setApprovalAction('approve')
+                          setShowApprovalModal(true)
+                        }}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setApprovalAction('reject')
+                          setShowApprovalModal(true)
+                        }}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  
+                  {onComment && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCommentModal(true)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      Comment
+                    </Button>
+                  )}
+                  
                   {!showDeleteConfirm ? (
                     <Button
                       variant="outline"
@@ -564,6 +648,101 @@ export function EnhancedMilestoneCard({
           )}
         </CardContent>
       </Card>
+
+      {/* Approval Modal */}
+      {showApprovalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">
+              {approvalAction === 'approve' ? 'Approve Milestone' : 'Reject Milestone'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {approvalAction === 'approve' 
+                ? 'Are you sure you want to approve this milestone?'
+                : 'Are you sure you want to reject this milestone?'
+              }
+            </p>
+            <Textarea
+              placeholder="Add feedback (optional)"
+              value={approvalFeedback}
+              onChange={(e) => setApprovalFeedback(e.target.value)}
+              className="mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowApprovalModal(false)
+                  setApprovalAction(null)
+                  setApprovalFeedback('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => approvalAction && handleApproval(approvalAction)}
+                className={approvalAction === 'approve' 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : 'bg-red-600 hover:bg-red-700'
+                }
+              >
+                {approvalAction === 'approve' ? 'Approve' : 'Reject'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comment Modal */}
+      {showCommentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Add Comment</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Comment Type
+              </label>
+              <Select value={commentType} onValueChange={setCommentType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="feedback">Feedback</SelectItem>
+                  <SelectItem value="question">Question</SelectItem>
+                  <SelectItem value="issue">Issue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Textarea
+              placeholder="Write your comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              className="mb-4"
+              rows={4}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCommentModal(false)
+                  setNewComment('')
+                  setCommentType('general')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleComment}
+                disabled={!newComment.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Add Comment
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </TooltipProvider>
   )
 }
