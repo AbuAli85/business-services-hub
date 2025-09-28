@@ -328,7 +328,7 @@ export async function GET(request: NextRequest) {
     console.log('🔐 API: Auth result:', { 
       hasUser: !!user, 
       userId: user?.id, 
-      authError: authError?.message 
+      authError: authError?.message
     })
     
     if (authError || !user) return withCors(jsonError(401, 'UNAUTHENTICATED', 'No session'), request)
