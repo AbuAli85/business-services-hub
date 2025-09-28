@@ -840,6 +840,13 @@ export default function EnhancedBookingDetails({
     try {
       const supabase = await getSupabaseClient()
       
+      // Validate that taskId is actually a task ID, not a booking ID
+      if (!taskId || taskId === bookingId) {
+        console.error('Invalid taskId provided to onStepToggle:', taskId, 'bookingId:', bookingId)
+        toast.error('Invalid task ID provided')
+        return
+      }
+      
       // Update task status
       const { error: taskError } = await supabase
         .from('tasks')
@@ -914,6 +921,7 @@ export default function EnhancedBookingDetails({
       
     } catch (error) {
       // Error updating task status
+      console.error('Error updating task status:', error)
       toast.error('Failed to update task status')
     }
   }

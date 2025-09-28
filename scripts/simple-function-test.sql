@@ -1,67 +1,60 @@
--- Simple test to verify the function is working
--- This will test the function with a real booking ID
+-- Simple test to verify calculate_booking_progress works from database context
+-- This tests the same context as the 16 functions that call it
 
--- Test the function with the specific booking ID from your error
+-- Test 1: Call the function directly from a DO block (simulates function context)
 DO $$
 DECLARE
-  test_booking_id uuid := 'c08ba7e3-3518-4e9f-8802-8193c558856d';
+  test_booking_id uuid := 'bbdf8c8b-eef0-474d-be9e-06686042dbe5';
   result INTEGER;
-  booking_exists BOOLEAN := FALSE;
 BEGIN
-  RAISE NOTICE '🧪 TESTING calculate_booking_progress function';
+  RAISE NOTICE '🧪 TEST: Calling calculate_booking_progress from DO block';
   RAISE NOTICE '   Test booking ID: %', test_booking_id;
   
-  -- Check if booking exists
-  SELECT EXISTS (
-    SELECT 1 FROM bookings WHERE id = test_booking_id
-  ) INTO booking_exists;
-  
-  IF booking_exists THEN
-    RAISE NOTICE '✅ Booking exists in database';
-    
-    -- Test the function
-    BEGIN
-      SELECT calculate_booking_progress(test_booking_id) INTO result;
-      RAISE NOTICE '✅ SUCCESS: Function executed successfully';
-      RAISE NOTICE '   Calculated progress: %', result;
-      
-      -- Check if booking was updated
-      SELECT progress_percentage INTO result
-      FROM bookings 
-      WHERE id = test_booking_id;
-      
-      RAISE NOTICE '   Booking progress updated to: %', result;
-      
-    EXCEPTION
-      WHEN OTHERS THEN
-        RAISE NOTICE '❌ Function test failed: %', SQLERRM;
-        RAISE NOTICE '   Error code: %', SQLSTATE;
-    END;
-    
-  ELSE
-    RAISE NOTICE '⚠️ Booking not found in database';
-    RAISE NOTICE '   This might be why the original error occurred';
-  END IF;
-  
+  BEGIN
+    SELECT calculate_booking_progress(test_booking_id) INTO result;
+    RAISE NOTICE '✅ SUCCESS: Function works from database function context';
+    RAISE NOTICE '   Result: %', result;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE '❌ FAILED: Function not accessible: %', SQLERRM;
+      RAISE NOTICE '   Error code: %', SQLSTATE;
+  END;
 END $$;
 
--- Show the function signature that should be used
-SELECT 
-  'FUNCTION_SIGNATURE' as type,
-  routine_name as function_name,
-  specific_name as signature,
-  data_type as return_type,
-  'Use this exact signature: calculate_booking_progress(uuid)' as usage_note
-FROM information_schema.routines 
-WHERE routine_schema = 'public' 
-  AND routine_name = 'calculate_booking_progress';
+-- Test 2: Test one of the actual functions that was failing
+DO $$
+DECLARE
+  test_booking_id uuid := 'bbdf8c8b-eef0-474d-be9e-06686042dbe5';
+  milestone_id uuid;
+BEGIN
+  RAISE NOTICE '🧪 TEST: Testing update_milestone_progress function';
+  RAISE NOTICE '   This function calls calculate_booking_progress internally';
+  
+  -- Check if we have any milestones for this booking
+  IF EXISTS (SELECT 1 FROM milestones WHERE booking_id = test_booking_id) THEN
+    BEGIN
+      -- Get a milestone ID for testing
+      SELECT id INTO milestone_id FROM milestones WHERE booking_id = test_booking_id LIMIT 1;
+      
+      -- Call update_milestone_progress which should call calculate_booking_progress
+      PERFORM update_milestone_progress(milestone_id);
+      
+      RAISE NOTICE '✅ SUCCESS: update_milestone_progress worked';
+      RAISE NOTICE '   This means calculate_booking_progress is accessible from database functions';
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE NOTICE '❌ FAILED: update_milestone_progress failed: %', SQLERRM;
+        RAISE NOTICE '   Error code: %', SQLSTATE;
+    END;
+  ELSE
+    RAISE NOTICE '⚠️ No milestones found for booking % - skipping update_milestone_progress test', test_booking_id;
+  END IF;
+END $$;
 
--- Show current booking status
-SELECT 
-  'CURRENT_BOOKING_STATUS' as type,
-  id,
-  status,
-  progress_percentage,
-  updated_at
-FROM bookings 
-WHERE id = 'c08ba7e3-3518-4e9f-8802-8193c558856d';
+-- Final summary
+DO $$
+BEGIN
+  RAISE NOTICE '🎉 FUNCTION ACCESSIBILITY TEST COMPLETE';
+  RAISE NOTICE '   If both tests passed, the 42883 error should be resolved';
+  RAISE NOTICE '   All 16 database functions should now be able to call calculate_booking_progress';
+END $$;

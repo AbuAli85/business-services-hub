@@ -450,6 +450,13 @@ export function ProfessionalMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
 
+      // Validate that taskId is actually a task ID, not a booking ID
+      if (!taskId || taskId === bookingId) {
+        console.error('Invalid taskId provided to updateTaskStatus:', taskId, 'bookingId:', bookingId)
+        toast.error('Invalid task ID provided')
+        return
+      }
+
       const { error } = await supabase
         .from('tasks')
         .update({ status, updated_at: new Date().toISOString() })
@@ -503,6 +510,13 @@ export function ProfessionalMilestoneSystem({
 
     try {
       const supabase = await getSupabaseClient()
+      
+      // Validate that taskId is actually a task ID, not a booking ID
+      if (!taskId || taskId === bookingId) {
+        console.error('Invalid taskId provided to deleteTask:', taskId, 'bookingId:', bookingId)
+        toast.error('Invalid task ID provided')
+        return
+      }
       
       const { error } = await supabase
         .from('tasks')
