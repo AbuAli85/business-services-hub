@@ -873,7 +873,7 @@ export function SimpleMilestones({
                             const firstTask = milestone.tasks[0]
                             if (!firstTask) return
                             try {
-                              const supabase = await (await import('@/lib/supabase')).getSupabaseClient()
+                              const supabase = await (await import('@/lib/supabase-client')).getSupabaseClient()
                               const path = `${milestone.id}/${firstTask.id}/${Date.now()}-${file.name}`
                               const { error: upErr } = await supabase.storage.from('reports').upload(path, file)
                               if (upErr) throw upErr

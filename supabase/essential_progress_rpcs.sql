@@ -34,7 +34,7 @@ RETURNS void AS $$
 DECLARE
   total_tasks INTEGER;
   completed_tasks INTEGER;
-  progress_percentage INTEGER;
+  new_progress_percentage INTEGER;
 BEGIN
   SELECT 
     COUNT(*),
@@ -44,14 +44,14 @@ BEGIN
   WHERE milestone_id = milestone_uuid;
 
   IF total_tasks > 0 THEN
-    progress_percentage := ROUND((completed_tasks::NUMERIC / total_tasks::NUMERIC) * 100);
+    new_progress_percentage := ROUND((completed_tasks::NUMERIC / total_tasks::NUMERIC) * 100);
   ELSE
-    progress_percentage := 0;
+    new_progress_percentage := 0;
   END IF;
 
   UPDATE milestones 
   SET 
-    progress_percentage = progress_percentage,
+    progress_percentage = new_progress_percentage,
     updated_at = now()
   WHERE id = milestone_uuid;
 END;
@@ -67,7 +67,7 @@ DECLARE
   milestone_record RECORD;
 BEGIN
   FOR milestone_record IN
-    SELECT progress_percentage, weight
+    SELECT milestones.progress_percentage, milestones.weight
     FROM milestones
     WHERE milestones.booking_id = calculate_booking_progress.booking_id
   LOOP

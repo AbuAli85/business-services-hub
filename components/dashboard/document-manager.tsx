@@ -248,7 +248,7 @@ export function DocumentManager({
 
     try {
       // Resolve the other participant from the booking
-      const supabase = await documentManagementService['getClient']?.() || (await import('@/lib/supabase')).getSupabaseClient()
+      const supabase = await documentManagementService['getClient']?.() || (await import('@/lib/supabase-client')).getSupabaseClient()
       const client = typeof supabase === 'function' ? await supabase() : supabase
       const { data: { user } } = await client.auth.getUser()
       const { data: booking } = await client

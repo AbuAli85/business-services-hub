@@ -19,8 +19,8 @@ BEGIN
   -- Calculate weighted progress across all milestones for this booking
   FOR milestone_record IN
     SELECT 
-      COALESCE(progress_percentage, 0) as progress_percentage,
-      COALESCE(weight, 1) as weight
+      COALESCE(milestones.progress_percentage, 0) as progress_percentage,
+      COALESCE(milestones.weight, 1) as weight
     FROM milestones
     WHERE milestones.booking_id = calculate_booking_progress.booking_id
   LOOP

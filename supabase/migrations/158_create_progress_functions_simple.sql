@@ -22,8 +22,8 @@ BEGIN
   -- Calculate weighted progress across all milestones for this booking
   FOR milestone_record IN
     SELECT 
-      COALESCE(progress_percentage, 0) as progress_percentage,
-      COALESCE(weight, 1) as weight
+      COALESCE(milestones.progress_percentage, 0) as progress_percentage,
+      COALESCE(milestones.weight, 1) as weight
     FROM milestones
     WHERE milestones.booking_id = calculate_booking_progress.booking_id
   LOOP
@@ -61,7 +61,7 @@ RETURNS void AS $$
 DECLARE
   total_tasks INTEGER;
   completed_tasks INTEGER;
-  progress_percentage INTEGER;
+  new_progress_percentage INTEGER;
   booking_uuid uuid;
 BEGIN
   -- Get the booking_id for this milestone
@@ -77,15 +77,15 @@ BEGIN
 
   -- Calculate progress percentage
   IF total_tasks > 0 THEN
-    progress_percentage := ROUND((completed_tasks::NUMERIC / total_tasks::NUMERIC) * 100);
+    new_progress_percentage := ROUND((completed_tasks::NUMERIC / total_tasks::NUMERIC) * 100);
   ELSE
-    progress_percentage := 0;
+    new_progress_percentage := 0;
   END IF;
 
   -- Update milestone progress
   UPDATE milestones 
   SET 
-    progress_percentage = progress_percentage,
+    progress_percentage = new_progress_percentage,
     completed_tasks = completed_tasks,
     total_tasks = total_tasks,
     updated_at = now()

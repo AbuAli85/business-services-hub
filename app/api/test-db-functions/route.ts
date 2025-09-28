@@ -5,12 +5,38 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     
-    // Test if calculate_booking_progress function exists
-    const { data: functions, error: functionsError } = await supabase
-      .from('information_schema.routines')
-      .select('routine_name, routine_type, data_type')
-      .in('routine_name', ['calculate_booking_progress', 'update_milestone_progress', 'update_task'])
-      .eq('routine_schema', 'public')
+    // Test if calculate_booking_progress function exists by trying to call it
+    let functions = []
+    let functionsError = null
+    
+    // Try to call the function to see if it exists
+    try {
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id')
+        .limit(1)
+
+      if (bookings && bookings.length > 0) {
+        const { data: result, error: testError } = await supabase
+          .rpc('calculate_booking_progress', {
+            booking_id: bookings[0].id
+          })
+
+        if (!testError) {
+          functions.push({
+            routine_name: 'calculate_booking_progress',
+            routine_type: 'FUNCTION',
+            data_type: 'integer',
+            exists: true,
+            test_result: result
+          })
+        } else {
+          functionsError = testError
+        }
+      }
+    } catch (err) {
+      functionsError = err
+    }
 
     if (functionsError) {
       return NextResponse.json({
@@ -20,34 +46,15 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Test calculate_booking_progress function if it exists
-    let functionTest = null
-    if (functions?.some(f => f.routine_name === 'calculate_booking_progress')) {
-      try {
-        // Find a test booking
-        const { data: bookings } = await supabase
-          .from('bookings')
-          .select('id')
-          .limit(1)
-
-        if (bookings && bookings.length > 0) {
-          const { data: result, error: testError } = await supabase
-            .rpc('calculate_booking_progress', {
-              booking_id: bookings[0].id
-            })
-
-          functionTest = {
-            success: !testError,
-            result,
-            error: testError?.message
-          }
-        }
-      } catch (testError) {
-        functionTest = {
-          success: false,
-          error: testError instanceof Error ? testError.message : 'Unknown error'
-        }
-      }
+    // Function test is already done above
+    const functionTest = functions.length > 0 ? {
+      success: true,
+      result: functions[0].test_result,
+      error: null
+    } : {
+      success: false,
+      result: null,
+      error: functionsError instanceof Error ? functionsError.message : 'No functions found'
     }
 
     return NextResponse.json({

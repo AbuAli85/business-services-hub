@@ -36,18 +36,28 @@ DO $$
 DECLARE
   test_booking_id uuid;
   result INTEGER;
+  booking_count INTEGER;
 BEGIN
+  -- Count available bookings
+  SELECT COUNT(*) INTO booking_count FROM bookings;
+  RAISE NOTICE 'Found % bookings in database', booking_count;
+  
   -- Find a test booking
   SELECT id INTO test_booking_id FROM bookings LIMIT 1;
   
   IF test_booking_id IS NOT NULL THEN
     -- Test the function
-    SELECT calculate_booking_progress(test_booking_id) INTO result;
-    RAISE NOTICE 'Function test successful: booking_id=%, result=%', test_booking_id, result;
+    BEGIN
+      SELECT calculate_booking_progress(test_booking_id) INTO result;
+      RAISE NOTICE 'Function test successful: booking_id=%, result=%', test_booking_id, result;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE NOTICE 'Function test failed: %', SQLERRM;
+    END;
   ELSE
     RAISE NOTICE 'No bookings found for function test';
   END IF;
 EXCEPTION
   WHEN OTHERS THEN
-    RAISE NOTICE 'Function test failed: %', SQLERRM;
+    RAISE NOTICE 'Test block failed: %', SQLERRM;
 END $$;

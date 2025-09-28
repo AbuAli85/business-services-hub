@@ -52,7 +52,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
       }
       
       // Update task via RPC to avoid RLS/schema issues
-      const { getSupabaseClient } = await import('@/lib/supabase')
+      const { getSupabaseClient } = await import('@/lib/supabase-client')
       const supabase = await getSupabaseClient()
 
       // Look up milestone_id for this task to recalculate progress later
@@ -221,7 +221,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         return { success: true }
       }
       
-      const { getSupabaseClient } = await import('@/lib/supabase')
+      const { getSupabaseClient } = await import('@/lib/supabase-client')
       const supabase = await getSupabaseClient()
       
       const { error } = await supabase
@@ -259,7 +259,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         return { success: true, task: null }
       }
       
-      const { getSupabaseClient } = await import('@/lib/supabase')
+      const { getSupabaseClient } = await import('@/lib/supabase-client')
       const supabase = await getSupabaseClient()
       
       // Try new signature first (with description/priority/estimated_hours)
@@ -356,7 +356,7 @@ export function useProgressUpdates({ bookingId, onProgressUpdate }: UseProgressU
         return { success: true }
       }
       
-      const { getSupabaseClient } = await import('@/lib/supabase')
+      const { getSupabaseClient } = await import('@/lib/supabase-client')
       const supabase = await getSupabaseClient()
 
       // Look up milestone_id before deletion so we can recalc its progress
