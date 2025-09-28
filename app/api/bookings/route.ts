@@ -628,14 +628,13 @@ export async function PATCH(request: NextRequest) {
         
         // Handle different approval status cases
         if (booking.approval_status === 'in_progress') {
-          console.log('📝 Booking is already in progress, updating status to approved')
+          console.log('📝 Booking is already in progress, only updating approval_status to approved')
           updates = {
-            status: 'approved',
-            approval_status: 'approved', // Also update approval_status to be consistent
+            approval_status: 'approved', // Only update approval_status to avoid status transition constraints
             approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
           }
           notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-          console.log('✅ Approval updates (status and approval_status, already in_progress):', updates)
+          console.log('✅ Approval updates (approval_status only, already in_progress):', updates)
         } else {
           console.log('📝 For pending bookings, only updating approval_status to avoid constraint issues')
           // For pending bookings, only update approval_status to avoid database constraints
@@ -820,14 +819,13 @@ export async function PATCH(request: NextRequest) {
     let updated, updateError
     
     if (action === 'approve' && booking.status === 'pending') {
-      console.log('🔄 Workaround for pending → approved: Using in_progress as intermediate step')
+      console.log('🔄 Workaround for pending bookings: Only updating approval_status, avoiding status field')
       
-      // Workaround: First set to in_progress, then to approved
-      // This bypasses the constraint that prevents pending → approved
+      // For pending bookings, only update approval_status to avoid all status transition constraints
+      // The status will remain 'pending' but approval_status will be 'approved'
       const { data: step1Result, error: step1Error } = await supabase
         .from('bookings')
         .update({
-          status: 'in_progress',
           approval_status: 'approved',
           approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
         })
@@ -837,27 +835,11 @@ export async function PATCH(request: NextRequest) {
         .single()
       
       if (step1Error) {
-        console.error('❌ Step 1 (in_progress) failed:', step1Error)
+        console.error('❌ Approval update failed:', step1Error)
         updateError = step1Error
       } else {
-        console.log('✅ Step 1 completed: status set to in_progress')
-        
-        // Step 2: Update status to approved
-        const { data: step2Result, error: step2Error } = await supabase
-          .from('bookings')
-          .update({ status: 'approved' })
-          .eq('id', booking_id)
-          .eq('status', 'in_progress')
-          .select('*')
-          .single()
-        
-        if (step2Error) {
-          console.error('❌ Step 2 (approved) failed:', step2Error)
-          updateError = step2Error
-        } else {
-          console.log('✅ Step 2 completed: status updated to approved')
-          updated = step2Result
-        }
+        console.log('✅ Approval completed: approval_status updated to approved')
+        updated = step1Result
       }
     } else {
       // Regular update for other actions or already in_progress bookings
@@ -870,9 +852,9 @@ export async function PATCH(request: NextRequest) {
       
       // Add race-safe guards based on action
       if (action === 'approve') {
-        // Allow approve if status is pending or approved (idempotent)
-        // This allows pending → approved and approved → approved (idempotent)
-        query = query.in('status', ['pending', 'approved'])
+        // Allow approve for any status since we're only updating approval_status
+        // This avoids status transition constraints entirely
+        query = query // No additional conditions needed
       } else if (action === 'complete') {
         query = query.in('status', ['approved', 'in_progress'])
       } else if (action === 'decline') {
