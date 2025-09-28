@@ -1028,80 +1028,46 @@ export default function BookingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Professional Header */}
-      <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="w-full h-full" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundRepeat: 'repeat'
-          }}></div>
+      {/* Page Title */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
+      </div>
+
+      {/* My Service Bookings Header - Matching Screenshot */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold mb-1">My Service Bookings</h2>
+            <p className="text-blue-200 text-sm">Track and manage your service bookings</p>
+          </div>
+          <Button 
+            variant="secondary"
+            size="sm"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={loadSupabaseData}
+            disabled={dataLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
         
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                {getPageTitle()}
-              </h1>
-            </div>
-            <p className="text-blue-100 text-lg mb-6 font-medium">
-              {getPageDescription()}
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <FileText className="h-4 w-4 text-blue-300" />
-                  <span className="text-sm text-blue-200 font-medium">Total Projects</span>
-                </div>
-                <div className="text-2xl font-bold text-white">{stats.total}</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle className="h-4 w-4 text-emerald-300" />
-                  <span className="text-sm text-blue-200 font-medium">Delivered</span>
-                </div>
-                <div className="text-2xl font-bold text-white">{stats.completed}</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <Rocket className="h-4 w-4 text-cyan-300" />
-                  <span className="text-sm text-blue-200 font-medium">In Production</span>
-                </div>
-                <div className="text-2xl font-bold text-white">{stats.inProgress}</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="h-4 w-4 text-yellow-300" />
-                  <span className="text-sm text-blue-200 font-medium">Revenue (to date)</span>
-                </div>
-                <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="text-2xl font-bold text-white mb-1">Total Projects</div>
+            <div className="text-3xl font-bold text-white">{stats.total}</div>
           </div>
-          <div className="flex flex-col gap-3">
-            <Button 
-              variant="secondary"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={loadSupabaseData}
-              disabled={dataLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
-              {dataLoading ? 'Refreshing...' : 'Refresh'}
-            </Button>
-            {canCreateBooking && (
-              <Button 
-                variant="secondary"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                onClick={() => router.push('/dashboard/bookings/create')}
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                New Booking
-              </Button>
-            )}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="text-2xl font-bold text-white mb-1">Delivered</div>
+            <div className="text-3xl font-bold text-white">{stats.completed}</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="text-2xl font-bold text-white mb-1">In Production</div>
+            <div className="text-3xl font-bold text-white">{stats.inProgress}</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="text-2xl font-bold text-white mb-1">Revenue (to date)</div>
+            <div className="text-3xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
           </div>
         </div>
       </div>
@@ -1190,210 +1156,95 @@ export default function BookingsPage() {
         </Card>
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Active Projects Card */}
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-2xl font-bold text-green-900">{keyMetrics.activeProjects}</div>
-                  <div className="text-sm text-green-600 font-medium">
-                    {keyMetrics.activePercentage.toFixed(1)}% of portfolio
-                  </div>
-                </div>
-                <div className="text-sm text-green-700 font-medium mb-1">
-                  Next actions required • High priority
-                </div>
-              </div>
-              <div className="p-2 bg-green-200 rounded-full">
-                <Play className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Delivered Card */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-2xl font-bold text-emerald-900">{keyMetrics.delivered}</div>
-                  <div className="text-sm text-emerald-600 font-medium">
-                    {keyMetrics.successRate.toFixed(1)}% success rate
-                  </div>
-                </div>
-              </div>
-              <div className="p-2 bg-emerald-200 rounded-full">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Projected Billings Card */}
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-5 w-5 text-orange-600" />
-                  <div className="text-2xl font-bold text-orange-900">
-                    {formatCurrency(keyMetrics.projectedBillings)}
-                  </div>
-                </div>
-                <div className="text-sm text-orange-600 font-medium">
-                  {formatCurrency(keyMetrics.avgBilling)} avg
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pending Approval Card */}
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-2xl font-bold text-purple-900">{keyMetrics.pendingApproval}</div>
-                  <div className="text-sm text-purple-600 font-medium">
-                    Awaiting your decision
-                  </div>
-                </div>
-                <div className="text-sm text-purple-700 font-medium">
-                  Action needed • {keyMetrics.pendingApproval} waiting
-                </div>
-              </div>
-              <div className="p-2 bg-purple-200 rounded-full">
-                <Clock className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ready to Launch Card */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-2xl font-bold text-emerald-900">{keyMetrics.readyToLaunch}</div>
-                  <div className="text-sm text-emerald-600 font-medium">
-                    Ready to launch projects
-                  </div>
-                </div>
-                <div className="text-sm text-emerald-700 font-medium">
-                  All prerequisites met • Ready to launch projects • Active
-                </div>
-              </div>
-              <div className="p-2 bg-emerald-200 rounded-full">
-                <Rocket className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Filter Tabs - Matching Screenshot */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[
+          { key: 'all', label: 'All' },
+          { key: 'pending_review', label: 'Pending Review' },
+          { key: 'approved', label: 'Approved' },
+          { key: 'ready_to_launch', label: 'Ready to Launch' },
+          { key: 'in_production', label: 'In Production' },
+          { key: 'delivered', label: 'Delivered' },
+          { key: 'on_hold', label: 'On Hold' },
+          { key: 'cancelled', label: 'Cancelled' }
+        ].map(s => (
+          <button
+            key={s.key}
+            onClick={() => { setStatusFilter(s.key as any); setCurrentPage(1) }}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              statusFilter === s.key 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4">
-            {/* Quick status chips */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'pending_review', label: 'Pending Review' },
-                { key: 'approved', label: 'Approved' },
-                { key: 'ready_to_launch', label: 'Ready to Launch' },
-                { key: 'in_production', label: 'In Production' },
-                { key: 'delivered', label: 'Delivered' },
-                { key: 'on_hold', label: 'On Hold' },
-                { key: 'cancelled', label: 'Cancelled' }
-              ].map(s => (
-                <button
-                  key={s.key}
-                  onClick={() => { setStatusFilter(s.key as any); setCurrentPage(1) }}
-                  className={`px-3 py-1 rounded-full text-sm border ${statusFilter === s.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'}`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
+      {/* Search and Controls - Matching Screenshot */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search bookings..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending_review">Pending Review</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="ready_to_launch">Ready to Launch</SelectItem>
+            <SelectItem value="in_production">In Production</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="on_hold">On Hold</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Last Updated" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="lastUpdated">Last Updated</SelectItem>
+            <SelectItem value="createdAt">Date Created</SelectItem>
+            <SelectItem value="totalAmount">Amount</SelectItem>
+            <SelectItem value="serviceTitle">Service</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={String(pageSize)} onValueChange={(v)=> { setPageSize(Number(v)); setCurrentPage(1) }}>
+          <SelectTrigger className="w-28">
+            <SelectValue placeholder="10 / page" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10 / page</SelectItem>
+            <SelectItem value="25">25 / page</SelectItem>
+            <SelectItem value="50">50 / page</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search bookings..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending_review">Pending Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="ready_to_launch">Ready to Launch</SelectItem>
-                  <SelectItem value="in_production">In Production</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lastUpdated">Last Updated</SelectItem>
-                  <SelectItem value="createdAt">Date Created</SelectItem>
-                  <SelectItem value="totalAmount">Amount</SelectItem>
-                  <SelectItem value="serviceTitle">Service</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              >
-                {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-              <Select value={String(pageSize)} onValueChange={(v)=> { setPageSize(Number(v)); setCurrentPage(1) }}>
-                <SelectTrigger className="w-28">
-                  <SelectValue placeholder="Page size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 / page</SelectItem>
-                  <SelectItem value="25">25 / page</SelectItem>
-                  <SelectItem value="50">50 / page</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Bookings List - Matching Screenshot */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {dataLoading && (
+          <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
+            <div className="text-center">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">Loading bookings...</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Bookings List */}
-      <Card className="shadow-lg border-0 bg-white">
-        <CardContent className="p-0">
-          {dataLoading && (
-            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
-              <div className="text-center">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">Loading bookings...</p>
-              </div>
-            </div>
-          )}
-          
-          {paginatedBookings.length > 0 ? (
-            <div className="divide-y divide-gray-200">
+        )}
+        
+        {paginatedBookings.length > 0 ? (
+          <div className="divide-y divide-gray-100">
               {paginatedBookings.map((booking) => {
                 const invoice = getInvoiceForBooking(booking.id)
                 const derivedStatus = getDerivedStatus(booking)
@@ -1616,8 +1467,7 @@ export default function BookingsPage() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
