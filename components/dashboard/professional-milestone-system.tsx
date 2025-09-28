@@ -418,19 +418,20 @@ export function ProfessionalMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
       
-      // First delete all tasks associated with this milestone
-      await supabase
-        .from('tasks')
-        .delete()
-        .eq('milestone_id', milestoneId)
-      
-      // Then delete the milestone
-      const { error } = await supabase
-        .from('milestones')
-        .delete()
-        .eq('id', milestoneId)
-      
-      if (error) throw error
+      // Use our backend-driven API for milestone deletion
+      // The API will handle task deletion automatically
+      const response = await fetch('/api/milestones', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: milestoneId })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete milestone')
+      }
       
       toast.success('Milestone deleted successfully')
       await loadData()
@@ -476,12 +477,23 @@ export function ProfessionalMilestoneSystem({
         return
       }
 
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', taskId)
+      // Use our backend-driven API instead of direct Supabase calls
+      const response = await fetch('/api/tasks', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: taskId,
+          status,
+          updated_at: new Date().toISOString()
+        })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update task')
+      }
 
       if (status === 'completed') {
         try {
@@ -537,12 +549,19 @@ export function ProfessionalMilestoneSystem({
         return
       }
       
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
-      
-      if (error) throw error
+      // Use our backend-driven API for task deletion
+      const response = await fetch('/api/tasks', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: taskId })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete task')
+      }
       
       toast.success('Task deleted successfully')
       await loadData() // This will trigger progress recalculation
@@ -671,9 +690,14 @@ export function ProfessionalMilestoneSystem({
         typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 
       if (editingTask) {
-        const { error } = await supabase
-          .from('tasks')
-          .update({
+        // Use our backend-driven API for task updates
+        const response = await fetch('/api/tasks', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: editingTask.id,
             title: taskForm.title,
             description: taskForm.description || '',
             status: taskForm.status,
@@ -685,9 +709,12 @@ export function ProfessionalMilestoneSystem({
             risk_level: taskForm.risk_level,
             updated_at: new Date().toISOString()
           })
-          .eq('id', editingTask.id)
+        })
 
-        if (error) throw error
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to update task')
+        }
 
         // Send notification for task update
         try {
@@ -710,9 +737,13 @@ export function ProfessionalMilestoneSystem({
 
         toast.success('Task updated successfully')
       } else {
-        const { data: insertedTask, error } = await supabase
-          .from('tasks')
-          .insert({
+        // Use our backend-driven API for task creation
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             milestone_id: selectedMilestone?.id,
             title: taskForm.title,
             description: taskForm.description || '',
@@ -728,10 +759,14 @@ export function ProfessionalMilestoneSystem({
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
-          .select('id, title, milestone_id')
-          .single()
+        })
 
-        if (error) throw error
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to create task')
+        }
+
+        const insertedTask = await response.json()
 
         try {
           const { data: { user } } = await supabase.auth.getUser()
