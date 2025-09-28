@@ -647,9 +647,19 @@ export class ProgressTrackingService {
       if (milestonesError) throw milestonesError
       
       // Extract all task IDs
-      const taskIds = milestones?.flatMap(milestone => 
+      const allTaskIds = milestones?.flatMap(milestone => 
         milestone.tasks?.map((task: any) => task.id) || []
       ) || []
+      
+      // Filter out invalid task IDs (booking IDs, non-UUIDs, etc.)
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      const taskIds = allTaskIds.filter((id: string) => {
+        const isValid = isUuid(id)
+        if (!isValid) {
+          console.warn('⚠️ Filtering out invalid task ID from time entries query:', id)
+        }
+        return isValid
+      })
       
       if (taskIds.length === 0) {
         return []

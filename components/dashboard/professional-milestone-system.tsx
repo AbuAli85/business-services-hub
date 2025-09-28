@@ -234,7 +234,18 @@ export function ProfessionalMilestoneSystem({
 
       // Load task comments for all visible tasks - use fresh data, not stale state
       try {
-        const taskIds = normalizedMilestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
+        const allTaskIds = normalizedMilestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
+        
+        // Filter out invalid task IDs (booking IDs, non-UUIDs, etc.)
+        const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+        const taskIds = allTaskIds.filter((id: string) => {
+          const isValid = isUuid(id) && id !== bookingId
+          if (!isValid) {
+            console.warn('⚠️ Filtering out invalid task ID from comments query:', id, 'bookingId:', bookingId)
+          }
+          return isValid
+        })
+        
         if (taskIds.length > 0) {
           const { data: commentsRows, error: tcErr } = await supabase
             .from('task_comments')
