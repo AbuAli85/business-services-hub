@@ -56,6 +56,7 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([])
   const [invoices, setInvoices] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
+  const [summaryStats, setSummaryStats] = useState<any>(null)
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -148,6 +149,40 @@ export default function BookingsPage() {
       default: return 'created_at'
     }
   }
+
+  // Load summary statistics from API
+  const loadSummaryStats = useCallback(async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.warn('⚠️ No session token for summary stats')
+        return
+      }
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch('/api/bookings/summary', {
+        method: 'GET',
+        credentials: 'include',
+        headers,
+      })
+
+      if (response.ok) {
+        const summary = await response.json()
+        setSummaryStats(summary)
+        console.log('✅ Summary stats loaded:', summary)
+      } else {
+        console.warn('⚠️ Summary stats loading failed:', response.status)
+      }
+    } catch (error: any) {
+      console.warn('⚠️ Summary stats error:', error)
+    }
+  }, [])
 
   // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
@@ -408,6 +443,7 @@ export default function BookingsPage() {
         console.log('🚀 Triggering data load - user and role ready')
         lastRefreshTimeRef.current = now
         loadSupabaseData()
+        loadSummaryStats() // Load summary stats for consistent metrics
       } else {
         console.log('⏸️ Skipping data load - too soon since last load')
       }
@@ -418,7 +454,7 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData, loadSummaryStats])
 
   // Cleanup effect to abort requests on unmount
   useEffect(() => {
@@ -438,6 +474,7 @@ export default function BookingsPage() {
         console.log('🔄 Refresh triggered by realtime update')
         lastRefreshTimeRef.current = now
         loadSupabaseData()
+        loadSummaryStats() // Also refresh summary stats
       } else {
         console.log('⏸️ Skipping refresh - too soon since last refresh (', now - lastRefreshTimeRef.current, 'ms ago)')
       }
@@ -858,43 +895,49 @@ export default function BookingsPage() {
     return Array.from({ length: end - start + 1 }, (_, i) => start + i)
   }, [currentPage, totalPages])
 
-  // Calculate statistics from actual bookings data using derived status
+  // Calculate statistics - use summary stats when available for consistency across pages
   const stats = useMemo(() => {
-    // Use the actual bookings array, not bookingsSource
+    // If we have summary stats, use them for consistent metrics across all pages
+    if (summaryStats) {
+      console.log('📊 Using summary stats (CONSISTENT ACROSS ALL PAGES):', summaryStats)
+      return {
+        total: summaryStats.total,
+        completed: summaryStats.completed,
+        inProgress: summaryStats.inProgress,
+        pending: summaryStats.pending,
+        approved: summaryStats.approved,
+        totalRevenue: summaryStats.totalRevenue,
+        projectedBillings: summaryStats.projectedBillings,
+        avgCompletionTime: summaryStats.avgCompletionTime,
+        pendingApproval: summaryStats.pendingApproval,
+        readyToLaunch: summaryStats.readyToLaunch
+      }
+    }
+
+    // Fallback to current page calculation (inconsistent across pages)
     const bookingsData = bookings || []
-    
-    // Use totalCount from API for total projects (across all pages)
     const total = totalCount
     
-    // Use getDerivedStatus for more accurate status detection
     const completed = bookingsData.filter((b:any) => getDerivedStatus(b) === 'delivered').length
     const inProgress = bookingsData.filter((b:any) => getDerivedStatus(b) === 'in_production').length
-    
-    // Count approved bookings (either status='approved' or approval_status='approved')
     const approved = bookingsData.filter((b:any) => 
       b.status === 'approved' || b.approval_status === 'approved'
     ).length
-    
-    // Only count truly pending bookings (not approved yet)
     const pending = bookingsData.filter((b:any) => getDerivedStatus(b) === 'pending_review').length
     
-    // Revenue (to date) - calculate from paid invoices, not just completed bookings
     const totalRevenue = invoices
       .filter(inv => inv.status === 'paid')
       .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
     
-    // Projected billings - approved/ready projects not yet invoiced
     const projectedBillings = bookingsData
       .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
       .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
     
-    const avgCompletionTime = 7.2 // Mock data
-
-    // Calculate additional stats for the overview cards
+    const avgCompletionTime = 7.2
     const pendingApproval = pending
     const readyToLaunch = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch').length
 
-    console.log('📊 Stats calculation:', {
+    console.log('📊 Stats calculation (CURRENT PAGE ONLY - INCONSISTENT ACROSS PAGES):', {
       total,
       completed,
       inProgress,
@@ -907,13 +950,8 @@ export default function BookingsPage() {
       bookingsCount: bookingsData.length,
       totalCountFromAPI: totalCount,
       invoicesCount: invoices.length,
-      bookingsSample: bookingsData.slice(0, 3).map(b => ({
-        id: b.id,
-        status: b.status,
-        approval_status: b.approval_status,
-        derivedStatus: getDerivedStatus(b),
-        amount_cents: b.amount_cents
-      }))
+      currentPage: currentPage,
+      warning: 'Using current page data - will be different on each page!'
     })
 
     return { 
@@ -928,7 +966,7 @@ export default function BookingsPage() {
       pendingApproval,
       readyToLaunch
     }
-  }, [bookings, invoices, totalCount])
+  }, [summaryStats, bookings, invoices, totalCount, currentPage])
 
   // Show loading skeleton only during initial user loading
   if (userLoading) {
