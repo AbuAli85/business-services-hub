@@ -360,6 +360,8 @@ export function MilestoneAnalytics({ bookingId, className }: MilestoneAnalyticsP
                 value={selectedTimeRange}
                 onChange={(e) => setSelectedTimeRange(e.target.value as any)}
                 className="px-3 py-1 border rounded-md text-sm"
+                aria-label="Select time range for analytics"
+                title="Select time range for analytics"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>

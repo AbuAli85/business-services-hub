@@ -709,7 +709,7 @@ export function DocumentManager({
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
-                    <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedIds.length>0 && selectedIds.length===filteredDocuments.length} onChange={(e)=> setSelectedIds(e.target.checked? filteredDocuments.map(d=>d.id): [])} /></th>
+                    <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedIds.length>0 && selectedIds.length===filteredDocuments.length} onChange={(e)=> setSelectedIds(e.target.checked? filteredDocuments.map(d=>d.id): [])} aria-label="Select all documents" title="Select all documents" /></th>
                     {[ 
                       { key:'name', label:'Name' },
                       { key:'status', label:'Status' },
@@ -733,7 +733,7 @@ export function DocumentManager({
                   {filteredDocuments.map(doc => (
                     <tr key={doc.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2">
-                        <input type="checkbox" checked={selectedIds.includes(doc.id)} onChange={(e)=> setSelectedIds(prev=> e.target.checked? [...prev, doc.id]: prev.filter(id=>id!==doc.id))} />
+                        <input type="checkbox" checked={selectedIds.includes(doc.id)} onChange={(e)=> setSelectedIds(prev=> e.target.checked? [...prev, doc.id]: prev.filter(id=>id!==doc.id))} aria-label={`Select document ${doc.original_name}`} title={`Select document ${doc.original_name}`} />
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium text-gray-900 truncate max-w-[280px]" title={doc.original_name}>{doc.original_name}</div>
@@ -878,7 +878,7 @@ export function DocumentManager({
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
-                    <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedRequestIds.length>0 && selectedRequestIds.length===filteredRequests.length} onChange={(e)=> setSelectedRequestIds(e.target.checked? filteredRequests.map(r=>r.id): [])} /></th>
+                    <th className="px-3 py-2 w-10"><input type="checkbox" checked={selectedRequestIds.length>0 && selectedRequestIds.length===filteredRequests.length} onChange={(e)=> setSelectedRequestIds(e.target.checked? filteredRequests.map(r=>r.id): [])} aria-label="Select all document requests" title="Select all document requests" /></th>
                     <th className="px-3 py-2 text-left">Title</th>
                     <th className="px-3 py-2 text-left">Status</th>
                     <th className="px-3 py-2 text-left">Priority</th>
@@ -893,7 +893,7 @@ export function DocumentManager({
                 <tbody className="divide-y">
                   {filteredRequests.map((r)=> (
                     <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2"><input type="checkbox" checked={selectedRequestIds.includes(r.id)} onChange={(e)=> setSelectedRequestIds(prev=> e.target.checked? [...prev, r.id]: prev.filter(id=>id!==r.id))} /></td>
+                      <td className="px-3 py-2"><input type="checkbox" checked={selectedRequestIds.includes(r.id)} onChange={(e)=> setSelectedRequestIds(prev=> e.target.checked? [...prev, r.id]: prev.filter(id=>id!==r.id))} aria-label={`Select document request ${r.title}`} title={`Select document request ${r.title}`} /></td>
                       <td className="px-3 py-2">
                         <div className="font-medium text-gray-900 truncate max-w-[280px]" title={r.title}>{r.title}</div>
                         {r.description && <div className="text-xs text-gray-500 truncate max-w-[280px]">{r.description}</div>}
@@ -1228,12 +1228,12 @@ function DocumentCard({
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" asChild>
-              <a href={document.file_url} target="_blank" rel="noopener noreferrer">
+              <a href={document.file_url} target="_blank" rel="noopener noreferrer" aria-label={`View document ${document.original_name}`} title={`View document ${document.original_name}`}>
                 <Eye className="h-4 w-4" />
               </a>
             </Button>
             <Button size="sm" variant="outline" asChild>
-              <a href={document.file_url} download={document.original_name}>
+              <a href={document.file_url} download={document.original_name} aria-label={`Download document ${document.original_name}`} title={`Download document ${document.original_name}`}>
                 <Download className="h-4 w-4" />
               </a>
             </Button>

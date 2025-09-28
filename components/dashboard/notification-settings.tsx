@@ -612,6 +612,8 @@ export function NotificationSettings({ bookingId, className }: NotificationSetti
                                 }))
                               }
                             }}
+                            aria-label={`Enable ${channel.replace('_', ' ')} notifications`}
+                            title={`Enable ${channel.replace('_', ' ')} notifications`}
                           />
                           <Label htmlFor={channel} className="text-sm capitalize">
                             {channel.replace('_', ' ')}

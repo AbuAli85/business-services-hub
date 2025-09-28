@@ -391,6 +391,8 @@ export function PerformanceMonitor({ bookingId, className }: PerformanceMonitorP
                 value={selectedTimeRange}
                 onChange={(e) => setSelectedTimeRange(e.target.value as any)}
                 className="px-3 py-1 border rounded-md text-sm"
+                aria-label="Select time range for performance monitoring"
+                title="Select time range for performance monitoring"
               >
                 <option value="1h">Last 1 hour</option>
                 <option value="24h">Last 24 hours</option>
