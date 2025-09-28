@@ -185,7 +185,12 @@ export default function BookingsPage() {
   // Load bookings via server API with proper role-based filtering
   const loadSupabaseData = useCallback(async () => {
     if (isLoadingRef.current || !user || !userRole) {
-      console.log('⏸️ Skipping load - request already in progress or user not ready')
+      console.log('⏸️ Skipping load - request already in progress or user not ready', {
+        isLoading: isLoadingRef.current,
+        hasUser: !!user,
+        userRole,
+        userId: user?.id
+      })
       return
     }
     
@@ -224,11 +229,43 @@ export default function BookingsPage() {
       
       // Get the current session token for authentication
       const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError)
+        setError('Authentication error. Please sign in again.')
+        router.push('/auth/sign-in')
+        return
+      }
+      
+      if (!session) {
+        console.error('❌ No session found - user not authenticated')
+        setError('Please sign in to view bookings.')
+        router.push('/auth/sign-in')
+        return
+      }
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('🔐 Session status:', { 
+          hasSession: !!session, 
+          hasToken: !!session?.access_token,
+          tokenLength: session?.access_token?.length || 0,
+          user: session?.user?.id || 'none',
+          expiresAt: session?.expires_at
+        })
+      }
       
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('✅ Added Authorization header')
+        }
+      } else {
+        console.warn('⚠️ No session token available, request may fail')
+        setError('Authentication token missing. Please sign in again.')
+        router.push('/auth/sign-in')
+        return
       }
       
       const res = await fetch(apiEndpoint, {

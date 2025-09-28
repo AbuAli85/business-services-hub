@@ -318,8 +318,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const authHeader = request.headers.get('authorization')
+    console.log('🔐 API: Authorization header present:', !!authHeader)
+    console.log('🔐 API: Auth header starts with Bearer:', authHeader?.startsWith('Bearer '))
+    
     const supabase = await makeServerClient(request)
     const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    console.log('🔐 API: Auth result:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      authError: authError?.message 
+    })
+    
     if (authError || !user) return withCors(jsonError(401, 'UNAUTHENTICATED', 'No session'), request)
 
     // Get user profile to determine role
