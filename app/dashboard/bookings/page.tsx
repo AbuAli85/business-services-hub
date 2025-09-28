@@ -102,11 +102,13 @@ export default function BookingsPage() {
       return 'ready_to_launch'
     }
     
-    if (booking.status === 'approved' || booking.approval_status === 'approved') {
+    // Check approval status first - this is the primary indicator
+    if (booking.approval_status === 'approved') {
       return 'approved'
     }
     
-    if (booking.status === 'pending' && booking.approval_status === 'approved') {
+    // Fallback to status if approval_status is not set
+    if (booking.status === 'approved') {
       return 'approved'
     }
     
@@ -812,12 +814,17 @@ export default function BookingsPage() {
     const total = totalCount
     const completed = bookingsSource.filter((b:any) => b.status === 'completed').length
     const inProgress = bookingsSource.filter((b:any) => b.status === 'in_progress').length
-    // Only count truly pending bookings (not approved yet)
-    const pending = bookingsSource.filter((b:any) => b.status === 'pending' && b.approval_status !== 'approved' && b.ui_approval_status !== 'approved').length
-    // Count approved bookings waiting to start
+    
+    // Count approved bookings (either status='approved' or approval_status='approved')
     const approved = bookingsSource.filter((b:any) => 
-      b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))
+      b.status === 'approved' || b.approval_status === 'approved'
     ).length
+    
+    // Only count truly pending bookings (not approved yet)
+    const pending = bookingsSource.filter((b:any) => 
+      b.status === 'pending' && b.approval_status !== 'approved'
+    ).length
+    
     // Revenue (to date) - only completed/delivered projects that are invoiced/paid
     const totalRevenue = bookingsSource
       .filter(b => b.status === 'completed')
@@ -825,7 +832,7 @@ export default function BookingsPage() {
     
     // Projected billings - approved/ready projects not yet invoiced
     const projectedBillings = bookingsSource
-      .filter(b => (b.status === 'approved' || (b.status === 'pending' && (b.approval_status === 'approved' || b.ui_approval_status === 'approved'))) && b.status !== 'completed')
+      .filter(b => (b.status === 'approved' || b.approval_status === 'approved') && b.status !== 'completed')
       .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
     
     const avgCompletionTime = 7.2 // Mock data

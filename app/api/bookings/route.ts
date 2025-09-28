@@ -637,15 +637,15 @@ export async function PATCH(request: NextRequest) {
           notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
           console.log('✅ Approval updates (status and approval_status, already in_progress):', updates)
         } else {
-          console.log('📝 Updating both status and approval_status for approval')
-          // For pending bookings, first update approval_status, then status
-          // This works around database constraints that might prevent pending → approved
+          console.log('📝 For pending bookings, only updating approval_status to avoid constraint issues')
+          // For pending bookings, only update approval_status to avoid database constraints
+          // The status will remain pending but approval_status will be approved
           updates = {
             approval_status: 'approved',
             approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
           }
           notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-          console.log('✅ Approval updates (approval_status first):', updates)
+          console.log('✅ Approval updates (approval_status only):', updates)
         }
         console.log('✅ Current booking status before update:', booking.status)
         console.log('✅ Current booking approval_status before update:', booking.approval_status)
@@ -819,13 +819,15 @@ export async function PATCH(request: NextRequest) {
     // Special handling for approval action to work around database constraints
     let updated, updateError
     
-    if (action === 'approve' && booking.status === 'pending' && booking.approval_status !== 'in_progress') {
-      console.log('🔄 Two-step approval: First updating approval_status, then status')
+    if (action === 'approve' && booking.status === 'pending') {
+      console.log('🔄 Workaround for pending → approved: Using in_progress as intermediate step')
       
-      // Step 1: Update approval_status first
+      // Workaround: First set to in_progress, then to approved
+      // This bypasses the constraint that prevents pending → approved
       const { data: step1Result, error: step1Error } = await supabase
         .from('bookings')
         .update({
+          status: 'in_progress',
           approval_status: 'approved',
           approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
         })
@@ -835,22 +837,22 @@ export async function PATCH(request: NextRequest) {
         .single()
       
       if (step1Error) {
-        console.error('❌ Step 1 (approval_status) failed:', step1Error)
+        console.error('❌ Step 1 (in_progress) failed:', step1Error)
         updateError = step1Error
       } else {
-        console.log('✅ Step 1 completed: approval_status updated')
+        console.log('✅ Step 1 completed: status set to in_progress')
         
         // Step 2: Update status to approved
         const { data: step2Result, error: step2Error } = await supabase
           .from('bookings')
           .update({ status: 'approved' })
           .eq('id', booking_id)
-          .eq('approval_status', 'approved')
+          .eq('status', 'in_progress')
           .select('*')
           .single()
         
         if (step2Error) {
-          console.error('❌ Step 2 (status) failed:', step2Error)
+          console.error('❌ Step 2 (approved) failed:', step2Error)
           updateError = step2Error
         } else {
           console.log('✅ Step 2 completed: status updated to approved')
