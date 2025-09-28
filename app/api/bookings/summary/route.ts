@@ -125,10 +125,27 @@ export async function GET(request: NextRequest) {
     const pending = bookingsData.filter(b => getDerivedStatus(b) === 'pending_review').length
     const readyToLaunch = bookingsData.filter(b => getDerivedStatus(b) === 'ready_to_launch').length
 
-    // Revenue calculation
+    // Revenue calculation - include both issued and paid invoices
+    const paidInvoices = (allInvoices || []).filter(inv => inv.status === 'paid')
+    const issuedInvoices = (allInvoices || []).filter(inv => inv.status === 'issued')
     const totalRevenue = (allInvoices || [])
-      .filter(inv => inv.status === 'paid')
+      .filter(inv => ['issued', 'paid'].includes(inv.status))
       .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
+
+    console.log('💰 Revenue calculation:', {
+      totalInvoices: allInvoices?.length || 0,
+      paidInvoices: paidInvoices.length,
+      issuedInvoices: issuedInvoices.length,
+      paidAmount: paidInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+      issuedAmount: issuedInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+      totalRevenue,
+      sampleInvoices: (allInvoices || []).slice(0, 3).map(inv => ({
+        id: inv.id,
+        status: inv.status,
+        amount: inv.amount,
+        booking_id: inv.booking_id
+      }))
+    })
 
     // Projected billings
     const projectedBillings = bookingsData

@@ -931,9 +931,26 @@ export default function BookingsPage() {
     ).length
     const pending = bookingsData.filter((b:any) => getDerivedStatus(b) === 'pending_review').length
     
+    const paidInvoices = invoices.filter(inv => inv.status === 'paid')
+    const issuedInvoices = invoices.filter(inv => inv.status === 'issued')
     const totalRevenue = invoices
-      .filter(inv => inv.status === 'paid')
+      .filter(inv => ['issued', 'paid'].includes(inv.status))
       .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
+
+    console.log('💰 Revenue calculation (fallback):', {
+      totalInvoices: invoices.length,
+      paidInvoices: paidInvoices.length,
+      issuedInvoices: issuedInvoices.length,
+      paidAmount: paidInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+      issuedAmount: issuedInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
+      totalRevenue,
+      sampleInvoices: invoices.slice(0, 3).map(inv => ({
+        id: inv.id,
+        status: inv.status,
+        amount: inv.amount,
+        booking_id: inv.booking_id
+      }))
+    })
     
     const projectedBillings = bookingsData
       .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
