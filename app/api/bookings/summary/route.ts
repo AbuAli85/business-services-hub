@@ -125,6 +125,21 @@ export async function GET(request: NextRequest) {
     const pending = bookingsData.filter(b => getDerivedStatus(b) === 'pending_review').length
     const readyToLaunch = bookingsData.filter(b => getDerivedStatus(b) === 'ready_to_launch').length
 
+    // Debug ready to launch calculation
+    const readyToLaunchBookings = bookingsData.filter(b => getDerivedStatus(b) === 'ready_to_launch')
+    console.log('🚀 Ready to Launch calculation:', {
+      totalBookings: bookingsData.length,
+      readyToLaunchCount: readyToLaunch,
+      readyToLaunchBookings: readyToLaunchBookings.map(b => ({
+        id: b.id,
+        status: b.status,
+        approval_status: b.approval_status,
+        service_id: b.service_id,
+        hasInvoice: !!allInvoices?.find(inv => inv.booking_id === b.id),
+        invoiceStatus: allInvoices?.find(inv => inv.booking_id === b.id)?.status
+      }))
+    })
+
     // Revenue calculation - include both issued and paid invoices
     const paidInvoices = (allInvoices || []).filter(inv => inv.status === 'paid')
     const issuedInvoices = (allInvoices || []).filter(inv => inv.status === 'issued')

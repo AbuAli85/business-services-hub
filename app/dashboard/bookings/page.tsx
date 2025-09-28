@@ -960,6 +960,21 @@ export default function BookingsPage() {
     const pendingApproval = pending
     const readyToLaunch = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch').length
 
+    // Debug ready to launch calculation
+    const readyToLaunchBookings = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch')
+    console.log('🚀 Ready to Launch calculation (fallback):', {
+      totalBookings: bookingsData.length,
+      readyToLaunchCount: readyToLaunch,
+      readyToLaunchBookings: readyToLaunchBookings.map((b:any) => ({
+        id: b.id,
+        status: b.status,
+        approval_status: b.approval_status,
+        service_id: b.service_id,
+        hasInvoice: !!invoices.find(inv => inv.booking_id === b.id),
+        invoiceStatus: invoices.find(inv => inv.booking_id === b.id)?.status
+      }))
+    })
+
     console.log('📊 Stats calculation (CURRENT PAGE ONLY - INCONSISTENT ACROSS PAGES):', {
       total,
       completed,
