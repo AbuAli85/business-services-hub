@@ -678,7 +678,10 @@ export default function BookingsPage() {
   const handleCreateInvoice = useCallback(async (booking: any) => {
     try {
       const eligibleStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
-      if (!eligibleStatuses.includes(String(booking.status))) {
+      const isApproved = eligibleStatuses.includes(String(booking.status)) || 
+                        booking.approval_status === 'approved'
+      
+      if (!isApproved) {
         toast.error('Invoice can be created only after approval')
         return
       }
@@ -1398,7 +1401,7 @@ export default function BookingsPage() {
                                 >
                                   No Invoice
                                 </Badge>
-                                {canCreateInvoice && ['approved','confirmed','in_progress','completed'].includes(String(booking.status)) && (
+                                {canCreateInvoice && (['approved','confirmed','in_progress','completed'].includes(String(booking.status)) || booking.approval_status === 'approved') && (
                                   <Button 
                                     size="sm" 
                                     variant="outline" 
