@@ -36,7 +36,8 @@ import {
   BarChart3,
   Bell,
   History,
-  Activity
+  Activity,
+  Brain
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { DependencyManagement } from './dependency-management'
@@ -49,6 +50,7 @@ import { NotificationSettings } from './notification-settings'
 import { AuditTrail } from './audit-trail'
 import { PerformanceMonitor } from './performance-monitor'
 import { EnhancedMilestoneCard } from './enhanced-milestone-card'
+import { SmartMilestoneIntegration } from './smart-milestone-integration'
 import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { notificationTriggerService } from '@/lib/notification-triggers'
@@ -81,7 +83,7 @@ export function ProfessionalMilestoneSystem({
   const [approvals, setApprovals] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('smart')
   
   // Dialog states
   const [showMilestoneForm, setShowMilestoneForm] = useState(false)
@@ -1208,7 +1210,14 @@ export function ProfessionalMilestoneSystem({
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-10 h-14 bg-gradient-to-r from-gray-50 to-blue-50 p-1">
+          <TabsList className="grid w-full grid-cols-11 h-14 bg-gradient-to-r from-gray-50 to-blue-50 p-1">
+            <TabsTrigger 
+              value="smart" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Smart
+            </TabsTrigger>
             <TabsTrigger 
               value="overview" 
               className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
@@ -1281,6 +1290,17 @@ export function ProfessionalMilestoneSystem({
             </TabsTrigger>
           </TabsList>
         </div>
+
+        {/* Smart Tab */}
+        <TabsContent value="smart" className="space-y-6">
+          <SmartMilestoneIntegration
+            bookingId={bookingId}
+            milestones={milestones}
+            onMilestoneUpdate={updateMilestoneStatus}
+            onTaskUpdate={updateTaskStatus}
+            onRefresh={loadData}
+          />
+        </TabsContent>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
