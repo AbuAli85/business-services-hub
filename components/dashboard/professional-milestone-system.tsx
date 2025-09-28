@@ -32,7 +32,11 @@ import {
   Flag,
   Search,
   FileText,
-  File
+  File,
+  BarChart3,
+  Bell,
+  History,
+  Activity
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { DependencyManagement } from './dependency-management'
@@ -40,6 +44,11 @@ import { MilestoneSettings } from './milestone-settings'
 import { WorkflowManagement } from './workflow-management'
 import { TaskMilestoneLinking } from './task-milestone-linking'
 import { DocumentManager } from './document-manager'
+import { MilestoneAnalytics } from './milestone-analytics'
+import { NotificationSettings } from './notification-settings'
+import { AuditTrail } from './audit-trail'
+import { PerformanceMonitor } from './performance-monitor'
+import { EnhancedMilestoneCard } from './enhanced-milestone-card'
 import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { notificationTriggerService } from '@/lib/notification-triggers'
@@ -1134,7 +1143,7 @@ export function ProfessionalMilestoneSystem({
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-6 h-14 bg-gradient-to-r from-gray-50 to-blue-50 p-1">
+          <TabsList className="grid w-full grid-cols-10 h-14 bg-gradient-to-r from-gray-50 to-blue-50 p-1">
             <TabsTrigger 
               value="overview" 
               className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
@@ -1176,6 +1185,34 @@ export function ProfessionalMilestoneSystem({
             >
               <File className="h-4 w-4 mr-2" />
               Templates
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analytics" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger 
+              value="notifications" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger 
+              value="audit" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <History className="h-4 w-4 mr-2" />
+              Audit
+            </TabsTrigger>
+            <TabsTrigger 
+              value="performance" 
+              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+            >
+              <Activity className="h-4 w-4 mr-2" />
+              Performance
             </TabsTrigger>
           </TabsList>
         </div>
@@ -1432,6 +1469,38 @@ export function ProfessionalMilestoneSystem({
               console.log('Settings updated:', settings)
               toast.success('Settings updated successfully')
             }}
+          />
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <MilestoneAnalytics
+            bookingId={bookingId}
+            className="w-full"
+          />
+        </TabsContent>
+
+        {/* Notifications Tab */}
+        <TabsContent value="notifications" className="space-y-6">
+          <NotificationSettings
+            bookingId={bookingId}
+            className="w-full"
+          />
+        </TabsContent>
+
+        {/* Audit Tab */}
+        <TabsContent value="audit" className="space-y-6">
+          <AuditTrail
+            bookingId={bookingId}
+            className="w-full"
+          />
+        </TabsContent>
+
+        {/* Performance Tab */}
+        <TabsContent value="performance" className="space-y-6">
+          <PerformanceMonitor
+            bookingId={bookingId}
+            className="w-full"
           />
         </TabsContent>
       </Tabs>
