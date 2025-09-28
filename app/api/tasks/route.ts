@@ -299,12 +299,13 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Get task and check access
+    // Get task with current status for transition validation
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .select(`
         id,
         milestone_id,
+        status,
         created_by,
         assigned_to
       `)
@@ -316,6 +317,34 @@ export async function PATCH(request: NextRequest) {
         { error: 'Task not found' },
         { status: 404, headers: corsHeaders }
       )
+    }
+
+    // Validate status transition if status is being changed
+    if (validatedData.status && validatedData.status !== task.status) {
+      const { data: canTransition, error: transitionError } = await supabase
+        .rpc('can_transition', {
+          current_status: task.status,
+          new_status: validatedData.status,
+          entity_type: 'task'
+        })
+
+      if (transitionError) {
+        console.error('Error checking transition:', transitionError)
+        return NextResponse.json(
+          { error: 'Failed to validate status transition' },
+          { status: 500, headers: corsHeaders }
+        )
+      }
+
+      if (!canTransition) {
+        return NextResponse.json(
+          { 
+            error: 'Invalid status transition', 
+            details: `Cannot transition from ${task.status} to ${validatedData.status}` 
+          },
+          { status: 400, headers: corsHeaders }
+        )
+      }
     }
 
     // Get milestone to get booking ID
@@ -381,13 +410,39 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Update milestone progress
-    await supabase.rpc('update_milestone_progress', {
-      milestone_uuid: task.milestone_id
-    })
+    // Recalculate milestone progress using the new RPC function
+    const { data: milestoneProgress, error: progressError } = await supabase
+      .rpc('recalc_milestone_progress', {
+        p_milestone_id: task.milestone_id
+      })
+
+    if (progressError) {
+      console.error('Error recalculating milestone progress:', progressError)
+      // Don't fail the request, just log the error
+    }
+
+    // Broadcast realtime update to booking channel
+    try {
+      await supabase.channel(`booking:${milestone.booking_id}`)
+        .send({
+          type: 'broadcast',
+          event: 'task_updated',
+          payload: {
+            task: updatedTask,
+            milestone_progress: milestoneProgress,
+            booking_id: milestone.booking_id
+          }
+        })
+    } catch (realtimeError) {
+      console.error('Error broadcasting realtime update:', realtimeError)
+      // Don't fail the request, just log the error
+    }
 
     return NextResponse.json(
-      { task: updatedTask },
+      { 
+        task: updatedTask,
+        milestone_progress: milestoneProgress
+      },
       { status: 200, headers: corsHeaders }
     )
 

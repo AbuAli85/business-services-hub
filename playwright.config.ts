@@ -10,6 +10,13 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3002',
     headless: true,
   },
+  // Don't start a new server, use the existing one
+  // webServer: {
+  //   command: 'npm run dev',
+  //   url: 'http://localhost:3002',
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 120 * 1000,
+  // },
 })
 
 

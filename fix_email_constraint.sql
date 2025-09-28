@@ -86,3 +86,5 @@ BEGIN
   RETURN public.create_user_profile_safe(user_id, user_email, user_role, full_name, phone);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
