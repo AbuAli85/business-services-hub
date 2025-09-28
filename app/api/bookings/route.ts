@@ -631,19 +631,21 @@ export async function PATCH(request: NextRequest) {
           console.log('📝 Booking is already in progress, updating status to approved')
           updates = {
             status: 'approved',
+            approval_status: 'approved', // Also update approval_status to be consistent
             approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
           }
           notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-          console.log('✅ Approval updates (status only, already in_progress):', updates)
+          console.log('✅ Approval updates (status and approval_status, already in_progress):', updates)
         } else {
           console.log('📝 Updating both status and approval_status for approval')
+          // For pending bookings, first update approval_status, then status
+          // This works around database constraints that might prevent pending → approved
           updates = {
-            status: 'approved',
             approval_status: 'approved',
             approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
           }
           notification = { user_id: booking.client_id, title: 'Booking Approved', message: 'Your booking has been approved', type: 'booking_approved' }
-          console.log('✅ Approval updates (both status and approval_status):', updates)
+          console.log('✅ Approval updates (approval_status first):', updates)
         }
         console.log('✅ Current booking status before update:', booking.status)
         console.log('✅ Current booking approval_status before update:', booking.approval_status)
@@ -814,27 +816,74 @@ export async function PATCH(request: NextRequest) {
       return response
     }
     
-    // Race-safe update with preconditions
-    let query = supabase
-      .from('bookings')
-      .update(updates)
-      .eq('id', booking_id)
+    // Special handling for approval action to work around database constraints
+    let updated, updateError
     
-    console.log('🔍 Query conditions:', { booking_id, action })
-    
-    // Add race-safe guards based on action
-    if (action === 'approve') {
-      // Allow approve if approval_status is pending, approved, or in_progress (idempotent)
-      query = query.in('approval_status', ['pending', 'approved', 'in_progress'])
-    } else if (action === 'complete') {
-      query = query.in('status', ['approved', 'in_progress'])
-    } else if (action === 'decline') {
-      query = query.eq('approval_status', 'pending')
+    if (action === 'approve' && booking.status === 'pending' && booking.approval_status !== 'in_progress') {
+      console.log('🔄 Two-step approval: First updating approval_status, then status')
+      
+      // Step 1: Update approval_status first
+      const { data: step1Result, error: step1Error } = await supabase
+        .from('bookings')
+        .update({
+          approval_status: 'approved',
+          approval_reviewed_at: normalizeToISO(approved_at) || new Date().toISOString()
+        })
+        .eq('id', booking_id)
+        .eq('status', 'pending')
+        .select('*')
+        .single()
+      
+      if (step1Error) {
+        console.error('❌ Step 1 (approval_status) failed:', step1Error)
+        updateError = step1Error
+      } else {
+        console.log('✅ Step 1 completed: approval_status updated')
+        
+        // Step 2: Update status to approved
+        const { data: step2Result, error: step2Error } = await supabase
+          .from('bookings')
+          .update({ status: 'approved' })
+          .eq('id', booking_id)
+          .eq('approval_status', 'approved')
+          .select('*')
+          .single()
+        
+        if (step2Error) {
+          console.error('❌ Step 2 (status) failed:', step2Error)
+          updateError = step2Error
+        } else {
+          console.log('✅ Step 2 completed: status updated to approved')
+          updated = step2Result
+        }
+      }
+    } else {
+      // Regular update for other actions or already in_progress bookings
+      let query = supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', booking_id)
+      
+      console.log('🔍 Query conditions:', { booking_id, action })
+      
+      // Add race-safe guards based on action
+      if (action === 'approve') {
+        // Allow approve if status is pending or approved (idempotent)
+        // This allows pending → approved and approved → approved (idempotent)
+        query = query.in('status', ['pending', 'approved'])
+      } else if (action === 'complete') {
+        query = query.in('status', ['approved', 'in_progress'])
+      } else if (action === 'decline') {
+        query = query.eq('approval_status', 'pending')
+      }
+      
+      const result = await query
+        .select('*')
+        .single()
+      
+      updated = result.data
+      updateError = result.error
     }
-    
-    const { data: updated, error: updateError } = await query
-      .select('*')
-      .single()
 
     console.log('📊 Database update result:', { 
       hasData: !!updated, 
