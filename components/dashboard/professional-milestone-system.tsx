@@ -29,6 +29,7 @@ import {
   ArrowDown,
   ArrowUp,
   GripVertical,
+  Brain,
   MessageSquare,
   Flag,
   Search,
@@ -37,8 +38,7 @@ import {
   BarChart3,
   Bell,
   History,
-  Activity,
-  Brain
+  Activity
 } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { DependencyManagement } from './dependency-management'
@@ -1284,10 +1284,11 @@ export function ProfessionalMilestoneSystem({
           <TabsList className="grid w-full grid-cols-11 h-14 bg-gradient-to-r from-gray-50 to-blue-50 p-1">
             <TabsTrigger 
               value="smart" 
-              className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-medium transition-all duration-200"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium transition-all duration-200 relative"
             >
               <Brain className="h-4 w-4 mr-2" />
               Smart
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             </TabsTrigger>
             <TabsTrigger 
               value="overview" 
@@ -1364,6 +1365,26 @@ export function ProfessionalMilestoneSystem({
 
         {/* Smart Tab */}
         <TabsContent value="smart" className="space-y-6">
+          {/* Smart Features Header */}
+          <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-xl p-6 text-white shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Brain className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">AI-Powered Project Intelligence</h2>
+                  <p className="text-blue-100 text-lg">Smart insights, automation, and predictive analytics for your milestones</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-sm text-blue-100">AI Active</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Smart Features Content */}
           <SmartMilestoneIntegration
             bookingId={bookingId}
             milestones={milestones}
@@ -1375,6 +1396,32 @@ export function ProfessionalMilestoneSystem({
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Project Status Banner */}
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 text-white shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Target className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Project Status Overview</h2>
+                  <p className="text-indigo-100 text-lg">
+                    {milestones.length > 0 ? 
+                      `${milestones.filter(m => m.status === 'completed').length}/${milestones.length} milestones completed` : 
+                      'No milestones yet'
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold">
+                  {milestones.length > 0 ? Math.round((milestones.filter(m => m.status === 'completed').length / milestones.length) * 100) : 0}%
+                </div>
+                <div className="text-indigo-100 text-sm">Complete</div>
+              </div>
+            </div>
+          </div>
+
           {/* Enhanced Project Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-200">
@@ -1385,8 +1432,13 @@ export function ProfessionalMilestoneSystem({
                     <p className="text-3xl font-bold text-blue-900">{milestones.length}</p>
                     <p className="text-xs text-blue-600 mt-1">Project phases</p>
                   </div>
-                  <div className="p-3 bg-blue-500 rounded-xl">
+                  <div className="p-3 bg-blue-500 rounded-xl relative">
                     <Target className="h-8 w-8 text-white" />
+                    {milestones.length > 0 && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">{milestones.length}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1494,37 +1546,24 @@ export function ProfessionalMilestoneSystem({
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredMilestones.map((milestone) => (
-              <MilestoneCard
+                {filteredMilestones.map((milestone, index) => (
+              <EnhancedMilestoneCard
                 key={milestone.id}
                 milestone={milestone}
-                comments={comments[milestone.id] || []}
-                approvals={approvals[milestone.id] || []}
-                taskComments={taskComments}
-                onEdit={() => editMilestone(milestone)}
-                onDelete={() => deleteMilestone(milestone.id)}
-                onStatusChange={(status) => updateMilestoneStatus(milestone.id, status)}
-                onAddTask={() => {
-                  setSelectedMilestone(milestone)
-                  setShowTaskForm(true)
+                onUpdate={async (milestoneId, updates) => {
+                  // Handle milestone updates
+                  console.log('Milestone update:', milestoneId, updates)
                 }}
-                onManageDependencies={() => {
-                  setSelectedMilestone(milestone)
-                  setShowDependencyForm(true)
+                onDelete={async (milestoneId) => {
+                  await deleteMilestone(milestoneId)
                 }}
-                onTaskStatusChange={updateTaskStatus}
-                onEditTask={editTask}
-                onDeleteTask={deleteTask}
-                onTaskAction={handleTaskAction}
-                onTaskComment={handleTaskComment}
-                onMoveUp={() => moveMilestone(milestone.id, 'up')}
-                onMoveDown={() => moveMilestone(milestone.id, 'down')}
-                onDragStart={(e) => handleDragStart(e, milestone.id)}
-                onDragOver={(e) => handleDragOver(e, milestone.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, milestone.id)}
-                isDragging={draggedMilestone === milestone.id}
-                isDragOver={dragOverMilestone === milestone.id}
+                onStatusChange={async (milestoneId, status) => {
+                  await updateMilestoneStatus(milestoneId, status)
+                }}
+                onProgressChange={async (milestoneId, progress) => {
+                  // Handle progress updates
+                  console.log('Progress update:', milestoneId, progress)
+                }}
               />
                 ))}
               </div>

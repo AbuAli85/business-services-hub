@@ -357,6 +357,8 @@ export function EnhancedMilestoneCard({
                   value={tempProgress}
                   onChange={(e) => setTempProgress(parseInt(e.target.value))}
                   className="w-full"
+                  aria-label="Adjust milestone progress percentage"
+                  title="Drag to adjust milestone progress percentage"
                 />
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>0%</span>
