@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'react-hot-toast'
 import { Loader2, ArrowLeft, Mail, CheckCircle } from 'lucide-react'
 

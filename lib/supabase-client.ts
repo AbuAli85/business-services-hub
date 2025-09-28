@@ -1,18 +1,19 @@
+// Client-side only Supabase utilities
+// This file should only be used in client components
+
 import { createClient as createSSRClient } from '@/utils/supabase/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Singleton pattern to prevent multiple client instances
+let supabaseClient: SupabaseClient | null = null
+let isInitializing = false
+let initializationPromise: Promise<SupabaseClient> | null = null
 
 // Environment variables should be available at build time
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// Singleton pattern to prevent multiple client instances
-let supabaseClient: SupabaseClient | null = null
-let supabaseAdminClient: SupabaseClient | null = null
-let isInitializing = false
-let initializationPromise: Promise<SupabaseClient> | null = null
-let lastProactiveRefreshAt = 0
-
-// Helper function to check environment variables (moved outside async function)
+// Helper function to check environment variables
 function checkEnvironmentVariables() {
   const missingVars = []
   
@@ -81,10 +82,6 @@ For production deployments, ensure environment variables are set in your hosting
     throw new Error('Supabase environment variables not configured. Please check your .env.local file and restart the development server.')
   }
   
-  // At this point, we know both variables are defined due to the check above
-  const url = envCheck.supabaseUrl!
-  const key = envCheck.supabaseAnonKey!
-  
   // Use SSR-compatible client for better cookie handling
   console.log('✅ Creating SSR-compatible Supabase client')
   supabaseClient = createSSRClient()
@@ -112,46 +109,6 @@ For production deployments, ensure environment variables are set in your hosting
               }
             } else if (event === 'TOKEN_REFRESHED') {
               authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'token_refreshed', token_expires_at: expiresAt, seconds_remaining: secondsRemaining } })
-              // Proactively re-check and refresh if expiry is near (within 5 minutes)
-              if (secondsRemaining !== null && secondsRemaining <= 300) {
-                const nowMs = Date.now()
-                // Cooldown 60s to prevent loops
-                if (nowMs - lastProactiveRefreshAt > 60_000) {
-                  lastProactiveRefreshAt = nowMs
-                  try {
-                    console.log('🔄 Proactive token refresh due to near expiry')
-                    const { error: refreshError } = await supabaseClient!.auth.refreshSession()
-                    if (refreshError) {
-                      console.warn('⚠️ Proactive token refresh failed:', refreshError)
-                      
-                      // Handle specific refresh token errors
-                      if (refreshError.message.includes('Invalid Refresh Token') || 
-                          refreshError.message.includes('Refresh Token Not Found') ||
-                          refreshError.message.includes('refresh_token_not_found')) {
-                        console.log('🔄 Invalid refresh token during proactive refresh, signing out')
-                        await supabaseClient!.auth.signOut()
-                      }
-                    } else {
-                      authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'proactive_refresh' } })
-                    }
-                  } catch (e) {
-                    console.warn('⚠️ Proactive refresh exception:', e)
-                    
-                    // Handle refresh token errors in catch block too
-                    if (e instanceof Error && (
-                        e.message.includes('Invalid Refresh Token') || 
-                        e.message.includes('Refresh Token Not Found') ||
-                        e.message.includes('refresh_token_not_found'))) {
-                      console.log('🔄 Invalid refresh token in proactive refresh catch block, signing out')
-                      try {
-                        await supabaseClient!.auth.signOut()
-                      } catch (signOutError) {
-                        console.error('Error signing out:', signOutError)
-                      }
-                    }
-                  }
-                }
-              }
             }
           } catch (_) {}
           
@@ -269,34 +226,9 @@ Missing: ${envCheck.missingVars.join(', ')}`)
   return supabaseClient
 }
 
-// Service role client for admin operations (server-side only)
-export async function getSupabaseAdminClient(): Promise<SupabaseClient> {
-  // Return existing admin client if already created
-  if (supabaseAdminClient) {
-    return supabaseAdminClient
-  }
-  
-  // Use server-side admin client
-  const { createAdminClient } = await import('@/utils/supabase/admin')
-  supabaseAdminClient = await createAdminClient()
-  
-  return supabaseAdminClient
-}
-
-// For backward compatibility, export the functions
-// These will be undefined during build time but available at runtime
-export const supabase = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
-  ? getSupabaseClient() 
-  : undefined
-
-export const supabaseAdmin = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-  ? getSupabaseAdminClient() 
-  : undefined
-
 // Cleanup function for testing purposes
 export function clearSupabaseClients() {
   supabaseClient = null
-  supabaseAdminClient = null
 }
 
 // Function to check if environment is properly configured
@@ -315,7 +247,6 @@ export function getEnvironmentStatus() {
     isClient: typeof window !== 'undefined',
     envCheck: checkEnvironmentVariables(),
     nodeEnv: process.env.NODE_ENV,
-    hasClient: supabaseClient !== null,
-    hasAdminClient: supabaseAdminClient !== null
+    hasClient: supabaseClient !== null
   }
 }

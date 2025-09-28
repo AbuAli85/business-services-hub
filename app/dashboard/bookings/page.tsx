@@ -35,7 +35,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Constants
 const OMAN_TZ = 'Asia/Muscat'

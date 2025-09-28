@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-client'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
