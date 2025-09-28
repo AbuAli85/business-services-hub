@@ -771,6 +771,7 @@ export default function BookingsPage() {
     }
   }, [])
 
+
   const handleMarkInvoicePaid = useCallback(async (invoiceId: string) => {
     try {
       const supabase = await getSupabaseClient()
@@ -1381,6 +1382,16 @@ export default function BookingsPage() {
                                    invoice.status === 'issued' ? 'Issued' : 
                                    invoice.status}
                                 </Badge>
+                                {invoice.status === 'draft' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-6 px-2 text-blue-600 border-blue-300"
+                                    onClick={() => handleSendInvoice(invoice.id)}
+                                  >
+                                    Send Invoice
+                                  </Button>
+                                )}
                                 {invoice.status === 'issued' && (
                                   <Button
                                     size="sm"
