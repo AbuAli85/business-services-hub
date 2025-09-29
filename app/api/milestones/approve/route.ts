@@ -44,6 +44,50 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Resolve approver metadata (name and role) with resilient fallbacks
+    let approverName: string | null = null
+    let approverRole: string | null = null
+    try {
+      // Try v2 view first
+      const { data: v2, error: v2Err } = await supabase
+        .from('profiles_with_roles_v2')
+        .select('full_name, primary_role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (!v2Err && v2) {
+        approverName = (v2 as any).full_name || null
+        approverRole = (v2 as any).primary_role || null
+      } else {
+        // Fallback to v1 view
+        const { data: v1, error: v1Err } = await supabase
+          .from('profiles_with_roles')
+          .select('full_name, role')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (!v1Err && v1) {
+          approverName = (v1 as any).full_name || null
+          approverRole = (v1 as any).role || null
+        } else {
+          // Fallback to raw profiles
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('full_name, role')
+            .eq('id', user.id)
+            .maybeSingle()
+          if (prof) {
+            approverName = (prof as any).full_name || null
+            approverRole = (prof as any).role || null
+          }
+        }
+      }
+    } catch {}
+    if (!approverName) {
+      approverName = (user.user_metadata as any)?.full_name || user.email || null
+    }
+    if (!approverRole) {
+      approverRole = (user.user_metadata as any)?.role || null
+    }
+
     // Get milestone and check access
     const { data: milestone, error: milestoneError } = await supabase
       .from('milestones')
@@ -144,7 +188,9 @@ export async function POST(request: NextRequest) {
         booking_id: milestone.booking_id,
         user_id: user.id,
         status,
-        comment: validatedData.feedback
+        comment: validatedData.feedback,
+        approver_name: approverName,
+        approver_role: approverRole
       })
       .select()
       .single()
@@ -206,7 +252,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         milestone: updatedMilestone,
-        approval: approval,
+        approval: {
+          ...approval,
+          approver_name: approval?.approver_name ?? approverName,
+          approver_role: approval?.approver_role ?? approverRole
+        },
         message: `Milestone ${validatedData.action === 'approve' ? 'approved' : 'rejected'} successfully`
       },
       { status: 200, headers: corsHeaders }
