@@ -197,8 +197,12 @@ export function SimpleMilestones({
       console.log('Submitting approval via API for milestone:', milestoneId, 'status:', status, 'userRole:', userRole)
       if (status === 'approved') {
         await ProgressDataService.approveMilestone(milestoneId, comment)
+        // Optimistic UI update
+        onMilestoneUpdate(milestoneId, { status: 'completed' })
       } else {
         await ProgressDataService.rejectMilestone(milestoneId, comment)
+        // Optimistic UI update
+        onMilestoneUpdate(milestoneId, { status: 'rejected' as any })
       }
       console.log('Approval submitted successfully')
       if (status === 'approved') {
