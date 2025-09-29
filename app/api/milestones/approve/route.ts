@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     // Create approval record
     // Align to table schema: user_id, status, comment, created_at default
     const status = validatedData.action === 'approve' ? 'approved' : 'rejected'
-    const { data: approval, error: approvalError } = await supabase
+    const { data: createdApproval, error: approvalError } = await supabase
       .from('milestone_approvals')
       .insert({
         milestone_id: validatedData.milestone_id,
@@ -147,6 +147,9 @@ export async function POST(request: NextRequest) {
       })
       .select()
       .single()
+
+    // Start with whatever was created
+    let approval = createdApproval
 
     if (approvalError) {
       console.error('Error creating approval record:', approvalError)
@@ -160,10 +163,7 @@ export async function POST(request: NextRequest) {
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-        if (existingApproval) {
-          // @ts-ignore retain variable name used below
-          approval = existingApproval
-        }
+        if (existingApproval) approval = existingApproval
       } catch (e) {
         // best-effort fallback; keep approval as null
       }
