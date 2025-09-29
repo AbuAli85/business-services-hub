@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
@@ -26,12 +26,20 @@ import {
   BarChart3,
   RefreshCw
 } from 'lucide-react'
+import UnifiedSearch, { useDebouncedValue } from '@/components/ui/unified-search'
 
 export default function DashboardPage() {
   const router = useRouter()
   const { metrics, bookings, invoices, users, services, loading, error, refresh } = useDashboardData()
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string>('client')
+  // Activity filters
+  const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
+  const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
+  const [activityDateRange, setActivityDateRange] = useState<'today' | 'week' | 'month'>('month')
+  const [activityQuery, setActivityQuery] = useState('')
+  const activityQ = useDebouncedValue(activityQuery, 250)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     checkAuth()
@@ -62,6 +70,29 @@ export default function DashboardPage() {
       return () => clearInterval(interval)
     }
   }, [user, refresh])
+
+  // Hydrate filters from URL once
+  useEffect(() => {
+    const t = searchParams.get('atype') as any
+    const s = searchParams.get('astatus') as any
+    const d = searchParams.get('adate') as any
+    const q = searchParams.get('q') as any
+    if (t) setActivityType(t)
+    if (s) setActivityStatus(s)
+    if (d) setActivityDateRange(d)
+    if (q) setActivityQuery(q)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist filters to URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    params.set('atype', activityType)
+    params.set('astatus', activityStatus)
+    params.set('adate', activityDateRange)
+    if (activityQ) params.set('q', activityQ); else params.delete('q')
+    router.replace(`?${params.toString()}`)
+  }, [activityType, activityStatus, activityDateRange, activityQ, router])
 
   async function checkAuth() {
     try {
@@ -102,8 +133,29 @@ export default function DashboardPage() {
   ).length
 
   const totalRevenue = invoices
-    .filter(invoice => invoice.status === 'paid')
-    .reduce((sum, invoice) => sum + invoice.amount, 0)
+    .filter((invoice: any) => invoice.status === 'paid')
+    .reduce((sum: number, invoice: any) => sum + (invoice.amount || invoice.totalAmount || 0), 0)
+
+  // Revenue trend (last 30 days vs previous 30)
+  const nowTs = Date.now()
+  const dayMs = 1000 * 60 * 60 * 24
+  const last30Start = nowTs - 30 * dayMs
+  const prev30Start = nowTs - 60 * dayMs
+  const revLast30 = invoices
+    .filter((inv: any) => inv.status === 'paid')
+    .filter((inv: any) => {
+      const ts = new Date(inv.paidAt || inv.updatedAt || inv.createdAt || inv.date || nowTs).getTime()
+      return ts >= last30Start && ts <= nowTs
+    })
+    .reduce((s: number, inv: any) => s + (inv.amount || inv.totalAmount || 0), 0)
+  const revPrev30 = invoices
+    .filter((inv: any) => inv.status === 'paid')
+    .filter((inv: any) => {
+      const ts = new Date(inv.paidAt || inv.updatedAt || inv.createdAt || inv.date || nowTs).getTime()
+      return ts >= prev30Start && ts < last30Start
+    })
+    .reduce((s: number, inv: any) => s + (inv.amount || inv.totalAmount || 0), 0)
+  const revenueTrendPct = revPrev30 > 0 ? ((revLast30 - revPrev30) / revPrev30) * 100 : (revLast30 > 0 ? 100 : 0)
 
   const recentActivity = bookings
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -115,6 +167,22 @@ export default function DashboardPage() {
       timestamp: booking.updatedAt,
       status: booking.status
     }))
+
+  // Merge in payments (paid invoices)
+  const paymentActivity = invoices
+    .filter((inv: any) => inv.status === 'paid')
+    .sort((a: any, b: any) => new Date(b.paidAt || b.updatedAt || b.createdAt || b.date || 0).getTime() - new Date(a.paidAt || a.updatedAt || a.createdAt || a.date || 0).getTime())
+    .slice(0, 5)
+    .map((inv: any) => ({
+      id: `inv-${inv.id}`,
+      type: 'payment',
+      description: `Payment received: ${formatCurrency(inv.amount || inv.totalAmount || 0)} from ${inv.clientName || 'Client'}`,
+      timestamp: inv.paidAt || inv.updatedAt || inv.createdAt || inv.date,
+      status: 'completed'
+    }))
+
+  const unifiedActivity = [...recentActivity, ...paymentActivity]
+    .sort((a, b) => new Date(b.timestamp as any).getTime() - new Date(a.timestamp as any).getTime())
 
   const upcomingBookings = bookings
     .filter(booking => booking.status === 'confirmed' || booking.status === 'in_progress')
@@ -136,6 +204,31 @@ export default function DashboardPage() {
       services.reduce((sum, service) => sum + (service.rating || 0), 0) / services.length : 0,
     responseTime: 2.5 // Average response time in hours
   }
+
+  // Activity timeline filtering (demo uses bookings-derived recentActivity)
+  const filteredActivity = unifiedActivity.filter(a => {
+    // type filter (demo: all as bookings)
+    const typeOk = activityType === 'all' || a.type === activityType.slice(0, -1)
+    // status filter
+    const statusOk = activityStatus === 'all' || a.status === activityStatus
+    // date range filter
+    const ts = new Date(a.timestamp)
+    const now = new Date()
+    let dateOk = true
+    if (activityDateRange === 'today') {
+      dateOk = ts.toDateString() === now.toDateString()
+    } else if (activityDateRange === 'week') {
+      const diff = (now.getTime() - ts.getTime()) / (1000 * 60 * 60 * 24)
+      dateOk = diff <= 7
+    } else {
+      const diff = (now.getTime() - ts.getTime()) / (1000 * 60 * 60 * 24)
+      dateOk = diff <= 31
+    }
+    // search
+    const q = activityQ.toLowerCase()
+    const searchOk = !q || a.description.toLowerCase().includes(q)
+    return typeOk && statusOk && dateOk && searchOk
+  })
 
   if (loading) {
     return (
@@ -184,13 +277,17 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-8">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-              <p className="text-blue-100 text-lg">Welcome back, {user.user_metadata?.full_name || user.email}</p>
+              <h1 className="text-4xl font-bold mb-1">Welcome back, {(user.user_metadata?.full_name || user.email || 'User').toString().split(' ')[0]}!</h1>
+              <p className="text-blue-100 text-lg">Here's your business overview for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
               <p className="text-blue-200 text-sm mt-1">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
             <div className="flex space-x-3">
+              <Button className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => router.push('/dashboard/bookings/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Booking
+              </Button>
               <Button 
                 variant="secondary"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
@@ -213,33 +310,53 @@ export default function DashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Key Metrics Cards */}
+        {/* KPI Cards with trends */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          {/* Project Completion Rate */}
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-xl transition-all">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Total Users</p>
-                  <p className="text-3xl font-bold">{metrics.totalUsers}</p>
+                  <p className="text-blue-100 text-sm font-medium">Project Completion Rate</p>
+                  <p className="text-4xl font-extrabold">{Math.round(performanceMetrics.completionRate)}%</p>
                   <p className="text-blue-200 text-xs mt-1">
                     <TrendingUp className="h-3 w-3 inline mr-1" />
-                    +{metrics.userGrowth.toFixed(1)}% this month
+                    +{(metrics.bookingGrowth || 0).toFixed(1)}% this month
                   </p>
                 </div>
-                <Users className="h-8 w-8 text-blue-200" />
+                <Calendar className="h-8 w-8 text-blue-200" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+          {/* Client Satisfaction */}
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-xl transition-all">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Total Revenue</p>
+                  <p className="text-purple-100 text-sm font-medium">Client Satisfaction</p>
+                  <p className="text-3xl font-bold">{performanceMetrics.averageRating.toFixed(1)} / 5</p>
+                  <div className="mt-1 flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={`h-4 w-4 ${i < Math.round(performanceMetrics.averageRating) ? 'text-yellow-300' : 'text-white/30'}`} />
+                    ))}
+                  </div>
+                </div>
+                <Star className="h-8 w-8 text-yellow-300" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Revenue Trend */}
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white hover:shadow-xl transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium">Revenue</p>
                   <p className="text-3xl font-bold">{formatCurrency(totalRevenue)}</p>
                   <p className="text-green-200 text-xs mt-1">
                     <TrendingUp className="h-3 w-3 inline mr-1" />
-                    +{metrics.revenueGrowth.toFixed(1)}% this month
+                    +{(metrics.revenueGrowth || 0).toFixed(1)}% this month
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-200" />
@@ -247,32 +364,16 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          {/* Active Projects */}
+          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:shadow-xl transition-all">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Active Bookings</p>
+                  <p className="text-orange-100 text-sm font-medium">Active Projects</p>
                   <p className="text-3xl font-bold">{activeBookings}</p>
-                  <p className="text-purple-200 text-xs mt-1">
-                    <TrendingUp className="h-3 w-3 inline mr-1" />
-                    +{metrics.bookingGrowth.toFixed(1)}% this month
-                  </p>
-                </div>
-                <Calendar className="h-8 w-8 text-purple-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium">Total Services</p>
-                  <p className="text-3xl font-bold">{metrics.totalServices}</p>
-                  <p className="text-orange-200 text-xs mt-1">
-                    <TrendingUp className="h-3 w-3 inline mr-1" />
-                    +{metrics.serviceGrowth.toFixed(1)}% this month
-                  </p>
+                  <div className="mt-2">
+                    <Progress value={performanceMetrics.completionRate} className="h-2 bg-white/30" />
+                  </div>
                 </div>
                 <Package className="h-8 w-8 text-orange-200" />
               </div>
@@ -302,10 +403,33 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentActivity.length > 0 ? (
-                      recentActivity.map((activity) => (
+                    {/* Activity Filters */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select className="form-input w-40" value={activityType} onChange={(e) => setActivityType(e.target.value as any)}>
+                        <option value="all">All Types</option>
+                        <option value="bookings">Bookings</option>
+                        <option value="payments">Payments</option>
+                        <option value="milestones">Milestones</option>
+                        <option value="system">System</option>
+                      </select>
+                      <select className="form-input w-36" value={activityStatus} onChange={(e) => setActivityStatus(e.target.value as any)}>
+                        <option value="all">All Statuses</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending">Pending</option>
+                        <option value="failed">Failed</option>
+                      </select>
+                      <select className="form-input w-32" value={activityDateRange} onChange={(e) => setActivityDateRange(e.target.value as any)}>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                      </select>
+                      <UnifiedSearch placeholder="Search activity..." onSearch={setActivityQuery} className="flex-1" />
+                    </div>
+
+                    {filteredActivity.length > 0 ? (
+                      filteredActivity.map((activity) => (
                         <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <div className={`w-2 h-2 rounded-full ${activity.type === 'payment' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-900">{activity.description}</p>
                             <p className="text-xs text-gray-500">
@@ -320,6 +444,9 @@ export default function DashboardPage() {
                     ) : (
                       <p className="text-gray-500 text-center py-4">No recent activity</p>
                     )}
+                    <div className="text-right">
+                      <Button variant="link" className="text-sm">View All</Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
