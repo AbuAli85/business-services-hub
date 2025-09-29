@@ -233,17 +233,21 @@ export default function ServicesPage() {
 
   // Get status badge
   const getStatusBadge = (status: string) => {
+    const normalized = (
+      status === 'active' ? 'active' :
+      status === 'pending' ? 'pending' :
+      status === 'suspended' ? 'suspended' :
+      'inactive'
+    )
     const statusConfig = {
-      active: { label: 'Active', className: 'text-green-600 border-green-200 bg-green-50' },
-      pending: { label: 'Pending', className: 'text-yellow-600 border-yellow-200 bg-yellow-50' },
-      inactive: { label: 'Inactive', className: 'text-gray-600 border-gray-200 bg-gray-50' },
-      suspended: { label: 'Suspended', className: 'text-red-600 border-red-200 bg-red-50' }
+      active: { label: 'Active', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+      pending: { label: 'Pending', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+      inactive: { label: 'Inactive', className: 'bg-slate-50 text-slate-700 border-slate-200' },
+      suspended: { label: 'Suspended', className: 'bg-red-50 text-red-700 border-red-200' }
     }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    
+    const config = statusConfig[normalized as keyof typeof statusConfig]
     return (
-      <Badge variant="outline" className={config.className}>
+      <Badge variant="outline" className={`text-xs font-semibold ${config.className}`}>
         {config.label}
       </Badge>
     )
