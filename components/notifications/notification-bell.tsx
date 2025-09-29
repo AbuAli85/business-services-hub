@@ -99,8 +99,22 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
   const loadRecentNotifications = async () => {
     try {
       setLoading(true)
-      const data = await notificationService.getNotifications(userId, { read: false }, 5)
-      setNotifications(data)
+      const data = await notificationService.getNotifications(userId, { read: false }, 50)
+      // Group duplicates by type+service or title+message
+      const groupedMap = new Map<string, Notification & { count: number }>()
+      for (const n of data) {
+        const key = `${n.type || 'generic'}|${n.service || 'global'}|${n.title}|${n.message}`
+        if (!groupedMap.has(key)) {
+          groupedMap.set(key, { ...n, count: 1 } as any)
+        } else {
+          const existing = groupedMap.get(key)!
+          groupedMap.set(key, { ...existing, count: existing.count + 1 })
+        }
+      }
+      const grouped = Array.from(groupedMap.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5)
+      setNotifications(grouped as any)
     } catch (error) {
       console.error('Error loading recent notifications:', error)
     } finally {
@@ -203,7 +217,7 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
                 <p className="text-sm text-gray-600">No unread notifications</p>
               </div>
             ) : (
-              notifications.map((notification) => (
+              notifications.map((notification: any) => (
                 <DropdownMenuItem
                   key={notification.id}
                   className="p-3 border-b last:border-b-0"
@@ -227,6 +241,9 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
                           <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                             {notification.message}
                           </p>
+                          {notification.count > 1 && (
+                            <p className="text-[10px] text-gray-500 mt-1">{notification.count} similar</p>
+                          )}
                           <p className="text-xs text-gray-500 mt-1">
                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </p>

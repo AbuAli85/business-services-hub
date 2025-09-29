@@ -34,6 +34,13 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+
+    /* Unified color system */
+    --primary-color: #3b82f6;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    --neutral-color: #6b7280;
   }
 
   .dark {
@@ -80,6 +87,28 @@
 }
 
 @layer components {
+  /* Standardized button styles */
+  .btn-primary {
+    background: var(--primary-color);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  /* Standardized input styles */
+  .form-input {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+
+  .form-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    outline: none;
+  }
   /* Enhanced gradient backgrounds */
   .gradient-bg-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
