@@ -46,13 +46,23 @@ export async function updateSession(req: NextRequest): Promise<NextResponse> {
   // Touch session so the helper can refresh tokens/cookies if needed
   try { 
     const { data, error } = await supabase.auth.getUser()
+    const hasUser = !!data?.user
     console.log('🔍 updateSession: Session check result:', {
-      hasUser: !!data?.user,
+      hasUser,
       userId: data?.user?.id,
       error: error?.message,
       url: req.url,
       hasBearerToken: !!authHeader
     })
+
+    // If we have a refresh token cookie but no valid session, clear auth cookies to avoid loops
+    const hasRefresh = Boolean(req.cookies.get('sb-refresh-token'))
+    if (!hasUser && hasRefresh) {
+      const cookieNames = req.cookies.getAll().map(c => c.name).filter(n => n.startsWith('sb-'))
+      for (const name of cookieNames) {
+        try { res.cookies.set({ name, value: '', path: '/', httpOnly: true, secure: true, sameSite: 'lax', maxAge: 0 }) } catch {}
+      }
+    }
   } catch (middlewareError) {
     console.log('❌ updateSession: Session check failed:', middlewareError)
   }

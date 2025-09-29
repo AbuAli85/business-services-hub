@@ -77,6 +77,18 @@ export async function middleware(req: NextRequest) {
   if (needsAuthCheck || needsApiAuthCheck) {
     const auth = new AuthMiddleware()
     res = await auth.handleRequest(req)
+
+    // If auth middleware indicates missing/invalid session while refresh cookie exists, clear and redirect to sign-in
+    const hasRefresh = Boolean(req.cookies.get('sb-refresh-token'))
+    if (hasRefresh && res.status === 307) {
+      const cleared = NextResponse.redirect(new URL('/auth/sign-in', req.url))
+      for (const c of req.cookies.getAll()) {
+        if (c.name.startsWith('sb-')) {
+          try { cleared.cookies.set({ name: c.name, value: '', path: '/', httpOnly: true, secure: true, sameSite: 'lax', maxAge: 0 }) } catch {}
+        }
+      }
+      return cleared
+    }
   }
 
   // CORS: only allow your app origin
