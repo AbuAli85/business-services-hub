@@ -17,6 +17,11 @@ export interface BookingFiltersState {
   providers: string[]
   serviceCategories: string[]
   duration: 'all' | 'short' | 'medium' | 'long'
+  paymentStatus?: 'all' | 'paid' | 'pending' | 'overdue' | 'partial'
+  invoiceStatus?: 'all' | 'generated' | 'sent' | 'viewed' | 'downloaded'
+  clientType?: 'all' | 'individual' | 'business' | 'government' | 'nonprofit'
+  priority?: 'all' | 'low' | 'medium' | 'high' | 'urgent'
+  tags?: string[]
 }
 
 export interface BookingFiltersProps {
@@ -30,6 +35,7 @@ export function BookingFilters({ value, onChange, onClear, categories = [] }: Bo
   return (
     <Card>
       <CardContent className="p-4 space-y-4">
+        {/* Date Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label className="mb-1 block">Date type</Label>
@@ -54,6 +60,7 @@ export function BookingFilters({ value, onChange, onClear, categories = [] }: Bo
           </div>
         </div>
 
+        {/* Financial Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label className="mb-1 block">Min amount</Label>
@@ -79,6 +86,55 @@ export function BookingFilters({ value, onChange, onClear, categories = [] }: Bo
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label className="mb-1 block">Payment Status</Label>
+            <FilterDropdown
+              label="Payment"
+              options={[
+                { label: 'All', value: 'all' },
+                { label: 'Paid', value: 'paid' },
+                { label: 'Pending', value: 'pending' },
+                { label: 'Overdue', value: 'overdue' },
+                { label: 'Partial', value: 'partial' }
+              ]}
+              value={value.paymentStatus || 'all'}
+              onChange={(v)=> onChange({ ...value, paymentStatus: (v as any) || 'all' })}
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block">Invoice Status</Label>
+            <FilterDropdown
+              label="Invoice"
+              options={[
+                { label: 'All', value: 'all' },
+                { label: 'Generated', value: 'generated' },
+                { label: 'Sent', value: 'sent' },
+                { label: 'Viewed', value: 'viewed' },
+                { label: 'Downloaded', value: 'downloaded' }
+              ]}
+              value={value.invoiceStatus || 'all'}
+              onChange={(v)=> onChange({ ...value, invoiceStatus: (v as any) || 'all' })}
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block">Priority</Label>
+            <FilterDropdown
+              label="Priority"
+              options={[
+                { label: 'All', value: 'all' },
+                { label: 'Low', value: 'low' },
+                { label: 'Medium', value: 'medium' },
+                { label: 'High', value: 'high' },
+                { label: 'Urgent', value: 'urgent' }
+              ]}
+              value={value.priority || 'all'}
+              onChange={(v)=> onChange({ ...value, priority: (v as any) || 'all' })}
+            />
+          </div>
+        </div>
+
+        {/* Categories & Tags */}
         <div>
           <Label className="mb-1 block">Service Categories</Label>
           <FilterDropdown
@@ -88,6 +144,11 @@ export function BookingFilters({ value, onChange, onClear, categories = [] }: Bo
             onChange={(v)=> onChange({ ...value, serviceCategories: (v as string[]) || [] })}
             multi
           />
+        </div>
+
+        <div>
+          <Label className="mb-1 block">Project Tags</Label>
+          <Input placeholder="Enter tags comma-separated" value={(value.tags || []).join(', ')} onChange={(e)=> onChange({ ...value, tags: e.target.value.split(',').map(s=> s.trim()).filter(Boolean) })} />
         </div>
 
         <div className="flex items-center justify-end gap-2">

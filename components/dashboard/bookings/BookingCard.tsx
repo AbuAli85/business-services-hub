@@ -15,6 +15,7 @@ export interface BookingCardProps {
   isSelected?: boolean
   onSelect?: (checked: boolean) => void
   onQuickAction?: (action: string, bookingId: string) => void
+  density?: 'compact' | 'comfortable' | 'spacious'
 }
 
 function getStatusBadge(status: string) {
@@ -38,12 +39,12 @@ function getStatusBadge(status: string) {
   return <Badge variant="outline" className={`text-xs font-semibold ${map[key].className}`}>{map[key].label}</Badge>
 }
 
-export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: BookingCardProps) {
+export function BookingCard({ booking, isSelected, onSelect, onQuickAction, density = 'comfortable' }: BookingCardProps) {
   const progressPct = Math.max(0, Math.min(100, Number(booking?.progress?.percentage ?? booking?.progress_percentage ?? 0)))
 
   return (
     <Card className="border rounded-xl">
-      <CardContent className="p-4">
+      <CardContent className={density === 'compact' ? 'p-3' : density === 'spacious' ? 'p-6' : 'p-4'}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {typeof onSelect === 'function' && (
@@ -81,7 +82,7 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
           </div>
         </div>
 
-        <div className="mt-3">
+        <div className={density === 'compact' ? 'mt-2' : 'mt-3'}>
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-muted-foreground">Progress</span>
             <span className="font-medium">{progressPct}% Complete</span>
@@ -89,7 +90,7 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
           <Progress value={progressPct} className="h-2" />
         </div>
 
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <div className={`${density === 'compact' ? 'mt-2 gap-2 text-xs' : density === 'spacious' ? 'mt-4 gap-4 text-sm' : 'mt-3 gap-3 text-sm'} grid grid-cols-1 sm:grid-cols-3`}>
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span>{(() => {
@@ -107,7 +108,7 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className={density === 'compact' ? 'mt-3' : 'mt-4'}>
           <QuickActions bookingId={String(booking.id)} onAction={(a)=> onQuickAction?.(a, String(booking.id))} />
         </div>
       </CardContent>

@@ -16,20 +16,20 @@ export interface StatusCounts {
 
 export function StatusFilter({
   currentStatus,
-  onStatusChange,
+  onStatusChangeAction,
   counts
 }: {
   currentStatus: BookingStatus
-  onStatusChange: (status: BookingStatus) => void
+  onStatusChangeAction: (status: BookingStatus) => void
   counts?: Partial<StatusCounts>
 }) {
   const options = [
     { label: `All Bookings${counts?.all != null ? ` (${counts.all})` : ''}`, value: 'all' },
-    { label: `Pending${counts?.pending != null ? ` (${counts.pending})` : ''}`, value: 'pending' },
-    { label: `Confirmed${counts?.confirmed != null ? ` (${counts.confirmed})` : ''}`, value: 'confirmed' },
-    { label: `In Progress${counts?.in_progress != null ? ` (${counts.in_progress})` : ''}`, value: 'in_progress' },
-    { label: `Completed${counts?.completed != null ? ` (${counts.completed})` : ''}`, value: 'completed' },
-    { label: `Cancelled${counts?.cancelled != null ? ` (${counts.cancelled})` : ''}`, value: 'cancelled' }
+    { label: `Pending 🟡${counts?.pending != null ? ` (${counts.pending})` : ''}`, value: 'pending' },
+    { label: `Confirmed 🟢${counts?.confirmed != null ? ` (${counts.confirmed})` : ''}`, value: 'confirmed' },
+    { label: `In Progress 🔵${counts?.in_progress != null ? ` (${counts.in_progress})` : ''}`, value: 'in_progress' },
+    { label: `Completed ✅${counts?.completed != null ? ` (${counts.completed})` : ''}`, value: 'completed' },
+    { label: `Cancelled 🔴${counts?.cancelled != null ? ` (${counts.cancelled})` : ''}`, value: 'cancelled' }
   ]
 
   return (
@@ -37,7 +37,7 @@ export function StatusFilter({
       label="Status"
       options={options}
       value={currentStatus}
-      onChange={(v) => onStatusChange((v as BookingStatus) || 'all')}
+      onChange={(v) => onStatusChangeAction((v as BookingStatus) || 'all')}
     />
   )
 }

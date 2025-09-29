@@ -20,13 +20,17 @@ export function BulkActions({ selectedCount, onClear, onExport, onUpdateStatus, 
     <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border rounded-lg p-3 flex flex-wrap items-center gap-2">
       <div className="font-medium mr-2"><CheckSquare className="inline h-4 w-4 mr-1" /> {selectedCount} selected</div>
       <div className="flex flex-wrap items-center gap-2">
+        {/* Export */}
         <Button size="sm" variant="outline" onClick={() => onExport?.('csv')}><Download className="h-4 w-4 mr-1" /> Export CSV</Button>
         <Button size="sm" variant="outline" onClick={() => onExport?.('pdf')}><Download className="h-4 w-4 mr-1" /> Export PDF</Button>
+        {/* Status Management */}
         <Button size="sm" variant="outline" onClick={() => onUpdateStatus?.('confirmed')}><CheckSquare className="h-4 w-4 mr-1" /> Mark Confirmed</Button>
         <Button size="sm" variant="outline" onClick={() => onUpdateStatus?.('in_progress')}><CheckSquare className="h-4 w-4 mr-1" /> Mark In Progress</Button>
         <Button size="sm" variant="outline" onClick={() => onUpdateStatus?.('completed')}><CheckSquare className="h-4 w-4 mr-1" /> Mark Completed</Button>
-        <Button size="sm" variant="outline" onClick={() => onNotify?.()}><Bell className="h-4 w-4 mr-1" /> Notify</Button>
-        <Button size="sm" variant="outline" onClick={() => onReport?.()}><FileText className="h-4 w-4 mr-1" /> Report</Button>
+        {/* Communication */}
+        <Button size="sm" variant="outline" onClick={() => onNotify?.()}><Bell className="h-4 w-4 mr-1" /> Send Notifications</Button>
+        {/* Admin */}
+        <Button size="sm" variant="outline" onClick={() => onReport?.()}><FileText className="h-4 w-4 mr-1" /> Generate Report</Button>
         <Button size="sm" variant="outline" onClick={() => onArchive?.()}><Archive className="h-4 w-4 mr-1" /> Archive</Button>
         <Button size="sm" variant="ghost" onClick={onClear}>Clear</Button>
       </div>

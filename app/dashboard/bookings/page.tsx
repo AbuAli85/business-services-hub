@@ -92,6 +92,15 @@ export default function BookingsPage() {
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set())
   const lastRefreshTimeRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+	const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table'>(() => {
+		if (typeof window === 'undefined') return 'card'
+		return (localStorage.getItem('bookings:viewMode') as any) || 'card'
+	})
+	const [density, setDensity] = useState<'compact' | 'comfortable' | 'spacious'>(() => {
+		if (typeof window === 'undefined') return 'comfortable'
+		return (localStorage.getItem('bookings:density') as any) || 'comfortable'
+	})
+	const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
 
   // Invoice lookup - moved up to avoid hoisting issues
   const invoiceByBooking = useMemo(() => {
@@ -394,6 +403,7 @@ export default function BookingsPage() {
       setDataLoading(false)
       console.log('✅ Data loading complete')
       isLoadingRef.current = false
+		  setLastUpdatedAt(Date.now())
     }
   }, [user, userRole, currentPage, pageSize, statusFilter, debouncedQuery, sortBy, sortOrder, router])
 
@@ -506,6 +516,17 @@ export default function BookingsPage() {
       }
     }
   }, [refreshTrigger, user, userRole, userLoading, realtimeReady])
+
+	// Persist view and density preferences
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		try { localStorage.setItem('bookings:viewMode', viewMode) } catch {}
+	}, [viewMode])
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		try { localStorage.setItem('bookings:density', density) } catch {}
+	}, [density])
 
   // Debounce searchQuery for smoother UX
   useEffect(() => {
@@ -1161,66 +1182,92 @@ export default function BookingsPage() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Page Title */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
-      </div>
-
-      {/* Summary header */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold mb-1">My Service Bookings</h2>
-            <p className="text-blue-200 text-sm">Track and manage your service bookings</p>
-            {summary && (
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm">
-                <div>
-                  <span className="text-blue-100">Success Rate:</span>{' '}
-                  <span className="font-semibold">
-                    {summary.completed_count}/{summary.total_projects}{' '}
-                    ({summary.total_projects > 0 ? ((summary.completed_count / summary.total_projects) * 100).toFixed(1) : '0.0'}%)
-                  </span>
-                </div>
-                <div>
-                  <span className="text-blue-100">Revenue:</span>{' '}
-                  <span className="font-semibold">{formatOMR(summary.total_revenue)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-          <Button 
-            variant="secondary"
-            size="sm"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            onClick={loadSupabaseData}
-            disabled={dataLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-2xl font-bold text-white mb-1">Total Projects</div>
-            <div className="text-3xl font-bold text-white">{stats.total}</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-2xl font-bold text-white mb-1">Delivered</div>
-            <div className="text-3xl font-bold text-white">{stats.completed}</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-2xl font-bold text-white mb-1">In Production</div>
-            <div className="text-3xl font-bold text-white">{stats.inProgress}</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-2xl font-bold text-white mb-1">Revenue (to date)</div>
-            <div className="text-3xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
-          </div>
-        </div>
-      </div>
+	  return (
+		<div className="space-y-6">
+		  {/* Enhanced Header */}
+		  <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-6 text-white shadow-lg">
+			<div className="flex items-start justify-between gap-4">
+			  <div>
+				<h1 className="text-2xl font-bold">Bookings Management</h1>
+				<p className="text-blue-200 text-sm">{getPageDescription()}</p>
+				<div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">{stats.total} total</span>
+				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">{(stats.inProgress + stats.approved)} active</span>
+				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">{stats.pending} pending</span>
+				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">Revenue {formatCurrency(stats.totalRevenue)}</span>
+				</div>
+				<div className="mt-2 text-xs text-blue-200">
+				  <span>
+					{(() => {
+					  const start = filters.dateStart
+					  const end = filters.dateEnd
+					  if (!start && !end) return 'All time'
+					  const fmt = (v: string) => new Date(v).toLocaleDateString()
+					  return `${start ? fmt(start) : '—'} to ${end ? fmt(end) : '—'}`
+					})()}
+				  </span>
+				  {lastUpdatedAt && (
+					<span className="ml-3">Last updated {new Date(lastUpdatedAt).toLocaleTimeString()} {dataLoading ? '• refreshing…' : ''}</span>
+				  )}
+				</div>
+			  </div>
+			  <div className="flex flex-col items-end gap-3">
+				<div className="flex flex-wrap gap-2">
+				  {canCreateBooking && (
+					<Button size="sm" variant="secondary" onClick={() => router.push('/dashboard/bookings/create')}>New Booking</Button>
+				  )}
+				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => console.log('Export All')}>Export All</Button>
+				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => console.log('Import Bookings')}>Import</Button>
+				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" asChild>
+					<a href="/dashboard/analytics/bookings">Analytics</a>
+				  </Button>
+				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => window.open('https://docs', '_blank')}>Help</Button>
+				  <Button 
+					variant="secondary"
+					size="sm"
+					className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+					onClick={loadSupabaseData}
+					disabled={dataLoading}
+				  >
+					<RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
+					Refresh
+				  </Button>
+				</div>
+				{/* View + Density */}
+				<div className="flex flex-wrap gap-2 text-xs">
+				  <div className="bg-white/10 p-1 rounded-md border border-white/20">
+					<button className={`px-2 py-1 rounded ${viewMode==='card'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setViewMode('card')}>Card</button>
+					<button className={`px-2 py-1 rounded ${viewMode==='calendar'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setViewMode('calendar')}>Calendar</button>
+					<button className={`px-2 py-1 rounded ${viewMode==='table'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setViewMode('table')}>Table</button>
+				  </div>
+				  <div className="bg-white/10 p-1 rounded-md border border-white/20">
+					<button className={`px-2 py-1 rounded ${density==='compact'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setDensity('compact')}>Compact</button>
+					<button className={`px-2 py-1 rounded ${density==='comfortable'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setDensity('comfortable')}>Comfortable</button>
+					<button className={`px-2 py-1 rounded ${density==='spacious'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setDensity('spacious')}>Spacious</button>
+				  </div>
+				</div>
+			  </div>
+			</div>
+			{/* KPI tiles */}
+			<div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+				<div className="text-2xl font-bold text-white mb-1">Total</div>
+				<div className="text-3xl font-bold text-white">{stats.total}</div>
+			  </div>
+			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+				<div className="text-2xl font-bold text-white mb-1">Active</div>
+				<div className="text-3xl font-bold text-white">{stats.inProgress + stats.approved}</div>
+			  </div>
+			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+				<div className="text-2xl font-bold text-white mb-1">Pending</div>
+				<div className="text-3xl font-bold text-white">{stats.pending}</div>
+			  </div>
+			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+				<div className="text-2xl font-bold text-white mb-1">Revenue</div>
+				<div className="text-3xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
+			  </div>
+			</div>
+		  </div>
 
       {/* Status Overview Cards - Matching Screenshot */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -1311,7 +1358,7 @@ export default function BookingsPage() {
       <div className="flex flex-wrap gap-2 mb-4">
         <StatusFilter
           currentStatus={statusFilter as any}
-          onStatusChange={(s) => { setStatusFilter(s as any); setCurrentPage(1) }}
+          onStatusChangeAction={(s) => { setStatusFilter(s as any); setCurrentPage(1) }}
           counts={{
             all: totalCount,
             pending: bookings.filter((b:any)=> b.status === 'pending' || b.status === 'pending_review').length,
@@ -1333,8 +1380,8 @@ export default function BookingsPage() {
         />
       </div>
 
-      {/* Toolbar: Search/Sort + Toggles */}
-      <div className="mb-6 space-y-3">
+		{/* Toolbar: Search/Sort */}
+		<div className="mb-6 space-y-3">
         <SearchAndSort
           search={searchQuery}
           onSearch={(q)=> setSearchQuery(q)}
@@ -1343,14 +1390,11 @@ export default function BookingsPage() {
           sortOrder={sortOrder}
           onSortOrder={(o)=> setSortOrder(o)}
         />
-        <div className="flex items-center gap-2">
-          <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={()=> setShowFilters(v=>!v)}>
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-          </Button>
-          <Button variant={showCalendar ? 'default' : 'outline'} size="sm" onClick={()=> setShowCalendar(v=>!v)}>
-            {showCalendar ? 'Hide Calendar' : 'Show Calendar'}
-          </Button>
-        </div>
+			<div className="flex items-center gap-2">
+			  <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={()=> setShowFilters(v=>!v)}>
+				{showFilters ? 'Hide Filters' : 'Show Filters'}
+			  </Button>
+			</div>
       </div>
 
       {/* Filters panel */}
@@ -1365,12 +1409,12 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Calendar */}
-      {showCalendar && (
-        <div className="mb-6">
-          <BookingCalendar bookings={filteredBookings} onDateSelect={(d)=> console.log('date', d)} />
-        </div>
-      )}
+		{/* Calendar (via view toggle) */}
+		{viewMode === 'calendar' && (
+		  <div className="mb-6">
+			<BookingCalendar bookings={filteredBookings} onDateSelect={(d)=> console.log('date', d)} />
+		  </div>
+		)}
 
       {/* Bulk Actions Toolbar */}
       <BulkActions
@@ -1400,8 +1444,8 @@ export default function BookingsPage() {
         onArchive={()=> console.log('Archive', Array.from(selectedIds))}
       />
 
-      {/* Bookings List - Matching Screenshot */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
+		{/* Bookings Content */}
+		<div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
         {/* Watermark */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-100 text-6xl font-bold opacity-5 select-none">
@@ -1417,8 +1461,30 @@ export default function BookingsPage() {
           </div>
         )}
         
-        {paginatedBookings.length > 0 ? (
-          <div className="divide-y divide-gray-100">
+			{paginatedBookings.length > 0 ? (
+			  viewMode === 'table' ? (
+				<div className="p-4">
+				  <DataTable
+					columns={[
+					  { key: 'service_title', header: 'Service', widthClass: 'w-1/4', render: (r:any) => r.service_title || r.serviceTitle },
+					  { key: 'client_name', header: 'Client', widthClass: 'w-1/5', render: (r:any) => r.client_name || r.clientName },
+					  { key: 'provider_name', header: 'Provider', widthClass: 'w-1/5', render: (r:any) => r.provider_name || r.providerName },
+					  { key: 'status', header: 'Status', widthClass: 'w-28', render: (r:any) => String(r.status) },
+					  { key: 'amount', header: 'Amount', widthClass: 'w-24', render: (r:any) => `${r.currency||'OMR'} ${Number(r.totalAmount||r.amount||0).toLocaleString()}` },
+					  { key: 'created_at', header: 'Created', widthClass: 'w-32', render: (r:any) => {
+						const d = new Date(r.created_at || r.createdAt); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString()
+					  } },
+					]}
+					data={paginatedBookings as any}
+					page={currentPage}
+					pageSize={pageSize}
+					total={totalCount}
+					onPageChange={(p)=> setCurrentPage(Math.max(1, Math.min(p, totalPages)))}
+					className={density === 'compact' ? 'text-xs' : density === 'spacious' ? 'text-base' : 'text-sm'}
+				  />
+				</div>
+			  ) : (
+			  <div className="divide-y divide-gray-100">
               {/* Bulk bar */}
               {selectedIds.size > 0 && (
                 <div className="sticky top-0 z-20 bg-blue-50 border-b border-blue-200 px-4 py-3 flex items-center justify-between">
@@ -1475,30 +1541,33 @@ export default function BookingsPage() {
                 />
                 <span className="text-sm text-gray-500">Select all on this page</span>
               </div>
-              {paginatedBookings.map((booking) => (
-                <div key={booking.id} className="mb-3">
-                  <BookingCard
-                    booking={booking}
-                    isSelected={selectedIds.has(booking.id)}
-                    onSelect={(checked) => {
-                      setSelectedIds(prev => {
-                        const next = new Set(prev)
-                        if (checked) next.add(booking.id); else next.delete(booking.id)
-                        return next
-                      })
-                    }}
-                    onQuickAction={(action) => {
-                      if (action === 'view_details') {
-                        setDetailBooking(booking)
-                        setDetailOpen(true)
-                        return
-                      }
-                      console.log('quick-action', action, booking.id)
-                    }}
-                  />
-                </div>
-              ))}
+				  {paginatedBookings.map((booking) => (
+					<div key={booking.id} className="mb-3">
+					  <BookingCard
+						booking={booking}
+						isSelected={selectedIds.has(booking.id)}
+						onSelect={(checked) => {
+						  setSelectedIds(prev => {
+							const next = new Set(prev)
+							if (checked) next.add(booking.id); else next.delete(booking.id)
+							return next
+						  })
+						}}
+						onQuickAction={(action) => {
+						  if (action === 'view_details') {
+							setDetailBooking(booking)
+							setDetailOpen(true)
+							return
+						  }
+						  console.log('quick-action', action, booking.id)
+						}}
+						// density affects paddings inside card
+						density={density}
+					  />
+					</div>
+				  ))}
             </div>
+			  )
           ) : (
             <div className="text-center py-12">
               <div className="flex flex-col items-center space-y-4">
@@ -1535,6 +1604,7 @@ export default function BookingsPage() {
               onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               onGoTo={(p) => setCurrentPage(p)}
+            onPageSizeChange={(size)=> { setPageSize(size); setCurrentPage(1) }}
             />
           </CardContent>
         </Card>
