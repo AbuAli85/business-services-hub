@@ -708,7 +708,7 @@ export function SimpleMilestones({
                     </div>
                   )}
 
-                  {userRole === 'client' && (milestone.status === 'in_progress' || milestone.status === 'completed') && (
+                  {userRole === 'client' && (milestone.status === 'in_progress' || milestone.status === 'completed') && (!latestApproval || latestApproval.status !== 'approved') && (
                     <div className="mt-4 flex items-center space-x-2">
                       <Button
                         variant="outline"

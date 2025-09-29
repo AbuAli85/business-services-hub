@@ -739,8 +739,9 @@ function ClientMilestoneCard({
   const tasks = milestone.tasks || []
   const completedTasks = tasks.filter(t => t.status === 'completed').length
   const taskProgress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
-  const latestApproval = approvals[0]
-  const canApprove = milestone.status === 'completed' && (!latestApproval || latestApproval.status === 'pending')
+  const latestApproval = approvals.length > 0 ? approvals[approvals.length - 1] : undefined
+  const canApprove = (milestone.status === 'completed' || milestone.status === 'in_progress') 
+    && (!latestApproval || latestApproval.status !== 'approved')
 
   return (
     <Card className={`${isOverdue ? 'border-red-200 bg-red-50' : ''}`}>
