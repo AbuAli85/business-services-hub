@@ -41,6 +41,9 @@ import { DataTable } from '@/components/dashboard/DataTable'
 import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
 import { StatusFilter } from '@/components/dashboard/bookings/StatusFilter'
 import { BookingCard } from '@/components/dashboard/bookings/BookingCard'
+import { ImprovedBookingCard } from '@/components/dashboard/bookings/ImprovedBookingCard'
+import { StatusBadge } from '@/components/dashboard/bookings/StatusBadge'
+import { AmountDisplay } from '@/components/dashboard/bookings/AmountDisplay'
 import { BulkActions } from '@/components/dashboard/bookings/BulkActions'
 import { SearchAndSort } from '@/components/dashboard/bookings/SearchAndSort'
 import { BookingFilters } from '@/components/dashboard/bookings/BookingFilters'
@@ -1538,7 +1541,15 @@ export default function BookingsPage() {
 					  { key: 'serviceTitle', header: 'Service', widthClass: 'w-1/4', sortable: true, render: (r:any) => r.service_title || r.serviceTitle || '—' },
 					  { key: 'clientName', header: 'Client', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.client_name || r.clientName || '—' },
 					  { key: 'providerName', header: 'Provider', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.provider_name || r.providerName || '—' },
-					  { key: 'status', header: 'Status', widthClass: 'w-28', render: (r:any) => String(r.status || '—') },
+					  { key: 'status', header: 'Status', widthClass: 'w-40', render: (r:any) => (
+						<StatusBadge
+						  status={r.status || 'pending'}
+						  approval_status={r.approval_status}
+						  progress_percentage={r.progress_percentage}
+						  hasInvoice={!!invoiceByBooking.get(String(r.id))}
+						  invoiceStatus={invoiceByBooking.get(String(r.id))?.status}
+						/>
+					  ) },
 					  { key: 'progress', header: 'Progress', widthClass: 'w-24', render: (r:any) => {
 						const pct = Math.max(0, Math.min(100, Number(r.progress_percentage ?? r.progress?.percentage ?? 0)))
 						return `${pct}%`
@@ -1547,7 +1558,16 @@ export default function BookingsPage() {
 						const inv = invoiceByBooking.get(String(r.id))
 						return inv?.status ? String(inv.status) : '—'
 					  } },
-					  { key: 'totalAmount', header: 'Amount', widthClass: 'w-24', sortable: true, render: (r:any) => `${r.currency||'OMR'} ${Number(r.totalAmount||r.amount||r.amount_cents/100||0).toLocaleString()}` },
+					  { key: 'totalAmount', header: 'Amount', widthClass: 'w-32', sortable: true, render: (r:any) => (
+						<AmountDisplay
+						  amount_cents={r.amount_cents || (r.amount ? r.amount * 100 : 0)}
+						  currency={r.currency || 'OMR'}
+						  status={r.status}
+						  invoice_status={invoiceByBooking.get(String(r.id))?.status}
+						  compact={true}
+						  showStatus={false}
+						/>
+					  ) },
 					  { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => {
 						const d = new Date(r.created_at || r.createdAt); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString()
 					  } },
@@ -1667,8 +1687,9 @@ export default function BookingsPage() {
               </div>
 				  {paginatedBookings.map((booking) => (
 					<div key={booking.id} className="mb-3">
-					  <BookingCard
+					  <ImprovedBookingCard
 						booking={booking}
+						invoice={invoiceByBooking.get(String(booking.id))}
 						isSelected={selectedIds.has(booking.id)}
 						onSelect={(checked) => {
 						  setSelectedIds(prev => {
@@ -1677,16 +1698,28 @@ export default function BookingsPage() {
 							return next
 						  })
 						}}
-						onQuickAction={(action) => {
-						  if (action === 'view_details') {
+						onQuickAction={(action, id) => {
+						  if (action === 'view') {
 							setDetailBooking(booking)
 							setDetailOpen(true)
-							return
+						  } else if (action === 'approve') {
+							approveBooking(booking.id)
+						  } else if (action === 'message') {
+							toast.success('Messaging functionality coming soon')
+						  } else if (action === 'create_invoice') {
+							toast.success('Create invoice functionality coming soon')
+						  } else if (action === 'edit') {
+							toast.success('Edit booking functionality coming soon')
+						  } else if (action === 'more_actions') {
+							toast.success('More actions menu coming soon')
 						  }
-						  console.log('quick-action', action, booking.id)
 						}}
-						// density affects paddings inside card
+						onViewDetails={(id) => {
+						  setDetailBooking(booking)
+						  setDetailOpen(true)
+						}}
 						density={density}
+						userRole={userRole}
 					  />
 					</div>
 				  ))}
