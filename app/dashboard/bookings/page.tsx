@@ -68,6 +68,42 @@ const TitleTip: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
   </div>
 )
 
+// Helper function to derive booking status
+function getDerivedStatus(booking: any, invoice?: any) {
+  // Handle completed status first
+  if (booking.status === 'completed') {
+    return 'delivered'
+  }
+  
+  // Handle in-progress status
+  if (booking.status === 'in_progress') {
+    return 'in_production'
+  }
+  
+  // Check if ready to launch (has approved invoice)
+  if (invoice && ['issued', 'paid'].includes(invoice.status)) {
+    return 'ready_to_launch'
+  }
+  
+  // Check approval status
+  if (booking.approval_status === 'approved' || booking.status === 'approved') {
+    return 'approved'
+  }
+  
+  // Handle declined/cancelled
+  if (booking.status === 'declined' || booking.approval_status === 'declined' || booking.status === 'cancelled') {
+    return 'cancelled'
+  }
+  
+  // Handle on hold
+  if (booking.status === 'on_hold') {
+    return 'on_hold'
+  }
+  
+  // Default to pending review
+  return 'pending_review'
+}
+
 export default function BookingsPage() {
   const router = useRouter()
   const [userLoading, setUserLoading] = useState(true)
@@ -1034,20 +1070,15 @@ export default function BookingsPage() {
       .filter(inv => ['issued', 'paid'].includes(inv.status))
       .reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
 
-    console.log('💰 Revenue calculation (fallback):', {
-      totalInvoices: invoices.length,
-      paidInvoices: paidInvoices.length,
-      issuedInvoices: issuedInvoices.length,
-      paidAmount: paidInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
-      issuedAmount: issuedInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0),
-      totalRevenue,
-      sampleInvoices: invoices.slice(0, 3).map(inv => ({
-        id: inv.id,
-        status: inv.status,
-        amount: inv.amount,
-        booking_id: inv.booking_id
-      }))
-    })
+    // Only log revenue calculation in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('💰 Revenue calculation (fallback):', {
+        totalInvoices: invoices.length,
+        paidInvoices: paidInvoices.length,
+        issuedInvoices: issuedInvoices.length,
+        totalRevenue
+      })
+    }
     
     const projectedBillings = bookingsData
       .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
@@ -1057,37 +1088,29 @@ export default function BookingsPage() {
     const pendingApproval = pending
     const readyToLaunch = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch').length
 
-    // Debug ready to launch calculation
-    const readyToLaunchBookings = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch')
-    console.log('🚀 Ready to Launch calculation (fallback):', {
-      totalBookings: bookingsData.length,
-      readyToLaunchCount: readyToLaunch,
-      readyToLaunchBookings: readyToLaunchBookings.map((b:any) => ({
-        id: b.id,
-        status: b.status,
-        approval_status: b.approval_status,
-        service_id: b.service_id,
-        hasInvoice: !!invoices.find(inv => inv.booking_id === b.id),
-        invoiceStatus: invoices.find(inv => inv.booking_id === b.id)?.status
-      }))
-    })
+    // Only log ready to launch calculation in development
+    if (process.env.NODE_ENV !== 'production') {
+      const readyToLaunchBookings = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch')
+      console.log('🚀 Ready to Launch calculation (fallback):', {
+        totalBookings: bookingsData.length,
+        readyToLaunchCount: readyToLaunch
+      })
+    }
 
-    console.log('📊 Stats calculation (CURRENT PAGE ONLY - INCONSISTENT ACROSS PAGES):', {
-      total,
-      completed,
-      inProgress,
-      approved,
-      pending,
-      totalRevenue,
-      projectedBillings,
-      pendingApproval,
-      readyToLaunch,
-      bookingsCount: bookingsData.length,
-      totalCountFromAPI: totalCount,
-      invoicesCount: invoices.length,
-      currentPage: currentPage,
-      warning: 'Using current page data - will be different on each page!'
-    })
+    // Only log stats calculation in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('📊 Stats calculation (FALLBACK - PAGE DATA ONLY):', {
+        total,
+        completed,
+        inProgress,
+        approved,
+        pending,
+        totalRevenue,
+        readyToLaunch,
+        bookingsCount: bookingsData.length,
+        invoicesCount: invoices.length
+      })
+    }
 
     return { 
       total, 
@@ -1809,7 +1832,15 @@ export default function BookingsPage() {
       )}
       
       {/* Detail Modal */}
-      <BookingDetailModal open={detailOpen} onOpenChange={setDetailOpen} booking={detailBooking} />
+      <BookingDetailModal 
+        open={detailOpen} 
+        onOpenChange={setDetailOpen} 
+        booking={detailBooking}
+        invoice={detailBooking ? invoiceByBooking.get(String(detailBooking.id)) : null}
+        milestones={[]} // TODO: Load milestones data
+        communications={[]} // TODO: Load communications data
+        files={[]} // TODO: Load files data
+      />
     </div>
   )
 }
