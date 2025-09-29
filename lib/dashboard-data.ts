@@ -3,6 +3,8 @@
  * Ensures consistency across all dashboard sections
  */
 
+import { getSupabaseClient } from '@/lib/supabase-client'
+
 export interface DashboardMetrics {
   totalUsers: number
   totalServices: number
@@ -200,7 +202,7 @@ class DashboardDataManager {
       await this.loadBookings()
       await this.loadInvoices()
       await this.loadMilestoneEvents()
-      await this.loadSystemEvents()
+      await this.loadSystemEvents(userId)
       
       // Calculate metrics from loaded data
       this.metrics = this.calculateMetrics()
@@ -566,40 +568,75 @@ class DashboardDataManager {
     ]
   }
 
-  // Load recent milestone events (simulated)
+  // Load recent milestone events (live from DB if available, else fallback)
   private async loadMilestoneEvents() {
-    await new Promise(resolve => setTimeout(resolve, 80))
-    this.milestoneEvents = [
-      {
-        id: 'me1',
-        milestoneId: 'm-1',
-        milestoneTitle: 'Project Planning',
-        type: 'milestone_completed',
-        status: 'completed',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
-      },
-      {
-        id: 'me2',
-        milestoneId: 'm-2',
-        milestoneTitle: 'Design Approval',
-        type: 'milestone_approved',
-        status: 'approved',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString()
-      }
-    ]
+    try {
+      const supabase = await getSupabaseClient()
+      const { data, error } = await supabase
+        .from('milestone_approvals')
+        .select('id, milestone_id, status, created_at, milestones(title)')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (error) throw error
+      const events: MilestoneEvent[] = (data || []).map((row: any) => ({
+        id: row.id,
+        milestoneId: row.milestone_id,
+        milestoneTitle: row.milestones?.title || 'Milestone',
+        type: row.status === 'approved' ? 'milestone_approved' : 'milestone_completed',
+        status: row.status === 'approved' ? 'approved' : 'completed',
+        createdAt: row.created_at
+      }))
+      this.milestoneEvents = events
+    } catch (e) {
+      // Fallback simulated
+      this.milestoneEvents = [
+        {
+          id: 'me1',
+          milestoneId: 'm-1',
+          milestoneTitle: 'Project Planning',
+          type: 'milestone_completed',
+          status: 'completed',
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
+        },
+        {
+          id: 'me2',
+          milestoneId: 'm-2',
+          milestoneTitle: 'Design Approval',
+          type: 'milestone_approved',
+          status: 'approved',
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString()
+        }
+      ]
+    }
   }
 
-  // Load system notifications (simulated)
-  private async loadSystemEvents() {
-    await new Promise(resolve => setTimeout(resolve, 80))
-    this.systemEvents = [
-      {
-        id: 'se1',
-        title: 'System Update',
-        message: 'New analytics module deployed',
-        createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString()
-      }
-    ]
+  // Load system notifications (live if available for user)
+  private async loadSystemEvents(userId?: string) {
+    try {
+      const supabase = await getSupabaseClient()
+      const query = supabase
+        .from('notifications')
+        .select('id, title, message, created_at')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      const { data, error } = userId ? await query.eq('user_id', userId) : await query
+      if (error) throw error
+      this.systemEvents = (data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title || 'Notification',
+        message: n.message || '',
+        createdAt: n.created_at
+      }))
+    } catch (e) {
+      this.systemEvents = [
+        {
+          id: 'se1',
+          title: 'System Update',
+          message: 'New analytics module deployed',
+          createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString()
+        }
+      ]
+    }
   }
 
   // Get booking by ID
