@@ -867,9 +867,9 @@ export default function BookingsPage() {
   }, [])
 
 	// Export helpers
-	const exportBookings = useCallback((format: 'csv' | 'pdf', ids?: string[]) => {
+	const exportBookings = useCallback((format: 'csv' | 'pdf' | 'xlsx', ids?: string[]) => {
 		const params = new URLSearchParams()
-		params.set('format', format === 'pdf' ? 'csv' : format)
+		params.set('format', format)
 		if (ids && ids.length > 0) params.set('ids', ids.join(','))
 		const url = `/api/bookings/export?${params.toString()}`
 		window.open(url, '_blank')
@@ -1614,6 +1614,7 @@ export default function BookingsPage() {
               onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               onGoTo={(p) => setCurrentPage(p)}
             onPageSizeChange={(size)=> { setPageSize(size); setCurrentPage(1) }}
+            pageSize={pageSize}
             />
           </CardContent>
         </Card>

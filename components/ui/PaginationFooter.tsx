@@ -12,9 +12,10 @@ export interface PaginationFooterProps {
   onNext: () => void
   onGoTo: (page: number) => void
   onPageSizeChange?: (size: number) => void
+  pageSize?: number
 }
 
-export function PaginationFooter({ page, totalPages, totalCount, pageCount, onPrev, onNext, onGoTo, onPageSizeChange }: PaginationFooterProps) {
+export function PaginationFooter({ page, totalPages, totalCount, pageCount, onPrev, onNext, onGoTo, onPageSizeChange, pageSize }: PaginationFooterProps) {
   const windowPages = (() => {
     const radius = 2
     const start = Math.max(1, page - radius)
@@ -30,7 +31,7 @@ export function PaginationFooter({ page, totalPages, totalCount, pageCount, onPr
       <div className="flex items-center gap-2" role="navigation" aria-label="Pages">
         <div className="flex items-center gap-2 mr-2">
           <label className="text-sm text-gray-600" htmlFor="per-page">Per page:</label>
-          <select id="per-page" title="Items per page" className="border rounded px-2 py-1 text-sm" onChange={(e)=> onPageSizeChange?.(parseInt(e.target.value,10))}>
+          <select id="per-page" title="Items per page" className="border rounded px-2 py-1 text-sm" value={pageSize ?? 10} onChange={(e)=> onPageSizeChange?.(parseInt(e.target.value,10))}>
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>

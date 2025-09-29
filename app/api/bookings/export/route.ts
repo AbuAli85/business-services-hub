@@ -1,6 +1,7 @@
 'use server'
 
 import { NextResponse } from 'next/server'
+import { generatePDF, generateExcel } from '@/lib/export-utils'
 import { cookies } from 'next/headers'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 
@@ -32,12 +33,27 @@ export async function GET(req: Request) {
     const format = (url.searchParams.get('format') || 'csv').toLowerCase()
     const ids = (url.searchParams.get('ids') || '').split(',').map(s => s.trim()).filter(Boolean)
 
+    // Determine role to scope data
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const userRole = profile?.role ?? user.user_metadata?.role ?? 'client'
+
     let query = supabase
       .from('bookings')
       .select('id, status, created_at, amount, currency, client_id, provider_id, title')
 
     if (ids.length > 0) {
       query = query.in('id', ids)
+    }
+
+    if (userRole === 'provider') {
+      query = query.eq('provider_id', user.id)
+    } else if (userRole === 'client') {
+      query = query.eq('client_id', user.id)
     }
 
     const { data, error } = await query
@@ -50,6 +66,48 @@ export async function GET(req: Request) {
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
           'Content-Disposition': 'attachment; filename="bookings_export.csv"'
+        }
+      })
+    }
+
+    if (format === 'pdf' || format === 'xlsx') {
+      // Minimal dataset for demo PDF/XLSX generation
+      const now = new Date().toISOString()
+      const exportPayload = {
+        booking: {
+          id: data?.[0]?.id || 'N/A',
+          title: data?.[0]?.title || 'Bookings Export',
+          status: data?.[0]?.status || 'unknown',
+          created_at: data?.[0]?.created_at || now,
+          amount: Number(data?.[0]?.amount ?? 0),
+          currency: data?.[0]?.currency || 'OMR',
+          client: { full_name: '—', email: '—' },
+          provider: { full_name: '—', email: '—' }
+        },
+        tasks: [],
+        milestones: [],
+        stats: { totalTasks: 0, completedTasks: 0, overdueTasks: 0, overallProgress: 0 }
+      } as any
+
+      if (format === 'pdf') {
+        const blob = await generatePDF(exportPayload)
+        const buf = Buffer.from(await blob.arrayBuffer())
+        return new NextResponse(buf, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="bookings_export.pdf"'
+          }
+        })
+      }
+
+      const blob = await generateExcel(exportPayload)
+      const buf = Buffer.from(await blob.arrayBuffer())
+      return new NextResponse(buf, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': 'attachment; filename="bookings_export.xlsx"'
         }
       })
     }
