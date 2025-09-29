@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -67,6 +68,8 @@ export default function BookingsPage() {
   const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectAll, setSelectAll] = useState(false)
   const [realtimeReady, setRealtimeReady] = useState(false)
   const [enableRealtime, setEnableRealtime] = useState(false) // Temporarily disable realtime
   const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set())
@@ -500,6 +503,8 @@ export default function BookingsPage() {
   // Reset to page 1 when status filter changes
   useEffect(() => {
     setCurrentPage(1)
+    setSelectedIds(new Set())
+    setSelectAll(false)
   }, [statusFilter])
 
   // Realtime subscriptions for live updates
@@ -1336,12 +1341,82 @@ export default function BookingsPage() {
         
         {paginatedBookings.length > 0 ? (
           <div className="divide-y divide-gray-100">
+              {/* Bulk bar */}
+              {selectedIds.size > 0 && (
+                <div className="sticky top-0 z-20 bg-blue-50 border-b border-blue-200 px-4 py-3 flex items-center justify-between">
+                  <div className="text-sm text-blue-800">
+                    {selectedIds.size} selected
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={async ()=>{
+                      const ids = Array.from(selectedIds)
+                      if (ids.length === 0) return
+                      const supabase = await getSupabaseClient()
+                      const { data: { session } } = await supabase.auth.getSession()
+                      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+                      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+                      const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'approve', booking_ids: ids }) })
+                      if (!res.ok) { toast.error('Bulk approve failed'); return }
+                      toast.success('Approved selected bookings')
+                      setSelectedIds(new Set())
+                      setSelectAll(false)
+                      setRefreshTrigger(v=>v+1)
+                    }}>Approve</Button>
+                    <Button size="sm" variant="outline" onClick={async ()=>{
+                      const ids = Array.from(selectedIds)
+                      if (ids.length === 0) return
+                      const supabase = await getSupabaseClient()
+                      const { data: { session } } = await supabase.auth.getSession()
+                      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+                      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+                      const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'cancel', booking_ids: ids }) })
+                      if (!res.ok) { toast.error('Bulk cancel failed'); return }
+                      toast.success('Cancelled selected bookings')
+                      setSelectedIds(new Set())
+                      setSelectAll(false)
+                      setRefreshTrigger(v=>v+1)
+                    }}>Cancel</Button>
+                    <Button size="sm" variant="ghost" onClick={()=>{ setSelectedIds(new Set()); setSelectAll(false) }}>Clear</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Header row with select all */}
+              <div className="px-4 py-2 bg-gray-50 flex items-center gap-3">
+                <Checkbox
+                  checked={selectAll}
+                  onCheckedChange={(v)=>{
+                    const checked = Boolean(v)
+                    setSelectAll(checked)
+                    if (checked) {
+                      setSelectedIds(new Set(paginatedBookings.map((b:any)=>b.id)))
+                    } else {
+                      setSelectedIds(new Set())
+                    }
+                  }}
+                />
+                <span className="text-sm text-gray-500">Select all on this page</span>
+              </div>
               {paginatedBookings.map((booking) => {
                 const invoice = getInvoiceForBooking(booking.id)
                 const derivedStatus = getDerivedStatus(booking)
                 
                 return (
                   <div key={booking.id} className="p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Checkbox
+                        checked={selectedIds.has(booking.id)}
+                        onCheckedChange={(v)=>{
+                          const checked = Boolean(v)
+                          setSelectedIds(prev=>{
+                            const next = new Set(prev)
+                            if (checked) next.add(booking.id); else next.delete(booking.id)
+                            return next
+                          })
+                        }}
+                      />
+                      <span className="text-xs text-gray-400">{selectedIds.has(booking.id) ? 'Selected' : ''}</span>
+                    </div>
                     <div className="flex items-center justify-between">
                       {/* Service Title */}
                       <div className="flex-1">
