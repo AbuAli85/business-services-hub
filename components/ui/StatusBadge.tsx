@@ -1,5 +1,44 @@
 'use client'
 
+import { Badge } from '@/components/ui/badge'
+
+export type StatusKind = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' | 'inactive' | 'active'
+
+export function normalizeStatus(status?: string | null): StatusKind {
+  const s = String(status || '').toLowerCase()
+  if (s === 'approved' || s === 'confirmed') return 'confirmed'
+  if (s === 'in_production' || s === 'in_progress') return 'in_progress'
+  if (s === 'delivered' || s === 'completed') return 'completed'
+  if (s === 'canceled' || s === 'cancelled') return 'cancelled'
+  if (s === 'on_hold') return 'on_hold'
+  if (s === 'active') return 'active'
+  if (s === 'inactive') return 'inactive'
+  return 'pending'
+}
+
+export function BookingStatusBadge({ status }: { status?: string | null }) {
+  const kind = normalizeStatus(status)
+  const map: Record<StatusKind, string> = {
+    pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    confirmed: 'bg-blue-50 text-blue-700 border-blue-200',
+    in_progress: 'bg-violet-50 text-violet-700 border-violet-200',
+    completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    cancelled: 'bg-red-50 text-red-700 border-red-200',
+    on_hold: 'bg-orange-50 text-orange-700 border-orange-200',
+    inactive: 'bg-slate-50 text-slate-700 border-slate-200',
+    active: 'bg-blue-50 text-blue-700 border-blue-200'
+  }
+  return (
+    <Badge variant="outline" className={`text-xs font-semibold ${map[kind]}`}>
+      {kind.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+    </Badge>
+  )
+}
+
+// no default export here; default export is provided by the invoice badge below
+
+'use client'
+
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { getStatusVariant, getStatusText } from '@/lib/utils/invoiceHelpers'
@@ -27,7 +66,7 @@ const statusColors = {
   cancelled: 'bg-gray-100 text-gray-600 border-gray-200'
 }
 
-export function StatusBadge({ 
+export function InvoiceStatusBadge({ 
   status, 
   className, 
   size = 'md',
@@ -72,7 +111,7 @@ interface InvoiceStatusBadgeProps {
   showIcon?: boolean
 }
 
-export function InvoiceStatusBadge({ 
+export function InvoiceStatusPill({ 
   invoice, 
   className, 
   size = 'md',
@@ -81,7 +120,7 @@ export function InvoiceStatusBadge({
   if (!invoice) return null
 
   return (
-    <StatusBadge
+    <InvoiceStatusBadge
       status={invoice.status}
       className={className}
       size={size}
@@ -89,3 +128,5 @@ export function InvoiceStatusBadge({
     />
   )
 }
+
+export default InvoiceStatusBadge

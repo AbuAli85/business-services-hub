@@ -47,6 +47,8 @@ import { BookingFilters } from '@/components/dashboard/bookings/BookingFilters'
 import { BookingCalendar } from '@/components/dashboard/bookings/BookingCalendar'
 import { BookingDetailModal } from '@/components/dashboard/bookings/BookingDetailModal'
 import { useBookingFilters, applyBookingFilters } from '@/hooks/useBookingFilters'
+import PaginationFooter from '@/components/ui/PaginationFooter'
+import { formatOMR, formatMuscatDate, formatMuscatDateTime } from '@/lib/format'
 
 // Constants
 const OMAN_TZ = 'Asia/Muscat'
@@ -1491,50 +1493,15 @@ export default function BookingsPage() {
       {totalPages > 1 && (
         <Card>
           <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-600">
-                {`Page ${currentPage} of ${totalPages} • ${totalCount} total results`}
-                <span className="text-blue-600 ml-2">
-                  (Showing {paginatedBookings.length} on this page)
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                
-                <div className="flex items-center gap-1">
-                  {pageWindow.map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className="w-8 h-8 p-0"
-                    >
-                      {page}
-                    </Button>
-                  ))}
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </div>
-            </div>
+            <PaginationFooter
+              page={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pageCount={paginatedBookings.length}
+              onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onGoTo={(p) => setCurrentPage(p)}
+            />
           </CardContent>
         </Card>
       )}

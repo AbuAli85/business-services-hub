@@ -3,6 +3,7 @@
 import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { BookingStatusBadge } from '@/components/ui/StatusBadge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Calendar, DollarSign, Clock, MoreHorizontal } from 'lucide-react'
@@ -56,7 +57,7 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
             )}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                {getStatusBadge(String(booking.status))}
+                <BookingStatusBadge status={String(booking.status)} />
                 <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-200">
                   Updated {(() => {
                     const raw = booking.updatedAt || booking.updated_at || booking.createdAt || booking.created_at

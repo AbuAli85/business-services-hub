@@ -203,3 +203,4 @@ export async function GET(request: NextRequest) {
     return withCors(jsonError(500, 'INTERNAL_ERROR', 'Internal server error'), request)
   }
 }
+
