@@ -101,6 +101,10 @@ export default function BookingsPage() {
 		return (localStorage.getItem('bookings:density') as any) || 'comfortable'
 	})
 	const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+	const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+		if (typeof window === 'undefined') return ['serviceTitle','clientName','providerName','status','progress','payment','totalAmount','createdAt','actions']
+		try { return JSON.parse(localStorage.getItem('bookings:visibleColumns') || '[]') } catch { return [] }
+	})
 
   // Invoice lookup - moved up to avoid hoisting issues
   const invoiceByBooking = useMemo(() => {
@@ -527,6 +531,11 @@ export default function BookingsPage() {
 		if (typeof window === 'undefined') return
 		try { localStorage.setItem('bookings:density', density) } catch {}
 	}, [density])
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		try { localStorage.setItem('bookings:visibleColumns', JSON.stringify(visibleColumns)) } catch {}
+	}, [visibleColumns])
 
   // Debounce searchQuery for smoother UX
   useEffect(() => {
@@ -1403,6 +1412,25 @@ export default function BookingsPage() {
 			  <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={()=> setShowFilters(v=>!v)}>
 				{showFilters ? 'Hide Filters' : 'Show Filters'}
 			  </Button>
+			  {viewMode === 'table' && (
+				<FilterDropdown
+					label="Columns"
+					options={[
+					  { label: 'Service', value: 'serviceTitle' },
+					  { label: 'Client', value: 'clientName' },
+					  { label: 'Provider', value: 'providerName' },
+					  { label: 'Status', value: 'status' },
+					  { label: 'Progress', value: 'progress' },
+					  { label: 'Payment', value: 'payment' },
+					  { label: 'Amount', value: 'totalAmount' },
+					  { label: 'Created', value: 'createdAt' },
+					  { label: 'Actions', value: 'actions' },
+					]}
+					value={visibleColumns}
+					onChange={(v)=> setVisibleColumns((v as string[]) || [])}
+					multi
+				/>
+			  )}
 			</div>
       </div>
 
@@ -1474,6 +1502,7 @@ export default function BookingsPage() {
 			  viewMode === 'table' ? (
 				<div className="p-4">
 				  <DataTable
+					stickyHeader
 					columns={[
 					  {
 						key: 'select',
@@ -1522,12 +1551,36 @@ export default function BookingsPage() {
 					  { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => {
 						const d = new Date(r.created_at || r.createdAt); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString()
 					  } },
-					  { key: 'actions', header: 'Actions', widthClass: 'w-32', render: (r:any) => (
+					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
 						  <div className="flex items-center gap-2">
 							<Button size="sm" variant="outline" onClick={()=>{ setDetailBooking(r); setDetailOpen(true) }} aria-label="View details">Details</Button>
 							{canManageBookings && r.approval_status !== 'approved' && (
 							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
 							)}
+							<Select value={String(r.status || '')} onValueChange={async (v)=>{
+							  try {
+								const supabase = await getSupabaseClient()
+								const { data: { session } } = await supabase.auth.getSession()
+								const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+								if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+								await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status: v, booking_ids: [r.id] }) })
+								setRefreshTrigger(x=>x+1)
+								toast.success('Status updated')
+							  } catch {}
+							}}>
+							  <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
+							  <SelectContent>
+								<SelectItem value="pending">Pending</SelectItem>
+								<SelectItem value="confirmed">Confirmed</SelectItem>
+								<SelectItem value="in_progress">In Progress</SelectItem>
+								<SelectItem value="completed">Completed</SelectItem>
+								<SelectItem value="cancelled">Cancelled</SelectItem>
+							  </SelectContent>
+							</Select>
+							<Button size="sm" variant="ghost" onClick={()=> {
+							  const email = r.client_email || r.client?.email || ''
+							  if (email) window.location.href = `mailto:${email}?subject=Booking%20Update&body=Hello%2C%20this%20is%20a%20gentle%20reminder%20regarding%20your%20booking%20${r.id}.`
+							}} aria-label="Send reminder">Reminder</Button>
 						  </div>
 					  ) }
 					]}

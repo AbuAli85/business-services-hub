@@ -25,6 +25,7 @@ export interface DataTableProps<T> {
   sortKey?: string
   sortDirection?: 'asc' | 'desc'
   emptyMessage?: string
+  stickyHeader?: boolean
 }
 
 export function DataTable<T extends Record<string, any>>(props: DataTableProps<T>) {
@@ -39,7 +40,8 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
     onSortChange,
     sortKey,
     sortDirection,
-    emptyMessage = 'No records found'
+    emptyMessage = 'No records found',
+    stickyHeader = false
   } = props
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -59,11 +61,11 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
   return (
     <div className={cn('w-full border rounded-lg overflow-hidden', className)}>
       <div className="w-full overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               {columns.map(col => (
-                <th key={String(col.key)} className={cn('text-left font-medium px-4 py-2 whitespace-nowrap', col.widthClass)}>
+                <th key={String(col.key)} className={cn('text-left font-medium px-4 py-2 whitespace-nowrap', col.widthClass, stickyHeader ? 'sticky top-0 z-10 bg-slate-50' : '')}>
                   <button
                     type="button"
                     className={cn('inline-flex items-center gap-1', col.sortable ? 'hover:underline' : '')}
