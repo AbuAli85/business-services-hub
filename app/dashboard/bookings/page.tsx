@@ -866,6 +866,15 @@ export default function BookingsPage() {
     }
   }, [])
 
+	// Export helpers
+	const exportBookings = useCallback((format: 'csv' | 'pdf', ids?: string[]) => {
+		const params = new URLSearchParams()
+		params.set('format', format === 'pdf' ? 'csv' : format)
+		if (ids && ids.length > 0) params.set('ids', ids.join(','))
+		const url = `/api/bookings/export?${params.toString()}`
+		window.open(url, '_blank')
+	}, [])
+
   // Safely resolve and format dates regardless of field naming or value shape
   const getCreatedAtTimestamp = useCallback((record: any): number => {
     const raw = record?.createdAt ?? record?.created_at ?? record?.created_at_utc ?? record?.created_at_iso
@@ -1216,7 +1225,7 @@ export default function BookingsPage() {
 				  {canCreateBooking && (
 					<Button size="sm" variant="secondary" onClick={() => router.push('/dashboard/bookings/create')}>New Booking</Button>
 				  )}
-				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => console.log('Export All')}>Export All</Button>
+				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => exportBookings('csv')}>Export All</Button>
 				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => console.log('Import Bookings')}>Import</Button>
 				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" asChild>
 					<a href="/dashboard/analytics/bookings">Analytics</a>
@@ -1420,7 +1429,7 @@ export default function BookingsPage() {
       <BulkActions
         selectedCount={selectedIds.size}
         onClear={() => { setSelectedIds(new Set()); setSelectAll(false) }}
-        onExport={(fmt)=> console.log('Export', fmt, Array.from(selectedIds))}
+        onExport={(fmt)=> exportBookings(fmt, Array.from(selectedIds) as string[])}
         onUpdateStatus={async (status)=> {
           const ids = Array.from(selectedIds)
           if (ids.length === 0) return

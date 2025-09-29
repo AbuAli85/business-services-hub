@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export interface BookingFiltersState {
   dateType: 'created' | 'start' | 'end'
@@ -32,6 +33,42 @@ export interface BookingFiltersProps {
 }
 
 export function BookingFilters({ value, onChange, onClear, categories = [] }: BookingFiltersProps) {
+  const [clientQuery, setClientQuery] = React.useState('')
+  const [providerQuery, setProviderQuery] = React.useState('')
+  const [clientResults, setClientResults] = React.useState<any[]>([])
+  const [providerResults, setProviderResults] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!clientQuery) { setClientResults([]); return }
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+        const res = await fetch(`/api/profiles/search?q=${encodeURIComponent(clientQuery)}&role=client`, { headers })
+        const json = await res.json()
+        setClientResults(json.results || [])
+      } catch {}
+    }, 250)
+    return () => clearTimeout(t)
+  }, [clientQuery])
+
+  React.useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!providerQuery) { setProviderResults([]); return }
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+        const res = await fetch(`/api/profiles/search?q=${encodeURIComponent(providerQuery)}&role=provider`, { headers })
+        const json = await res.json()
+        setProviderResults(json.results || [])
+      } catch {}
+    }, 250)
+    return () => clearTimeout(t)
+  }, [providerQuery])
   return (
     <Card>
       <CardContent className="p-4 space-y-4">
@@ -131,6 +168,38 @@ export function BookingFilters({ value, onChange, onClear, categories = [] }: Bo
               value={value.priority || 'all'}
               onChange={(v)=> onChange({ ...value, priority: (v as any) || 'all' })}
             />
+          </div>
+        </div>
+
+        {/* Client & Provider Autocomplete */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="mb-1 block">Client</Label>
+            <Input placeholder="Search clients" value={clientQuery} onChange={(e)=> setClientQuery(e.target.value)} />
+            {clientResults.length > 0 && (
+              <div className="mt-1 border rounded p-2 max-h-40 overflow-auto text-sm bg-white">
+                {clientResults.map(c => (
+                  <button key={c.id} className="block w-full text-left px-2 py-1 hover:bg-slate-50 rounded" onClick={()=> {
+                    setClientQuery(c.full_name || c.email)
+                    onChange({ ...value, clients: Array.from(new Set([...(value.clients||[]), c.id])) })
+                  }}>{c.full_name || c.email}</button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <Label className="mb-1 block">Provider</Label>
+            <Input placeholder="Search providers" value={providerQuery} onChange={(e)=> setProviderQuery(e.target.value)} />
+            {providerResults.length > 0 && (
+              <div className="mt-1 border rounded p-2 max-h-40 overflow-auto text-sm bg-white">
+                {providerResults.map(p => (
+                  <button key={p.id} className="block w-full text-left px-2 py-1 hover:bg-slate-50 rounded" onClick={()=> {
+                    setProviderQuery(p.full_name || p.email)
+                    onChange({ ...value, providers: Array.from(new Set([...(value.providers||[]), p.id])) })
+                  }}>{p.full_name || p.email}</button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
