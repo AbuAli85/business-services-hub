@@ -181,7 +181,21 @@ export default function DashboardPage() {
       status: 'completed'
     }))
 
-  const unifiedActivity = [...recentActivity, ...paymentActivity]
+  // Milestone approvals/completions
+  // Using bookings to infer milestone-related events requires API; here we demonstrate structure with available data
+  // If you load milestones into useDashboardData, map them similarly below
+  const milestoneActivity: Array<{ id: string; type: string; description: string; timestamp: any; status: string }> = []
+
+  // System notifications (if available via a hook/service)
+  // For now, we skip server fetch here to avoid blocking build; can be wired to notificationService
+  const systemActivity: Array<{ id: string; type: string; description: string; timestamp: any; status: string }> = []
+
+  const unifiedActivity = [
+    ...recentActivity,
+    ...paymentActivity,
+    ...milestoneActivity,
+    ...systemActivity
+  ]
     .sort((a, b) => new Date(b.timestamp as any).getTime() - new Date(a.timestamp as any).getTime())
 
   const upcomingBookings = bookings
