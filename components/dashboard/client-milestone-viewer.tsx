@@ -167,13 +167,26 @@ export function ClientMilestoneViewer({
 
     try {
       setIsSubmitting(true)
-      
-      // TODO: Create API endpoint for adding comments
-      console.log('Comment functionality disabled - no API endpoint available')
-      toast.info('Comment functionality coming soon')
+      // Create milestone comment via API
+      const res = await fetch('/api/milestones/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          milestone_id: milestoneId,
+          content: newComment,
+          comment_type: 'general'
+        })
+      })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(result?.error || 'Failed to add comment')
+
+      toast.success('Comment added successfully')
       setNewComment('')
       setShowCommentDialog(false)
       setSelectedMilestone(null)
+      // Reload to reflect new comment
+      await loadData()
     } finally {
       setIsSubmitting(false)
     }
@@ -185,13 +198,27 @@ export function ClientMilestoneViewer({
     
     try {
       setIsSubmitting(true)
-      
-      // TODO: Create API endpoint for approvals
-      console.log('Approval functionality disabled - no API endpoint available')
-      toast.info('Approval functionality coming soon')
+      // Approve or reject milestone via API
+      const action = status === 'approved' ? 'approve' : 'reject'
+      const res = await fetch('/api/milestones/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          milestone_id: milestoneId,
+          action,
+          feedback: approvalFeedback || ''
+        })
+      })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(result?.error || `Failed to ${action} milestone`)
+
+      toast.success(`Milestone ${status} successfully`)
       setApprovalFeedback('')
       setShowApprovalDialog(false)
       setSelectedMilestone(null)
+      // Reload to reflect updated status
+      await loadData()
     } finally {
       setIsSubmitting(false)
     }
