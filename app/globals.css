@@ -109,6 +109,29 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     outline: none;
   }
+
+  /* Validation states */
+  .is-valid {
+    border-color: var(--color-success) !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+  }
+  .is-error {
+    border-color: var(--color-error) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+  }
+  .is-warning {
+    border-color: var(--color-warning) !important;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important;
+  }
+
+  .form-help {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+  .form-error {
+    font-size: 0.85rem;
+    color: var(--color-error);
+  }
   /* Enhanced gradient backgrounds */
   .gradient-bg-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

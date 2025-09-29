@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoUpload } from '@/components/ui/logo-upload'
+import { calculateExperienceYears } from '@/lib/metrics'
 
 interface ProviderProfile {
   id: string
@@ -474,7 +475,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <Briefcase className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="font-medium">{profile?.experience_years || 0} years</p>
+                    <p className="font-medium">{calculateExperienceYears(profile?.created_at, profile?.experience_years)} years</p>
                     <p className="text-sm text-gray-500">Experience</p>
                   </div>
                 </div>

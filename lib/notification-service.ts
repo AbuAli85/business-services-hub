@@ -52,6 +52,39 @@ export class NotificationService {
     expiresAt?: string
   ): Promise<Notification> {
     const supabase = await this.getSupabase()
+    // Deduplication: if a very similar unread notification exists recently, update it instead of inserting
+    try {
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+      const { data: existingList } = await supabase
+        .from('notifications')
+        .select('id, data, created_at')
+        .eq('user_id', userId)
+        .eq('type', type)
+        .eq('title', title)
+        .eq('message', message)
+        .eq('read', false)
+        .gte('created_at', sixHoursAgo)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      const existing = existingList?.[0]
+      if (existing?.id) {
+        const currentCount = (existing.data?.duplicate_count as number) || 1
+        const mergedData = { ...(existing.data || {}), ...(data || {}), duplicate_count: currentCount + 1 }
+        const { data: updated, error: updErr } = await supabase
+          .from('notifications')
+          .update({ data: mergedData, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+          .select()
+          .single()
+        if (!updErr && updated) {
+          return updated
+        }
+      }
+    } catch (e) {
+      // Best-effort dedupe; continue to create a new notification on failure
+      console.warn('Notification dedupe failed, proceeding to insert:', e)
+    }
     
     // Check if user wants this type of notification
     const shouldSend = await this.shouldSendNotification(userId, type)

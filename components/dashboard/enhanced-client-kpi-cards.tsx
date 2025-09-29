@@ -20,6 +20,7 @@ import {
   Clock,
   MessageSquare
 } from 'lucide-react'
+import { calculateCompletionRate } from '@/lib/metrics'
 
 interface KPICardProps {
   title: string
@@ -139,10 +140,7 @@ export function EnhancedClientKPIGrid({ data }: KPIGridProps) {
     })}`
   }
 
-  const calculateSuccessRate = () => {
-    if (data.totalBookings === 0) return 0
-    return Math.round((data.completedBookings / data.totalBookings) * 100)
-  }
+  const completionRate = calculateCompletionRate({ completed: data.completedBookings, total: data.totalBookings })
 
   const calculateMonthlyGrowth = () => {
     // Simple calculation - in real app, compare with previous month
@@ -173,22 +171,24 @@ export function EnhancedClientKPIGrid({ data }: KPIGridProps) {
         />
         
         <EnhancedKPICard
-          title="Success Rate"
-          value={`${calculateSuccessRate()}%`}
+          title="Project Completion Rate"
+          value={`${completionRate}%`}
           icon={CheckCircle}
           tooltip="Percentage of completed bookings"
           className="bg-gradient-to-br from-purple-50 to-violet-100 border-purple-200"
           gradient="from-purple-500 to-violet-600"
         />
         
-        <EnhancedKPICard
-          title="Average Rating"
-          value={data.averageRating ? `${data.averageRating.toFixed(1)} ★` : 'N/A'}
-          icon={Star}
-          tooltip="Average rating from your reviews"
-          className="bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-200"
-          gradient="from-yellow-500 to-amber-600"
-        />
+        {data.totalReviews > 0 && data.averageRating > 0 ? (
+          <EnhancedKPICard
+            title="Average Rating"
+            value={`${data.averageRating.toFixed(1)} / 5`}
+            icon={Star}
+            tooltip="Average rating from your reviews"
+            className="bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-200"
+            gradient="from-yellow-500 to-amber-600"
+          />
+        ) : null}
       </div>
     </div>
   )

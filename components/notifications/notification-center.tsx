@@ -40,6 +40,10 @@ interface NotificationCenterProps {
   className?: string
 }
 
+interface GroupedNotification extends Notification {
+  _groupCount?: number
+}
+
 export function NotificationCenter({ userId, className = '' }: NotificationCenterProps) {
   const { notifications, loading, error, refresh } = useRealtimeNotifications({ userId })
   const [stats, setStats] = useState<NotificationStats | null>(null)
@@ -52,8 +56,8 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
     loadStats()
   }, [userId])
 
-  // Filter notifications based on active tab and filters
-  const filteredNotifications = React.useMemo(() => {
+  // Group + filter notifications based on active tab and filters
+  const filteredNotifications = React.useMemo<GroupedNotification[]>(() => {
     let filtered = notifications
 
     // Apply tab filter
@@ -81,7 +85,26 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
       )
     }
 
-    return filtered
+    // Group similar notifications by a stable key and aggregate counts
+    const groups = new Map<string, { key: string; latest: Notification; count: number }>()
+    for (const n of filtered) {
+      const key = `${n.type}|${n.priority}|${n.title}|${n.message}`
+      if (!groups.has(key)) {
+        groups.set(key, { key, latest: n, count: (n as any)?.data?.duplicate_count || 1 })
+      } else {
+        const g = groups.get(key)!
+        // keep the most recent as representative, add counts
+        const newer = new Date(n.created_at) > new Date(g.latest.created_at) ? n : g.latest
+        const extra = ((n as any)?.data?.duplicate_count || 1)
+        groups.set(key, { key, latest: newer, count: g.count + extra })
+      }
+    }
+    // Transform back to list with a count
+    const groupedList: GroupedNotification[] = Array.from(groups.values())
+      .sort((a, b) => new Date(b.latest.created_at).getTime() - new Date(a.latest.created_at).getTime())
+      .map(g => ({ ...(g.latest as Notification), _groupCount: g.count }))
+
+    return groupedList
   }, [notifications, activeTab, filters])
 
   const loadNotifications = async () => {
@@ -450,7 +473,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
                 </CardContent>
               </Card>
             ) : (
-              filteredNotifications.map((notification) => (
+              filteredNotifications.map((notification: any) => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
@@ -471,7 +494,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 }
 
 interface NotificationItemProps {
-  notification: Notification
+  notification: GroupedNotification
   isSelected: boolean
   onSelect: (checked: boolean) => void
   onMarkAsRead: () => void
@@ -502,7 +525,7 @@ function NotificationItem({
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1">
                   {getPriorityIcon(notification.priority)}
                   <h3 className={`text-sm font-medium ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
                     {notification.title}
@@ -510,6 +533,11 @@ function NotificationItem({
                   <Badge className={getPriorityColor(notification.priority)}>
                     {notification.priority}
                   </Badge>
+                {notification._groupCount && notification._groupCount > 1 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {notification._groupCount} similar
+                  </Badge>
+                )}
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
                 <div className="flex items-center gap-4 text-xs text-gray-500">

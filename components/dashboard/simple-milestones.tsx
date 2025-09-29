@@ -28,6 +28,9 @@ import { Task, Milestone, Comment, UserRole, MilestoneApproval } from '@/types/p
 import { ProgressDataService } from '@/lib/progress-data-service'
 import { SmartTaskGenerator } from './smart-task-generator'
 import { SmartMilestoneTemplates } from './smart-milestone-templates'
+import { useMilestoneFilters } from '@/components/dashboard/milestones/useMilestoneFilters'
+import MilestoneFilters from '@/components/dashboard/milestones/MilestoneFilters'
+import MilestoneDetailDrawer from '@/components/dashboard/milestones/MilestoneDetailDrawer'
 
 interface SimpleMilestonesProps {
   milestones: Milestone[]
@@ -72,6 +75,11 @@ export function SimpleMilestones({
   const [showSmartTaskGenerator, setShowSmartTaskGenerator] = useState<string | null>(null)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
   const [usingLocalStorage, setUsingLocalStorage] = useState(false)
+
+  // Advanced filters and detail drawer
+  const { filters, filtered } = useMilestoneFilters(milestones)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
 
   // No hardcoded phases - use real data from database
 
@@ -465,9 +473,24 @@ export function SimpleMilestones({
       </div>
       )}
 
-      {/* Milestones - Always exactly 4 phases */}
+      {/* Milestone Filters */}
+      <div className="mb-4">
+        <MilestoneFilters
+          status={filters.status}
+          setStatus={filters.setStatus}
+          projectType={filters.projectType}
+          setProjectType={filters.setProjectType}
+          dateFrom={filters.dateFrom}
+          setDateFrom={filters.setDateFrom}
+          dateTo={filters.dateTo}
+          setDateTo={filters.setDateTo}
+          onSearch={filters.setQuery}
+        />
+      </div>
+
+      {/* Milestones */}
       <div className="space-y-4">
-        {milestones.map((milestone) => {
+        {filtered.map((milestone) => {
           const smartIndicator = getSmartIndicator(milestone)
           const approvals = approvalsByMilestone?.[milestone.id] || []
           const latestApproval = approvals[approvals.length - 1]
@@ -576,6 +599,14 @@ export function SimpleMilestones({
                       className="hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
                     >
                       {expandedMilestone === milestone.id ? 'Collapse' : 'Expand'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setSelectedMilestone(milestone); setDetailOpen(true) }}
+                      className="hover:bg-gray-50"
+                    >
+                      View details
                     </Button>
                     {userRole === 'provider' && !isLocked && (
                       <>
@@ -1258,6 +1289,15 @@ export function SimpleMilestones({
           )
         })}
       </div>
+
+      {/* Milestone Detail Drawer */}
+      <MilestoneDetailDrawer
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        milestone={selectedMilestone}
+        tasks={selectedMilestone?.tasks || []}
+        approvals={selectedMilestone ? (approvalsByMilestone?.[selectedMilestone.id] || []) : []}
+      />
 
       {/* Create New Milestone Button */}
       {userRole === 'provider' && onMilestoneCreate && (
