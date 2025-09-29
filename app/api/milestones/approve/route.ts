@@ -90,39 +90,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if milestone is in a state that can be approved
-    if (milestone.status === 'completed') {
-      return NextResponse.json(
-        { error: 'Milestone is already completed' },
-        { status: 400, headers: corsHeaders }
-      )
-    }
+    // Determine update behavior
+    let updatedMilestone = milestone
+    let performedUpdate = false
 
-    // Update milestone status based on action
-    const newStatus = validatedData.action === 'approve' ? 'completed' : 'rejected'
-    const updateData: any = {
-      status: newStatus,
-      updated_at: new Date().toISOString()
-    }
+    // If already completed and action is approve, treat as idempotent and skip status update
+    if (!(milestone.status === 'completed' && validatedData.action === 'approve')) {
+      // If milestone is already completed and trying to reject, block
+      if (milestone.status === 'completed' && validatedData.action === 'reject') {
+        return NextResponse.json(
+          { error: 'Milestone is already completed' },
+          { status: 400, headers: corsHeaders }
+        )
+      }
 
-    // Set completed_at if approving
-    if (validatedData.action === 'approve') {
-      updateData.completed_at = new Date().toISOString()
-    }
+      // Update milestone status based on action
+      const newStatus = validatedData.action === 'approve' ? 'completed' : 'rejected'
+      const updateData: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      }
 
-    const { data: updatedMilestone, error: updateError } = await supabase
-      .from('milestones')
-      .update(updateData)
-      .eq('id', validatedData.milestone_id)
-      .select()
-      .single()
+      // Set completed_at if approving
+      if (validatedData.action === 'approve') {
+        updateData.completed_at = new Date().toISOString()
+      }
 
-    if (updateError) {
-      console.error('Error updating milestone:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to update milestone' },
-        { status: 500, headers: corsHeaders }
-      )
+      const { data, error: updateError } = await supabase
+        .from('milestones')
+        .update(updateData)
+        .eq('id', validatedData.milestone_id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error updating milestone:', updateError)
+        return NextResponse.json(
+          { error: 'Failed to update milestone' },
+          { status: 500, headers: corsHeaders }
+        )
+      }
+      updatedMilestone = data
+      performedUpdate = true
     }
 
     // Create approval record
@@ -144,17 +153,19 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if approval record creation fails
     }
 
-    // Trigger milestone progress recalculation
-    try {
-      const { error: recalcError } = await supabase.rpc('recalc_milestone_progress', {
-        p_milestone_id: validatedData.milestone_id
-      })
-      
-      if (recalcError) {
-        console.error('Error recalculating milestone progress:', recalcError)
+    // Trigger milestone progress recalculation only if we updated
+    if (performedUpdate) {
+      try {
+        const { error: recalcError } = await supabase.rpc('recalc_milestone_progress', {
+          p_milestone_id: validatedData.milestone_id
+        })
+        
+        if (recalcError) {
+          console.error('Error recalculating milestone progress:', recalcError)
+        }
+      } catch (recalcError) {
+        console.error('Error calling recalc_milestone_progress:', recalcError)
       }
-    } catch (recalcError) {
-      console.error('Error calling recalc_milestone_progress:', recalcError)
     }
 
     // Broadcast realtime update
@@ -166,7 +177,7 @@ export async function POST(request: NextRequest) {
           payload: {
             milestone_id: validatedData.milestone_id,
             action: validatedData.action,
-            status: newStatus,
+            status: validatedData.action === 'approve' ? 'completed' : 'rejected',
             approved_by: user.id,
             feedback: validatedData.feedback
           }
