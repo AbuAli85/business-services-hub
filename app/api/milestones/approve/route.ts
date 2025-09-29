@@ -150,7 +150,23 @@ export async function POST(request: NextRequest) {
 
     if (approvalError) {
       console.error('Error creating approval record:', approvalError)
-      // Don't fail the request if approval record creation fails
+      // Attempt to return the most recent approval for this milestone by this user
+      try {
+        const { data: existingApproval } = await supabase
+          .from('milestone_approvals')
+          .select('*')
+          .eq('milestone_id', validatedData.milestone_id)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (existingApproval) {
+          // @ts-ignore retain variable name used below
+          approval = existingApproval
+        }
+      } catch (e) {
+        // best-effort fallback; keep approval as null
+      }
     }
 
     // Trigger milestone progress recalculation only if we updated
