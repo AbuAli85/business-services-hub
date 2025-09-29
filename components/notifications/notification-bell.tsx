@@ -100,10 +100,10 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
     try {
       setLoading(true)
       const data = await notificationService.getNotifications(userId, { read: false }, 50)
-      // Group duplicates by type+service or title+message
+      // Group duplicates by type + title + message (no service field)
       const groupedMap = new Map<string, Notification & { count: number }>()
       for (const n of data) {
-        const key = `${n.type || 'generic'}|${n.service || 'global'}|${n.title}|${n.message}`
+        const key = `${n.type || 'generic'}|${n.title || ''}|${n.message || ''}`
         if (!groupedMap.has(key)) {
           groupedMap.set(key, { ...n, count: 1 } as any)
         } else {
