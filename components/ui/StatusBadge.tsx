@@ -35,10 +35,7 @@ export function BookingStatusBadge({ status }: { status?: string | null }) {
   )
 }
 
-// no default export here; default export is provided by the invoice badge below
-
-'use client'
-
+// invoice status badges (keep in same client file; directive already at top)
 import React from 'react'
 import { cn } from '@/lib/utils'
 import { getStatusVariant, getStatusText } from '@/lib/utils/invoiceHelpers'

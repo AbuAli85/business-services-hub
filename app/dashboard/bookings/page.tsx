@@ -77,6 +77,7 @@ export default function BookingsPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailBooking, setDetailBooking] = useState<any | null>(null)
+  const [summary, setSummary] = useState<{ total_projects: number; completed_count: number; total_revenue: number } | null>(null)
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -920,6 +921,24 @@ export default function BookingsPage() {
     return Array.from(s).sort()
   }, [bookingsSource])
 
+  // Load bookings summary for success rate and revenue
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+        const res = await fetch('/api/bookings/summary', { headers, credentials: 'include' })
+        if (!res.ok) return
+        const json = await res.json()
+        setSummary(json)
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') console.log('Summary fetch failed')
+      }
+    })()
+  }, [])
+
   // Pagination: Use server-side pagination results
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const paginatedBookings = filteredBookings // Already paginated by the API
@@ -1149,12 +1168,27 @@ export default function BookingsPage() {
         <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
       </div>
 
-      {/* My Service Bookings Header - Matching Screenshot */}
+      {/* Summary header */}
       <div className="bg-gradient-to-r from-blue-900 to-blue-800 rounded-xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold mb-1">My Service Bookings</h2>
             <p className="text-blue-200 text-sm">Track and manage your service bookings</p>
+            {summary && (
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm">
+                <div>
+                  <span className="text-blue-100">Success Rate:</span>{' '}
+                  <span className="font-semibold">
+                    {summary.completed_count}/{summary.total_projects}{' '}
+                    ({summary.total_projects > 0 ? ((summary.completed_count / summary.total_projects) * 100).toFixed(1) : '0.0'}%)
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-100">Revenue:</span>{' '}
+                  <span className="font-semibold">{formatOMR(summary.total_revenue)}</span>
+                </div>
+              </div>
+            )}
           </div>
           <Button 
             variant="secondary"
