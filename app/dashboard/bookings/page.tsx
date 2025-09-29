@@ -30,7 +30,12 @@ import {
   User,
   FileText,
   Rocket,
-  DollarSign
+  DollarSign,
+  Download,
+  Upload,
+  HelpCircle,
+  Grid3X3,
+  Table
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -1206,86 +1211,156 @@ export default function BookingsPage() {
 	  return (
 		<div className="space-y-6">
 		  {/* Enhanced Header */}
-		  <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-6 text-white shadow-lg">
-			<div className="flex items-start justify-between gap-4">
-			  <div>
-				<h1 className="text-2xl font-bold">Bookings Management</h1>
-				<p className="text-blue-200 text-sm">{getPageDescription()}</p>
-				<div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">{stats.total} total</span>
-				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">{(stats.inProgress + stats.approved)} active</span>
-				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">{stats.pending} pending</span>
-				  <span className="bg-white/10 px-2 py-1 rounded border border-white/20">Revenue {formatCurrency(stats.totalRevenue)}</span>
-				</div>
-				<div className="mt-2 text-xs text-blue-200">
-				  <span>
-					{(() => {
-					  const start = filters.dateStart
-					  const end = filters.dateEnd
-					  if (!start && !end) return 'All time'
-					  const fmt = (v: string) => new Date(v).toLocaleDateString()
-					  return `${start ? fmt(start) : '—'} to ${end ? fmt(end) : '—'}`
-					})()}
-				  </span>
-				  {lastUpdatedAt && (
-					<span className="ml-3">Last updated {new Date(lastUpdatedAt).toLocaleTimeString()} {dataLoading ? '• refreshing…' : ''}</span>
-				  )}
-				</div>
-			  </div>
-			  <div className="flex flex-col items-end gap-3">
-				<div className="flex flex-wrap gap-2">
-				  {canCreateBooking && (
-					<Button size="sm" variant="secondary" onClick={() => router.push('/dashboard/bookings/create')}>New Booking</Button>
-				  )}
-				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => exportBookings('csv')}>Export All</Button>
-				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => console.log('Import Bookings')}>Import</Button>
-				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" asChild>
-					<a href="/dashboard/analytics/bookings">Analytics</a>
-				  </Button>
-				  <Button size="sm" variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => window.open('https://docs', '_blank')}>Help</Button>
-				  <Button 
-					variant="secondary"
-					size="sm"
-					className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-					onClick={loadSupabaseData}
-					disabled={dataLoading}
-				  >
-					<RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
-					Refresh
-				  </Button>
-				</div>
-				{/* View + Density */}
-				<div className="flex flex-wrap gap-2 text-xs">
-				  <div className="bg-white/10 p-1 rounded-md border border-white/20">
-					<button className={`px-2 py-1 rounded ${viewMode==='card'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setViewMode('card')}>Card</button>
-					<button className={`px-2 py-1 rounded ${viewMode==='calendar'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setViewMode('calendar')}>Calendar</button>
-					<button className={`px-2 py-1 rounded ${viewMode==='table'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setViewMode('table')}>Table</button>
-				  </div>
-				  <div className="bg-white/10 p-1 rounded-md border border-white/20">
-					<button className={`px-2 py-1 rounded ${density==='compact'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setDensity('compact')}>Compact</button>
-					<button className={`px-2 py-1 rounded ${density==='comfortable'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setDensity('comfortable')}>Comfortable</button>
-					<button className={`px-2 py-1 rounded ${density==='spacious'?'bg-white text-blue-900':'text-white'}`} onClick={()=> setDensity('spacious')}>Spacious</button>
-				  </div>
-				</div>
-			  </div>
+		  <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
+			{/* Background Pattern */}
+			<div className="absolute inset-0 opacity-20">
+			  <div className="w-full h-full" style={{
+				backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+				backgroundRepeat: 'repeat'
+			  }}></div>
 			</div>
-			{/* KPI tiles */}
-			<div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-				<div className="text-2xl font-bold text-white mb-1">Total</div>
-				<div className="text-3xl font-bold text-white">{stats.total}</div>
-			  </div>
-			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-				<div className="text-2xl font-bold text-white mb-1">Active</div>
-				<div className="text-3xl font-bold text-white">{stats.inProgress + stats.approved}</div>
-			  </div>
-			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-				<div className="text-2xl font-bold text-white mb-1">Pending</div>
-				<div className="text-3xl font-bold text-white">{stats.pending}</div>
-			  </div>
-			  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-				<div className="text-2xl font-bold text-white mb-1">Revenue</div>
-				<div className="text-3xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</div>
+			
+			<div className="relative z-10">
+			  <div className="flex items-start justify-between gap-4 mb-6">
+				<div>
+				  <h1 className="text-3xl font-bold mb-2">Bookings Management</h1>
+				  <p className="text-blue-200 text-sm mb-4">{getPageDescription()}</p>
+				  
+				  {/* Quick Stats */}
+				  <div className="flex flex-wrap items-center gap-3 text-sm">
+					<span className="bg-white/20 px-3 py-1.5 rounded-full border border-white/30 font-medium">
+					  {stats.total} total
+					</span>
+					<span className="bg-white/20 px-3 py-1.5 rounded-full border border-white/30 font-medium">
+					  {stats.inProgress + stats.approved} active
+					</span>
+					<span className="bg-white/20 px-3 py-1.5 rounded-full border border-white/30 font-medium">
+					  {stats.pending} pending
+					</span>
+					<span className="bg-white/20 px-3 py-1.5 rounded-full border border-white/30 font-medium">
+					  Revenue {formatCurrency(stats.totalRevenue)}
+					</span>
+				  </div>
+				  
+				  {/* Date Range & Last Updated */}
+				  <div className="mt-3 text-xs text-blue-200">
+					<span>
+					  {(() => {
+						const start = filters.dateStart
+						const end = filters.dateEnd
+						if (!start && !end) return 'All time'
+						const fmt = (v: string) => new Date(v).toLocaleDateString()
+						return `${start ? fmt(start) : '—'} to ${end ? fmt(end) : '—'}`
+					  })()}
+					</span>
+					{lastUpdatedAt && (
+					  <span className="ml-3">
+						Last updated {new Date(lastUpdatedAt).toLocaleTimeString()} 
+						{dataLoading && ' • refreshing…'}
+					  </span>
+					)}
+				  </div>
+				</div>
+				
+				{/* Quick Actions */}
+				<div className="flex flex-col items-end gap-3">
+				  <div className="flex flex-wrap gap-2">
+					{canCreateBooking && (
+					  <Button size="sm" variant="secondary" className="bg-white text-blue-900 hover:bg-blue-50">
+						<FileText className="h-4 w-4 mr-2" />
+						New Booking
+					  </Button>
+					)}
+					<Button size="sm" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => exportBookings('csv')}>
+					  <Download className="h-4 w-4 mr-2" />
+					  Export All
+					</Button>
+					<Button size="sm" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => console.log('Import Bookings')}>
+					  <Upload className="h-4 w-4 mr-2" />
+					  Import
+					</Button>
+					<Button size="sm" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" asChild>
+					  <a href="/dashboard/analytics/bookings">
+						<BarChart3 className="h-4 w-4 mr-2" />
+						Analytics
+					  </a>
+					</Button>
+					<Button size="sm" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" onClick={() => window.open('https://docs', '_blank')}>
+					  <HelpCircle className="h-4 w-4 mr-2" />
+					  Help
+					</Button>
+					<Button 
+					  variant="outline"
+					  size="sm"
+					  className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+					  onClick={loadSupabaseData}
+					  disabled={dataLoading}
+					>
+					  <RefreshCw className={`h-4 w-4 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
+					  Refresh
+					</Button>
+				  </div>
+				  
+				  {/* View Toggles */}
+				  <div className="flex items-center gap-2">
+					<div className="bg-white/10 p-1 rounded-lg border border-white/20">
+					  <Button 
+						size="sm" 
+						variant={viewMode === 'card' ? 'default' : 'ghost'}
+						className={`px-3 py-1.5 text-xs ${viewMode === 'card' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+						onClick={() => setViewMode('card')}
+					  >
+						<Grid3X3 className="h-3 w-3 mr-1" />
+						Card
+					  </Button>
+					  <Button 
+						size="sm" 
+						variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+						className={`px-3 py-1.5 text-xs ${viewMode === 'calendar' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+						onClick={() => setViewMode('calendar')}
+					  >
+						<Calendar className="h-3 w-3 mr-1" />
+						Calendar
+					  </Button>
+					  <Button 
+						size="sm" 
+						variant={viewMode === 'table' ? 'default' : 'ghost'}
+						className={`px-3 py-1.5 text-xs ${viewMode === 'table' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+						onClick={() => setViewMode('table')}
+					  >
+						<Table className="h-3 w-3 mr-1" />
+						Table
+					  </Button>
+					</div>
+					
+					<div className="bg-white/10 p-1 rounded-lg border border-white/20">
+					  <Button 
+						size="sm" 
+						variant={density === 'compact' ? 'default' : 'ghost'}
+						className={`px-2 py-1.5 text-xs ${density === 'compact' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+						onClick={() => setDensity('compact')}
+					  >
+						Compact
+					  </Button>
+					  <Button 
+						size="sm" 
+						variant={density === 'comfortable' ? 'default' : 'ghost'}
+						className={`px-2 py-1.5 text-xs ${density === 'comfortable' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+						onClick={() => setDensity('comfortable')}
+					  >
+						Comfortable
+					  </Button>
+					  <Button 
+						size="sm" 
+						variant={density === 'spacious' ? 'default' : 'ghost'}
+						className={`px-2 py-1.5 text-xs ${density === 'spacious' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+						onClick={() => setDensity('spacious')}
+					  >
+						Spacious
+					  </Button>
+					</div>
+				  </div>
+				</div>
 			  </div>
 			</div>
 		  </div>
@@ -1456,33 +1531,37 @@ export default function BookingsPage() {
 		  </div>
 		)}
 
-      {/* Bulk Actions Toolbar */}
-      <BulkActions
-        selectedCount={selectedIds.size}
-        onClear={() => { setSelectedIds(new Set()); setSelectAll(false) }}
-        onExport={(fmt)=> exportBookings(fmt, Array.from(selectedIds) as string[])}
-        onUpdateStatus={async (status)=> {
-          const ids = Array.from(selectedIds)
-          if (ids.length === 0) return
-          try {
-            const supabase = await getSupabaseClient()
-            const { data: { session } } = await supabase.auth.getSession()
-            const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-            const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status, booking_ids: ids }) })
-            if (!res.ok) { toast.error('Bulk update failed'); return }
-            toast.success('Updated selected bookings')
-            setSelectedIds(new Set())
-            setSelectAll(false)
-            setRefreshTrigger(v=>v+1)
-          } catch (e) {
-            toast.error('Bulk update failed')
-          }
-        }}
-        onNotify={()=> console.log('Notify', Array.from(selectedIds))}
-        onReport={()=> console.log('Report', Array.from(selectedIds))}
-        onArchive={()=> console.log('Archive', Array.from(selectedIds))}
-      />
+      {/* Bulk Actions Toolbar - Show when items are selected */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4">
+          <BulkActions
+            selectedCount={selectedIds.size}
+            onClear={() => { setSelectedIds(new Set()); setSelectAll(false) }}
+            onExport={(fmt)=> exportBookings(fmt, Array.from(selectedIds) as string[])}
+            onUpdateStatus={async (status)=> {
+              const ids = Array.from(selectedIds)
+              if (ids.length === 0) return
+              try {
+                const supabase = await getSupabaseClient()
+                const { data: { session } } = await supabase.auth.getSession()
+                const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+                if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+                const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status, booking_ids: ids }) })
+                if (!res.ok) { toast.error('Bulk update failed'); return }
+                toast.success('Updated selected bookings')
+                setSelectedIds(new Set())
+                setSelectAll(false)
+                setRefreshTrigger(v=>v+1)
+              } catch (e) {
+                toast.error('Bulk update failed')
+              }
+            }}
+            onNotify={()=> console.log('Notify', Array.from(selectedIds))}
+            onReport={()=> console.log('Report', Array.from(selectedIds))}
+            onArchive={()=> console.log('Archive', Array.from(selectedIds))}
+          />
+        </div>
+      )}
 
 		{/* Bookings Content */}
 		<div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
@@ -1629,45 +1708,6 @@ export default function BookingsPage() {
 				</div>
 			  ) : (
 			  <div className="divide-y divide-gray-100">
-              {/* Bulk bar */}
-              {selectedIds.size > 0 && (
-                <div className="sticky top-0 z-20 bg-blue-50 border-b border-blue-200 px-4 py-3 flex items-center justify-between">
-                  <div className="text-sm text-blue-800">
-                    {selectedIds.size} selected
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={async ()=>{
-                      const ids = Array.from(selectedIds)
-                      if (ids.length === 0) return
-                      const supabase = await getSupabaseClient()
-                      const { data: { session } } = await supabase.auth.getSession()
-                      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-                      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-                      const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'approve', booking_ids: ids }) })
-                      if (!res.ok) { toast.error('Bulk approve failed'); return }
-                      toast.success('Approved selected bookings')
-                      setSelectedIds(new Set())
-                      setSelectAll(false)
-                      setRefreshTrigger(v=>v+1)
-                    }}>Approve</Button>
-                    <Button size="sm" variant="outline" onClick={async ()=>{
-                      const ids = Array.from(selectedIds)
-                      if (ids.length === 0) return
-                      const supabase = await getSupabaseClient()
-                      const { data: { session } } = await supabase.auth.getSession()
-                      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-                      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-                      const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'cancel', booking_ids: ids }) })
-                      if (!res.ok) { toast.error('Bulk cancel failed'); return }
-                      toast.success('Cancelled selected bookings')
-                      setSelectedIds(new Set())
-                      setSelectAll(false)
-                      setRefreshTrigger(v=>v+1)
-                    }}>Cancel</Button>
-                    <Button size="sm" variant="ghost" onClick={()=>{ setSelectedIds(new Set()); setSelectAll(false) }}>Clear</Button>
-                  </div>
-                </div>
-              )}
 
               {/* Header row with select all */}
               <div className="px-4 py-2 bg-gray-50 flex items-center gap-3">
@@ -1719,7 +1759,7 @@ export default function BookingsPage() {
 						  setDetailOpen(true)
 						}}
 						density={density}
-						userRole={userRole}
+						userRole={userRole || undefined}
 					  />
 					</div>
 				  ))}
@@ -1761,8 +1801,8 @@ export default function BookingsPage() {
               onPrev={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               onNext={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               onGoTo={(p) => setCurrentPage(p)}
-            onPageSizeChange={(size)=> { setPageSize(size); setCurrentPage(1) }}
-            pageSize={pageSize}
+              onPageSizeChange={(size)=> { setPageSize(size); setCurrentPage(1) }}
+              pageSize={pageSize}
             />
           </CardContent>
         </Card>
