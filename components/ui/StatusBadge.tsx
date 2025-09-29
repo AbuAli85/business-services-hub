@@ -63,7 +63,7 @@ const statusColors = {
   cancelled: 'bg-gray-100 text-gray-600 border-gray-200'
 }
 
-export function InvoiceStatusBadge({ 
+export function InvoiceStatusChip({ 
   status, 
   className, 
   size = 'md',
@@ -100,7 +100,7 @@ export function InvoiceStatusBadge({
   )
 }
 
-// Convenience component for invoice status
+// Convenience component that takes full invoice object
 interface InvoiceStatusBadgeProps {
   invoice: { status: string } | null
   className?: string
@@ -108,7 +108,7 @@ interface InvoiceStatusBadgeProps {
   showIcon?: boolean
 }
 
-export function InvoiceStatusPill({ 
+export function InvoiceStatusBadge({ 
   invoice, 
   className, 
   size = 'md',
@@ -117,7 +117,7 @@ export function InvoiceStatusPill({
   if (!invoice) return null
 
   return (
-    <InvoiceStatusBadge
+    <InvoiceStatusChip
       status={invoice.status}
       className={className}
       size={size}
