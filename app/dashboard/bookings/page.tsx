@@ -39,6 +39,9 @@ import toast from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { DataTable } from '@/components/dashboard/DataTable'
 import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
+import { StatusFilter } from '@/components/dashboard/bookings/StatusFilter'
+import { BookingCard } from '@/components/dashboard/bookings/BookingCard'
+import { BulkActions } from '@/components/dashboard/bookings/BulkActions'
 
 // Constants
 const OMAN_TZ = 'Asia/Muscat'
@@ -1251,20 +1254,17 @@ export default function BookingsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <FilterDropdown
-          label="Status"
-          options={[
-            { label: 'All', value: 'all' },
-            { label: 'Pending Review', value: 'pending_review' },
-            { label: 'Approved', value: 'approved' },
-            { label: 'Ready to Launch', value: 'ready_to_launch' },
-            { label: 'In Production', value: 'in_production' },
-            { label: 'Delivered', value: 'delivered' },
-            { label: 'On Hold', value: 'on_hold' },
-            { label: 'Cancelled', value: 'cancelled' },
-          ]}
-          value={statusFilter}
-          onChange={(v) => { setStatusFilter((v as string) || 'all'); setCurrentPage(1) }}
+        <StatusFilter
+          currentStatus={statusFilter as any}
+          onStatusChange={(s) => { setStatusFilter(s as any); setCurrentPage(1) }}
+          counts={{
+            all: totalCount,
+            pending: bookings.filter((b:any)=> b.status === 'pending' || b.status === 'pending_review').length,
+            confirmed: bookings.filter((b:any)=> b.status === 'approved' || b.status === 'confirmed' || b.approval_status === 'approved').length,
+            in_progress: bookings.filter((b:any)=> b.status === 'in_production' || b.status === 'in_progress').length,
+            completed: bookings.filter((b:any)=> b.status === 'completed' || b.status === 'delivered').length,
+            cancelled: bookings.filter((b:any)=> b.status === 'cancelled').length,
+          }}
         />
         <FilterDropdown
           label="Page Size"
@@ -1326,6 +1326,17 @@ export default function BookingsPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Bulk Actions Toolbar */}
+      <BulkActions
+        selectedCount={selectedIds.size}
+        onClear={() => { setSelectedIds(new Set()); setSelectAll(false) }}
+        onExport={(fmt)=> console.log('Export', fmt, Array.from(selectedIds))}
+        onUpdateStatus={(s)=> console.log('Bulk status', s, Array.from(selectedIds))}
+        onNotify={()=> console.log('Notify', Array.from(selectedIds))}
+        onReport={()=> console.log('Report', Array.from(selectedIds))}
+        onArchive={()=> console.log('Archive', Array.from(selectedIds))}
+      />
 
       {/* Bookings List - Matching Screenshot */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
