@@ -326,66 +326,51 @@ export class ProgressDataService {
     }
   }
 
-  // Request milestone approval
+  // Request milestone approval (client triggers approval flow via API)
   static async requestMilestoneApproval(milestoneId: string, comment?: string) {
     try {
-      const { data, error } = await supabase
-        .from('milestone_approvals')
-        .insert({
-          milestone_id: milestoneId,
-          status: 'pending',
-          comment,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      const response = await fetch('/api/milestones/request-approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ milestone_id: milestoneId, comment })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to request milestone approval')
+      return result
     } catch (error) {
       console.error('Error requesting milestone approval:', error)
       throw error
     }
   }
 
-  // Approve milestone
+  // Approve milestone via API
   static async approveMilestone(milestoneId: string, comment?: string) {
     try {
-      const { data, error } = await supabase
-        .from('milestone_approvals')
-        .insert({
-          milestone_id: milestoneId,
-          status: 'approved',
-          comment,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      const response = await fetch('/api/milestones/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ milestone_id: milestoneId, action: 'approve', feedback: comment })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to approve milestone')
+      return result
     } catch (error) {
       console.error('Error approving milestone:', error)
       throw error
     }
   }
 
-  // Reject milestone
+  // Reject milestone via API
   static async rejectMilestone(milestoneId: string, comment?: string) {
     try {
-      const { data, error } = await supabase
-        .from('milestone_approvals')
-        .insert({
-          milestone_id: milestoneId,
-          status: 'rejected',
-          comment,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
+      const response = await fetch('/api/milestones/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ milestone_id: milestoneId, action: 'reject', feedback: comment })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to reject milestone')
+      return result
     } catch (error) {
       console.error('Error rejecting milestone:', error)
       throw error
@@ -728,6 +713,23 @@ export class ProgressDataService {
       return data
     } catch (error) {
       console.error('Error updating task details:', error)
+      throw error
+    }
+  }
+
+  // Approve/reject task via API
+  static async approveTask(taskId: string, action: 'approve' | 'reject', notes?: string) {
+    try {
+      const response = await fetch('/api/tasks/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId, action, notes })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to update task approval')
+      return result
+    } catch (error) {
+      console.error('Error updating task approval:', error)
       throw error
     }
   }

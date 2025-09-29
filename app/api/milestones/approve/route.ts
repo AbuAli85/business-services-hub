@@ -23,8 +23,7 @@ export async function OPTIONS(request: NextRequest) {
 const ApproveMilestoneSchema = z.object({
   milestone_id: z.string().uuid(),
   action: z.enum(['approve', 'reject']),
-  feedback: z.string().optional(),
-  approved_by: z.string().uuid()
+  feedback: z.string().optional()
 })
 
 // POST /api/milestones/approve - Approve or reject a milestone
@@ -127,14 +126,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create approval record
+    // Align to table schema: user_id, status, comment, created_at default
+    const status = validatedData.action === 'approve' ? 'approved' : 'rejected'
     const { data: approval, error: approvalError } = await supabase
       .from('milestone_approvals')
       .insert({
         milestone_id: validatedData.milestone_id,
-        approved_by: user.id,
-        action: validatedData.action,
-        feedback: validatedData.feedback,
-        approved_at: new Date().toISOString()
+        user_id: user.id,
+        status,
+        comment: validatedData.feedback
       })
       .select()
       .single()
