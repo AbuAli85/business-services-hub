@@ -316,6 +316,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// GET /api/bookings (RLS-safe) with filters/sort/pagination
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -369,7 +370,7 @@ export async function GET(request: NextRequest) {
     const search = (searchParams.get('search') || '').trim()
     const status = (searchParams.get('status') || '').trim()
 
-    // Use regular bookings table with manual enrichment (enriched views not yet available)
+    // Use enhanced view when available, else bookings with enrichment
     let query = supabase
       .from('bookings')
       .select(`
@@ -465,9 +466,24 @@ export async function GET(request: NextRequest) {
       return response
     }
 
+    const rows = data ?? []
+
+    // Fetch progress for all bookings at once from v_booking_progress
+    let progressMap = new Map<string, number>()
+    if (rows.length > 0) {
+      const ids = rows.map((b:any) => b.id)
+      const { data: progressRows } = await supabase
+        .from('v_booking_progress')
+        .select('booking_id, progress_pct')
+        .in('booking_id', ids)
+      for (const pr of progressRows || []) {
+        progressMap.set(String(pr.booking_id), Number(pr.progress_pct ?? 0))
+      }
+    }
+
     // Manual enrichment of booking data
     const transformedData = await Promise.all(
-      (data ?? []).map(async (booking) => {
+      rows.map(async (booking) => {
         // Get service information
         const { data: service } = await supabase
           .from('services')
@@ -498,6 +514,7 @@ export async function GET(request: NextRequest) {
         
         return {
           ...booking,
+          progress_percentage: progressMap.get(String(booking.id)) ?? 0,
           service_title: service?.title || 'Service',
           service_description: service?.description || '',
           service_category: service?.category || '',

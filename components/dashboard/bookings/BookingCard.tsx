@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Calendar, DollarSign, Clock, MoreHorizontal } from 'lucide-react'
 import { QuickActions } from '@/components/dashboard/bookings/QuickActions'
+import { muscatTz } from '@/lib/datetime'
 
 export interface BookingCardProps {
   booking: any
@@ -16,18 +17,24 @@ export interface BookingCardProps {
 }
 
 function getStatusBadge(status: string) {
+  const normalized = (
+    status === 'approved' || status === 'confirmed' ? 'confirmed' :
+    status === 'in_production' || status === 'in_progress' ? 'in_progress' :
+    status === 'delivered' || status === 'completed' ? 'completed' :
+    status === 'canceled' ? 'cancelled' :
+    status
+  )
+
   const map: Record<string, { label: string; className: string }> = {
-    pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-    confirmed: { label: 'Confirmed', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-    approved: { label: 'Confirmed', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-    in_progress: { label: 'In Progress', className: 'bg-purple-100 text-purple-700 border-purple-200' },
-    in_production: { label: 'In Progress', className: 'bg-purple-100 text-purple-700 border-purple-200' },
-    completed: { label: 'Completed', className: 'bg-green-100 text-green-700 border-green-200' },
-    delivered: { label: 'Completed', className: 'bg-green-100 text-green-700 border-green-200' },
-    cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-700 border-gray-200' }
+    pending: { label: 'Pending', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    confirmed: { label: 'Confirmed', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+    in_progress: { label: 'In Progress', className: 'bg-violet-50 text-violet-700 border-violet-200' },
+    completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-700 border-red-200' },
+    on_hold: { label: 'On Hold', className: 'bg-orange-50 text-orange-700 border-orange-200' }
   }
-  const key = map[status] ? status : 'pending'
-  return <Badge variant="outline" className={map[key].className}>{map[key].label}</Badge>
+  const key = map[normalized] ? normalized : 'pending'
+  return <Badge variant="outline" className={`text-xs font-semibold ${map[key].className}`}>{map[key].label}</Badge>
 }
 
 export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: BookingCardProps) {
@@ -48,7 +55,16 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
               />
             )}
             <div className="space-y-1">
-              {getStatusBadge(String(booking.status))}
+              <div className="flex items-center gap-2">
+                {getStatusBadge(String(booking.status))}
+                <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-200">
+                  Updated {(() => {
+                    const raw = booking.updatedAt || booking.updated_at || booking.createdAt || booking.created_at
+                    const d = raw ? new Date(raw) : null
+                    return d && !Number.isNaN(d.getTime()) ? d.toLocaleString('en-GB', { timeZone: muscatTz }) : '—'
+                  })()}
+                </Badge>
+              </div>
               <div className="text-lg font-semibold leading-tight">
                 {booking.serviceTitle || booking.service_name || 'Service'}
               </div>
@@ -75,7 +91,10 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{new Date(booking.createdAt || booking.created_at).toLocaleDateString()}</span>
+            <span>{(() => {
+              const d = new Date(booking.createdAt || booking.created_at)
+              return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { timeZone: muscatTz })
+            })()}</span>
           </div>
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-muted-foreground" />

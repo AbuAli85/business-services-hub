@@ -1341,7 +1341,24 @@ export default function BookingsPage() {
         selectedCount={selectedIds.size}
         onClear={() => { setSelectedIds(new Set()); setSelectAll(false) }}
         onExport={(fmt)=> console.log('Export', fmt, Array.from(selectedIds))}
-        onUpdateStatus={(s)=> console.log('Bulk status', s, Array.from(selectedIds))}
+        onUpdateStatus={async (status)=> {
+          const ids = Array.from(selectedIds)
+          if (ids.length === 0) return
+          try {
+            const supabase = await getSupabaseClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+            const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status, booking_ids: ids }) })
+            if (!res.ok) { toast.error('Bulk update failed'); return }
+            toast.success('Updated selected bookings')
+            setSelectedIds(new Set())
+            setSelectAll(false)
+            setRefreshTrigger(v=>v+1)
+          } catch (e) {
+            toast.error('Bulk update failed')
+          }
+        }}
         onNotify={()=> console.log('Notify', Array.from(selectedIds))}
         onReport={()=> console.log('Report', Array.from(selectedIds))}
         onArchive={()=> console.log('Archive', Array.from(selectedIds))}

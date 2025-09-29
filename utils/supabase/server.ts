@@ -5,16 +5,18 @@ export async function createClient() {
   const cookieStore = cookies()
   const headersList = headers()
   
-  console.log('🔍 createClient: Server-side client creation')
-  console.log('🔍 createClient: Available cookies:', cookieStore.getAll().map(c => c.name))
-  console.log('🔍 createClient: Has authorization header:', !!headersList.get('authorization'))
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🔍 createClient: Server-side client creation')
+    console.log('🔍 createClient: Available cookies:', cookieStore.getAll().map(c => c.name))
+    console.log('🔍 createClient: Has authorization header:', !!headersList.get('authorization'))
+  }
   
   const authHeader = headersList.get('authorization')
   
   // If we have a Bearer token, extract and use it for session initialization
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7)
-    console.log('🔍 createClient: Found Bearer token, initializing with token session')
+    if (process.env.NODE_ENV !== 'production') console.log('🔍 createClient: Found Bearer token, initializing with token session')
     
     const client = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,16 +49,16 @@ export async function createClient() {
         access_token: token,
         refresh_token: ''
       })
-      console.log('✅ createClient: Session set from Bearer token')
+      if (process.env.NODE_ENV !== 'production') console.log('✅ createClient: Session set from Bearer token')
     } catch (sessionError) {
-      console.log('❌ createClient: Failed to set session from Bearer token:', sessionError)
+      if (process.env.NODE_ENV !== 'production') console.log('❌ createClient: Failed to set session from Bearer token:', sessionError)
     }
     
     return client
   }
   
   // Default cookie-based client
-  console.log('🔍 createClient: Using cookie-based authentication')
+  if (process.env.NODE_ENV !== 'production') console.log('🔍 createClient: Using cookie-based authentication')
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -65,10 +67,10 @@ export async function createClient() {
         get(name: string) {
           try { 
             const value = cookieStore.get(name)?.value
-            console.log(`🔍 createClient: Getting cookie ${name}:`, value ? 'present' : 'absent')
+            if (process.env.NODE_ENV !== 'production') console.log(`🔍 createClient: Getting cookie ${name}:`, value ? 'present' : 'absent')
             return value
           } catch { 
-            console.log(`❌ createClient: Failed to get cookie ${name}`)
+            if (process.env.NODE_ENV !== 'production') console.log(`❌ createClient: Failed to get cookie ${name}`)
             return undefined 
           }
         },

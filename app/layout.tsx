@@ -7,7 +7,8 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/lib/error-handler'
 
-const inter = Inter({ subsets: ['latin'] })
+// next/font self-hosted Inter (no external <link> needed)
+const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'Business Services Hub - Trusted Service Providers in Oman',
