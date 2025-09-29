@@ -41,6 +41,13 @@
     --warning-color: #f59e0b;
     --error-color: #ef4444;
     --neutral-color: #6b7280;
+
+    /* Brand theme */
+    --brand: 28 82% 51%;
+    --brand-foreground: 0 0% 100%;
+    --success: 142 72% 29%;
+    --warning: 35 92% 50%;
+    --danger: 0 84% 60%;
   }
 
   .dark {
@@ -63,6 +70,10 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 94.1%;
+
+    /* Brand theme */
+    --brand: 28 82% 51%;
+    --brand-foreground: 0 0% 100%;
   }
 }
 
