@@ -33,6 +33,8 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { DataTable, type ColumnDef } from '@/components/dashboard/DataTable'
+import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -403,6 +405,40 @@ export default function ServicesPage() {
               </div>
               
               <div className="flex gap-2">
+                <FilterDropdown
+                  label="Status"
+                  options={[
+                    { label: 'All', value: 'all' },
+                    { label: 'Active', value: 'active' },
+                    { label: 'Pending', value: 'pending' },
+                    { label: 'Inactive', value: 'inactive' },
+                    { label: 'Suspended', value: 'suspended' },
+                  ]}
+                  value={statusFilter}
+                  onChange={(v) => setStatusFilter((v as string) || 'all')}
+                  className="h-11"
+                />
+                <FilterDropdown
+                  label="Category"
+                  options={[{ label: 'All', value: 'all' }, ...categories.map((c:string) => ({ label: c, value: c }))]}
+                  value={categoryFilter}
+                  onChange={(v) => setCategoryFilter((v as string) || 'all')}
+                  className="h-11"
+                />
+                <FilterDropdown
+                  label="Rating"
+                  options={[
+                    { label: 'All', value: 'all' },
+                    { label: '5★', value: '5' },
+                    { label: '4+★', value: '4' },
+                    { label: '3+★', value: '3' },
+                    { label: '2+★', value: '2' },
+                    { label: '1+★', value: '1' },
+                  ]}
+                  value={ratingFilter}
+                  onChange={(v) => setRatingFilter((v as string) || 'all')}
+                  className="h-11"
+                />
                 <Button
                   variant="outline"
                   onClick={() => setShowFilters(!showFilters)}
@@ -561,7 +597,7 @@ export default function ServicesPage() {
         </CardContent>
       </Card>
 
-      {/* Services Grid/List */}
+      {/* Services Grid/List or Table */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
@@ -580,7 +616,40 @@ export default function ServicesPage() {
           ))}
         </div>
       ) : filteredServices.length > 0 ? (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+        viewMode === 'list' ? (
+          <DataTable
+            columns={[
+              { key: 'title', header: 'Title', sortable: true, render: (s:any) => (
+                <div className="flex flex-col">
+                  <span className="font-medium">{s.title}</span>
+                  <span className="text-xs text-slate-500">{s.provider_name || s.providerName}</span>
+                </div>
+              ) },
+              { key: 'category', header: 'Category', sortable: true },
+              { key: 'basePrice', header: 'Price', sortable: true, render: (s:any) => formatCurrency(s.basePrice || 0, s.currency) },
+              { key: 'rating', header: 'Rating', sortable: true, render: (s:any) => (s.avg_rating || s.rating || 0).toFixed(1) },
+              { key: 'bookingCount', header: 'Bookings', sortable: true, render: (s:any) => s.booking_count || s.bookingCount || 0 },
+              { key: 'status', header: 'Status', render: (s:any) => getStatusBadge(s.status || 'active') },
+              { key: 'actions', header: 'Actions', render: (s:any) => (
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/services/${s.id}/edit`)}>Edit</Button>
+                  <Button size="sm" onClick={() => router.push(`/dashboard/bookings/create?service=${s.id}`)}>Book</Button>
+                </div>
+              ) }
+            ]}
+            data={filteredServices}
+            onSortChange={(key, dir) => {
+              setSortBy(key as any)
+              setSortOrder(dir)
+            }}
+            sortKey={sortBy}
+            sortDirection={sortOrder}
+            page={1}
+            pageSize={filteredServices.length}
+            total={filteredServices.length}
+          />
+        ) : (
+        <div className={'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}>
           {filteredServices.map((service) => (
             <Card key={service.id} className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-lg bg-white overflow-hidden rounded-2xl hover:-translate-y-1">
               {/* Service Image Header */}
@@ -779,6 +848,7 @@ export default function ServicesPage() {
             </Card>
           ))}
         </div>
+        )
       ) : (
         <Card>
           <CardContent className="p-8 text-center">

@@ -37,6 +37,8 @@ import Link from 'next/link'
 import { formatCurrency } from '@/lib/dashboard-data'
 import toast from 'react-hot-toast'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import { DataTable } from '@/components/dashboard/DataTable'
+import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
 
 // Constants
 const OMAN_TZ = 'Asia/Muscat'
@@ -1247,30 +1249,33 @@ export default function BookingsPage() {
       </div>
 
 
-      {/* Filter Tabs - Matching Screenshot */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {[
-          { key: 'all', label: 'All' },
-          { key: 'pending_review', label: 'Pending Review' },
-          { key: 'approved', label: 'Approved' },
-          { key: 'ready_to_launch', label: 'Ready to Launch' },
-          { key: 'in_production', label: 'In Production' },
-          { key: 'delivered', label: 'Delivered' },
-          { key: 'on_hold', label: 'On Hold' },
-          { key: 'cancelled', label: 'Cancelled' }
-        ].map(s => (
-          <button
-            key={s.key}
-            onClick={() => { setStatusFilter(s.key as any); setCurrentPage(1) }}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              statusFilter === s.key 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
+        <FilterDropdown
+          label="Status"
+          options={[
+            { label: 'All', value: 'all' },
+            { label: 'Pending Review', value: 'pending_review' },
+            { label: 'Approved', value: 'approved' },
+            { label: 'Ready to Launch', value: 'ready_to_launch' },
+            { label: 'In Production', value: 'in_production' },
+            { label: 'Delivered', value: 'delivered' },
+            { label: 'On Hold', value: 'on_hold' },
+            { label: 'Cancelled', value: 'cancelled' },
+          ]}
+          value={statusFilter}
+          onChange={(v) => { setStatusFilter((v as string) || 'all'); setCurrentPage(1) }}
+        />
+        <FilterDropdown
+          label="Page Size"
+          options={[
+            { label: '10 / page', value: '10' },
+            { label: '25 / page', value: '25' },
+            { label: '50 / page', value: '50' },
+          ]}
+          value={String(pageSize)}
+          onChange={(v) => { setPageSize(parseInt(String(v || 10), 10)); setCurrentPage(1) }}
+        />
       </div>
 
       {/* Search and Controls - Matching Screenshot */}
