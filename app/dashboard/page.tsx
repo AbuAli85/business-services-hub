@@ -30,7 +30,7 @@ import UnifiedSearch, { useDebouncedValue } from '@/components/ui/unified-search
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { metrics, bookings, invoices, users, services, loading, error, refresh } = useDashboardData()
+  const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading, error, refresh } = useDashboardData()
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string>('client')
   // Activity filters
@@ -193,8 +193,22 @@ export default function DashboardPage() {
   const unifiedActivity = [
     ...recentActivity,
     ...paymentActivity,
-    ...milestoneActivity,
-    ...systemActivity
+    // map milestone events
+    ...milestoneEvents.map((e: any) => ({
+      id: `ms-${e.id}`,
+      type: 'milestones',
+      description: `${e.type === 'milestone_approved' ? 'Milestone approved' : 'Milestone completed'}: ${e.milestoneTitle}`,
+      timestamp: e.createdAt,
+      status: e.status
+    })),
+    // map system notifications
+    ...systemEvents.map((s: any) => ({
+      id: `sys-${s.id}`,
+      type: 'system',
+      description: `${s.title} - ${s.message}`,
+      timestamp: s.createdAt,
+      status: 'info'
+    }))
   ]
     .sort((a, b) => new Date(b.timestamp as any).getTime() - new Date(a.timestamp as any).getTime())
 

@@ -84,6 +84,24 @@ export interface Service {
   updatedAt: string
 }
 
+export interface MilestoneEvent {
+  id: string
+  bookingId?: string
+  projectTitle?: string
+  milestoneId: string
+  milestoneTitle: string
+  type: 'milestone_completed' | 'milestone_approved'
+  status: 'completed' | 'approved'
+  createdAt: string
+}
+
+export interface SystemNotificationEvent {
+  id: string
+  title: string
+  message: string
+  createdAt: string
+}
+
 // Centralized data store
 class DashboardDataManager {
   private metrics: DashboardMetrics | null = null
@@ -92,6 +110,8 @@ class DashboardDataManager {
   private users: User[] = []
   private services: Service[] = []
   private listeners: Set<() => void> = new Set()
+  private milestoneEvents: MilestoneEvent[] = []
+  private systemEvents: SystemNotificationEvent[] = []
 
   // Subscribe to data changes
   subscribe(listener: () => void) {
@@ -127,6 +147,14 @@ class DashboardDataManager {
   // Get all services
   getServices(): Service[] {
     return this.services
+  }
+
+  getMilestoneEvents(): MilestoneEvent[] {
+    return this.milestoneEvents
+  }
+
+  getSystemEvents(): SystemNotificationEvent[] {
+    return this.systemEvents
   }
 
   // Calculate metrics from actual data
@@ -171,6 +199,8 @@ class DashboardDataManager {
       await this.loadServices(userRole, userId)
       await this.loadBookings()
       await this.loadInvoices()
+      await this.loadMilestoneEvents()
+      await this.loadSystemEvents()
       
       // Calculate metrics from loaded data
       this.metrics = this.calculateMetrics()
@@ -532,6 +562,42 @@ class DashboardDataManager {
         status: 'issued',
         issuedAt: '2024-09-09T04:00:00Z',
         dueAt: '2024-09-16T04:00:00Z'
+      }
+    ]
+  }
+
+  // Load recent milestone events (simulated)
+  private async loadMilestoneEvents() {
+    await new Promise(resolve => setTimeout(resolve, 80))
+    this.milestoneEvents = [
+      {
+        id: 'me1',
+        milestoneId: 'm-1',
+        milestoneTitle: 'Project Planning',
+        type: 'milestone_completed',
+        status: 'completed',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
+      },
+      {
+        id: 'me2',
+        milestoneId: 'm-2',
+        milestoneTitle: 'Design Approval',
+        type: 'milestone_approved',
+        status: 'approved',
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString()
+      }
+    ]
+  }
+
+  // Load system notifications (simulated)
+  private async loadSystemEvents() {
+    await new Promise(resolve => setTimeout(resolve, 80))
+    this.systemEvents = [
+      {
+        id: 'se1',
+        title: 'System Update',
+        message: 'New analytics module deployed',
+        createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString()
       }
     ]
   }

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { dashboardData, DashboardMetrics, Booking, Invoice, User, Service } from '@/lib/dashboard-data'
+import { dashboardData, DashboardMetrics, Booking, Invoice, User, Service, MilestoneEvent, SystemNotificationEvent } from '@/lib/dashboard-data'
 
 export function useDashboardData(userRole?: string, userId?: string) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
@@ -14,6 +14,8 @@ export function useDashboardData(userRole?: string, userId?: string) {
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [milestoneEvents, setMilestoneEvents] = useState<MilestoneEvent[]>([])
+  const [systemEvents, setSystemEvents] = useState<SystemNotificationEvent[]>([])
 
   // Update state when data changes
   const updateData = useCallback(() => {
@@ -22,6 +24,8 @@ export function useDashboardData(userRole?: string, userId?: string) {
     setInvoices(dashboardData.getInvoices())
     setUsers(dashboardData.getUsers())
     setServices(dashboardData.getServices())
+    setMilestoneEvents(dashboardData.getMilestoneEvents())
+    setSystemEvents(dashboardData.getSystemEvents())
   }, [])
 
   // Load data on mount
@@ -114,6 +118,8 @@ export function useDashboardData(userRole?: string, userId?: string) {
     invoices,
     users,
     services,
+    milestoneEvents,
+    systemEvents,
     
     // State
     loading,
