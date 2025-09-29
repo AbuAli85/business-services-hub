@@ -727,41 +727,31 @@ export class ProgressTrackingService {
 
   // Approval operations
   static async approveTask(taskId: string, approvedBy: string, notes?: string): Promise<Task> {
-    const supabase = await getSupabaseClient()
-    const { data, error } = await supabase
-      .from('tasks')
-      .update({
-        approval_status: 'approved',
-        approved_by: approvedBy,
-        approved_at: new Date().toISOString(),
-        approval_notes: notes,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', taskId)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
+    // Route through API to ensure validation, RLS, and consistent side-effects
+    const response = await fetch('/api/tasks/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: taskId, action: 'approve', notes })
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(result?.error || 'Failed to approve task')
+    }
+    return result.task as Task
   }
 
   static async rejectTask(taskId: string, rejectedBy: string, notes?: string): Promise<Task> {
-    const supabase = await getSupabaseClient()
-    const { data, error } = await supabase
-      .from('tasks')
-      .update({
-        approval_status: 'rejected',
-        approved_by: rejectedBy,
-        approved_at: new Date().toISOString(),
-        approval_notes: notes,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', taskId)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data
+    // Route through API to ensure validation, RLS, and consistent side-effects
+    const response = await fetch('/api/tasks/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: taskId, action: 'reject', notes })
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(result?.error || 'Failed to reject task')
+    }
+    return result.task as Task
   }
 
   // Progress operations
