@@ -1475,20 +1475,82 @@ export default function BookingsPage() {
 				<div className="p-4">
 				  <DataTable
 					columns={[
-					  { key: 'service_title', header: 'Service', widthClass: 'w-1/4', render: (r:any) => r.service_title || r.serviceTitle },
-					  { key: 'client_name', header: 'Client', widthClass: 'w-1/5', render: (r:any) => r.client_name || r.clientName },
-					  { key: 'provider_name', header: 'Provider', widthClass: 'w-1/5', render: (r:any) => r.provider_name || r.providerName },
-					  { key: 'status', header: 'Status', widthClass: 'w-28', render: (r:any) => String(r.status) },
-					  { key: 'amount', header: 'Amount', widthClass: 'w-24', render: (r:any) => `${r.currency||'OMR'} ${Number(r.totalAmount||r.amount||0).toLocaleString()}` },
-					  { key: 'created_at', header: 'Created', widthClass: 'w-32', render: (r:any) => {
+					  {
+						key: 'select',
+						header: (
+						  <input
+							aria-label="Select all visible"
+							type="checkbox"
+							checked={paginatedBookings.every((b:any)=> selectedIds.has(b.id)) && paginatedBookings.length > 0}
+							onChange={(e)=> {
+							  const checked = e.currentTarget.checked
+							  if (checked) setSelectedIds(new Set([...(selectedIds as any), ...paginatedBookings.map((b:any)=> b.id)]))
+							  else setSelectedIds(new Set())
+							}}
+						  />
+						),
+						widthClass: 'w-8',
+						render: (r:any) => (
+						  <input
+							aria-label={`Select booking ${r.id}`}
+							type="checkbox"
+							checked={selectedIds.has(r.id)}
+							onChange={(e)=>{
+							  const checked = e.currentTarget.checked
+							  setSelectedIds(prev=> {
+								const next = new Set(prev)
+								if (checked) next.add(r.id); else next.delete(r.id)
+								return next
+							  })
+							}}
+						  />
+						)
+					  },
+					  { key: 'serviceTitle', header: 'Service', widthClass: 'w-1/4', sortable: true, render: (r:any) => r.service_title || r.serviceTitle || '—' },
+					  { key: 'clientName', header: 'Client', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.client_name || r.clientName || '—' },
+					  { key: 'providerName', header: 'Provider', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.provider_name || r.providerName || '—' },
+					  { key: 'status', header: 'Status', widthClass: 'w-28', render: (r:any) => String(r.status || '—') },
+					  { key: 'progress', header: 'Progress', widthClass: 'w-24', render: (r:any) => {
+						const pct = Math.max(0, Math.min(100, Number(r.progress_percentage ?? r.progress?.percentage ?? 0)))
+						return `${pct}%`
+					  } },
+					  { key: 'payment', header: 'Payment', widthClass: 'w-28', render: (r:any) => {
+						const inv = invoiceByBooking.get(String(r.id))
+						return inv?.status ? String(inv.status) : '—'
+					  } },
+					  { key: 'totalAmount', header: 'Amount', widthClass: 'w-24', sortable: true, render: (r:any) => `${r.currency||'OMR'} ${Number(r.totalAmount||r.amount||r.amount_cents/100||0).toLocaleString()}` },
+					  { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => {
 						const d = new Date(r.created_at || r.createdAt); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString()
 					  } },
+					  { key: 'actions', header: 'Actions', widthClass: 'w-32', render: (r:any) => (
+						  <div className="flex items-center gap-2">
+							<Button size="sm" variant="outline" onClick={()=>{ setDetailBooking(r); setDetailOpen(true) }} aria-label="View details">Details</Button>
+							{canManageBookings && r.approval_status !== 'approved' && (
+							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
+							)}
+						  </div>
+					  ) }
 					]}
 					data={paginatedBookings as any}
 					page={currentPage}
 					pageSize={pageSize}
 					total={totalCount}
 					onPageChange={(p)=> setCurrentPage(Math.max(1, Math.min(p, totalPages)))}
+					onSortChange={(key, dir)=>{
+					  // map table keys to page sort keys
+					  const map: Record<string,string> = {
+						createdAt: 'createdAt',
+						totalAmount: 'totalAmount',
+						serviceTitle: 'serviceTitle',
+						clientName: 'clientName',
+						providerName: 'providerName'
+					  }
+					  const uiKey = map[key] || 'createdAt'
+					  setSortBy(uiKey)
+					  setSortOrder(dir)
+					}}
+					sortKey={sortBy}
+					sortDirection={sortOrder}
 					className={density === 'compact' ? 'text-xs' : density === 'spacious' ? 'text-base' : 'text-sm'}
 				  />
 				</div>
