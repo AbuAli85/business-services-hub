@@ -332,6 +332,7 @@ export class ProgressDataService {
       const response = await fetch('/api/milestones/request-approval', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ milestone_id: milestoneId, comment })
       })
       const result = await response.json()
@@ -349,6 +350,7 @@ export class ProgressDataService {
       const response = await fetch('/api/milestones/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ milestone_id: milestoneId, action: 'approve', feedback: comment })
       })
       const result = await response.json()
@@ -366,6 +368,7 @@ export class ProgressDataService {
       const response = await fetch('/api/milestones/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ milestone_id: milestoneId, action: 'reject', feedback: comment })
       })
       const result = await response.json()
@@ -723,6 +726,7 @@ export class ProgressDataService {
       const response = await fetch('/api/tasks/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ task_id: taskId, action, notes })
       })
       const result = await response.json()

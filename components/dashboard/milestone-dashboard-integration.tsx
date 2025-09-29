@@ -266,12 +266,13 @@ export function MilestoneDashboardIntegration({
 
   const handleMilestoneApproval = async (milestoneId: string, action: 'approve' | 'reject', notes?: string) => {
     try {
-      const response = await fetch(`/api/milestones/${milestoneId}/approve`, {
+      const response = await fetch(`/api/milestones/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action, notes }),
+        credentials: 'include',
+        body: JSON.stringify({ milestone_id: milestoneId, action, feedback: notes }),
       })
 
       if (!response.ok) {
