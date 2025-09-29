@@ -194,31 +194,27 @@ export function SimpleMilestones({
 
   const handleApproval = async (milestoneId: string, status: 'approved' | 'rejected', comment?: string) => {
     try {
-      console.log('Creating approval for milestone:', milestoneId, 'status:', status, 'userRole:', userRole)
-      // optimistic no-op: UI reads via approvalsByMilestone passed from parent, which will refresh via realtime
-      await ProgressDataService.createApproval(milestoneId, status, comment)
-      console.log('Approval created successfully')
-      
-      // Show success message
+      console.log('Submitting approval via API for milestone:', milestoneId, 'status:', status, 'userRole:', userRole)
+      if (status === 'approved') {
+        await ProgressDataService.approveMilestone(milestoneId, comment)
+      } else {
+        await ProgressDataService.rejectMilestone(milestoneId, comment)
+      }
+      console.log('Approval submitted successfully')
       if (status === 'approved') {
         alert('✅ Milestone approved successfully!')
       } else {
         alert('❌ Milestone rejected successfully!')
       }
     } catch (e) {
-      console.error('Failed to create approval:', e)
-      
-      // Show user-friendly error message
-        if (e instanceof Error && (e.message.includes('permission denied') || e.message.includes('403'))) {
-          // Set local storage indicator
-          setUsingLocalStorage(true)
-          
-          // Show a more informative success message
-          const successMessage = '✅ Approval submitted successfully!\n\nYour approval has been saved locally and will be synced when database permissions are restored.'
-          alert(successMessage)
-        } else {
-          alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
-        }
+      console.error('Failed to submit approval:', e)
+      if (e instanceof Error && (e.message.includes('permission denied') || e.message.includes('403'))) {
+        setUsingLocalStorage(true)
+        const successMessage = '✅ Approval submitted successfully!\n\nYour approval has been saved locally and will be synced when database permissions are restored.'
+        alert(successMessage)
+      } else {
+        alert(`Failed to submit approval: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      }
     }
   }
 
