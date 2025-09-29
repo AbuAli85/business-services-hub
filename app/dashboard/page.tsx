@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { MetricCard } from '@/components/dashboard/MetricCard'
+import { ActivityFeed, type ActivityItem } from '@/components/dashboard/ActivityFeed'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   TrendingUp, 
@@ -162,7 +164,7 @@ export default function DashboardPage() {
     .slice(0, 5)
     .map(booking => ({
       id: booking.id,
-      type: 'booking',
+      type: 'booking' as const,
       description: `${booking.serviceTitle} - ${booking.clientName}`,
       timestamp: booking.updatedAt,
       status: booking.status
@@ -175,7 +177,7 @@ export default function DashboardPage() {
     .slice(0, 5)
     .map((inv: any) => ({
       id: `inv-${inv.id}`,
-      type: 'payment',
+      type: 'payment' as const,
       description: `Payment received: ${formatCurrency(inv.amount || inv.totalAmount || 0)} from ${inv.clientName || 'Client'}`,
       timestamp: inv.paidAt || inv.updatedAt || inv.createdAt || inv.date,
       status: 'completed'
@@ -190,13 +192,13 @@ export default function DashboardPage() {
   // For now, we skip server fetch here to avoid blocking build; can be wired to notificationService
   const systemActivity: Array<{ id: string; type: string; description: string; timestamp: any; status: string }> = []
 
-  const unifiedActivity = [
+  const unifiedActivity: ActivityItem[] = [
     ...recentActivity,
     ...paymentActivity,
     // map milestone events
     ...milestoneEvents.map((e: any) => ({
       id: `ms-${e.id}`,
-      type: 'milestones',
+      type: 'milestones' as const,
       description: `${e.type === 'milestone_approved' ? 'Milestone approved' : 'Milestone completed'}: ${e.milestoneTitle}`,
       timestamp: e.createdAt,
       status: e.status
@@ -204,7 +206,7 @@ export default function DashboardPage() {
     // map system notifications
     ...systemEvents.map((s: any) => ({
       id: `sys-${s.id}`,
-      type: 'system',
+      type: 'system' as const,
       description: `${s.title} - ${s.message}`,
       timestamp: s.createdAt,
       status: 'info'
@@ -340,73 +342,36 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* KPI Cards with trends */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Project Completion Rate */}
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:shadow-xl transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium">Project Completion Rate</p>
-                  <p className="text-4xl font-extrabold">{Math.round(performanceMetrics.completionRate)}%</p>
-                  <p className="text-blue-200 text-xs mt-1">
-                    <TrendingUp className="h-3 w-3 inline mr-1" />
-                    +{(metrics.bookingGrowth || 0).toFixed(1)}% this month
-                  </p>
-                </div>
-                <Calendar className="h-8 w-8 text-blue-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Client Satisfaction */}
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-xl transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium">Client Satisfaction</p>
-                  <p className="text-3xl font-bold">{performanceMetrics.averageRating.toFixed(1)} / 5</p>
-                  <div className="mt-1 flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className={`h-4 w-4 ${i < Math.round(performanceMetrics.averageRating) ? 'text-yellow-300' : 'text-white/30'}`} />
-                    ))}
-                  </div>
-                </div>
-                <Star className="h-8 w-8 text-yellow-300" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Revenue Trend */}
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white hover:shadow-xl transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium">Revenue</p>
-                  <p className="text-3xl font-bold">{formatCurrency(totalRevenue)}</p>
-                  <p className="text-green-200 text-xs mt-1">
-                    <TrendingUp className="h-3 w-3 inline mr-1" />
-                    +{(metrics.revenueGrowth || 0).toFixed(1)}% this month
-                  </p>
-                </div>
-                <DollarSign className="h-8 w-8 text-green-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Projects */}
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white hover:shadow-xl transition-all">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium">Active Projects</p>
-                  <p className="text-3xl font-bold">{activeBookings}</p>
-                  <div className="mt-2">
-                    <Progress value={performanceMetrics.completionRate} className="h-2 bg-white/30" />
-                  </div>
-                </div>
-                <Package className="h-8 w-8 text-orange-200" />
-              </div>
-            </CardContent>
-          </Card>
+          <MetricCard
+            title="Project Completion"
+            value={`${Math.round(performanceMetrics.completionRate)}%`}
+            trendPercent={metrics.bookingGrowth || 0}
+            trendLabel="this month"
+            icon={<Calendar className="h-8 w-8" />}
+            accent="blue"
+            progressValue={performanceMetrics.completionRate}
+          />
+          <MetricCard
+            title="Client Satisfaction"
+            value={`${performanceMetrics.averageRating.toFixed(1)} / 5`}
+            icon={<Star className="h-8 w-8 text-yellow-300" />}
+            accent="purple"
+          />
+          <MetricCard
+            title="Revenue"
+            value={formatCurrency(totalRevenue)}
+            trendPercent={metrics.revenueGrowth || 0}
+            trendLabel="this month"
+            icon={<DollarSign className="h-8 w-8" />}
+            accent="green"
+          />
+          <MetricCard
+            title="Active Projects"
+            value={activeBookings}
+            icon={<Package className="h-8 w-8" />}
+            accent="orange"
+            progressValue={performanceMetrics.completionRate}
+          />
         </div>
 
         {/* Main Content Tabs */}
@@ -421,63 +386,7 @@ export default function DashboardPage() {
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Activity */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Recent Activity
-                  </CardTitle>
-                  <CardDescription>Latest bookings and updates</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Activity Filters */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <select className="form-input w-40" value={activityType} onChange={(e) => setActivityType(e.target.value as any)}>
-                        <option value="all">All Types</option>
-                        <option value="bookings">Bookings</option>
-                        <option value="payments">Payments</option>
-                        <option value="milestones">Milestones</option>
-                        <option value="system">System</option>
-                      </select>
-                      <select className="form-input w-36" value={activityStatus} onChange={(e) => setActivityStatus(e.target.value as any)}>
-                        <option value="all">All Statuses</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="failed">Failed</option>
-                      </select>
-                      <select className="form-input w-32" value={activityDateRange} onChange={(e) => setActivityDateRange(e.target.value as any)}>
-                        <option value="today">Today</option>
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                      </select>
-                      <UnifiedSearch placeholder="Search activity..." onSearch={setActivityQuery} className="flex-1" />
-                    </div>
-
-                    {filteredActivity.length > 0 ? (
-                      filteredActivity.map((activity) => (
-                        <div key={activity.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          <div className={`w-2 h-2 rounded-full ${activity.type === 'payment' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">{activity.description}</p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(activity.timestamp).toLocaleString()}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {activity.status}
-                          </Badge>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 text-center py-4">No recent activity</p>
-                    )}
-                    <div className="text-right">
-                      <Button variant="link" className="text-sm">View All</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <ActivityFeed items={filteredActivity} onViewAll={() => router.push('/dashboard/activity')} />
 
               {/* Upcoming Bookings */}
               <Card>
