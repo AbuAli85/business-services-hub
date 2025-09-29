@@ -42,6 +42,11 @@ import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
 import { StatusFilter } from '@/components/dashboard/bookings/StatusFilter'
 import { BookingCard } from '@/components/dashboard/bookings/BookingCard'
 import { BulkActions } from '@/components/dashboard/bookings/BulkActions'
+import { SearchAndSort } from '@/components/dashboard/bookings/SearchAndSort'
+import { BookingFilters } from '@/components/dashboard/bookings/BookingFilters'
+import { BookingCalendar } from '@/components/dashboard/bookings/BookingCalendar'
+import { BookingDetailModal } from '@/components/dashboard/bookings/BookingDetailModal'
+import { useBookingFilters, applyBookingFilters } from '@/hooks/useBookingFilters'
 
 // Constants
 const OMAN_TZ = 'Asia/Muscat'
@@ -66,6 +71,10 @@ export default function BookingsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [showFilters, setShowFilters] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailBooking, setDetailBooking] = useState<any | null>(null)
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -895,9 +904,19 @@ export default function BookingsPage() {
   const bookingsSource = bookings
   const invoicesSource = invoices
 
-  // Since we're using server-side pagination, we don't need client-side filtering
-  // The API handles all filtering and sorting
-  const filteredBookings = bookingsSource
+  // Client-side filter augmentation (optional) using BookingFilters hook
+  const { filters, setFilters, clearFilters } = useBookingFilters()
+  const filteredBookings = applyBookingFilters(bookingsSource, filters)
+
+  // Derive categories from current data
+  const categories = useMemo(() => {
+    const s = new Set<string>()
+    for (const b of bookingsSource || []) {
+      const c = String((b as any).service_category || (b as any).serviceCategory || '')
+      if (c) s.add(c)
+    }
+    return Array.from(s).sort()
+  }, [bookingsSource])
 
   // Pagination: Use server-side pagination results
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
@@ -1278,54 +1297,44 @@ export default function BookingsPage() {
         />
       </div>
 
-      {/* Search and Controls - Matching Screenshot */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search bookings..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+      {/* Toolbar: Search/Sort + Toggles */}
+      <div className="mb-6 space-y-3">
+        <SearchAndSort
+          search={searchQuery}
+          onSearch={(q)=> setSearchQuery(q)}
+          sortBy={sortBy}
+          onSortBy={(k)=> setSortBy(k)}
+          sortOrder={sortOrder}
+          onSortOrder={(o)=> setSortOrder(o)}
+        />
+        <div className="flex items-center gap-2">
+          <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={()=> setShowFilters(v=>!v)}>
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </Button>
+          <Button variant={showCalendar ? 'default' : 'outline'} size="sm" onClick={()=> setShowCalendar(v=>!v)}>
+            {showCalendar ? 'Hide Calendar' : 'Show Calendar'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters panel */}
+      {showFilters && (
+        <div className="mb-6">
+          <BookingFilters
+            value={filters as any}
+            onChange={setFilters as any}
+            onClear={clearFilters}
+            categories={categories}
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending_review">Pending Review</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="ready_to_launch">Ready to Launch</SelectItem>
-            <SelectItem value="in_production">In Production</SelectItem>
-            <SelectItem value="delivered">Delivered</SelectItem>
-            <SelectItem value="on_hold">On Hold</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Last Updated" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="lastUpdated">Last Updated</SelectItem>
-            <SelectItem value="createdAt">Date Created</SelectItem>
-            <SelectItem value="totalAmount">Amount</SelectItem>
-            <SelectItem value="serviceTitle">Service</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={String(pageSize)} onValueChange={(v)=> { setPageSize(Number(v)); setCurrentPage(1) }}>
-          <SelectTrigger className="w-28">
-            <SelectValue placeholder="10 / page" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10 / page</SelectItem>
-            <SelectItem value="25">25 / page</SelectItem>
-            <SelectItem value="50">50 / page</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      )}
+
+      {/* Calendar */}
+      {showCalendar && (
+        <div className="mb-6">
+          <BookingCalendar bookings={filteredBookings} onDateSelect={(d)=> console.log('date', d)} />
+        </div>
+      )}
 
       {/* Bulk Actions Toolbar */}
       <BulkActions
@@ -1413,222 +1422,29 @@ export default function BookingsPage() {
                 />
                 <span className="text-sm text-gray-500">Select all on this page</span>
               </div>
-              {paginatedBookings.map((booking) => {
-                const invoice = getInvoiceForBooking(booking.id)
-                const derivedStatus = getDerivedStatus(booking)
-                
-                return (
-                  <div key={booking.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Checkbox
-                        checked={selectedIds.has(booking.id)}
-                        onCheckedChange={(v)=>{
-                          const checked = Boolean(v)
-                          setSelectedIds(prev=>{
-                            const next = new Set(prev)
-                            if (checked) next.add(booking.id); else next.delete(booking.id)
-                            return next
-                          })
-                        }}
-                      />
-                      <span className="text-xs text-gray-400">{selectedIds.has(booking.id) ? 'Selected' : ''}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      {/* Service Title */}
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 text-base mb-1">
-                          {booking.service_title || 'Service'}
-                        </h3>
-                        
-                        {/* ID and View Details */}
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                          <span className="font-mono">ID: {String(booking.id).slice(0, 8)}...</span>
-                          <Link href={`/dashboard/bookings/${booking.id}`} className="text-blue-600 hover:underline">
-                            View Details
-                          </Link>
-                        </div>
-                        
-                        {/* Price */}
-                        <div className="text-lg font-bold text-gray-900 mb-2">
-                          {Number(booking.amount_cents ?? 0) === 0 ? (
-                            <span className="text-gray-500">No amount set</span>
-                          ) : (
-                            formatCurrency(
-                              Number((booking.amount_cents ?? 0) / 100),
-                              String(booking.currency ?? 'OMR')
-                            )
-                          )}
-                        </div>
-                        
-                        {/* Status Badge - Matching Screenshot */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs font-semibold px-2 py-1 ${
-                              derivedStatus === 'delivered' 
-                                ? 'text-green-700 border-green-300 bg-green-100'
-                                : derivedStatus === 'in_production'
-                                ? 'text-blue-700 border-blue-300 bg-blue-100'
-                                : derivedStatus === 'ready_to_launch'
-                                ? 'text-purple-700 border-purple-300 bg-purple-100'
-                                : derivedStatus === 'approved'
-                                ? 'text-orange-700 border-orange-300 bg-orange-100'
-                                : derivedStatus === 'cancelled'
-                                ? 'text-red-700 border-red-300 bg-red-100'
-                                : 'text-yellow-700 border-yellow-300 bg-yellow-100'
-                            }`}
-                          >
-                            {derivedStatus === 'delivered' ? 'Delivered' :
-                             derivedStatus === 'in_production' ? 'In Production' :
-                             derivedStatus === 'ready_to_launch' ? 'Ready to Launch' :
-                             derivedStatus === 'approved' ? 'Approved' :
-                             derivedStatus === 'cancelled' ? 'Cancelled' :
-                             'Pending'}
-                          </Badge>
-                          <span className="text-sm text-gray-600">
-                            {derivedStatus === 'ready_to_launch' ? 'All prerequisites met' : getStatusSubtitle(derivedStatus)}
-                          </span>
-                          {derivedStatus === 'ready_to_launch' && (
-                            <span className="text-sm text-gray-600">• Ready to launch</span>
-                          )}
-                        </div>
-                        
-                        {/* Invoice Status - Matching Screenshot */}
-                        <div className="flex items-center gap-2 mb-2">
-                          {invoice ? (
-                            <>
-                              <span className="text-sm text-gray-500">Invoice:</span>
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs font-semibold ${
-                                  invoice.status === 'paid' 
-                                    ? 'text-green-700 border-green-300 bg-green-100'
-                                    : invoice.status === 'issued'
-                                    ? 'text-yellow-700 border-yellow-300 bg-yellow-100'
-                                    : 'text-gray-700 border-gray-300 bg-gray-100'
-                                }`}
-                              >
-                                {invoice.status === 'paid' ? 'Paid' : 
-                                 invoice.status === 'issued' ? 'Issued' : 
-                                 invoice.status}
-                              </Badge>
-                              {invoice.status === 'issued' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-6 px-2 text-green-600 border-green-300"
-                                  onClick={() => handleMarkInvoicePaid(invoice.id)}
-                                >
-                                  Mark Paid
-                                </Button>
-                              )}
-                              {invoice.status === 'draft' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs h-6 px-2 text-blue-600 border-blue-300"
-                                  onClick={() => handleSendInvoice(invoice.id)}
-                                >
-                                  Send Invoice
-                                </Button>
-                              )}
-                            </>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-500">Invoice:</span>
-                              <Badge 
-                                variant="outline" 
-                                className="text-xs font-semibold text-gray-600 border-gray-300 bg-gray-100"
-                              >
-                                No Invoice
-                              </Badge>
-                              {canCreateInvoice && (['approved','confirmed','in_progress','completed'].includes(String(booking.status)) || booking.approval_status === 'approved') && (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="text-xs h-6 px-2"
-                                  onClick={() => handleCreateInvoice(booking)}
-                                >
-                                  Create
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Date */}
-                        <div className="text-sm text-gray-500">
-                          {booking.scheduled_date ? formatLocalDate(booking.scheduled_date) : '—'} {booking.scheduled_date ? formatLocalTime(booking.scheduled_date) : ''}
-                        </div>
-                      </div>
-                      
-                      {/* Action Button */}
-                      <div className="ml-4">
-                        {/* Primary Action based on booking status and user role - ORDER MATTERS! */}
-                        {booking.status === 'completed' && userRole === 'client' && (
-                          <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white">
-                            <Award className="h-4 w-4 mr-2" />
-                            Review Project
-                          </Button>
-                        )}
-                        
-                        {derivedStatus === 'in_production' && (
-                          <Button size="sm" className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white" asChild>
-                            <Link href={`/dashboard/bookings/${booking.id}/milestones`}>
-                              <Settings className="h-4 w-4 mr-2" />
-                              Manage Project
-                            </Link>
-                          </Button>
-                        )}
-                        
-                        {booking.status !== 'completed' && derivedStatus === 'ready_to_launch' && userRole === 'provider' && (
-                          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white" asChild>
-                            <Link href={`/dashboard/bookings/${booking.id}/milestones`}>
-                              <Play className="h-4 w-4 mr-2" />
-                              Launch Project
-                            </Link>
-                          </Button>
-                        )}
-                        
-                        {derivedStatus === 'pending_review' && userRole === 'provider' && (
-                          <Button 
-                            size="sm" 
-                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
-                            onClick={() => approveBooking(booking.id)}
-                            disabled={approvingIds.has(booking.id)}
-                          >
-                            {approvingIds.has(booking.id) ? (
-                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                            )}
-                            Approve Project
-                          </Button>
-                        )}
-                        
-                        {derivedStatus === 'approved' && userRole === 'provider' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="border-orange-200 text-orange-700 bg-orange-50"
-                            onClick={() => handleCreateInvoice(booking)}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Create Invoice
-                          </Button>
-                        )}
-                        
-                        {derivedStatus === 'cancelled' && (
-                          <Button size="sm" variant="outline" disabled className="border-red-200 text-red-700 bg-red-50">
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Cancelled
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {paginatedBookings.map((booking) => (
+                <div key={booking.id} className="mb-3">
+                  <BookingCard
+                    booking={booking}
+                    isSelected={selectedIds.has(booking.id)}
+                    onSelect={(checked) => {
+                      setSelectedIds(prev => {
+                        const next = new Set(prev)
+                        if (checked) next.add(booking.id); else next.delete(booking.id)
+                        return next
+                      })
+                    }}
+                    onQuickAction={(action) => {
+                      if (action === 'view_details') {
+                        setDetailBooking(booking)
+                        setDetailOpen(true)
+                        return
+                      }
+                      console.log('quick-action', action, booking.id)
+                    }}
+                  />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-12">
@@ -1705,6 +1521,9 @@ export default function BookingsPage() {
           </CardContent>
         </Card>
       )}
+      
+      {/* Detail Modal */}
+      <BookingDetailModal open={detailOpen} onOpenChange={setDetailOpen} booking={detailBooking} />
     </div>
   )
 }

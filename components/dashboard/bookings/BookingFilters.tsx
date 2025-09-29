@@ -1,0 +1,103 @@
+'use client'
+
+import React from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
+
+export interface BookingFiltersState {
+  dateType: 'created' | 'start' | 'end'
+  dateStart: string | null
+  dateEnd: string | null
+  amountMin: string
+  amountMax: string
+  clients: string[]
+  providers: string[]
+  serviceCategories: string[]
+  duration: 'all' | 'short' | 'medium' | 'long'
+}
+
+export interface BookingFiltersProps {
+  value: BookingFiltersState
+  onChange: (next: BookingFiltersState) => void
+  onClear: () => void
+  categories?: string[]
+}
+
+export function BookingFilters({ value, onChange, onClear, categories = [] }: BookingFiltersProps) {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label className="mb-1 block">Date type</Label>
+            <FilterDropdown
+              label="Type"
+              options={[
+                { label: 'Created', value: 'created' },
+                { label: 'Start', value: 'start' },
+                { label: 'End', value: 'end' }
+              ]}
+              value={value.dateType}
+              onChange={(v)=> onChange({ ...value, dateType: (v as any) || 'created' })}
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block">Date range start</Label>
+            <Input type="date" value={value.dateStart ?? ''} onChange={(e)=> onChange({ ...value, dateStart: e.target.value || null })} />
+          </div>
+          <div>
+            <Label className="mb-1 block">Date range end</Label>
+            <Input type="date" value={value.dateEnd ?? ''} onChange={(e)=> onChange({ ...value, dateEnd: e.target.value || null })} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label className="mb-1 block">Min amount</Label>
+            <Input type="number" placeholder="0" value={value.amountMin} onChange={(e)=> onChange({ ...value, amountMin: e.target.value })} />
+          </div>
+          <div>
+            <Label className="mb-1 block">Max amount</Label>
+            <Input type="number" placeholder="10000" value={value.amountMax} onChange={(e)=> onChange({ ...value, amountMax: e.target.value })} />
+          </div>
+          <div>
+            <Label className="mb-1 block">Duration</Label>
+            <FilterDropdown
+              label="Duration"
+              options={[
+                { label: 'All', value: 'all' },
+                { label: 'Short', value: 'short' },
+                { label: 'Medium', value: 'medium' },
+                { label: 'Long', value: 'long' }
+              ]}
+              value={value.duration}
+              onChange={(v)=> onChange({ ...value, duration: (v as any) || 'all' })}
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label className="mb-1 block">Service Categories</Label>
+          <FilterDropdown
+            label="Categories"
+            options={categories.map(c => ({ label: c, value: c }))}
+            value={value.serviceCategories}
+            onChange={(v)=> onChange({ ...value, serviceCategories: (v as string[]) || [] })}
+            multi
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="outline" onClick={onClear}>Clear Filters</Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default BookingFilters
+
+

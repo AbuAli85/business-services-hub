@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Calendar, DollarSign, Clock, MoreHorizontal } from 'lucide-react'
+import { QuickActions } from '@/components/dashboard/bookings/QuickActions'
 
 export interface BookingCardProps {
   booking: any
@@ -84,6 +85,10 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction }: Bo
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span>{booking.duration?.estimated ? `${booking.duration.estimated} days` : '—'}</span>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <QuickActions bookingId={String(booking.id)} onAction={(a)=> onQuickAction?.(a, String(booking.id))} />
         </div>
       </CardContent>
     </Card>
