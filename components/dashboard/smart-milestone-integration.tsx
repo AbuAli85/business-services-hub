@@ -41,6 +41,8 @@ export function SmartMilestoneIntegration({
 }: SmartMilestoneIntegrationProps) {
   const [activeTab, setActiveTab] = useState('overview')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [bookingStatus, setBookingStatus] = useState<string | null>(null)
+  const [approvalStatus, setApprovalStatus] = useState<string | null>(null)
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -54,6 +56,29 @@ export function SmartMilestoneIntegration({
     }
   }
 
+  // Load lightweight booking status to improve empty-state messaging
+  useEffect(() => {
+    let mounted = true
+    const loadBooking = async () => {
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store'
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        const b = json?.booking || null
+        if (mounted && b) {
+          setBookingStatus(b.status || null)
+          setApprovalStatus(b.approval_status || b.ui_approval_status || null)
+        }
+      } catch {}
+    }
+    loadBooking()
+    return () => { mounted = false }
+  }, [bookingId])
+
   const getProjectStatus = () => {
     const totalMilestones = milestones.length
     const completedMilestones = milestones.filter(m => m.status === 'completed').length
@@ -61,6 +86,23 @@ export function SmartMilestoneIntegration({
     const overdueMilestones = milestones.filter(m => 
       m.due_date && new Date(m.due_date) < new Date() && m.status !== 'completed'
     ).length
+
+    // If there are no milestones yet, derive from booking state
+    if (totalMilestones === 0) {
+      const approvedLikeStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
+      const isApprovedLike = approvedLikeStatuses.includes(String(bookingStatus || '')) || String(approvalStatus || '') === 'approved'
+
+      if (String(bookingStatus || '') === 'completed') {
+        return { status: 'completed', color: 'green', message: 'Project completed successfully!' }
+      }
+      if (String(bookingStatus || '') === 'in_progress') {
+        return { status: 'in_progress', color: 'blue', message: 'Project in progress' }
+      }
+      if (isApprovedLike) {
+        return { status: 'approved', color: 'blue', message: 'Ready to start' }
+      }
+      return { status: 'pending', color: 'gray', message: 'Waiting for provider approval' }
+    }
 
     if (completedMilestones === totalMilestones && totalMilestones > 0) {
       return { status: 'completed', color: 'green', message: 'Project completed successfully!' }
