@@ -235,6 +235,7 @@ export async function GET(request: NextRequest) {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            domain: requestUrl.hostname,
             expires
           })
           redirectResponse.cookies.set('sb-refresh-token', sessionCookies.refreshToken, {
@@ -242,6 +243,7 @@ export async function GET(request: NextRequest) {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            domain: requestUrl.hostname,
             expires: refreshExpires
           })
           console.log('✅ Session cookies set for onboarding redirect:', {
@@ -278,6 +280,7 @@ export async function GET(request: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           path: '/',
+          domain: requestUrl.hostname,
           expires
         })
         redirectResponse.cookies.set('sb-refresh-token', sessionCookies.refreshToken, {
@@ -285,6 +288,7 @@ export async function GET(request: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           path: '/',
+          domain: requestUrl.hostname,
           expires: refreshExpires
         })
         console.log('✅ Session cookies set for dashboard redirect:', {
