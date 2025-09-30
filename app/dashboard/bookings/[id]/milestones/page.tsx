@@ -312,21 +312,27 @@ export default function MilestonesPage() {
     try {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
-      const pretty = action.replace('_', ' ')
+      const actionMessages: Record<string, { loading: string; success: string; error: string }> = {
+        approve: { loading: 'Approving…', success: 'Booking approved', error: 'Approval failed' },
+        decline: { loading: 'Declining…', success: 'Booking declined', error: 'Decline failed' },
+        start_project: { loading: 'Starting project…', success: 'Project started', error: 'Start failed' }
+      }
       await toast.promise(
         fetch(`/api/bookings/${booking.id}`, {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
           body: JSON.stringify({ action })
-        }).then(r => { if (!r.ok) throw new Error(`${pretty} failed`) }),
-        { loading: `${pretty.charAt(0).toUpperCase() + pretty.slice(1)}…`, success: `Booking ${pretty}d`, error: `${pretty} failed` }
+        }).then(r => { if (!r.ok) throw new Error(actionMessages[action].error) }),
+        actionMessages[action]
       )
       await loadBookingData()
     } catch (e:any) {
       // toast already shows error via toast.promise; no extra action needed
     }
   }
+
+  const normalizeStatus = (b: Booking) => b.approval_status ?? b.status
 
   if (loading) {
     return (
@@ -469,7 +475,7 @@ export default function MilestonesPage() {
                 
                 {/* Quick Actions: approve/decline/start */}
                 {(() => {
-                  const statusNorm: string = booking?.approval_status ?? booking?.status
+                  const statusNorm: string = normalizeStatus(booking)
                   const isApproved = ['approved', 'confirmed'].includes(String(statusNorm))
                   const isPending = statusNorm === 'pending'
                   const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
@@ -566,7 +572,7 @@ export default function MilestonesPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Created</p>
-                  <p className="text-gray-900">{new Date(booking.created_at).toLocaleDateString()}</p>
+                  <p className="text-gray-900">{new Date(booking.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Value</p>
