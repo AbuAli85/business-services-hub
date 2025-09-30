@@ -226,14 +226,39 @@ export function ProfessionalMilestoneSystem({
           setComments({})
         }
 
-      // Load approvals
-      try {
-        const { data: approvalsData, error: approvalsError } = await supabase
+      // Load approvals and task comments in parallel for better performance
+      const allTaskIds = normalizedMilestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      const taskIds = allTaskIds.filter((id: string) => {
+        const isValid = isUuid(id) && id !== bookingId
+        if (!isValid) {
+          console.warn('⚠️ Filtering out invalid task ID from comments query:', id, 'bookingId:', bookingId)
+        }
+        return isValid
+      })
+
+      // Run approvals and task comments queries in parallel
+      const [approvalsResult, taskCommentsResult] = await Promise.allSettled([
+        // Approvals query
+        supabase
           .from('milestone_approvals')
           .select('*')
           .eq('booking_id', bookingId)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
         
+        // Task comments query (only if we have valid task IDs)
+        taskIds.length > 0 
+          ? supabase
+              .from('task_comments')
+              .select('id, task_id, user_id, comment, created_at')
+              .in('task_id', taskIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null })
+      ])
+
+      // Process approvals result
+      if (approvalsResult.status === 'fulfilled') {
+        const { data: approvalsData, error: approvalsError } = approvalsResult.value
         if (!approvalsError) {
           const groupedApprovals = (approvalsData || []).reduce((acc: any, approval: any) => {
             const milestoneId = approval.milestone_id
@@ -246,47 +271,27 @@ export function ProfessionalMilestoneSystem({
           console.warn('Approvals loading error:', approvalsError)
           setApprovals({})
         }
-      } catch (err) {
-        console.warn('Approvals not available:', err)
+      } else {
+        console.warn('Approvals not available:', approvalsResult.reason)
         setApprovals({})
       }
 
-      // Load task comments for all visible tasks - use fresh data, not stale state
-      try {
-        const allTaskIds = normalizedMilestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
-        
-        // Filter out invalid task IDs (booking IDs, non-UUIDs, etc.)
-        const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-        const taskIds = allTaskIds.filter((id: string) => {
-          const isValid = isUuid(id) && id !== bookingId
-          if (!isValid) {
-            console.warn('⚠️ Filtering out invalid task ID from comments query:', id, 'bookingId:', bookingId)
+      // Process task comments result
+      if (taskCommentsResult.status === 'fulfilled') {
+        const { data: commentsRows, error: tcErr } = taskCommentsResult.value
+        if (!tcErr) {
+          const grouped: Record<string, any[]> = {}
+          for (const row of commentsRows || []) {
+            if (!grouped[row.task_id]) grouped[row.task_id] = []
+            grouped[row.task_id].push(row)
           }
-          return isValid
-        })
-        
-        if (taskIds.length > 0) {
-          const { data: commentsRows, error: tcErr } = await supabase
-            .from('task_comments')
-            .select('id, task_id, user_id, comment, created_at')
-            .in('task_id', taskIds)
-            .order('created_at', { ascending: false })
-          if (!tcErr) {
-            const grouped: Record<string, any[]> = {}
-            for (const row of commentsRows || []) {
-              if (!grouped[row.task_id]) grouped[row.task_id] = []
-              grouped[row.task_id].push(row)
-            }
-            setTaskComments(grouped)
-          } else {
-            console.warn('Task comments load error:', tcErr)
-            setTaskComments({})
-          }
+          setTaskComments(grouped)
         } else {
+          console.warn('Task comments load error:', tcErr)
           setTaskComments({})
         }
-      } catch (e) {
-        console.warn('Task comments not available:', e)
+      } else {
+        console.warn('Task comments not available:', taskCommentsResult.reason)
         setTaskComments({})
       }
       
@@ -600,8 +605,12 @@ export function ProfessionalMilestoneSystem({
       if (status === 'completed') {
         try {
           const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            const { data: taskData } = await supabase
+          if (!user) {
+            toast.error("You must be signed in to perform this action")
+            return
+          }
+          
+          const { data: taskData } = await supabase
               .from('tasks')
               .select('id, title, milestone_id, milestones!inner(id, title, booking_id)')
               .eq('id', taskId)
@@ -622,13 +631,20 @@ export function ProfessionalMilestoneSystem({
                 actor_name: user.user_metadata?.full_name || user.email || 'Unknown User'
               })
             }
-          }
         } catch (notificationError) {
           console.warn('Failed to send notification:', notificationError)
         }
       }
       
       toast.success('Task status updated')
+      
+      // Recalculate milestone progress after task update
+      // Find the milestone that contains this task and recalculate its progress
+      const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
+      if (milestone) {
+        await calculateAndUpdateMilestoneProgress(milestone, supabase)
+      }
+      
       await loadData() // This will trigger progress recalculation
     } catch (err) {
       console.error('Error updating task status:', err)
@@ -648,6 +664,14 @@ export function ProfessionalMilestoneSystem({
       if (!taskId || taskId === bookingId) {
         console.error('Invalid taskId provided to deleteTask:', taskId, 'bookingId:', bookingId)
         toast.error('Invalid task ID provided')
+        return
+      }
+      
+      // Additional validation: ensure taskId is a valid UUID
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(taskId)) {
+        console.error('❌ Invalid UUID format for taskId:', taskId)
+        toast.error('Invalid task ID format')
         return
       }
       
@@ -1088,7 +1112,13 @@ export function ProfessionalMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
       
-      const userId = (await supabase.auth.getUser()).data.user?.id
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error("You must be signed in to add comments")
+        return
+      }
+      
+      const userId = user.id
       const commentData = {
         task_id: selectedTask.id,
         user_id: userId,
@@ -1156,30 +1186,6 @@ export function ProfessionalMilestoneSystem({
     }
   }
 
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading professional milestone system...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading System</h3>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <Button onClick={loadData} variant="outline">
-          Try Again
-        </Button>
-      </div>
-    )
-  }
 
   // Loading state
   if (loading) {
