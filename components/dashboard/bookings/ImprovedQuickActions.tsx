@@ -39,13 +39,8 @@ export function ImprovedQuickActions({
   const getAvailableActions = () => {
     const actions = []
     
-    // Common actions for all roles
-    actions.push({
-      key: 'view',
-      label: 'View Details',
-      icon: Eye,
-      variant: 'outline' as const
-    })
+    // Note: View Details is triggered by the card-level Eye button.
+    // Avoid duplicating it here to prevent two "View Details" entries.
     
     // Role-specific actions
     switch (userRole) {

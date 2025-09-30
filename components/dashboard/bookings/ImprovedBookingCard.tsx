@@ -10,7 +10,6 @@ import {
   Clock, 
   User, 
   Building, 
-  MoreHorizontal,
   Eye,
   FileText,
   MessageSquare
@@ -146,7 +145,7 @@ export function ImprovedBookingCard({
               </div>
             </div>
             
-            {/* Actions Menu */}
+            {/* Actions */}
             <div className="flex items-center gap-1">
               {onViewDetails && (
                 <Button 
@@ -158,14 +157,6 @@ export function ImprovedBookingCard({
                   <Eye className="h-4 w-4" />
                 </Button>
               )}
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => onQuickAction?.('menu', booking.id)}
-                className="h-8 w-8 p-0"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
