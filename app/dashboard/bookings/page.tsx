@@ -121,6 +121,10 @@ export default function BookingsPage() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailBooking, setDetailBooking] = useState<any | null>(null)
+  const [detailMilestones, setDetailMilestones] = useState<any[]>([])
+  const [detailCommunications, setDetailCommunications] = useState<any[]>([])
+  const [detailFiles, setDetailFiles] = useState<any[]>([])
+  const [detailLoading, setDetailLoading] = useState(false)
   const [summary, setSummary] = useState<{ total_projects: number; completed_count: number; total_revenue: number } | null>(null)
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin' | null>(null)
@@ -163,6 +167,47 @@ export default function BookingsPage() {
   const getInvoiceForBooking = useCallback((bookingId: string) => {
     return invoiceByBooking.get(String(bookingId))
   }, [invoiceByBooking])
+
+  // Open details helper: loads enriched booking + milestones + communications
+  const openBookingDetails = useCallback(async (booking: any) => {
+    try {
+      setDetailOpen(true)
+      setDetailBooking(booking)
+      setDetailMilestones([])
+      setDetailCommunications([])
+      setDetailFiles([])
+      setDetailLoading(true)
+
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+
+      // Fetch all in parallel
+      const [bookingRes, milestonesRes, commsRes] = await Promise.all([
+        fetch(`/api/bookings/${booking.id}`, { headers, credentials: 'include' }),
+        fetch(`/api/milestones?bookingId=${encodeURIComponent(booking.id)}`, { headers, credentials: 'include' }),
+        fetch(`/api/messages?booking_id=${encodeURIComponent(booking.id)}`, { headers, credentials: 'include' })
+      ])
+
+      if (bookingRes.ok) {
+        const { booking: enriched } = await bookingRes.json()
+        if (enriched) setDetailBooking(enriched)
+      }
+      if (milestonesRes.ok) {
+        const { milestones } = await milestonesRes.json()
+        setDetailMilestones(Array.isArray(milestones) ? milestones : [])
+      }
+      if (commsRes.ok) {
+        const { messages } = await commsRes.json()
+        setDetailCommunications(Array.isArray(messages) ? messages : [])
+      }
+    } catch (e) {
+      console.warn('Failed to load booking details:', e)
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
 
   // Helper functions
   function getDerivedStatus(booking: any) {
@@ -1325,7 +1370,7 @@ export default function BookingsPage() {
 				  </div>
 				  
 				  {/* View Toggles */}
-				  <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
 					<div className="bg-white/10 p-1 rounded-lg border border-white/20">
 					  <Button 
 						size="sm" 
@@ -1675,7 +1720,7 @@ export default function BookingsPage() {
 					  } },
 					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
 						  <div className="flex items-center gap-2">
-							<Button size="sm" variant="outline" onClick={()=>{ setDetailBooking(r); setDetailOpen(true) }} aria-label="View details">Details</Button>
+                            <Button size="sm" variant="outline" onClick={()=> openBookingDetails(r)} aria-label="View details">Details</Button>
 							{canManageBookings && r.approval_status !== 'approved' && (
 							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
 							)}
@@ -1763,8 +1808,7 @@ export default function BookingsPage() {
 						}}
 						onQuickAction={(action, id) => {
 						  if (action === 'view') {
-							setDetailBooking(booking)
-							setDetailOpen(true)
+                          openBookingDetails(booking)
 						  } else if (action === 'approve') {
 							approveBooking(booking.id)
 						  } else if (action === 'message') {
@@ -1777,10 +1821,7 @@ export default function BookingsPage() {
 							toast.success('More actions menu coming soon')
 						  }
 						}}
-						onViewDetails={(id) => {
-						  setDetailBooking(booking)
-						  setDetailOpen(true)
-						}}
+                        onViewDetails={(id) => { openBookingDetails(booking) }}
 						density={density}
 						userRole={userRole || undefined}
 					  />
@@ -1837,9 +1878,9 @@ export default function BookingsPage() {
         onOpenChange={setDetailOpen} 
         booking={detailBooking}
         invoice={detailBooking ? invoiceByBooking.get(String(detailBooking.id)) : null}
-        milestones={[]} // TODO: Load milestones data
-        communications={[]} // TODO: Load communications data
-        files={[]} // TODO: Load files data
+        milestones={detailMilestones}
+        communications={detailCommunications}
+        files={detailFiles}
       />
     </div>
   )
