@@ -692,9 +692,11 @@ export async function PATCH(request: NextRequest) {
           console.log('❌ Start project denied: User is not a provider')
           return NextResponse.json({ error: 'Only provider can start project' }, { status: 403 })
         }
-        // Check if booking is approved
-        if (booking.status !== 'approved' && booking.approval_status !== 'approved') {
-          console.log('❌ Start project denied: Booking not approved')
+        // Check if booking is approved (align with DB predicate: approved, confirmed, in_progress, completed)
+        const approvedStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
+        const isApproved = approvedStatuses.includes(booking.status) || booking.approval_status === 'approved'
+        if (!isApproved) {
+          console.log('❌ Start project denied: Booking not approved', { status: booking.status, approval_status: booking.approval_status })
           return NextResponse.json({ error: 'Booking must be approved before starting project' }, { status: 400 })
         }
         
