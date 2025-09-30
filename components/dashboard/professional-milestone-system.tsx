@@ -498,6 +498,11 @@ export function ProfessionalMilestoneSystem({
   // Milestone actions
   const updateMilestoneStatus = async (milestoneId: string, status: string) => {
     try {
+      // Optimistic update - update UI immediately
+      setMilestones(prev => prev.map(m => 
+        m.id === milestoneId ? { ...m, status: status as any, updated_at: new Date().toISOString() } as any : m
+      ))
+      
       const supabase = await getSupabaseClient()
       
       const { error } = await supabase
@@ -508,10 +513,37 @@ export function ProfessionalMilestoneSystem({
         })
         .eq('id', milestoneId)
       
-      if (error) throw error
+      if (error) {
+        // Revert optimistic update on error
+        setMilestones(prev => prev.map(m => 
+          m.id === milestoneId ? { ...m, status: m.status } : m
+        ))
+        throw error
+      }
       
       toast.success('Milestone status updated')
-      await loadData()
+      
+      // Log audit trail
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('audit_logs').insert({
+            booking_id: bookingId,
+            entity: 'milestone',
+            entity_id: milestoneId,
+            action: 'update_status',
+            old_values: { status: 'previous_status' },
+            new_values: { status },
+            actor_id: user.id,
+            created_at: new Date().toISOString()
+          })
+        }
+      } catch (auditError) {
+        console.warn('Failed to log audit trail:', auditError)
+      }
+      
+      // Background refresh to ensure consistency
+      loadData()
     } catch (err) {
       console.error('Error updating milestone status:', err)
       toast.error('Failed to update milestone status')
@@ -638,6 +670,24 @@ export function ProfessionalMilestoneSystem({
       
       toast.success('Task status updated')
       
+      // Log audit trail
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('audit_logs').insert({
+            booking_id: bookingId,
+            entity: 'task',
+            entity_id: taskId,
+            action: 'update_status',
+            new_values: { status },
+            actor_id: user.id,
+            created_at: new Date().toISOString()
+          })
+        }
+      } catch (auditError) {
+        console.warn('Failed to log audit trail:', auditError)
+      }
+      
       // Recalculate milestone progress after task update
       // Find the milestone that contains this task and recalculate its progress
       const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
@@ -689,6 +739,13 @@ export function ProfessionalMilestoneSystem({
       }
       
       toast.success('Task deleted successfully')
+      
+      // Recalculate milestone progress after task deletion
+      const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
+      if (milestone) {
+        await calculateAndUpdateMilestoneProgress(milestone, supabase)
+      }
+      
       await loadData() // This will trigger progress recalculation
     } catch (err) {
       console.error('Error deleting task:', err)
@@ -870,6 +927,11 @@ export function ProfessionalMilestoneSystem({
         }
 
         toast.success('Task updated successfully')
+        
+        // Recalculate milestone progress after task update
+        if (selectedMilestone) {
+          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabase)
+        }
       } else {
         // Use our backend-driven API for task creation
         const response = await fetch('/api/tasks', {
@@ -921,6 +983,11 @@ export function ProfessionalMilestoneSystem({
         }
 
         toast.success('Task created successfully')
+        
+        // Recalculate milestone progress after task creation
+        if (selectedMilestone) {
+          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabase)
+        }
       }
       
       // Reload data to show updated tasks
@@ -993,6 +1060,14 @@ export function ProfessionalMilestoneSystem({
   // Simpler reordering via buttons
   const moveMilestone = async (milestoneId: string, direction: 'up' | 'down') => {
     try {
+      // Validate UUID format
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(milestoneId)) {
+        console.error('❌ Invalid UUID format for milestoneId:', milestoneId)
+        toast.error('Invalid milestone ID format')
+        return
+      }
+
       const index = milestones.findIndex(m => m.id === milestoneId)
       if (index === -1) return
       const targetIndex = direction === 'up' ? index - 1 : index + 1
@@ -1206,8 +1281,16 @@ export function ProfessionalMilestoneSystem({
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Milestones</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Milestones</h3>
+          <p className="text-gray-600 mb-4">
+            {error.includes('Authentication required') 
+              ? 'Please sign in to view your project milestones.' 
+              : error.includes('Access denied') 
+              ? 'You don\'t have permission to view these milestones.'
+              : error.includes('Booking not found')
+              ? 'The requested project could not be found.'
+              : 'Something went wrong while loading your milestones. Please try refreshing the page.'}
+          </p>
           <div className="space-x-2">
             <Button onClick={loadData} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />
