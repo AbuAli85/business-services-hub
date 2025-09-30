@@ -32,8 +32,14 @@ export default function MilestoneFilters({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Status</label>
-          <select className="form-input" value={status} onChange={e => setStatus(e.target.value)}>
+          <label htmlFor="status-filter" className="text-sm font-medium">Status</label>
+          <select 
+            id="status-filter"
+            className="form-input" 
+            value={status} 
+            onChange={e => setStatus(e.target.value)}
+            aria-label="Filter by milestone status"
+          >
             <option value="all">All</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
@@ -43,8 +49,14 @@ export default function MilestoneFilters({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Project Type</label>
-          <select className="form-input" value={projectType} onChange={e => setProjectType(e.target.value)}>
+          <label htmlFor="project-type-filter" className="text-sm font-medium">Project Type</label>
+          <select 
+            id="project-type-filter"
+            className="form-input" 
+            value={projectType} 
+            onChange={e => setProjectType(e.target.value)}
+            aria-label="Filter by project type"
+          >
             <option value="all">All</option>
             <option value="one_time">One Time</option>
             <option value="monthly">Monthly</option>

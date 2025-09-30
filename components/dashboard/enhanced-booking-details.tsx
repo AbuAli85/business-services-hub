@@ -1053,6 +1053,7 @@ export default function EnhancedBookingDetails({
           title: newTaskTitle.trim(),
           description: newTaskDescription.trim() || null,
           status: 'pending',
+          priority: 'normal',
           progress_percentage: 0
         })
         .select()

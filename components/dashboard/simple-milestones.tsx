@@ -355,6 +355,8 @@ export function SimpleMilestones({
           <button
             onClick={() => setUsingLocalStorage(false)}
             className="ml-auto text-amber-600 hover:text-amber-800"
+            aria-label="Close local storage notice"
+            title="Close local storage notice"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -1007,14 +1009,15 @@ export function SimpleMilestones({
                               value={newTask.task.priority || 'normal'}
                               onChange={(e) => setNewTask({
                                 ...newTask,
-                                task: { ...newTask.task, priority: e.target.value as 'low' | 'normal' | 'high' }
+                                task: { ...newTask.task, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' }
                               })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               aria-label="Select task priority"
                             >
                               <option value="low">🟢 Low Priority</option>
-                              <option value="medium">🟡 Medium Priority</option>
+                              <option value="normal">🔵 Normal Priority</option>
                               <option value="high">🔴 High Priority</option>
+                              <option value="urgent">🚨 Urgent Priority</option>
                             </select>
                           </div>
                         </div>

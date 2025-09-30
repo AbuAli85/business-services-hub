@@ -228,6 +228,7 @@ export function QuickMilestoneCreator({
               title: task,
               description: '',
               status: 'pending',
+              priority: 'normal',
               progress_percentage: 0,
               order_index: j,
               created_by: user.id
