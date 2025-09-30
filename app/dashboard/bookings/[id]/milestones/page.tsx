@@ -384,6 +384,17 @@ export default function MilestonesPage() {
                     <Badge className="bg-white/20 text-white border-white/30">
                       {booking.status}
                     </Badge>
+                    {booking.approval_status && (
+                      <Badge className={
+                        booking.approval_status === 'approved'
+                          ? 'bg-green-500/20 text-green-100 border-green-300/30'
+                          : booking.approval_status === 'declined'
+                          ? 'bg-red-500/20 text-red-100 border-red-300/30'
+                          : 'bg-yellow-500/20 text-yellow-100 border-yellow-300/30'
+                      }>
+                        {booking.approval_status}
+                      </Badge>
+                    )}
                     <span className="text-sm text-blue-200">
                       Created {new Date(booking.created_at).toLocaleDateString()}
                     </span>
