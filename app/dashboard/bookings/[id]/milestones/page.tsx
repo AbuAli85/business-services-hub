@@ -304,16 +304,28 @@ export default function MilestonesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading project details...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-6">
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-40 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+            <div className="h-96 bg-gray-200 rounded animate-pulse" />
+          </div>
         </div>
       </div>
     )
   }
 
   if (error) {
+    const title = /denied|forbidden|unauthor/i.test(error)
+      ? 'Access Denied'
+      : /not found/i.test(error)
+      ? 'Booking Not Found'
+      : 'Error Loading Booking'
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
@@ -321,7 +333,7 @@ export default function MilestonesPage() {
             <div className="text-red-600 mb-4">
               <Shield className="h-12 w-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
+            <h3 className="text-lg font-semibold mb-2">{title}</h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <div className="space-y-2">
               <Button onClick={handleBack} className="w-full">
@@ -431,8 +443,9 @@ export default function MilestonesPage() {
                 
                 {/* Quick Actions: approve/decline/start */}
                 {(() => {
-                  const isApproved = ((booking as any)?.approval_status === 'approved') || (booking?.status === 'approved') || (booking?.status === 'confirmed')
-                  const isPending = ((booking as any)?.approval_status === 'pending') || (booking?.status === 'pending')
+                  const statusNorm = (booking as any)?.approval_status ?? booking?.status
+                  const isApproved = ['approved', 'confirmed'].includes(String(statusNorm))
+                  const isPending = statusNorm === 'pending'
                   const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
                   const canStart = (userRole === 'provider' || userRole === 'admin') && (isApproved || booking?.status === 'in_progress')
                   return (
@@ -442,19 +455,18 @@ export default function MilestonesPage() {
                           size="sm"
                           className="bg-green-600 hover:bg-green-700"
                           onClick={async () => {
-                            try {
-                              const supabase = await getSupabaseClient()
-                              const { data: { session } } = await supabase.auth.getSession()
-                              const res = await fetch('/api/bookings', {
+                            const supabase = await getSupabaseClient()
+                            const { data: { session } } = await supabase.auth.getSession()
+                            await toast.promise(
+                              fetch('/api/bookings', {
                                 method: 'PATCH',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
                                 body: JSON.stringify({ booking_id: booking?.id, action: 'approve' })
-                              })
-                              if (!res.ok) throw new Error('Approval failed')
-                              toast.success('Booking approved')
-                              await loadBookingData()
-                            } catch (e:any) { toast.error(e?.message || 'Failed') }
+                              }).then(r => { if(!r.ok) throw new Error('Approval failed'); }),
+                              { loading: 'Approving…', success: 'Booking approved', error: 'Approval failed' }
+                            )
+                            await loadBookingData()
                           }}
                         >
                           Approve
@@ -465,19 +477,18 @@ export default function MilestonesPage() {
                           size="sm"
                           variant="destructive"
                           onClick={async () => {
-                            try {
-                              const supabase = await getSupabaseClient()
-                              const { data: { session } } = await supabase.auth.getSession()
-                              const res = await fetch('/api/bookings', {
+                            const supabase = await getSupabaseClient()
+                            const { data: { session } } = await supabase.auth.getSession()
+                            await toast.promise(
+                              fetch('/api/bookings', {
                                 method: 'PATCH',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
                                 body: JSON.stringify({ booking_id: booking?.id, action: 'decline' })
-                              })
-                              if (!res.ok) throw new Error('Decline failed')
-                              toast.success('Booking declined')
-                              await loadBookingData()
-                            } catch (e:any) { toast.error(e?.message || 'Failed') }
+                              }).then(r => { if(!r.ok) throw new Error('Decline failed'); }),
+                              { loading: 'Declining…', success: 'Booking declined', error: 'Decline failed' }
+                            )
+                            await loadBookingData()
                           }}
                         >
                           Decline
@@ -488,19 +499,18 @@ export default function MilestonesPage() {
                           size="sm"
                           variant="outline"
                           onClick={async () => {
-                            try {
-                              const supabase = await getSupabaseClient()
-                              const { data: { session } } = await supabase.auth.getSession()
-                              const res = await fetch('/api/bookings', {
+                            const supabase = await getSupabaseClient()
+                            const { data: { session } } = await supabase.auth.getSession()
+                            await toast.promise(
+                              fetch('/api/bookings', {
                                 method: 'PATCH',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
                                 body: JSON.stringify({ booking_id: booking?.id, action: 'start_project' })
-                              })
-                              if (!res.ok) throw new Error('Start failed')
-                              toast.success('Project started')
-                              await loadBookingData()
-                            } catch (e:any) { toast.error(e?.message || 'Failed') }
+                              }).then(r => { if(!r.ok) throw new Error('Start failed'); }),
+                              { loading: 'Starting…', success: 'Project started', error: 'Start failed' }
+                            )
+                            await loadBookingData()
                           }}
                         >
                           Start Project
