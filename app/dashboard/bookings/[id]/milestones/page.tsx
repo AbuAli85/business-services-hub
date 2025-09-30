@@ -522,10 +522,11 @@ export default function MilestonesPage() {
                 {/* Quick Actions: approve/decline/start */}
                 {(() => {
                   const statusNorm: string = normalizeStatus(booking)
-                  const isApproved = ['approved', 'confirmed', 'in_progress'].includes(String(statusNorm))
+                  const isApprovedOrBetter = ['approved', 'confirmed', 'in_progress', 'completed'].includes(String(statusNorm))
                   const isPending = statusNorm === 'pending'
                   const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
-                  const canStart = (userRole === 'provider' || userRole === 'admin') && (isApproved)
+                  // Only allow start when in an approvable state (approved/confirmed), not when already in progress or completed
+                  const canStart = (userRole === 'provider' || userRole === 'admin') && ['approved', 'confirmed'].includes(String(statusNorm))
                   return (
                     <div className="flex items-center gap-2">
                       {canApprove && (
@@ -809,7 +810,7 @@ export default function MilestonesPage() {
         {/* Professional Milestone System - gated by status */}
         {(() => {
           const statusNorm = normalizeStatus(booking)
-          const canSeeMilestones = ['approved', 'confirmed', 'in_progress'].includes(String(statusNorm))
+          const canSeeMilestones = ['approved', 'confirmed', 'in_progress', 'completed'].includes(String(statusNorm))
           if (!canSeeMilestones) {
             return (
               <Card className="p-6 text-center text-gray-600">

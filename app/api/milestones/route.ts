@@ -117,12 +117,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check if user has access to this booking
-    if (milestones && milestones.length > 0) {
+    // Check if user has access to this booking. If no milestones returned, validate using bookingId from query.
+    const targetBookingId = milestones?.[0]?.booking_id || bookingId
+    if (targetBookingId) {
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .select('client_id, provider_id')
-        .eq('id', milestones[0].booking_id)
+        .eq('id', targetBookingId)
         .single()
 
       if (bookingError || !booking) {
