@@ -322,11 +322,11 @@ export default function MilestonesPage() {
         start_project: { loading: 'Starting project…', success: 'Project started', error: 'Start failed' }
       }
       await toast.promise(
-        fetch(`/api/bookings/${booking.id}`, {
+        fetch(`/api/bookings`, {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-          body: JSON.stringify({ action })
+          body: JSON.stringify({ booking_id: booking.id, action })
         }).then(r => { if (!r.ok) throw new Error(actionMessages[action].error) }),
         actionMessages[action]
       )
