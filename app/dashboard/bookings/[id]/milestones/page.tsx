@@ -474,10 +474,10 @@ export default function MilestonesPage() {
                 {/* Quick Actions: approve/decline/start */}
                 {(() => {
                   const statusNorm: string = normalizeStatus(booking)
-                  const isApproved = ['approved', 'confirmed'].includes(String(statusNorm))
+                  const isApproved = ['approved', 'confirmed', 'in_progress'].includes(String(statusNorm))
                   const isPending = statusNorm === 'pending'
                   const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
-                  const canStart = (userRole === 'provider' || userRole === 'admin') && (isApproved || booking?.status === 'in_progress')
+                  const canStart = (userRole === 'provider' || userRole === 'admin') && (isApproved)
                   return (
                     <div className="flex items-center gap-2">
                       {canApprove && (
@@ -498,7 +498,7 @@ export default function MilestonesPage() {
                           Decline
                         </Button>
                       )}
-                      {canStart && (
+                      {canStart && !isPending && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -591,7 +591,7 @@ export default function MilestonesPage() {
                   <User className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Client: {booking.client.full_name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Client (Requester): {booking.client.full_name}</h3>
                   {booking.client.company_name && (
                     <p className="text-xs text-gray-500">{booking.client.company_name}</p>
                   )}
@@ -624,7 +624,7 @@ export default function MilestonesPage() {
                   <Shield className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Provider: {booking.provider.full_name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Provider (Service Owner): {booking.provider.full_name}</h3>
                   {booking.provider.company_name && (
                     <p className="text-xs text-gray-500">{booking.provider.company_name}</p>
                   )}
