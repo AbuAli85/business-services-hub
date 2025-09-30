@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
     for (const tpl of planTemplates) {
       const due = new Date(baseDate)
       due.setDate(due.getDate() + tpl.plusDays)
+      const toYmd = (d: Date) => d.toISOString().slice(0, 10)
       const { data: milestone, error: mErr } = await supabase
         .from('milestones')
         .insert({
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
           description: null,
           status: 'pending',
           priority: tpl.priority,
-          due_date: due.toISOString(),
+          due_date: toYmd(due),
           estimated_hours: tpl.estimated_hours,
           actual_hours: 0,
           progress_percentage: 0,
@@ -170,7 +171,8 @@ export async function POST(request: NextRequest) {
         progress_percentage: 0,
         estimated_hours: 0,
         actual_hours: 0,
-        editable: true
+        editable: true,
+        created_by: user.id
       }))
 
       if (tasksToInsert.length > 0) {
