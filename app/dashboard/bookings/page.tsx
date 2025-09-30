@@ -1396,7 +1396,7 @@ export default function BookingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-green-900 mb-1">
-                  {stats.pendingApproval} {stats.pendingApproval > 0 ? `${((stats.pendingApproval / stats.total) * 100).toFixed(1)}% of portfolio` : '0 0.0% of portfolio'}
+                  {stats.total > 0 ? `${((stats.pendingApproval / stats.total) * 100).toFixed(1)}% of portfolio` : '0.0% of portfolio'}
                 </div>
                 <div className="text-sm text-green-700 font-medium">Next actions required • High priority</div>
               </div>
@@ -1411,7 +1411,7 @@ export default function BookingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold text-emerald-900 mb-1">
-                  {stats.completed} {stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(1)}% success rate` : '0 0.0% success rate'}
+                  {stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(1)}% success rate` : '0.0% success rate'}
                 </div>
                 <div className="text-sm text-emerald-700 font-medium">Completed projects</div>
               </div>
