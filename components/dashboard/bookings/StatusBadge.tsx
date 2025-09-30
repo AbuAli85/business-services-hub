@@ -43,8 +43,11 @@ export function getDerivedStatus(booking: {
     return 'ready_to_launch'
   }
   
-  // Check approval status
-  if (booking.approval_status === 'approved' || booking.status === 'approved') {
+  // Check approval status - prioritize approval_status over status
+  if (booking.approval_status === 'approved') {
+    return 'approved'
+  }
+  if (booking.status === 'approved') {
     return 'approved'
   }
   

@@ -687,8 +687,8 @@ export function CompactBookingStatus({
         if (data.length > 0 && completed === data.length) derived = 'delivered'
         else if (booking.status === 'completed') derived = 'delivered'
         else if (booking.status === 'in_progress') derived = 'in_production'
+        else if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') derived = 'approved'
         else if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') derived = 'ready_to_launch'
-        else if (booking.status === 'approved') derived = 'approved'
         else if (booking.status === 'pending') derived = 'pending_review'
         else derived = (booking.status as StatusKey) || 'pending_review'
 
@@ -703,7 +703,9 @@ export function CompactBookingStatus({
         setMilestones([])
 
         let fallback: StatusKey = (booking.status as StatusKey) || 'pending'
-        if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
+        if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') {
+          fallback = 'approved'
+        } else if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
           fallback = 'ready_to_launch'
         }
         setStatus(fallback)
