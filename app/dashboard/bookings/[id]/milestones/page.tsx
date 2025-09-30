@@ -429,20 +429,14 @@ export default function MilestonesPage() {
                     {booking.service.name} • {booking.client.full_name}
                   </p>
                   <div className="flex items-center gap-4 mt-2">
-                    <Badge className="bg-white/20 text-white border-white/30">
-                      {String(booking.status).toUpperCase()}
-                    </Badge>
-                    {booking.approval_status && (
-                      <Badge className={
-                        booking.approval_status === 'approved'
-                          ? 'bg-green-500/20 text-green-100 border-green-300/30'
-                          : booking.approval_status === 'declined'
-                          ? 'bg-red-500/20 text-red-100 border-red-300/30'
-                          : 'bg-yellow-500/20 text-yellow-100 border-yellow-300/30'
-                      }>
-                        {String(booking.approval_status).toUpperCase()}
-                      </Badge>
-                    )}
+                    {(() => {
+                      const statusNorm = normalizeStatus(booking)
+                      return (
+                        <Badge className="bg-white/20 text-white border-white/30">
+                          {String(statusNorm).toUpperCase()}
+                        </Badge>
+                      )
+                    })()}
                     <span className="text-sm text-blue-200">
                       Created {new Date(booking.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })}
                     </span>
@@ -593,19 +587,17 @@ export default function MilestonesPage() {
                 <div className="p-2 bg-green-100 rounded-lg">
                   <User className="h-5 w-5 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Client: {booking.client.full_name}</h3>
-              </div>
-              <div className="space-y-3">
-                <div title={`${booking.client.email} • ${booking.client.company_name || ''}`}>
-                  <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className="text-gray-900">{booking.client.email}</p>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Client: {booking.client.full_name}</h3>
                   {booking.client.company_name && (
                     <p className="text-xs text-gray-500">{booking.client.company_name}</p>
                   )}
                 </div>
+              </div>
+              <div className="space-y-3 mt-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`}>
+                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={booking.client.email}>
                     {booking.client.email}
                   </p>
                 </div>
@@ -628,19 +620,17 @@ export default function MilestonesPage() {
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Shield className="h-5 w-5 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Provider: {booking.provider.full_name}</h3>
-              </div>
-              <div className="space-y-3">
-                <div title={`${booking.provider.email} • ${booking.provider.company_name || ''}`}>
-                  <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className="text-gray-900">{booking.provider.email}</p>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Provider: {booking.provider.full_name}</h3>
                   {booking.provider.company_name && (
                     <p className="text-xs text-gray-500">{booking.provider.company_name}</p>
                   )}
                 </div>
+              </div>
+              <div className="space-y-3 mt-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`}>
+                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={booking.provider.email}>
                     {booking.provider.email}
                   </p>
                 </div>
@@ -690,16 +680,23 @@ export default function MilestonesPage() {
           </CardContent>
         </Card>
 
-        {/* Professional Milestone System */}
-        {userRole === 'provider' ? (
-          <ProfessionalMilestoneSystem
-            bookingId={bookingId}
-          />
-        ) : (
-          <ClientMilestoneViewer
-            bookingId={bookingId}
-          />
-        )}
+        {/* Professional Milestone System - gated by status */}
+        {(() => {
+          const statusNorm = normalizeStatus(booking)
+          const canSeeMilestones = ['approved', 'confirmed', 'in_progress'].includes(String(statusNorm))
+          if (!canSeeMilestones) {
+            return (
+              <Card className="p-6 text-center text-gray-600">
+                Milestones will be available once this booking is approved.
+              </Card>
+            )
+          }
+          return userRole === 'provider' ? (
+            <ProfessionalMilestoneSystem bookingId={bookingId} />
+          ) : (
+            <ClientMilestoneViewer bookingId={bookingId} />
+          )
+        })()}
       </div>
     </div>
   )
