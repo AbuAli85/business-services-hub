@@ -17,6 +17,8 @@ interface Booking {
   title: string
   status: string
   approval_status?: string
+  client_id?: string
+  provider_id?: string
   service: {
     name: string
     description?: string
@@ -236,6 +238,8 @@ export default function MilestonesPage() {
         title: bookingData.title || 'Service Booking',
         status: bookingData.status,
         approval_status: (bookingData as any)?.approval_status,
+        client_id: bookingData.client_id,
+        provider_id: bookingData.provider_id,
         service: {
           name: svc?.title || 'Unknown Service',
           description: svc?.description
@@ -408,7 +412,7 @@ export default function MilestonesPage() {
                       </Badge>
                     )}
                     <span className="text-sm text-blue-200">
-                      Created {new Date(booking.created_at).toLocaleDateString()}
+                      Created {new Date(booking.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })}
                     </span>
                   </div>
                 </div>
@@ -443,7 +447,7 @@ export default function MilestonesPage() {
                 
                 {/* Quick Actions: approve/decline/start */}
                 {(() => {
-                  const statusNorm = (booking as any)?.approval_status ?? booking?.status
+                  const statusNorm: string = booking?.approval_status ?? booking?.status
                   const isApproved = ['approved', 'confirmed'].includes(String(statusNorm))
                   const isPending = statusNorm === 'pending'
                   const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
@@ -458,11 +462,11 @@ export default function MilestonesPage() {
                             const supabase = await getSupabaseClient()
                             const { data: { session } } = await supabase.auth.getSession()
                             await toast.promise(
-                              fetch('/api/bookings', {
+                              fetch(`/api/bookings/${booking?.id}`, {
                                 method: 'PATCH',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                                body: JSON.stringify({ booking_id: booking?.id, action: 'approve' })
+                                body: JSON.stringify({ action: 'approve' })
                               }).then(r => { if(!r.ok) throw new Error('Approval failed'); }),
                               { loading: 'Approving…', success: 'Booking approved', error: 'Approval failed' }
                             )
@@ -480,11 +484,11 @@ export default function MilestonesPage() {
                             const supabase = await getSupabaseClient()
                             const { data: { session } } = await supabase.auth.getSession()
                             await toast.promise(
-                              fetch('/api/bookings', {
+                              fetch(`/api/bookings/${booking?.id}`, {
                                 method: 'PATCH',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                                body: JSON.stringify({ booking_id: booking?.id, action: 'decline' })
+                                body: JSON.stringify({ action: 'decline' })
                               }).then(r => { if(!r.ok) throw new Error('Decline failed'); }),
                               { loading: 'Declining…', success: 'Booking declined', error: 'Decline failed' }
                             )
@@ -502,11 +506,11 @@ export default function MilestonesPage() {
                             const supabase = await getSupabaseClient()
                             const { data: { session } } = await supabase.auth.getSession()
                             await toast.promise(
-                              fetch('/api/bookings', {
+                              fetch(`/api/bookings/${booking?.id}`, {
                                 method: 'PATCH',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                                body: JSON.stringify({ booking_id: booking?.id, action: 'start_project' })
+                                body: JSON.stringify({ action: 'start_project' })
                               }).then(r => { if(!r.ok) throw new Error('Start failed'); }),
                               { loading: 'Starting…', success: 'Project started', error: 'Start failed' }
                             )
@@ -601,7 +605,7 @@ export default function MilestonesPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Name</p>
-                  <p className={`text-gray-900 ${booking.client.full_name.includes('Client (') ? 'italic text-gray-500' : 'font-medium'}`}>
+                  <p className={`text-gray-900 ${booking.client.full_name.includes('Client (') ? 'italic text-gray-500' : 'font-medium'}`} title={booking.client_id || ''}>
                     {booking.client.full_name}
                   </p>
                 </div>
@@ -635,7 +639,7 @@ export default function MilestonesPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Name</p>
-                  <p className={`text-gray-900 ${booking.provider.full_name.includes('Provider (') ? 'italic text-gray-500' : 'font-medium'}`}>
+                  <p className={`text-gray-900 ${booking.provider.full_name.includes('Provider (') ? 'italic text-gray-500' : 'font-medium'}`} title={booking.provider_id || ''}>
                     {booking.provider.full_name}
                   </p>
                 </div>
