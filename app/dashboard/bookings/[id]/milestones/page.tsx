@@ -50,6 +50,7 @@ export default function MilestonesPage() {
   const [userRole, setUserRole] = useState<UserRole>('client')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [actionBusy, setActionBusy] = useState<null | 'approve' | 'decline' | 'start_project'>(null)
 
   useEffect(() => {
     // Add a small delay to allow middleware to process
@@ -314,6 +315,7 @@ export default function MilestonesPage() {
   const handleAction = async (action: 'approve' | 'decline' | 'start_project') => {
     if (!booking?.id) return
     try {
+      setActionBusy(action)
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       const actionMessages: Record<string, { loading: string; success: string; error: string }> = {
@@ -329,13 +331,15 @@ export default function MilestonesPage() {
           body: JSON.stringify({ booking_id: booking.id, action })
         })
         if (!res.ok) {
-          const err = await res.json().catch(() => ({} as any))
-          throw new Error(err?.message || err?.error || actionMessages[action].error)
+          const err: { message?: string; error?: string } = await res.json().catch(() => ({}))
+          throw new Error(err.message || err.error || actionMessages[action].error)
         }
       })(), actionMessages[action])
       await loadBookingData()
     } catch (e:any) {
       // toast already shows error via toast.promise; no extra action needed
+    } finally {
+      setActionBusy(null)
     }
   }
 
@@ -487,27 +491,30 @@ export default function MilestonesPage() {
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700"
+                          disabled={actionBusy !== null}
                           onClick={() => handleAction('approve')}
                         >
-                          Approve
+                          {actionBusy === 'approve' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Approve'}
                         </Button>
                       )}
                       {canApprove && (
                         <Button
                           size="sm"
                           variant="destructive"
+                          disabled={actionBusy !== null}
                           onClick={() => handleAction('decline')}
                         >
-                          Decline
+                          {actionBusy === 'decline' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Decline'}
                         </Button>
                       )}
-                      {canStart && !isPending && (
+                      {canStart && (
                         <Button
                           size="sm"
                           variant="outline"
+                          disabled={actionBusy !== null}
                           onClick={() => handleAction('start_project')}
                         >
-                          Start Project
+                          {actionBusy === 'start_project' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Start Project'}
                         </Button>
                       )}
                     </div>
