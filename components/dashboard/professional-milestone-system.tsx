@@ -699,12 +699,17 @@ export function ProfessionalMilestoneSystem({
       
       if (editingMilestone) {
         // Update existing milestone
+        const allowedPriorities = ['low', 'normal', 'high', 'urgent'] as const
+        const normalizedPriority = (allowedPriorities as readonly string[]).includes(milestoneForm.priority as any)
+          ? milestoneForm.priority
+          : 'normal'
+
         const { error } = await supabase
           .from('milestones')
           .update({
             title: milestoneForm.title,
             description: milestoneForm.description || '',
-            priority: milestoneForm.priority,
+            priority: normalizedPriority,
             start_date: milestoneForm.start_date || null,
             due_date: milestoneForm.due_date || null,
             estimated_hours: milestoneForm.estimated_hours || 0,
@@ -730,6 +735,11 @@ export function ProfessionalMilestoneSystem({
           ? (existingMilestones[0].order_index || 0) + 1 
           : 0
         
+        const allowedPrioritiesCreate = ['low', 'normal', 'high', 'urgent'] as const
+        const normalizedPriorityCreate = (allowedPrioritiesCreate as readonly string[]).includes(milestoneForm.priority as any)
+          ? milestoneForm.priority
+          : 'normal'
+
         const { data: milestone, error: milestoneError } = await supabase
           .from('milestones')
           .insert({
@@ -737,7 +747,7 @@ export function ProfessionalMilestoneSystem({
             title: milestoneForm.title,
             description: milestoneForm.description || '',
             status: 'pending',
-            priority: milestoneForm.priority,
+            priority: normalizedPriorityCreate,
             start_date: milestoneForm.start_date || new Date().toISOString().split('T')[0],
             due_date: milestoneForm.due_date,
             estimated_hours: milestoneForm.estimated_hours || 0,
