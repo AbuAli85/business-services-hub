@@ -1772,7 +1772,7 @@ export default function BookingsPage() {
 					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
 						  <div className="flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}`)} aria-label="View details">Details</Button>
-							{canManageBookings && r.approval_status !== 'approved' && (
+								{canManageBookings && !((r?.approval_status === 'approved') || (r?.status === 'approved') || (r?.status === 'confirmed')) && (
 							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
 							)}
 							<Select value={String(r.status || '')} onValueChange={async (v)=>{

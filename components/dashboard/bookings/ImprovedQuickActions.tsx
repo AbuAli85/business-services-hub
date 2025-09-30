@@ -38,6 +38,8 @@ export function ImprovedQuickActions({
   // Determine available actions based on role and status
   const getAvailableActions = () => {
     const actions = []
+    const isApproved = (approvalStatus === 'approved') || (status === 'approved') || (status === 'confirmed')
+    const isPendingApproval = (approvalStatus === 'pending') || (status === 'pending')
     
     // Note: View Details is triggered by the card-level Eye button.
     // Avoid duplicating it here to prevent two "View Details" entries.
@@ -46,7 +48,7 @@ export function ImprovedQuickActions({
     switch (userRole) {
       case 'admin':
         // Admin can do everything
-        if (status === 'pending' || approvalStatus === 'pending') {
+        if (!isApproved && isPendingApproval) {
           actions.push({
             key: 'approve',
             label: 'Approve',
@@ -55,7 +57,7 @@ export function ImprovedQuickActions({
           })
         }
         
-        if (status === 'approved' && !hasInvoice) {
+        if (isApproved && !hasInvoice) {
           actions.push({
             key: 'create_invoice',
             label: 'Create Invoice',
@@ -82,7 +84,7 @@ export function ImprovedQuickActions({
           })
         }
         
-        if (status === 'approved' || status === 'in_progress') {
+        if (isApproved || status === 'in_progress') {
           actions.push({
             key: 'start_work',
             label: 'Start Work',
@@ -101,7 +103,7 @@ export function ImprovedQuickActions({
         
       case 'provider':
         // Provider actions
-        if (status === 'pending' || approvalStatus === 'pending') {
+        if (!isApproved && isPendingApproval) {
           actions.push({
             key: 'approve',
             label: 'Approve',
@@ -110,7 +112,7 @@ export function ImprovedQuickActions({
           })
         }
         
-        if (status === 'approved' && !hasInvoice) {
+        if (isApproved && !hasInvoice) {
           actions.push({
             key: 'create_invoice',
             label: 'Create Invoice',
@@ -128,7 +130,7 @@ export function ImprovedQuickActions({
           })
         }
         
-        if (status === 'approved' || status === 'in_progress') {
+        if (isApproved || status === 'in_progress') {
           actions.push({
             key: 'update_progress',
             label: 'Update Progress',
