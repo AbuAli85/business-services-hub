@@ -599,12 +599,19 @@ export function ProfessionalMilestoneSystem({
 
   const editMilestone = (milestone: Milestone) => {
     setEditingMilestone(milestone)
+    
+    // Validate and normalize priority value
+    const allowedPriorities = ['low', 'normal', 'high', 'urgent'] as const
+    const normalizedPriority = (allowedPriorities as readonly string[]).includes(milestone.priority as any)
+      ? milestone.priority
+      : 'normal'
+    
     setMilestoneForm({
       title: milestone.title,
       description: milestone.description || '',
       start_date: milestone.start_date || '',
       due_date: milestone.due_date || '',
-      priority: milestone.priority,
+      priority: normalizedPriority,
       estimated_hours: milestone.estimated_hours || 0,
       risk_level: milestone.risk_level,
       phase_id: milestone.phase_id || '',
@@ -814,9 +821,15 @@ export function ProfessionalMilestoneSystem({
       if (editingMilestone) {
         // Update existing milestone
         const allowedPriorities = ['low', 'normal', 'high', 'urgent'] as const
-        const normalizedPriority = (allowedPriorities as readonly string[]).includes(milestoneForm.priority as any)
+        const normalizedPriority = (milestoneForm.priority && (allowedPriorities as readonly string[]).includes(milestoneForm.priority as any))
           ? milestoneForm.priority
           : 'normal'
+
+        console.log('🔍 Milestone update - Priority validation:', {
+          originalPriority: milestoneForm.priority,
+          normalizedPriority: normalizedPriority,
+          isValid: (allowedPriorities as readonly string[]).includes(normalizedPriority as any)
+        })
 
         const { error } = await supabase
           .from('milestones')
@@ -872,9 +885,15 @@ export function ProfessionalMilestoneSystem({
           : 0
         
         const allowedPrioritiesCreate = ['low', 'normal', 'high', 'urgent'] as const
-        const normalizedPriorityCreate = (allowedPrioritiesCreate as readonly string[]).includes(milestoneForm.priority as any)
+        const normalizedPriorityCreate = (milestoneForm.priority && (allowedPrioritiesCreate as readonly string[]).includes(milestoneForm.priority as any))
           ? milestoneForm.priority
           : 'normal'
+
+        console.log('🔍 Milestone creation - Priority validation:', {
+          originalPriority: milestoneForm.priority,
+          normalizedPriority: normalizedPriorityCreate,
+          isValid: (allowedPrioritiesCreate as readonly string[]).includes(normalizedPriorityCreate as any)
+        })
 
         const { data: milestone, error: milestoneError } = await supabase
           .from('milestones')

@@ -134,6 +134,12 @@ export async function POST(request: NextRequest) {
       const due = new Date(baseDate)
       due.setDate(due.getDate() + tpl.plusDays)
       const toYmd = (d: Date) => d.toISOString().slice(0, 10)
+      
+      console.log('🔍 Milestone creation - Priority validation:', {
+        templatePriority: tpl.priority,
+        isValid: ['low', 'normal', 'high', 'urgent'].includes(tpl.priority)
+      })
+      
       const { data: milestone, error: mErr } = await supabase
         .from('milestones')
         .insert({
@@ -162,18 +168,32 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const tasksToInsert = tpl.tasks.map(t => ({
-        milestone_id: milestone.id,
-        title: t.title,
-        description: '',
-        status: 'pending',
-        priority: t.priority || 'normal',
-        progress_percentage: 0,
-        estimated_hours: 0,
-        actual_hours: 0,
-        editable: true,
-        created_by: user.id
-      }))
+      const tasksToInsert = tpl.tasks.map(t => {
+        // Ensure priority is always a valid value
+        const validPriorities = ['low', 'normal', 'high', 'urgent'] as const
+        const taskPriority = (t.priority && validPriorities.includes(t.priority as any)) 
+          ? t.priority 
+          : 'normal'
+        
+        console.log('🔍 Task creation - Priority validation:', {
+          originalPriority: t.priority,
+          normalizedPriority: taskPriority,
+          isValid: validPriorities.includes(taskPriority as any)
+        })
+        
+        return {
+          milestone_id: milestone.id,
+          title: t.title,
+          description: '',
+          status: 'pending',
+          priority: taskPriority,
+          progress_percentage: 0,
+          estimated_hours: 0,
+          actual_hours: 0,
+          editable: true,
+          created_by: user.id
+        }
+      })
 
       if (tasksToInsert.length > 0) {
         const { error: tErr } = await supabase
