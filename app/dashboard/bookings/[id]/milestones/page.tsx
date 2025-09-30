@@ -26,10 +26,12 @@ interface Booking {
   client: {
     full_name: string
     email: string
+    company_name?: string
   }
   provider: {
     full_name: string
     email: string
+    company_name?: string
   }
   created_at: string
   scheduled_date: string
@@ -196,7 +198,7 @@ export default function MilestonesPage() {
         try {
           const { data: clientData, error: clientError } = await supabase
             .from('profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, company_name')
             .eq('id', bookingData.client_id)
             .maybeSingle()
           
@@ -216,7 +218,7 @@ export default function MilestonesPage() {
         try {
           const { data: providerData, error: providerError } = await supabase
             .from('profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, company_name')
             .eq('id', bookingData.provider_id)
             .maybeSingle()
           
@@ -246,11 +248,13 @@ export default function MilestonesPage() {
         },
         client: {
           full_name: clientProfile?.full_name || `Client (${bookingData.client_id?.slice(0, 8) ?? 'unknown'})`,
-          email: clientProfile?.email || 'No email available'
+          email: clientProfile?.email || 'No email available',
+          company_name: (clientProfile as any)?.company_name || undefined
         },
         provider: {
           full_name: providerProfile?.full_name || `Provider (${bookingData.provider_id?.slice(0, 8) ?? 'unknown'})`,
-          email: providerProfile?.email || 'No email available'
+          email: providerProfile?.email || 'No email available',
+          company_name: (providerProfile as any)?.company_name || undefined
         },
         created_at: bookingData.created_at,
         scheduled_date: bookingData.scheduled_date,
@@ -589,14 +593,15 @@ export default function MilestonesPage() {
                 <div className="p-2 bg-green-100 rounded-lg">
                   <User className="h-5 w-5 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Client Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Client: {booking.client.full_name}</h3>
               </div>
               <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Name</p>
-                  <p className={`text-gray-900 ${booking.client.full_name.includes('Client (') ? 'italic text-gray-500' : 'font-medium'}`} title={booking.client_id || ''}>
-                    {booking.client.full_name}
-                  </p>
+                <div title={`${booking.client.email} • ${booking.client.company_name || ''}`}>
+                  <p className="text-sm font-medium text-gray-600">Email</p>
+                  <p className="text-gray-900">{booking.client.email}</p>
+                  {booking.client.company_name && (
+                    <p className="text-xs text-gray-500">{booking.client.company_name}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
@@ -623,14 +628,15 @@ export default function MilestonesPage() {
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Shield className="h-5 w-5 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Provider Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Provider: {booking.provider.full_name}</h3>
               </div>
               <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Name</p>
-                  <p className={`text-gray-900 ${booking.provider.full_name.includes('Provider (') ? 'italic text-gray-500' : 'font-medium'}`} title={booking.provider_id || ''}>
-                    {booking.provider.full_name}
-                  </p>
+                <div title={`${booking.provider.email} • ${booking.provider.company_name || ''}`}>
+                  <p className="text-sm font-medium text-gray-600">Email</p>
+                  <p className="text-gray-900">{booking.provider.email}</p>
+                  {booking.provider.company_name && (
+                    <p className="text-xs text-gray-500">{booking.provider.company_name}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
