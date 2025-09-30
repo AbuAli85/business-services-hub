@@ -321,15 +321,18 @@ export default function MilestonesPage() {
         decline: { loading: 'Declining…', success: 'Booking declined', error: 'Decline failed' },
         start_project: { loading: 'Starting project…', success: 'Project started', error: 'Start failed' }
       }
-      await toast.promise(
-        fetch(`/api/bookings`, {
+      await toast.promise((async () => {
+        const res = await fetch(`/api/bookings`, {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
           body: JSON.stringify({ booking_id: booking.id, action })
-        }).then(r => { if (!r.ok) throw new Error(actionMessages[action].error) }),
-        actionMessages[action]
-      )
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({} as any))
+          throw new Error(err?.message || err?.error || actionMessages[action].error)
+        }
+      })(), actionMessages[action])
       await loadBookingData()
     } catch (e:any) {
       // toast already shows error via toast.promise; no extra action needed
@@ -600,7 +603,7 @@ export default function MilestonesPage() {
               <div className="space-y-3 mt-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={`${booking.client.email} • ${booking.client.company_name || ''}`}>
+                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={[booking.client.email, booking.client.company_name].filter(Boolean).join(' • ')}>
                     {booking.client.email}
                   </p>
                 </div>
@@ -633,7 +636,7 @@ export default function MilestonesPage() {
               <div className="space-y-3 mt-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={`${booking.provider.email} • ${booking.provider.company_name || ''}`}>
+                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={[booking.provider.email, booking.provider.company_name].filter(Boolean).join(' • ')}>
                     {booking.provider.email}
                   </p>
                 </div>
