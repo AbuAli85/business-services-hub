@@ -538,10 +538,12 @@ export class ProgressDataService {
           due_date: milestoneEndDate.toISOString(),
           status: i === 0 ? 'in_progress' : 'pending',
           priority: 'normal',
-          progress: 0,
+          progress_percentage: 0,
+          weight: 1.0,
           order_index: i,
           estimated_hours: 0,
           actual_hours: 0,
+          editable: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }

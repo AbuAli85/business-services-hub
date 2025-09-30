@@ -121,7 +121,6 @@ export function ProfessionalMilestoneSystem({
     due_date: '',
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     estimated_hours: 0,
-    risk_level: 'low' as 'low' | 'medium' | 'high' | 'critical',
     phase_id: '',
     template_id: ''
   })
@@ -135,7 +134,6 @@ export function ProfessionalMilestoneSystem({
     priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     estimated_hours: 0,
     assigned_to: '',
-    risk_level: 'low' as 'low' | 'medium' | 'high' | 'critical',
     status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
   })
 
@@ -416,9 +414,7 @@ export function ProfessionalMilestoneSystem({
     if (statusFilter !== 'all') {
       list = list.filter(m => m.status === statusFilter)
     }
-    if (highRiskOnly) {
-      list = list.filter(m => ['high', 'critical'].includes(String(m.risk_level)))
-    }
+    // Note: risk_level filtering removed as field doesn't exist in database
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       list = list.filter(m =>
@@ -473,7 +469,6 @@ export function ProfessionalMilestoneSystem({
       due_date: '',
       priority: 'normal',
       estimated_hours: 0,
-      risk_level: 'low',
       phase_id: '',
       template_id: ''
     })
@@ -488,7 +483,6 @@ export function ProfessionalMilestoneSystem({
       priority: 'normal',
       estimated_hours: 0,
       assigned_to: '',
-      risk_level: 'low',
       status: 'pending'
     })
   }
@@ -613,7 +607,6 @@ export function ProfessionalMilestoneSystem({
       due_date: milestone.due_date || '',
       priority: normalizedPriority,
       estimated_hours: milestone.estimated_hours || 0,
-      risk_level: milestone.risk_level,
       phase_id: milestone.phase_id || '',
       template_id: milestone.template_id || ''
     })
@@ -803,7 +796,6 @@ export function ProfessionalMilestoneSystem({
       priority: task.priority,
       estimated_hours: task.estimated_hours || 0,
       assigned_to: task.assigned_to || '',
-      risk_level: task.risk_level,
       status: task.status
     })
     setShowTaskForm(true)
@@ -840,7 +832,6 @@ export function ProfessionalMilestoneSystem({
             start_date: milestoneForm.start_date || null,
             due_date: milestoneForm.due_date || null,
             estimated_hours: milestoneForm.estimated_hours || 0,
-            risk_level: milestoneForm.risk_level,
             phase_id: milestoneForm.phase_id || null,
             template_id: milestoneForm.template_id || null,
             updated_at: new Date().toISOString()
@@ -909,7 +900,6 @@ export function ProfessionalMilestoneSystem({
             actual_hours: 0,
             progress_percentage: 0,
             critical_path: false,
-            risk_level: milestoneForm.risk_level,
             phase_id: milestoneForm.phase_id || null,
             template_id: milestoneForm.template_id || null,
             order_index: nextOrderIndex,
@@ -994,7 +984,6 @@ export function ProfessionalMilestoneSystem({
             due_date: taskForm.due_date || null,
             estimated_hours: taskForm.estimated_hours || 0,
             assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null,
-            risk_level: taskForm.risk_level,
             updated_at: new Date().toISOString()
           })
         })
@@ -1048,7 +1037,6 @@ export function ProfessionalMilestoneSystem({
             actual_hours: 0,
             progress_percentage: 0,
             assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null,
-            risk_level: taskForm.risk_level,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -2063,7 +2051,6 @@ export function ProfessionalMilestoneSystem({
                       start_date: toYmd(start),
                       due_date: toYmd(due),
                       estimated_hours: preset.est,
-                      risk_level: preset.risk as any,
                       priority: preset.prio as any
                     })
                   }}
@@ -2129,24 +2116,6 @@ export function ProfessionalMilestoneSystem({
                   onChange={(e) => setMilestoneForm({...milestoneForm, estimated_hours: parseInt(e.target.value) || 0})}
                   disabled={isSubmitting}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Risk Level</label>
-                <Select
-                  value={milestoneForm.risk_level}
-                  onValueChange={(value) => setMilestoneForm({...milestoneForm, risk_level: value as any})}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select risk level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             <div>
@@ -2550,12 +2519,7 @@ function MilestoneCard({
                   <Clock className="h-4 w-4" />
                   {milestone.estimated_hours}h
                 </div>
-                <div className="flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className={getRiskColor(milestone.risk_level)}>
-                    {milestone.risk_level} risk
-                  </span>
-                </div>
+                {/* Risk level display removed as field doesn't exist in database */}
               </div>
             </div>
           </div>
