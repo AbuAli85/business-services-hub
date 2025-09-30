@@ -4,17 +4,32 @@ import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400'
+// Dynamic CORS echoing Origin for credentialed requests
+const ALLOWED_ORIGINS = (process.env.NEXT_PUBLIC_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
+
+const originOk = (o?: string | null) => !!o && (ALLOWED_ORIGINS.includes(o) || ALLOWED_ORIGINS.includes('*'))
+
+const corsHeadersFor = (origin?: string | null) => {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  }
+  if (originOk(origin) && origin) {
+    headers['Access-Control-Allow-Origin'] = origin
+    headers['Access-Control-Allow-Credentials'] = 'true'
+  }
+  return headers
 }
 
 export async function OPTIONS(request: NextRequest) {
   return new Response(null, {
     status: 200,
-    headers: corsHeaders,
+    headers: corsHeadersFor(request.headers.get('origin')),
   })
 }
 
@@ -32,10 +47,12 @@ export async function POST(request: NextRequest) {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Unauthorized' },
-        { status: 401, headers: corsHeaders }
+        { status: 401 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     // Load task
@@ -46,10 +63,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (taskError || !task) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Task not found' },
-        { status: 404, headers: corsHeaders }
+        { status: 404 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     // Load milestone to get booking_id
@@ -60,18 +79,22 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (milestoneError || !milestone) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Related milestone not found' },
-        { status: 404, headers: corsHeaders }
+        { status: 404 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     const bookingId = milestone.booking_id
     if (!bookingId) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Related booking not found' },
-        { status: 404, headers: corsHeaders }
+        { status: 404 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     const { data: booking, error: bookingError } = await supabase
@@ -81,10 +104,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (bookingError || !booking) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Booking not found' },
-        { status: 404, headers: corsHeaders }
+        { status: 404 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     const isClient = booking.client_id === user.id
@@ -92,10 +117,12 @@ export async function POST(request: NextRequest) {
     const isAdmin = user.user_metadata?.role === 'admin'
 
     if (!isClient && !isProvider && !isAdmin) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Access denied' },
-        { status: 403, headers: corsHeaders }
+        { status: 403 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     const approvalStatus = validated.action === 'approve' ? 'approved' : 'rejected'
@@ -114,10 +141,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (updateError) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Failed to update task' },
-        { status: 500, headers: corsHeaders }
+        { status: 500 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
 
     // Optionally recalc milestone progress
@@ -127,18 +156,24 @@ export async function POST(request: NextRequest) {
       // non-fatal
     }
 
-    return NextResponse.json({ task: updatedTask }, { status: 200, headers: corsHeaders })
+    const okRes = NextResponse.json({ task: updatedTask }, { status: 200 })
+    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => okRes.headers.set(k, v))
+    return okRes
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
+      const res = NextResponse.json(
         { error: 'Invalid input', details: error.errors },
-        { status: 400, headers: corsHeaders }
+        { status: 400 }
       )
+      Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+      return res
     }
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     )
+    Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))
+    return res
   }
 }
 

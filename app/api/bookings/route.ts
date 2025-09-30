@@ -611,13 +611,15 @@ export async function PATCH(request: NextRequest) {
 
     const isClient = booking.client_id === user.id
     const isProvider = booking.provider_id === user.id
+    const isAdmin = (user as any)?.user_metadata?.role === 'admin'
 
     console.log('🔍 User role check:', {
       userId: user.id,
       bookingClientId: booking.client_id,
       bookingProviderId: booking.provider_id,
       isClient,
-      isProvider
+      isProvider,
+      isAdmin
     })
 
     if (!isClient && !isProvider) {
@@ -649,9 +651,11 @@ export async function PATCH(request: NextRequest) {
     switch (action) {
       case 'approve':
         console.log('🔍 Processing approve action:', { isProvider, userId: user.id, providerId: booking.provider_id })
-        if (!isProvider) {
+        if (!isProvider && !isAdmin) {
           console.log('❌ Approval denied: User is not a provider')
-          return NextResponse.json({ error: 'Only provider can approve' }, { status: 403 })
+          const response = NextResponse.json({ error: 'Only provider or admin can approve' }, { status: 403 })
+          Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+          return response
         }
         
         // Handle different approval status cases
@@ -678,9 +682,11 @@ export async function PATCH(request: NextRequest) {
         console.log('✅ Current booking approval_status before update:', booking.approval_status)
         break
       case 'decline':
-        if (!isProvider) {
+        if (!isProvider && !isAdmin) {
           console.log('Decline denied: User is not a provider')
-          return NextResponse.json({ error: 'Only provider can decline' }, { status: 403 })
+          const response = NextResponse.json({ error: 'Only provider or admin can decline' }, { status: 403 })
+          Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+          return response
         }
         updates = { status: 'declined', approval_status: 'rejected', decline_reason: reason || null }
         notification = { user_id: booking.client_id, title: 'Booking Declined', message: reason ? `Declined: ${reason}` : 'Your booking was declined', type: 'booking_cancelled' }
@@ -688,9 +694,11 @@ export async function PATCH(request: NextRequest) {
         break
       case 'start_project':
         console.log('🔍 Processing start_project action:', { isProvider, userId: user.id, providerId: booking.provider_id })
-        if (!isProvider) {
+        if (!isProvider && !isAdmin) {
           console.log('❌ Start project denied: User is not a provider')
-          return NextResponse.json({ error: 'Only provider can start project' }, { status: 403 })
+          const response = NextResponse.json({ error: 'Only provider or admin can start project' }, { status: 403 })
+          Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+          return response
         }
         // Check if booking is approved (align with DB predicate: approved, confirmed, in_progress, completed)
         const approvedStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
