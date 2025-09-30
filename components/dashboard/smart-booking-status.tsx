@@ -1,12 +1,12 @@
-'use client'
+"use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { 
+import {
   CheckCircle,
   Clock,
   Play,
@@ -39,29 +39,32 @@ import {
   Gem,
   Flame
 } from 'lucide-react'
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import { getSupabaseClient } from '@/lib/supabase-client'
-import { SmartBookingStatus, ContextualAction, smartBookingStatusService } from '@/lib/smart-booking-status'
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent
+} from '@/components/ui/tooltip'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
 
-interface SmartBookingStatusProps {
-  bookingId: string
-  userRole: 'client' | 'provider' | 'admin'
-  compact?: boolean
-  onStatusChangeAction?: () => void
-}
+import { SmartBookingStatus, ContextualAction, smartBookingStatusService } from '@/lib/smart-booking-status'
 
-// Helper function to convert strings to Title Case
-const toTitle = (str: string) => {
-  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-}
+const toTitle = (str: string) => str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+const clampPct = (value: number) => Math.min(100, Math.max(0, Math.round(value || 0)))
 
-// Helper function to clamp percentage values
-const clampPct = (value: number) => Math.min(100, Math.max(0, value))
+type Priority = 'low' | 'medium' | 'high'
+type StatusKey =
+  | 'pending_review' | 'approved' | 'ready_to_launch' | 'in_production'
+  | 'delivered' | 'on_hold' | 'cancelled' | 'completed' | 'pending'
+  | 'in_progress' | 'unknown'
 
-// Status styles map - moved to top to avoid TDZ issues
-const statusStyles = {
+const statusStyles: Record<StatusKey, {
+  icon: React.ReactNode
+  label: string
+  className: string
+  glow: string
+  priority: Priority
+}> = {
   pending_review: {
     icon: <Clock className="h-3 w-3" />,
     label: 'Pending Review',
@@ -141,8 +144,13 @@ const statusStyles = {
   }
 }
 
-// Action icons map
-const actionIcons = {
+const getStatusConfig = (status: string) =>
+  statusStyles[(status as StatusKey) in statusStyles ? (status as StatusKey) : 'unknown']
+
+const actionIcons: Record<
+  'approve'|'decline'|'manage'|'view'|'invoice'|'message',
+  React.ReactNode
+> = {
   approve: <ThumbsUp className="h-3 w-3" />,
   decline: <X className="h-3 w-3" />,
   manage: <Settings className="h-3 w-3" />,
@@ -151,13 +159,28 @@ const actionIcons = {
   message: <MessageSquare className="h-3 w-3" />
 }
 
+const fmtMuscatDate = (d: string | number | Date) =>
+  new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Muscat',
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).format(new Date(d))
+
+interface SmartBookingStatusProps {
+  bookingId: string
+  userRole: 'client' | 'provider' | 'admin'
+  compact?: boolean
+  onStatusChangeAction?: () => void
+}
+
 export function SmartBookingStatusComponent({
   bookingId,
   userRole,
   compact = false,
   onStatusChangeAction
 }: SmartBookingStatusProps) {
-  const router = useRouter()
   const [status, setStatus] = useState<SmartBookingStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -166,9 +189,12 @@ export function SmartBookingStatusComponent({
   const [selectedAction, setSelectedAction] = useState<ContextualAction | null>(null)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackRating, setFeedbackRating] = useState<number | null>(null)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
+    mountedRef.current = true
     loadSmartStatus()
+    return () => { mountedRef.current = false }
   }, [bookingId])
 
   const loadSmartStatus = async () => {
@@ -176,12 +202,14 @@ export function SmartBookingStatusComponent({
       setLoading(true)
       setError(null)
       const smartStatus = await smartBookingStatusService.getSmartStatus(bookingId, userRole)
+      if (!mountedRef.current) return
       setStatus(smartStatus)
     } catch (err) {
       console.error('Failed to load smart status:', err)
+      if (!mountedRef.current) return
       setError(err instanceof Error ? err.message : 'Failed to load status')
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }
 
@@ -194,10 +222,9 @@ export function SmartBookingStatusComponent({
         { ...action.params, ...params },
         userRole
       )
-
       if (result.success) {
         toast.success(result.message)
-        await loadSmartStatus() // Reload status
+        await loadSmartStatus()
         onStatusChangeAction?.()
       } else {
         toast.error(result.message)
@@ -212,59 +239,9 @@ export function SmartBookingStatusComponent({
     }
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-4 w-4" />
-      case 'approved': return <CheckCircle className="h-4 w-4" />
-      case 'in_progress': return <Play className="h-4 w-4" />
-      case 'completed': return <Award className="h-4 w-4" />
-      case 'cancelled': return <XCircle className="h-4 w-4" />
-      case 'on_hold': return <Pause className="h-4 w-4" />
-      default: return <Clock className="h-4 w-4" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'approved': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'in_progress': return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
-      case 'on_hold': return 'bg-gray-100 text-gray-800 border-gray-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getRiskColor = (severity: string) => {
-    switch (severity) {
-      case 'low': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'high': return 'bg-orange-100 text-orange-800'
-      case 'critical': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getActionIcon = (iconName: string) => {
-    const iconMap: Record<string, React.ReactNode> = {
-      CheckCircle: <CheckCircle className="h-4 w-4" />,
-      XCircle: <XCircle className="h-4 w-4" />,
-      Target: <Target className="h-4 w-4" />,
-      Play: <Play className="h-4 w-4" />,
-      Award: <Award className="h-4 w-4" />,
-      Receipt: <Receipt className="h-4 w-4" />,
-      ThumbsUp: <ThumbsUp className="h-4 w-4" />,
-      MessageSquare: <MessageSquare className="h-4 w-4" />,
-      Settings: <Settings className="h-4 w-4" />,
-      Shield: <Shield className="h-4 w-4" />
-    }
-    return iconMap[iconName] || <Target className="h-4 w-4" />
-  }
-
   if (loading) {
     return (
-      <div className="animate-pulse">
+      <div className="animate-pulse" aria-busy="true" aria-live="polite">
         <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
       </div>
@@ -281,13 +258,13 @@ export function SmartBookingStatusComponent({
   }
 
   if (compact) {
+    const cfg = getStatusConfig(status.overall_status)
     return (
       <div className="space-y-2">
-        {/* Compact Status */}
         <div className="flex items-center gap-2">
-          <Badge className={getStatusColor(status.overall_status)} variant="outline">
-            {getStatusIcon(status.overall_status)}
-            <span className="ml-1 capitalize">{status.overall_status.replace('_', ' ')}</span>
+          <Badge className={cfg.className} variant="outline">
+            {cfg.icon}
+            <span className="ml-1">{cfg.label}</span>
           </Badge>
           {status.current_milestone && (
             <Badge variant="outline" className="text-xs">
@@ -295,22 +272,13 @@ export function SmartBookingStatusComponent({
             </Badge>
           )}
         </div>
-        
-        {/* Progress Bar */}
+
         <div>
           <div className="flex justify-between text-xs text-gray-600 mb-1">
             <span>Progress</span>
-            <span>{status.progress_percentage}%</span>
+            <span>{clampPct(status.progress_percentage)}%</span>
           </div>
-          <Progress 
-            value={status.progress_percentage} 
-            className={`h-2 ${
-              status.progress_percentage === 100 ? 'bg-green-100' :
-              status.progress_percentage >= 75 ? 'bg-blue-100' :
-              status.progress_percentage >= 50 ? 'bg-yellow-100' :
-              'bg-gray-100'
-            }`}
-          />
+          <Progress value={clampPct(status.progress_percentage)} className="h-2" />
           {status.milestones_total > 0 && (
             <div className="text-xs text-gray-500 mt-1">
               {status.milestones_completed}/{status.milestones_total} milestones • {status.tasks_completed}/{status.tasks_total} tasks
@@ -318,7 +286,6 @@ export function SmartBookingStatusComponent({
           )}
         </div>
 
-        {/* Next Action */}
         {status.next_action && (
           <div className="text-xs text-gray-600">
             <Clock className="h-3 w-3 inline mr-1" />
@@ -326,7 +293,6 @@ export function SmartBookingStatusComponent({
           </div>
         )}
 
-        {/* Urgent Actions */}
         {status.contextual_actions.filter(a => a.urgent).slice(0, 1).map(action => (
           <Button
             key={action.id}
@@ -334,8 +300,9 @@ export function SmartBookingStatusComponent({
             className={`text-xs ${action.type === 'primary' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
             onClick={() => executeAction(action)}
             disabled={!!actionLoading}
+            aria-busy={actionLoading === action.id}
           >
-            {getActionIcon(action.icon)}
+            {actionIcons[action.action as keyof typeof actionIcons] ?? <Target className="h-3 w-3" />}
             <span className="ml-1">{action.label}</span>
           </Button>
         ))}
@@ -343,20 +310,23 @@ export function SmartBookingStatusComponent({
     )
   }
 
+  const headerCfg = getStatusConfig(status.overall_status)
+
   return (
     <Card className="w-full">
       <CardContent className="p-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${statusStyles[status.overall_status]?.className ?? statusStyles.unknown.className}`}>
-              {getStatusIcon(status.overall_status)}
+            <div className={`p-2 rounded-lg ${headerCfg.className}`}>
+              {headerCfg.icon}
             </div>
             <div>
-              <h3 className="text-lg font-semibold capitalize">
-                {status.overall_status.replace('_', ' ')} Project
+              <h3 className="text-lg font-semibold">
+                {headerCfg.label} Project
               </h3>
-              <p className="text-sm text-gray-600">{status.status_description}</p>
+              {status.status_description && (
+                <p className="text-sm text-gray-600">{status.status_description}</p>
+              )}
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={loadSmartStatus}>
@@ -365,14 +335,13 @@ export function SmartBookingStatusComponent({
           </Button>
         </div>
 
-        {/* Progress Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Overall Progress</span>
-            <span className="text-sm font-bold">{status.progress_percentage}%</span>
+            <span className="text-sm font-bold">{clampPct(status.progress_percentage)}%</span>
           </div>
-          <Progress value={status.progress_percentage} className="h-3 mb-3" />
-          
+          <Progress value={clampPct(status.progress_percentage)} className="h-3 mb-3" />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-blue-600" />
@@ -391,13 +360,12 @@ export function SmartBookingStatusComponent({
             {status.estimated_completion && (
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-orange-600" />
-                <span>ETA: {new Date(status.estimated_completion).toLocaleDateString()}</span>
+                <span>ETA: {fmtMuscatDate(status.estimated_completion)}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Current Activity */}
         {status.current_milestone && (
           <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2 mb-2">
@@ -408,7 +376,6 @@ export function SmartBookingStatusComponent({
           </div>
         )}
 
-        {/* Next Action */}
         {status.next_action && (
           <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
             <div className="flex items-center gap-2 mb-2">
@@ -424,9 +391,6 @@ export function SmartBookingStatusComponent({
           </div>
         )}
 
-        {/* Risks intentionally hidden for simplified Smart Status Overview in Manage Bookings */}
-
-        {/* Contextual Actions */}
         {(status.contextual_actions?.length ?? 0) > 0 && (
           <div>
             <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
@@ -434,7 +398,7 @@ export function SmartBookingStatusComponent({
               Available Actions
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {status.contextual_actions?.map(action => (
+              {status.contextual_actions!.map(action => (
                 <Button
                   key={action.id}
                   variant={action.type === 'primary' ? 'default' : 'outline'}
@@ -443,11 +407,9 @@ export function SmartBookingStatusComponent({
                     action.type === 'success' ? 'border-green-200 hover:bg-green-50' :
                     action.urgent ? 'ring-2 ring-blue-200 shadow-lg' : ''
                   }`}
-                  onClick={() => {
-                    setSelectedAction(action)
-                    setShowActionDialog(true)
-                  }}
+                  onClick={() => { setSelectedAction(action); setShowActionDialog(true) }}
                   disabled={!!actionLoading}
+                  aria-busy={actionLoading === action.id}
                 >
                   <div className="flex items-start gap-3 w-full">
                     <div className={`p-2 rounded ${
@@ -456,16 +418,12 @@ export function SmartBookingStatusComponent({
                       action.type === 'success' ? 'bg-green-100 text-green-600' :
                       'bg-gray-100 text-gray-600'
                     }`}>
-                      {getActionIcon(action.icon)}
+                      {actionIcons[action.action as keyof typeof actionIcons] ?? <Target className="h-4 w-4" />}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium text-sm flex items-center gap-2">
                         {action.label}
-                        {action.urgent && (
-                          <Badge className="bg-red-100 text-red-800 text-xs">
-                            Urgent
-                          </Badge>
-                        )}
+                        {action.urgent && <Badge className="bg-red-100 text-red-800 text-xs">Urgent</Badge>}
                       </div>
                       <p className="text-xs text-gray-600 mt-1">{action.description}</p>
                     </div>
@@ -476,43 +434,42 @@ export function SmartBookingStatusComponent({
           </div>
         )}
 
-        {/* Quick Navigation removed per requirements */}
-
-        {/* Action Confirmation Dialog */}
         <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {selectedAction && getActionIcon(selectedAction.icon)}
+                {selectedAction && (actionIcons[selectedAction.action as keyof typeof actionIcons] ?? <Info className="h-4 w-4" />)}
                 Confirm Action
               </DialogTitle>
             </DialogHeader>
+
             {selectedAction && (
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium">{selectedAction.label}</h4>
                   <p className="text-sm text-gray-600">{selectedAction.description}</p>
                 </div>
-                
+
                 {selectedAction.type === 'danger' && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded">
                     <p className="text-sm text-red-800">
-                      ⚠️ This action cannot be undone. Please confirm you want to proceed.
+                      This action cannot be undone. Please confirm you want to proceed.
                     </p>
                   </div>
                 )}
 
-                {/* Feedback fields for add_feedback action */}
                 {selectedAction.action === 'add_feedback' && (
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Your Rating (optional)</label>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         {[1,2,3,4,5].map(n => (
                           <button
                             key={n}
                             type="button"
-                            className={`h-8 w-8 rounded-full border ${feedbackRating && feedbackRating >= n ? 'bg-yellow-400 border-yellow-500' : 'bg-white hover:bg-gray-50'}`}
+                            className={`h-8 w-8 rounded-full border text-sm ${
+                              feedbackRating && feedbackRating >= n ? 'bg-yellow-400 border-yellow-500' : 'bg-white hover:bg-gray-50'
+                            }`}
                             onClick={() => setFeedbackRating(n)}
                             aria-label={`Rate ${n}`}
                           >
@@ -538,35 +495,29 @@ export function SmartBookingStatusComponent({
                 )}
 
                 <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowActionDialog(false)}
-                  >
-                    Cancel
-                  </Button>
+                  <Button variant="outline" onClick={() => setShowActionDialog(false)}>Cancel</Button>
                   <Button
                     className={
                       selectedAction.type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
                       selectedAction.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
                       'bg-blue-600 hover:bg-blue-700'
                     }
-                  onClick={async () => {
-                    if (!selectedAction) return
-                    if (selectedAction.action === 'add_feedback') {
-                      if (!feedbackText.trim() && (feedbackRating === null)) return
-                      await executeAction(selectedAction, { comment: feedbackText.trim(), rating: feedbackRating ?? undefined })
-                      setShowActionDialog(false)
-                      setFeedbackText('')
-                      setFeedbackRating(null)
-                      onStatusChangeAction?.()
-                      return
-                    }
-                    await executeAction(selectedAction)
-                  }}
+                    onClick={async () => {
+                      if (!selectedAction) return
+                      if (selectedAction.action === 'add_feedback') {
+                        if (!feedbackText.trim() && (feedbackRating === null)) return
+                        await executeAction(selectedAction, { comment: feedbackText.trim(), rating: feedbackRating ?? undefined })
+                        setFeedbackText('')
+                        setFeedbackRating(null)
+                        onStatusChangeAction?.()
+                        return
+                      }
+                      await executeAction(selectedAction)
+                    }}
                     aria-busy={actionLoading === selectedAction?.id}
                     disabled={!!actionLoading}
                   >
-                    {actionLoading === selectedAction.id ? 'Processing...' : 'Confirm'}
+                    {actionLoading === selectedAction?.id ? 'Processing...' : 'Confirm'}
                   </Button>
                 </div>
               </div>
@@ -581,12 +532,10 @@ export function SmartBookingStatusComponent({
 interface Milestone {
   id: string
   title: string
-  status: string
+  status: 'pending' | 'in_progress' | 'completed' | string
   progress_percentage?: number
 }
 
-
-// Enhanced Compact status for table cells with milestone-based progress
 export function CompactBookingStatus({
   bookingId,
   userRole,
@@ -597,13 +546,14 @@ export function CompactBookingStatus({
   onStatusChangeAction?: () => void
 }) {
   const [progress, setProgress] = useState<number>(0)
-  const [status, setStatus] = useState<string>('pending')
+  const [status, setStatus] = useState<StatusKey>('pending')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const abortRef = React.useRef<AbortController | null>(null)
 
-  // Simple in-memory cache and dedupe per bookingId
+  const abortRef = useRef<AbortController | null>(null)
+  const mountedRef = useRef(true)
+
   type Cached = { json: any; ts: number }
   const cache = (CompactBookingStatus as any)._cache || ((CompactBookingStatus as any)._cache = new Map<string, Cached>())
   const inflight = (CompactBookingStatus as any)._inflight || ((CompactBookingStatus as any)._inflight = new Map<string, Promise<any>>())
@@ -611,27 +561,29 @@ export function CompactBookingStatus({
   const counters = (CompactBookingStatus as any)._counter || ((CompactBookingStatus as any)._counter = { active: 0 })
   const STALE_MS = 5_000
 
+  const backoff = async (attempt: number, baseMs = 300, capMs = 2000) => {
+    const ms = Math.min(capMs, baseMs * 2 ** attempt)
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * Math.max(200, ms))))
+  }
+
   const loadStatusAndProgress = async () => {
     try {
       setLoading(true)
 
-      // Cached?
       const cached = cache.get(bookingId) as Cached | undefined
       if (cached && Date.now() - cached.ts < STALE_MS) {
-        applyBooking(cached.json)
+        await applyBooking(cached.json)
         setLoading(false)
         return
       }
 
-      // Concurrency gating
       while (counters.active >= maxConcurrent) {
         await new Promise(r => setTimeout(r, 50))
       }
 
-      // Dedupe identical requests
       if (inflight.has(bookingId)) {
         const json = await inflight.get(bookingId)!
-        applyBooking(json)
+        await applyBooking(json)
         setLoading(false)
         return
       }
@@ -640,31 +592,22 @@ export function CompactBookingStatus({
         abortRef.current?.abort()
         const ctrl = new AbortController()
         abortRef.current = ctrl
-        const res = await fetch(`/api/bookings/${bookingId}`, {
+        return fetch(`/api/bookings/${bookingId}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           signal: ctrl.signal,
           cache: 'no-store'
         })
-        return res
       }
-
-      // Backoff on 429
-      let attempt = 0
-      const maxRetries = 3
-      const base = 300
-      const cap = 2000
 
       counters.active++
       let res: Response
       try {
+        let attempt = 0
         while (true) {
           res = await fetchOnce()
-          if (res.status !== 429) break
-          const ra = res.headers.get('retry-after')
-          const delay = ra ? Number(ra) * 1000 : Math.min(cap, base * 2 ** attempt)
-          await new Promise(r => setTimeout(r, Math.floor(Math.random() * Math.max(200, delay))))
-          if (attempt++ >= maxRetries) break
+          if (res.status !== 429 || attempt >= 3) break
+          await backoff(attempt++)
         }
       } finally {
         counters.active = Math.max(0, counters.active - 1)
@@ -672,7 +615,6 @@ export function CompactBookingStatus({
 
       if (!res!.ok) {
         console.error('Error fetching booking:', res!.status)
-        // Don't set to unknown, try to use a fallback status
         setStatus('pending')
         setProgress(0)
         return
@@ -682,210 +624,124 @@ export function CompactBookingStatus({
       inflight.set(bookingId, p)
       const json = await p.finally(() => inflight.delete(bookingId))
       cache.set(bookingId, { json, ts: Date.now() })
-
-      // Support both { booking } and { bookings: [...] } API shapes
-      const bookingFromJson = (() => {
-        const single = (json as any)?.booking
-        if (single) return single
-        const list = (json as any)?.bookings
-        if (Array.isArray(list) && list.length > 0) return list[0]
-        return null
-      })()
-
-      if (!bookingFromJson) {
-        console.error('Booking not found')
-        setStatus('pending')
-        setProgress(0)
-        return
-      }
-
-      // Debug logging to see what data we're receiving
-      console.log('Smart Status Component - Booking Data:', {
-        bookingId: bookingFromJson.id,
-        status: bookingFromJson.status,
-        approval_status: bookingFromJson.approval_status,
-        ui_approval_status: bookingFromJson.ui_approval_status
-      })
-
-      // Use the applyBooking function which has the correct approval status logic
       await applyBooking(json)
-      } catch (e) {
-        console.error('Failed to load booking progress:', e)
-        setStatus('pending')
-        setProgress(0)
-        setError('Failed to load status')
-      } finally {
-        setLoading(false)
-      }
+    } catch (e) {
+      console.error('Failed to load booking progress:', e)
+      setStatus('pending')
+      setProgress(0)
+      setError('Failed to load status')
+    } finally {
+      if (mountedRef.current) setLoading(false)
+    }
+  }
+
+  const applyBooking = async (json: any) => {
+    if (!mountedRef.current) return
+    const booking = json?.booking ?? (Array.isArray(json?.bookings) ? json.bookings[0] : null)
+    if (!booking) {
+      setStatus('pending')
+      setProgress(0)
+      return
     }
 
-    const applyBooking = async (json: any) => {
-      const booking = (() => {
-        const single = json?.booking
-        if (single) return single
-        const list = json?.bookings
-        if (Array.isArray(list) && list.length > 0) return list[0]
-        return null
-      })()
-      if (!booking) {
-        setStatus('pending')
-        setProgress(0)
-        return
+    try {
+      const fetchMilestonesOnce = () => fetch(`/api/milestones?bookingId=${bookingId}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      })
+
+      let milestonesRes: Response
+      {
+        let attempt = 0
+        while (true) {
+          milestonesRes = await fetchMilestonesOnce()
+          if (milestonesRes.status !== 429 || attempt >= 3) break
+          await backoff(attempt++)
+        }
       }
 
-      // Load actual milestones for this booking
-      try {
-        // Milestones fetch with simple 429 backoff
-        const fetchMilestonesOnce = async () => fetch(`/api/milestones?bookingId=${bookingId}`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store'
-        })
-        let milestonesRes: Response
-        {
-          let attempt = 0
-          const maxRetries = 3
-          const base = 300
-          const cap = 2000
-          while (true) {
-            milestonesRes = await fetchMilestonesOnce()
-            if (milestonesRes.status !== 429 || attempt >= maxRetries) break
-            const ra = milestonesRes.headers.get('retry-after')
-            const delay = ra ? Number(ra) * 1000 : Math.min(cap, base * 2 ** attempt)
-            await new Promise(r => setTimeout(r, delay))
-            attempt++
-          }
-        }
-        
-        if (milestonesRes.ok) {
-          const milestonesData = await milestonesRes.json()
-          const data: Milestone[] = milestonesData.milestones || []
-          setMilestones(data)
-          
-          if (data.length === 0) {
-            // No milestones - use simple progress based on status
-            const defaultProgress =
-              booking.status === 'completed' ? 100 :
-              booking.status === 'in_progress' ? 50 :
-              booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
-            setProgress(Math.max(0, Math.min(100, defaultProgress)))
-          } else {
-            // Calculate progress based on completed and in-progress milestones
-            const completed = data.filter(m => m.status === 'completed').length
-            const inProgress = data.filter(m => m.status === 'in_progress').length
-            const total = data.length
-            
-            // Progress calculation: completed milestones + 50% of in-progress milestones
-            const milestoneProgress = total > 0 ? Math.round(((completed + (inProgress * 0.5)) / total) * 100) : 0
-            
-            // Use milestone progress, not weighted progress
-            const safe = Number.isFinite(milestoneProgress) ? milestoneProgress : 0
-            setProgress(Math.max(0, Math.min(100, safe)))
-          }
-          
-          const completed = data.filter(m => m.status === 'completed').length
-          const inProgress = data.filter(m => m.status === 'in_progress').length
-          
-          // Canonical status ladder: Pending Review → Approved → Ready to Launch → In Production → Delivered
-          let derivedStatus: string
-          
-          // Auto-advance: If all milestones are completed, auto-advance to delivered
-          if (data.length > 0 && completed === data.length && data.length > 0) {
-            derivedStatus = 'delivered'
-          }
-          // If completed, always show as delivered
-          else if (booking.status === 'completed') {
-            derivedStatus = 'delivered'
-          }
-          // If in progress, show as in production
-          else if (booking.status === 'in_progress') {
-            derivedStatus = 'in_production'
-          }
-          // If approved but still pending, show as ready to launch
-          else if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
-            derivedStatus = 'ready_to_launch'
-          }
-          // If approved, show as approved
-          else if (booking.status === 'approved') {
-            derivedStatus = 'approved'
-          }
-          // If pending without approval, show as pending review
-          else if (booking.status === 'pending') {
-            derivedStatus = 'pending_review'
-          }
-          // Default fallback
-          else {
-            derivedStatus = booking.status || 'pending_review'
-          }
-          
-          // Debug logging to identify status derivation issues
-          console.log('Smart Status Debug:', {
-            bookingId: booking.id,
-            bookingStatus: booking.status,
-            approvalStatus: booking.approval_status,
-            uiApprovalStatus: booking.ui_approval_status,
-            derivedStatus,
-            milestones: data.length,
-            completed,
-            inProgress,
-            isInProgress: booking.status === 'in_progress',
-            isApproved: booking.status === 'approved',
-            isApprovedPending: (booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending'
-          })
-          
-          // Handle case where status might be undefined or null
-          if (!derivedStatus || derivedStatus === 'unknown') {
-            derivedStatus = 'pending_review'
-          }
-          
-          setStatus(derivedStatus)
-        } else {
-          // Fallback to default progress if milestones API fails
+      if (milestonesRes.ok) {
+        const milestonesData = await milestonesRes.json()
+        const data: Milestone[] = milestonesData.milestones || []
+        setMilestones(data)
+
+        if (data.length === 0) {
           const defaultProgress =
             booking.status === 'completed' ? 100 :
             booking.status === 'in_progress' ? 50 :
-            booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
-          setProgress(Math.max(0, Math.min(100, defaultProgress)))
-          setMilestones([])
-          // Handle case where booking.status might be undefined or null
-          let fallbackStatus = booking.status || 'pending'
-          if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
-            fallbackStatus = 'ready_to_launch'
-          }
-          setStatus(fallbackStatus)
+            booking.status === 'approved' || booking.status === 'confirmed' ||
+            ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
+          setProgress(clampPct(defaultProgress))
+        } else {
+          const completed = data.filter(m => m.status === 'completed').length
+          const inProgress = data.filter(m => m.status === 'in_progress').length
+          const total = data.length
+          const pct = total > 0 ? ((completed + (inProgress * 0.5)) / total) * 100 : 0
+          setProgress(clampPct(pct))
         }
-      } catch (error) {
-        console.error('Error loading milestones:', error)
-        setError('Failed to load milestones')
-        // Fallback to default progress
+
+        const completed = data.filter(m => m.status === 'completed').length
+
+        let derived: StatusKey
+        if (data.length > 0 && completed === data.length) derived = 'delivered'
+        else if (booking.status === 'completed') derived = 'delivered'
+        else if (booking.status === 'in_progress') derived = 'in_production'
+        else if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') derived = 'ready_to_launch'
+        else if (booking.status === 'approved') derived = 'approved'
+        else if (booking.status === 'pending') derived = 'pending_review'
+        else derived = (booking.status as StatusKey) || 'pending_review'
+
+        setStatus(derived || 'pending_review')
+      } else {
         const defaultProgress =
           booking.status === 'completed' ? 100 :
           booking.status === 'in_progress' ? 50 :
-          booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
-        setProgress(Math.max(0, Math.min(100, defaultProgress)))
+          booking.status === 'approved' || booking.status === 'confirmed' ||
+          ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
+        setProgress(clampPct(defaultProgress))
         setMilestones([])
-        // Handle case where booking.status might be undefined or null
-        let fallbackStatus = booking.status || 'pending'
+
+        let fallback: StatusKey = (booking.status as StatusKey) || 'pending'
         if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
-          fallbackStatus = 'ready_to_launch'
+          fallback = 'ready_to_launch'
         }
-        setStatus(fallbackStatus)
+        setStatus(fallback)
       }
-      
-      onStatusChangeAction?.()
+    } catch (err) {
+      console.error('Error loading milestones:', err)
+      setError('Failed to load milestones')
+
+      const defaultProgress =
+        booking.status === 'completed' ? 100 :
+        booking.status === 'in_progress' ? 50 :
+        booking.status === 'approved' || booking.status === 'confirmed' ||
+        ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
+      setProgress(clampPct(defaultProgress))
+      setMilestones([])
+
+      let fallback: StatusKey = (booking.status as StatusKey) || 'pending'
+      if ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') {
+        fallback = 'ready_to_launch'
+      }
+      setStatus(fallback)
     }
 
-  useEffect(() => {
-    loadStatusAndProgress()
+    onStatusChangeAction?.()
+  }
 
+  useEffect(() => {
+    mountedRef.current = true
+    loadStatusAndProgress()
     return () => {
+      mountedRef.current = false
       abortRef.current?.abort()
     }
   }, [bookingId, userRole])
 
   if (loading) {
     return (
-      <div className="space-y-1">
+      <div className="space-y-1" aria-busy="true" aria-live="polite">
         <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
         <div className="animate-pulse bg-gray-200 h-2 w-16 rounded"></div>
       </div>
@@ -899,12 +755,8 @@ export function CompactBookingStatus({
           <AlertTriangle className="h-3 w-3 text-amber-500" />
           <span className="text-xs text-amber-600">Error loading status</span>
         </div>
-        <button 
-          onClick={() => {
-            setError(null)
-            setLoading(true)
-            loadStatusAndProgress()
-          }}
+        <button
+          onClick={() => { setError(null); setLoading(true); loadStatusAndProgress() }}
           className="text-xs text-blue-600 hover:text-blue-800 underline"
         >
           Retry
@@ -913,192 +765,145 @@ export function CompactBookingStatus({
     )
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-3 w-3" />
-      case 'approved': return <CheckCircle className="h-3 w-3" />
-      case 'in_progress': return <Play className="h-3 w-3" />
-      case 'completed': return <Award className="h-3 w-3" />
-      case 'cancelled': return <XCircle className="h-3 w-3" />
-      case 'on_hold': return <Pause className="h-3 w-3" />
-      default: return <Clock className="h-3 w-3" />
-    }
-  }
-
-  // Generate comprehensive tooltip content
-  const getTooltipContent = () => {
-    if (milestones.length === 0) {
-      return 'No milestones created yet'
-    }
-
+  const tooltipLines = useMemo(() => {
+    if (milestones.length === 0) return ['No milestones created yet']
     const completed = milestones.filter(m => m.status === 'completed')
     const inProgress = milestones.filter(m => m.status === 'in_progress')
     const pending = milestones.filter(m => m.status === 'pending')
-
-    const lines = []
+    const lines: string[] = []
     lines.push(`${completed.length}/${milestones.length} milestones completed (${clampPct(progress)}%)`)
-    
     if (completed.length > 0) {
-      const completedTitles = completed.slice(0, 3).map(m => m.title).join(', ')
-      lines.push(`✅ Completed: ${completedTitles}${completed.length > 3 ? ` (+${completed.length - 3} more)` : ''}`)
+      const t = completed.slice(0, 3).map(m => m.title).join(', ')
+      lines.push(`Completed: ${t}${completed.length > 3 ? ` (+${completed.length - 3} more)` : ''}`)
     }
-    
     if (inProgress.length > 0) {
-      const inProgressTitles = inProgress.slice(0, 2).map(m => m.title).join(', ')
-      lines.push(`🔄 In Progress: ${inProgressTitles}${inProgress.length > 2 ? ` (+${inProgress.length - 2} more)` : ''}`)
+      const t = inProgress.slice(0, 2).map(m => m.title).join(', ')
+      lines.push(`In Progress: ${t}${inProgress.length > 2 ? ` (+${inProgress.length - 2} more)` : ''}`)
     }
-    
     if (pending.length > 0) {
-      const pendingTitles = pending.slice(0, 2).map(m => m.title).join(', ')
-      lines.push(`⏳ Pending: ${pendingTitles}${pending.length > 2 ? ` (+${pending.length - 2} more)` : ''}`)
+      const t = pending.slice(0, 2).map(m => m.title).join(', ')
+      lines.push(`Pending: ${t}${pending.length > 2 ? ` (+${pending.length - 2} more)` : ''}`)
     }
+    return lines
+  }, [milestones, progress])
 
-    return lines.join('\n')
-  }
-
-  // Use the global statusStyles
-  const getStatusConfig = (status: string) => {
-    return statusStyles[status as keyof typeof statusStyles] || statusStyles.unknown
-  }
-
-  const statusConfig = getStatusConfig(status)
-  const isHighPriority = statusConfig.priority === 'high'
+  const cfg = getStatusConfig(status)
+  const isHigh = cfg.priority === 'high'
   const isCompleted = status === 'delivered' || status === 'completed'
   const isInProgress = status === 'in_production' || status === 'in_progress'
   const hasMilestones = milestones.length > 0
 
   return (
-    <Tooltip content={<div className="max-w-xs whitespace-pre-line">{getTooltipContent()}</div>}>
-      <div className="space-y-2 cursor-pointer group">
-        {/* Enhanced Status Badge */}
-        <div className={`relative ${isHighPriority ? 'animate-pulse' : ''}`}>
-          <Badge
-            variant="outline"
-            className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 group-hover:scale-105 ${statusConfig.className} ${statusConfig.glow}`}
-          >
-            {statusConfig.icon}
-            <span className="capitalize tracking-wide">{statusConfig.label}</span>
-            {isHighPriority && (
-              <div className="w-2 h-2 bg-current rounded-full animate-ping opacity-75"></div>
-            )}
-          </Badge>
-          
-          {/* Status Indicator Line */}
-          <div className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${
-            status === 'delivered' ? 'bg-gradient-to-r from-emerald-400 to-green-400' :
-            status === 'in_production' ? 'bg-gradient-to-r from-orange-400 to-red-400' :
-            status === 'ready_to_launch' ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
-            status === 'approved' ? 'bg-gradient-to-r from-purple-400 to-violet-400' :
-            'bg-gradient-to-r from-amber-400 to-yellow-400'
-          }`}></div>
-        </div>
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="space-y-2 cursor-pointer group">
+            <div className={`relative ${isHigh ? 'animate-pulse' : ''}`}>
+              <Badge
+                variant="outline"
+                className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 group-hover:scale-105 ${cfg.className} ${cfg.glow}`}
+              >
+                {cfg.icon}
+                <span className="capitalize tracking-wide">{cfg.label}</span>
+                {isHigh && <div className="w-2 h-2 bg-current rounded-full animate-ping opacity-75" />}
+              </Badge>
 
-        {/* Enhanced Progress Section */}
-        {hasMilestones && (
-          <div className="space-y-2">
-            {/* Progress Bar with Enhanced Styling */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 relative">
-                <Progress 
-                  value={clampPct(progress)} 
-                  className={`h-2.5 rounded-full ${
-                    status === 'delivered' || progress === 100 ? '[&>div]:bg-gradient-to-r [&>div]:from-emerald-500 [&>div]:to-green-500' :
-                    status === 'in_production' || progress >= 75 ? '[&>div]:bg-gradient-to-r [&>div]:from-orange-500 [&>div]:to-red-500' :
-                    status === 'ready_to_launch' || progress >= 50 ? '[&>div]:bg-gradient-to-r [&>div]:from-blue-500 [&>div]:to-cyan-500' :
-                    status === 'approved' || progress >= 25 ? '[&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-violet-500' :
-                    '[&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-500'
-                  }`}
-                />
-                {/* Progress Glow Effect */}
-                <div className={`absolute inset-0 rounded-full blur-sm opacity-30 ${
-                  progress === 100 ? 'bg-emerald-400' :
-                  progress >= 75 ? 'bg-blue-400' :
-                  progress >= 50 ? 'bg-yellow-400' :
-                  progress >= 25 ? 'bg-orange-400' :
-                  'bg-gray-400'
-                }`}></div>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-bold text-gray-800">{clampPct(progress)}%</span>
-                {progress === 100 && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-                {isInProgress && <Flame className="h-4 w-4 text-blue-600 animate-pulse" />}
-              </div>
+              <div
+                className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full ${
+                  status === 'delivered' ? 'bg-gradient-to-r from-emerald-400 to-green-400' :
+                  status === 'in_production' ? 'bg-gradient-to-r from-orange-400 to-red-400' :
+                  status === 'ready_to_launch' ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
+                  status === 'approved' ? 'bg-gradient-to-r from-purple-400 to-violet-400' :
+                  'bg-gradient-to-r from-amber-400 to-yellow-400'
+                }`}
+              />
             </div>
 
-            {/* Enhanced Milestone Summary */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                {milestones.length > 0 && (
+            {hasMilestones ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 relative">
+                    <Progress
+                      value={clampPct(progress)}
+                      className="h-2.5 rounded-full"
+                    />
+                    <div className={`absolute inset-0 rounded-full blur-sm opacity-30 ${
+                      progress === 100 ? 'bg-emerald-400' :
+                      progress >= 75 ? 'bg-blue-400' :
+                      progress >= 50 ? 'bg-yellow-400' :
+                      progress >= 25 ? 'bg-orange-400' :
+                      'bg-gray-400'
+                    }`} />
+                  </div>
                   <div className="flex items-center gap-1">
-                    <Target className="h-3 w-3 text-gray-500" />
-                    <span className="text-gray-600 font-medium">
-                      {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
-                    </span>
-                    <span className="text-gray-500">milestones</span>
-                    {milestones.filter(m => m.status === 'in_progress').length > 0 && (
-                      <span className="text-blue-600 text-xs">
-                        • {milestones.filter(m => m.status === 'in_progress').length} active
+                    <span className="text-sm font-bold text-gray-800">{clampPct(progress)}%</span>
+                    {progress === 100 && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                    {isInProgress && <Flame className="h-4 w-4 text-blue-600 animate-pulse" />}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Target className="h-3 w-3 text-gray-500" />
+                      <span className="text-gray-600 font-medium">
+                        {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
                       </span>
-                    )}
+                      <span className="text-gray-500">milestones</span>
+                      {milestones.some(m => m.status === 'in_progress') && (
+                        <span className="text-blue-600 text-xs">
+                          • {milestones.filter(m => m.status === 'in_progress').length} active
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
-                
-                {milestones.length > 0 && milestones.some(m => m.status === 'in_progress') && (
-                  <div className="flex items-center gap-1 text-blue-600">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span className="font-medium">
-                      {milestones.filter(m => m.status === 'in_progress').length} active
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Performance Indicator */}
-              {progress > 0 && (
-                <div className="flex items-center gap-1">
-                  {progress === 100 ? (
-                    <Star className="h-3 w-3 text-yellow-500" />
-                  ) : progress >= 75 ? (
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <Timer className="h-3 w-3 text-amber-500" />
+
+                  {progress > 0 && (
+                    <div className="flex items-center gap-1">
+                      {progress === 100 ? (
+                        <Star className="h-3 w-3" />
+                      ) : progress >= 75 ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : (
+                        <Timer className="h-3 w-3" />
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Current Activity Status */}
-            {milestones.some(m => m.status === 'in_progress') && (
-              <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <span className="font-medium">Active development in progress</span>
-                <Sparkles className="h-3 w-3 text-blue-500" />
+                {milestones.some(m => m.status === 'in_progress') && (
+                  <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded-md">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                    <span className="font-medium">Active development in progress</span>
+                    <Sparkles className="h-3 w-3" />
+                  </div>
+                )}
+
+                {isCompleted && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">
+                    <Award className="h-3 w-3 text-emerald-600" />
+                    <span className="font-medium">Project successfully delivered</span>
+                    <Crown className="h-3 w-3" />
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Completion Celebration */}
-            {isCompleted && (
-              <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">
-                <Award className="h-3 w-3 text-emerald-600" />
-                <span className="font-medium">Project successfully delivered</span>
-                <Crown className="h-3 w-3 text-yellow-500" />
+            ) : (
+              <div className="text-xs text-gray-500 italic">
+                {status === 'delivered' ? 'Project successfully delivered' :
+                 status === 'in_production' ? 'Active development in progress' :
+                 status === 'ready_to_launch' ? 'All prerequisites met • Ready to begin development' :
+                 status === 'approved' ? 'Project approved • Waiting for team assignment' :
+                 status === 'pending_review' ? 'Awaiting provider approval' :
+                 'Project status being determined'}
               </div>
             )}
           </div>
-        )}
+        </TooltipTrigger>
 
-        {/* No Milestones State */}
-        {!hasMilestones && (
-          <div className="text-xs text-gray-500 italic">
-            {status === 'delivered' ? 'Project successfully delivered' :
-             status === 'in_production' ? 'Active development in progress' :
-             status === 'ready_to_launch' ? 'All prerequisites met • Ready to begin development' :
-             status === 'approved' ? 'Project approved • Waiting for team assignment' :
-             status === 'pending_review' ? 'Awaiting provider approval' :
-             'Project status being determined'}
-          </div>
-        )}
-      </div>
-    </Tooltip>
+        <TooltipContent className="max-w-xs whitespace-pre-line">
+          {tooltipLines.map((l, i) => <div key={i}>{l}</div>)}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
