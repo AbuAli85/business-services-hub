@@ -330,6 +330,14 @@ export function ProfessionalMilestoneSystem({
   // Milestone approval handler
   const handleMilestoneApproval = async (milestoneId: string, action: 'approve' | 'reject', feedback?: string) => {
     try {
+      // Validate UUID format
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(milestoneId)) {
+        console.error('❌ Invalid UUID format for milestoneId:', milestoneId)
+        toast.error('Invalid milestone ID format')
+        return
+      }
+
       const response = await fetch('/api/milestones/approve', {
         method: 'POST',
         headers: {
@@ -357,13 +365,21 @@ export function ProfessionalMilestoneSystem({
       return result
     } catch (error) {
       console.error('Error approving milestone:', error)
-      throw error
+      toast.error('Failed to approve milestone. Please try again.')
     }
   }
 
   // Milestone comment handler
   const handleMilestoneComment = async (milestoneId: string, content: string, commentType: string = 'general') => {
     try {
+      // Validate UUID format
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      if (!isUuid(milestoneId)) {
+        console.error('❌ Invalid UUID format for milestoneId:', milestoneId)
+        toast.error('Invalid milestone ID format')
+        return
+      }
+
       const response = await fetch('/api/milestones/comments', {
         method: 'POST',
         headers: {
@@ -390,7 +406,7 @@ export function ProfessionalMilestoneSystem({
       return result
     } catch (error) {
       console.error('Error adding comment:', error)
-      throw error
+      toast.error('Failed to add comment. Please try again.')
     }
   }
 
@@ -740,6 +756,23 @@ export function ProfessionalMilestoneSystem({
       
       toast.success('Task deleted successfully')
       
+      // Log audit trail for task deletion
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('audit_logs').insert({
+            booking_id: bookingId,
+            entity: 'task',
+            entity_id: taskId,
+            action: 'delete',
+            actor_id: user.id,
+            created_at: new Date().toISOString()
+          })
+        }
+      } catch (auditError) {
+        console.warn('Failed to log audit trail:', auditError)
+      }
+      
       // Recalculate milestone progress after task deletion
       const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
       if (milestone) {
@@ -803,6 +836,28 @@ export function ProfessionalMilestoneSystem({
         
         if (error) throw error
         toast.success('Milestone updated successfully')
+        
+        // Log audit trail for milestone update
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            await supabase.from('audit_logs').insert({
+              booking_id: bookingId,
+              entity: 'milestone',
+              entity_id: editingMilestone.id,
+              action: 'update',
+              new_values: { 
+                title: milestoneForm.title,
+                description: milestoneForm.description,
+                priority: normalizedPriority
+              },
+              actor_id: user.id,
+              created_at: new Date().toISOString()
+            })
+          }
+        } catch (auditError) {
+          console.warn('Failed to log audit trail:', auditError)
+        }
       } else {
         // Create new milestone
         const { data: existingMilestones } = await supabase
@@ -854,6 +909,29 @@ export function ProfessionalMilestoneSystem({
         
         console.log('Milestone created successfully:', milestone)
         toast.success('Milestone created successfully')
+        
+        // Log audit trail for milestone creation
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && milestone) {
+            await supabase.from('audit_logs').insert({
+              booking_id: bookingId,
+              entity: 'milestone',
+              entity_id: milestone.id,
+              action: 'create',
+              new_values: { 
+                title: milestone.title,
+                description: milestone.description,
+                priority: normalizedPriorityCreate,
+                status: 'pending'
+              },
+              actor_id: user.id,
+              created_at: new Date().toISOString()
+            })
+          }
+        } catch (auditError) {
+          console.warn('Failed to log audit trail:', auditError)
+        }
       }
       
       // Reload milestones data
@@ -864,7 +942,7 @@ export function ProfessionalMilestoneSystem({
       resetMilestoneForm()
     } catch (error) {
       console.error('Milestone submission error:', error)
-      toast.error(`Failed to save milestone: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error('Something went wrong while saving the milestone. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -984,6 +1062,29 @@ export function ProfessionalMilestoneSystem({
 
         toast.success('Task created successfully')
         
+        // Log audit trail for task creation
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user && insertedTask) {
+            await supabase.from('audit_logs').insert({
+              booking_id: bookingId,
+              entity: 'task',
+              entity_id: insertedTask.id,
+              action: 'create',
+              new_values: { 
+                title: insertedTask.title,
+                description: insertedTask.description,
+                status: 'pending',
+                priority: taskForm.priority
+              },
+              actor_id: user.id,
+              created_at: new Date().toISOString()
+            })
+          }
+        } catch (auditError) {
+          console.warn('Failed to log audit trail:', auditError)
+        }
+        
         // Recalculate milestone progress after task creation
         if (selectedMilestone) {
           await calculateAndUpdateMilestoneProgress(selectedMilestone, supabase)
@@ -999,7 +1100,7 @@ export function ProfessionalMilestoneSystem({
       resetTaskForm()
     } catch (error) {
       console.error('Task submission error:', error)
-      toast.error(`Failed to save task: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error('Something went wrong while saving the task. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
