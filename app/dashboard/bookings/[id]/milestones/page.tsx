@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, RefreshCw, Download, Share2, Settings, User, Shield, Eye, AlertTriangle, Target } from 'lucide-react'
 import { ProfessionalMilestoneSystem } from '@/components/dashboard/professional-milestone-system'
-import { ProfessionalMilestoneManager } from '@/components/dashboard/professional-milestone-manager'
 import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-viewer'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
@@ -108,9 +107,8 @@ export default function MilestonesPage() {
       isMounted = false
       ;(async () => {
         try {
-          const supabase = await getSupabaseClient()
-          if (channelMilestones) supabase.removeChannel(channelMilestones)
-          if (channelBooking) supabase.removeChannel(channelBooking)
+          if (channelMilestones?.unsubscribe) await channelMilestones.unsubscribe()
+          if (channelBooking?.unsubscribe) await channelBooking.unsubscribe()
         } catch {}
       })()
     }
@@ -122,30 +120,9 @@ export default function MilestonesPage() {
       setError(null)
 
       const supabase = await getSupabaseClient()
-      
-      // Get current user
-      let user = null
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
-      if (userError || !authUser) {
-        console.error('Authentication error:', userError)
-        // Try to refresh the session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError || !session) {
-          throw new Error('User not authenticated. Please sign in again.')
-        }
-        // If we have a session but no user, try to get user from session
-        const { data: { user: sessionUser }, error: sessionUserError } = await supabase.auth.getUser()
-        if (sessionUserError || !sessionUser) {
-          throw new Error('User not authenticated. Please sign in again.')
-        }
-        user = sessionUser
-      } else {
-        user = authUser
-      }
-      
-      if (!user) {
-        throw new Error('User not authenticated. Please sign in again.')
-      }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) throw new Error('User not authenticated. Please sign in again.')
+      const user = session.user
 
       // Load booking details with separate profile queries for reliability
       const { data: bookingData, error: bookingError } = await supabase
@@ -253,21 +230,22 @@ export default function MilestonesPage() {
       }
 
       // Transform booking data with properly loaded profiles
+      const svc = Array.isArray((bookingData as any).services) ? (bookingData as any).services[0] : (bookingData as any).services
       const transformedBooking: Booking = {
         id: bookingData.id,
         title: bookingData.title || 'Service Booking',
         status: bookingData.status,
         approval_status: (bookingData as any)?.approval_status,
         service: {
-          name: (bookingData.services as any)?.title || 'Unknown Service',
-          description: (bookingData.services as any)?.description
+          name: svc?.title || 'Unknown Service',
+          description: svc?.description
         },
         client: {
-          full_name: clientProfile?.full_name || `Client (${bookingData.client_id?.substring(0, 8)}...)`,
+          full_name: clientProfile?.full_name || `Client (${bookingData.client_id?.slice(0, 8) ?? 'unknown'})`,
           email: clientProfile?.email || 'No email available'
         },
         provider: {
-          full_name: providerProfile?.full_name || `Provider (${bookingData.provider_id?.substring(0, 8)}...)`,
+          full_name: providerProfile?.full_name || `Provider (${bookingData.provider_id?.slice(0, 8) ?? 'unknown'})`,
           email: providerProfile?.email || 'No email available'
         },
         created_at: bookingData.created_at,
