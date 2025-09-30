@@ -683,9 +683,16 @@ export function CompactBookingStatus({
       const json = await p.finally(() => inflight.delete(bookingId))
       cache.set(bookingId, { json, ts: Date.now() })
 
-      const { booking } = json
+      // Support both { booking } and { bookings: [...] } API shapes
+      const bookingFromJson = (() => {
+        const single = (json as any)?.booking
+        if (single) return single
+        const list = (json as any)?.bookings
+        if (Array.isArray(list) && list.length > 0) return list[0]
+        return null
+      })()
 
-      if (!booking) {
+      if (!bookingFromJson) {
         console.error('Booking not found')
         setStatus('pending')
         setProgress(0)
@@ -694,10 +701,10 @@ export function CompactBookingStatus({
 
       // Debug logging to see what data we're receiving
       console.log('Smart Status Component - Booking Data:', {
-        bookingId: booking.id,
-        status: booking.status,
-        approval_status: booking.approval_status,
-        ui_approval_status: booking.ui_approval_status
+        bookingId: bookingFromJson.id,
+        status: bookingFromJson.status,
+        approval_status: bookingFromJson.approval_status,
+        ui_approval_status: bookingFromJson.ui_approval_status
       })
 
       // Use the applyBooking function which has the correct approval status logic
@@ -713,7 +720,13 @@ export function CompactBookingStatus({
     }
 
     const applyBooking = async (json: any) => {
-      const booking = json?.bookings?.[0]
+      const booking = (() => {
+        const single = json?.booking
+        if (single) return single
+        const list = json?.bookings
+        if (Array.isArray(list) && list.length > 0) return list[0]
+        return null
+      })()
       if (!booking) {
         setStatus('pending')
         setProgress(0)
@@ -722,11 +735,27 @@ export function CompactBookingStatus({
 
       // Load actual milestones for this booking
       try {
-        const milestonesRes = await fetch(`/api/milestones?bookingId=${bookingId}`, {
+        // Milestones fetch with simple 429 backoff
+        const fetchMilestonesOnce = async () => fetch(`/api/milestones?bookingId=${bookingId}`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store'
         })
+        let milestonesRes: Response
+        {
+          let attempt = 0
+          const maxRetries = 3
+          const base = 300
+          const cap = 2000
+          while (true) {
+            milestonesRes = await fetchMilestonesOnce()
+            if (milestonesRes.status !== 429 || attempt >= maxRetries) break
+            const ra = milestonesRes.headers.get('retry-after')
+            const delay = ra ? Number(ra) * 1000 : Math.min(cap, base * 2 ** attempt)
+            await new Promise(r => setTimeout(r, delay))
+            attempt++
+          }
+        }
         
         if (milestonesRes.ok) {
           const milestonesData = await milestonesRes.json()
@@ -739,7 +768,7 @@ export function CompactBookingStatus({
               booking.status === 'completed' ? 100 :
               booking.status === 'in_progress' ? 50 :
               booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
-            setProgress(defaultProgress)
+            setProgress(Math.max(0, Math.min(100, defaultProgress)))
           } else {
             // Calculate progress based on completed and in-progress milestones
             const completed = data.filter(m => m.status === 'completed').length
@@ -750,7 +779,8 @@ export function CompactBookingStatus({
             const milestoneProgress = total > 0 ? Math.round(((completed + (inProgress * 0.5)) / total) * 100) : 0
             
             // Use milestone progress, not weighted progress
-            setProgress(Number.isFinite(milestoneProgress) ? milestoneProgress : 0)
+            const safe = Number.isFinite(milestoneProgress) ? milestoneProgress : 0
+            setProgress(Math.max(0, Math.min(100, safe)))
           }
           
           const completed = data.filter(m => m.status === 'completed').length
@@ -815,7 +845,7 @@ export function CompactBookingStatus({
             booking.status === 'completed' ? 100 :
             booking.status === 'in_progress' ? 50 :
             booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
-          setProgress(defaultProgress)
+          setProgress(Math.max(0, Math.min(100, defaultProgress)))
           setMilestones([])
           // Handle case where booking.status might be undefined or null
           let fallbackStatus = booking.status || 'pending'
@@ -832,7 +862,7 @@ export function CompactBookingStatus({
           booking.status === 'completed' ? 100 :
           booking.status === 'in_progress' ? 50 :
           booking.status === 'approved' || booking.status === 'confirmed' || ((booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') && booking.status === 'pending') ? 10 : 0
-        setProgress(defaultProgress)
+        setProgress(Math.max(0, Math.min(100, defaultProgress)))
         setMilestones([])
         // Handle case where booking.status might be undefined or null
         let fallbackStatus = booking.status || 'pending'
