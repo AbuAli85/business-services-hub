@@ -832,6 +832,57 @@ export default function BookingsPage() {
     }
   }
 
+  // Decline booking function with optimistic UI
+  const declineBooking = async (id: string) => {
+    if (approvingIds.has(id)) return
+    setApprovingIds(s => new Set(s).add(id))
+    const prev = bookings
+    setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'rejected', status: 'declined' } : x))
+    const dismiss = toast.loading('Declining booking…')
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ booking_id: id, action: 'decline' })
+      })
+      if (!res.ok) {
+        const { error, details } = await res.json().catch(() => ({}))
+        throw new Error(error || details || `Request failed: ${res.status}`)
+      }
+      toast.success('Booking declined')
+      setRefreshTrigger(prev => prev + 1)
+    } catch (err: any) {
+      setBookings(prev)
+      toast.error(err?.message || 'Decline failed')
+    } finally {
+      toast.dismiss(dismiss)
+      setApprovingIds(s => { const n = new Set(s); n.delete(id); return n })
+    }
+  }
+
+  // Start project/work function
+  const startProject = async (id: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) { toast.error('Sign in required'); router.push('/auth/sign-in'); return }
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        credentials: 'include',
+        body: JSON.stringify({ booking_id: id, action: 'start_project' })
+      })
+      if (!res.ok) throw new Error('Failed to start project')
+      toast.success('Project started')
+      setRefreshTrigger(v=>v+1)
+    } catch (e:any) { toast.error(e?.message || 'Failed to start') }
+  }
+
   // Role-based permissions
   const canCreateBooking = userRole === 'client' || userRole === 'admin'
   const canManageBookings = userRole === 'admin'
@@ -1806,21 +1857,31 @@ export default function BookingsPage() {
 							return next
 						  })
 						}}
-						onQuickAction={(action, id) => {
-						  if (action === 'view') {
-                          router.push(`/dashboard/bookings/${booking.id}`)
-						  } else if (action === 'approve') {
-							approveBooking(booking.id)
-						  } else if (action === 'message') {
-							toast.success('Messaging functionality coming soon')
-						  } else if (action === 'create_invoice') {
-							toast.success('Create invoice functionality coming soon')
-						  } else if (action === 'edit') {
-							toast.success('Edit booking functionality coming soon')
-						  } else if (action === 'more_actions') {
-							toast.success('More actions menu coming soon')
-						  }
-						}}
+                        onQuickAction={async (action) => {
+                          if (action === 'view') {
+                            router.push(`/dashboard/bookings/${booking.id}`)
+                          } else if (action === 'approve') {
+                            await approveBooking(booking.id)
+                          } else if (action === 'decline') {
+                            await declineBooking(booking.id)
+                          } else if (action === 'start_work' || action === 'start_project') {
+                            await startProject(booking.id)
+                          } else if (action === 'create_invoice') {
+                            await handleCreateInvoice(booking)
+                          } else if (action === 'send_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
+                          } else if (action === 'mark_paid') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
+                          } else if (action === 'pay_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
+                          } else if (action === 'view_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
+                          } else if (action === 'update_progress') {
+                            router.push(`/dashboard/bookings/${booking.id}/milestones`)
+                          } else if (action === 'message') {
+                            router.push('/dashboard/messages')
+                          }
+                        }}
                         onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
 						density={density}
 						userRole={userRole || undefined}
