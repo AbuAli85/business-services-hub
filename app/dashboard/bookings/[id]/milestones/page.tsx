@@ -561,6 +561,9 @@ export default function MilestonesPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Service</p>
                   <p className="text-gray-900 font-medium">{booking.service.name}</p>
+                  {booking.service.description && (
+                    <p className="text-sm text-gray-600 mt-1">{booking.service.description}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Status</p>
@@ -597,7 +600,7 @@ export default function MilestonesPage() {
               <div className="space-y-3 mt-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={booking.client.email}>
+                  <p className={`text-gray-900 ${booking.client.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={`${booking.client.email} • ${booking.client.company_name || ''}`}>
                     {booking.client.email}
                   </p>
                 </div>
@@ -630,7 +633,7 @@ export default function MilestonesPage() {
               <div className="space-y-3 mt-2">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={booking.provider.email}>
+                  <p className={`text-gray-900 ${booking.provider.email === 'No email available' ? 'italic text-gray-500' : ''}`} title={`${booking.provider.email} • ${booking.provider.company_name || ''}`}>
                     {booking.provider.email}
                   </p>
                 </div>
