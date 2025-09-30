@@ -51,6 +51,9 @@ export default function MilestonesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState<null | 'approve' | 'decline' | 'start_project'>(null)
+  const [kpiLoading, setKpiLoading] = useState(false)
+  const [milestonesCompleted, setMilestonesCompleted] = useState<number | null>(null)
+  const [milestonesTotal, setMilestonesTotal] = useState<number | null>(null)
 
   useEffect(() => {
     // Add a small delay to allow middleware to process
@@ -300,6 +303,43 @@ export default function MilestonesPage() {
       setLoading(false)
     }
   }
+
+  // Load KPIs (milestones completed/total) once booking is available
+  useEffect(() => {
+    let isMounted = true
+    const loadKpis = async () => {
+      if (!booking?.id) return
+      try {
+        setKpiLoading(true)
+        const supabase = await getSupabaseClient()
+        // Total milestones
+        const { count: totalCount } = await supabase
+          .from('milestones')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id)
+
+        // Completed milestones
+        const { count: completedCount } = await supabase
+          .from('milestones')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id)
+          .eq('status', 'completed')
+
+        if (!isMounted) return
+        setMilestonesTotal(totalCount ?? 0)
+        setMilestonesCompleted(completedCount ?? 0)
+      } catch (e) {
+        // Non-blocking KPI failure
+        if (!isMounted) return
+        setMilestonesTotal(null)
+        setMilestonesCompleted(null)
+      } finally {
+        if (isMounted) setKpiLoading(false)
+      }
+    }
+    loadKpis()
+    return () => { isMounted = false }
+  }, [booking?.id])
 
   const handleRefresh = async () => {
     toast.info('Refreshing booking data...')
@@ -661,8 +701,28 @@ export default function MilestonesPage() {
         </div>
 
         {/* Enhanced Smart Status Overview */}
-        <Card className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+        {(() => {
+          const statusNorm = booking ? normalizeStatus(booking) : 'pending'
+          const isGood = ['approved', 'confirmed', 'in_progress'].includes(String(statusNorm))
+          const isWarn = String(statusNorm) === 'pending'
+          const isBad = ['declined', 'cancelled', 'overdue'].includes(String(statusNorm))
+          const cardGradient = isGood
+            ? 'from-green-50 to-emerald-50 border-green-200'
+            : isWarn
+            ? 'from-amber-50 to-yellow-50 border-amber-200'
+            : isBad
+            ? 'from-red-50 to-rose-50 border-red-200'
+            : 'from-blue-50 to-indigo-50 border-blue-200'
+          const headerGradient = isGood
+            ? 'from-green-600 to-emerald-600'
+            : isWarn
+            ? 'from-amber-600 to-yellow-600'
+            : isBad
+            ? 'from-red-600 to-rose-600'
+            : 'from-blue-600 to-indigo-600'
+          return (
+            <Card className={`mb-8 bg-gradient-to-r ${cardGradient} shadow-lg`}>
+              <CardHeader className={`bg-gradient-to-r ${headerGradient} text-white rounded-t-lg`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
@@ -683,15 +743,56 @@ export default function MilestonesPage() {
                 Refresh Status
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <SmartBookingStatusComponent 
-              bookingId={bookingId} 
-              userRole={userRole}
-              onStatusChangeAction={() => loadBookingData()}
-            />
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent className="p-6">
+                {/* KPI summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-blue-600">Completion</p>
+                    {kpiLoading ? (
+                      <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
+                    ) : (
+                      <p className="text-lg font-semibold">
+                        {milestonesTotal && milestonesTotal > 0 && milestonesCompleted !== null
+                          ? `${Math.round((milestonesCompleted! / milestonesTotal) * 100)}%`
+                          : '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-600">Milestones</p>
+                    {kpiLoading ? (
+                      <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
+                    ) : (
+                      <p className="text-lg font-semibold">
+                        {milestonesCompleted ?? '—'} / {milestonesTotal ?? '—'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-600">Deadline</p>
+                    <p className="text-lg font-semibold">
+                      {booking?.scheduled_date
+                        ? new Date(booking.scheduled_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+                <div aria-live="polite">
+                  {kpiLoading && !milestonesTotal ? (
+                    <div className="h-20 bg-gray-100 animate-pulse rounded" />
+                  ) : (
+                    <SmartBookingStatusComponent 
+                      bookingId={bookingId} 
+                      userRole={userRole}
+                      onStatusChangeAction={() => loadBookingData()}
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })()}
 
         {/* Professional Milestone System - gated by status */}
         {(() => {
