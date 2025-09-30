@@ -1819,6 +1819,40 @@ export function ProfessionalMilestoneSystem({
               {editingMilestone ? 'Edit Milestone' : 'Create New Milestone'}
             </DialogTitle>
           </DialogHeader>
+          {/* Quick presets for common phases */}
+          {!editingMilestone && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-600 mr-1">Quick presets:</span>
+              {[
+                { t: 'Research & Strategy', plus: 5, est: 8, risk: 'medium', prio: 'normal' },
+                { t: 'Content Drafting', plus: 15, est: 15, risk: 'high', prio: 'high' },
+                { t: 'Review & Feedback', plus: 19, est: 6, risk: 'medium', prio: 'normal' },
+                { t: 'Final Delivery', plus: 22, est: 4, risk: 'low', prio: 'low' }
+              ].map(preset => (
+                <button
+                  key={preset.t}
+                  type="button"
+                  className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border"
+                  onClick={() => {
+                    const start = new Date()
+                    const due = new Date()
+                    due.setDate(due.getDate() + preset.plus)
+                    const toYmd = (d: Date) => d.toISOString().slice(0, 10)
+                    setMilestoneForm({
+                      ...milestoneForm,
+                      title: preset.t,
+                      start_date: toYmd(start),
+                      due_date: toYmd(due),
+                      estimated_hours: preset.est,
+                      risk_level: preset.risk as any,
+                      priority: preset.prio as any
+                    })
+                  }}
+                >{preset.t}</button>
+              ))}
+            </div>
+          )}
+
           <form onSubmit={handleMilestoneSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
