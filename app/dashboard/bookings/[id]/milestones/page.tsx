@@ -333,6 +333,7 @@ export default function MilestonesPage() {
         if (!isMounted) return
         setMilestonesTotal(null)
         setMilestonesCompleted(null)
+        try { toast.warning('Unable to load milestone KPIs') } catch {}
       } finally {
         if (isMounted) setKpiLoading(false)
       }
@@ -720,6 +721,13 @@ export default function MilestonesPage() {
             : isBad
             ? 'from-red-600 to-rose-600'
             : 'from-blue-600 to-indigo-600'
+          const kpiColor = isGood
+            ? 'text-green-600'
+            : isWarn
+            ? 'text-amber-600'
+            : isBad
+            ? 'text-red-600'
+            : 'text-blue-600'
           return (
             <Card className={`mb-8 bg-gradient-to-r ${cardGradient} shadow-lg`}>
               <CardHeader className={`bg-gradient-to-r ${headerGradient} text-white rounded-t-lg`}>
@@ -748,32 +756,36 @@ export default function MilestonesPage() {
                 {/* KPI summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   <div>
-                    <p className="text-sm text-blue-600">Completion</p>
+                    <p className={`text-sm ${kpiColor}`}>Completion</p>
                     {kpiLoading ? (
                       <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
                     ) : (
                       <p className="text-lg font-semibold">
-                        {milestonesTotal && milestonesTotal > 0 && milestonesCompleted !== null
+                        {milestonesTotal !== null && milestonesTotal > 0 && milestonesCompleted !== null
                           ? `${Math.round((milestonesCompleted! / milestonesTotal) * 100)}%`
                           : '—'}
                       </p>
                     )}
                   </div>
                   <div>
-                    <p className="text-sm text-blue-600">Milestones</p>
+                    <p className={`text-sm ${kpiColor}`}>Milestones</p>
                     {kpiLoading ? (
                       <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
                     ) : (
-                      <p className="text-lg font-semibold">
-                        {milestonesCompleted ?? '—'} / {milestonesTotal ?? '—'}
-                      </p>
+                      milestonesTotal === 0 ? (
+                        <p className="text-sm italic text-gray-600">No milestones yet</p>
+                      ) : (
+                        <p className="text-lg font-semibold">
+                          {milestonesCompleted ?? '—'} / {milestonesTotal ?? '—'}
+                        </p>
+                      )
                     )}
                   </div>
                   <div>
-                    <p className="text-sm text-blue-600">Deadline</p>
+                    <p className={`text-sm ${kpiColor}`}>Deadline</p>
                     <p className="text-lg font-semibold">
                       {booking?.scheduled_date
-                        ? new Date(booking.scheduled_date).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })
+                        ? new Date(booking.scheduled_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Muscat' })
                         : '—'}
                     </p>
                   </div>
