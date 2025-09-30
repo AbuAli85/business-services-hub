@@ -1028,6 +1028,7 @@ export default function EnhancedBookingDetails({
             title: 'General Tasks',
             description: 'General project tasks',
             status: 'pending',
+            priority: 'normal',
             progress_percentage: 0
           })
           .select()

@@ -104,6 +104,7 @@ export function QuickMilestoneCreator({
           title: title.trim(),
           description: description.trim(),
           status: 'pending',
+          priority: 'normal',
           progress_percentage: 0,
           order_index: 0,
           created_by: user.id
