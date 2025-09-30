@@ -1720,7 +1720,7 @@ export default function BookingsPage() {
 					  } },
 					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
 						  <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={()=> openBookingDetails(r)} aria-label="View details">Details</Button>
+                            <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}`)} aria-label="View details">Details</Button>
 							{canManageBookings && r.approval_status !== 'approved' && (
 							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
 							)}
@@ -1808,7 +1808,7 @@ export default function BookingsPage() {
 						}}
 						onQuickAction={(action, id) => {
 						  if (action === 'view') {
-                          openBookingDetails(booking)
+                          router.push(`/dashboard/bookings/${booking.id}`)
 						  } else if (action === 'approve') {
 							approveBooking(booking.id)
 						  } else if (action === 'message') {
@@ -1821,7 +1821,7 @@ export default function BookingsPage() {
 							toast.success('More actions menu coming soon')
 						  }
 						}}
-                        onViewDetails={(id) => { openBookingDetails(booking) }}
+                        onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
 						density={density}
 						userRole={userRole || undefined}
 					  />
