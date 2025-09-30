@@ -306,9 +306,31 @@ export default function MilestonesPage() {
     router.push('/dashboard/bookings')
   }
 
+  // DRY helper for booking actions
+  const handleAction = async (action: 'approve' | 'decline' | 'start_project') => {
+    if (!booking?.id) return
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const pretty = action.replace('_', ' ')
+      await toast.promise(
+        fetch(`/api/bookings/${booking.id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ action })
+        }).then(r => { if (!r.ok) throw new Error(`${pretty} failed`) }),
+        { loading: `${pretty.charAt(0).toUpperCase() + pretty.slice(1)}…`, success: `Booking ${pretty}d`, error: `${pretty} failed` }
+      )
+      await loadBookingData()
+    } catch (e:any) {
+      // toast already shows error via toast.promise; no extra action needed
+    }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50" aria-busy="true">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-6">
             <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
@@ -398,7 +420,7 @@ export default function MilestonesPage() {
                   </p>
                   <div className="flex items-center gap-4 mt-2">
                     <Badge className="bg-white/20 text-white border-white/30">
-                      {booking.status}
+                      {String(booking.status).toUpperCase()}
                     </Badge>
                     {booking.approval_status && (
                       <Badge className={
@@ -408,7 +430,7 @@ export default function MilestonesPage() {
                           ? 'bg-red-500/20 text-red-100 border-red-300/30'
                           : 'bg-yellow-500/20 text-yellow-100 border-yellow-300/30'
                       }>
-                        {booking.approval_status}
+                        {String(booking.approval_status).toUpperCase()}
                       </Badge>
                     )}
                     <span className="text-sm text-blue-200">
@@ -418,7 +440,7 @@ export default function MilestonesPage() {
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3" aria-live="polite">
                 {/* Role Badge */}
                 <Badge 
                   className={
@@ -458,20 +480,7 @@ export default function MilestonesPage() {
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700"
-                          onClick={async () => {
-                            const supabase = await getSupabaseClient()
-                            const { data: { session } } = await supabase.auth.getSession()
-                            await toast.promise(
-                              fetch(`/api/bookings/${booking?.id}`, {
-                                method: 'PATCH',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                                body: JSON.stringify({ action: 'approve' })
-                              }).then(r => { if(!r.ok) throw new Error('Approval failed'); }),
-                              { loading: 'Approving…', success: 'Booking approved', error: 'Approval failed' }
-                            )
-                            await loadBookingData()
-                          }}
+                          onClick={() => handleAction('approve')}
                         >
                           Approve
                         </Button>
@@ -480,20 +489,7 @@ export default function MilestonesPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={async () => {
-                            const supabase = await getSupabaseClient()
-                            const { data: { session } } = await supabase.auth.getSession()
-                            await toast.promise(
-                              fetch(`/api/bookings/${booking?.id}`, {
-                                method: 'PATCH',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                                body: JSON.stringify({ action: 'decline' })
-                              }).then(r => { if(!r.ok) throw new Error('Decline failed'); }),
-                              { loading: 'Declining…', success: 'Booking declined', error: 'Decline failed' }
-                            )
-                            await loadBookingData()
-                          }}
+                          onClick={() => handleAction('decline')}
                         >
                           Decline
                         </Button>
@@ -502,20 +498,7 @@ export default function MilestonesPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={async () => {
-                            const supabase = await getSupabaseClient()
-                            const { data: { session } } = await supabase.auth.getSession()
-                            await toast.promise(
-                              fetch(`/api/bookings/${booking?.id}`, {
-                                method: 'PATCH',
-                                credentials: 'include',
-                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                                body: JSON.stringify({ action: 'start_project' })
-                              }).then(r => { if(!r.ok) throw new Error('Start failed'); }),
-                              { loading: 'Starting…', success: 'Project started', error: 'Start failed' }
-                            )
-                            await loadBookingData()
-                          }}
+                          onClick={() => handleAction('start_project')}
                         >
                           Start Project
                         </Button>
