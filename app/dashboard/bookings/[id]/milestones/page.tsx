@@ -568,7 +568,7 @@ export default function MilestonesPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Status</p>
                   <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                    {booking.status}
+                    {normalizeStatus(booking).toUpperCase()}
                   </Badge>
                 </div>
                 <div>
