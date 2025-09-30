@@ -17,6 +17,7 @@ interface Booking {
   id: string
   title: string
   status: string
+  approval_status?: string
   service: {
     name: string
     description?: string
@@ -153,6 +154,7 @@ export default function MilestonesPage() {
           id,
           title,
           status,
+          approval_status,
           created_at,
           scheduled_date,
           total_price,
@@ -255,6 +257,7 @@ export default function MilestonesPage() {
         id: bookingData.id,
         title: bookingData.title || 'Service Booking',
         status: bookingData.status,
+        approval_status: (bookingData as any)?.approval_status,
         service: {
           name: (bookingData.services as any)?.title || 'Unknown Service',
           description: (bookingData.services as any)?.description
@@ -437,6 +440,87 @@ export default function MilestonesPage() {
                   )}
                 </Badge>
                 
+                {/* Quick Actions: approve/decline/start */}
+                {(() => {
+                  const isApproved = ((booking as any)?.approval_status === 'approved') || (booking?.status === 'approved') || (booking?.status === 'confirmed')
+                  const isPending = ((booking as any)?.approval_status === 'pending') || (booking?.status === 'pending')
+                  const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
+                  const canStart = (userRole === 'provider' || userRole === 'admin') && (isApproved || booking?.status === 'in_progress')
+                  return (
+                    <div className="flex items-center gap-2">
+                      {canApprove && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={async () => {
+                            try {
+                              const supabase = await getSupabaseClient()
+                              const { data: { session } } = await supabase.auth.getSession()
+                              const res = await fetch('/api/bookings', {
+                                method: 'PATCH',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                                body: JSON.stringify({ booking_id: booking?.id, action: 'approve' })
+                              })
+                              if (!res.ok) throw new Error('Approval failed')
+                              toast.success('Booking approved')
+                              await loadBookingData()
+                            } catch (e:any) { toast.error(e?.message || 'Failed') }
+                          }}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                      {canApprove && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            try {
+                              const supabase = await getSupabaseClient()
+                              const { data: { session } } = await supabase.auth.getSession()
+                              const res = await fetch('/api/bookings', {
+                                method: 'PATCH',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                                body: JSON.stringify({ booking_id: booking?.id, action: 'decline' })
+                              })
+                              if (!res.ok) throw new Error('Decline failed')
+                              toast.success('Booking declined')
+                              await loadBookingData()
+                            } catch (e:any) { toast.error(e?.message || 'Failed') }
+                          }}
+                        >
+                          Decline
+                        </Button>
+                      )}
+                      {canStart && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            try {
+                              const supabase = await getSupabaseClient()
+                              const { data: { session } } = await supabase.auth.getSession()
+                              const res = await fetch('/api/bookings', {
+                                method: 'PATCH',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                                body: JSON.stringify({ booking_id: booking?.id, action: 'start_project' })
+                              })
+                              if (!res.ok) throw new Error('Start failed')
+                              toast.success('Project started')
+                              await loadBookingData()
+                            } catch (e:any) { toast.error(e?.message || 'Failed') }
+                          }}
+                        >
+                          Start Project
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 <Button
                   variant="outline"
                   size="sm"
