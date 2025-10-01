@@ -166,25 +166,7 @@ export default function BookingsPage() {
     isLoadingRef: isLoadingRef.current
   })
 
-  // Show brand-centric page loader when initial load is in progress and we have no items yet
-  if (userLoading && !forceShow) {
-    console.log('🔄 Showing user loading state')
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
-        <BrandLoader size={72} />
-      </div>
-    )
-  }
-
-  // Show data loading spinner only if we're actively loading data and have no bookings yet
-  if (dataLoading && bookings.length === 0 && !error && !forceShow) {
-    console.log('🔄 Showing data loading state')
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
-        <BrandLoader size={72} />
-      </div>
-    )
-  }
+  // Note: Avoid early returns before all hooks are declared to prevent hook order mismatches
 
 
   // Invoice lookup - moved up to avoid hoisting issues
