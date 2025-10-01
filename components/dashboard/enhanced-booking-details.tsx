@@ -148,10 +148,13 @@ export default function EnhancedBookingDetails({
   userRole?: 'provider' | 'client'
 }) {
   console.log('🎯 EnhancedBookingDetails component loaded!', { showProgressCard, userRole })
+  console.log('🎯 Component is rendering...')
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const bookingId = params?.id as string
+  
+  console.log('🎯 Booking ID:', bookingId)
   
   const [booking, setBooking] = useState<EnhancedBooking | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1950,6 +1953,10 @@ export default function EnhancedBookingDetails({
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-blue-100 border border-blue-300 rounded-lg p-4 mb-4">
+            <h2 className="text-lg font-semibold text-blue-800">Enhanced Booking Details - Loading</h2>
+            <p className="text-blue-600">This is the professional enhanced booking details component</p>
+          </div>
           <div className="animate-pulse space-y-6">
             {/* Header skeleton */}
             <div className="flex items-center justify-between">
@@ -2005,6 +2012,12 @@ export default function EnhancedBookingDetails({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Test Banner */}
+      <div className="bg-green-100 border border-green-300 rounded-lg p-4 m-4">
+        <h2 className="text-lg font-semibold text-green-800">✅ Enhanced Booking Details - Rendered Successfully!</h2>
+        <p className="text-green-600">This is the professional enhanced booking details component with all features</p>
+      </div>
+      
       {/* Sticky Quick Action Bar */}
       {showStickyBar && booking && (
         <div className="fixed top-0 left-0 right-0 z-40 backdrop-blur bg-white/80 border-b">
