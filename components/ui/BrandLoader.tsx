@@ -27,11 +27,11 @@ export function BrandLoader({ size = 56, className = '' }: BrandLoaderProps) {
         // Try common logo fields
         const { data } = await supabase
           .from('profiles')
-          .select('avatar_url, logo_url, company_logo_url')
+          .select('avatar_url, logo_url')
           .eq('id', user.id)
           .maybeSingle()
 
-        const found = (data as any)?.avatar_url || (data as any)?.logo_url || (data as any)?.company_logo_url || null
+        const found = (data as any)?.avatar_url || (data as any)?.logo_url || null
         if (found) setLogoUrl(found)
       } catch {}
     })()
