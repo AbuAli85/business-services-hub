@@ -124,7 +124,11 @@ export class AuthMiddleware {
         hasProfile: !!profile,
         profileError: profileError?.message,
         errorCode: profileError?.code,
-        userRole: user.user_metadata?.role
+        userRole: user.user_metadata?.role,
+        userId: user.id,
+        userEmail: user.email,
+        profileId: profile?.id,
+        profileRole: profile?.role
       })
 
       // If profile doesn't exist, try to create one
@@ -158,12 +162,53 @@ export class AuthMiddleware {
           console.log('🔍 Middleware: Checking for existing profile by email...')
           const { data: existingProfileByEmail, error: emailLookupError } = await adminClient
             .from('profiles')
-            .select('id, role, full_name, company_id')
+            .select('id, role, full_name, company_id, email')
             .eq('email', user.email || '')
             .single()
           
           if (existingProfileByEmail && !emailLookupError) {
             console.log('✅ Middleware: Found existing profile by email:', existingProfileByEmail)
+            
+            // Check if the existing profile has a different ID than the current user
+            if (existingProfileByEmail.id !== user.id) {
+              console.log('⚠️ Middleware: Profile ID mismatch detected. Updating profile ID...', {
+                existingId: existingProfileByEmail.id,
+                currentUserId: user.id,
+                email: user.email
+              })
+              
+              try {
+                // Update the existing profile to use the current user's ID
+                const { data: updatedProfile, error: updateError } = await adminClient
+                  .from('profiles')
+                  .update({ 
+                    id: user.id,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('email', user.email || '')
+                  .select('id, role, full_name, company_id')
+                  .single()
+                
+                if (updateError) {
+                  console.error('❌ Middleware: Failed to update profile ID:', updateError)
+                  // Continue with the existing profile as fallback
+                } else {
+                  console.log('✅ Middleware: Successfully updated profile ID:', updatedProfile)
+                  const role = updatedProfile?.role || user.user_metadata?.role || null
+                  return {
+                    isAuthenticated: true,
+                    user,
+                    profile: updatedProfile,
+                    role,
+                    accessToken: token || null
+                  }
+                }
+              } catch (updateError) {
+                console.error('❌ Middleware: Exception while updating profile ID:', updateError)
+                // Continue with the existing profile as fallback
+              }
+            }
+            
             const role = existingProfileByEmail?.role || user.user_metadata?.role || null
             return {
               isAuthenticated: true,
@@ -195,7 +240,9 @@ export class AuthMiddleware {
               code: createError.code,
               message: createError.message,
               details: createError.details,
-              hint: createError.hint
+              hint: createError.hint,
+              userId: user.id,
+              userEmail: user.email
             })
             
             // If it's a duplicate key error, try to fetch the existing profile
@@ -206,25 +253,77 @@ export class AuthMiddleware {
               console.log('🔍 Middleware: Duplicate key error, attempting to fetch existing profile...')
               
               try {
-                const { data: existingProfile, error: fetchError } = await adminClient
+                // Try to find by user ID first
+                const { data: existingProfileById, error: fetchByIdError } = await adminClient
                   .from('profiles')
-                  .select('id, role, full_name, company_id')
+                  .select('id, role, full_name, company_id, email')
                   .eq('id', user.id)
                   .single()
                 
-                if (existingProfile && !fetchError) {
-                  console.log('✅ Middleware: Found existing profile:', existingProfile)
-                  const role = existingProfile?.role || user.user_metadata?.role || null
+                if (existingProfileById && !fetchByIdError) {
+                  console.log('✅ Middleware: Found existing profile by ID:', existingProfileById)
+                  const role = existingProfileById?.role || user.user_metadata?.role || null
                   return {
                     isAuthenticated: true,
                     user,
-                    profile: existingProfile,
+                    profile: existingProfileById,
                     role,
                     accessToken: token || null
                   }
-                } else {
-                  console.warn('⚠️ Middleware: Could not fetch existing profile:', fetchError?.message)
                 }
+                
+                // If not found by ID, try by email again (in case of race condition)
+                const { data: existingProfileByEmail, error: fetchByEmailError } = await adminClient
+                  .from('profiles')
+                  .select('id, role, full_name, company_id, email')
+                  .eq('email', user.email || '')
+                  .single()
+                
+                if (existingProfileByEmail && !fetchByEmailError) {
+                  console.log('✅ Middleware: Found existing profile by email (race condition):', existingProfileByEmail)
+                  
+                  // If the profile has a different ID, update it
+                  if (existingProfileByEmail.id !== user.id) {
+                    console.log('⚠️ Middleware: Profile ID mismatch in race condition, updating...')
+                    const { data: updatedProfile, error: updateError } = await adminClient
+                      .from('profiles')
+                      .update({ 
+                        id: user.id,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('email', user.email || '')
+                      .select('id, role, full_name, company_id')
+                      .single()
+                    
+                    if (updateError) {
+                      console.error('❌ Middleware: Failed to update profile ID in race condition:', updateError)
+                    } else {
+                      console.log('✅ Middleware: Successfully updated profile ID in race condition:', updatedProfile)
+                      const role = updatedProfile?.role || user.user_metadata?.role || null
+                      return {
+                        isAuthenticated: true,
+                        user,
+                        profile: updatedProfile,
+                        role,
+                        accessToken: token || null
+                      }
+                    }
+                  }
+                  
+                  const role = existingProfileByEmail?.role || user.user_metadata?.role || null
+                  return {
+                    isAuthenticated: true,
+                    user,
+                    profile: existingProfileByEmail,
+                    role,
+                    accessToken: token || null
+                  }
+                }
+                
+                console.warn('⚠️ Middleware: Could not fetch existing profile by ID or email:', {
+                  fetchByIdError: fetchByIdError?.message,
+                  fetchByEmailError: fetchByEmailError?.message
+                })
               } catch (fetchError) {
                 console.warn('⚠️ Middleware: Exception while fetching existing profile:', fetchError)
               }
@@ -232,6 +331,7 @@ export class AuthMiddleware {
             
             // Continue with user metadata role if profile creation/fetch fails
             const role = user.user_metadata?.role || null
+            console.log('⚠️ Middleware: Falling back to user metadata role:', { role, userId: user.id })
             return {
               isAuthenticated: true,
               user,
@@ -277,6 +377,15 @@ export class AuthMiddleware {
       }
 
       const role = profile?.role || user.user_metadata?.role || null
+
+      console.log('✅ Middleware: Authentication successful:', {
+        userId: user.id,
+        userEmail: user.email,
+        profileId: profile?.id,
+        role,
+        hasProfile: !!profile,
+        profileRole: profile?.role
+      })
 
       return {
         isAuthenticated: true,
