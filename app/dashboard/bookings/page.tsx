@@ -71,39 +71,14 @@ const TitleTip: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
   </div>
 )
 
-// Helper function to derive booking status
+// Helper function to derive booking status (list view only)
 function getDerivedStatus(booking: any, invoice?: any) {
-  // Handle completed status first
-  if (booking.status === 'completed') {
-    return 'delivered'
-  }
-  
-  // Handle in-progress status
-  if (booking.status === 'in_progress') {
-    return 'in_production'
-  }
-  
-  // Check if ready to launch (has approved invoice)
-  if (invoice && ['issued', 'paid'].includes(invoice.status)) {
-    return 'ready_to_launch'
-  }
-  
-  // Check approval status
-  if (booking.approval_status === 'approved' || booking.status === 'approved') {
-    return 'approved'
-  }
-  
-  // Handle declined/cancelled
-  if (booking.status === 'declined' || booking.approval_status === 'declined' || booking.status === 'cancelled') {
-    return 'cancelled'
-  }
-  
-  // Handle on hold
-  if (booking.status === 'on_hold') {
-    return 'on_hold'
-  }
-  
-  // Default to pending review
+  if (booking.status === 'completed') return 'delivered'
+  if (booking.status === 'in_progress') return 'in_production'
+  if (invoice && ['issued', 'paid'].includes(invoice?.status)) return 'ready_to_launch'
+  if (booking.approval_status === 'approved' || booking.status === 'approved') return 'approved'
+  if (booking.status === 'declined' || booking.approval_status === 'declined' || booking.status === 'cancelled') return 'cancelled'
+  if (booking.status === 'on_hold') return 'on_hold'
   return 'pending_review'
 }
 
@@ -301,6 +276,7 @@ export default function BookingsPage() {
         method: 'GET',
         credentials: 'include',
         headers,
+        cache: 'no-store'
       })
 
       if (response.ok) {
@@ -1113,7 +1089,7 @@ export default function BookingsPage() {
         const { data: { session } } = await supabase.auth.getSession()
         const headers: Record<string,string> = { 'Content-Type': 'application/json' }
         if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-        const res = await fetch('/api/bookings/summary', { headers, credentials: 'include' })
+        const res = await fetch('/api/bookings/summary', { headers, credentials: 'include', cache: 'no-store' })
         if (!res.ok) return
         const json = await res.json()
         setSummary(json)
