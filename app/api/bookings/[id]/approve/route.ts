@@ -30,7 +30,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { error: uErr } = await supabase
     .from('bookings')
-    .update({ status: 'approved', updated_at: new Date().toISOString() })
+    .update({ 
+      status: 'approved', 
+      approval_status: 'approved',
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', params.id)
 
   if (uErr) {
