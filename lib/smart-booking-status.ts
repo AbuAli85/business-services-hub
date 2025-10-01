@@ -72,7 +72,6 @@ export class SmartBookingStatusService {
         id,
         status,
         approval_status,
-        ui_approval_status,
         title,
         created_at,
         updated_at,
@@ -164,7 +163,7 @@ export class SmartBookingStatusService {
                         phases.find(p => p.status === 'pending')
 
     // Determine enhanced overall status based on booking + milestones
-    const isApproved = booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'
+    const isApproved = booking.status === 'approved' || booking.approval_status === 'approved'
     const allCompleted = totalMilestones > 0 && completedMilestones === totalMilestones
     let overallStatus: SmartBookingStatus['overall_status']
     if (allCompleted || booking.status === 'completed') {

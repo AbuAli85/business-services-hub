@@ -557,11 +557,13 @@ export default function MilestonesPage() {
                 {/* Quick Actions: approve/decline/start */}
                 {(() => {
                   const statusNorm: string = normalizeStatus(booking)
+                  const rawStatus: string = String(booking.status)
                   const isApprovedOrBetter = ['approved', 'confirmed', 'in_progress', 'completed'].includes(String(statusNorm))
                   const isPending = statusNorm === 'pending'
                   const canApprove = (userRole === 'admin' || userRole === 'provider') && isPending
-                  // Only allow start when in an approvable state (approved/confirmed), not when already in progress or completed
-                  const canStart = (userRole === 'provider' || userRole === 'admin') && ['approved', 'confirmed'].includes(String(statusNorm))
+                  // Only allow start when DB status is approved/confirmed (not just approval_status),
+                  // to match backend validation and avoid errors.
+                  const canStart = (userRole === 'provider' || userRole === 'admin') && ['approved', 'confirmed'].includes(rawStatus)
                   return (
                     <div className="flex items-center gap-2">
                       {canApprove && (
