@@ -798,7 +798,13 @@ export default function BookingsPage() {
   }, [user, userRole, enableRealtime])
 
   // Approve booking function with optimistic UI
-  const approveBooking = async (id: string) => {
+  const approveBooking = async (id: string, providerId?: string, status?: string) => {
+    // Gate on client: only provider can approve when pending_provider_approval
+    const isProvider = user?.id && providerId && user.id === providerId
+    if (!isProvider || normalizeStatus(status) !== 'pending_provider_approval') {
+      toast.error('Booking not pending provider approval')
+      return
+    }
     if (approvingIds.has(id)) return
     setApprovingIds(s => new Set(s).add(id))
     const prev = bookings
@@ -814,12 +820,7 @@ export default function BookingsPage() {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
       
-      const res = await fetch('/api/bookings', {
-        method: 'PATCH',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ booking_id: id, action: 'approve' })
-      })
+      const res = await fetch(`/api/bookings/${id}/approve`, { method: 'POST', headers, credentials: 'include' })
       if (!res.ok) {
         const { error, details } = await res.json().catch(() => ({}))
         throw new Error(error || details || `Request failed: ${res.status}`)
@@ -836,7 +837,13 @@ export default function BookingsPage() {
   }
 
   // Decline booking function with optimistic UI
-  const declineBooking = async (id: string) => {
+  const declineBooking = async (id: string, providerId?: string, status?: string) => {
+    // Gate on client: only provider can decline when pending_provider_approval
+    const isProvider = user?.id && providerId && user.id === providerId
+    if (!isProvider || normalizeStatus(status) !== 'pending_provider_approval') {
+      toast.error('Booking not pending provider approval')
+      return
+    }
     if (approvingIds.has(id)) return
     setApprovingIds(s => new Set(s).add(id))
     const prev = bookings
@@ -847,12 +854,7 @@ export default function BookingsPage() {
       const { data: { session } } = await supabase.auth.getSession()
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-      const res = await fetch('/api/bookings', {
-        method: 'PATCH',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ booking_id: id, action: 'decline' })
-      })
+      const res = await fetch(`/api/bookings/${id}/decline`, { method: 'POST', headers, credentials: 'include' })
       if (!res.ok) {
         const { error, details } = await res.json().catch(() => ({}))
         throw new Error(error || details || `Request failed: ${res.status}`)
@@ -1858,9 +1860,9 @@ export default function BookingsPage() {
                           if (action === 'view') {
                             router.push(`/dashboard/bookings/${booking.id}`)
                           } else if (action === 'approve') {
-                            await approveBooking(booking.id)
+                            await approveBooking(booking.id, booking.provider_id, booking.status)
                           } else if (action === 'decline') {
-                            await declineBooking(booking.id)
+                            await declineBooking(booking.id, booking.provider_id, booking.status)
                           } else if (action === 'start_work' || action === 'start_project') {
                             await startProject(booking.id)
                           } else if (action === 'create_invoice') {

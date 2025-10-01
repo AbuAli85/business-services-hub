@@ -25,7 +25,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   if (error || !b) return jsonError(404, 'NOT_FOUND', 'Booking not found')
   if (auth.user.id !== b.provider_id) return jsonError(403, 'FORBIDDEN', 'Only provider can approve this booking')
-  if (b.status !== 'pending_provider_approval') return jsonError(400, 'INVALID_STATE', 'Booking not pending provider approval')
+  const isPendingLike = (b.status || '').toLowerCase() === 'pending_provider_approval' || (b.status || '').toLowerCase() === 'pending' || (b.status || '').toLowerCase() === 'provider_review'
+  if (!isPendingLike) return jsonError(400, 'INVALID_STATE', 'Booking not pending provider approval')
 
   const { error: uErr } = await supabase
     .from('bookings')
