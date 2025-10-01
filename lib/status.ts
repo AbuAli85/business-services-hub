@@ -6,11 +6,16 @@ export type BookingStatus =
   | 'on_hold'
   | 'completed'
   | 'cancelled'
+  | 'declined'
+  | 'rescheduled'
+  | 'pending'
 
 export const normalizeStatus = (s?: string): BookingStatus => {
   const m = (s || 'draft').toLowerCase()
   if (m === 'pending' || m === 'provider_review') return 'pending_provider_approval'
   if (m === 'active' || m === 'started') return 'in_progress'
+  if (m === 'declined') return 'declined'
+  if (m === 'rescheduled') return 'rescheduled'
   return (m as BookingStatus) || 'draft'
 }
 
@@ -21,7 +26,10 @@ export const STATUS_LABEL: Record<BookingStatus, string> = {
   in_progress: 'In Progress',
   on_hold: 'On Hold',
   completed: 'Completed',
-  cancelled: 'Cancelled'
+  cancelled: 'Cancelled',
+  declined: 'Declined',
+  rescheduled: 'Rescheduled',
+  pending: 'Pending'
 }
 
 export const STATUS_TONE: Record<BookingStatus, string> = {
@@ -31,7 +39,10 @@ export const STATUS_TONE: Record<BookingStatus, string> = {
   in_progress: 'bg-blue-100 text-blue-700',
   on_hold: 'bg-zinc-100 text-zinc-700',
   completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-rose-100 text-rose-700'
+  cancelled: 'bg-rose-100 text-rose-700',
+  declined: 'bg-red-100 text-red-700',
+  rescheduled: 'bg-yellow-100 text-yellow-700',
+  pending: 'bg-amber-100 text-amber-700'
 }
 
 

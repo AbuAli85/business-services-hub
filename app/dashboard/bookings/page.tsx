@@ -823,16 +823,19 @@ export default function BookingsPage() {
 
   // Approve booking function with optimistic UI
   const approveBooking = async (id: string, providerId?: string, status?: string) => {
-    // Gate on client: only provider can approve when pending_provider_approval
-    const isProvider = user?.id && providerId && user.id === providerId
-    if (!isProvider || normalizeStatus(status) !== 'pending_provider_approval') {
-      toast.error('Booking not pending provider approval')
+    // Check if user can approve (provider or admin)
+    const canApprove = userRole === 'admin' || (userRole === 'provider' && user?.id === providerId)
+    const isPending = normalizeStatus(status) === 'pending_provider_approval' || normalizeStatus(status) === 'pending'
+    
+    if (!canApprove || !isPending) {
+      toast.error('You cannot approve this booking or it is not pending approval')
       return
     }
+    
     if (approvingIds.has(id)) return
     setApprovingIds(s => new Set(s).add(id))
     const prev = bookings
-    setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'approved' } : x))
+    setBookings(b => b.map(x => x.id === id ? { ...x, status: 'approved', approval_status: 'approved' } : x))
     const dismiss = toast.loading('Approving booking…')
     try {
       // Get the current session token for authentication
@@ -862,16 +865,19 @@ export default function BookingsPage() {
 
   // Decline booking function with optimistic UI
   const declineBooking = async (id: string, providerId?: string, status?: string) => {
-    // Gate on client: only provider can decline when pending_provider_approval
-    const isProvider = user?.id && providerId && user.id === providerId
-    if (!isProvider || normalizeStatus(status) !== 'pending_provider_approval') {
-      toast.error('Booking not pending provider approval')
+    // Check if user can decline (provider or admin)
+    const canDecline = userRole === 'admin' || (userRole === 'provider' && user?.id === providerId)
+    const isPending = normalizeStatus(status) === 'pending_provider_approval' || normalizeStatus(status) === 'pending'
+    
+    if (!canDecline || !isPending) {
+      toast.error('You cannot decline this booking or it is not pending approval')
       return
     }
+    
     if (approvingIds.has(id)) return
     setApprovingIds(s => new Set(s).add(id))
     const prev = bookings
-    setBookings(b => b.map(x => x.id === id ? { ...x, approval_status: 'rejected', status: 'declined' } : x))
+    setBookings(b => b.map(x => x.id === id ? { ...x, status: 'cancelled', approval_status: 'declined' } : x))
     const dismiss = toast.loading('Declining booking…')
     try {
       const supabase = await getSupabaseClient()
@@ -910,6 +916,25 @@ export default function BookingsPage() {
       toast.success('Project started')
       setRefreshTrigger(v=>v+1)
     } catch (e:any) { toast.error(e?.message || 'Failed to start') }
+  }
+
+  // Complete booking function
+  const completeBooking = async (id: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) { toast.error('Sign in required'); router.push('/auth/sign-in'); return }
+      
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        credentials: 'include',
+        body: JSON.stringify({ booking_id: id, action: 'complete' })
+      })
+      if (!res.ok) throw new Error('Failed to complete booking')
+      toast.success('Booking completed')
+      setRefreshTrigger(v=>v+1)
+    } catch (e:any) { toast.error(e?.message || 'Failed to complete') }
   }
 
   // Role-based permissions
@@ -1602,11 +1627,17 @@ export default function BookingsPage() {
           onStatusChangeAction={(s) => { setStatusFilter(s as any); setCurrentPage(1) }}
           counts={{
             all: totalCount,
-            pending: bookings.filter((b:any)=> normalizeStatus(b.status) === 'pending_provider_approval' || normalizeStatus(b.status) === 'draft').length,
+            pending: bookings.filter((b:any)=> {
+              const status = normalizeStatus(b.status)
+              return status === 'pending_provider_approval' || status === 'pending' || status === 'draft'
+            }).length,
             confirmed: bookings.filter((b:any)=> normalizeStatus(b.status) === 'approved').length,
             in_progress: bookings.filter((b:any)=> normalizeStatus(b.status) === 'in_progress').length,
             completed: bookings.filter((b:any)=> normalizeStatus(b.status) === 'completed').length,
-            cancelled: bookings.filter((b:any)=> normalizeStatus(b.status) === 'cancelled').length,
+            cancelled: bookings.filter((b:any)=> {
+              const status = normalizeStatus(b.status)
+              return status === 'cancelled' || status === 'declined'
+            }).length,
           }}
         />
         <FilterDropdown
@@ -1810,19 +1841,30 @@ export default function BookingsPage() {
 								const { data: { session } } = await supabase.auth.getSession()
 								const headers: Record<string,string> = { 'Content-Type': 'application/json' }
 								if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-								await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status: v, booking_ids: [r.id] }) })
-								setRefreshTrigger(x=>x+1)
-								toast.success('Status updated')
-							  } catch {}
+								
+								// Handle different status updates
+								if (v === 'approved') {
+								  await approveBooking(r.id, r.provider_id, r.status)
+								} else if (v === 'declined') {
+								  await declineBooking(r.id, r.provider_id, r.status)
+								} else {
+								  await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status: v, booking_ids: [r.id] }) })
+								  setRefreshTrigger(x=>x+1)
+								  toast.success('Status updated')
+								}
+							  } catch (err: any) {
+								toast.error(err?.message || 'Status update failed')
+							  }
 							}}>
                               <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
 							  <SelectContent>
 								<SelectItem value="pending">Pending</SelectItem>
-                                {/* Approvals require dedicated action */}
-                                <div className="px-2 py-1 text-xs text-gray-500">Use Approve action for confirmations</div>
+								<SelectItem value="approved">Approved</SelectItem>
 								<SelectItem value="in_progress">In Progress</SelectItem>
 								<SelectItem value="completed">Completed</SelectItem>
 								<SelectItem value="cancelled">Cancelled</SelectItem>
+								<SelectItem value="declined">Declined</SelectItem>
+								<SelectItem value="on_hold">On Hold</SelectItem>
 							  </SelectContent>
 							</Select>
 							<Button size="sm" variant="ghost" onClick={()=> {
