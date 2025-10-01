@@ -1665,30 +1665,20 @@ export function ProfessionalMilestoneSystem({
             onMilestoneUpdate={updateMilestoneStatus}
             onTaskUpdate={updateTaskStatus}
             onRefresh={loadData}
+            onCreateRecommended={async () => {
+              try {
+                const res = await fetch('/api/milestones/seed', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ booking_id: bookingId })
+                })
+                if (!res.ok) throw new Error('Failed to seed milestones')
+                await loadData()
+              } catch (e) { console.error(e) }
+            }}
           />
-          {/* One-click seed when empty */}
-          {milestones.length === 0 && (
-            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="text-sm text-blue-800">No milestones yet. Seed recommended milestones and tasks.</div>
-              <button
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/milestones/seed', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ booking_id: bookingId })
-                    })
-                    if (!res.ok) throw new Error('Failed to seed milestones')
-                    await loadData()
-                  } catch (e) { console.error(e) }
-                }}
-              >
-                Create Recommended Milestones
-              </button>
-            </div>
-          )}
+          {/* One-click seed when empty - moved into Smart block with proper gating */}
         </TabsContent>
 
         {/* Overview Tab */}

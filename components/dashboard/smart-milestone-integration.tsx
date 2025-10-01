@@ -23,6 +23,8 @@ import {
 import { SmartMilestoneFeatures } from './smart-milestone-features'
 import { IntelligentTaskAutomation } from './intelligent-task-automation'
 import { toast } from 'sonner'
+import { StatusPill } from '@/components/ui/StatusPill'
+import { normalizeStatus } from '@/lib/status'
 
 interface SmartMilestoneIntegrationProps {
   bookingId: string
@@ -30,6 +32,7 @@ interface SmartMilestoneIntegrationProps {
   onMilestoneUpdate: (milestoneId: string, status: string) => Promise<void>
   onTaskUpdate: (taskId: string, status: string) => Promise<void>
   onRefresh: () => void
+  onCreateRecommended?: () => Promise<void>
 }
 
 export function SmartMilestoneIntegration({
@@ -37,7 +40,8 @@ export function SmartMilestoneIntegration({
   milestones,
   onMilestoneUpdate,
   onTaskUpdate,
-  onRefresh
+  onRefresh,
+  onCreateRecommended
 }: SmartMilestoneIntegrationProps) {
   const [activeTab, setActiveTab] = useState('overview')
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -79,44 +83,36 @@ export function SmartMilestoneIntegration({
     return () => { mounted = false }
   }, [bookingId])
 
-  const getProjectStatus = () => {
+  const projectStatus = (() => {
     const totalMilestones = milestones.length
     const completedMilestones = milestones.filter(m => m.status === 'completed').length
     const inProgressMilestones = milestones.filter(m => m.status === 'in_progress').length
-    const overdueMilestones = milestones.filter(m => 
+    const overdueMilestones = milestones.filter(m =>
       m.due_date && new Date(m.due_date) < new Date() && m.status !== 'completed'
     ).length
 
-    // If there are no milestones yet, derive from booking state
-    if (totalMilestones === 0) {
-      const approvedLikeStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
-      const isApprovedLike = approvedLikeStatuses.includes(String(bookingStatus || '')) || String(approvalStatus || '') === 'approved'
+    // Normalize the booking status as the single source of truth
+    const normalized = normalizeStatus(bookingStatus || undefined)
 
-      if (String(bookingStatus || '') === 'completed') {
-        return { status: 'completed', color: 'green', message: 'Project completed successfully!' }
-      }
-      if (String(bookingStatus || '') === 'in_progress') {
-        return { status: 'in_progress', color: 'blue', message: 'Project in progress' }
-      }
-      if (isApprovedLike) {
-        return { status: 'approved', color: 'blue', message: 'Ready to start' }
-      }
-      return { status: 'pending', color: 'gray', message: 'Waiting for provider approval' }
+    if (totalMilestones === 0) {
+      if (normalized === 'completed') return { key: 'completed', tone: 'green', message: 'Project completed successfully!' }
+      if (normalized === 'in_progress') return { key: 'in_progress', tone: 'blue', message: 'Project in progress' }
+      if (normalized === 'approved') return { key: 'approved', tone: 'blue', message: 'Ready to start' }
+      if (normalized === 'pending_provider_approval') return { key: 'pending_provider_approval', tone: 'gray', message: 'Waiting for provider approval' }
+      return { key: normalized, tone: 'gray', message: 'Project not started' }
     }
 
-    if (completedMilestones === totalMilestones && totalMilestones > 0) {
-      return { status: 'completed', color: 'green', message: 'Project completed successfully!' }
+    if (completedMilestones === totalMilestones) {
+      return { key: 'completed', tone: 'green', message: 'Project completed successfully!' }
     }
     if (overdueMilestones > 0) {
-      return { status: 'overdue', color: 'red', message: `${overdueMilestones} milestone(s) overdue` }
+      return { key: 'overdue', tone: 'red', message: `${overdueMilestones} milestone(s) overdue` }
     }
     if (inProgressMilestones > 0) {
-      return { status: 'in_progress', color: 'blue', message: 'Project in progress' }
+      return { key: 'in_progress', tone: 'blue', message: 'Project in progress' }
     }
-    return { status: 'pending', color: 'gray', message: 'Project not started' }
-  }
-
-  const projectStatus = getProjectStatus()
+    return { key: normalized, tone: 'gray', message: 'Project not started' }
+  })()
 
   return (
     <div className="space-y-6">
@@ -129,16 +125,7 @@ export function SmartMilestoneIntegration({
               Smart Project Management
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge 
-                variant={projectStatus.color === 'green' ? 'default' : 
-                        projectStatus.color === 'red' ? 'destructive' : 'secondary'}
-                className="flex items-center gap-1"
-              >
-                {projectStatus.color === 'green' && <CheckCircle className="h-3 w-3" />}
-                {projectStatus.color === 'red' && <AlertTriangle className="h-3 w-3" />}
-                {projectStatus.color === 'blue' && <Activity className="h-3 w-3" />}
-                {projectStatus.status.toUpperCase()}
-              </Badge>
+              <StatusPill status={bookingStatus || undefined} />
               <Button
                 variant="outline"
                 size="sm"
@@ -150,8 +137,8 @@ export function SmartMilestoneIntegration({
             </div>
           </div>
           <Alert className={`border-l-4 ${
-            projectStatus.color === 'green' ? 'border-green-500' :
-            projectStatus.color === 'red' ? 'border-red-500' : 'border-blue-500'
+            projectStatus.tone === 'green' ? 'border-green-500' :
+            projectStatus.tone === 'red' ? 'border-red-500' : 'border-blue-500'
           }`}>
             <AlertDescription>
               {projectStatus.message}
@@ -182,6 +169,27 @@ export function SmartMilestoneIntegration({
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* CTA: Create Recommended Milestones (gated) */}
+          {(() => {
+            const normalized = normalizeStatus(bookingStatus || undefined)
+            const canSeed = (normalized === 'approved' || normalized === 'in_progress') && milestones.length === 0
+            const isPending = normalized === 'pending_provider_approval'
+            return (
+              <div className="mt-2">
+                {isPending && (
+                  <Button variant="outline" disabled>
+                    Create Recommended Milestones
+                  </Button>
+                )}
+                {canSeed && (
+                  <Button className="ml-0" onClick={async () => { if (onCreateRecommended) { await onCreateRecommended(); } }}>
+                    Create Recommended Milestones
+                  </Button>
+                )}
+              </div>
+            )
+          })()}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Quick Stats */}
             <Card>
