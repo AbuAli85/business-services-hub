@@ -465,19 +465,10 @@ export default function MilestonesPage() {
   const normalizeStatus = (b: Booking) => b.status ?? b.approval_status
 
   if (loading) {
+    const BrandLoader = require('@/components/ui/BrandLoader').BrandLoader
     return (
-      <div className="min-h-screen bg-gray-50" aria-busy="true">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="space-y-6">
-            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-40 bg-gray-200 rounded animate-pulse" />
-              ))}
-            </div>
-            <div className="h-96 bg-gray-200 rounded animate-pulse" />
-          </div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+        <BrandLoader size={72} />
       </div>
     )
   }
