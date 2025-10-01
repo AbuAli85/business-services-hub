@@ -1,6 +1,7 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
+import { StatusPill } from '@/components/ui/StatusPill'
 import { 
   CheckCircle, 
   Clock, 
@@ -158,13 +159,8 @@ export function StatusBadge({
 
   return (
     <div className="flex items-center gap-2">
-      <Badge 
-        variant={config.variant}
-        className={`${config.className} ${className} flex items-center gap-1.5 px-3 py-1.5 font-medium`}
-      >
-        <Icon className="h-3.5 w-3.5" />
-        {config.label}
-      </Badge>
+      {/* Unified visual via StatusPill */}
+      <StatusPill status={derivedStatus} />
       
       {/* Progress indicator for in-production items */}
       {derivedStatus === 'in_production' && progress_percentage !== undefined && (

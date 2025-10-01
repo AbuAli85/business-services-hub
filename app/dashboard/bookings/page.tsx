@@ -57,6 +57,9 @@ import { BookingDetailModal } from '@/components/dashboard/bookings/BookingDetai
 import { useBookingFilters, applyBookingFilters } from '@/hooks/useBookingFilters'
 import PaginationFooter from '@/components/ui/PaginationFooter'
 import { formatOMR, formatMuscatDate, formatMuscatDateTime } from '@/lib/format'
+import { formatMuscat } from '@/lib/dates'
+import { StatusPill } from '@/components/ui/StatusPill'
+import { normalizeStatus } from '@/lib/status'
 
 // Constants
 const OMAN_TZ = 'Asia/Muscat'
@@ -1576,11 +1579,11 @@ export default function BookingsPage() {
           onStatusChangeAction={(s) => { setStatusFilter(s as any); setCurrentPage(1) }}
           counts={{
             all: totalCount,
-            pending: bookings.filter((b:any)=> b.status === 'pending' || b.status === 'pending_review').length,
-            confirmed: bookings.filter((b:any)=> b.status === 'approved' || b.status === 'confirmed' || b.approval_status === 'approved').length,
-            in_progress: bookings.filter((b:any)=> b.status === 'in_production' || b.status === 'in_progress').length,
-            completed: bookings.filter((b:any)=> b.status === 'completed' || b.status === 'delivered').length,
-            cancelled: bookings.filter((b:any)=> b.status === 'cancelled').length,
+            pending: bookings.filter((b:any)=> normalizeStatus(b.status) === 'pending_provider_approval' || normalizeStatus(b.status) === 'draft').length,
+            confirmed: bookings.filter((b:any)=> normalizeStatus(b.status) === 'approved').length,
+            in_progress: bookings.filter((b:any)=> normalizeStatus(b.status) === 'in_progress').length,
+            completed: bookings.filter((b:any)=> normalizeStatus(b.status) === 'completed').length,
+            cancelled: bookings.filter((b:any)=> normalizeStatus(b.status) === 'cancelled').length,
           }}
         />
         <FilterDropdown
@@ -1739,15 +1742,9 @@ export default function BookingsPage() {
 					  { key: 'serviceTitle', header: 'Service', widthClass: 'w-1/4', sortable: true, render: (r:any) => r.service_title || r.serviceTitle || '—' },
 					  { key: 'clientName', header: 'Client', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.client_name || r.clientName || '—' },
 					  { key: 'providerName', header: 'Provider', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.provider_name || r.providerName || '—' },
-					  { key: 'status', header: 'Status', widthClass: 'w-40', render: (r:any) => (
-						<StatusBadge
-						  status={r.status || 'pending'}
-						  approval_status={r.approval_status}
-						  progress_percentage={r.progress_percentage}
-						  hasInvoice={!!invoiceByBooking.get(String(r.id))}
-						  invoiceStatus={invoiceByBooking.get(String(r.id))?.status}
-						/>
-					  ) },
+                      { key: 'status', header: 'Status', widthClass: 'w-40', render: (r:any) => (
+                        <StatusPill status={normalizeStatus(r.status)} />
+                      ) },
 					  { key: 'progress', header: 'Progress', widthClass: 'w-24', render: (r:any) => {
 						const pct = Math.max(0, Math.min(100, Number(r.progress_percentage ?? r.progress?.percentage ?? 0)))
 						return `${pct}%`
@@ -1766,9 +1763,9 @@ export default function BookingsPage() {
 						  showStatus={false}
 						/>
 					  ) },
-					  { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => {
-						const d = new Date(r.created_at || r.createdAt); return Number.isNaN(d.getTime())?'—':d.toLocaleDateString()
-					  } },
+                      { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => (
+                        formatMuscat(r.created_at || r.createdAt)
+                      ) },
 					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
 						  <div className="flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}`)} aria-label="View details">Details</Button>
