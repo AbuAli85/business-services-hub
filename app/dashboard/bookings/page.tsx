@@ -138,12 +138,37 @@ export default function BookingsPage() {
 		return (localStorage.getItem('bookings:density') as any) || 'comfortable'
 	})
 	const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
-	const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
 		if (typeof window === 'undefined') return ['serviceTitle','clientName','providerName','status','progress','payment','totalAmount','createdAt','actions']
 		try { return JSON.parse(localStorage.getItem('bookings:visibleColumns') || '[]') } catch { return [] }
 	})
+  const [forceShow, setForceShow] = useState(false)
+
+  // Emergency timeout to force show content after 15 seconds
+  useEffect(() => {
+    const emergencyTimeout = setTimeout(() => {
+      console.warn('🚨 Emergency timeout - forcing page to show content')
+      setForceShow(true)
+      setUserLoading(false)
+      setDataLoading(false)
+    }, 15000)
+
+    return () => clearTimeout(emergencyTimeout)
+  }, [])
+  // Debug logging for loading states
+  console.log('🔍 BookingsPage render state:', {
+    userLoading,
+    dataLoading,
+    hasUser: !!user,
+    userRole,
+    bookingsCount: bookings.length,
+    error,
+    isLoadingRef: isLoadingRef.current
+  })
+
   // Show brand-centric page loader when initial load is in progress and we have no items yet
-  if (userLoading) {
+  if (userLoading && !forceShow) {
+    console.log('🔄 Showing user loading state')
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
         <BrandLoader size={72} />
@@ -152,7 +177,8 @@ export default function BookingsPage() {
   }
 
   // Show data loading spinner only if we're actively loading data and have no bookings yet
-  if (dataLoading && bookings.length === 0 && !error) {
+  if (dataLoading && bookings.length === 0 && !error && !forceShow) {
+    console.log('🔄 Showing data loading state')
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
         <BrandLoader size={72} />
@@ -503,7 +529,7 @@ export default function BookingsPage() {
           console.warn('⚠️ User initialization timeout - clearing loading state')
           setUserLoading(false)
           setError('Authentication timeout. Please refresh the page.')
-        }, 10000) // 10 second timeout
+        }, 5000) // Reduced to 5 second timeout
         
         const supabase = await getSupabaseClient()
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
