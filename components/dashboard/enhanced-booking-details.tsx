@@ -147,6 +147,7 @@ export default function EnhancedBookingDetails({
   showProgressCard?: boolean
   userRole?: 'provider' | 'client'
 }) {
+  console.log('🎯 EnhancedBookingDetails component loaded!', { showProgressCard, userRole })
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
