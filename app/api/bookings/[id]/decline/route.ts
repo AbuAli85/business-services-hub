@@ -33,7 +33,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     .update({ status: 'cancelled', updated_at: new Date().toISOString() })
     .eq('id', params.id)
 
-  if (uErr) return jsonError(500, 'UPDATE_FAILED', uErr.message)
+  if (uErr) {
+    console.error('Decline booking failed', { bookingId: params.id, error: uErr })
+    return jsonError(500, 'UPDATE_FAILED', uErr.message, { code: (uErr as any).code, details: (uErr as any).details })
+  }
 
   // Non-blocking audit log (optional)
   try {
