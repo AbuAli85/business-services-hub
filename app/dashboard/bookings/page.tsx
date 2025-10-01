@@ -1252,7 +1252,7 @@ export default function BookingsPage() {
   }, [summaryStats, bookings, invoices, totalCount, currentPage])
 
   // Show loading skeleton only during initial user loading
-  if (userLoading) {
+  if (userLoading && !forceShow) {
     return (
       <div className="space-y-6">
         {/* Enhanced Professional Header Skeleton */}
@@ -1323,7 +1323,7 @@ export default function BookingsPage() {
   }
 
   // Show error state if user is not ready or there's an error
-  if (!user || !userRole) {
+  if ((!user || !userRole) && !forceShow) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center max-w-md mx-auto">
@@ -1340,7 +1340,7 @@ export default function BookingsPage() {
     )
   }
 
-  if (error) {
+  if (error && !forceShow) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -1362,10 +1362,7 @@ export default function BookingsPage() {
 		  <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
 			{/* Background Pattern */}
 			<div className="absolute inset-0 opacity-20">
-			  <div className="w-full h-full" style={{
-				backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-				backgroundRepeat: 'repeat'
-			  }}></div>
+			  <div className="w-full h-full bg-dot-pattern"></div>
 			</div>
 			
 			<div className="relative z-10">

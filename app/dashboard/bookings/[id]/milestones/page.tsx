@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { formatMuscat } from '@/lib/dates'
 import { SmartStatusOverview } from '@/components/booking/SmartStatusOverview'
+import { BrandLoader } from '@/components/ui/BrandLoader'
 
 interface Booking {
   id: string
@@ -465,7 +466,6 @@ export default function MilestonesPage() {
   const normalizeStatus = (b: Booking) => b.status ?? b.approval_status
 
   if (loading) {
-    const BrandLoader = require('@/components/ui/BrandLoader').BrandLoader
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
         <BrandLoader size={72} />
