@@ -11,6 +11,7 @@ import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-v
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { SmartBookingStatusComponent } from '@/components/dashboard/smart-booking-status'
+import { smartBookingStatusService } from '@/lib/smart-booking-status'
 
 interface Booking {
   id: string
@@ -54,6 +55,7 @@ export default function MilestonesPage() {
   const [kpiLoading, setKpiLoading] = useState(false)
   const [milestonesCompleted, setMilestonesCompleted] = useState<number | null>(null)
   const [milestonesTotal, setMilestonesTotal] = useState<number | null>(null)
+  const [smartStatus, setSmartStatus] = useState<string | null>(null)
 
   useEffect(() => {
     // Add a small delay to allow middleware to process
@@ -63,6 +65,24 @@ export default function MilestonesPage() {
     
     return () => clearTimeout(timer)
   }, [bookingId])
+
+  // Load computed smart status for header badge
+  useEffect(() => {
+    let isMounted = true
+    const loadSmart = async () => {
+      try {
+        if (!bookingId) return
+        const result = await smartBookingStatusService.getSmartStatus(bookingId, userRole)
+        if (!isMounted) return
+        setSmartStatus(result.overall_status)
+      } catch {
+        if (!isMounted) return
+        setSmartStatus(null)
+      }
+    }
+    loadSmart()
+    return () => { isMounted = false }
+  }, [bookingId, userRole])
 
   // Realtime updates for this booking's milestones and booking status
   useEffect(() => {
@@ -385,6 +405,21 @@ export default function MilestonesPage() {
   }
 
   const normalizeStatus = (b: Booking) => b.approval_status ?? b.status
+  const friendlyStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      pending_review: 'Pending Review',
+      ready_to_launch: 'Ready to Launch',
+      in_production: 'In Production',
+      delivered: 'Delivered',
+      approved: 'Approved',
+      pending: 'Pending',
+      in_progress: 'In Progress',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      on_hold: 'On Hold'
+    }
+    return map[status] || String(status).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
 
   if (loading) {
     return (
@@ -478,10 +513,10 @@ export default function MilestonesPage() {
                   </p>
                   <div className="flex items-center gap-4 mt-2">
                     {(() => {
-                      const statusNorm = normalizeStatus(booking)
+                      const statusRaw = smartStatus || normalizeStatus(booking)
                       return (
                         <Badge className="bg-white/20 text-white border-white/30">
-                          {String(statusNorm).toUpperCase()}
+                          {friendlyStatusLabel(String(statusRaw))}
                         </Badge>
                       )
                     })()}

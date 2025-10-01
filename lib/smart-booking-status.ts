@@ -2,7 +2,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 export interface SmartBookingStatus {
   id: string
-  overall_status: 'pending' | 'approved' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
+  overall_status: 'pending' | 'approved' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold' | 'pending_review' | 'ready_to_launch' | 'in_production' | 'delivered'
   current_phase: string | null
   current_milestone: string | null
   progress_percentage: number
@@ -71,6 +71,8 @@ export class SmartBookingStatusService {
       .select(`
         id,
         status,
+        approval_status,
+        ui_approval_status,
         title,
         created_at,
         updated_at,
@@ -161,14 +163,23 @@ export class SmartBookingStatusService {
     const currentPhase = phases.find(p => p.status === 'in_progress') ||
                         phases.find(p => p.status === 'pending')
 
-    // Determine overall status based on progress and milestones
-    let overallStatus = booking.status
-    if (booking.status === 'approved' && totalMilestones > 0) {
-      if (inProgressMilestones > 0) {
-        overallStatus = 'in_progress'
-      } else if (completedMilestones === totalMilestones && totalMilestones > 0) {
-        overallStatus = 'completed'
-      }
+    // Determine enhanced overall status based on booking + milestones
+    const isApproved = booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved'
+    const allCompleted = totalMilestones > 0 && completedMilestones === totalMilestones
+    let overallStatus: SmartBookingStatus['overall_status']
+    if (allCompleted || booking.status === 'completed') {
+      overallStatus = 'delivered'
+    } else if (booking.status === 'in_progress' || inProgressMilestones > 0) {
+      overallStatus = 'in_production'
+    } else if (isApproved) {
+      overallStatus = totalMilestones === 0 ? 'ready_to_launch' : 'approved'
+    } else if (booking.status === 'pending') {
+      overallStatus = 'pending_review'
+    } else if (['cancelled', 'on_hold'].includes(booking.status)) {
+      overallStatus = booking.status
+    } else {
+      // fallback to original status if none matched
+      overallStatus = (booking.status as SmartBookingStatus['overall_status']) || 'pending_review'
     }
 
     // Generate contextual actions
@@ -441,13 +452,17 @@ export class SmartBookingStatusService {
   ): string {
     switch (status) {
       case 'pending':
+      case 'pending_review':
         return 'Waiting for provider approval to begin project'
       case 'approved':
         if (!currentMilestone) {
           return 'Approved - Project planning in progress'
         }
         return 'Approved - Ready to begin project execution'
+      case 'ready_to_launch':
+        return 'All prerequisites met - Ready to begin development'
       case 'in_progress':
+      case 'in_production':
         if (currentMilestone) {
           return `Active - Working on "${currentMilestone.title}" (${progress}% complete)`
         }
@@ -456,6 +471,7 @@ export class SmartBookingStatusService {
         }
         return `In Progress - ${progress}% complete`
       case 'completed':
+      case 'delivered':
         return `Completed successfully - All milestones achieved`
       case 'cancelled':
         return 'Project cancelled'
