@@ -1648,6 +1648,7 @@ export default function BookingsPage() {
             selectedCount={selectedIds.size}
             onClear={() => { setSelectedIds(new Set()); setSelectAll(false) }}
             onExport={(fmt)=> exportBookings(fmt, Array.from(selectedIds) as string[])}
+            // Note: Approvals must use the dedicated Approve action
             onUpdateStatus={async (status)=> {
               const ids = Array.from(selectedIds)
               if (ids.length === 0) return
@@ -1779,10 +1780,11 @@ export default function BookingsPage() {
 								toast.success('Status updated')
 							  } catch {}
 							}}>
-							  <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
+                              <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
 							  <SelectContent>
 								<SelectItem value="pending">Pending</SelectItem>
-								<SelectItem value="confirmed">Confirmed</SelectItem>
+                                {/* Approvals require dedicated action */}
+                                <div className="px-2 py-1 text-xs text-gray-500">Use Approve action for confirmations</div>
 								<SelectItem value="in_progress">In Progress</SelectItem>
 								<SelectItem value="completed">Completed</SelectItem>
 								<SelectItem value="cancelled">Cancelled</SelectItem>
