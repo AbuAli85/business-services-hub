@@ -462,7 +462,7 @@ export default function MilestonesPage() {
     }
   }
 
-  const normalizeStatus = (b: Booking) => b.approval_status ?? b.status
+  const normalizeStatus = (b: Booking) => b.status ?? b.approval_status
 
   if (loading) {
     return (
