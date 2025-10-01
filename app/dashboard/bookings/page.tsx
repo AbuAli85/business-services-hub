@@ -72,15 +72,25 @@ const TitleTip: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
   </div>
 )
 
-// Helper function to derive booking status (list view only)
-function getDerivedStatus(booking: any, invoice?: any) {
+// Helper: derive booking status consistently using invoice lookup
+function getDerivedStatus(booking: any, invoiceByBooking: Map<string, any>): string {
   if (booking.status === 'completed') return 'delivered'
   if (booking.status === 'in_progress') return 'in_production'
-  if (invoice && ['issued', 'paid'].includes(invoice?.status)) return 'ready_to_launch'
-  if (booking.approval_status === 'approved' || booking.status === 'approved') return 'approved'
-  if (booking.status === 'declined' || booking.approval_status === 'declined' || booking.status === 'cancelled') return 'cancelled'
+
+  const invoice = invoiceByBooking.get(String(booking.id))
+  if (invoice && ['issued', 'paid'].includes(invoice.status)) {
+    return 'ready_to_launch'
+  }
+
+  if (booking.approval_status === 'approved') return 'approved'
+  if (booking.status === 'approved') return 'approved'
+  if (booking.status === 'declined' || booking.approval_status === 'declined') return 'cancelled'
+  if (booking.status === 'cancelled') return 'cancelled'
   if (booking.status === 'on_hold') return 'on_hold'
-  return 'pending_review'
+  if (booking.status === 'rescheduled') return 'pending_review'
+  if (booking.status === 'pending') return 'pending_review'
+
+  return booking.status || 'pending_review'
 }
 
 export default function BookingsPage() {
@@ -207,46 +217,6 @@ export default function BookingsPage() {
   }, [])
 
   // Helper functions
-  function getDerivedStatus(booking: any) {
-    if (booking.status === 'completed') return 'delivered'
-    if (booking.status === 'in_progress') return 'in_production'
-    
-    // Safety check to prevent hoisting issues
-    if (typeof getInvoiceForBooking !== 'function') {
-      console.warn('getInvoiceForBooking not available yet, skipping invoice check')
-      return booking.status === 'pending' ? 'pending_review' : booking.status || 'pending_review'
-    }
-    
-    const invoice = getInvoiceForBooking(booking.id)
-    if (invoice && ['issued', 'paid'].includes(invoice.status)) {
-      return 'ready_to_launch'
-    }
-    
-    // Check approval status first - this is the primary indicator
-    if (booking.approval_status === 'approved') {
-      return 'approved'
-    }
-    
-    // Fallback to status if approval_status is not set
-    if (booking.status === 'approved') {
-      return 'approved'
-    }
-    
-    if (booking.status === 'declined' || booking.approval_status === 'declined') {
-      return 'cancelled'
-    }
-    
-    if (booking.status === 'rescheduled') return 'pending_review'
-    if (booking.status === 'pending') return 'pending_review'
-    
-    // Handle other status mappings
-    if (booking.status === 'in_production') return 'in_production'
-    if (booking.status === 'delivered') return 'delivered'
-    if (booking.status === 'cancelled') return 'cancelled'
-    if (booking.status === 'on_hold') return 'on_hold'
-    
-    return booking.status || 'pending_review'
-  }
 
   function getStatusSubtitle(status: string) {
     switch (status) {
@@ -1204,12 +1174,12 @@ export default function BookingsPage() {
     const bookingsData = bookings || []
     const total = totalCount
     
-    const completed = bookingsData.filter((b:any) => getDerivedStatus(b) === 'delivered').length
-    const inProgress = bookingsData.filter((b:any) => getDerivedStatus(b) === 'in_production').length
+    const completed = bookingsData.filter((b:any) => getDerivedStatus(b, invoiceByBooking) === 'delivered').length
+    const inProgress = bookingsData.filter((b:any) => getDerivedStatus(b, invoiceByBooking) === 'in_production').length
     const approved = bookingsData.filter((b:any) => 
       b.status === 'approved' || b.approval_status === 'approved'
     ).length
-    const pending = bookingsData.filter((b:any) => getDerivedStatus(b) === 'pending_review').length
+    const pending = bookingsData.filter((b:any) => getDerivedStatus(b, invoiceByBooking) === 'pending_review').length
     
     const paidInvoices = invoices.filter(inv => inv.status === 'paid')
     const issuedInvoices = invoices.filter(inv => inv.status === 'issued')
@@ -1228,16 +1198,16 @@ export default function BookingsPage() {
     }
     
     const projectedBillings = bookingsData
-      .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
+      .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b, invoiceByBooking)))
       .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
     
     const avgCompletionTime = 7.2
     const pendingApproval = pending
-    const readyToLaunch = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch').length
+    const readyToLaunch = bookingsData.filter((b:any) => getDerivedStatus(b, invoiceByBooking) === 'ready_to_launch').length
 
     // Only log ready to launch calculation in development
     if (process.env.NODE_ENV !== 'production') {
-      const readyToLaunchBookings = bookingsData.filter((b:any) => getDerivedStatus(b) === 'ready_to_launch')
+      const readyToLaunchBookings = bookingsData.filter((b:any) => getDerivedStatus(b, invoiceByBooking) === 'ready_to_launch')
       console.log('🚀 Ready to Launch calculation (fallback):', {
         totalBookings: bookingsData.length,
         readyToLaunchCount: readyToLaunch
