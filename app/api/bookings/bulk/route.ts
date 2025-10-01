@@ -15,6 +15,10 @@ export async function POST(req: Request) {
   if (action === 'update_status') {
     const status = String(body.status || '')
     if (!status) return NextResponse.json({ error: 'status required' }, { status: 400 })
+    // Disallow direct transition to approved/confirmed via bulk API; use approve endpoint
+    if (status === 'approved' || status === 'confirmed') {
+      return NextResponse.json({ error: 'Use /api/bookings/[id]/approve for approvals' }, { status: 400 })
+    }
     const { error } = await supabase.from('bookings').update({ status }).in('id', bookingIds)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

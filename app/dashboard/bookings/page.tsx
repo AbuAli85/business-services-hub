@@ -1656,8 +1656,16 @@ export default function BookingsPage() {
                 const { data: { session } } = await supabase.auth.getSession()
                 const headers: Record<string,string> = { 'Content-Type': 'application/json' }
                 if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-                const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status, booking_ids: ids }) })
-                if (!res.ok) { toast.error('Bulk update failed'); return }
+                // Approvals must go through the approve endpoint to satisfy backend constraints
+                if (status === 'approved' || status === 'confirmed') {
+                  await Promise.all(ids.map(async (id) => {
+                    const r = await fetch(`/api/bookings/${id}/approve`, { method: 'POST', headers, credentials: 'include' })
+                    if (!r.ok) throw new Error('Approval failed')
+                  }))
+                } else {
+                  const res = await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status, booking_ids: ids }) })
+                  if (!res.ok) { toast.error('Bulk update failed'); return }
+                }
                 toast.success('Updated selected bookings')
                 setSelectedIds(new Set())
                 setSelectAll(false)
