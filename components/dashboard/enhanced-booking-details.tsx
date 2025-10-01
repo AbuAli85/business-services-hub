@@ -977,6 +977,11 @@ export default function EnhancedBookingDetails({
       // Regenerate smart suggestions based on new status/progress
       generateSmartSuggestions()
       
+      // Refresh the booking data to ensure consistency
+      setTimeout(() => {
+        loadBookingData()
+      }, 500)
+      
     } catch (error) {
       // Error updating progress
       toast.error('Failed to update progress')
@@ -2134,6 +2139,18 @@ export default function EnhancedBookingDetails({
                 </Button>
               )}
               
+              {/* Quick Progress Update Button */}
+              {isProvider && booking.status === 'in_progress' && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowProgressModal(true)}
+                  className="border-green-200 text-green-700 hover:bg-green-50"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Quick Progress Update
+                </Button>
+              )}
+              
               <Button 
                 onClick={() => setShowMessageModal(!showMessageModal)}
                 className="bg-green-600 hover:bg-green-700"
@@ -2280,11 +2297,29 @@ export default function EnhancedBookingDetails({
                 </div>
               </div>
               <Progress value={booking.progress_percentage} className="h-3 mb-2" />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-gray-500 mb-4">
                 <span>Started</span>
                 <span>In Progress</span>
                 <span>Review</span>
                 <span>Complete</span>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  onClick={() => router.push(`/dashboard/bookings/${booking.id}/milestones`)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Detailed Progress
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setShowProgressModal(true)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Progress
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -2458,7 +2493,15 @@ export default function EnhancedBookingDetails({
                   <div className="grid grid-cols-1 gap-2">
                     <Button 
                       variant="outline" 
-                      onClick={handleMarkInProgress}
+                      onClick={async () => {
+                        await handleMarkInProgress()
+                        // Navigate to milestones after starting project
+                        if (booking) {
+                          setTimeout(() => {
+                            router.push(`/dashboard/bookings/${booking.id}/milestones`)
+                          }, 1000)
+                        }
+                      }}
                       disabled={isUpdating || (booking?.status !== 'approved' && booking?.approval_status !== 'approved')}
                       className="justify-start"
                     >
@@ -2467,7 +2510,10 @@ export default function EnhancedBookingDetails({
                     </Button>
                     <Button 
                       variant="outline" 
-                      onClick={() => setShowProgressModal(true)}
+                      onClick={() => {
+                        if (!booking) return
+                        router.push(`/dashboard/bookings/${booking.id}/milestones`)
+                      }}
                       disabled={booking?.status === 'pending' || booking?.status === 'declined'}
                       className="justify-start"
                     >
@@ -2475,7 +2521,13 @@ export default function EnhancedBookingDetails({
                       Update Progress
                     </Button>
                     <Button 
-                      onClick={handleMarkComplete}
+                      onClick={async () => {
+                        await handleMarkComplete()
+                        // Refresh the page to show updated status
+                        setTimeout(() => {
+                          window.location.reload()
+                        }, 1000)
+                      }}
                       disabled={booking?.status === 'completed'}
                       className="justify-start bg-green-600 hover:bg-green-700"
                     >
@@ -2484,7 +2536,13 @@ export default function EnhancedBookingDetails({
                     </Button>
                     <Button 
                       variant="outline" 
-                      onClick={handlePutOnHold}
+                      onClick={async () => {
+                        await handlePutOnHold()
+                        // Refresh the page to show updated status
+                        setTimeout(() => {
+                          window.location.reload()
+                        }, 1000)
+                      }}
                       disabled={booking?.status === 'on_hold'}
                       className="justify-start"
                     >
