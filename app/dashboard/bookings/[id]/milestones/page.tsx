@@ -10,8 +10,9 @@ import { ProfessionalMilestoneSystem } from '@/components/dashboard/professional
 import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-viewer'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
-import { SmartBookingStatusComponent } from '@/components/dashboard/smart-booking-status'
-import { smartBookingStatusService } from '@/lib/smart-booking-status'
+import { StatusPill } from '@/components/ui/StatusPill'
+import { formatMuscat } from '@/lib/dates'
+import { SmartStatusOverview } from '@/components/booking/SmartStatusOverview'
 
 interface Booking {
   id: string
@@ -55,7 +56,9 @@ export default function MilestonesPage() {
   const [kpiLoading, setKpiLoading] = useState(false)
   const [milestonesCompleted, setMilestonesCompleted] = useState<number | null>(null)
   const [milestonesTotal, setMilestonesTotal] = useState<number | null>(null)
-  const [smartStatus, setSmartStatus] = useState<string | null>(null)
+  const [tasksCompleted, setTasksCompleted] = useState<number>(0)
+  const [tasksTotal, setTasksTotal] = useState<number>(0)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     // Add a small delay to allow middleware to process
@@ -66,23 +69,6 @@ export default function MilestonesPage() {
     return () => clearTimeout(timer)
   }, [bookingId])
 
-  // Load computed smart status for header badge
-  useEffect(() => {
-    let isMounted = true
-    const loadSmart = async () => {
-      try {
-        if (!bookingId) return
-        const result = await smartBookingStatusService.getSmartStatus(bookingId, userRole)
-        if (!isMounted) return
-        setSmartStatus(result.overall_status)
-      } catch {
-        if (!isMounted) return
-        setSmartStatus(null)
-      }
-    }
-    loadSmart()
-    return () => { isMounted = false }
-  }, [bookingId, userRole])
 
   // Realtime updates for this booking's milestones and booking status
   useEffect(() => {
@@ -151,6 +137,7 @@ export default function MilestonesPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) throw new Error('User not authenticated. Please sign in again.')
       const user = session.user
+      setCurrentUserId(user.id)
 
       // Load booking details with separate profile queries for reliability
       const { data: bookingData, error: bookingError } = await supabase
@@ -346,14 +333,30 @@ export default function MilestonesPage() {
           .eq('booking_id', booking.id)
           .eq('status', 'completed')
 
+        // Tasks totals
+        const { count: tasksTotalCount } = await supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id)
+
+        const { count: tasksDoneCount } = await supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', booking.id)
+          .in('status', ['done', 'completed'])
+
         if (!isMounted) return
         setMilestonesTotal(totalCount ?? 0)
         setMilestonesCompleted(completedCount ?? 0)
+        setTasksTotal(tasksTotalCount ?? 0)
+        setTasksCompleted(tasksDoneCount ?? 0)
       } catch (e) {
         // Non-blocking KPI failure
         if (!isMounted) return
         setMilestonesTotal(null)
         setMilestonesCompleted(null)
+        setTasksTotal(0)
+        setTasksCompleted(0)
         try { toast.warning('Unable to load milestone KPIs') } catch {}
       } finally {
         if (isMounted) setKpiLoading(false)
@@ -371,6 +374,38 @@ export default function MilestonesPage() {
 
   const handleBack = () => {
     router.push('/dashboard/bookings')
+  }
+
+  const handleApprove = async () => {
+    if (!booking?.id) return
+    try {
+      const res = await fetch(`/api/bookings/${booking.id}/approve`, { method: 'POST' })
+      if (!res.ok) {
+        try { const j = await res.json(); toast.error(j.error || 'Approval failed') } catch { toast.error('Approval failed') }
+        return
+      }
+      toast.success('Approved')
+      await loadBookingData()
+      try { router.refresh() } catch {}
+    } catch {
+      toast.error('Approval failed')
+    }
+  }
+
+  const handleDecline = async () => {
+    if (!booking?.id) return
+    try {
+      const res = await fetch(`/api/bookings/${booking.id}/decline`, { method: 'POST' })
+      if (!res.ok) {
+        try { const j = await res.json(); toast.error(j.error?.message || j.error || 'Decline failed') } catch { toast.error('Decline failed') }
+        return
+      }
+      toast.success('Declined')
+      await loadBookingData()
+      try { router.refresh() } catch {}
+    } catch {
+      toast.error('Decline failed')
+    }
   }
 
   // DRY helper for booking actions
@@ -406,21 +441,6 @@ export default function MilestonesPage() {
   }
 
   const normalizeStatus = (b: Booking) => b.approval_status ?? b.status
-  const friendlyStatusLabel = (status: string) => {
-    const map: Record<string, string> = {
-      pending_review: 'Pending Review',
-      ready_to_launch: 'Ready to Launch',
-      in_production: 'In Production',
-      delivered: 'Delivered',
-      approved: 'Approved',
-      pending: 'Pending',
-      in_progress: 'In Progress',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
-      on_hold: 'On Hold'
-    }
-    return map[status] || String(status).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-  }
 
   if (loading) {
     return (
@@ -513,16 +533,9 @@ export default function MilestonesPage() {
                     {booking.service.name} • {booking.client.full_name}
                   </p>
                   <div className="flex items-center gap-4 mt-2">
-                    {(() => {
-                      const statusRaw = smartStatus || normalizeStatus(booking)
-                      return (
-                        <Badge className="bg-white/20 text-white border-white/30">
-                          {friendlyStatusLabel(String(statusRaw))}
-                        </Badge>
-                      )
-                    })()}
+                    <StatusPill status={booking.status} />
                     <span className="text-sm text-blue-200">
-                      Created {new Date(booking.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })}
+                      Created {formatMuscat(booking.created_at)}
                     </span>
                   </div>
                 </div>
@@ -657,13 +670,13 @@ export default function MilestonesPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Status</p>
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                    {normalizeStatus(booking).toUpperCase()}
-                  </Badge>
+                  <div>
+                    <StatusPill status={booking.status} />
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Created</p>
-                  <p className="text-gray-900">{new Date(booking.created_at).toLocaleDateString('en-GB', { timeZone: 'Asia/Muscat' })}</p>
+                  <p className="text-gray-900">{formatMuscat(booking.created_at)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Value</p>
@@ -740,110 +753,21 @@ export default function MilestonesPage() {
           </Card>
         </div>
 
-        {/* Enhanced Smart Status Overview */}
-        {(() => {
-          const statusNorm = booking ? normalizeStatus(booking) : 'pending'
-          const isGood = ['approved', 'confirmed', 'in_progress'].includes(String(statusNorm))
-          const isWarn = String(statusNorm) === 'pending'
-          const isBad = ['declined', 'cancelled', 'overdue'].includes(String(statusNorm))
-          const cardGradient = isGood
-            ? 'from-green-50 to-emerald-50 border-green-200'
-            : isWarn
-            ? 'from-amber-50 to-yellow-50 border-amber-200'
-            : isBad
-            ? 'from-red-50 to-rose-50 border-red-200'
-            : 'from-blue-50 to-indigo-50 border-blue-200'
-          const headerGradient = isGood
-            ? 'from-green-600 to-emerald-600'
-            : isWarn
-            ? 'from-amber-600 to-yellow-600'
-            : isBad
-            ? 'from-red-600 to-rose-600'
-            : 'from-blue-600 to-indigo-600'
-          const kpiColor = isGood
-            ? 'text-green-600'
-            : isWarn
-            ? 'text-amber-600'
-            : isBad
-            ? 'text-red-600'
-            : 'text-blue-600'
-          return (
-            <Card className={`mb-8 bg-gradient-to-r ${cardGradient} shadow-lg`}>
-              <CardHeader className={`bg-gradient-to-r ${headerGradient} text-white rounded-t-lg`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <Target className="h-5 w-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-white">Smart Status Overview</CardTitle>
-                  <p className="text-blue-100 text-sm">Real-time project progress and status tracking</p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh Status
-              </Button>
-            </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {/* KPI summary */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <p className={`text-sm ${kpiColor}`}>Completion</p>
-                    {kpiLoading ? (
-                      <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
-                    ) : (
-                      <p className="text-lg font-semibold">
-                        {milestonesTotal !== null && milestonesTotal > 0 && milestonesCompleted !== null
-                          ? `${Math.round((milestonesCompleted! / milestonesTotal) * 100)}%`
-                          : '—'}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className={`text-sm ${kpiColor}`}>Milestones</p>
-                    {kpiLoading ? (
-                      <div className="h-6 w-20 bg-gray-200 rounded animate-pulse" />
-                    ) : (
-                      milestonesTotal === 0 ? (
-                        <p className="text-sm italic text-gray-600">No milestones yet</p>
-                      ) : (
-                        <p className="text-lg font-semibold">
-                          {milestonesCompleted ?? '—'} / {milestonesTotal ?? '—'}
-                        </p>
-                      )
-                    )}
-                  </div>
-                  <div>
-                    <p className={`text-sm ${kpiColor}`}>Deadline</p>
-                    <p className="text-lg font-semibold">
-                      {booking?.scheduled_date
-                        ? new Date(booking.scheduled_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Muscat' })
-                        : '—'}
-                    </p>
-                  </div>
-                </div>
-                <div aria-live="polite">
-                  {kpiLoading && !milestonesTotal ? (
-                    <div className="h-20 bg-gray-100 animate-pulse rounded" />
-                  ) : (
-                    <SmartBookingStatusComponent 
-                      bookingId={bookingId} 
-                      userRole={userRole}
-                      onStatusChangeAction={() => loadBookingData()}
-                    />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })()}
+        {/* Smart Status Overview - unified component */}
+        <div className="mb-8">
+          <SmartStatusOverview
+            booking={{ id: booking.id, status: booking.status, provider_id: booking.provider_id || '', deadline: booking.scheduled_date }}
+            totals={{
+              milestonesDone: milestonesCompleted ?? 0,
+              milestonesTotal: milestonesTotal ?? 0,
+              tasksDone: tasksCompleted,
+              tasksTotal: tasksTotal
+            }}
+            currentUserId={currentUserId}
+            onApprove={handleApprove}
+            onDecline={handleDecline}
+          />
+        </div>
 
         {/* Professional Milestone System - gated by status */}
         {(() => {
