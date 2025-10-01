@@ -188,7 +188,8 @@ export default function MilestonesPage() {
       try {
         // Use the dedicated booking details API
         const enrichedResponse = await fetch(`/api/bookings/${bookingId}`, {
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store'
         })
         
         if (enrichedResponse.ok) {
