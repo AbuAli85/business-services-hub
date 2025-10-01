@@ -14,7 +14,13 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
 
   useEffect(() => {
     let mounted = true
-    const timeoutId = setTimeout(() => { if (mounted && ok === null) setTimedOut(true) }, 8000)
+    const timeoutId = setTimeout(() => {
+      if (mounted && ok === null) {
+        setTimedOut(true)
+        setOk(false)
+        router.replace(redirect)
+      }
+    }, 8000)
     ;(async () => {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -40,7 +46,7 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
       else { setOk(false); router.replace(redirect) }
     })()
     return () => { mounted = false; clearTimeout(timeoutId) }
-  }, [allow, router, redirect, ok])
+  }, [allow, router, redirect])
 
   if (ok === null) {
     return (
