@@ -133,7 +133,7 @@ export default function BookingsPage() {
 		try { return JSON.parse(localStorage.getItem('bookings:visibleColumns') || '[]') } catch { return [] }
 	})
   // Show brand-centric page loader when initial load is in progress and we have no items yet
-  if (userLoading || (dataLoading && bookings.length === 0 && !error)) {
+  if (userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
         <BrandLoader size={72} />
@@ -511,19 +511,31 @@ export default function BookingsPage() {
 
   // Initialize user authentication and role detection
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    
     const initializeUser = async () => {
       try {
         console.log('🔄 Initializing user authentication...')
         setUserLoading(true)
         setError(null)
         
+        // Add timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          console.warn('⚠️ User initialization timeout - clearing loading state')
+          setUserLoading(false)
+          setError('Authentication timeout. Please refresh the page.')
+        }, 10000) // 10 second timeout
+        
         const supabase = await getSupabaseClient()
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+        
+        if (timeoutId) clearTimeout(timeoutId) // Clear timeout if we get a response
         
         if (userError || !currentUser) {
           console.warn('No authenticated user yet; waiting for middleware/session to settle')
           setUser(null)
           setUserRole(null)
+          setUserLoading(false) // Ensure loading state is cleared
           return
         }
         
@@ -564,6 +576,7 @@ export default function BookingsPage() {
         console.error('❌ User initialization error:', error)
         setError('Failed to initialize user session')
       } finally {
+        if (timeoutId) clearTimeout(timeoutId) // Ensure timeout is cleared
         setUserLoading(false)
         console.log('✅ User initialization complete')
       }
