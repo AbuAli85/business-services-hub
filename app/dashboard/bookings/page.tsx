@@ -141,6 +141,15 @@ export default function BookingsPage() {
     )
   }
 
+  // Show data loading spinner only if we're actively loading data and have no bookings yet
+  if (dataLoading && bookings.length === 0 && !error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+        <BrandLoader size={72} />
+      </div>
+    )
+  }
+
 
   // Invoice lookup - moved up to avoid hoisting issues
   const invoiceByBooking = useMemo(() => {
@@ -587,6 +596,14 @@ export default function BookingsPage() {
 
   // Only load data when user and role are ready
   useEffect(() => {
+    console.log('🔍 Data loading effect triggered:', { 
+      user: !!user, 
+      userRole, 
+      userLoading,
+      dataLoading,
+      isLoadingRef: isLoadingRef.current
+    })
+    
     if (user && userRole && !userLoading) {
       const now = Date.now()
       // Add throttling to prevent excessive data loading
@@ -595,6 +612,16 @@ export default function BookingsPage() {
         lastRefreshTimeRef.current = now
         loadSupabaseData()
         loadSummaryStats() // Load summary stats for consistent metrics
+        
+        // Add a safety timeout to clear loading state if data loading takes too long
+        const dataTimeout = setTimeout(() => {
+          console.warn('⚠️ Data loading timeout - clearing loading state')
+          setDataLoading(false)
+          isLoadingRef.current = false
+        }, 15000) // 15 second timeout for data loading
+        
+        // Clear timeout when component unmounts or dependencies change
+        return () => clearTimeout(dataTimeout)
       } else {
         console.log('⏸️ Skipping data load - too soon since last load')
       }
@@ -605,7 +632,7 @@ export default function BookingsPage() {
         userLoading 
       })
     }
-  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery, loadSupabaseData, loadSummaryStats])
+  }, [user, userRole, userLoading, currentPage, pageSize, statusFilter, debouncedQuery])
 
   // Cleanup effect to abort requests on unmount
   useEffect(() => {
