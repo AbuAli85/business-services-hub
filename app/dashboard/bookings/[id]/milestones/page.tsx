@@ -391,7 +391,12 @@ export default function MilestonesPage() {
   const handleApprove = async () => {
     if (!booking?.id) return
     try {
-      const res = await fetch(`/api/bookings/${booking.id}/approve`, { method: 'POST' })
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`/api/bookings/${booking.id}/approve`, {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+      })
       if (!res.ok) {
         try { const j = await res.json(); toast.error(j.error || 'Approval failed') } catch { toast.error('Approval failed') }
         return
@@ -407,7 +412,12 @@ export default function MilestonesPage() {
   const handleDecline = async () => {
     if (!booking?.id) return
     try {
-      const res = await fetch(`/api/bookings/${booking.id}/decline`, { method: 'POST' })
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`/api/bookings/${booking.id}/decline`, {
+        method: 'POST',
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
+      })
       if (!res.ok) {
         try { const j = await res.json(); toast.error(j.error?.message || j.error || 'Decline failed') } catch { toast.error('Decline failed') }
         return

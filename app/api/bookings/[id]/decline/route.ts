@@ -4,12 +4,17 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { BookingIdSchema } from '@/lib/validate'
 import { jsonError } from '@/lib/http'
 
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: { id: string } }) {
   const parsed = BookingIdSchema.safeParse(params)
   if (!parsed.success) return jsonError(400, 'BAD_ID', 'Invalid booking id')
   const supabase = await getSupabaseClient()
 
-  const { data: auth } = await supabase.auth.getUser()
+  // Support Authorization: Bearer <token>
+  const authHeader = req.headers.get('authorization') || ''
+  const token = authHeader.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7)
+    : undefined
+  const { data: auth } = await supabase.auth.getUser(token)
   if (!auth?.user) return jsonError(401, 'UNAUTHENTICATED', 'User not authenticated')
 
   const { data: b, error } = await supabase
