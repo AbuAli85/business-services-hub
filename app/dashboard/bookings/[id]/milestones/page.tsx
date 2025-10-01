@@ -333,17 +333,29 @@ export default function MilestonesPage() {
           .eq('booking_id', booking.id)
           .eq('status', 'completed')
 
-        // Tasks totals
-        const { count: tasksTotalCount } = await supabase
-          .from('tasks')
-          .select('id', { count: 'exact', head: true })
+        // Tasks totals: tasks are linked to milestones via milestone_id
+        // Count tasks across milestones for this booking
+        const { data: milestoneIds } = await supabase
+          .from('milestones')
+          .select('id')
           .eq('booking_id', booking.id)
 
-        const { count: tasksDoneCount } = await supabase
-          .from('tasks')
-          .select('id', { count: 'exact', head: true })
-          .eq('booking_id', booking.id)
-          .in('status', ['done', 'completed'])
+        const ids = (milestoneIds || []).map(m => m.id)
+        let tasksTotalCount = 0
+        let tasksDoneCount = 0
+        if (ids.length > 0) {
+          const { count: totalTasks } = await supabase
+            .from('tasks')
+            .select('id', { count: 'exact', head: true })
+            .in('milestone_id', ids)
+          const { count: doneTasks } = await supabase
+            .from('tasks')
+            .select('id', { count: 'exact', head: true })
+            .in('milestone_id', ids)
+            .in('status', ['done', 'completed'])
+          tasksTotalCount = totalTasks ?? 0
+          tasksDoneCount = doneTasks ?? 0
+        }
 
         if (!isMounted) return
         setMilestonesTotal(totalCount ?? 0)
