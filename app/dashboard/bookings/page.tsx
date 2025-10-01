@@ -354,6 +354,10 @@ export default function BookingsPage() {
         console.error('❌ Session error:', sessionError)
         setError('Authentication error. Please sign in again.')
         router.push('/auth/sign-in')
+        // Ensure loading flags are cleared on early return
+        try { if (abortControllerRef.current) abortControllerRef.current.abort() } catch {}
+        setDataLoading(false)
+        isLoadingRef.current = false
         return
       }
       
@@ -361,6 +365,10 @@ export default function BookingsPage() {
         console.error('❌ No session found - user not authenticated')
         setError('Please sign in to view bookings.')
         router.push('/auth/sign-in')
+        // Ensure loading flags are cleared on early return
+        try { if (abortControllerRef.current) abortControllerRef.current.abort() } catch {}
+        setDataLoading(false)
+        isLoadingRef.current = false
         return
       }
       
@@ -384,6 +392,10 @@ export default function BookingsPage() {
         console.warn('⚠️ No session token available, request may fail')
         setError('Authentication token missing. Please sign in again.')
         router.push('/auth/sign-in')
+        // Ensure loading flags are cleared on early return
+        try { if (abortControllerRef.current) abortControllerRef.current.abort() } catch {}
+        setDataLoading(false)
+        isLoadingRef.current = false
         return
       }
       
@@ -402,6 +414,10 @@ export default function BookingsPage() {
           console.log('🔐 Authentication required (401)')
           setError('Your session has expired. Please sign in again to continue.')
           router.push('/auth/sign-in')
+          // Ensure loading flags are cleared on early return
+          try { if (abortControllerRef.current) abortControllerRef.current.abort() } catch {}
+          setDataLoading(false)
+          isLoadingRef.current = false
           return
         }
         
@@ -411,6 +427,10 @@ export default function BookingsPage() {
           setBookings([])
           setTotalCount(0)
           setInvoices([])
+          // Ensure loading flags are cleared on early return
+          try { if (abortControllerRef.current) abortControllerRef.current.abort() } catch {}
+          setDataLoading(false)
+          isLoadingRef.current = false
           return
         }
         
