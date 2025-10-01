@@ -54,6 +54,7 @@ import { SearchAndSort } from '@/components/dashboard/bookings/SearchAndSort'
 import { BookingFilters } from '@/components/dashboard/bookings/BookingFilters'
 import { BookingCalendar } from '@/components/dashboard/bookings/BookingCalendar'
 import { BookingDetailModal } from '@/components/dashboard/bookings/BookingDetailModal'
+import { BrandLoader } from '@/components/ui/BrandLoader'
 import { useBookingFilters, applyBookingFilters } from '@/hooks/useBookingFilters'
 import PaginationFooter from '@/components/ui/PaginationFooter'
 import { formatOMR, formatMuscatDate, formatMuscatDateTime } from '@/lib/format'
@@ -131,6 +132,15 @@ export default function BookingsPage() {
 		if (typeof window === 'undefined') return ['serviceTitle','clientName','providerName','status','progress','payment','totalAmount','createdAt','actions']
 		try { return JSON.parse(localStorage.getItem('bookings:visibleColumns') || '[]') } catch { return [] }
 	})
+  // Show brand-centric page loader when initial load is in progress and we have no items yet
+  if (userLoading || (dataLoading && bookings.length === 0 && !error)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+        <BrandLoader size={72} />
+      </div>
+    )
+  }
+
 
   // Invoice lookup - moved up to avoid hoisting issues
   const invoiceByBooking = useMemo(() => {
