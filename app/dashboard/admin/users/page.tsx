@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useUsers } from '@/hooks/useUsers'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { UserStats } from '@/components/users/UserStats'

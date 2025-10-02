@@ -27,7 +27,7 @@ import {
   Lock
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface InvoiceData {
   id: string

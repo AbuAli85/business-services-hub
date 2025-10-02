@@ -26,7 +26,7 @@ import {
   Building,
   MessageSquare
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
