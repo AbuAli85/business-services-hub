@@ -40,7 +40,7 @@ import {
 import { DeliverablesSelector } from '@/components/dashboard/deliverables-selector'
 import { RequirementsSelector } from '@/components/dashboard/requirements-selector'
 import { EnhancedMilestonesEditor, MilestoneTemplate } from '@/components/dashboard/enhanced-milestones-editor'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 // UUID validation utility
 const isValidUUID = (uuid: string): boolean => {
