@@ -222,17 +222,7 @@ function SignInForm() {
         <CardContent>
           <form 
             className="space-y-4"
-            method="get"
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleSignIn(e)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                handleSignIn(e as any)
-              }
-            }}
+            noValidate
           >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -242,6 +232,12 @@ function SignInForm() {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSignIn(e as any)
+                  }
+                }}
                 required
                 disabled={loading}
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
@@ -262,6 +258,12 @@ function SignInForm() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleSignIn(e as any)
+                    }
+                  }}
                   required
                   disabled={loading}
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 pr-12"
@@ -284,8 +286,9 @@ function SignInForm() {
             </div>
             
             <Button
-              type="submit"
+              type="button"
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+              onClick={(e) => handleSignIn(e as any)}
               disabled={loading || attempts >= 5}
             >
               {loading ? (
