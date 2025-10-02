@@ -30,6 +30,7 @@ function SignInForm() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     
     // Rate limiting for production
     if (attempts >= 5) {
@@ -219,7 +220,15 @@ function SignInForm() {
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSignIn} className="space-y-4">
+          <form 
+            className="space-y-4"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleSignIn(e as any)
+              }
+            }}
+          >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -270,7 +279,8 @@ function SignInForm() {
             </div>
             
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSignIn}
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
               disabled={loading || attempts >= 5}
             >
