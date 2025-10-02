@@ -28,9 +28,16 @@ function SignInForm() {
   const searchParams = useSearchParams()
   const redirectParam = searchParams?.get('redirect') || ''
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    
+    console.log('🔍 handleSignIn called:', {
+      type: e.type,
+      target: e.target,
+      currentTarget: e.currentTarget,
+      defaultPrevented: e.defaultPrevented
+    })
     
     // Rate limiting for production
     if (attempts >= 5) {
@@ -220,10 +227,7 @@ function SignInForm() {
         </CardHeader>
         
         <CardContent>
-          <form 
-            className="space-y-4"
-            noValidate
-          >
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -300,7 +304,7 @@ function SignInForm() {
                 'Sign In'
               )}
             </Button>
-          </form>
+          </div>
           
           <div className="mt-6">
             <div className="relative">
