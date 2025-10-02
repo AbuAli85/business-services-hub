@@ -222,6 +222,11 @@ function SignInForm() {
         <CardContent>
           <form 
             className="space-y-4"
+            method="get"
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSignIn(e)
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
@@ -279,8 +284,7 @@ function SignInForm() {
             </div>
             
             <Button
-              type="button"
-              onClick={handleSignIn}
+              type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
               disabled={loading || attempts >= 5}
             >
