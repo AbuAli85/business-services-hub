@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Target, Plus, X, Sparkles } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { UnifiedTemplateSelector } from './unified-template-selector'
 import { ProgressDataService } from '@/lib/progress-data-service'
 

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export interface Booking {
   id: string

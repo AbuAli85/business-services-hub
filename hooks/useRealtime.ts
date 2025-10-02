@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export interface UseRealtimeOptions {
   userId?: string

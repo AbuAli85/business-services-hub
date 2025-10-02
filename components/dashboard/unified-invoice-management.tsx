@@ -44,7 +44,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { getSupabaseClient } from '@/lib/supabase'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 import { logger } from '@/lib/logger'
 interface InvoiceRecord {

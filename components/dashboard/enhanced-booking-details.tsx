@@ -48,7 +48,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 
 interface EnhancedBooking {
@@ -391,7 +391,7 @@ export default function EnhancedBookingDetails({
             const note = payload.new as any
             setNotifications(prev => [note, ...prev])
             setUnreadCount(c => c + 1)
-            toast.custom(t => (
+            toast.custom((t: any) => (
               <div className="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black/5 border p-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">

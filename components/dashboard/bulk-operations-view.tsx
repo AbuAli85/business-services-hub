@@ -29,7 +29,7 @@ import {
 import { Milestone, Task } from '@/lib/progress-tracking'
 import { isBefore } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface BulkOperationsViewProps {
   milestones: Milestone[]

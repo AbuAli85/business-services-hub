@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
