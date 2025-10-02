@@ -49,7 +49,6 @@ import {
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import toast from 'react-hot-toast'
-import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
 
 interface EnhancedBooking {
@@ -1917,7 +1916,7 @@ export default function EnhancedBookingDetails({
     if (!input) return null
     try {
       // Try ISO first
-      const iso = typeof input === 'string' ? parseISO(input) : new Date(input)
+      const iso = typeof input === 'string' ? new Date(input) : new Date(input)
       if (!isNaN(iso.getTime())) return iso
     } catch {}
     try {
@@ -1930,17 +1929,33 @@ export default function EnhancedBookingDetails({
 
   const formatDate = useCallback((date: any) => {
     const d = parseToValidDate(date)
-    return d ? format(d, 'PPP') : '—'
+    return d ? d.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }) : '—'
   }, [])
 
   const formatTime = useCallback((date: any) => {
     const d = parseToValidDate(date)
-    return d ? format(d, 'p') : '—'
+    return d ? d.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    }) : '—'
   }, [])
 
   const formatFromNow = useCallback((date: any) => {
     const d = parseToValidDate(date)
-    return d ? `${formatDistanceToNow(d)} ago` : 'recently'
+    if (!d) return 'recently'
+    
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000)
+    
+    if (diffInSeconds < 60) return 'just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    return `${Math.floor(diffInSeconds / 86400)} days ago`
   }, [])
 
   // Memoized values for expensive computations
@@ -2109,14 +2124,7 @@ export default function EnhancedBookingDetails({
                   )}
                 </div>
                 <p className="text-gray-600">
-                  {isProvider ? 'Client Project' : 'Your Project'} • Created {formatDate(booking.created_at)} • Last updated {booking.updated_at ? (() => {
-                    try {
-                      return formatDistanceToNow(parseISO(booking.updated_at)) + ' ago'
-                    } catch (error) {
-                      // Date parsing error for updated_at
-                      return 'recently'
-                    }
-                  })() : 'recently'}
+                  {isProvider ? 'Client Project' : 'Your Project'} • Created {formatDate(booking.created_at)} • Last updated {booking.updated_at ? formatFromNow(booking.updated_at) : 'recently'}
                 </p>
               </div>
             </div>
