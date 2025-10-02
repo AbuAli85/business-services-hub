@@ -76,7 +76,7 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
           setUnreadCount(prev => prev + 1)
           
           // Show toast for new notifications
-          toast.custom(t => (
+          toast.custom((t: string | number) => (
             <div className="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black/5 border p-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
@@ -88,7 +88,7 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
                 </div>
                 <div className="ml-4 flex-shrink-0 flex">
                   <button
-                    onClick={() => toast.dismiss(t.id)}
+                    onClick={() => toast.dismiss(t)}
                     className="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
                     aria-label="Close notification"
                     title="Close notification"
