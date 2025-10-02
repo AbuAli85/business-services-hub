@@ -37,7 +37,7 @@ import {
 import { getSupabaseClient } from '@/lib/supabase'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface Report {
   id: string

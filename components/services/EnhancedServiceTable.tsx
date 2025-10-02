@@ -27,7 +27,7 @@ import {
   Shield,
   Zap
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 
 interface Service {

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { realtimeManager } from '@/lib/realtime'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { 
   Home, 
   Briefcase, 

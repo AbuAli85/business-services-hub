@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Milestone, Task, Comment, TimeEntry, UserRole } from '@/types/progress'
 import { ProgressDataService } from '@/lib/progress-data-service'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface UseProgressTrackingProps {
   bookingId: string

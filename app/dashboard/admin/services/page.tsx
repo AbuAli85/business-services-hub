@@ -40,7 +40,7 @@ import {
   Copy
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogOverlay } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getServiceCardImageUrl } from '@/lib/service-images'

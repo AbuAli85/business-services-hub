@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface ProgressUpdate {
   bookingId: string

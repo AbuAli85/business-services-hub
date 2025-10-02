@@ -30,7 +30,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export default function AdminInvoicesPage() {
   const router = useRouter()
