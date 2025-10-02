@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { clearAuthData, isRefreshTokenError, safeSignOut, isSessionValid, getSessionTimeRemaining } from '@/lib/session-utils'
 
 interface SessionTimeoutConfig {

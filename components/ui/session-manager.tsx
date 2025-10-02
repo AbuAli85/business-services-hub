@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSessionTimeout } from '@/hooks/use-session-timeout'
 import { SessionTimeoutModal } from './session-timeout-modal'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface SessionManagerProps {
   children: React.ReactNode
