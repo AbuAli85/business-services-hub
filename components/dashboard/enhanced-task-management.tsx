@@ -119,7 +119,7 @@ import {
 import { Milestone, Task, UserRole } from '@/types/progress'
 import { formatDistanceToNow, isAfter, isBefore, addDays, differenceInDays } from 'date-fns'
 import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface EnhancedTaskManagementProps {

@@ -17,7 +17,7 @@ import {
 import { Milestone, BookingProgress, TimeEntry } from '@/types/progress'
 import { isAfter, isBefore, addDays } from 'date-fns'
 import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface SmartSuggestion {
   id: string
