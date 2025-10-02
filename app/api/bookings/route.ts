@@ -367,7 +367,12 @@ export async function GET(request: NextRequest) {
     }
     const sort = sortMap[rawSort] ?? 'created_at'
     const order: 'asc'|'desc' = (searchParams.get('order') === 'asc' ? 'asc' : 'desc')
-    const search = (searchParams.get('search') || '').trim()
+    // Sanitize search to avoid breaking the OR logic tree
+    const rawSearch = (searchParams.get('search') || '').trim()
+    const search = rawSearch
+      .replace(/[()]/g, ' ') // strip parentheses that break logic tree
+      .replace(/\s+/g, ' ') // normalize whitespace
+      .replace(/,/g, ' ') // commas are OR separators in supabase .or()
     const status = (searchParams.get('status') || '').trim()
 
     // Use enhanced view when available, else bookings with enrichment
@@ -425,12 +430,9 @@ export async function GET(request: NextRequest) {
         // Direct ID lookup
         query = query.eq('id', search.slice(1))
       } else {
-        // Text search across available fields
-        query = query.or(`
-          notes.ilike.%${search}%,
-          location.ilike.%${search}%,
-          booking_number.ilike.%${search}%
-        `)
+        // Text search across available fields (no spaces/newlines in .or string)
+        const like = `%${search}%`
+        query = query.or(`notes.ilike.${like},location.ilike.${like},booking_number.ilike.${like}`)
       }
     }
 

@@ -151,22 +151,22 @@ export default function BookingsPage() {
   const paginatedBookings = filteredBookings
 
   // Persist preferences
-	useEffect(() => {
-		if (typeof window === 'undefined') return
-		try { localStorage.setItem('bookings:viewMode', viewMode) } catch {}
-	}, [viewMode])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try { localStorage.setItem('bookings:viewMode', viewMode) } catch {}
+  }, [viewMode])
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return
 		try { localStorage.setItem('bookings:density', density) } catch {}
 	}, [density])
 
-  // Reset pagination when filters change
+  // Reset pagination when filters/search change
   useEffect(() => {
     setCurrentPage(1)
     setSelectedIds(new Set())
     setSelectAll(false)
-  }, [statusFilter, searchQuery])
+  }, [statusFilter, searchQuery, sortBy, sortOrder, pageSize])
 
   // Role-based permissions
   const canCreateBooking = userRole === 'client' || userRole === 'admin'
