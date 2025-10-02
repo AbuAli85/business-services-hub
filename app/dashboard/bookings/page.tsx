@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase-client'
 
 // Custom hooks
@@ -38,6 +38,7 @@ import { useBookingFilters, applyBookingFilters } from '@/hooks/useBookingFilter
 import { formatMuscat } from '@/lib/dates'
 import { normalizeStatus } from '@/lib/status'
 import { getDerivedStatus, calculateBookingStats } from '@/lib/booking-utils'
+import { isBookingApproved, deriveAmount } from '@/lib/bookings-helpers'
 
 export default function BookingsPage() {
   const router = useRouter()
@@ -91,14 +92,14 @@ export default function BookingsPage() {
     searchQuery,
     sortBy,
     sortOrder,
-    enableRealtime: false // Temporarily disabled
+    enableRealtime: true
   })
 
   // Realtime subscriptions
   useRealtime({
     userId: user?.id,
     userRole,
-    enabled: false, // Temporarily disabled
+    enabled: true,
     onRefresh: () => refresh(true)
   })
 
@@ -171,9 +172,8 @@ export default function BookingsPage() {
   // Invoice creation
   const handleCreateInvoice = useCallback(async (booking: any) => {
     try {
-      const eligibleStatuses = ['approved', 'confirmed', 'in_progress', 'completed']
-      const isApproved = eligibleStatuses.includes(String(booking.status)) || 
-                        booking.approval_status === 'approved'
+      // Centralize approval logic
+      const isApproved = isBookingApproved(booking)
       
       if (!isApproved) {
         toast.error('Invoice can be created only after approval')
@@ -186,11 +186,8 @@ export default function BookingsPage() {
       }
       
       const supabase = await getSupabaseClient()
-      const amount = Number(
-        (booking.amount_cents ?? null) !== null
-          ? (booking.amount_cents as number) / 100
-          : booking.totalAmount ?? booking.amount ?? booking.total_price ?? 0
-      )
+      // Centralize amount derivation
+      const amount = deriveAmount(booking)
       const currency = String(booking.currency ?? 'OMR')
       
       if (amount <= 0) {
@@ -481,8 +478,9 @@ export default function BookingsPage() {
                 setSelectedIds(new Set())
                 setSelectAll(false)
                 refresh(true)
-              } catch (e) {
-                toast.error('Bulk update failed')
+                } catch (e: any) {
+                  console.error('Bulk update failed:', e)
+                  toast.error(e?.message || 'Bulk update failed')
               }
             }}
             onNotify={()=> console.log('Notify', Array.from(selectedIds))}

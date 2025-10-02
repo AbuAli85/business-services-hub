@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export interface BookingDetails {
   id: string
@@ -130,7 +130,10 @@ export function useBookingDetails(options: UseBookingDetailsOptions = {}) {
         return
       }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      }
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
@@ -295,7 +298,10 @@ export function useBookingDetails(options: UseBookingDetailsOptions = {}) {
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+        'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      }
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }

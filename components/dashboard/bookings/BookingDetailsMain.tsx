@@ -9,7 +9,7 @@ import { BookingDetailsHeader } from './BookingDetailsHeader'
 import { BookingDetailsOverview } from './BookingDetailsOverview'
 import { BookingDetailsParticipants } from './BookingDetailsParticipants'
 import { ProgressTabs } from '../progress-tabs'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface BookingDetailsMainProps {
   userRole: 'client' | 'provider' | 'admin'

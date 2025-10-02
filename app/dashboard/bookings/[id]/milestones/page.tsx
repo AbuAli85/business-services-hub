@@ -11,9 +11,11 @@ import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-v
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { StatusPill } from '@/components/ui/StatusPill'
+import { isBookingApproved } from '@/lib/bookings-helpers'
 import { formatMuscat } from '@/lib/dates'
 import { SmartStatusOverview } from '@/components/booking/SmartStatusOverview'
 import { BrandLoader } from '@/components/ui/BrandLoader'
+import { useBookingKPIs } from '@/hooks/useBookingKPIs'
 
 interface Booking {
   id: string
@@ -54,11 +56,7 @@ export default function MilestonesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState<null | 'approve' | 'decline' | 'start_project'>(null)
-  const [kpiLoading, setKpiLoading] = useState(false)
-  const [milestonesCompleted, setMilestonesCompleted] = useState<number | null>(null)
-  const [milestonesTotal, setMilestonesTotal] = useState<number | null>(null)
-  const [tasksCompleted, setTasksCompleted] = useState<number>(0)
-  const [tasksTotal, setTasksTotal] = useState<number>(0)
+  const { milestonesTotal, milestonesCompleted, tasksTotal, tasksCompleted, loading: kpiLoading } = useBookingKPIs(booking?.id)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -313,71 +311,7 @@ export default function MilestonesPage() {
     }
   }
 
-  // Load KPIs (milestones completed/total) once booking is available
-  useEffect(() => {
-    let isMounted = true
-    const loadKpis = async () => {
-      if (!booking?.id) return
-      try {
-        setKpiLoading(true)
-        const supabase = await getSupabaseClient()
-        // Total milestones
-        const { count: totalCount } = await supabase
-          .from('milestones')
-          .select('id', { count: 'exact', head: true })
-          .eq('booking_id', booking.id)
-
-        // Completed milestones
-        const { count: completedCount } = await supabase
-          .from('milestones')
-          .select('id', { count: 'exact', head: true })
-          .eq('booking_id', booking.id)
-          .eq('status', 'completed')
-
-        // Tasks totals: tasks are linked to milestones via milestone_id
-        // Count tasks across milestones for this booking
-        const { data: milestoneIds } = await supabase
-          .from('milestones')
-          .select('id')
-          .eq('booking_id', booking.id)
-
-        const ids = (milestoneIds || []).map(m => m.id)
-        let tasksTotalCount = 0
-        let tasksDoneCount = 0
-        if (ids.length > 0) {
-          const { count: totalTasks } = await supabase
-            .from('tasks')
-            .select('id', { count: 'exact', head: true })
-            .in('milestone_id', ids)
-          const { count: doneTasks } = await supabase
-            .from('tasks')
-            .select('id', { count: 'exact', head: true })
-            .in('milestone_id', ids)
-            .in('status', ['done', 'completed'])
-          tasksTotalCount = totalTasks ?? 0
-          tasksDoneCount = doneTasks ?? 0
-        }
-
-        if (!isMounted) return
-        setMilestonesTotal(totalCount ?? 0)
-        setMilestonesCompleted(completedCount ?? 0)
-        setTasksTotal(tasksTotalCount ?? 0)
-        setTasksCompleted(tasksDoneCount ?? 0)
-      } catch (e) {
-        // Non-blocking KPI failure
-        if (!isMounted) return
-        setMilestonesTotal(null)
-        setMilestonesCompleted(null)
-        setTasksTotal(0)
-        setTasksCompleted(0)
-        try { toast.warning('Unable to load milestone KPIs') } catch {}
-      } finally {
-        if (isMounted) setKpiLoading(false)
-      }
-    }
-    loadKpis()
-    return () => { isMounted = false }
-  }, [booking?.id])
+  // KPIs now loaded via useBookingKPIs
 
   const handleRefresh = async () => {
     toast.info('Refreshing booking data...')
@@ -389,47 +323,10 @@ export default function MilestonesPage() {
     router.push('/dashboard/bookings')
   }
 
-  const handleApprove = async () => {
-    if (!booking?.id) return
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`/api/bookings/${booking.id}/approve`, {
-        method: 'POST',
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
-      })
-      if (!res.ok) {
-        try { const j = await res.json(); toast.error(j.error || 'Approval failed') } catch { toast.error('Approval failed') }
-        return
-      }
-      toast.success('Approved')
-      await loadBookingData()
-      try { router.refresh() } catch {}
-    } catch {
-      toast.error('Approval failed')
-    }
-  }
+  // Use unified action handler instead of duplicated approve/decline
+  const handleApprove = async () => handleAction('approve')
 
-  const handleDecline = async () => {
-    if (!booking?.id) return
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`/api/bookings/${booking.id}/decline`, {
-        method: 'POST',
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
-      })
-      if (!res.ok) {
-        try { const j = await res.json(); toast.error(j.error?.message || j.error || 'Decline failed') } catch { toast.error('Decline failed') }
-        return
-      }
-      toast.success('Declined')
-      await loadBookingData()
-      try { router.refresh() } catch {}
-    } catch {
-      toast.error('Decline failed')
-    }
-  }
+  const handleDecline = async () => handleAction('decline')
 
   // DRY helper for booking actions
   const handleAction = async (action: 'approve' | 'decline' | 'start_project') => {

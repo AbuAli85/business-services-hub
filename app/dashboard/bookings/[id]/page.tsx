@@ -14,7 +14,8 @@ function BookingDetailsContent() {
   }
 
   if (authError || !user || !userRole) {
-    return <BookingDetailsError error={authError} />
+    const msg = authError || 'You are not authenticated. Please sign in again.'
+    return <BookingDetailsError error={msg} />
   }
 
   return <BookingDetailsMain userRole={userRole} />
