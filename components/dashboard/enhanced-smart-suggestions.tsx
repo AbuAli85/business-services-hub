@@ -76,7 +76,7 @@ import {
 import { Milestone, BookingProgress, TimeEntry, UserRole } from '@/types/progress'
 import { isAfter, isBefore, addDays, differenceInDays } from 'date-fns'
 import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface SmartSuggestion {

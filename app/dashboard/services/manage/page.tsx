@@ -36,7 +36,7 @@ import {
   Settings
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface Service {
   id: string
