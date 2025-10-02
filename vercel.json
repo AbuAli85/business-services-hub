@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "regions": [
+    "dxb1"
+  ],
+  "framework": "nextjs",
+  "buildCommand": "npm run build:optimized",
+  "installCommand": "npm ci",
+  "devCommand": "npm run dev",
+  "outputDirectory": ".next"
+}
