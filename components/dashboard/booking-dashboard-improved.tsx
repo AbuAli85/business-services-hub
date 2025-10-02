@@ -39,18 +39,23 @@ interface Booking {
   client_name: string
   provider_name: string
   status: string
+  display_status: string
   normalized_status: string
   total_amount: number
   currency: string
-  revenue_status: string
+  revenue_display_status: string
   progress_percentage: number
   progress_status: string
   milestone_count: number
   completed_milestones: number
+  total_tasks: number
+  completed_tasks: number
+  duration_display: string
   rating: number | null
   rating_text: string
   created_at: string
   updated_at: string
+  sort_priority: number
 }
 
 interface DashboardData {
@@ -289,7 +294,7 @@ export default function BookingDashboardImproved() {
                     <div className="flex items-center space-x-2">
                       <h3 className="font-medium">{booking.booking_number}</h3>
                       <Badge className={getStatusColor(booking.normalized_status)}>
-                        {booking.normalized_status.replace('_', ' ')}
+                        {booking.display_status}
                       </Badge>
                     </div>
                     <div className="text-right">
@@ -297,7 +302,7 @@ export default function BookingDashboardImproved() {
                         {formatCurrency(booking.total_amount, booking.currency)}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {booking.revenue_status}
+                        {booking.revenue_display_status}
                       </div>
                     </div>
                   </div>
@@ -308,6 +313,9 @@ export default function BookingDashboardImproved() {
                     </p>
                     <p className="text-sm text-gray-600">
                       <strong>Client:</strong> {booking.client_name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      <strong>Duration:</strong> {booking.duration_display}
                     </p>
                   </div>
                   
@@ -328,7 +336,7 @@ export default function BookingDashboardImproved() {
                     </div>
                     
                     <div className="text-sm text-muted-foreground">
-                      {booking.completed_milestones}/{booking.milestone_count} milestones
+                      {booking.completed_milestones}/{booking.milestone_count} milestones • {booking.completed_tasks}/{booking.total_tasks} tasks
                     </div>
                   </div>
                   

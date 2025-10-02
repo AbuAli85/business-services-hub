@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // Get dashboard data using the optimized RPC function
+    // Get dashboard data using the enhanced RPC function
     const { data: dashboardData, error: rpcError } = await supabase
-      .rpc('get_booking_dashboard_data', {
+      .rpc('get_enhanced_booking_stats', {
         user_id: user.id,
         user_role: profile.role
       })
