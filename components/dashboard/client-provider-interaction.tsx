@@ -51,7 +51,7 @@ import {
 import { Milestone, Comment, UserRole } from '@/types/progress'
 import { formatDistanceToNow } from 'date-fns'
 import { safeFormatDate, safeFormatDistanceToNow } from '@/lib/date-utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface ClientProviderInteractionProps {

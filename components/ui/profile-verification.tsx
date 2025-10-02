@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { Loader2, CheckCircle, AlertCircle, User, Building2 } from 'lucide-react'
 
 interface ProfileVerificationProps {

@@ -16,7 +16,7 @@ import {
 import { Milestone, TaskComment } from '@/lib/progress-tracking'
 import { safeFormatDistanceToNow } from '@/lib/date-utils'
 import { ProgressTrackingService } from '@/lib/progress-tracking'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface CommentsSectionProps {
   milestone: Milestone

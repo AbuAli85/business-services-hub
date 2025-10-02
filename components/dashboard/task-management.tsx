@@ -31,7 +31,7 @@ import {
 import { Milestone, Task, TimeEntry } from '@/lib/progress-tracking'
 import { formatDistanceToNow, isAfter, isBefore } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface TaskManagementProps {
   milestone: Milestone

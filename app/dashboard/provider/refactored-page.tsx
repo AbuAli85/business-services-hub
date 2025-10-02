@@ -21,7 +21,7 @@ import {
   Briefcase,
   Star
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export default function RefactoredProviderDashboard() {
   const router = useRouter()
