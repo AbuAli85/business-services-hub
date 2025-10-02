@@ -39,7 +39,8 @@ export function calculateBookingStats(
   summaryStats?: any
 ) {
   // If we have summary stats, use them for consistency
-  if (summaryStats) {
+  // Only apply when there is at least some list data or upstream summary matches scope
+  if (summaryStats && bookings.length > 0) {
     return {
       total: summaryStats.total,
       completed: summaryStats.completed,

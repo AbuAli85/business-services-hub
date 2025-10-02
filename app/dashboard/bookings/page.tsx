@@ -54,14 +54,14 @@ export default function BookingsPage() {
   const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showFilters, setShowFilters] = useState(false)
-  const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table'>(() => {
-    if (typeof window === 'undefined') return 'card'
-    return (localStorage.getItem('bookings:viewMode') as any) || 'card'
-  })
-  const [density, setDensity] = useState<'compact' | 'comfortable' | 'spacious'>(() => {
-    if (typeof window === 'undefined') return 'comfortable'
-    return (localStorage.getItem('bookings:density') as any) || 'comfortable'
-  })
+	const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table'>(() => {
+		if (typeof window === 'undefined') return 'card'
+		return (localStorage.getItem('bookings:viewMode') as any) || 'card'
+	})
+	const [density, setDensity] = useState<'compact' | 'comfortable' | 'spacious'>(() => {
+		if (typeof window === 'undefined') return 'comfortable'
+		return (localStorage.getItem('bookings:density') as any) || 'comfortable'
+	})
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -126,9 +126,23 @@ export default function BookingsPage() {
     })
     return m
   }, [invoices])
-
-  // Calculate statistics
+  
+  // Calculate statistics. If there are no bookings, prefer zeroed stats to avoid confusing mismatches.
   const stats = useMemo(() => {
+    if (!bookings || bookings.length === 0) {
+      return {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        pending: 0,
+        approved: 0,
+        totalRevenue: 0,
+        projectedBillings: 0,
+        avgCompletionTime: 0,
+        pendingApproval: 0,
+        readyToLaunch: 0
+      }
+    }
     return calculateBookingStats(bookings, invoices, summaryStats)
   }, [bookings, invoices, summaryStats])
 
@@ -137,15 +151,15 @@ export default function BookingsPage() {
   const paginatedBookings = filteredBookings
 
   // Persist preferences
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try { localStorage.setItem('bookings:viewMode', viewMode) } catch {}
-  }, [viewMode])
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		try { localStorage.setItem('bookings:viewMode', viewMode) } catch {}
+	}, [viewMode])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try { localStorage.setItem('bookings:density', density) } catch {}
-  }, [density])
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		try { localStorage.setItem('bookings:density', density) } catch {}
+	}, [density])
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -282,10 +296,10 @@ export default function BookingsPage() {
       setDetailFiles([])
       setDetailLoading(true)
 
-      const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+        const supabase = await getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
 
       const [bookingRes, milestonesRes, commsRes] = await Promise.all([
         fetch(`/api/bookings/${booking.id}`, { headers, credentials: 'include' }),
@@ -357,8 +371,8 @@ export default function BookingsPage() {
     )
   }
 
-  return (
-    <div className="space-y-6">
+	  return (
+		<div className="space-y-6">
       {/* Header */}
       <BookingHeader
         userRole={userRole}
@@ -379,7 +393,15 @@ export default function BookingsPage() {
       />
 
       {/* Statistics */}
-      <BookingStats stats={stats} />
+      <BookingStats 
+        stats={stats} 
+        onQuickFilter={(f)=>{
+          if (f === 'pending') setStatusFilter('pending')
+          else if (f === 'completed') setStatusFilter('completed')
+          else if (f === 'ready') setStatusFilter('approved')
+          setCurrentPage(1)
+        }}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -414,7 +436,7 @@ export default function BookingsPage() {
       </div>
 
       {/* Search and Sort */}
-      <div className="mb-6 space-y-3">
+		<div className="mb-6 space-y-3">
         <SearchAndSort
           search={searchQuery}
           onSearch={setSearchQuery}
@@ -423,11 +445,11 @@ export default function BookingsPage() {
           sortOrder={sortOrder}
           onSortOrder={setSortOrder}
         />
-        <div className="flex items-center gap-2">
-          <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={()=> setShowFilters(v=>!v)}>
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-          </Button>
-        </div>
+			<div className="flex items-center gap-2">
+			  <Button variant={showFilters ? 'default' : 'outline'} size="sm" onClick={()=> setShowFilters(v=>!v)}>
+				{showFilters ? 'Hide Filters' : 'Show Filters'}
+			  </Button>
+			</div>
       </div>
 
       {/* Filters panel */}
@@ -443,11 +465,11 @@ export default function BookingsPage() {
       )}
 
       {/* Calendar view */}
-      {viewMode === 'calendar' && (
-        <div className="mb-6">
-          <BookingCalendar bookings={filteredBookings} onDateSelect={(d)=> console.log('date', d)} />
-        </div>
-      )}
+		{viewMode === 'calendar' && (
+		  <div className="mb-6">
+			<BookingCalendar bookings={filteredBookings} onDateSelect={(d)=> console.log('date', d)} />
+		  </div>
+		)}
 
       {/* Bulk Actions */}
       {selectedIds.size > 0 && (
@@ -490,8 +512,8 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {/* Bookings Content */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
+		{/* Bookings Content */}
+		<div className="bg-white rounded-lg shadow-sm border border-gray-200 relative">
         {dataLoading && (
           <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
             <div className="text-center">
@@ -501,138 +523,138 @@ export default function BookingsPage() {
           </div>
         )}
         
-        {paginatedBookings.length > 0 ? (
-          viewMode === 'table' ? (
-            <div className="p-4">
-              <DataTable
-                stickyHeader
-                columns={[
-                  {
-                    key: 'select',
-                    header: (
-                      <input
-                        aria-label="Select all visible"
-                        type="checkbox"
-                        checked={paginatedBookings.every((b:any)=> selectedIds.has(b.id)) && paginatedBookings.length > 0}
-                        onChange={(e)=> {
-                          const checked = e.currentTarget.checked
-                          if (checked) setSelectedIds(new Set([...(selectedIds as any), ...paginatedBookings.map((b:any)=> b.id)]))
-                          else setSelectedIds(new Set())
-                        }}
-                      />
-                    ),
-                    widthClass: 'w-8',
-                    render: (r:any) => (
-                      <input
-                        aria-label={`Select booking ${r.id}`}
-                        type="checkbox"
-                        checked={selectedIds.has(r.id)}
-                        onChange={(e)=>{
-                          const checked = e.currentTarget.checked
-                          setSelectedIds(prev=> {
-                            const next = new Set(prev)
-                            if (checked) next.add(r.id); else next.delete(r.id)
-                            return next
-                          })
-                        }}
-                      />
-                    )
-                  },
-                  { key: 'serviceTitle', header: 'Service', widthClass: 'w-1/4', sortable: true, render: (r:any) => r.service_title || r.serviceTitle || '—' },
-                  { key: 'clientName', header: 'Client', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.client_name || r.clientName || '—' },
-                  { key: 'providerName', header: 'Provider', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.provider_name || r.providerName || '—' },
-                  { key: 'status', header: 'Status', widthClass: 'w-40', render: (r:any) => (
-                    <StatusPill status={normalizeStatus(r.status)} />
-                  ) },
-                  { key: 'progress', header: 'Progress', widthClass: 'w-24', render: (r:any) => {
-                    const pct = Math.max(0, Math.min(100, Number(r.progress_percentage ?? r.progress?.percentage ?? 0)))
-                    return `${pct}%`
-                  } },
-                  { key: 'payment', header: 'Payment', widthClass: 'w-28', render: (r:any) => {
-                    const inv = invoiceByBooking.get(String(r.id))
-                    return inv?.status ? String(inv.status) : '—'
-                  } },
-                  { key: 'totalAmount', header: 'Amount', widthClass: 'w-32', sortable: true, render: (r:any) => (
-                    <AmountDisplay
-                      amount_cents={r.amount_cents || (r.amount ? r.amount * 100 : 0)}
-                      currency={r.currency || 'OMR'}
-                      status={r.status}
-                      invoice_status={invoiceByBooking.get(String(r.id))?.status}
-                      compact={true}
-                      showStatus={false}
-                    />
-                  ) },
-                  { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => (
-                    formatMuscat(r.created_at || r.createdAt)
-                  ) },
-                  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}`)} aria-label="View details">Details</Button>
-                      {canManageBookings && !((r?.approval_status === 'approved') || (r?.status === 'approved') || (r?.status === 'confirmed')) && (
-                        <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
-                      )}
-                      <Select value={String(r.status || '')} onValueChange={async (v)=>{
-                        try {
-                          const supabase = await getSupabaseClient()
-                          const { data: { session } } = await supabase.auth.getSession()
-                          const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-                          if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
-                          
-                          if (v === 'approved') {
-                            await approveBooking(r.id, r.provider_id, r.status)
-                          } else if (v === 'declined') {
-                            await declineBooking(r.id, r.provider_id, r.status)
-                          } else {
-                            await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status: v, booking_ids: [r.id] }) })
+			{paginatedBookings.length > 0 ? (
+			  viewMode === 'table' ? (
+				<div className="p-4">
+				  <DataTable
+					stickyHeader
+					columns={[
+					  {
+						key: 'select',
+						header: (
+						  <input
+							aria-label="Select all visible"
+							type="checkbox"
+							checked={paginatedBookings.every((b:any)=> selectedIds.has(b.id)) && paginatedBookings.length > 0}
+							onChange={(e)=> {
+							  const checked = e.currentTarget.checked
+							  if (checked) setSelectedIds(new Set([...(selectedIds as any), ...paginatedBookings.map((b:any)=> b.id)]))
+							  else setSelectedIds(new Set())
+							}}
+						  />
+						),
+						widthClass: 'w-8',
+						render: (r:any) => (
+						  <input
+							aria-label={`Select booking ${r.id}`}
+							type="checkbox"
+							checked={selectedIds.has(r.id)}
+							onChange={(e)=>{
+							  const checked = e.currentTarget.checked
+							  setSelectedIds(prev=> {
+								const next = new Set(prev)
+								if (checked) next.add(r.id); else next.delete(r.id)
+								return next
+							  })
+							}}
+						  />
+						)
+					  },
+					  { key: 'serviceTitle', header: 'Service', widthClass: 'w-1/4', sortable: true, render: (r:any) => r.service_title || r.serviceTitle || '—' },
+					  { key: 'clientName', header: 'Client', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.client_name || r.clientName || '—' },
+					  { key: 'providerName', header: 'Provider', widthClass: 'w-1/5', sortable: true, render: (r:any) => r.provider_name || r.providerName || '—' },
+                      { key: 'status', header: 'Status', widthClass: 'w-40', render: (r:any) => (
+                        <StatusPill status={normalizeStatus(r.status)} />
+                      ) },
+					  { key: 'progress', header: 'Progress', widthClass: 'w-24', render: (r:any) => {
+						const pct = Math.max(0, Math.min(100, Number(r.progress_percentage ?? r.progress?.percentage ?? 0)))
+						return `${pct}%`
+					  } },
+					  { key: 'payment', header: 'Payment', widthClass: 'w-28', render: (r:any) => {
+						const inv = invoiceByBooking.get(String(r.id))
+						return inv?.status ? String(inv.status) : '—'
+					  } },
+					  { key: 'totalAmount', header: 'Amount', widthClass: 'w-32', sortable: true, render: (r:any) => (
+						<AmountDisplay
+						  amount_cents={r.amount_cents || (r.amount ? r.amount * 100 : 0)}
+						  currency={r.currency || 'OMR'}
+						  status={r.status}
+						  invoice_status={invoiceByBooking.get(String(r.id))?.status}
+						  compact={true}
+						  showStatus={false}
+						/>
+					  ) },
+                      { key: 'createdAt', header: 'Created', widthClass: 'w-32', sortable: true, render: (r:any) => (
+                        formatMuscat(r.created_at || r.createdAt)
+                      ) },
+					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
+						  <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}`)} aria-label="View details">Details</Button>
+								{canManageBookings && !((r?.approval_status === 'approved') || (r?.status === 'approved') || (r?.status === 'confirmed')) && (
+							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
+							)}
+							<Select value={String(r.status || '')} onValueChange={async (v)=>{
+							  try {
+								const supabase = await getSupabaseClient()
+								const { data: { session } } = await supabase.auth.getSession()
+								const headers: Record<string,string> = { 'Content-Type': 'application/json' }
+								if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+								
+								if (v === 'approved') {
+								  await approveBooking(r.id, r.provider_id, r.status)
+								} else if (v === 'declined') {
+								  await declineBooking(r.id, r.provider_id, r.status)
+								} else {
+								  await fetch('/api/bookings/bulk', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ action: 'update_status', status: v, booking_ids: [r.id] }) })
                             refresh(true)
-                            toast.success('Status updated')
-                          }
-                        } catch (err: any) {
-                          toast.error(err?.message || 'Status update failed')
-                        }
-                      }}>
-                        <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                          <SelectItem value="declined">Declined</SelectItem>
-                          <SelectItem value="on_hold">On Hold</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="ghost" onClick={()=> {
-                        const email = r.client_email || r.client?.email || ''
-                        if (email) window.location.href = `mailto:${email}?subject=Booking%20Update&body=Hello%2C%20this%20is%20a%20gentle%20reminder%20regarding%20your%20booking%20${r.id}.`
-                      }} aria-label="Send reminder">Reminder</Button>
-                    </div>
-                  ) }
-                ]}
-                data={paginatedBookings as any}
-                page={currentPage}
-                pageSize={pageSize}
-                total={totalCount}
-                onPageChange={(p)=> setCurrentPage(Math.max(1, Math.min(p, totalPages)))}
-                onSortChange={(key, dir)=>{
-                  const map: Record<string,string> = {
-                    createdAt: 'createdAt',
-                    totalAmount: 'totalAmount',
-                    serviceTitle: 'serviceTitle',
-                    clientName: 'clientName',
-                    providerName: 'providerName'
-                  }
-                  const uiKey = map[key] || 'createdAt'
-                  setSortBy(uiKey)
-                  setSortOrder(dir)
-                }}
-                sortKey={sortBy}
-                sortDirection={sortOrder}
-                className={density === 'compact' ? 'text-xs' : density === 'spacious' ? 'text-base' : 'text-sm'}
-              />
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
+								  toast.success('Status updated')
+								}
+							  } catch (err: any) {
+								toast.error(err?.message || 'Status update failed')
+							  }
+							}}>
+                              <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Status" /></SelectTrigger>
+							  <SelectContent>
+								<SelectItem value="pending">Pending</SelectItem>
+								<SelectItem value="approved">Approved</SelectItem>
+								<SelectItem value="in_progress">In Progress</SelectItem>
+								<SelectItem value="completed">Completed</SelectItem>
+								<SelectItem value="cancelled">Cancelled</SelectItem>
+								<SelectItem value="declined">Declined</SelectItem>
+								<SelectItem value="on_hold">On Hold</SelectItem>
+							  </SelectContent>
+							</Select>
+							<Button size="sm" variant="ghost" onClick={()=> {
+							  const email = r.client_email || r.client?.email || ''
+							  if (email) window.location.href = `mailto:${email}?subject=Booking%20Update&body=Hello%2C%20this%20is%20a%20gentle%20reminder%20regarding%20your%20booking%20${r.id}.`
+							}} aria-label="Send reminder">Reminder</Button>
+						  </div>
+					  ) }
+					]}
+					data={paginatedBookings as any}
+					page={currentPage}
+					pageSize={pageSize}
+					total={totalCount}
+					onPageChange={(p)=> setCurrentPage(Math.max(1, Math.min(p, totalPages)))}
+					onSortChange={(key, dir)=>{
+					  const map: Record<string,string> = {
+						createdAt: 'createdAt',
+						totalAmount: 'totalAmount',
+						serviceTitle: 'serviceTitle',
+						clientName: 'clientName',
+						providerName: 'providerName'
+					  }
+					  const uiKey = map[key] || 'createdAt'
+					  setSortBy(uiKey)
+					  setSortOrder(dir)
+					}}
+					sortKey={sortBy}
+					sortDirection={sortOrder}
+					className={density === 'compact' ? 'text-xs' : density === 'spacious' ? 'text-base' : 'text-sm'}
+				  />
+				</div>
+			  ) : (
+			  <div className="divide-y divide-gray-100">
               {/* Header row with select all */}
               <div className="px-4 py-2 bg-gray-50 flex items-center gap-3">
                 <Checkbox
@@ -649,58 +671,58 @@ export default function BookingsPage() {
                 />
                 <span className="text-sm text-gray-500">Select all on this page</span>
               </div>
-              {paginatedBookings.map((booking) => (
-                <div key={booking.id} className="mb-3">
-                  <ImprovedBookingCard
-                    booking={booking}
-                    invoice={invoiceByBooking.get(String(booking.id))}
-                    isSelected={selectedIds.has(booking.id)}
-                    onSelect={(checked) => {
-                      setSelectedIds(prev => {
-                        const next = new Set(prev)
-                        if (checked) next.add(booking.id); else next.delete(booking.id)
-                        return next
-                      })
-                    }}
-                    onQuickAction={async (action) => {
-                      if (action === 'view') {
-                        router.push(`/dashboard/bookings/${booking.id}`)
-                      } else if (action === 'approve') {
-                        await approveBooking(booking.id, booking.provider_id, booking.status)
-                      } else if (action === 'decline') {
-                        await declineBooking(booking.id, booking.provider_id, booking.status)
-                      } else if (action === 'create_invoice') {
-                        await handleCreateInvoice(booking)
-                      } else if (action === 'send_invoice') {
-                        const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
-                      } else if (action === 'mark_paid') {
-                        const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
-                      } else if (action === 'pay_invoice') {
-                        const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
-                      } else if (action === 'view_invoice') {
-                        const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
-                      } else if (action === 'update_progress') {
-                        router.push(`/dashboard/bookings/${booking.id}/milestones`)
-                      } else if (action === 'message') {
-                        router.push('/dashboard/messages')
-                      }
-                    }}
-                    onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
-                    density={density}
-                    userRole={userRole || undefined}
-                  />
-                </div>
-              ))}
+				  {paginatedBookings.map((booking) => (
+					<div key={booking.id} className="mb-3">
+					  <ImprovedBookingCard
+						booking={booking}
+						invoice={invoiceByBooking.get(String(booking.id))}
+						isSelected={selectedIds.has(booking.id)}
+						onSelect={(checked) => {
+						  setSelectedIds(prev => {
+							const next = new Set(prev)
+							if (checked) next.add(booking.id); else next.delete(booking.id)
+							return next
+						  })
+						}}
+                        onQuickAction={async (action) => {
+                          if (action === 'view') {
+                            router.push(`/dashboard/bookings/${booking.id}`)
+                          } else if (action === 'approve') {
+                            await approveBooking(booking.id, booking.provider_id, booking.status)
+                          } else if (action === 'decline') {
+                            await declineBooking(booking.id, booking.provider_id, booking.status)
+                          } else if (action === 'create_invoice') {
+                            await handleCreateInvoice(booking)
+                          } else if (action === 'send_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
+                          } else if (action === 'mark_paid') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
+                          } else if (action === 'pay_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
+                          } else if (action === 'view_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
+                          } else if (action === 'update_progress') {
+                            router.push(`/dashboard/bookings/${booking.id}/milestones`)
+                          } else if (action === 'message') {
+                            router.push('/dashboard/messages')
+                          }
+                        }}
+                        onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
+						density={density}
+						userRole={userRole || undefined}
+					  />
+					</div>
+				  ))}
             </div>
-          )
-        ) : (
+			  )
+          ) : (
           <BookingEmptyState 
             searchQuery={searchQuery}
             statusFilter={statusFilter}
             userRole={userRole}
           />
-        )}
-      </div>
+          )}
+        </div>
 
       {/* Pagination */}
       {totalPages > 1 && (

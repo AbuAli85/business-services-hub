@@ -15,9 +15,10 @@ interface BookingStatsProps {
     pendingApproval: number
     readyToLaunch: number
   }
+  onQuickFilter?: (filter: 'pending' | 'completed' | 'ready') => void
 }
 
-export function BookingStats({ stats }: BookingStatsProps) {
+export function BookingStats({ stats, onQuickFilter }: BookingStatsProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
       {/* Next Actions Required */}
@@ -30,7 +31,14 @@ export function BookingStats({ stats }: BookingStatsProps) {
               </div>
               <div className="text-sm text-green-700 font-medium">Next actions required • High priority</div>
             </div>
-            <Play className="h-8 w-8 text-green-600" />
+            <button
+              type="button"
+              aria-label="Show pending approvals"
+              className="p-1 rounded hover:bg-green-200/40"
+              onClick={() => onQuickFilter?.('pending')}
+            >
+              <Play className="h-8 w-8 text-green-600" />
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -45,7 +53,14 @@ export function BookingStats({ stats }: BookingStatsProps) {
               </div>
               <div className="text-sm text-emerald-700 font-medium">Completed projects</div>
             </div>
-            <CheckCircle className="h-8 w-8 text-emerald-600" />
+            <button
+              type="button"
+              aria-label="Show completed"
+              className="p-1 rounded hover:bg-emerald-200/40"
+              onClick={() => onQuickFilter?.('completed')}
+            >
+              <CheckCircle className="h-8 w-8 text-emerald-600" />
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -79,7 +94,14 @@ export function BookingStats({ stats }: BookingStatsProps) {
                 Action needed • {stats.pendingApproval} waiting
               </div>
             </div>
-            <Clock className="h-8 w-8 text-purple-600" />
+            <button
+              type="button"
+              aria-label="Show pending approvals"
+              className="p-1 rounded hover:bg-purple-200/40"
+              onClick={() => onQuickFilter?.('pending')}
+            >
+              <Clock className="h-8 w-8 text-purple-600" />
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -96,7 +118,14 @@ export function BookingStats({ stats }: BookingStatsProps) {
                 All prerequisites met • Ready to launch projects • Active
               </div>
             </div>
-            <Rocket className="h-8 w-8 text-cyan-600" />
+            <button
+              type="button"
+              aria-label="Show ready to launch"
+              className="p-1 rounded hover:bg-cyan-200/40"
+              onClick={() => onQuickFilter?.('ready')}
+            >
+              <Rocket className="h-8 w-8 text-cyan-600" />
+            </button>
           </div>
         </CardContent>
       </Card>
