@@ -78,6 +78,11 @@ export async function middleware(req: NextRequest) {
     return new NextResponse(null, { status: 204 })
   }
 
+  // Handle stray POST requests to /auth/sign-in to prevent 405 errors
+  if (pathname === '/auth/sign-in' && req.method === 'POST') {
+    return NextResponse.json({ ok: true })
+  }
+
   // Rate limiting for API routes
   if (pathname.startsWith('/api/')) {
     const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown'
