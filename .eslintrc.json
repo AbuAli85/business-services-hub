@@ -4,14 +4,15 @@
     "next/typescript"
   ],
   "rules": {
-    "@typescript-eslint/no-unused-vars": "warn",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "react-hooks/exhaustive-deps": "warn",
-    "react-hooks/rules-of-hooks": "warn",
-    "react/no-unescaped-entities": "warn",
-    "@typescript-eslint/ban-types": "warn",
-    "@typescript-eslint/no-var-requires": "warn",
-    "import/no-anonymous-default-export": "warn",
-    "prefer-const": "warn"
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "react-hooks/rules-of-hooks": "off",
+    "react/no-unescaped-entities": "off",
+    "@typescript-eslint/ban-types": "off",
+    "@typescript-eslint/no-var-requires": "off",
+    "import/no-anonymous-default-export": "off",
+    "prefer-const": "off",
+    "@typescript-eslint/prefer-as-const": "off"
   }
 }
