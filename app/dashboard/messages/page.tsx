@@ -25,7 +25,7 @@ import {
   MapPin,
   Eye
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { formatDate, formatTime } from '@/lib/utils'
 

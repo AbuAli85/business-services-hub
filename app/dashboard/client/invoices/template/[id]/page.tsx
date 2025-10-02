@@ -17,7 +17,7 @@ import {
   Printer
 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import InvoiceTemplate from '@/components/invoice/InvoiceTemplate'
 // html2pdf will be imported dynamically to avoid SSR issues
 

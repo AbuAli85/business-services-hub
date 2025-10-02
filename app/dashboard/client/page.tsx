@@ -17,7 +17,7 @@ import {
   Target
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { ClientDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 import { logger } from '@/lib/logger'
 

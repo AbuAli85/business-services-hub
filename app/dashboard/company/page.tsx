@@ -48,7 +48,7 @@ import {
   BarChart3,
   Activity
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 
 import { logger } from '@/lib/logger'
 interface Company {
