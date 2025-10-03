@@ -200,5 +200,4 @@ export const userSessionManager = UserSessionManager.getInstance()
 // Export for use in browser console
 if (typeof window !== 'undefined') {
   (window as any).userSessionManager = userSessionManager
-  (window as any).profileManager = profileManager
 }
