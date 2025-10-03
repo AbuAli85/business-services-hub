@@ -341,7 +341,8 @@ export default function DashboardLayout({
           setTimeout(() => reject(new Error('Profile check timeout')), 3000)
         )
         
-        const { data: profile } = await Promise.race([profileCheckPromise, profileCheckTimeout])
+        const profileResult = await Promise.race([profileCheckPromise, profileCheckTimeout]) as { data: any }
+        const { data: profile } = profileResult
         console.log('📋 Profile check result:', profile)
 
         if (profile) {
@@ -405,7 +406,8 @@ export default function DashboardLayout({
             setTimeout(() => reject(new Error('Company fetch timeout')), 2000)
           )
           
-          const { data: profile } = await Promise.race([companyPromise, companyTimeout])
+          const companyResult = await Promise.race([companyPromise, companyTimeout]) as { data: any }
+          const { data: profile } = companyResult
           
           if (profile?.company_id) {
             const { data: company } = await supabase
@@ -443,7 +445,8 @@ export default function DashboardLayout({
             setTimeout(() => reject(new Error('Client info fetch timeout')), 2000)
           )
           
-          const { data: company } = await Promise.race([clientPromise, clientTimeout])
+          const clientResult = await Promise.race([clientPromise, clientTimeout]) as { data: any }
+          const { data: company } = clientResult
           
           if (company?.logo_url) {
             setUserLogoUrl(company.logo_url)
