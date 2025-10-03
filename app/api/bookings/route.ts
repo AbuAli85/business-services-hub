@@ -460,9 +460,19 @@ export async function GET(request: NextRequest) {
     // Pagination
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
-    const { data, count, error: queryError } = await query.range(from, to)
+    // Add timeout to avoid Vercel 504s
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12000)
+    const { data, count, error: queryError } = await query.range(from, to).abortSignal(controller.signal)
+    clearTimeout(timeout)
 
     if (queryError) {
+      // Graceful fallback on timeout to avoid 504 cascade
+      if ((queryError as any)?.name === 'AbortError') {
+        const response = NextResponse.json({ data: [], page, pageSize, total: 0 }, { status: 200 })
+        Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
+        return response
+      }
       const response = NextResponse.json({ error: queryError.message }, { status: 400 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response

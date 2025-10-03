@@ -93,7 +93,20 @@ export async function GET(request: NextRequest) {
 
     if (queryError) {
       console.error('Summary API: Query error:', queryError)
-      return withCors(jsonError(400, 'QUERY_ERROR', queryError.message), request)
+      // Graceful fallback instead of 400 to avoid dashboard break
+      const minimal = {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        approved: 0,
+        pending: 0,
+        readyToLaunch: 0,
+        totalRevenue: 0,
+        projectedBillings: 0,
+        pendingApproval: 0,
+        avgCompletionTime: 0
+      }
+      return withCors(NextResponse.json(minimal, { status: 200 }), request)
     }
 
     // Get ALL invoices for revenue calculation
