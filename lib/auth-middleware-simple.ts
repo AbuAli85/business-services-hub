@@ -34,7 +34,8 @@ export class SimpleAuthMiddleware {
 
       // Quick user verification
       const supabase = createMiddlewareClient()
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+      const { data, error: userError } = await supabase.auth.getUser(token)
+      const user = data?.user
 
       if (userError || !user) {
         return {
