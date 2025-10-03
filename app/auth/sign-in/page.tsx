@@ -96,8 +96,12 @@ function SignInForm() {
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.access_token && session?.refresh_token && session?.expires_at) {
             await syncSessionCookies(session.access_token, session.refresh_token, session.expires_at)
+            // Add a small delay to ensure cookies are set before redirect
+            await new Promise(resolve => setTimeout(resolve, 200))
           }
-        } catch {}
+        } catch (error) {
+          console.error('Session sync failed:', error)
+        }
 
         // Redirect back if provided, else dashboard
         const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard'

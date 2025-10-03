@@ -71,7 +71,35 @@ export default function DashboardLayout({
   useEffect(() => {
     checkUser()
     fetchNotifications()
+    
+    // Add a timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      if (loading && !user) {
+        console.warn('⚠️ Dashboard loading timeout - redirecting to sign-in')
+        router.push('/auth/sign-in')
+      }
+    }, 10000) // 10 second timeout
+    
+    return () => clearTimeout(loadingTimeout)
   }, [])
+
+  // Add a fallback mechanism to handle session issues
+  useEffect(() => {
+    const handleStorageChange = () => {
+      // If user is null and loading is false, try to check user again
+      if (!user && !loading) {
+        console.log('🔄 Storage change detected, re-checking user session')
+        checkUser()
+      }
+    }
+
+    // Listen for storage changes (session updates)
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [user, loading])
 
   // Realtime notifications table stream (proper cleanup)
   useEffect(() => {
@@ -153,6 +181,10 @@ export default function DashboardLayout({
   const checkUser = async () => {
     try {
       const supabase = await getSupabaseClient()
+      
+      // Add a small delay to ensure session cookies are properly set
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError) {
@@ -164,8 +196,20 @@ export default function DashboardLayout({
       
       if (!session) {
         logger.warn('No active session found')
-        router.push('/auth/sign-in')
-        return
+        // Try to refresh the session before redirecting
+        try {
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+          if (refreshError || !refreshedSession) {
+            router.push('/auth/sign-in')
+            return
+          }
+          // Use the refreshed session
+          session = refreshedSession
+        } catch (refreshError) {
+          logger.warn('Session refresh failed:', refreshError)
+          router.push('/auth/sign-in')
+          return
+        }
       }
 
       // Use user metadata from auth instead of database profile
