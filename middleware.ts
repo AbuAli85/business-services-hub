@@ -88,8 +88,12 @@ export async function middleware(req: NextRequest) {
 
   // Rate limiting for API routes
   if (pathname.startsWith('/api/')) {
-    const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown'
+    const ip = (req.headers.get('x-real-ip')
+      || req.headers.get('x-forwarded-for')?.split(',')[0]
+      || (req as any).ip
+      || 'unknown') as string
     if (isRateLimited(ip)) {
+      console.warn(`[rate-limit] Too many requests from ${ip} to ${pathname}`)
       return new NextResponse(
         JSON.stringify({ error: 'Too many requests' }), 
         { 
@@ -122,6 +126,9 @@ export async function middleware(req: NextRequest) {
       const { data: { user }, error } = await supabase.auth.getUser(accessToken)
       
       if (error || !user) {
+        if (error) {
+          console.error('[auth] getUser error:', { message: (error as any).message, pathname })
+        }
         return NextResponse.redirect(new URL('/auth/sign-in', req.url))
       }
 
@@ -133,6 +140,7 @@ export async function middleware(req: NextRequest) {
       return response
       
     } catch (error) {
+      console.error('[auth] unexpected error during middleware auth check:', { error, pathname })
       // If auth check fails, redirect to sign-in
       return NextResponse.redirect(new URL('/auth/sign-in', req.url))
     }
