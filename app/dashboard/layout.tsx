@@ -69,6 +69,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
 
   useEffect(() => {
+    console.log('🚀 Dashboard layout mounted, starting auth check...')
     checkUser()
     fetchNotifications()
     
@@ -82,6 +83,11 @@ export default function DashboardLayout({
     
     return () => clearTimeout(loadingTimeout)
   }, [])
+
+  // Add a secondary effect to monitor loading state changes
+  useEffect(() => {
+    console.log('📊 Loading state changed:', { loading, hasUser: !!user })
+  }, [loading, user])
 
   // Add a fallback mechanism to handle session issues
   useEffect(() => {
@@ -179,33 +185,52 @@ export default function DashboardLayout({
   }, [user?.id])
 
   const checkUser = async () => {
+    console.log('🔍 Starting checkUser...')
     try {
       const supabase = await getSupabaseClient()
+      console.log('✅ Supabase client initialized')
       
       // Add a small delay to ensure session cookies are properly set
       await new Promise(resolve => setTimeout(resolve, 100))
+      console.log('⏱️ Delay completed')
       
       let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('📋 Session check result:', { 
+        hasSession: !!session, 
+        hasError: !!sessionError, 
+        userId: session?.user?.id,
+        email: session?.user?.email 
+      })
       
       if (sessionError) {
-        console.error('Session fetch error:', sessionError)
+        console.error('❌ Session fetch error:', sessionError)
         logger.error('Could not fetch session:', sessionError)
         router.push('/auth/sign-in')
         return
       }
       
       if (!session) {
+        console.warn('⚠️ No active session found, attempting refresh...')
         logger.warn('No active session found')
         // Try to refresh the session before redirecting
         try {
           const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+          console.log('🔄 Refresh result:', { 
+            hasRefreshedSession: !!refreshedSession, 
+            hasRefreshError: !!refreshError,
+            userId: refreshedSession?.user?.id 
+          })
+          
           if (refreshError || !refreshedSession) {
+            console.error('❌ Session refresh failed:', refreshError)
             router.push('/auth/sign-in')
             return
           }
           // Use the refreshed session
           session = refreshedSession
+          console.log('✅ Using refreshed session')
         } catch (refreshError) {
+          console.error('❌ Session refresh exception:', refreshError)
           logger.warn('Session refresh failed:', refreshError)
           router.push('/auth/sign-in')
           return
@@ -214,11 +239,14 @@ export default function DashboardLayout({
 
       // Use user metadata from auth instead of database profile
       const userMetadata = session.user.user_metadata
+      console.log('👤 User metadata:', userMetadata)
       
       let userRole = userMetadata?.role
+      console.log('🎭 Initial role from metadata:', userRole)
       
       // If no role in metadata, try to get from profile
       if (!userRole) {
+        console.log('🔍 No role in metadata, checking profile...')
         try {
           const { data: profile } = await supabase
             .from('profiles')
@@ -226,20 +254,27 @@ export default function DashboardLayout({
             .eq('id', session.user.id)
             .single()
           
+          console.log('📋 Profile data:', profile)
+          
           if (profile?.role) {
             userRole = profile.role
+            console.log('✅ Role from profile:', userRole)
           }
         } catch (error) {
+          console.warn('⚠️ Could not fetch role from profile:', error)
           logger.warn('Could not fetch role from profile:', error)
         }
       }
       
       // If still no role, redirect to onboarding
       if (!userRole) {
+        console.warn('❌ No role found for user, redirecting to onboarding')
         logger.warn('No role found for user, redirecting to onboarding')
         router.push('/auth/onboarding?role=client')
         return
       }
+      
+      console.log('🎯 Final user role:', userRole)
 
       // Check if user has completed profile and is verified
       try {
@@ -352,12 +387,15 @@ export default function DashboardLayout({
         company_name: companyName
       }
       
-              // Production logging removed
+      console.log('🎉 Setting final user:', finalUser)
       setUser(finalUser)
+      console.log('✅ User set successfully, loading should be false now')
     } catch (error) {
+      console.error('❌ Error checking user:', error)
       logger.error('Error checking user:', error)
       router.push('/auth/sign-in')
     } finally {
+      console.log('🏁 Setting loading to false')
       setLoading(false)
     }
   }
@@ -430,7 +468,11 @@ export default function DashboardLayout({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-sm text-gray-400 mt-2">Please wait while we verify your session</p>
+        </div>
       </div>
     )
   }

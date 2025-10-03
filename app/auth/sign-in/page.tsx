@@ -92,19 +92,35 @@ function SignInForm() {
         
         // Sync tokens to HttpOnly cookies for middleware
         try {
+          console.log('🔄 Starting session sync...')
           const supabase = await getSupabaseClient()
           const { data: { session } } = await supabase.auth.getSession()
+          console.log('📋 Session for sync:', { 
+            hasSession: !!session, 
+            hasAccessToken: !!session?.access_token,
+            hasRefreshToken: !!session?.refresh_token,
+            hasExpiresAt: !!session?.expires_at 
+          })
+          
           if (session?.access_token && session?.refresh_token && session?.expires_at) {
+            console.log('🔄 Syncing session cookies...')
             await syncSessionCookies(session.access_token, session.refresh_token, session.expires_at)
+            console.log('✅ Session cookies synced')
+            
             // Add a small delay to ensure cookies are set before redirect
+            console.log('⏱️ Waiting 200ms before redirect...')
             await new Promise(resolve => setTimeout(resolve, 200))
+            console.log('✅ Delay completed')
+          } else {
+            console.warn('⚠️ Missing session tokens for sync')
           }
         } catch (error) {
-          console.error('Session sync failed:', error)
+          console.error('❌ Session sync failed:', error)
         }
 
         // Redirect back if provided, else dashboard
         const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard'
+        console.log('🚀 Redirecting to:', target)
         router.replace(target)
       }
     } catch (err) {
