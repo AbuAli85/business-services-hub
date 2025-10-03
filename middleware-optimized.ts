@@ -111,7 +111,8 @@ export async function middleware(req: NextRequest) {
     try {
       // Quick session check without heavy database operations
       const supabase = createMiddlewareClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const { data, error } = await supabase.auth.getUser()
+      const user = data?.user
       
       if (error || !user) {
         return NextResponse.redirect(new URL('/auth/sign-in', req.url))
