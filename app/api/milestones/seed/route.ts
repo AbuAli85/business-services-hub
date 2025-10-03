@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -22,13 +23,14 @@ const SeedSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createRouteHandlerClient({ cookies })
     const body = await request.json()
     const { booking_id, plan } = SeedSchema.parse(body)
 
     // Auth
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
+      console.warn('Authentication failed in milestones seed API:', userError)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401, headers: corsHeaders }
@@ -43,6 +45,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (bookingError || !booking) {
+      console.warn('Booking not found in milestones seed API:', bookingError)
       return NextResponse.json(
         { error: 'Booking not found' },
         { status: 404, headers: corsHeaders }
@@ -59,10 +62,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Prevent duplicate seeding if milestones already exist
-    const { count: existingCount } = await supabase
+    const { count: existingCount, error: countError } = await supabase
       .from('milestones')
       .select('id', { count: 'exact', head: true })
       .eq('booking_id', booking_id)
+
+    if (countError) {
+      console.warn('Error checking existing milestones:', countError)
+      // If it's a permission error, continue anyway
+      if (countError.code === '42501' || countError.message.includes('permission denied')) {
+        console.warn('Permission denied for milestones table, continuing with seed operation')
+      } else {
+        return NextResponse.json(
+          { error: 'Failed to check existing milestones', details: countError.message },
+          { status: 500, headers: corsHeaders }
+        )
+      }
+    }
 
     if ((existingCount ?? 0) > 0) {
       return NextResponse.json(
@@ -162,6 +178,15 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (mErr || !milestone) {
+        console.warn('Error creating milestone:', mErr)
+        // If it's a permission error, return a more specific error
+        if (mErr?.code === '42501' || mErr?.message?.includes('permission denied')) {
+          console.warn('Permission denied for milestones table during creation')
+          return NextResponse.json(
+            { error: 'Permission denied: Unable to create milestone. Please check your database permissions.' },
+            { status: 403, headers: corsHeaders }
+          )
+        }
         return NextResponse.json(
           { error: 'Failed to create milestone', details: mErr?.message },
           { status: 500, headers: corsHeaders }
@@ -200,6 +225,15 @@ export async function POST(request: NextRequest) {
           .from('tasks')
           .insert(tasksToInsert)
         if (tErr) {
+          console.warn('Error creating tasks:', tErr)
+          // If it's a permission error, return a more specific error
+          if (tErr.code === '42501' || tErr.message.includes('permission denied')) {
+            console.warn('Permission denied for tasks table during creation')
+            return NextResponse.json(
+              { error: 'Permission denied: Unable to create tasks. Please check your database permissions.' },
+              { status: 403, headers: corsHeaders }
+            )
+          }
           return NextResponse.json(
             { error: 'Failed to create tasks', details: tErr.message },
             { status: 500, headers: corsHeaders }
