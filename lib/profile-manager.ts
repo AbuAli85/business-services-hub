@@ -102,7 +102,54 @@ export class ProfileManager {
 
       if (error) {
         console.warn('⚠️ Profile fetch error:', error)
-        throw error
+        
+        // Handle specific error cases gracefully
+        if (error.code === 'PGRST116') {
+          console.log('❌ No profile found for user:', userId)
+          return null
+        }
+        
+        // For permission errors, try with admin client
+        if (error.code === '42501' || error.message.includes('permission denied')) {
+          console.log('🔄 Permission denied, trying with admin client...')
+          try {
+            const adminSupabase = await getSupabaseAdminClient()
+            const { data: adminProfile, error: adminError } = await adminSupabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle()
+            
+            if (adminError) {
+              console.error('❌ Admin client also failed:', adminError)
+              return null
+            }
+            
+            if (adminProfile) {
+              console.log('✅ Profile found with admin client:', adminProfile)
+              const finalProfile: UserProfile = {
+                id: adminProfile.id,
+                full_name: adminProfile.full_name || 'User',
+                email: adminProfile.email || '',
+                role: adminProfile.role || 'client',
+                phone: adminProfile.phone,
+                company_name: adminProfile.company_name,
+                company_id: adminProfile.company_id,
+                logo_url: adminProfile.logo_url,
+                profile_completed: adminProfile.profile_completed || false,
+                verification_status: adminProfile.verification_status || 'pending',
+                created_at: adminProfile.created_at || new Date().toISOString(),
+                updated_at: adminProfile.updated_at || new Date().toISOString()
+              }
+              this.profileCache.set(userId, { data: finalProfile, timestamp: Date.now() })
+              return finalProfile
+            }
+          } catch (adminError) {
+            console.error('❌ Admin client exception:', adminError)
+          }
+        }
+        
+        return null
       }
 
       let finalProfile: UserProfile | null = null

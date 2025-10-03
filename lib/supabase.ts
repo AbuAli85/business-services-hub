@@ -12,6 +12,9 @@ let isInitializing = false
 let initializationPromise: Promise<SupabaseClient> | null = null
 let lastProactiveRefreshAt = 0
 
+// Global flag to prevent multiple client creation
+let clientCreationInProgress = false
+
 // Helper function to check environment variables (moved outside async function)
 function checkEnvironmentVariables() {
   const missingVars = []
@@ -39,8 +42,18 @@ export async function getSupabaseClient(): Promise<SupabaseClient> {
     return initializationPromise
   }
 
+  // Prevent multiple client creation
+  if (clientCreationInProgress) {
+    // Wait a bit and try again
+    await new Promise(resolve => setTimeout(resolve, 100))
+    if (supabaseClient) {
+      return supabaseClient
+    }
+  }
+
   // Start initialization
   isInitializing = true
+  clientCreationInProgress = true
   initializationPromise = initializeSupabaseClient()
   
   try {
@@ -51,6 +64,7 @@ export async function getSupabaseClient(): Promise<SupabaseClient> {
     throw new Error('Could not initialize Supabase client. Please check your environment variables.')
   } finally {
     isInitializing = false
+    clientCreationInProgress = false
     initializationPromise = null
   }
 }

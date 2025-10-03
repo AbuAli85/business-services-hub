@@ -84,7 +84,7 @@ export default function DashboardLayout({
         console.warn('⚠️ Dashboard loading timeout - trying simple auth check...')
         simpleAuthCheck()
       }
-    }, 10000) // 10 second timeout
+    }, 5000) // 5 second timeout (reduced from 10)
     
     return () => clearTimeout(loadingTimeout)
   }, [])

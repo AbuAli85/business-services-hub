@@ -22,16 +22,22 @@ export class ProgressDataService {
         .eq('booking_id', bookingId)
         .order('order_index', { ascending: true })
 
-      if (milestonesError) throw milestonesError
+      if (milestonesError) {
+        console.warn('Error fetching milestones:', milestonesError)
+        // Don't throw, just return empty array
+      }
 
-      // Get time entries
+      // Get time entries with error handling
       const { data: timeEntries, error: timeEntriesError } = await supabase
         .from('time_entries')
         .select('*')
         .eq('booking_id', bookingId)
         .order('logged_at', { ascending: false })
 
-      if (timeEntriesError) throw timeEntriesError
+      if (timeEntriesError) {
+        console.warn('Error fetching time entries:', timeEntriesError)
+        // Don't throw, just return empty array
+      }
 
       // Get comments
       const { data: comments, error: commentsError } = await supabase
