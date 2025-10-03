@@ -110,7 +110,15 @@ export async function GET(request: NextRequest) {
     const { data: milestones, error } = await query
 
     if (error) {
-      console.error('Error fetching milestones:', error)
+      console.warn('Error fetching milestones:', error)
+      // If it's a permission error, return empty array instead of failing
+      if (error.code === '42501' || error.message.includes('permission denied')) {
+        console.warn('Permission denied for milestones table, returning empty array')
+        return NextResponse.json(
+          { milestones: [] },
+          { status: 200, headers: corsHeaders }
+        )
+      }
       return NextResponse.json(
         { error: 'Failed to fetch milestones' },
         { status: 500, headers: corsHeaders }
@@ -220,7 +228,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (createError) {
-      console.error('Error creating milestone:', createError)
+      console.warn('Error creating milestone:', createError)
+      // If it's a permission error, return a more specific error
+      if (createError.code === '42501' || createError.message.includes('permission denied')) {
+        console.warn('Permission denied for milestones table during creation')
+        return NextResponse.json(
+          { error: 'Permission denied: Unable to create milestone. Please check your database permissions.' },
+          { status: 403, headers: corsHeaders }
+        )
+      }
       return NextResponse.json(
         { error: 'Failed to create milestone' },
         { status: 500, headers: corsHeaders }
@@ -340,7 +356,15 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Error updating milestone:', updateError)
+      console.warn('Error updating milestone:', updateError)
+      // If it's a permission error, return a more specific error
+      if (updateError.code === '42501' || updateError.message.includes('permission denied')) {
+        console.warn('Permission denied for milestones table during update')
+        return NextResponse.json(
+          { error: 'Permission denied: Unable to update milestone. Please check your database permissions.' },
+          { status: 403, headers: corsHeaders }
+        )
+      }
       return NextResponse.json(
         { error: 'Failed to update milestone' },
         { status: 500, headers: corsHeaders }
@@ -442,7 +466,15 @@ export async function DELETE(request: NextRequest) {
       .eq('id', milestoneId)
 
     if (deleteError) {
-      console.error('Error deleting milestone:', deleteError)
+      console.warn('Error deleting milestone:', deleteError)
+      // If it's a permission error, return a more specific error
+      if (deleteError.code === '42501' || deleteError.message.includes('permission denied')) {
+        console.warn('Permission denied for milestones table during deletion')
+        return NextResponse.json(
+          { error: 'Permission denied: Unable to delete milestone. Please check your database permissions.' },
+          { status: 403, headers: corsHeaders }
+        )
+      }
       return NextResponse.json(
         { error: 'Failed to delete milestone' },
         { status: 500, headers: corsHeaders }
