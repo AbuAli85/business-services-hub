@@ -156,6 +156,7 @@ export const config = {
   matcher: [
     '/api/:path*',
     '/dashboard/:path*',
+    '/auth/:path*',
     '/auth/onboarding/:path*',
     '/auth/pending-approval/:path*'
   ]
