@@ -23,11 +23,7 @@ BEGIN
                 USING (
                     auth.uid() = user_id 
                     OR auth.uid() = provider_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY bookings_insert_optimized ON public.bookings
@@ -41,21 +37,13 @@ BEGIN
                 USING (
                     auth.uid() = user_id 
                     OR auth.uid() = provider_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY bookings_delete_optimized ON public.bookings
                 FOR DELETE TO authenticated 
                 USING (
-                    EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND role = 'admin'
-                    )
+                    (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for bookings table';
@@ -82,11 +70,7 @@ BEGIN
                 FOR SELECT TO authenticated 
                 USING (
                     auth.uid() = id 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles p2
-                        WHERE p2.id = auth.uid() 
-                        AND (p2.role = 'admin' OR p2.role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY profiles_insert_optimized ON public.profiles
@@ -97,22 +81,14 @@ BEGIN
                 FOR UPDATE TO authenticated 
                 USING (
                     auth.uid() = id 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles p2
-                        WHERE p2.id = auth.uid() 
-                        AND (p2.role = 'admin' OR p2.role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY profiles_delete_optimized ON public.profiles
                 FOR DELETE TO authenticated 
                 USING (
                     auth.uid() = id 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles p2
-                        WHERE p2.id = auth.uid() 
-                        AND p2.role = 'admin'
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for profiles table';
@@ -140,11 +116,7 @@ BEGIN
                 USING (
                     auth.uid() = created_by 
                     OR auth.uid() = provider_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                     OR status = 'approved'  -- Public services
                 );
             
@@ -157,22 +129,14 @@ BEGIN
                 USING (
                     auth.uid() = created_by 
                     OR auth.uid() = provider_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY services_delete_optimized ON public.services
                 FOR DELETE TO authenticated 
                 USING (
                     auth.uid() = created_by 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND role = 'admin'
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for services table';
@@ -200,11 +164,7 @@ BEGIN
                 USING (
                     auth.uid() = client_id 
                     OR auth.uid() = provider_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY invoices_insert_optimized ON public.invoices
@@ -216,22 +176,14 @@ BEGIN
                 USING (
                     auth.uid() = client_id 
                     OR auth.uid() = provider_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY invoices_delete_optimized ON public.invoices
                 FOR DELETE TO authenticated 
                 USING (
                     auth.uid() = provider_id 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND role = 'admin'
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for invoices table';
@@ -259,11 +211,7 @@ BEGIN
                 USING (
                     auth.uid() = sender_id 
                     OR auth.uid() = receiver_id
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY messages_insert_optimized ON public.messages
@@ -274,22 +222,14 @@ BEGIN
                 FOR UPDATE TO authenticated 
                 USING (
                     auth.uid() = sender_id 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY messages_delete_optimized ON public.messages
                 FOR DELETE TO authenticated 
                 USING (
                     auth.uid() = sender_id 
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND role = 'admin'
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for messages table';
@@ -424,11 +364,7 @@ BEGIN
                         WHERE b.id = booking_id 
                         AND (b.user_id = auth.uid() OR b.provider_id = auth.uid())
                     )
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY milestones_insert_optimized ON public.milestones
@@ -449,21 +385,13 @@ BEGIN
                         WHERE b.id = booking_id 
                         AND (b.user_id = auth.uid() OR b.provider_id = auth.uid())
                     )
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY milestones_delete_optimized ON public.milestones
                 FOR DELETE TO authenticated 
                 USING (
-                    EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND role = 'admin'
-                    )
+                    (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for milestones table';
@@ -496,11 +424,7 @@ BEGIN
                         AND (b.user_id = auth.uid() OR b.provider_id = auth.uid())
                     )
                     OR auth.uid() = assigned_to
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY tasks_insert_optimized ON public.tasks
@@ -524,21 +448,13 @@ BEGIN
                         AND (b.user_id = auth.uid() OR b.provider_id = auth.uid())
                     )
                     OR auth.uid() = assigned_to
-                    OR EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND (role = 'admin' OR role = 'staff')
-                    )
+                    OR (current_setting('request.jwt.claims', true)::jsonb ->> 'role') IN ('admin','staff')
                 );
             
             CREATE POLICY tasks_delete_optimized ON public.tasks
                 FOR DELETE TO authenticated 
                 USING (
-                    EXISTS (
-                        SELECT 1 FROM public.profiles 
-                        WHERE id = auth.uid() 
-                        AND role = 'admin'
-                    )
+                    (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'admin'
                 );
             
             RAISE NOTICE 'Optimized policies for tasks table';

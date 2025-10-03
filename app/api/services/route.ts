@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
 import { getSupabaseAdminClient } from '@/lib/supabase'
 import { z } from 'zod'
 import { withCors, ok, created, badRequest, unauthorized, forbidden, handleOptions } from '@/lib/api-helpers'
@@ -32,8 +31,8 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Create a public client for services (no authentication required)
-    const supabase = await getSupabaseClient()
+    // Use admin client for a single efficient query (no RLS overhead, fewer round trips)
+    const supabase = await getSupabaseAdminClient()
     const { searchParams } = new URL(request.url)
     
     // Get query parameters
@@ -44,17 +43,15 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search')
     
-    // Use regular services table with manual enrichment (enriched views not yet available)
+    // Minimal fields for fast dashboard render
     let query = supabase
       .from('services')
-      .select(`
-        id, title, description, category, status, base_price, currency, 
-        cover_image_url, featured, created_at, updated_at, provider_id
-      `)
+      .select(
+        `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id`,
+        { count: 'exact' }
+      )
       .eq('status', status)
       .order('created_at', { ascending: false })
-    
-    const useEnrichedView = false
     
     // Apply filters
     if (category) {
@@ -66,147 +63,31 @@ export async function GET(request: NextRequest) {
     }
     
     if (search) {
-      if (useEnrichedView) {
-        query = query.or(`
-          title.ilike.%${search}%,
-          description.ilike.%${search}%,
-          provider_name.ilike.%${search}%,
-          category.ilike.%${search}%
-        `)
-      } else {
-        query = query.or(`
-          title.ilike.%${search}%,
-          description.ilike.%${search}%,
-          category.ilike.%${search}%
-        `)
-      }
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,category.ilike.%${search}%`)
     }
     
     // Apply pagination
     const offset = (page - 1) * limit
     query = query.range(offset, offset + limit - 1)
     
-    const { data: services, error, count } = await query
-    
-    // Debug logging
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Raw services from DB:', services?.slice(0, 2)) // Log first 2 services
-    }
-    
+    // Run with a timeout guard to avoid hanging
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+    const { data: services, error, count } = await query.abortSignal(controller.signal)
+    clearTimeout(timeout)
+
     if (error) {
       console.error('Error fetching services:', error)
       return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
     }
-    
-    // Process services data based on whether we used enriched view or not
-    let enrichedServices = services || []
-    
-    if (!useEnrichedView) {
-      // Create service client for provider lookups (bypasses RLS)
-      const serviceSupabase = await getSupabaseAdminClient()
-      
-      // If we used the regular services table, we need to enrich the data manually
-      enrichedServices = await Promise.all(
-        (services || []).map(async (service) => {
-          // Get provider information using service client
-          const { data: provider, error: providerError } = await serviceSupabase
-            .from('profiles')
-            .select('full_name, email, phone, country, is_verified, company_id')
-            .eq('id', service.provider_id)
-            .single()
-          
-          if (providerError) {
-            console.warn(`Provider lookup failed for ${service.provider_id}:`, providerError)
-          }
-          
-          // Get company information
-          let company = null
-          if (provider?.company_id) {
-            const { data: companyData } = await serviceSupabase
-              .from('companies')
-              .select('name, cr_number, vat_number, logo_url')
-              .eq('id', provider.company_id)
-              .single()
-            company = companyData
-          }
-          
-          // Get booking count and revenue
-          const { count: bookingCount } = await serviceSupabase
-            .from('bookings')
-            .select('*', { count: 'exact', head: true })
-            .eq('service_id', service.id)
-          
-          // Get review statistics
-          const { data: reviews } = await serviceSupabase
-            .from('reviews')
-            .select('rating')
-            .eq('booking_id', service.id)
-          
-          const avgRating = reviews && reviews.length > 0 
-            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
-            : 0
-          
-          const reviewCount = reviews?.length || 0
-          
-          // Calculate total revenue
-          const { data: bookings } = await serviceSupabase
-            .from('bookings')
-            .select('total_amount')
-            .eq('service_id', service.id)
-          
-          const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0
-          
-          return {
-            ...service,
-            provider_name: provider?.full_name || 'Service Provider',
-            provider_email: provider?.email || '',
-            provider_phone: provider?.phone || '',
-            provider_country: provider?.country || '',
-            provider_verified: provider?.is_verified || false,
-            company_id: provider?.company_id || null,
-            company_name: company?.name || null,
-            company_cr_number: company?.cr_number || null,
-            company_vat_number: company?.vat_number || null,
-            company_logo_url: company?.logo_url || null,
-            booking_count: bookingCount || 0,
-            total_revenue: totalRevenue,
-            avg_rating: avgRating,
-            review_count: reviewCount
-          }
-        })
-      )
-    }
-    
-    // Debug logging for enriched services
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Enriched services:', enrichedServices?.slice(0, 2)) // Log first 2 enriched services
-    }
-    
-    // Get total count for pagination (respecting filters)
-    let countQuery = supabase
-      .from('services')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', status)
 
-    if (category) {
-      countQuery = countQuery.eq('category', category)
-    }
-    if (provider_id) {
-      countQuery = countQuery.eq('provider_id', provider_id)
-    }
-    if (search) {
-      countQuery = countQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
-    }
-
-    const { count: totalCount } = await countQuery
-    
     return ok({
-      services: enrichedServices,
+      services: services || [],
       pagination: {
         page,
         limit,
-        total: totalCount || 0,
-        pages: Math.ceil((totalCount || 0) / limit)
+        total: count || 0,
+        pages: Math.ceil((count || 0) / limit)
       }
     })
     
