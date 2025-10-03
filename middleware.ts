@@ -50,7 +50,8 @@ const PUBLIC_API_ROUTES = [
   '/api/webhooks',
   '/api/auth/sync-token',
   '/api/auth/session',
-  '/api/services' // Public service listings
+  '/api/services', // Public service listings
+  '/api/bookings/summary' // Dashboard summary endpoint should be public (handled via RLS)
 ]
 
 function isPublicRoute(pathname: string): boolean {
