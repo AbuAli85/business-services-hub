@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('bookings page loads for admin', async ({ page }) => {
   // Navigate to the bookings page
-  await page.goto('/dashboard/bookings-v2')
+  await page.goto('/dashboard/bookings')
   
   // Wait for the page to load
   await page.waitForLoadState('networkidle')
@@ -16,14 +16,14 @@ test('bookings page loads for admin', async ({ page }) => {
 
 test('bookings page shows loading state', async ({ page }) => {
   // Navigate to the bookings page
-  await page.goto('/dashboard/bookings-v2')
+  await page.goto('/dashboard/bookings')
   
   // Check if loading state is shown initially
   await expect(page.getByText('Loading bookings...')).toBeVisible()
 })
 
 test('bookings page has search functionality', async ({ page }) => {
-  await page.goto('/dashboard/bookings-v2')
+  await page.goto('/dashboard/bookings')
   await page.waitForLoadState('networkidle')
   
   // Check if search input is present
@@ -35,7 +35,7 @@ test('bookings page has search functionality', async ({ page }) => {
 })
 
 test('bookings page has filter options', async ({ page }) => {
-  await page.goto('/dashboard/bookings-v2')
+  await page.goto('/dashboard/bookings')
   await page.waitForLoadState('networkidle')
   
   // Check if status filter buttons are present
@@ -47,7 +47,7 @@ test('bookings page has filter options', async ({ page }) => {
 })
 
 test('bookings page has pagination controls', async ({ page }) => {
-  await page.goto('/dashboard/bookings-v2')
+  await page.goto('/dashboard/bookings')
   await page.waitForLoadState('networkidle')
   
   // Check if pagination controls are present (if there are multiple pages)
@@ -58,7 +58,7 @@ test('bookings page has pagination controls', async ({ page }) => {
 })
 
 test('bookings page shows statistics cards', async ({ page }) => {
-  await page.goto('/dashboard/bookings-v2')
+  await page.goto('/dashboard/bookings')
   await page.waitForLoadState('networkidle')
   
   // Check if statistics cards are present

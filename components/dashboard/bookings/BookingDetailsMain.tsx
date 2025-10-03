@@ -45,14 +45,69 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
   }, [declineBooking])
 
   const handleExport = useCallback(() => {
-    // TODO: Implement export functionality
-    toast.success('Export functionality coming soon')
-  }, [])
+    if (!booking) return
+    
+    try {
+      // Create a downloadable JSON export of the booking
+      const exportData = {
+        bookingId: booking.id,
+        status: booking.status,
+        serviceTitle: booking.service?.title || booking.title || 'N/A',
+        clientName: booking.client?.full_name || 'N/A',
+        providerName: booking.provider?.full_name || 'N/A',
+        amount: booking.amount || 0,
+        currency: booking.currency || 'OMR',
+        createdAt: booking.created_at,
+        scheduledDate: booking.scheduled_date,
+        notes: booking.notes,
+        exportedAt: new Date().toISOString()
+      }
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `booking-${booking.id.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Booking exported successfully')
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export booking')
+    }
+  }, [booking])
 
-  const handleShare = useCallback(() => {
-    // TODO: Implement share functionality
-    toast.success('Share functionality coming soon')
-  }, [])
+  const handleShare = useCallback(async () => {
+    if (!booking) return
+    
+    try {
+      const shareUrl = `${window.location.origin}/dashboard/bookings/${booking.id}`
+      const shareText = `Booking: ${booking.service?.title || booking.title || 'Service'} - Status: ${booking.status}`
+      
+      // Use Web Share API if available
+      if (navigator.share) {
+        await navigator.share({
+          title: shareText,
+          text: `Check out this booking details`,
+          url: shareUrl
+        })
+        toast.success('Booking shared successfully')
+      } else {
+        // Fallback: Copy to clipboard
+        await navigator.clipboard.writeText(shareUrl)
+        toast.success('Booking link copied to clipboard')
+      }
+    } catch (error) {
+      // User cancelled or error occurred
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Share error:', error)
+        toast.error('Failed to share booking')
+      }
+    }
+  }, [booking])
 
   if (loading) {
     return (
