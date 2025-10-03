@@ -49,6 +49,7 @@ const PUBLIC_ROUTES = [
 const PUBLIC_API_ROUTES = [
   '/api/webhooks',
   '/api/auth/sync-token',
+  '/api/auth/session',
   '/api/services' // Public service listings
 ]
 
