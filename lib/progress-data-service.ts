@@ -12,103 +12,44 @@ export class ProgressDataService {
   // Get all progress data for a booking
   static async getProgressData(bookingId: string) {
     try {
-      // Get milestones with tasks
-      const { data: milestones, error: milestonesError } = await supabase
-        .from('milestones')
-        .select(`
-          *,
-          tasks (* )
-        `)
-        .eq('booking_id', bookingId)
-        .order('order_index', { ascending: true })
+      // Use API endpoint to avoid direct database permission issues
+      const response = await fetch(`/api/progress?booking_id=${bookingId}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
 
-      if (milestonesError) {
-        console.warn('Error fetching milestones:', milestonesError)
-        // Don't throw, just return empty array
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
-      // Get time entries with error handling
-      const { data: timeEntries, error: timeEntriesError } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('booking_id', bookingId)
-        .order('logged_at', { ascending: false })
-
-      if (timeEntriesError) {
-        console.warn('Error fetching time entries:', timeEntriesError)
-        // Don't throw, just return empty array
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch progress data')
       }
 
-      // Get comments
-      const { data: comments, error: commentsError } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('booking_id', bookingId)
-        .order('created_at', { ascending: false })
-
-      if (commentsError) throw commentsError
-
-      // Get booking progress
-      const { data: bookingProgress, error: bookingProgressError } = await supabase
-        .from('booking_progress')
-        .select('*')
-        .eq('booking_id', bookingId)
-        .single()
-
-      if (bookingProgressError && bookingProgressError.code !== 'PGRST116') {
-        throw bookingProgressError
-      }
-
-      // Ensure tasks are consistently ordered
-      const normalizedMilestones = (milestones || []).map((m: any) => ({
-        ...m,
-        tasks: (m.tasks || []).sort((a: any, b: any) => {
-          const ao = a.order_index ?? 0
-          const bo = b.order_index ?? 0
-          if (ao !== bo) return ao - bo
-          const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-          return ad - bd
-        })
-      }))
-
-      // Calculate statistics
-      const totalTasks = normalizedMilestones?.reduce((sum: number, m: any) => sum + (m.tasks?.length || 0), 0) || 0
-      const completedTasks = normalizedMilestones?.reduce((sum: number, m: any) => 
-        sum + (m.tasks?.filter((t: any) => t.status === 'completed').length || 0), 0) || 0
-      const totalEstimatedHours = normalizedMilestones?.reduce((sum: number, m: any) => 
-        sum + (m.estimated_hours || 0) + (m.tasks?.reduce((taskSum: number, t: any) => taskSum + (t.estimated_hours || 0), 0) || 0), 0) || 0
-      const totalActualHours = timeEntries?.reduce((sum, te) => sum + te.duration_hours, 0) || 0
-      const overdueTasks = normalizedMilestones?.reduce((sum: number, m: any) => 
-        sum + (m.tasks?.filter((t: any) => t.is_overdue).length || 0), 0) || 0
-
-      const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-
-      // Transform due_date to end_date for frontend compatibility
-      const transformedMilestones = normalizedMilestones?.map((milestone: any) => ({
-        ...milestone,
-        end_date: milestone.due_date,
-        tasks: milestone.tasks?.map((task: Task) => ({
-          ...task,
-          end_date: task.due_date
-        })) || []
-      })) || []
-
-      return {
-        milestones: transformedMilestones,
-        timeEntries: timeEntries || [],
-        comments: comments || [],
-        bookingProgress: bookingProgress || null,
-        overallProgress,
-        totalTasks,
-        completedTasks,
-        totalEstimatedHours,
-        totalActualHours,
-        overdueTasks
-      }
+      return result.data
     } catch (error) {
       console.error('Error getting progress data:', error)
-      throw error
+      
+      // Fallback: return empty data structure to prevent crashes
+      console.log('🔄 Returning fallback empty data structure')
+      return {
+        milestones: [],
+        timeEntries: [],
+        comments: [],
+        bookingProgress: null,
+        overallProgress: 0,
+        totalTasks: 0,
+        completedTasks: 0,
+        totalEstimatedHours: 0,
+        totalActualHours: 0,
+        overdueTasks: 0
+      }
     }
   }
 

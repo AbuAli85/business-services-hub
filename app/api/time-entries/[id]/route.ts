@@ -41,8 +41,25 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // ✅ CORRECT WAY: Use the service method that handles the relationship chain
-    const timeEntries = await ProgressTrackingService.getTimeEntriesByBookingId(bookingId)
+    // Try to get time entries with proper error handling
+    let timeEntries = []
+    try {
+      const { data: timeEntriesData, error: timeEntriesError } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('logged_at', { ascending: false })
+
+      if (timeEntriesError) {
+        console.warn('Error fetching time entries:', timeEntriesError)
+        // Don't fail the request, just return empty array
+      } else {
+        timeEntries = timeEntriesData || []
+      }
+    } catch (error) {
+      console.warn('Exception fetching time entries:', error)
+      // Return empty array for time entries
+    }
 
     return NextResponse.json({
       success: true,

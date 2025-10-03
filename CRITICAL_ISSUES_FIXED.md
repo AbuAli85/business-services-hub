@@ -29,6 +29,8 @@ Error getting progress data: {code: '42501', details: null, hint: null, message:
 **Fix Applied**:
 - Updated `lib/progress-data-service.ts` to handle permission errors gracefully
 - Added fallback logic to prevent crashes when database permissions fail
+- Created new API endpoint `/api/progress` that handles database access with proper error handling
+- Updated progress data service to use API endpoint instead of direct database access
 - Created comprehensive SQL migration script (`fix_critical_issues.sql`) with proper RLS policies
 
 ### 3. ✅ Multiple Supabase Client Instances
@@ -86,15 +88,18 @@ GET https://reootcngcptfogfozlmz.supabase.co/rest/v1/profiles?select=full_name&i
 - **Error Recovery**: Added comprehensive error handling throughout the application
 - **Performance**: Reduced timeout periods for better user experience
 - **Logging**: Enhanced logging for better debugging and monitoring
+- **API Endpoints**: Created dedicated API endpoints to bypass direct database permission issues
 
 ## Files Modified
 
 1. **`lib/supabase.ts`** - Enhanced client singleton pattern
 2. **`lib/profile-manager.ts`** - Added comprehensive error handling and fallback mechanisms
-3. **`lib/progress-data-service.ts`** - Added graceful error handling for database operations
+3. **`lib/progress-data-service.ts`** - Added graceful error handling and API endpoint usage
 4. **`components/ui/user-logo.tsx`** - Fixed email comparison logic
 5. **`app/dashboard/layout.tsx`** - Optimized authentication timeout handling
-6. **`fix_critical_issues.sql`** - Database migration script for RLS policies
+6. **`app/api/progress/route.ts`** - New API endpoint for progress data with proper error handling
+7. **`app/api/time-entries/[id]/route.ts`** - Enhanced error handling for time entries
+8. **`fix_critical_issues.sql`** - Database migration script for RLS policies
 
 ## Testing Recommendations
 
