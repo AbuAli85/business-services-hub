@@ -127,4 +127,3 @@ export function getBookingCacheKey(bookingId: string): string {
 export function getSummaryCacheKey(userRole?: string, userId?: string): string {
   return `summary:${userRole}:${userId}`
 }
-

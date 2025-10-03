@@ -10,7 +10,6 @@ import {
   triggerBookingCreated,
   triggerBookingApproved
 } from '@/lib/notification-triggers-simple'
-import { createNotification } from '@/lib/notification-service'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -1026,12 +1025,12 @@ export async function PATCH(request: NextRequest) {
           }
         } else {
           // Use basic notification for other actions
-          await createNotification(
-            notification.user_id,
-            notification.type as any,
-            notification.title,
-            notification.message,
-            {
+          await supabase.from('notifications').insert({
+            user_id: notification.user_id,
+            type: notification.type,
+            title: notification.title,
+            message: notification.message,
+            data: {
               booking_id,
               actor_id: user.id,
               actor_name: actorName,
@@ -1041,8 +1040,8 @@ export async function PATCH(request: NextRequest) {
               amount: (booking.amount_cents ?? 0) / 100,
               currency: booking.currency
             },
-            'high'
-          )
+            priority: 'high'
+          })
         }
         
         console.log('✅ Comprehensive notification created successfully with email')

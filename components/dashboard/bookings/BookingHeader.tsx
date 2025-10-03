@@ -32,7 +32,7 @@ interface BookingHeaderProps {
   onRefresh: () => void
   onViewModeChange: (mode: 'card' | 'calendar' | 'table') => void
   onDensityChange: (density: 'compact' | 'comfortable' | 'spacious') => void
-  onExport: (format: 'csv' | 'pdf' | 'xlsx') => void
+  onExport: (format: 'csv' | 'pdf' | 'json') => void
   canCreateBooking: boolean
 }
 

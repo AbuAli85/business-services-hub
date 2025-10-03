@@ -3,13 +3,15 @@
 import { useState, useCallback } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, X, Clock, MessageSquare, FileText, BarChart3 } from 'lucide-react'
+import { CheckCircle, X, Clock, MessageSquare, FileText, BarChart3, Download, Share2, Mail } from 'lucide-react'
 import { useBookingDetails } from '@/hooks/useBookingDetails'
 import { BookingDetailsHeader } from './BookingDetailsHeader'
 import { BookingDetailsOverview } from './BookingDetailsOverview'
 import { BookingDetailsParticipants } from './BookingDetailsParticipants'
 import { ProgressTabs } from '../progress-tabs'
 import { toast } from 'sonner'
+import { exportToCSV, exportToPDF, exportSingleBookingPDF } from '@/lib/export-utils'
+import { shareBookingViaEmail } from '@/lib/email-utils'
 
 interface BookingDetailsMainProps {
   userRole: 'client' | 'provider' | 'admin'
@@ -44,61 +46,78 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
     }
   }, [declineBooking])
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback((format: 'json' | 'csv' | 'pdf' = 'pdf') => {
     if (!booking) return
     
     try {
-      // Create a downloadable JSON export of the booking
-      const exportData = {
-        bookingId: booking.id,
-        status: booking.status,
-        serviceTitle: booking.service?.title || booking.title || 'N/A',
-        clientName: booking.client?.full_name || 'N/A',
-        providerName: booking.provider?.full_name || 'N/A',
-        amount: booking.amount || 0,
-        currency: booking.currency || 'OMR',
-        createdAt: booking.created_at,
-        scheduledDate: booking.scheduled_date,
-        notes: booking.notes,
-        exportedAt: new Date().toISOString()
+      if (format === 'pdf') {
+        exportSingleBookingPDF(booking)
+        toast.success('PDF export opened in print dialog')
+      } else if (format === 'json') {
+        const exportData = {
+          bookingId: booking.id,
+          status: booking.status,
+          serviceTitle: booking.service?.title || booking.title || 'N/A',
+          clientName: booking.client?.full_name || 'N/A',
+          providerName: booking.provider?.full_name || 'N/A',
+          amount: booking.amount || 0,
+          currency: booking.currency || 'OMR',
+          createdAt: booking.created_at,
+          scheduledDate: booking.scheduled_date,
+          notes: booking.notes,
+          exportedAt: new Date().toISOString()
+        }
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `booking-${booking.id.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        
+        toast.success('JSON export downloaded')
       }
-      
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `booking-${booking.id.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      
-      toast.success('Booking exported successfully')
     } catch (error) {
       console.error('Export error:', error)
       toast.error('Failed to export booking')
     }
   }, [booking])
 
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(async (method: 'native' | 'email' | 'clipboard' = 'native') => {
     if (!booking) return
     
     try {
       const shareUrl = `${window.location.origin}/dashboard/bookings/${booking.id}`
       const shareText = `Booking: ${booking.service?.title || booking.title || 'Service'} - Status: ${booking.status}`
       
-      // Use Web Share API if available
-      if (navigator.share) {
-        await navigator.share({
-          title: shareText,
-          text: `Check out this booking details`,
-          url: shareUrl
+      if (method === 'email') {
+        // Share via email
+        shareBookingViaEmail(booking, {
+          subject: `Booking Details: ${booking.service?.title || booking.title}`,
+          includeLink: true
         })
-        toast.success('Booking shared successfully')
-      } else {
-        // Fallback: Copy to clipboard
+        toast.success('Email client opened')
+      } else if (method === 'clipboard') {
+        // Copy to clipboard
         await navigator.clipboard.writeText(shareUrl)
         toast.success('Booking link copied to clipboard')
+      } else {
+        // Use Web Share API if available
+        if (navigator.share) {
+          await navigator.share({
+            title: shareText,
+            text: `Check out this booking details`,
+            url: shareUrl
+          })
+          toast.success('Booking shared successfully')
+        } else {
+          // Fallback: Copy to clipboard
+          await navigator.clipboard.writeText(shareUrl)
+          toast.success('Booking link copied to clipboard')
+        }
       }
     } catch (error) {
       // User cancelled or error occurred
