@@ -376,6 +376,9 @@ export async function GET(request: NextRequest) {
     const status = (searchParams.get('status') || '').trim()
 
     // Use enhanced view when available, else bookings with enrichment
+    // Constrain queries to a reasonable time window to leverage indexes and reduce scan time
+    const DAYS_BACK = 540 // ~18 months
+    const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
     let query = supabase
       .from('bookings')
       .select(`
@@ -383,7 +386,8 @@ export async function GET(request: NextRequest) {
         amount_cents, currency, created_at, updated_at, scheduled_date, 
         notes, location, estimated_duration, payment_status, total_amount,
         operational_status, booking_number, requirements, subtotal, vat_percent, vat_amount, due_at
-      `, { count: 'exact' })
+      `, { count: 'planned' })
+      .gte('created_at', sinceIso)
 
     if (userRole === 'provider') {
       query = query.eq('provider_id', user.id)
