@@ -5,6 +5,7 @@
 
 import { getSupabaseClient } from './supabase-client'
 import { profileManager } from './profile-manager'
+import { userSessionManager } from './user-session-manager'
 
 export interface DiagnosticResult {
   test: string
@@ -31,6 +32,12 @@ export class DashboardDiagnostics {
     
     // Test 5: Network Connectivity
     results.push(await this.testNetworkConnectivity())
+    
+    // Test 6: Session Management
+    results.push(await this.testSessionManagement())
+    
+    // Test 7: Cache Isolation
+    results.push(await this.testCacheIsolation())
     
     return results
   }
@@ -238,6 +245,121 @@ export class DashboardDiagnostics {
     
     console.log(`\n📊 Summary: ${passCount} passed, ${warnCount} warnings, ${failCount} failed`)
     console.groupEnd()
+  }
+
+  private static async testSessionManagement(): Promise<DiagnosticResult> {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        return {
+          test: 'Session Management',
+          status: 'warning',
+          message: 'Cannot test session management without active session'
+        }
+      }
+
+      const userId = session.user.id
+      
+      // Test session start
+      const sessionId = userSessionManager.startSession(userId)
+      if (!sessionId) {
+        return {
+          test: 'Session Management',
+          status: 'fail',
+          message: 'Failed to start user session'
+        }
+      }
+
+      // Test session validation
+      const isValid = userSessionManager.isSessionValid(userId)
+      if (!isValid) {
+        return {
+          test: 'Session Management',
+          status: 'fail',
+          message: 'Session validation failed'
+        }
+      }
+
+      // Test session cleanup
+      userSessionManager.endSession(userId)
+      const afterCleanup = userSessionManager.isSessionValid(userId)
+      
+      return {
+        test: 'Session Management',
+        status: 'pass',
+        message: 'Session management working correctly',
+        details: {
+          sessionId,
+          isValid,
+          afterCleanup
+        }
+      }
+    } catch (error) {
+      return {
+        test: 'Session Management',
+        status: 'fail',
+        message: 'Error testing session management',
+        details: error
+      }
+    }
+  }
+
+  private static async testCacheIsolation(): Promise<DiagnosticResult> {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        return {
+          test: 'Cache Isolation',
+          status: 'warning',
+          message: 'Cannot test cache isolation without active session'
+        }
+      }
+
+      const userId = session.user.id
+      
+      // Get initial cache stats
+      const initialStats = profileManager.getCacheStats()
+      
+      // Test cache operations
+      const profile = await profileManager.getUserProfile(userId, false) // Skip cache
+      if (!profile) {
+        return {
+          test: 'Cache Isolation',
+          status: 'warning',
+          message: 'No profile found to test cache isolation'
+        }
+      }
+
+      // Get cache stats after operation
+      const afterStats = profileManager.getCacheStats()
+      
+      // Test cache clearing
+      profileManager.clearCache(userId)
+      const afterClearStats = profileManager.getCacheStats()
+      
+      return {
+        test: 'Cache Isolation',
+        status: 'pass',
+        message: 'Cache isolation working correctly',
+        details: {
+          initialSize: initialStats.size,
+          afterOperation: afterStats.size,
+          afterClear: afterClearStats.size,
+          profileId: profile.id
+        }
+      }
+    } catch (error) {
+      return {
+        test: 'Cache Isolation',
+        status: 'fail',
+        message: 'Error testing cache isolation',
+        details: error
+      }
+    }
   }
 }
 

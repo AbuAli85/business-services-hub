@@ -27,7 +27,8 @@ export interface ProfileUpdateData {
 export class ProfileManager {
   private static instance: ProfileManager
   private profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>()
-  private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+  private readonly CACHE_DURATION = 2 * 60 * 1000 // Reduced to 2 minutes for better isolation
+  private readonly MAX_CACHE_SIZE = 50 // Limit cache size to prevent memory issues
 
   static getInstance(): ProfileManager {
     if (!ProfileManager.instance) {
@@ -37,16 +38,54 @@ export class ProfileManager {
   }
 
   /**
+   * Clean up old cache entries to prevent memory leaks and data conflicts
+   */
+  private cleanupCache(): void {
+    const now = Date.now()
+    const entriesToDelete: string[] = []
+    
+    // Remove expired entries
+    for (const [userId, entry] of Array.from(this.profileCache.entries())) {
+      if (now - entry.timestamp > this.CACHE_DURATION) {
+        entriesToDelete.push(userId)
+      }
+    }
+    
+    // Remove old entries if cache is too large
+    if (this.profileCache.size > this.MAX_CACHE_SIZE) {
+      const sortedEntries = Array.from(this.profileCache.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp)
+      
+      const excessEntries = sortedEntries.slice(0, this.profileCache.size - this.MAX_CACHE_SIZE)
+      excessEntries.forEach(([userId]) => entriesToDelete.push(userId))
+    }
+    
+    entriesToDelete.forEach(userId => {
+      this.profileCache.delete(userId)
+      console.log('🧹 Cleaned up cache for user:', userId)
+    })
+  }
+
+  /**
    * Get user profile with caching and fallback logic
    */
   async getUserProfile(userId: string, useCache = true): Promise<UserProfile | null> {
     console.log('🔍 Getting user profile for:', userId)
     
+    // Clean up old cache entries to prevent conflicts
+    this.cleanupCache()
+    
+    // Validate userId to prevent cache key conflicts
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      console.error('❌ Invalid userId provided:', userId)
+      return null
+    }
+    
     // Check cache first
     if (useCache) {
       const cached = this.profileCache.get(userId)
       if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-        console.log('✅ Using cached profile data')
+        console.log('✅ Using cached profile data for user:', userId)
         return cached.data
       }
     }
@@ -91,11 +130,16 @@ export class ProfileManager {
         finalProfile = await this.createProfileFromAuth(userId)
       }
 
-      // Cache the result
-      this.profileCache.set(userId, {
-        data: finalProfile,
-        timestamp: Date.now()
-      })
+      // Cache the result with validation
+      if (finalProfile && finalProfile.id === userId) {
+        this.profileCache.set(userId, {
+          data: finalProfile,
+          timestamp: Date.now()
+        })
+        console.log('💾 Cached profile for user:', userId)
+      } else {
+        console.warn('⚠️ Profile data validation failed, not caching')
+      }
 
       return finalProfile
 
@@ -238,13 +282,33 @@ export class ProfileManager {
   }
 
   /**
-   * Clear profile cache for a user
+   * Clear profile cache for a user or all users
    */
   clearCache(userId?: string): void {
     if (userId) {
-      this.profileCache.delete(userId)
+      const deleted = this.profileCache.delete(userId)
+      console.log('🗑️ Cache cleared for user:', userId, deleted ? 'success' : 'not found')
     } else {
+      const size = this.profileCache.size
       this.profileCache.clear()
+      console.log('🗑️ All profile cache cleared, removed', size, 'entries')
+    }
+  }
+
+  /**
+   * Get cache statistics for debugging
+   */
+  getCacheStats(): { size: number; entries: Array<{ userId: string; timestamp: number; age: number }> } {
+    const now = Date.now()
+    const entries = Array.from(this.profileCache.entries()).map(([userId, data]) => ({
+      userId,
+      timestamp: data.timestamp,
+      age: now - data.timestamp
+    }))
+    
+    return {
+      size: this.profileCache.size,
+      entries
     }
   }
 

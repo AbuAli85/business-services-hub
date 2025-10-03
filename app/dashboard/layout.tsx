@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { profileManager, type UserProfile } from '@/lib/profile-manager'
+import { userSessionManager } from '@/lib/user-session-manager'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { realtimeManager } from '@/lib/realtime'
 import { toast } from 'sonner'
@@ -232,6 +233,15 @@ export default function DashboardLayout({
       }
       
       console.log('✅ Simple auth check successful, setting user:', simpleUser)
+      
+      // Start user session for simple auth check too
+      try {
+        userSessionManager.startSession(session.user.id)
+        console.log('✅ Simple auth session started successfully')
+      } catch (sessionError) {
+        console.warn('⚠️ Failed to start simple auth session:', sessionError)
+      }
+      
       setUser(simpleUser)
       
     } catch (error) {
@@ -457,6 +467,15 @@ export default function DashboardLayout({
       }
       
       console.log('🎉 Setting final user:', finalUser)
+      
+      // Start user session to ensure proper isolation
+      try {
+        userSessionManager.startSession(session.user.id)
+        console.log('✅ User session started successfully')
+      } catch (sessionError) {
+        console.warn('⚠️ Failed to start user session:', sessionError)
+      }
+      
       setUser(finalUser)
       console.log('✅ User set successfully, loading should be false now')
       
@@ -514,10 +533,21 @@ export default function DashboardLayout({
 
   const handleSignOut = async () => {
     try {
+      // Clear user session and profile cache
+      if (user?.id) {
+        userSessionManager.endSession(user.id)
+        profileManager.clearCache(user.id)
+        console.log('🧹 Cleared session and cache for user:', user.id)
+      }
+      
       const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       await supabase.auth.signOut()
       authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signout' } })
+      
+      // Clear all sessions as a safety measure
+      userSessionManager.clearAllSessions()
+      
       try { await clearSessionCookies() } catch {}
       router.push('/')
     } catch (error) {
