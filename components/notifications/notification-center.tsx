@@ -149,7 +149,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await notificationService.markAsRead(notificationId)
+      notificationService.markAsRead(notificationId)
       // The real-time subscription will automatically update the notification
       loadStats()
     } catch (error) {
@@ -160,7 +160,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   const handleMarkAllAsRead = async () => {
     try {
-      await notificationService.markAllAsRead(userId)
+      notificationService.markAllAsRead()
       // The real-time subscription will automatically update the notifications
       loadStats()
       toast.success('All notifications marked as read')
@@ -172,7 +172,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   const handleDeleteNotification = async (notificationId: string) => {
     try {
-      await notificationService.deleteNotification(notificationId)
+      notificationService.deleteNotification(notificationId)
       // The real-time subscription will automatically remove the notification
       loadStats()
       toast.success('Notification deleted')
@@ -186,7 +186,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
     if (selectedNotifications.length === 0) return
 
     try {
-      await notificationService.bulkAction({
+      notificationService.bulkAction({
         action,
         notification_ids: selectedNotifications
       })

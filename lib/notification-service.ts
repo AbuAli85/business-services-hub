@@ -148,6 +148,37 @@ class NotificationService {
   }
 
   /**
+   * Delete a specific notification
+   */
+  deleteNotification(notificationId: string): void {
+    this.notifications = this.notifications.filter(n => n.id !== notificationId)
+  }
+
+  /**
+   * Bulk actions on notifications
+   */
+  bulkAction(options: { action: 'mark_read' | 'mark_unread' | 'delete'; notification_ids: string[] }): void {
+    const { action, notification_ids } = options
+    
+    notification_ids.forEach(id => {
+      const notification = this.notifications.find(n => n.id === id)
+      if (notification) {
+        switch (action) {
+          case 'mark_read':
+            notification.read = true
+            break
+          case 'mark_unread':
+            notification.read = false
+            break
+          case 'delete':
+            this.deleteNotification(id)
+            break
+        }
+      }
+    })
+  }
+
+  /**
    * Clear notifications
    */
   clearNotifications(): void {
