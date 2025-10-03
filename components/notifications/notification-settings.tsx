@@ -42,7 +42,7 @@ export function NotificationSettings({ userId, className = '' }: NotificationSet
   const loadSettings = async () => {
     try {
       setLoading(true)
-      const data = await notificationService.getNotificationSettings(userId)
+      const data = notificationService.getNotificationSettings(userId)
       
       if (data) {
         setSettings(data)
@@ -76,7 +76,7 @@ export function NotificationSettings({ userId, className = '' }: NotificationSet
 
     try {
       setSaving(true)
-      await notificationService.updateNotificationSettings(userId, settings)
+      notificationService.updateNotificationSettings(userId, settings)
       toast.success('Notification settings saved successfully')
     } catch (error) {
       console.error('Error saving notification settings:', error)

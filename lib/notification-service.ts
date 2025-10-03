@@ -179,6 +179,41 @@ class NotificationService {
   }
 
   /**
+   * Get notification settings for a user
+   */
+  getNotificationSettings(userId: string): any {
+    // In a real app, this would fetch from database
+    // For now, return default settings
+    return {
+      user_id: userId,
+      email_notifications: true,
+      push_notifications: true,
+      sms_notifications: false,
+      desktop_notifications: true,
+      notification_types: {
+        booking_updates: true,
+        payment_reminders: true,
+        system_alerts: true,
+        marketing: false
+      },
+      frequency: 'immediate',
+      quiet_hours: {
+        enabled: false,
+        start: '22:00',
+        end: '08:00'
+      }
+    }
+  }
+
+  /**
+   * Update notification settings for a user
+   */
+  updateNotificationSettings(userId: string, settings: any): void {
+    // In a real app, this would save to database
+    console.log('Notification settings updated for user:', userId, settings)
+  }
+
+  /**
    * Clear notifications
    */
   clearNotifications(): void {
