@@ -10,7 +10,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 // Simple rate limiting (in-memory, per instance)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT_WINDOW = 15_000 // 15 seconds
-const RATE_LIMIT_MAX = 60 // 60 requests per window
+const RATE_LIMIT_MAX = 200 // allow higher burst for dashboard GETs
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
@@ -87,7 +87,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Rate limiting for API routes
-  if (pathname.startsWith('/api/')) {
+  // Rate limit only mutating API requests to avoid blocking dashboard GET bursts
+  if (pathname.startsWith('/api/') && !['GET', 'OPTIONS', 'HEAD'].includes(req.method)) {
     const ip = (req.headers.get('x-real-ip')
       || req.headers.get('x-forwarded-for')?.split(',')[0]
       || (req as any).ip
