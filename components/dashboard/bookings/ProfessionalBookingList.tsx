@@ -404,11 +404,16 @@ export function ProfessionalBookingList({
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">
-                            {booking.service_title || booking.serviceTitle || 'Professional Service'}
+                            {booking.service_title || booking.serviceTitle || booking.service_name || 'Professional Service'}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {booking.category || 'Business Service'}
+                            {booking.service_category || booking.category || booking.service_type || 'Business Service'}
                           </div>
+                          {booking.service_description && (
+                            <div className="text-xs text-gray-400 mt-1 line-clamp-1">
+                              {booking.service_description}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -418,18 +423,23 @@ export function ProfessionalBookingList({
                       <TableCell className="py-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={booking.client_logo_url} />
+                            <AvatarImage src={booking.client_logo_url || booking.client_avatar} />
                             <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                              {getInitials(booking.client_name || 'Client')}
+                              {getInitials(booking.client_name || booking.client_full_name || 'Client')}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="font-medium text-gray-900">
-                              {booking.client_name || 'Client'}
+                              {booking.client_name || booking.client_full_name || booking.client_display_name || 'Client'}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {booking.client_company || 'Individual'}
+                              {booking.client_company || booking.client_company_name || booking.client_organization || 'Individual'}
                             </div>
+                            {booking.client_email && (
+                              <div className="text-xs text-gray-400">
+                                {booking.client_email}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -440,18 +450,23 @@ export function ProfessionalBookingList({
                       <TableCell className="py-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={booking.provider_logo_url} />
+                            <AvatarImage src={booking.provider_logo_url || booking.provider_avatar} />
                             <AvatarFallback className="bg-green-100 text-green-600 text-xs">
-                              {getInitials(booking.provider_name || 'Provider')}
+                              {getInitials(booking.provider_name || booking.provider_full_name || 'Provider')}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="font-medium text-gray-900">
-                              {booking.provider_name || 'Provider'}
+                              {booking.provider_name || booking.provider_full_name || booking.provider_display_name || 'Provider'}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {booking.provider_company || 'Professional'}
+                              {booking.provider_company || booking.provider_company_name || booking.provider_organization || 'Professional'}
                             </div>
+                            {booking.provider_email && (
+                              <div className="text-xs text-gray-400">
+                                {booking.provider_email}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -473,9 +488,9 @@ export function ProfessionalBookingList({
                     <TableCell className="py-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">{progressPercentage}%</span>
+                          <span className="text-gray-600 font-medium">{progressPercentage}%</span>
                           <span className="text-gray-500">
-                            {booking.completed_milestones || 0}/{booking.total_milestones || 0}
+                            {booking.completed_milestones || booking.completed_tasks || 0}/{booking.total_milestones || booking.total_tasks || 0}
                           </span>
                         </div>
                         <Progress 
@@ -487,14 +502,22 @@ export function ProfessionalBookingList({
                             <Star className="h-3 w-3 text-green-500" />
                           ) : progressPercentage >= 50 ? (
                             <TrendingUp className="h-3 w-3 text-blue-500" />
-                          ) : (
+                          ) : progressPercentage > 0 ? (
                             <Clock className="h-3 w-3 text-yellow-500" />
+                          ) : (
+                            <AlertCircle className="h-3 w-3 text-gray-400" />
                           )}
                           <span>
                             {progressPercentage >= 80 ? 'On Track' : 
-                             progressPercentage >= 50 ? 'In Progress' : 'Getting Started'}
+                             progressPercentage >= 50 ? 'In Progress' : 
+                             progressPercentage > 0 ? 'Getting Started' : 'Not Started'}
                           </span>
                         </div>
+                        {booking.next_milestone && (
+                          <div className="text-xs text-gray-400 truncate">
+                            Next: {booking.next_milestone}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     
@@ -547,35 +570,14 @@ export function ProfessionalBookingList({
                     
                     {/* Actions Column */}
                     <TableCell className="py-4">
-                      <div className="flex items-center gap-2">
-                        {/* Primary Actions */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onViewDetails?.(booking.id)}
-                          className="h-8 px-3 text-xs"
-                        >
-                          <Eye className="h-3.5 w-3.5 mr-1.5" />
-                          Details
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onViewProgress?.(booking.id)}
-                          className="h-8 px-3 text-xs"
-                        >
-                          <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-                          Progress
-                        </Button>
-                        
+                      <div className="flex items-center justify-center">
                         {/* Three Dots Menu */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 hover:bg-gray-100"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
