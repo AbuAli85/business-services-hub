@@ -20,6 +20,7 @@ import { DataTable } from '@/components/dashboard/DataTable'
 import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
 import { StatusFilter } from '@/components/dashboard/bookings/StatusFilter'
 import { ImprovedBookingCard } from '@/components/dashboard/bookings/ImprovedBookingCard'
+import { ProfessionalBookingList } from '@/components/dashboard/bookings/ProfessionalBookingList'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { AmountDisplay } from '@/components/dashboard/bookings/AmountDisplay'
 import { BulkActions } from '@/components/dashboard/bookings/BulkActions'
@@ -63,7 +64,7 @@ export default function BookingsPage() {
   const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showFilters, setShowFilters] = useState(false)
-	const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table'>(() => {
+	const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table' | 'professional'>(() => {
 		if (typeof window === 'undefined') return 'card'
 		return (localStorage.getItem('bookings:viewMode') as any) || 'card'
 	})
@@ -767,6 +768,62 @@ export default function BookingsPage() {
 					sortKey={sortBy}
 					sortDirection={sortOrder}
 					className={density === 'compact' ? 'text-xs' : density === 'spacious' ? 'text-base' : 'text-sm'}
+				  />
+				</div>
+			  ) : viewMode === 'professional' ? (
+				<div className="p-4">
+				  <ProfessionalBookingList
+					bookings={paginatedBookings}
+					invoices={invoiceByBooking}
+					userRole={userRole}
+					onViewDetails={(id) => router.push(`/dashboard/bookings/${id}`)}
+					onViewProgress={(id) => router.push(`/dashboard/bookings/${id}/milestones`)}
+					onInvoiceAction={async (action, bookingId) => {
+					  if (action === 'view_invoice') {
+						const inv = invoiceByBooking.get(String(bookingId)); if (inv) router.push(getInvoiceHref(inv.id))
+					  } else if (action === 'pay_invoice') {
+						const inv = invoiceByBooking.get(String(bookingId)); if (inv) router.push(getInvoiceHref(inv.id))
+					  } else if (action === 'create_invoice') {
+						const booking = paginatedBookings.find(b => b.id === bookingId)
+						if (booking) await handleCreateInvoice(booking)
+					  } else if (action === 'send_invoice') {
+						const inv = invoiceByBooking.get(String(bookingId)); if (inv) await handleSendInvoice(inv.id)
+					  } else if (action === 'mark_paid') {
+						const inv = invoiceByBooking.get(String(bookingId)); if (inv) await handleMarkInvoicePaid(inv.id)
+					  }
+					}}
+					onQuickAction={async (action, bookingId) => {
+					  if (action === 'approve') {
+						const booking = paginatedBookings.find(b => b.id === bookingId)
+						if (booking) await approveBooking(booking.id, booking.provider_id, booking.status)
+					  } else if (action === 'decline') {
+						const booking = paginatedBookings.find(b => b.id === bookingId)
+						if (booking) await declineBooking(booking.id, booking.provider_id, booking.status)
+					  } else if (action === 'message') {
+						router.push('/dashboard/messages')
+					  } else if (action === 'edit') {
+						router.push(`/dashboard/bookings/${bookingId}/edit`)
+					  } else if (action === 'download') {
+						toast.info('Download feature coming soon')
+					  }
+					}}
+					selectedIds={selectedIds}
+					onSelect={(bookingId, checked) => {
+					  setSelectedIds(prev => {
+						const next = new Set(prev)
+						if (checked) next.add(bookingId); else next.delete(bookingId)
+						return next
+					  })
+					}}
+					onSelectAll={(checked) => {
+					  setSelectAll(checked)
+					  if (checked) {
+						setSelectedIds(new Set(paginatedBookings.map((b:any)=>b.id)))
+					  } else {
+						setSelectedIds(new Set())
+					  }
+					}}
+					loading={dataLoading}
 				  />
 				</div>
 			  ) : (

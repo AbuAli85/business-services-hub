@@ -8,7 +8,8 @@ import {
   RefreshCw,
   Grid3X3,
   Calendar,
-  Table
+  Table,
+  TrendingUp
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/dashboard-data'
 
@@ -27,10 +28,10 @@ interface BookingHeaderProps {
   }
   lastUpdatedAt: number | null
   dataLoading: boolean
-  viewMode: 'card' | 'calendar' | 'table'
+  viewMode: 'card' | 'calendar' | 'table' | 'professional'
   density: 'compact' | 'comfortable' | 'spacious'
   onRefresh: () => void
-  onViewModeChange: (mode: 'card' | 'calendar' | 'table') => void
+  onViewModeChange: (mode: 'card' | 'calendar' | 'table' | 'professional') => void
   onDensityChange: (density: 'compact' | 'comfortable' | 'spacious') => void
   onExport: (format: 'csv' | 'pdf' | 'json') => void
   canCreateBooking: boolean
@@ -176,6 +177,15 @@ export function BookingHeader({
                 >
                   <Table className="h-3 w-3 mr-1" />
                   Table
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant={viewMode === 'professional' ? 'default' : 'ghost'}
+                  className={`px-3 py-1.5 text-xs ${viewMode === 'professional' ? 'bg-white text-blue-900' : 'text-white hover:bg-white/10'}`}
+                  onClick={() => onViewModeChange('professional')}
+                >
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Professional
                 </Button>
               </div>
               
