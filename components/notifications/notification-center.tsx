@@ -118,8 +118,30 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   const loadStats = async () => {
     try {
-      const data = await notificationService.getNotificationStats(userId)
-      setStats(data)
+      const allNotifications = notificationService.getAllNotifications()
+      const unread = allNotifications.filter(n => !n.read).length
+      const recentCount = allNotifications.filter(n => {
+        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000
+        return new Date(n.timestamp).getTime() > twentyFourHoursAgo
+      }).length
+      
+      const by_type: any = { info: 0, success: 0, warning: 0, error: 0 }
+      allNotifications.forEach(n => {
+        if (by_type[n.type] !== undefined) by_type[n.type]++
+      })
+      
+      const by_priority: any = { low: 0, normal: 0, high: 0, urgent: 0 }
+      allNotifications.forEach(n => {
+        if (by_priority[n.priority] !== undefined) by_priority[n.priority]++
+      })
+      
+      setStats({ 
+        total: allNotifications.length, 
+        unread, 
+        by_type,
+        by_priority,
+        recent_count: recentCount 
+      })
     } catch (error) {
       console.error('Error loading notification stats:', error)
     }
