@@ -124,8 +124,32 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
 
   const loadStats = async () => {
     try {
-      const data = await notificationService.getNotificationStats(userId)
-      setStats(data)
+      const allNotifications = notificationService.getAllNotifications()
+      const unread = allNotifications.filter(n => !n.read).length
+      const recentCount = allNotifications.filter(n => {
+        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000
+        return new Date(n.timestamp).getTime() > twentyFourHoursAgo
+      }).length
+      
+      // Count by type
+      const by_type: any = { info: 0, success: 0, warning: 0, error: 0 }
+      allNotifications.forEach(n => {
+        if (by_type[n.type] !== undefined) by_type[n.type]++
+      })
+      
+      // Count by priority
+      const by_priority: any = { low: 0, normal: 0, high: 0, urgent: 0 }
+      allNotifications.forEach(n => {
+        if (by_priority[n.priority] !== undefined) by_priority[n.priority]++
+      })
+      
+      setStats({ 
+        total: allNotifications.length, 
+        unread, 
+        by_type,
+        by_priority,
+        recent_count: recentCount 
+      })
     } catch (error) {
       console.error('Error loading notification stats:', error)
     }
@@ -146,7 +170,8 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
 
   const handleMarkAllAsRead = async () => {
     try {
-      await notificationService.markAllAsRead(userId)
+      // Mark all notifications as read in the service
+      notificationService.markAllAsRead()
       setNotifications(prev => prev.map(n => ({ ...n, read: true })))
       loadStats()
       toast.success('All notifications marked as read')
