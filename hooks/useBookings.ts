@@ -217,9 +217,16 @@ export function useBookings(options: UseBookingsOptions = {}) {
         })
         
         if (invoiceRes.ok) {
-          const invoiceJson = await invoiceRes.json()
-          const invoicesData = invoiceJson.invoices || []
-          setState(prev => ({ ...prev, invoices: invoicesData }))
+          const contentType = invoiceRes.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const invoiceJson = await invoiceRes.json()
+            const invoicesData = invoiceJson.invoices || []
+            setState(prev => ({ ...prev, invoices: invoicesData }))
+          } else {
+            console.warn('⚠️ Invoice API returned non-JSON response:', contentType)
+          }
+        } else {
+          console.warn('⚠️ Invoice API returned error status:', invoiceRes.status)
         }
       } catch (invoiceError: any) {
         if (invoiceError?.name !== 'AbortError') {

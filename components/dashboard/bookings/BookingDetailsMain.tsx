@@ -9,6 +9,7 @@ import { BookingDetailsHeader } from './BookingDetailsHeader'
 import { BookingDetailsOverview } from './BookingDetailsOverview'
 import { BookingDetailsParticipants } from './BookingDetailsParticipants'
 import { ProgressTabs } from '../progress-tabs'
+import { ProfessionalBookingDetails } from './ProfessionalBookingDetails'
 import { toast } from 'sonner'
 import { exportToCSV, exportToPDF, exportSingleBookingPDF } from '@/lib/export-utils'
 import { shareBookingViaEmail } from '@/lib/email-utils'
@@ -174,13 +175,13 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <BookingDetailsHeader
+      {/* Professional Booking Details */}
+      <ProfessionalBookingDetails
         booking={booking}
         userRole={userRole}
-        isUpdating={isUpdating}
-        onRefresh={refresh}
         onEdit={() => setShowEditModal(true)}
+        onApprove={handleApprove}
+        onDecline={handleDecline}
         onExport={handleExport}
         onShare={handleShare}
       />
@@ -211,70 +212,6 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
           )}
         </div>
       )}
-
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="participants" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Participants
-          </TabsTrigger>
-          <TabsTrigger value="progress" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Progress
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Messages
-          </TabsTrigger>
-          <TabsTrigger value="files" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Files
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <BookingDetailsOverview booking={booking} />
-        </TabsContent>
-
-        <TabsContent value="participants" className="space-y-6">
-          <BookingDetailsParticipants booking={booking} userRole={userRole} />
-        </TabsContent>
-
-        <TabsContent value="progress" className="space-y-6">
-          <ProgressTabs 
-            bookingId={booking.id} 
-            userRole={userRole === 'admin' ? 'provider' : userRole} 
-          />
-        </TabsContent>
-
-        <TabsContent value="messages" className="space-y-6">
-          <div className="text-center py-12">
-            <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Messages</h3>
-            <p className="text-gray-600">
-              Messages and communication history will be displayed here.
-            </p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="files" className="space-y-6">
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Files & Attachments</h3>
-            <p className="text-gray-600">
-              {booking.attachments.length > 0 
-                ? `${booking.attachments.length} files attached`
-                : 'No files attached to this booking'
-              }
-            </p>
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }

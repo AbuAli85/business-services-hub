@@ -505,16 +505,24 @@ export async function GET(request: NextRequest) {
         const bookingIds = rows.map(b => b.id)
         
         // Bulk fetch services
-        const { data: services = [] } = await supabase
+        const { data: services = [], error: servicesError } = await supabase
           .from('services')
           .select('id, title, description, category')
           .in('id', serviceIds)
         
+        if (servicesError) {
+          console.warn('⚠️ Services fetch error:', servicesError)
+        }
+        
         // Bulk fetch profiles
-        const { data: profiles = [] } = await supabase
+        const { data: profiles = [], error: profilesError } = await supabase
           .from('profiles')
           .select('id, full_name, email')
           .in('id', userIds)
+        
+        if (profilesError) {
+          console.warn('⚠️ Profiles fetch error:', profilesError)
+        }
         
         // Bulk fetch invoices
         const { data: invoices = [] } = await supabase
@@ -528,13 +536,13 @@ export async function GET(request: NextRequest) {
         const invoiceMap = new Map((invoices || []).map(i => [i.booking_id, i]))
         
         // Transform data using lookup maps
-        return rows.map(booking => {
+        const transformed = rows.map(booking => {
           const service = serviceMap.get(booking.service_id)
           const client = profileMap.get(booking.client_id)
           const provider = profileMap.get(booking.provider_id)
           const invoice = invoiceMap.get(booking.id)
           
-          return {
+          const result = {
             ...booking,
             progress_percentage: progressMap.get(String(booking.id)) ?? 0,
             service_title: service?.title || 'Service',
@@ -547,10 +555,37 @@ export async function GET(request: NextRequest) {
             invoice_status: invoice?.status || null,
             invoice_amount: invoice?.amount || null
           }
+          
+          // Log if we're getting generic data
+          if (result.service_title === 'Service' || result.client_name === 'Client' || result.provider_name === 'Provider') {
+            console.warn('⚠️ Generic data detected for booking:', {
+              bookingId: booking.id,
+              serviceId: booking.service_id,
+              clientId: booking.client_id,
+              providerId: booking.provider_id,
+              serviceTitle: result.service_title,
+              clientName: result.client_name,
+              providerName: result.provider_name,
+              serviceMapSize: serviceMap.size,
+              profileMapSize: profileMap.size
+            })
+          }
+          
+          return result
         })
+        
+        console.log('📊 Data enrichment completed:', {
+          totalBookings: rows.length,
+          servicesFound: (services || []).length,
+          profilesFound: (profiles || []).length,
+          invoicesFound: (invoices || []).length,
+          transformedCount: transformed.length
+        })
+        
+        return transformed
       })(),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Data enrichment timeout')), 5000)
+        setTimeout(() => reject(new Error('Data enrichment timeout')), 10000)
       )
     ]).catch(() => {
       // Fallback: return basic data without enrichment
