@@ -500,8 +500,8 @@ export async function GET(request: NextRequest) {
     const transformedData = rows.length > 0 ? await Promise.race([
       (async () => {
         // Collect all unique IDs for bulk queries
-        const serviceIds = [...new Set(rows.map(b => b.service_id))]
-        const userIds = [...new Set([...rows.map(b => b.client_id), ...rows.map(b => b.provider_id)])]
+        const serviceIds = Array.from(new Set(rows.map(b => b.service_id)))
+        const userIds = Array.from(new Set([...rows.map(b => b.client_id), ...rows.map(b => b.provider_id)]))
         const bookingIds = rows.map(b => b.id)
         
         // Bulk fetch services
