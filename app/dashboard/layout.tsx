@@ -185,7 +185,7 @@ export default function DashboardLayout({
       // Add a small delay to ensure session cookies are properly set
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError) {
         console.error('Session fetch error:', sessionError)
