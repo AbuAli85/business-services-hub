@@ -123,7 +123,8 @@ export async function middleware(req: NextRequest) {
     try {
       // Quick session check using access token from HttpOnly cookie
       const supabase = createMiddlewareClient(req)
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const { data, error } = await supabase.auth.getUser()
+      const user = data?.user
       
       if (error || !user) {
         if (error) {
