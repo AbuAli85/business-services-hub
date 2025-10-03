@@ -107,20 +107,28 @@ export default function DashboardPage() {
       }
 
       setUser(user)
-      // Prefer role from profiles table when available; fallback to metadata
+      
+      // Prefer role from profiles table when available; fallback to metadata (with timeout)
       try {
-        const { data: profile } = await supabase
+        const profilePromise = supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single()
-        const role = (profile?.role as string) || (user.user_metadata?.role as string) || 'client'
+        
+        const profileTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile check timeout')), 3000)
+        )
+        
+        const profileResult = await Promise.race([profilePromise, profileTimeout]) as { data: any }
+        const role = (profileResult.data?.role as string) || (user.user_metadata?.role as string) || 'client'
         setUserRole(role)
       } catch {
         const role = (user.user_metadata?.role as string) || 'client'
         setUserRole(role)
       }
     } catch (error) {
+      console.error('Auth check failed:', error)
       router.push('/auth/sign-in')
     }
   }

@@ -92,8 +92,8 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     checkUserAndFetchData()
-    const id = setTimeout(() => setLoading(false), 10000)
-    return () => clearTimeout(id)
+    // Remove the 10-second timeout as it can interfere with proper loading
+    // The loading state will be managed by the checkUserAndFetchData function
   }, [])
 
   // Real-time updates (only what we actually need)
@@ -145,13 +145,21 @@ export default function ClientDashboard() {
       }
 
       setUser(user)
-      // Render UI immediately; fetch data in background so UI isn't blocked
+      
+      // Fetch data and then set loading to false
+      try {
+        await fetchAllClientData(user.id)
+      } catch (dataError) {
+        console.warn('Error fetching client data:', dataError)
+        // Continue to show dashboard even if data fetch fails
+      }
+      
       setLoading(false)
-      fetchAllClientData(user.id).catch(() => {})
     } catch (error) {
       logger.error('Error loading client data:', error)
       setError('Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
+      setLoading(false)
     }
   }
 
