@@ -99,7 +99,7 @@ export function NotificationBell({ userId, className = '' }: NotificationBellPro
   const loadRecentNotifications = async () => {
     try {
       setLoading(true)
-      const data = await notificationService.getNotifications(userId, { read: false }, 50)
+      const data = notificationService.getAllNotifications().filter(n => !n.read).slice(0, 50)
       // Group duplicates by type + title + message (no service field)
       const groupedMap = new Map<string, Notification & { count: number }>()
       for (const n of data) {
