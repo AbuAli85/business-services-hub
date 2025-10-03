@@ -463,9 +463,9 @@ export async function GET(request: NextRequest) {
     // Pagination
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
-    // Add timeout to avoid Vercel 504s
+    // Add timeout to avoid Vercel 504s (reduced to 8 seconds)
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12000)
+    const timeout = setTimeout(() => controller.abort(), 8000)
     const { data, count, error: queryError } = await query.range(from, to).abortSignal(controller.signal)
     clearTimeout(timeout)
 
@@ -496,52 +496,79 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Manual enrichment of booking data
-    const transformedData = await Promise.all(
-      rows.map(async (booking) => {
-        // Get service information
-        const { data: service } = await supabase
+    // Bulk data enrichment to eliminate N+1 queries with timeout protection
+    const transformedData = rows.length > 0 ? await Promise.race([
+      (async () => {
+        // Collect all unique IDs for bulk queries
+        const serviceIds = [...new Set(rows.map(b => b.service_id))]
+        const userIds = [...new Set([...rows.map(b => b.client_id), ...rows.map(b => b.provider_id)])]
+        const bookingIds = rows.map(b => b.id)
+        
+        // Bulk fetch services
+        const { data: services = [] } = await supabase
           .from('services')
-          .select('title, description, category')
-          .eq('id', booking.service_id)
-          .single()
+          .select('id, title, description, category')
+          .in('id', serviceIds)
         
-        // Get client information
-        const { data: client } = await supabase
+        // Bulk fetch profiles
+        const { data: profiles = [] } = await supabase
           .from('profiles')
-          .select('full_name, email')
-          .eq('id', booking.client_id)
-          .single()
+          .select('id, full_name, email')
+          .in('id', userIds)
         
-        // Get provider information
-        const { data: provider } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', booking.provider_id)
-          .single()
-        
-        // Get invoice information
-        const { data: invoice } = await supabase
+        // Bulk fetch invoices
+        const { data: invoices = [] } = await supabase
           .from('invoices')
-          .select('status, amount')
-          .eq('booking_id', booking.id)
-          .single()
+          .select('booking_id, status, amount')
+          .in('booking_id', bookingIds)
         
-        return {
-          ...booking,
-          progress_percentage: progressMap.get(String(booking.id)) ?? 0,
-          service_title: service?.title || 'Service',
-          service_description: service?.description || '',
-          service_category: service?.category || '',
-          client_name: client?.full_name || 'Client',
-          client_email: client?.email || '',
-          provider_name: provider?.full_name || 'Provider',
-          provider_email: provider?.email || '',
-          invoice_status: invoice?.status || null,
-          invoice_amount: invoice?.amount || null
-        }
-      })
-    )
+        // Create lookup maps
+        const serviceMap = new Map(services.map(s => [s.id, s]))
+        const profileMap = new Map(profiles.map(p => [p.id, p]))
+        const invoiceMap = new Map(invoices.map(i => [i.booking_id, i]))
+        
+        // Transform data using lookup maps
+        return rows.map(booking => {
+          const service = serviceMap.get(booking.service_id)
+          const client = profileMap.get(booking.client_id)
+          const provider = profileMap.get(booking.provider_id)
+          const invoice = invoiceMap.get(booking.id)
+          
+          return {
+            ...booking,
+            progress_percentage: progressMap.get(String(booking.id)) ?? 0,
+            service_title: service?.title || 'Service',
+            service_description: service?.description || '',
+            service_category: service?.category || '',
+            client_name: client?.full_name || 'Client',
+            client_email: client?.email || '',
+            provider_name: provider?.full_name || 'Provider',
+            provider_email: provider?.email || '',
+            invoice_status: invoice?.status || null,
+            invoice_amount: invoice?.amount || null
+          }
+        })
+      })(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Data enrichment timeout')), 5000)
+      )
+    ]).catch(() => {
+      // Fallback: return basic data without enrichment
+      console.warn('⚠️ Data enrichment timed out, returning basic booking data')
+      return rows.map(booking => ({
+        ...booking,
+        progress_percentage: progressMap.get(String(booking.id)) ?? 0,
+        service_title: 'Service',
+        service_description: '',
+        service_category: '',
+        client_name: 'Client',
+        client_email: '',
+        provider_name: 'Provider',
+        provider_email: '',
+        invoice_status: null,
+        invoice_amount: null
+      }))
+    }) : []
 
     const payload = {
       data: transformedData,
