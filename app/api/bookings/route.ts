@@ -10,7 +10,6 @@ import {
   triggerBookingCreated,
   triggerBookingApproved
 } from '@/lib/notification-triggers-simple'
-import { createNotification } from '@/lib/notification-service'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'

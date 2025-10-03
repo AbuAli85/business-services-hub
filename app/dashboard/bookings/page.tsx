@@ -43,6 +43,12 @@ import { isBookingApproved, deriveAmount } from '@/lib/bookings-helpers'
 // Types
 import type { Booking } from '@/hooks/useBookings'
 
+// New utilities
+import { exportToCSV, exportToPDF } from '@/lib/export-utils'
+import { shareMultipleBookingsViaEmail } from '@/lib/email-utils'
+import { notificationService, sendReminders } from '@/lib/notification-service'
+import { generateReport, downloadReport } from '@/lib/report-generator'
+
 export default function BookingsPage() {
   const router = useRouter()
   
@@ -192,14 +198,44 @@ export default function BookingsPage() {
   const canViewAllBookings = userRole === 'admin'
   const canCreateInvoice = userRole === 'provider' || userRole === 'admin'
 
-  // Export function
-  const exportBookings = useCallback((format: 'csv' | 'pdf' | 'xlsx', ids?: string[]) => {
-    const params = new URLSearchParams()
-    params.set('format', format)
-    if (ids && ids.length > 0) params.set('ids', ids.join(','))
-    const url = `/api/bookings/export?${params.toString()}`
-    window.open(url, '_blank')
-  }, [])
+  // Export function with new formats
+  const exportBookings = useCallback((format: 'csv' | 'pdf' | 'json', ids?: string[]) => {
+    try {
+      const bookingsToExport = ids && ids.length > 0
+        ? bookings.filter(b => ids.includes(b.id))
+        : bookings
+
+      if (bookingsToExport.length === 0) {
+        toast.error('No bookings to export')
+        return
+      }
+
+      const filename = `bookings-export-${new Date().toISOString().split('T')[0]}`
+      
+      if (format === 'csv') {
+        exportToCSV(bookingsToExport, `${filename}.csv`)
+        toast.success(`CSV export downloaded (${bookingsToExport.length} bookings)`)
+      } else if (format === 'pdf') {
+        exportToPDF(bookingsToExport, `${filename}.pdf`)
+        toast.success('PDF export opened in print dialog')
+      } else if (format === 'json') {
+        const json = JSON.stringify(bookingsToExport, null, 2)
+        const blob = new Blob([json], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${filename}.json`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        toast.success(`JSON export downloaded (${bookingsToExport.length} bookings)`)
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export bookings')
+    }
+  }, [bookings])
 
   // Invoice creation
   const handleCreateInvoice = useCallback(async (booking: any) => {
@@ -553,12 +589,36 @@ export default function BookingsPage() {
               }
             }}
 			onNotify={async () => {
-              toast.info('Notification feature coming soon')
-              // Future implementation: Send notifications to selected bookings
+              try {
+                const ids = Array.from(selectedIds)
+                await sendReminders(ids)
+                toast.success(`Notifications sent for ${ids.length} booking(s)`)
+              } catch (error) {
+                console.error('Notification error:', error)
+                toast.error('Failed to send notifications')
+              }
             }}
             onReport={async () => {
-              toast.info('Report generation coming soon')
-              // Future implementation: Generate report for selected bookings
+              try {
+                const selectedBookings = bookings.filter(b => selectedIds.has(b.id))
+                if (selectedBookings.length === 0) {
+                  toast.error('No bookings selected')
+                  return
+                }
+                
+                // Generate comprehensive report
+                const report = generateReport(selectedBookings, {
+                  groupBy: 'status',
+                  includeCharts: true
+                })
+                
+                // Download as HTML
+                downloadReport(report, 'html')
+                toast.success(`Report generated for ${selectedBookings.length} booking(s)`)
+              } catch (error) {
+                console.error('Report generation error:', error)
+                toast.error('Failed to generate report')
+              }
             }}
             onArchive={async () => {
               toast.info('Archive feature coming soon')

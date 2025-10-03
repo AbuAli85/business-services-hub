@@ -15,10 +15,12 @@ export interface Booking {
   currency?: string
   created_at: string
   updated_at?: string
+  scheduled_date?: string
   progress_percentage?: number
   client_id?: string
   provider_id?: string
   client_email?: string
+  notes?: string
 }
 
 export interface Invoice {
