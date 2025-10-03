@@ -268,6 +268,29 @@ class NotificationService {
   }
 
   /**
+   * Create notification from template
+   */
+  createFromTemplate(userId: string, type: string, data: any, template?: any): any {
+    const notification = {
+      id: this.generateId(),
+      type: type as any,
+      priority: (template?.priority || 'normal') as any,
+      title: template?.title || 'Notification',
+      message: template?.message || 'A notification has been generated.',
+      timestamp: new Date(),
+      read: false,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...data
+    }
+    
+    this.notifications.push(notification)
+    this.notifyListeners(notification)
+    return notification
+  }
+
+  /**
    * Clear notifications
    */
   clearNotifications(): void {
