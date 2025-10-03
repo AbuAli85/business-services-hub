@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdminClient } from '@/lib/supabase'
 import { authLogger } from '@/lib/auth-logger'
+import { profileManager } from '@/lib/profile-manager'
 
 export async function POST(request: NextRequest) {
   let userId: string | null = null
@@ -41,18 +42,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing required data' }, { status: 400 })
       }
 
-      // Prepare profile data based on role
-      const profileData: any = {
-        profile_completed: true,
-        updated_at: new Date().toISOString()
+      // Prepare profile update data using ProfileManager
+      const updateData: any = {
+        profile_completed: true
       }
 
       // Add basic info - only use existing columns
-      if (formData.phone) profileData.phone = formData.phone
+      if (formData.phone) updateData.phone = formData.phone
 
       // Add role-specific data - only use existing columns
       if (role === 'provider') {
-        if (formData.companyName) profileData.company_name = formData.companyName
+        if (formData.companyName) updateData.company_name = formData.companyName
         // Note: services, experience, businessType, teamSize, businessRegistration, 
         // certifications, languages, availability, pricing, specializations, portfolio 
         // columns don't exist in the profiles table yet
@@ -64,14 +64,11 @@ export async function POST(request: NextRequest) {
       // Note: bio, location, website, linkedin, timezone, workingHours, testimonials
       // columns don't exist in the profiles table yet
 
-      // Update the profile
-      const { error: updateError } = await admin
-        .from('profiles')
-        .update(profileData)
-        .eq('id', userId)
-
-      if (updateError) {
-        console.error('Error updating profile:', updateError)
+      // Use ProfileManager to update the profile
+      const updatedProfile = await profileManager.updateProfile(userId, updateData)
+      
+      if (!updatedProfile) {
+        console.error('ProfileManager failed to update profile')
         return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
       }
 
@@ -109,135 +106,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 401 })
     }
 
-    // Process the request with the authenticated user
-    const body = await request.json()
-    const { formData, role } = body
-
-    if (!formData || !role) {
-      return NextResponse.json({ error: 'Missing required data' }, { status: 400 })
-    }
-
-    // Prepare profile data based on role
-    const profileData: any = {
-      profile_completed: true,
-      updated_at: new Date().toISOString()
-    }
-
-    // Add basic info - only use existing columns
-    if (formData.phone) profileData.phone = formData.phone
-
-    // Add role-specific data - only use existing columns
-    if (role === 'provider') {
-      if (formData.companyName) profileData.company_name = formData.companyName
-      // Note: services, experience, businessType, teamSize, businessRegistration, 
-      // certifications, languages, availability, pricing, specializations, portfolio 
-      // columns don't exist in the profiles table yet
-    } else if (role === 'client') {
-      // Note: preferredCategories, budgetRange, projectTimeline, communicationPreference
-      // columns don't exist in the profiles table yet
-    }
-
-    // Note: bio, location, website, linkedin, timezone, workingHours, testimonials
-    // columns don't exist in the profiles table yet
-
-    // Log the profile data being updated
-    console.log('🔍 Updating profile with data:', {
-      userId,
-      role,
-      profileDataKeys: Object.keys(profileData),
-      profileDataSample: {
-        profile_completed: profileData.profile_completed,
-        phone: profileData.phone,
-        company_name: profileData.company_name
-      }
-    })
-
-    // First, check if profile exists
-    const { data: existingProfile, error: checkError } = await admin
-      .from('profiles')
-      .select('id, profile_completed')
-      .eq('id', userId)
-      .single()
-
-    console.log('🔍 Profile check result:', {
-      exists: !!existingProfile,
-      checkError: checkError?.message,
-      userId
-    })
-
-    if (checkError?.code === 'PGRST116') {
-      // Profile doesn't exist, create it
-      console.log('🔍 Profile does not exist, creating new profile...')
-      
-      if (!userId) {
-        console.error('❌ No user ID available for profile creation')
-        return NextResponse.json({ 
-          error: 'No user ID available', 
-          details: 'User ID is required to create profile' 
-        }, { status: 400 })
-      }
-      
-      const { data: authUser, error: authError } = await admin.auth.admin.getUserById(userId!)
-      if (authError) {
-        console.error('❌ Could not get auth user:', authError)
-        return NextResponse.json({ 
-          error: 'Could not retrieve user information', 
-          details: authError?.message || 'Unknown auth error' 
-        }, { status: 500 })
-      }
-
-      // Create new profile with safe email handling
-      const safeEmail = authUser.user?.email || `user-${userId}@placeholder.local`
-      const { error: createError } = await admin
-        .from('profiles')
-        .insert({
-          id: userId,
-          full_name: authUser.user?.user_metadata?.full_name || authUser.user?.email?.split('@')[0] || 'User',
-          email: safeEmail,
-          role: role || 'provider',
-          ...profileData,
-          created_at: new Date().toISOString()
-        })
-
-      if (createError) {
-        console.error('❌ Error creating profile:', createError)
-        return NextResponse.json({ 
-          error: 'Failed to create profile', 
-          details: createError?.message || 'Unknown create error' 
-        }, { status: 500 })
-      }
-
-      console.log('✅ Profile created successfully for user:', userId)
-    } else if (checkError) {
-      console.error('❌ Error checking profile:', checkError)
-      return NextResponse.json({ 
-        error: 'Failed to check profile', 
-        details: checkError?.message || 'Unknown check error' 
-      }, { status: 500 })
-    } else {
-      // Profile exists, update it
-      console.log('🔍 Profile exists, updating...')
-      
-      const { error: updateError } = await admin
-        .from('profiles')
-        .update(profileData)
-        .eq('id', userId)
-
-      if (updateError) {
-        console.error('❌ Error updating profile:', {
-          error: updateError,
-          userId,
-          profileDataKeys: Object.keys(profileData),
-          role
-        })
-        return NextResponse.json({ 
-          error: 'Failed to update profile', 
-          details: updateError?.message || 'Unknown database error'
-        }, { status: 500 })
-      }
-
-      console.log('✅ Profile updated successfully for user:', userId)
-    }
+    // This code is now handled above with ProfileManager
 
     authLogger.logLoginSuccess({
       success: true,

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase-client'
+import { profileManager, type UserProfile } from '@/lib/profile-manager'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { realtimeManager } from '@/lib/realtime'
 import { toast } from 'sonner'
@@ -36,12 +37,7 @@ import { logger } from '@/lib/logger'
 import { authLogger } from '@/lib/auth-logger'
 import { clearSessionCookies } from '@/lib/utils/session-sync'
 
-interface UserProfile {
-  id: string
-  role: 'admin' | 'provider' | 'client' | 'staff' | null
-  full_name: string
-  company_name?: string
-}
+// UserProfile interface is now imported from profile-manager
 
 interface Notification {
   id: string
@@ -205,12 +201,34 @@ export default function DashboardLayout({
         return
       }
       
-      // Create minimal user object
-      const simpleUser = {
+      // Try to get basic profile data quickly using ProfileManager
+      let fullName = session.user.user_metadata?.full_name || 'User'
+      let userRole = session.user.user_metadata?.role || 'client'
+      
+      try {
+        // Use ProfileManager for quick profile fetch
+        const profile = await profileManager.getUserProfile(session.user.id, false) // Skip cache for fresh data
+        
+        if (profile) {
+          fullName = profile.full_name || fullName
+          userRole = profile.role || userRole
+          console.log('✅ ProfileManager fetch successful:', profile)
+        }
+      } catch (profileError) {
+        console.warn('⚠️ ProfileManager fetch failed, using auth metadata:', profileError)
+      }
+      
+      // Create user object with fetched data
+      const simpleUser: UserProfile = {
         id: session.user.id,
-        role: session.user.user_metadata?.role || 'client',
-        full_name: session.user.user_metadata?.full_name || 'User',
-        company_name: undefined
+        role: userRole as UserProfile['role'],
+        full_name: fullName,
+        email: session.user.email || '',
+        company_name: undefined,
+        profile_completed: false,
+        verification_status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
       
       console.log('✅ Simple auth check successful, setting user:', simpleUser)
@@ -390,92 +408,52 @@ export default function DashboardLayout({
         // Continue with normal flow if profile check fails
       }
       
-      // Fetch company name from profile if user is a provider (with timeout)
+      // Fetch comprehensive profile data using ProfileManager
+      console.log('🔍 Fetching comprehensive profile data...')
       let companyName = undefined
-      if (userRole === 'provider') {
-        try {
-          console.log('🏢 Fetching company info for provider...')
+      let fullName = userMetadata?.full_name || 'User'
+      
+      try {
+        // Use ProfileManager to get complete profile data
+        const profile = await profileManager.getUserProfile(session.user.id)
+        
+        if (profile) {
+          console.log('📋 Profile data from ProfileManager:', profile)
+          fullName = profile.full_name || fullName
           
-          const companyPromise = supabase
-            .from('profiles')
-            .select('company_id')
-            .eq('id', session.user.id)
-            .maybeSingle()
-          
-          const companyTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Company fetch timeout')), 2000)
-          )
-          
-          const companyResult = await Promise.race([companyPromise, companyTimeout]) as { data: any }
-          const { data: profile } = companyResult
-          
-          if (profile?.company_id) {
-            const { data: company } = await supabase
-              .from('companies')
-              .select('name, logo_url')
-              .eq('id', profile.company_id)
-              .maybeSingle()
-            
-            if (company?.name) {
-              companyName = company.name
+          // Get company information if user has company_id
+          if (profile.company_id) {
+            const companyInfo = await profileManager.getCompanyInfo(session.user.id)
+            if (companyInfo?.name) {
+              companyName = companyInfo.name
             }
-            if (company?.logo_url) {
-              setUserLogoUrl(company.logo_url)
+            if (companyInfo?.logo_url) {
+              setUserLogoUrl(companyInfo.logo_url)
             }
           }
-        } catch (error) {
-          console.warn('⚠️ Could not fetch company name:', error)
-          logger.warn('Could not fetch company name:', error)
+          
+          // Set profile logo if available
+          if (profile.logo_url) {
+            setUserLogoUrl(profile.logo_url)
+          }
+        } else {
+          console.log('⚠️ No profile found, using auth metadata')
         }
-      }
-
-      // Fetch client/staff logo if user is a client or staff (with timeout)
-      if (userRole === 'client' || userRole === 'staff') {
-        try {
-          console.log('👤 Fetching client/staff info...')
-          
-          // First try to get logo and name from companies table (preferred)
-          const clientPromise = supabase
-            .from('companies')
-            .select('name, logo_url')
-            .eq('owner_id', session.user.id)
-            .maybeSingle()
-          
-          const clientTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Client info fetch timeout')), 2000)
-          )
-          
-          const clientResult = await Promise.race([clientPromise, clientTimeout]) as { data: any }
-          const { data: company } = clientResult
-          
-          if (company?.logo_url) {
-            setUserLogoUrl(company.logo_url)
-          }
-          if (company?.name) {
-            companyName = company.name
-          } else {
-            // Fallback to profile logo_url if no company logo
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('logo_url')
-              .eq('id', session.user.id)
-              .maybeSingle()
-            
-            if (profile?.logo_url) {
-              setUserLogoUrl(profile.logo_url)
-            }
-          }
-        } catch (error) {
-          console.warn('⚠️ Could not fetch client logo/name:', error)
-          logger.warn('Could not fetch client logo/name:', error)
-        }
+      } catch (error) {
+        console.warn('⚠️ Profile data fetch failed, using auth metadata:', error)
+        // Continue with auth metadata as fallback
       }
       
-      const finalUser = {
+      const finalUser: UserProfile = {
         id: session.user.id,
-        role: userRole,
-        full_name: userMetadata?.full_name || 'User',
-        company_name: companyName
+        role: userRole as UserProfile['role'],
+        full_name: fullName,
+        email: session.user.email || '',
+        company_name: companyName,
+        profile_completed: false,
+        verification_status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
       
       console.log('🎉 Setting final user:', finalUser)
