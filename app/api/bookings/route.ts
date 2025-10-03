@@ -522,10 +522,10 @@ export async function GET(request: NextRequest) {
           .select('booking_id, status, amount')
           .in('booking_id', bookingIds)
         
-        // Create lookup maps
-        const serviceMap = new Map(services.map(s => [s.id, s]))
-        const profileMap = new Map(profiles.map(p => [p.id, p]))
-        const invoiceMap = new Map(invoices.map(i => [i.booking_id, i]))
+        // Create lookup maps with null safety
+        const serviceMap = new Map((services || []).map(s => [s.id, s]))
+        const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+        const invoiceMap = new Map((invoices || []).map(i => [i.booking_id, i]))
         
         // Transform data using lookup maps
         return rows.map(booking => {
