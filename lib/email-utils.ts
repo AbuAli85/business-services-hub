@@ -312,3 +312,4 @@ export function generateHTMLEmailTemplate(booking: any): string {
   `
 }
 
+

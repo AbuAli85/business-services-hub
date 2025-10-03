@@ -521,3 +521,4 @@ export function downloadReport(report: ReportData, format: 'html' | 'json' = 'ht
   }
 }
 
+
