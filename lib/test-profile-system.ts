@@ -25,7 +25,7 @@ export async function testProfileSystem(userId: string) {
     if (profile) {
       console.log('✏️ Test 3: Updating profile...')
       const updateData = {
-        updated_at: new Date().toISOString()
+        profile_completed: true
       }
       
       const updatedProfile = await profileManager.updateProfile(userId, updateData)
