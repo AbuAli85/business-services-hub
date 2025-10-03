@@ -70,14 +70,22 @@ export default function DashboardLayout({
 
   useEffect(() => {
     console.log('🚀 Dashboard layout mounted, starting auth check...')
-    checkUser()
+    
+    // Try the full checkUser first
+    checkUser().catch(error => {
+      console.error('❌ checkUser failed:', error)
+      // Fallback to simple auth check
+      console.log('🔄 Falling back to simple auth check...')
+      simpleAuthCheck()
+    })
+    
     fetchNotifications()
     
     // Add a timeout to prevent infinite loading
     const loadingTimeout = setTimeout(() => {
       if (loading && !user) {
-        console.warn('⚠️ Dashboard loading timeout - redirecting to sign-in')
-        router.push('/auth/sign-in')
+        console.warn('⚠️ Dashboard loading timeout - trying simple auth check...')
+        simpleAuthCheck()
       }
     }, 10000) // 10 second timeout
     
@@ -184,8 +192,47 @@ export default function DashboardLayout({
     }
   }, [user?.id])
 
+  // Simple auth check as fallback
+  const simpleAuthCheck = async () => {
+    console.log('🔄 Starting simple auth check...')
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error || !session) {
+        console.log('❌ Simple auth check failed, redirecting to sign-in')
+        router.push('/auth/sign-in')
+        return
+      }
+      
+      // Create minimal user object
+      const simpleUser = {
+        id: session.user.id,
+        role: session.user.user_metadata?.role || 'client',
+        full_name: session.user.user_metadata?.full_name || 'User',
+        company_name: undefined
+      }
+      
+      console.log('✅ Simple auth check successful, setting user:', simpleUser)
+      setUser(simpleUser)
+      
+    } catch (error) {
+      console.error('❌ Simple auth check exception:', error)
+      router.push('/auth/sign-in')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const checkUser = async () => {
     console.log('🔍 Starting checkUser...')
+    
+    // Add timeout protection for the entire function
+    const checkUserTimeout = setTimeout(() => {
+      console.error('❌ checkUser function timeout - redirecting to sign-in')
+      router.push('/auth/sign-in')
+    }, 8000) // 8 second timeout for the function itself
+    
     try {
       const supabase = await getSupabaseClient()
       console.log('✅ Supabase client initialized')
@@ -205,6 +252,7 @@ export default function DashboardLayout({
       if (sessionError) {
         console.error('❌ Session fetch error:', sessionError)
         logger.error('Could not fetch session:', sessionError)
+        clearTimeout(checkUserTimeout)
         router.push('/auth/sign-in')
         return
       }
@@ -223,6 +271,7 @@ export default function DashboardLayout({
           
           if (refreshError || !refreshedSession) {
             console.error('❌ Session refresh failed:', refreshError)
+            clearTimeout(checkUserTimeout)
             router.push('/auth/sign-in')
             return
           }
@@ -232,6 +281,7 @@ export default function DashboardLayout({
         } catch (refreshError) {
           console.error('❌ Session refresh exception:', refreshError)
           logger.warn('Session refresh failed:', refreshError)
+          clearTimeout(checkUserTimeout)
           router.push('/auth/sign-in')
           return
         }
@@ -276,31 +326,46 @@ export default function DashboardLayout({
       
       console.log('🎯 Final user role:', userRole)
 
-      // Check if user has completed profile and is verified
+      // Check if user has completed profile and is verified (with timeout)
       try {
-        const { data: profile } = await supabase
+        console.log('🔍 Checking profile status...')
+        
+        // Add timeout to profile check
+        const profileCheckPromise = supabase
           .from('profiles')
           .select('profile_completed, verification_status, role')
           .eq('id', session.user.id)
           .single()
+        
+        const profileCheckTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Profile check timeout')), 3000)
+        )
+        
+        const { data: profile } = await Promise.race([profileCheckPromise, profileCheckTimeout])
+        console.log('📋 Profile check result:', profile)
 
         if (profile) {
           // Admin users bypass profile completion and verification checks
           if (profile.role === 'admin') {
+            console.log('👑 Admin user detected, bypassing profile completion checks')
             logger.info('Admin user detected, bypassing profile completion checks')
             // Continue with normal flow for admin users
           } else {
             // For non-admin users, check verification status first
             // If profile is pending approval, redirect to pending approval page
             if (profile.verification_status === 'pending') {
+              console.log('⏳ Profile pending approval, redirecting to pending approval page')
               logger.warn('Profile pending approval, redirecting to pending approval page')
+              clearTimeout(checkUserTimeout)
               router.push('/auth/pending-approval')
               return
             }
 
             // If profile is rejected, redirect to pending approval page
             if (profile.verification_status === 'rejected') {
+              console.log('❌ Profile rejected, redirecting to pending approval page')
               logger.warn('Profile rejected, redirecting to pending approval page')
+              clearTimeout(checkUserTimeout)
               router.push('/auth/pending-approval')
               return
             }
@@ -308,26 +373,39 @@ export default function DashboardLayout({
             // Only redirect to onboarding if profile is not completed AND not approved
             // This allows approved users to access dashboard even if profile_completed is false
             if (!profile.profile_completed && profile.verification_status !== 'approved') {
+              console.log('📝 Profile not completed, redirecting to onboarding')
               logger.warn('Profile not completed, redirecting to onboarding')
+              clearTimeout(checkUserTimeout)
               router.push('/auth/onboarding')
               return
             }
           }
+        } else {
+          console.log('⚠️ No profile found, continuing with basic user setup')
         }
       } catch (error) {
+        console.warn('⚠️ Profile check failed or timed out:', error)
         logger.warn('Could not check profile status:', error)
         // Continue with normal flow if profile check fails
       }
       
-      // Fetch company name from profile if user is a provider
+      // Fetch company name from profile if user is a provider (with timeout)
       let companyName = undefined
       if (userRole === 'provider') {
         try {
-          const { data: profile } = await supabase
+          console.log('🏢 Fetching company info for provider...')
+          
+          const companyPromise = supabase
             .from('profiles')
             .select('company_id')
             .eq('id', session.user.id)
             .maybeSingle()
+          
+          const companyTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Company fetch timeout')), 2000)
+          )
+          
+          const { data: profile } = await Promise.race([companyPromise, companyTimeout])
           
           if (profile?.company_id) {
             const { data: company } = await supabase
@@ -344,19 +422,28 @@ export default function DashboardLayout({
             }
           }
         } catch (error) {
+          console.warn('⚠️ Could not fetch company name:', error)
           logger.warn('Could not fetch company name:', error)
         }
       }
 
-      // Fetch client/staff logo if user is a client or staff
+      // Fetch client/staff logo if user is a client or staff (with timeout)
       if (userRole === 'client' || userRole === 'staff') {
         try {
+          console.log('👤 Fetching client/staff info...')
+          
           // First try to get logo and name from companies table (preferred)
-          const { data: company } = await supabase
+          const clientPromise = supabase
             .from('companies')
             .select('name, logo_url')
             .eq('owner_id', session.user.id)
             .maybeSingle()
+          
+          const clientTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Client info fetch timeout')), 2000)
+          )
+          
+          const { data: company } = await Promise.race([clientPromise, clientTimeout])
           
           if (company?.logo_url) {
             setUserLogoUrl(company.logo_url)
@@ -376,6 +463,7 @@ export default function DashboardLayout({
             }
           }
         } catch (error) {
+          console.warn('⚠️ Could not fetch client logo/name:', error)
           logger.warn('Could not fetch client logo/name:', error)
         }
       }
@@ -390,9 +478,14 @@ export default function DashboardLayout({
       console.log('🎉 Setting final user:', finalUser)
       setUser(finalUser)
       console.log('✅ User set successfully, loading should be false now')
+      
+      // Clear the timeout since we succeeded
+      clearTimeout(checkUserTimeout)
+      
     } catch (error) {
       console.error('❌ Error checking user:', error)
       logger.error('Error checking user:', error)
+      clearTimeout(checkUserTimeout)
       router.push('/auth/sign-in')
     } finally {
       console.log('🏁 Setting loading to false')
