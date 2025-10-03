@@ -801,9 +801,7 @@ export default function BookingsPage() {
 						  })
 						}}
                         onQuickAction={async (action) => {
-                          if (action === 'view') {
-                            router.push(`/dashboard/bookings/${booking.id}`)
-                          } else if (action === 'approve') {
+                          if (action === 'approve') {
                             await approveBooking(booking.id, booking.provider_id, booking.status)
                           } else if (action === 'decline') {
                             await declineBooking(booking.id, booking.provider_id, booking.status)
@@ -813,17 +811,30 @@ export default function BookingsPage() {
                             const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
                           } else if (action === 'mark_paid') {
                             const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
-                          } else if (action === 'pay_invoice') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
-                          } else if (action === 'view_invoice') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
-                          } else if (action === 'update_progress') {
-                            router.push(`/dashboard/bookings/${booking.id}/milestones`)
                           } else if (action === 'message') {
                             router.push('/dashboard/messages')
+                          } else if (action === 'edit') {
+                            router.push(`/dashboard/bookings/${booking.id}/edit`)
+                          } else if (action === 'download') {
+                            // Handle download action
+                            toast.info('Download feature coming soon')
                           }
                         }}
                         onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
+                        onViewProgress={(id) => { router.push(`/dashboard/bookings/${booking.id}/milestones`) }}
+                        onInvoiceAction={async (action) => {
+                          if (action === 'view_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
+                          } else if (action === 'pay_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
+                          } else if (action === 'create_invoice') {
+                            await handleCreateInvoice(booking)
+                          } else if (action === 'send_invoice') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
+                          } else if (action === 'mark_paid') {
+                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
+                          }
+                        }}
 						density={density}
 						userRole={userRole || undefined}
 					  />

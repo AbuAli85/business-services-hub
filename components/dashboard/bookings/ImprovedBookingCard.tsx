@@ -5,6 +5,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { 
   Calendar, 
   Clock, 
@@ -12,7 +19,17 @@ import {
   Building, 
   Eye,
   FileText,
-  MessageSquare
+  MessageSquare,
+  BarChart3,
+  MoreVertical,
+  DollarSign,
+  CheckCircle,
+  Play,
+  Edit,
+  Download,
+  Send,
+  CreditCard,
+  X
 } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
 import { ProgressIndicator, CompactProgressIndicator } from './ProgressIndicator'
@@ -27,6 +44,8 @@ export interface ImprovedBookingCardProps {
   onSelect?: (checked: boolean) => void
   onQuickAction?: (action: string, bookingId: string) => void
   onViewDetails?: (bookingId: string) => void
+  onViewProgress?: (bookingId: string) => void
+  onInvoiceAction?: (action: string, bookingId: string) => void
   density?: 'compact' | 'comfortable' | 'spacious'
   userRole?: 'client' | 'provider' | 'admin'
 }
@@ -65,6 +84,8 @@ export function ImprovedBookingCard({
   onSelect, 
   onQuickAction,
   onViewDetails,
+  onViewProgress,
+  onInvoiceAction,
   density = 'comfortable',
   userRole = 'client'
 }: ImprovedBookingCardProps) {
@@ -87,6 +108,94 @@ export function ImprovedBookingCard({
   const paddingClass = isCompact ? 'p-3' : isSpacious ? 'p-6' : 'p-4'
   const spacingClass = isCompact ? 'space-y-2' : isSpacious ? 'space-y-4' : 'space-y-3'
   const textSizeClass = isCompact ? 'text-sm' : 'text-base'
+
+  // Helper functions for action availability
+  const isApproved = (booking.approval_status === 'approved') || (status === 'approved') || (status === 'confirmed')
+  const isPendingApproval = (booking.approval_status === 'pending') || (status === 'pending')
+  const hasInvoice = !!invoice
+  const invoiceStatus = invoice?.status
+
+  // Get available actions for three dots menu
+  const getMoreActions = () => {
+    const actions = []
+    
+    // Common actions
+    actions.push({
+      key: 'message',
+      label: 'Send Message',
+      icon: MessageSquare
+    })
+    
+    actions.push({
+      key: 'edit',
+      label: 'Edit Booking',
+      icon: Edit
+    })
+    
+    // Role-specific actions
+    if (userRole === 'admin' || userRole === 'provider') {
+      if (!isApproved && isPendingApproval) {
+        actions.push({
+          key: 'approve',
+          label: 'Approve Booking',
+          icon: CheckCircle
+        })
+      }
+      
+      if (isApproved && !hasInvoice) {
+        actions.push({
+          key: 'create_invoice',
+          label: 'Create Invoice',
+          icon: FileText
+        })
+      }
+      
+      if (hasInvoice && invoiceStatus === 'draft') {
+        actions.push({
+          key: 'send_invoice',
+          label: 'Send Invoice',
+          icon: Send
+        })
+      }
+      
+      if (hasInvoice && invoiceStatus === 'issued') {
+        actions.push({
+          key: 'mark_paid',
+          label: 'Mark as Paid',
+          icon: CreditCard
+        })
+      }
+    }
+    
+    if (userRole === 'client') {
+      if (hasInvoice && invoiceStatus === 'issued') {
+        actions.push({
+          key: 'pay_invoice',
+          label: 'Pay Invoice',
+          icon: DollarSign
+        })
+      }
+      
+      if (hasInvoice) {
+        actions.push({
+          key: 'view_invoice',
+          label: 'View Invoice',
+          icon: FileText
+        })
+      }
+    }
+    
+    // Status-based actions
+    if (status === 'completed') {
+      actions.push({
+        key: 'download',
+        label: 'Download Files',
+        icon: Download
+      })
+    }
+    
+    return actions
+  }
 
   return (
     <Card className="border rounded-xl hover:shadow-md transition-shadow duration-200">
@@ -145,18 +254,80 @@ export function ImprovedBookingCard({
               </div>
             </div>
             
-            {/* Actions */}
+            {/* Primary Action Buttons */}
             <div className="flex items-center gap-1">
+              {/* View Details Button */}
               {onViewDetails && (
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm"
                   onClick={() => onViewDetails(booking.id)}
-                  className="h-8 w-8 p-0"
+                  className="h-8 px-3 text-xs"
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  Details
                 </Button>
               )}
+              
+              {/* Progress Button */}
+              {onViewProgress && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onViewProgress(booking.id)}
+                  className="h-8 px-3 text-xs"
+                >
+                  <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+                  Progress
+                </Button>
+              )}
+              
+              {/* Invoice Button */}
+              {onInvoiceAction && hasInvoice && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onInvoiceAction('view_invoice', booking.id)}
+                  className="h-8 px-3 text-xs"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Invoice
+                </Button>
+              )}
+              
+              {/* Three Dots Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {getMoreActions().map((action, index) => {
+                    const Icon = action.icon
+                    return (
+                      <DropdownMenuItem
+                        key={action.key}
+                        onClick={() => {
+                          if (action.key.includes('invoice')) {
+                            onInvoiceAction?.(action.key, booking.id)
+                          } else {
+                            onQuickAction?.(action.key, booking.id)
+                          }
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {action.label}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -218,20 +389,6 @@ export function ImprovedBookingCard({
             )}
           </div>
 
-          {/* Quick Actions */}
-          {!isCompact && (
-            <div className="pt-2 border-t border-gray-100">
-              <ImprovedQuickActions 
-                bookingId={String(booking.id)} 
-                onAction={(action) => onQuickAction?.(action, booking.id)}
-                userRole={userRole}
-                status={status}
-                approvalStatus={approvalStatus}
-                hasInvoice={!!invoice}
-                invoiceStatus={invoice?.status}
-              />
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
