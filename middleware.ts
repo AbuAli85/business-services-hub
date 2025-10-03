@@ -67,7 +67,7 @@ function isPublicApiRoute(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const accessToken = req.cookies.get('sb-access-token')?.value || undefined
+  const res = NextResponse.next()
   
   // Skip static files and favicon
   if (pathname.startsWith('/_next') || 
@@ -122,8 +122,8 @@ export async function middleware(req: NextRequest) {
     
     try {
       // Quick session check using access token from HttpOnly cookie
-      const supabase = createMiddlewareClient()
-      const { data: { user }, error } = await supabase.auth.getUser(accessToken)
+      const supabase = createMiddlewareClient(req)
+      const { data: { user }, error } = await supabase.auth.getUser()
       
       if (error || !user) {
         if (error) {
@@ -133,11 +133,10 @@ export async function middleware(req: NextRequest) {
       }
 
       // Add minimal headers
-      const response = NextResponse.next()
-      response.headers.set('x-user-id', user.id)
-      response.headers.set('x-user-email', user.email || '')
+      res.headers.set('x-internal-user-id', user.id)
+      res.headers.set('x-user-email', user.email || '')
       
-      return response
+      return res
       
     } catch (error) {
       console.error('[auth] unexpected error during middleware auth check:', { error, pathname })
@@ -153,8 +152,6 @@ export const config = {
   matcher: [
     '/api/:path*',
     '/dashboard/:path*',
-    '/auth/:path*',
-    '/auth/onboarding/:path*',
-    '/auth/pending-approval/:path*'
+    '/auth/:path*'
   ]
 }
