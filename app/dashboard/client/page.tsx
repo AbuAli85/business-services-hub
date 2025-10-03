@@ -92,6 +92,8 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     checkUserAndFetchData()
+    const id = setTimeout(() => setLoading(false), 10000)
+    return () => clearTimeout(id)
   }, [])
 
   // Real-time updates (only what we actually need)
@@ -127,7 +129,8 @@ export default function ClientDashboard() {
       setError(null)
 
       const supabase = await getSupabaseClient()
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      const { data, error: userError } = await supabase.auth.getUser()
+      const user = data?.user
       
       if (userError || !user) {
         router.push('/auth/sign-in')

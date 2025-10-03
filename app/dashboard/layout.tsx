@@ -73,18 +73,19 @@ export default function DashboardLayout({
     fetchNotifications()
   }, [])
 
-  // Realtime notifications table stream
+  // Realtime notifications table stream (proper cleanup)
   useEffect(() => {
     if (!user?.id) return
+    let isActive = true
+    let channel: any = null
     ;(async () => {
       try {
         const supabase = await getSupabaseClient()
-        // Create filter string inside the useEffect where user.id is available
         const userFilter = `user_id=eq.${user.id}`
-
-        const channel = supabase
+        channel = supabase
           .channel(`notifications-${user.id}`)
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: userFilter }, (payload: any) => {
+            if (!isActive) return
             const n = payload.new
             const item: any = {
               id: n.id,
@@ -100,13 +101,23 @@ export default function DashboardLayout({
             toast.success(item.title + (item.message ? `: ${item.message}` : ''), { duration: 3000 })
           })
           .subscribe()
-        return () => {
-          try { supabase.removeChannel(channel) } catch {}
-        }
       } catch (e) {
         logger.warn('Realtime notifications channel failed', e)
       }
     })()
+    return () => {
+      isActive = false
+      if (channel) {
+        try {
+          const remove = (async () => {
+            try {
+              const supabase = await getSupabaseClient()
+              supabase.removeChannel(channel)
+            } catch {}
+          })()
+        } catch {}
+      }
+    }
   }, [user?.id])
 
   // Realtime notifications for new messages
