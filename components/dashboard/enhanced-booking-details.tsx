@@ -49,7 +49,15 @@ import {
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
-import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils'
+// import { generatePDF, generateExcel, downloadFile, ExportData } from '@/lib/export-utils' // TODO: Implement these functions
+
+// Temporary type definition until export-utils is implemented
+type ExportData = {
+  booking: any
+  tasks: any[]
+  milestones: any[]
+  stats: any
+}
 
 interface EnhancedBooking {
   id: string
@@ -1156,16 +1164,17 @@ export default function EnhancedBookingDetails({
         }
       }
 
+      // TODO: Implement PDF/Excel export functionality
       // Generate and download file
-      if (format === 'pdf') {
-        const pdfBlob = await generatePDF(exportData)
-        downloadFile(pdfBlob, `booking-${booking.id.slice(0, 8)}-progress.pdf`)
-      } else {
-        const excelBlob = await generateExcel(exportData)
-        downloadFile(excelBlob, `booking-${booking.id.slice(0, 8)}-progress.xlsx`)
-      }
+      // if (format === 'pdf') {
+      //   const pdfBlob = await generatePDF(exportData)
+      //   downloadFile(pdfBlob, `booking-${booking.id.slice(0, 8)}-progress.pdf`)
+      // } else {
+      //   const excelBlob = await generateExcel(exportData)
+      //   downloadFile(excelBlob, `booking-${booking.id.slice(0, 8)}-progress.xlsx`)
+      // }
 
-      toast.success(`${format.toUpperCase()} exported successfully`)
+      toast.error(`${format.toUpperCase()} export is not currently implemented`)
     } catch (error) {
       // Error exporting data
       toast.error('Failed to export file')

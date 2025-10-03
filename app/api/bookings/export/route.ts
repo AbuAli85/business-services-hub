@@ -1,7 +1,7 @@
 'use server'
 
 import { NextResponse } from 'next/server'
-import { generatePDF, generateExcel } from '@/lib/export-utils'
+// import { generatePDF, generateExcel } from '@/lib/export-utils' // TODO: Implement server-side PDF/Excel generation
 import { cookies } from 'next/headers'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 
@@ -71,45 +71,10 @@ export async function GET(req: Request) {
     }
 
     if (format === 'pdf' || format === 'xlsx') {
-      // Minimal dataset for demo PDF/XLSX generation
-      const now = new Date().toISOString()
-      const exportPayload = {
-        booking: {
-          id: data?.[0]?.id || 'N/A',
-          title: data?.[0]?.title || 'Bookings Export',
-          status: data?.[0]?.status || 'unknown',
-          created_at: data?.[0]?.created_at || now,
-          amount: Number(data?.[0]?.amount ?? 0),
-          currency: data?.[0]?.currency || 'OMR',
-          client: { full_name: '—', email: '—' },
-          provider: { full_name: '—', email: '—' }
-        },
-        tasks: [],
-        milestones: [],
-        stats: { totalTasks: 0, completedTasks: 0, overdueTasks: 0, overallProgress: 0 }
-      } as any
-
-      if (format === 'pdf') {
-        const blob = await generatePDF(exportPayload)
-        const buf = Buffer.from(await blob.arrayBuffer())
-        return new NextResponse(buf, {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename="bookings_export.pdf"'
-          }
-        })
-      }
-
-      const blob = await generateExcel(exportPayload)
-      const buf = Buffer.from(await blob.arrayBuffer())
-      return new NextResponse(buf, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': 'attachment; filename="bookings_export.xlsx"'
-        }
-      })
+      // TODO: Implement server-side PDF/Excel generation
+      return NextResponse.json({ 
+        error: `${format.toUpperCase()} export is not currently supported. Please use CSV format.` 
+      }, { status: 501 })
     }
 
     // default JSON
