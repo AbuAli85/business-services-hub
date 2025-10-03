@@ -66,6 +66,7 @@ function isPublicApiRoute(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  const accessToken = req.cookies.get('sb-access-token')?.value || undefined
   
   // Skip static files and favicon
   if (pathname.startsWith('/_next') || 
@@ -115,26 +116,12 @@ export async function middleware(req: NextRequest) {
       (pathname.startsWith('/api/') && !isPublicApiRoute(pathname))) {
     
     try {
-      // Quick session check without heavy database operations
+      // Quick session check using access token from HttpOnly cookie
       const supabase = createMiddlewareClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const { data: { user }, error } = await supabase.auth.getUser(accessToken)
       
       if (error || !user) {
         return NextResponse.redirect(new URL('/auth/sign-in', req.url))
-      }
-
-      // For dashboard routes, check if user has basic profile
-      if (pathname.startsWith('/dashboard')) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, role')
-          .eq('id', user.id)
-          .single()
-        
-        // If no profile, redirect to onboarding
-        if (!profile) {
-          return NextResponse.redirect(new URL('/auth/onboarding', req.url))
-        }
       }
 
       // Add minimal headers
