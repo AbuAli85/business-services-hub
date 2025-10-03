@@ -161,7 +161,10 @@ export default function ClientDashboard() {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 10000)
 
-      // One bookings query
+      // One bookings query (client-specific, indexed path)
+      const eighteenMonthsAgo = new Date()
+      eighteenMonthsAgo.setMonth(eighteenMonthsAgo.getMonth() - 18)
+
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select(`
@@ -176,7 +179,8 @@ export default function ClientDashboard() {
           start_time,
           scheduled_date
         `)
-        .or(`client_id.eq.${userId},user_id.eq.${userId}`)
+        .eq('client_id', userId)
+        .gte('created_at', eighteenMonthsAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(50)
         .abortSignal((controller as any).signal)
@@ -275,7 +279,11 @@ export default function ClientDashboard() {
 
       await fetchServiceSuggestions(userId)
     } catch (error: any) {
-      logger.error('Error fetching client data:', error)
+      if (error?.name === 'AbortError') {
+        logger.warn('Bookings load aborted due to timeout')
+      } else {
+        logger.error('Error fetching client data:', error)
+      }
       setStats(defaultStats())
       setRecentBookings([])
       setUpcomingBookings([])
