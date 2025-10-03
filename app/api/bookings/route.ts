@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/authz'
 import { makeServerClient } from '@/utils/supabase/makeServerClient'
 import { jsonError } from '@/lib/http'
 import { ProgressDataService } from '@/lib/progress-data-service'
+import { ProfileFetchOptimizer } from '@/lib/profile-fetch-optimizer'
 import { z as zod } from 'zod'
 
 import { 
@@ -514,14 +515,15 @@ export async function GET(request: NextRequest) {
           console.warn('⚠️ Services fetch error:', servicesError)
         }
         
-        // Bulk fetch profiles
-        const { data: profiles = [], error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds)
+        // Use optimized profile fetcher to avoid stack depth issues
+        const { profiles, errors: profileErrors } = await ProfileFetchOptimizer.fetchProfiles(
+          supabase,
+          userIds,
+          { batchSize: 25, maxRetries: 2 }
+        )
         
-        if (profilesError) {
-          console.warn('⚠️ Profiles fetch error:', profilesError)
+        if (profileErrors.length > 0) {
+          console.warn('⚠️ Profile fetch errors:', profileErrors)
         }
         
         // Bulk fetch invoices
@@ -534,6 +536,10 @@ export async function GET(request: NextRequest) {
         const serviceMap = new Map((services || []).map(s => [s.id, s]))
         const profileMap = new Map((profiles || []).map(p => [p.id, p]))
         const invoiceMap = new Map((invoices || []).map(i => [i.booking_id, i]))
+        
+        // Log profile fetch statistics
+        const profileStats = ProfileFetchOptimizer.getStats(profiles, profileErrors)
+        console.log(`📊 Profile fetch stats: ${profileStats.totalFetched}/${profileStats.totalRequested} (${profileStats.successRate}% success rate)`)
         
         // Transform data using lookup maps
         const transformed = rows.map(booking => {
