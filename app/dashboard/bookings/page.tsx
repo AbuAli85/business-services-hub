@@ -40,6 +40,9 @@ import { normalizeStatus } from '@/lib/status'
 import { getDerivedStatus, calculateBookingStats } from '@/lib/booking-utils'
 import { isBookingApproved, deriveAmount } from '@/lib/bookings-helpers'
 
+// Types
+import type { Booking } from '@/hooks/useBookings'
+
 export default function BookingsPage() {
   const router = useRouter()
   
@@ -65,10 +68,25 @@ export default function BookingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
-  const [detailBooking, setDetailBooking] = useState<any | null>(null)
-  const [detailMilestones, setDetailMilestones] = useState<any[]>([])
-  const [detailCommunications, setDetailCommunications] = useState<any[]>([])
-  const [detailFiles, setDetailFiles] = useState<any[]>([])
+  const [detailBooking, setDetailBooking] = useState<Booking | null>(null)
+  const [detailMilestones, setDetailMilestones] = useState<Array<{
+    id: string
+    title: string
+    status: string
+    progress_percentage?: number
+  }>>([])
+  const [detailCommunications, setDetailCommunications] = useState<Array<{
+    id: string
+    content: string
+    created_at: string
+    sender_id: string
+  }>>([])
+  const [detailFiles, setDetailFiles] = useState<Array<{
+    id: string
+    name: string
+    url: string
+    size?: number
+  }>>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
   // Bookings data
@@ -236,9 +254,10 @@ export default function BookingsPage() {
       
       toast.success('Invoice created successfully')
       refresh(true)
-    } catch (e: any) {
-      console.error('Invoice creation failed:', e)
-      toast.error(e?.message || 'Failed to create invoice')
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to create invoice'
+      console.error('Invoice creation failed:', errorMessage)
+      toast.error(errorMessage)
     }
   }, [canCreateInvoice, user, refresh])
 
@@ -258,9 +277,10 @@ export default function BookingsPage() {
 
       toast.success('Invoice sent successfully')
       refresh(true)
-    } catch (e: any) {
-      console.error('Send invoice failed:', e)
-      toast.error(e?.message || 'Failed to send invoice')
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to send invoice'
+      console.error('Send invoice failed:', errorMessage)
+      toast.error(errorMessage)
     }
   }, [refresh])
 
@@ -280,14 +300,15 @@ export default function BookingsPage() {
 
       toast.success('Invoice marked as paid')
       refresh(true)
-    } catch (e: any) {
-      console.error('Mark paid failed:', e)
-      toast.error(e?.message || 'Failed to mark invoice as paid')
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to mark invoice as paid'
+      console.error('Mark paid failed:', errorMessage)
+      toast.error(errorMessage)
     }
   }, [refresh])
 
   // Open booking details
-  const openBookingDetails = useCallback(async (booking: any) => {
+  const openBookingDetails = useCallback(async (booking: Booking) => {
     try {
       setDetailOpen(true)
       setDetailBooking(booking)
@@ -296,10 +317,17 @@ export default function BookingsPage() {
       setDetailFiles([])
       setDetailLoading(true)
 
-        const supabase = await getSupabaseClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        const headers: Record<string,string> = { 'Content-Type': 'application/json' }
-        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+      const supabase = await getSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        throw new Error('No valid session')
+      }
+      
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      }
 
       const [bookingRes, milestonesRes, commsRes] = await Promise.all([
         fetch(`/api/bookings/${booking.id}`, { headers, credentials: 'include' }),
@@ -310,17 +338,27 @@ export default function BookingsPage() {
       if (bookingRes.ok) {
         const { booking: enriched } = await bookingRes.json()
         if (enriched) setDetailBooking(enriched)
+      } else {
+        console.warn('Failed to load enriched booking data:', await bookingRes.text())
       }
+      
       if (milestonesRes.ok) {
         const { milestones } = await milestonesRes.json()
         setDetailMilestones(Array.isArray(milestones) ? milestones : [])
+      } else {
+        console.warn('Failed to load milestones:', await milestonesRes.text())
       }
+      
       if (commsRes.ok) {
         const { messages } = await commsRes.json()
         setDetailCommunications(Array.isArray(messages) ? messages : [])
+      } else {
+        console.warn('Failed to load communications:', await commsRes.text())
       }
     } catch (e) {
-      console.warn('Failed to load booking details:', e)
+      const errorMessage = e instanceof Error ? e.message : 'Failed to load booking details'
+      console.error('Failed to load booking details:', errorMessage)
+      toast.error(errorMessage)
     } finally {
       setDetailLoading(false)
     }
@@ -467,7 +505,15 @@ export default function BookingsPage() {
       {/* Calendar view */}
 		{viewMode === 'calendar' && (
 		  <div className="mb-6">
-			<BookingCalendar bookings={filteredBookings} onDateSelect={(d)=> console.log('date', d)} />
+			<BookingCalendar 
+              bookings={filteredBookings} 
+              onDateSelect={(dateISO: string) => {
+                // Filter bookings by selected date
+                const dateStr = dateISO.split('T')[0]
+                setSearchQuery(dateStr)
+                toast.info(`Showing bookings for ${dateStr}`)
+              }} 
+            />
 		  </div>
 		)}
 
@@ -500,14 +546,24 @@ export default function BookingsPage() {
                 setSelectedIds(new Set())
                 setSelectAll(false)
                 refresh(true)
-                } catch (e: any) {
-                  console.error('Bulk update failed:', e)
-                  toast.error(e?.message || 'Bulk update failed')
+                } catch (e: unknown) {
+                  const errorMessage = e instanceof Error ? e.message : 'Bulk update failed'
+                  console.error('Bulk update failed:', errorMessage)
+                  toast.error(errorMessage)
               }
             }}
-            onNotify={()=> console.log('Notify', Array.from(selectedIds))}
-            onReport={()=> console.log('Report', Array.from(selectedIds))}
-            onArchive={()=> console.log('Archive', Array.from(selectedIds))}
+			onNotify={async () => {
+              toast.info('Notification feature coming soon')
+              // Future implementation: Send notifications to selected bookings
+            }}
+            onReport={async () => {
+              toast.info('Report generation coming soon')
+              // Future implementation: Generate report for selected bookings
+            }}
+            onArchive={async () => {
+              toast.info('Archive feature coming soon')
+              // Future implementation: Archive selected bookings
+            }}
           />
         </div>
       )}
