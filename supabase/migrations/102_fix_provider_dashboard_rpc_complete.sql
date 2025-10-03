@@ -75,7 +75,7 @@ BEGIN
   FROM bookings b
   WHERE b.provider_id = pid;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp SET statement_timeout = '8000ms';
 
 -- Create fixed get_provider_recent_bookings function
 CREATE OR REPLACE FUNCTION get_provider_recent_bookings(pid uuid, limit_count int)
@@ -126,7 +126,7 @@ BEGIN
   ORDER BY b.created_at DESC
   LIMIT limit_count;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp SET statement_timeout = '8000ms';
 
 -- Create fixed get_provider_top_services function
 CREATE OR REPLACE FUNCTION get_provider_top_services(pid uuid, limit_count int)
@@ -186,7 +186,7 @@ BEGIN
   ORDER BY COALESCE(booking_stats.booking_count, 0) DESC
   LIMIT limit_count;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp SET statement_timeout = '8000ms';
 
 -- Create fixed get_provider_monthly_earnings function
 CREATE OR REPLACE FUNCTION get_provider_monthly_earnings(pid uuid, months_back int)
@@ -207,10 +207,40 @@ BEGIN
   GROUP BY date_trunc('month', b.created_at)
   ORDER BY date_trunc('month', b.created_at) DESC;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp SET statement_timeout = '8000ms';
 
 -- Grant necessary permissions
 GRANT EXECUTE ON FUNCTION get_provider_dashboard(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_provider_recent_bookings(uuid, int) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_provider_top_services(uuid, int) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_provider_monthly_earnings(uuid, int) TO authenticated;
+
+-- Add targeted indexes to support RPC performance (safe no-op if they exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='bookings') THEN
+    BEGIN
+      CREATE INDEX IF NOT EXISTS idx_bookings_provider_created_at ON public.bookings(provider_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_bookings_service_id ON public.bookings(service_id);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Could not create bookings indexes: %', SQLERRM;
+    END;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='reviews') THEN
+    BEGIN
+      CREATE INDEX IF NOT EXISTS idx_reviews_booking_id ON public.reviews(booking_id);
+      CREATE INDEX IF NOT EXISTS idx_reviews_provider_id ON public.reviews(provider_id);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Could not create reviews indexes: %', SQLERRM;
+    END;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='services') THEN
+    BEGIN
+      CREATE INDEX IF NOT EXISTS idx_services_provider_id ON public.services(provider_id);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'Could not create services indexes: %', SQLERRM;
+    END;
+  END IF;
+END $$;

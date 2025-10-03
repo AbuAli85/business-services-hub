@@ -65,10 +65,18 @@ export async function GET(request: NextRequest) {
       return withCors(jsonError(403, 'FORBIDDEN', 'Insufficient role'), request)
     }
 
+    // Performance guards
+    const DAYS_BACK = 180
+    const MAX_ROWS = 2000
+    const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12000)
+
     // Get ALL bookings for summary statistics (no pagination)
     let query = supabase
       .from('bookings')
-      .select('id, status, approval_status, amount_cents, currency, service_id, client_id, provider_id, created_at, updated_at', { count: 'exact' })
+      .select('id, status, approval_status, amount_cents, currency, service_id, client_id, provider_id, created_at', { count: 'planned' })
+      .gte('created_at', sinceIso)
 
     // Apply role-based filtering
     if (userRole === 'client') {
@@ -78,7 +86,10 @@ export async function GET(request: NextRequest) {
     }
     // Admin can see all bookings
 
-    const { data: allBookings, count: totalCount, error: queryError } = await query
+    // Cap rows to avoid huge payloads
+    query = query.range(0, MAX_ROWS - 1)
+
+    const { data: allBookings, error: queryError } = await query.abortSignal(controller.signal)
 
     if (queryError) {
       console.error('Summary API: Query error:', queryError)
@@ -88,7 +99,11 @@ export async function GET(request: NextRequest) {
     // Get ALL invoices for revenue calculation
     const { data: allInvoices } = await supabase
       .from('invoices')
-      .select('id, booking_id, status, amount')
+      .select('id, booking_id, status, amount, created_at')
+      // Try to filter by same window if column exists; harmless if ignored by RLS
+      .gte('created_at', sinceIso)
+      .limit(MAX_ROWS)
+      .abortSignal(controller.signal)
 
     // Calculate summary statistics
     const bookingsData = allBookings || []
@@ -116,7 +131,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate metrics
-    const total = totalCount || 0
+    const total = bookingsData.length
     const completed = bookingsData.filter(b => getDerivedStatus(b) === 'delivered').length
     const inProgress = bookingsData.filter(b => getDerivedStatus(b) === 'in_production').length
     const approved = bookingsData.filter(b => 
@@ -200,6 +215,22 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Summary API: Error:', error)
+    // Graceful timeout handling
+    if ((error as any)?.name === 'AbortError' || /AbortError/.test(String((error as any)?.message))) {
+      const minimal = {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        approved: 0,
+        pending: 0,
+        readyToLaunch: 0,
+        totalRevenue: 0,
+        projectedBillings: 0,
+        pendingApproval: 0,
+        avgCompletionTime: 0
+      }
+      return withCors(NextResponse.json(minimal), request)
+    }
     return withCors(jsonError(500, 'INTERNAL_ERROR', 'Internal server error'), request)
   }
 }

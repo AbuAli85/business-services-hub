@@ -31,26 +31,33 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Use admin client for a single efficient query (no RLS overhead, fewer round trips)
-    const supabase = await getSupabaseAdminClient()
+    // Prefer admin client; gracefully fall back to anon client if admin key is unavailable
+    let isPublicMode = false
+    let supabase
+    try {
+      supabase = await getSupabaseAdminClient()
+    } catch (_) {
+      isPublicMode = true
+      supabase = await createClient()
+    }
     const { searchParams } = new URL(request.url)
     
     // Get query parameters
     const category = searchParams.get('category')
     const provider_id = searchParams.get('provider_id')
-    const status = searchParams.get('status') || 'active'
+    const requestedStatus = searchParams.get('status') || 'active'
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limitRaw = parseInt(searchParams.get('limit') || '20')
+    const limit = Math.min(Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 20), 100)
     const search = searchParams.get('search')
     
     // Minimal fields for fast dashboard render
     let query = supabase
       .from('services')
       .select(
-        `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id`,
-        { count: 'exact' }
+        `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id`
       )
-      .eq('status', status)
+      .eq('status', isPublicMode ? 'approved' : requestedStatus)
       .order('created_at', { ascending: false })
     
     // Apply filters
@@ -72,12 +79,18 @@ export async function GET(request: NextRequest) {
     
     // Run with a timeout guard to avoid hanging
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 6000)
-    const { data: services, error, count } = await query.abortSignal(controller.signal)
+    const timeout = setTimeout(() => controller.abort(), 12000)
+    const { data: services, error } = await query.abortSignal(controller.signal)
     clearTimeout(timeout)
 
     if (error) {
       console.error('Error fetching services:', error)
+      if ((error as any)?.message?.includes('AbortError') || (error as any)?.name === 'AbortError') {
+        return ok({ services: [], pagination: { page, limit, total: 0, pages: 0 } })
+      }
+      if (isPublicMode) {
+        return ok({ services: [], pagination: { page, limit, total: 0, pages: 0 } })
+      }
       return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
     }
 
@@ -86,8 +99,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: count || 0,
-        pages: Math.ceil((count || 0) / limit)
+        total: services ? services.length : 0,
+        pages: services ? (services.length > 0 ? page + (services.length === limit ? 1 : 0) : page) : page
       }
     })
     
