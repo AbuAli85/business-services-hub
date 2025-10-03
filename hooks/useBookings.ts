@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
+import { bookingCache, getBookingsCacheKey, getSummaryCacheKey } from '@/lib/booking-cache'
 
 export interface Booking {
   id: string
@@ -29,11 +30,24 @@ export interface Invoice {
   created_at: string
 }
 
+export interface SummaryStats {
+  total: number
+  completed: number
+  inProgress: number
+  approved: number
+  pending: number
+  readyToLaunch: number
+  totalRevenue: number
+  projectedBillings: number
+  pendingApproval: number
+  avgCompletionTime: number
+}
+
 export interface BookingsState {
   bookings: Booking[]
   invoices: Invoice[]
   totalCount: number
-  summaryStats: any
+  summaryStats: SummaryStats | null
   loading: boolean
   error: string | null
   lastUpdatedAt: number | null
