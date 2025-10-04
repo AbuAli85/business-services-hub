@@ -1,14 +1,6 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Metadata } from 'next'
-
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  return {
-    title: `Booking Milestones #${params.id.slice(0, 8)} | SmartPRO Dashboard`,
-    description: 'Track project milestones, tasks, and progress for your booking',
-  }
-}
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

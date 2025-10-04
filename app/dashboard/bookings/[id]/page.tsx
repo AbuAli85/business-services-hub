@@ -1,14 +1,6 @@
 'use client'
 
 import { Suspense } from 'react'
-import { Metadata } from 'next'
-
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  return {
-    title: `Booking #${params.id.slice(0, 8)} | SmartPRO Dashboard`,
-    description: 'View booking details, status, and project information',
-  }
-}
 import { useAuth } from '@/hooks/useAuth'
 import { BookingDetailsSkeleton } from '@/components/dashboard/bookings/BookingDetailsSkeleton'
 import { BookingDetailsError } from '@/components/dashboard/bookings/BookingDetailsError'
