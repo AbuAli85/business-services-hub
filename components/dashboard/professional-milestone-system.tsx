@@ -78,6 +78,8 @@ import {
   DashboardHeaderSkeleton, 
   StatsGridSkeleton 
 } from '@/components/ui/skeleton-loader'
+import { InlineEditTitle, InlineEditDescription } from '@/components/ui/inline-edit'
+import { useKeyboardShortcuts, createMilestoneShortcuts, useKeyboardShortcutsToast } from '@/components/ui/keyboard-shortcuts'
 import { 
   Milestone, 
   Task, 
@@ -142,6 +144,7 @@ export function ProfessionalMilestoneSystem({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'>('all')
   const [highRiskOnly, setHighRiskOnly] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   
   // Legacy state for features not yet migrated to React Query
   const [phases, setPhases] = useState<ProjectPhase[]>([])
@@ -214,6 +217,21 @@ export function ProfessionalMilestoneSystem({
     dependency_type: 'finish_to_start' as 'finish_to_start' | 'start_to_start' | 'finish_to_finish' | 'start_to_finish',
     lag_days: 0
   })
+
+  // Keyboard shortcuts
+  const shortcuts = createMilestoneShortcuts({
+    onCreateMilestone: () => setShowMilestoneForm(true),
+    onCreateTask: () => setShowTaskForm(true),
+    onSearch: () => {
+      const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement
+      searchInput?.focus()
+    },
+    onRefresh: () => refetchMilestones(),
+    onToggleFilters: () => setShowFilters(!showFilters),
+  })
+
+  useKeyboardShortcuts(Object.values(shortcuts), true)
+  useKeyboardShortcutsToast()
 
   // Use useCallback to memoize loadData function
   // Simplified loadData - only handles approvals and comments (milestones handled by React Query)
@@ -1333,6 +1351,14 @@ export function ProfessionalMilestoneSystem({
               <Plus className="h-4 w-4 mr-2" />
               New Milestone
             </Button>
+            <Button
+              onClick={() => toast.info('Press ? to see keyboard shortcuts', { duration: 3000 })}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+              size="sm"
+              title="Keyboard shortcuts (press ?)"
+            >
+              ⌨️
+            </Button>
           </div>
         </div>
       </div>
@@ -2269,10 +2295,12 @@ function MilestoneCard({
   taskComments = {},
   onEdit, 
   onDelete,
+  onUpdate,
   onStatusChange,
   onAddTask, 
   onManageDependencies,
   onTaskStatusChange,
+  onTaskUpdate,
   onEditTask,
   onDeleteTask,
   onTaskAction,
@@ -2292,10 +2320,12 @@ function MilestoneCard({
   taskComments?: Record<string, any[]>
   onEdit: () => void
   onDelete: () => void
+  onUpdate: (milestoneId: string, updates: any) => Promise<void>
   onStatusChange: (status: string) => void
   onAddTask: () => void
   onManageDependencies: () => void
   onTaskStatusChange: (taskId: string, status: string) => void
+  onTaskUpdate: (taskId: string, updates: any) => Promise<void>
   onEditTask: (task: Task) => void
   onDeleteTask: (taskId: string) => void
   onTaskAction: (task: Task, action: 'comment' | 'flag' | 'assign' | 'priority') => void
@@ -2354,15 +2384,40 @@ function MilestoneCard({
           </div>
           <div className="flex items-center gap-2">
             <Select value={milestone.status} onValueChange={onStatusChange}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="on_hold">On Hold</SelectItem>
+                <SelectItem value="pending">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    Pending
+                  </div>
+                </SelectItem>
+                <SelectItem value="in_progress">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    In Progress
+                  </div>
+                </SelectItem>
+                <SelectItem value="completed">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Completed
+                  </div>
+                </SelectItem>
+                <SelectItem value="cancelled">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    Cancelled
+                  </div>
+                </SelectItem>
+                <SelectItem value="on_hold">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                    On Hold
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1">
@@ -2427,10 +2482,36 @@ function MilestoneCard({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        <SelectItem value="pending">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                            Pending
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="in_progress">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            In Progress
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="completed">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            Completed
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="cancelled">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            Cancelled
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="on_hold">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                            On Hold
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <span className="text-sm text-gray-700">{task.title}</span>
