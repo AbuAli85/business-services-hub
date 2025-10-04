@@ -25,10 +25,7 @@ const CreateMilestoneSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   due_date: z.string().datetime().optional(),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
-  estimated_hours: z.number().min(0).default(0),
-  weight: z.number().min(0.1).max(10).default(1.0),
-  phase_id: z.string().uuid().optional()
+  weight: z.number().min(0.1).max(10).default(1.0)
 })
 
 const UpdateMilestoneSchema = CreateMilestoneSchema.partial().extend({

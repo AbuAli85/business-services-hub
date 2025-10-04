@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/server'
+
+export const dynamic = 'force-dynamic'
 
 // GET /api/progress?booking_id=xxx - Get progress data for a booking
 export async function GET(request: NextRequest) {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Create Supabase client with proper server-side authentication
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {

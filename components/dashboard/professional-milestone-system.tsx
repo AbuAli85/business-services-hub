@@ -828,10 +828,7 @@ export function ProfessionalMilestoneSystem({
           .update({
             title: milestoneForm.title,
             description: milestoneForm.description || '',
-            priority: normalizedPriority,
-            start_date: milestoneForm.start_date || null,
             due_date: milestoneForm.due_date || null,
-            estimated_hours: milestoneForm.estimated_hours || 0,
             phase_id: milestoneForm.phase_id || null,
             template_id: milestoneForm.template_id || null,
             updated_at: new Date().toISOString()
@@ -893,20 +890,9 @@ export function ProfessionalMilestoneSystem({
             title: milestoneForm.title,
             description: milestoneForm.description || '',
             status: 'pending',
-            priority: normalizedPriorityCreate,
-            start_date: milestoneForm.start_date || new Date().toISOString().split('T')[0],
             due_date: milestoneForm.due_date,
-            estimated_hours: milestoneForm.estimated_hours || 0,
-            actual_hours: 0,
             progress_percentage: 0,
-            critical_path: false,
-            phase_id: milestoneForm.phase_id || null,
-            template_id: milestoneForm.template_id || null,
-            order_index: nextOrderIndex,
-            editable: true,
-            weight: 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            weight: 1.0
           })
           .select()
           .single()

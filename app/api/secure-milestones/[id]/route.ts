@@ -150,21 +150,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         title,
         description: description || '',
         status: 'pending',
-        priority: priority || 'normal',
-        start_date: start_date || new Date().toISOString().split('T')[0],
         due_date,
-        estimated_hours: estimated_hours || 0,
-        actual_hours: 0,
         progress_percentage: 0,
-        critical_path: false,
-        risk_level: risk_level || 'low',
-        phase_id: phase_id || null,
-        template_id: template_id || null,
-        order_index: nextOrderIndex,
-        editable: true,
-        weight: 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        weight: 1.0
       })
       .select()
       .single()

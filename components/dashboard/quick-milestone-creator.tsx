@@ -104,10 +104,8 @@ export function QuickMilestoneCreator({
           title: title.trim(),
           description: description.trim(),
           status: 'pending',
-          priority: 'normal',
           progress_percentage: 0,
-          order_index: 0,
-          created_by: user.id
+          weight: 1.0
         })
         .select()
         .single()
@@ -130,10 +128,7 @@ export function QuickMilestoneCreator({
             title: step.title,
             description: step.description,
             status: 'pending',
-            progress: 0,
-            priority: 'normal',
-            order_index: i,
-            created_by: user.id
+            progress_percentage: 0
           })
         
         if (taskError) {
@@ -228,10 +223,7 @@ export function QuickMilestoneCreator({
               title: task,
               description: '',
               status: 'pending',
-              priority: 'normal',
-              progress_percentage: 0,
-              order_index: j,
-              created_by: user.id
+              progress_percentage: 0
             })
           
           if (taskError) {
