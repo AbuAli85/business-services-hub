@@ -489,7 +489,7 @@ export async function GET(request: NextRequest) {
       // Try the proper progress view first
       const { data: progressRows, error: progressError } = await supabase
         .from('v_booking_progress')
-        .select('booking_id, progress_pct')
+        .select('booking_id, booking_progress')
         .in('booking_id', ids)
       
       if (progressError) {
@@ -508,8 +508,8 @@ export async function GET(request: NextRequest) {
       } else {
         console.log(`✅ Progress data fetched: ${progressRows?.length || 0} records`)
         for (const pr of progressRows || []) {
-          // Use progress_pct from the view
-          const progress = pr.progress_pct ?? 0
+          // Use booking_progress from the view
+          const progress = pr.booking_progress ?? 0
           progressMap.set(String(pr.booking_id), Number(progress))
         }
       }
