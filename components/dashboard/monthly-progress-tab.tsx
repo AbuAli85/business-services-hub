@@ -273,7 +273,7 @@ export function MonthlyProgressTab({
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                     style={{
                       width: `${Math.min((monthlyData.stats.totalActualHours / monthlyData.stats.totalEstimatedHours) * 100, 100)}%`
-                    }}
+                    } as React.CSSProperties}
                   />
                 </div>
               </div>
@@ -343,9 +343,9 @@ export function MonthlyProgressTab({
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">Progress</span>
-                            <span className="text-sm font-medium">{milestone.progress_percentage}%</span>
+                            <span className="text-sm font-medium">{milestone.progress}%</span>
                           </div>
-                          <Progress value={milestone.progress_percentage} className="h-2" />
+                          <Progress value={milestone.progress} className="h-2" />
                           
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <span>{completedTasks}/{totalTasks} tasks completed</span>
@@ -391,9 +391,11 @@ export function MonthlyProgressTab({
                         <Badge className={getStatusColor(task.status)}>
                           {task.status.replace('_', ' ')}
                         </Badge>
-                        <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                          {task.priority}
+                        {task.priority && (
+                        <Badge variant="outline" className={getPriorityColor(task.priority || 'normal')}>
+                          {task.priority || 'normal'}
                         </Badge>
+                        )}
                         {isOverdue && (
                           <AlertTriangle className="h-4 w-4 text-red-500" />
                         )}
@@ -404,7 +406,7 @@ export function MonthlyProgressTab({
                       </p>
                       
                       <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span>Progress: {task.progress_percentage}%</span>
+                        <span>Progress: {task.progress || 0}%</span>
                         <span>Actual: {task.actual_hours || 0}h</span>
                         {task.due_date && (
                           <span>
