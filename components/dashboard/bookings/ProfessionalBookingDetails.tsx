@@ -161,7 +161,31 @@ export function ProfessionalBookingDetails({
   const providerPhone = booking.provider_phone || 'No phone provided'
   const status = booking.status || 'pending'
   const approvalStatus = booking.approval_status || booking.approvalStatus
-  const progressPercentage = booking.progress_percentage || booking.progressPercentage || 0
+  // Calculate actual progress from milestone data
+  const calculateProgressFromMilestones = () => {
+    if (!milestones || milestones.length === 0) {
+      return booking.progress_percentage || 0
+    }
+    
+    const totalMilestones = milestones.length
+    const completedMilestones = milestones.filter((m: any) => m.status === 'completed').length
+    const inProgressMilestones = milestones.filter((m: any) => m.status === 'in_progress').length
+    
+    // Calculate weighted progress
+    let totalProgress = 0
+    milestones.forEach((milestone: any) => {
+      if (milestone.status === 'completed') {
+        totalProgress += 100
+      } else if (milestone.status === 'in_progress') {
+        totalProgress += milestone.progress_percentage || 50
+      }
+    })
+    
+    return totalMilestones > 0 ? Math.round(totalProgress / totalMilestones) : 0
+  }
+  
+  const actualProgressPercentage = calculateProgressFromMilestones()
+  const progressPercentage = actualProgressPercentage
   const amountCents = booking.amount_cents || (booking.amount ? booking.amount * 100 : 0)
   const currency = booking.currency || 'OMR'
   const createdAt = booking.created_at || booking.createdAt
@@ -170,34 +194,17 @@ export function ProfessionalBookingDetails({
   const location = booking.location || 'Not specified'
   const notes = booking.notes || booking.description || 'No additional notes'
 
-  // Mock data for demonstration (replace with real data)
-  const milestones = [
-    { id: '1', title: 'Project Initiation', status: 'completed', progress: 100, dueDate: '2024-01-15' },
-    { id: '2', title: 'Requirements Gathering', status: 'completed', progress: 100, dueDate: '2024-01-20' },
-    { id: '3', title: 'Design Phase', status: 'in_progress', progress: 75, dueDate: '2024-01-25' },
-    { id: '4', title: 'Development', status: 'pending', progress: 0, dueDate: '2024-02-01' },
-    { id: '5', title: 'Testing & Review', status: 'pending', progress: 0, dueDate: '2024-02-10' },
-    { id: '6', title: 'Final Delivery', status: 'pending', progress: 0, dueDate: '2024-02-15' }
-  ]
+  // Real milestone data from booking or API
+  const milestones = booking.milestones || []
 
-  const timeEntries = [
-    { id: '1', date: '2024-01-15', description: 'Project setup and initial planning', hours: 2.5, user: 'John Doe' },
-    { id: '2', date: '2024-01-16', description: 'Requirements analysis and documentation', hours: 4.0, user: 'John Doe' },
-    { id: '3', date: '2024-01-17', description: 'Client meeting and feedback collection', hours: 1.5, user: 'John Doe' },
-    { id: '4', date: '2024-01-18', description: 'Design mockups and wireframes', hours: 6.0, user: 'John Doe' }
-  ]
+  // Real time entries data from booking or API
+  const timeEntries = booking.time_entries || []
 
-  const messages = [
-    { id: '1', sender: 'Client', message: 'Thank you for the quick response. Looking forward to working with you.', timestamp: '2024-01-15 10:30', type: 'client' },
-    { id: '2', sender: 'Provider', message: 'You\'re welcome! I\'ll start working on the requirements gathering phase today.', timestamp: '2024-01-15 11:15', type: 'provider' },
-    { id: '3', sender: 'Client', message: 'Perfect! Please let me know if you need any additional information.', timestamp: '2024-01-15 14:20', type: 'client' }
-  ]
+  // Real messages data from booking or API
+  const messages = booking.messages || []
 
-  const files = [
-    { id: '1', name: 'Project Requirements.pdf', size: '2.4 MB', type: 'pdf', uploadedBy: 'Client', uploadedAt: '2024-01-15' },
-    { id: '2', name: 'Initial Design Mockups.png', size: '1.8 MB', type: 'image', uploadedBy: 'Provider', uploadedAt: '2024-01-18' },
-    { id: '3', name: 'Technical Specifications.docx', size: '856 KB', type: 'document', uploadedBy: 'Provider', uploadedAt: '2024-01-19' }
-  ]
+  // Real files data from booking or API
+  const files = booking.files || []
 
   const getProgressColor = (percentage: number): string => {
     if (percentage >= 80) return 'bg-green-500'
@@ -308,7 +315,7 @@ export function ProfessionalBookingDetails({
               <div>
                 <p className="text-sm font-medium text-gray-600">Milestones</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {milestones.filter(m => m.status === 'completed').length}/{milestones.length}
+                  {milestones.filter((m: any) => m.status === 'completed').length}/{milestones.length}
                 </p>
               </div>
               <div className="p-2 bg-purple-100 rounded-lg">
@@ -325,7 +332,7 @@ export function ProfessionalBookingDetails({
               <div>
                 <p className="text-sm font-medium text-gray-600">Time Logged</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {timeEntries.reduce((sum, entry) => sum + entry.hours, 0)}h
+                  {timeEntries.reduce((sum: number, entry: any) => sum + (entry.hours || entry.duration_hours || 0), 0)}h
                 </p>
               </div>
               <div className="p-2 bg-orange-100 rounded-lg">
@@ -554,7 +561,7 @@ export function ProfessionalBookingDetails({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {milestones.map((milestone, index) => (
+                {milestones.map((milestone: any, index: number) => (
                   <div key={milestone.id} className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="flex-shrink-0">
                       {getMilestoneIcon(milestone.status)}
@@ -585,7 +592,7 @@ export function ProfessionalBookingDetails({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {timeEntries.map((entry) => (
+                {timeEntries.map((entry: any) => (
                   <div key={entry.id} className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="flex-shrink-0">
                       <div className="p-2 bg-blue-100 rounded-lg">
@@ -594,13 +601,13 @@ export function ProfessionalBookingDetails({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900">{entry.description}</h4>
-                        <span className="text-sm font-medium text-gray-900">{entry.hours}h</span>
+                        <h4 className="font-medium text-gray-900">{entry.description || entry.task_description || 'Time Entry'}</h4>
+                        <span className="text-sm font-medium text-gray-900">{entry.hours || entry.duration_hours || 0}h</span>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                        <span>{formatDate(entry.date)}</span>
+                        <span>{formatDate(entry.date || entry.logged_at || entry.created_at)}</span>
                         <span>•</span>
-                        <span>{entry.user}</span>
+                        <span>{entry.user_name || entry.user_full_name || entry.created_by || 'User'}</span>
                       </div>
                     </div>
                   </div>
@@ -621,28 +628,35 @@ export function ProfessionalBookingDetails({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {messages.map((message) => (
-                  <div key={message.id} className={cn(
-                    "flex gap-3 p-4 rounded-lg",
-                    message.type === 'client' ? "bg-blue-50" : "bg-gray-50"
-                  )}>
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={cn(
-                        "text-xs",
-                        message.type === 'client' ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
-                      )}>
-                        {message.sender.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-gray-900">{message.sender}</span>
-                        <span className="text-xs text-gray-500">{message.timestamp}</span>
+                {messages.map((message: any) => {
+                  const isClient = message.sender_id === booking.client_id || message.type === 'client'
+                  const senderName = isClient ? 
+                    (booking.client_name || booking.client_full_name || 'Client') : 
+                    (booking.provider_name || booking.provider_full_name || 'Provider')
+                  
+                  return (
+                    <div key={message.id} className={cn(
+                      "flex gap-3 p-4 rounded-lg",
+                      isClient ? "bg-blue-50" : "bg-gray-50"
+                    )}>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className={cn(
+                          "text-xs",
+                          isClient ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
+                        )}>
+                          {senderName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-gray-900">{senderName}</span>
+                          <span className="text-xs text-gray-500">{message.timestamp || message.created_at}</span>
+                        </div>
+                        <p className="text-sm text-gray-700">{message.message || message.content}</p>
                       </div>
-                      <p className="text-sm text-gray-700">{message.message}</p>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
@@ -659,7 +673,7 @@ export function ProfessionalBookingDetails({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {files.map((file) => (
+                {files.map((file: any) => (
                   <div key={file.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50">
                     <div className="flex-shrink-0">
                       <div className="p-2 bg-gray-100 rounded-lg">

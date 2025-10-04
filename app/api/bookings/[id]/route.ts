@@ -247,12 +247,112 @@ export async function GET(
       }
     }
 
-    // Enrich booking with profile data
+    // Load milestones
+    let milestones = []
+    try {
+      const { data: milestonesData, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('booking_id', params.id)
+        .order('created_at', { ascending: true })
+      
+      if (!milestonesError && milestonesData) {
+        milestones = milestonesData
+        console.log('✅ Milestones loaded:', milestones.length)
+      } else {
+        console.warn('Could not load milestones:', milestonesError)
+      }
+    } catch (error) {
+      console.warn('Error loading milestones:', error)
+    }
+
+    // Load time entries
+    let timeEntries = []
+    try {
+      const { data: timeEntriesData, error: timeEntriesError } = await supabase
+        .from('time_entries')
+        .select(`
+          *,
+          profiles!time_entries_user_id_fkey(full_name, email)
+        `)
+        .eq('booking_id', params.id)
+        .order('logged_at', { ascending: false })
+      
+      if (!timeEntriesError && timeEntriesData) {
+        timeEntries = timeEntriesData.map(entry => ({
+          ...entry,
+          user_name: entry.profiles?.full_name || 'User',
+          user_full_name: entry.profiles?.full_name || 'User'
+        }))
+        console.log('✅ Time entries loaded:', timeEntries.length)
+      } else {
+        console.warn('Could not load time entries:', timeEntriesError)
+      }
+    } catch (error) {
+      console.warn('Error loading time entries:', error)
+    }
+
+    // Load messages/communications
+    let messages = []
+    try {
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('communications')
+        .select(`
+          *,
+          profiles!communications_sender_id_fkey(full_name, email)
+        `)
+        .eq('booking_id', params.id)
+        .order('created_at', { ascending: true })
+      
+      if (!messagesError && messagesData) {
+        messages = messagesData.map(msg => ({
+          ...msg,
+          sender_name: msg.profiles?.full_name || (msg.sender_id === booking.client_id ? 'Client' : 'Provider'),
+          type: msg.sender_id === booking.client_id ? 'client' : 'provider'
+        }))
+        console.log('✅ Messages loaded:', messages.length)
+      } else {
+        console.warn('Could not load messages:', messagesError)
+      }
+    } catch (error) {
+      console.warn('Error loading messages:', error)
+    }
+
+    // Load files
+    let files = []
+    try {
+      const { data: filesData, error: filesError } = await supabase
+        .from('booking_files')
+        .select(`
+          *,
+          profiles!booking_files_uploaded_by_fkey(full_name, email)
+        `)
+        .eq('booking_id', params.id)
+        .order('created_at', { ascending: false })
+      
+      if (!filesError && filesData) {
+        files = filesData.map(file => ({
+          ...file,
+          uploaded_by_name: file.profiles?.full_name || 'User'
+        }))
+        console.log('✅ Files loaded:', files.length)
+      } else {
+        console.warn('Could not load files:', filesError)
+      }
+    } catch (error) {
+      console.warn('Error loading files:', error)
+    }
+
+    // Enrich booking with profile data and related data
     const enrichedBooking = {
       ...booking,
       client_profile: clientProfile,
       provider_profile: providerProfile,
       service: serviceData,
+      milestones,
+      time_entries: timeEntries,
+      messages,
+      files,
       // Also include client and provider data in the expected format
       client: clientProfile ? {
         id: clientProfile.id,
@@ -277,7 +377,18 @@ export async function GET(
         total_reviews: 0, // Default value since column doesn't exist
         response_time: '< 1 hour', // Default response time
         availability_status: 'available' // Default availability
-      } : null
+      } : null,
+      // Add the expected field names for the component
+      client_name: clientProfile?.full_name || 'Client',
+      client_full_name: clientProfile?.full_name || 'Client',
+      client_email: clientProfile?.email || '',
+      client_phone: clientProfile?.phone || '',
+      client_company: clientProfile?.company_name || 'Individual',
+      provider_name: providerProfile?.full_name || 'Provider',
+      provider_full_name: providerProfile?.full_name || 'Provider',
+      provider_email: providerProfile?.email || '',
+      provider_phone: providerProfile?.phone || '',
+      provider_company: providerProfile?.company_name || 'Professional'
     }
 
     console.log(`✅ Booking details loaded with profiles:`, {
