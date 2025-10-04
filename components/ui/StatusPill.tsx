@@ -1,100 +1,143 @@
+'use client'
+
 import React from 'react'
-import { Badge } from '@/components/ui/badge'
-import { CheckCircle, Loader, Clock, Sparkles, AlertCircle, XCircle, Pause } from 'lucide-react'
+import { 
+  CheckCircle, 
+  Clock, 
+  Loader2, 
+  Sparkles, 
+  XCircle, 
+  AlertTriangle,
+  Play,
+  Pause,
+  Target
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface StatusPillProps {
   status: string
   size?: 'sm' | 'md' | 'lg'
-  showIcon?: boolean
   className?: string
+  showIcon?: boolean
 }
 
-const statusConfig = {
-  approved: {
-    color: 'bg-green-500 text-white',
-    icon: CheckCircle,
-    label: 'Approved'
-  },
-  confirmed: {
-    color: 'bg-green-500 text-white',
-    icon: CheckCircle,
-    label: 'Confirmed'
-  },
-  in_progress: {
-    color: 'bg-blue-500 text-white',
-    icon: Loader,
-    label: 'In Progress'
-  },
-  pending: {
-    color: 'bg-amber-500 text-white',
+const STATUS_MAP = {
+  pending_review: { 
+    label: 'Pending Review', 
+    color: 'bg-amber-100 text-amber-700 border-amber-200', 
     icon: Clock,
-    label: 'Pending'
+    description: 'Awaiting approval or review'
   },
-  pending_provider_approval: {
-    color: 'bg-amber-500 text-white',
+  pending: { 
+    label: 'Pending', 
+    color: 'bg-amber-100 text-amber-700 border-amber-200', 
     icon: Clock,
-    label: 'Pending Approval'
+    description: 'Awaiting approval or review'
   },
-  completed: {
-    color: 'bg-emerald-600 text-white',
+  approved: { 
+    label: 'Approved', 
+    color: 'bg-green-100 text-green-700 border-green-200', 
+    icon: CheckCircle,
+    description: 'Approved and ready to start'
+  },
+  in_progress: { 
+    label: 'In Progress', 
+    color: 'bg-blue-100 text-blue-700 border-blue-200', 
+    icon: Loader2,
+    description: 'Work is actively being done'
+  },
+  completed: { 
+    label: 'Completed', 
+    color: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
     icon: Sparkles,
-    label: 'Completed'
+    description: 'Project completed successfully'
   },
-  cancelled: {
-    color: 'bg-gray-500 text-white',
+  cancelled: { 
+    label: 'Cancelled', 
+    color: 'bg-gray-100 text-gray-700 border-gray-200', 
     icon: XCircle,
-    label: 'Cancelled'
+    description: 'Project was cancelled'
   },
-  declined: {
-    color: 'bg-red-500 text-white',
+  declined: { 
+    label: 'Declined', 
+    color: 'bg-red-100 text-red-700 border-red-200', 
     icon: XCircle,
-    label: 'Declined'
+    description: 'Project was declined'
   },
-  on_hold: {
-    color: 'bg-orange-500 text-white',
+  paused: { 
+    label: 'Paused', 
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-200', 
     icon: Pause,
-    label: 'On Hold'
+    description: 'Project is temporarily paused'
   },
-  draft: {
-    color: 'bg-gray-400 text-white',
-    icon: AlertCircle,
-    label: 'Draft'
+  ready_to_launch: { 
+    label: 'Ready to Launch', 
+    color: 'bg-purple-100 text-purple-700 border-purple-200', 
+    icon: Target,
+    description: 'All prerequisites met, ready to start'
+  },
+  in_production: { 
+    label: 'In Production', 
+    color: 'bg-indigo-100 text-indigo-700 border-indigo-200', 
+    icon: Play,
+    description: 'Work is in active production'
+  },
+  delivered: { 
+    label: 'Delivered', 
+    color: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
+    icon: Sparkles,
+    description: 'Project delivered to client'
   }
 }
 
-const sizeConfig = {
-  sm: 'text-xs px-2 py-1',
-  md: 'text-sm px-3 py-1',
-  lg: 'text-base px-4 py-2'
+const SIZE_CLASSES = {
+  sm: 'px-2 py-1 text-xs',
+  md: 'px-3 py-1.5 text-sm',
+  lg: 'px-4 py-2 text-base'
+}
+
+const ICON_SIZES = {
+  sm: 'h-3 w-3',
+  md: 'h-4 w-4',
+  lg: 'h-5 w-5'
 }
 
 export function StatusPill({ 
   status, 
-  size = 'sm', 
-  showIcon = true, 
-  className 
+  size = 'md', 
+  className,
+  showIcon = true 
 }: StatusPillProps) {
-  const normalizedStatus = status?.toLowerCase().replace(/\s+/g, '_')
-  const config = statusConfig[normalizedStatus as keyof typeof statusConfig] || {
-    color: 'bg-gray-500 text-white',
-    icon: AlertCircle,
-    label: status || 'Unknown'
-  }
-
-  const Icon = config.icon
-
+  const statusConfig = STATUS_MAP[status as keyof typeof STATUS_MAP] || STATUS_MAP['pending_review']
+  const { label, color, icon: Icon, description } = statusConfig
+  
   return (
-    <Badge 
+    <span 
       className={cn(
-        config.color,
-        sizeConfig[size],
-        'font-medium border-0',
+        'inline-flex items-center gap-1.5 rounded-full font-medium border shadow-sm transition-all duration-200',
+        color,
+        SIZE_CLASSES[size],
         className
       )}
+      title={description}
     >
-      {showIcon && <Icon className="h-3 w-3 mr-1" />}
-      {config.label}
-    </Badge>
+      {showIcon && <Icon className={cn(ICON_SIZES[size], 'flex-shrink-0')} />}
+      <span className="truncate">{label}</span>
+    </span>
   )
+}
+
+// Export the status map for use in other components
+export { STATUS_MAP }
+
+// Helper function to get status color for custom components
+export function getStatusColor(status: string): string {
+  const statusConfig = STATUS_MAP[status as keyof typeof STATUS_MAP] || STATUS_MAP['pending_review']
+  return statusConfig.color
+}
+
+// Helper function to get status icon
+export function getStatusIcon(status: string) {
+  const statusConfig = STATUS_MAP[status as keyof typeof STATUS_MAP] || STATUS_MAP['pending_review']
+  return statusConfig.icon
 }
