@@ -35,9 +35,7 @@ const UpdateMilestoneSchema = z.object({
   due_date: z.string().optional(),
   progress_percentage: z.number().min(0).max(100).optional(),
   actual_hours: z.number().min(0).optional(),
-  weight: z.number().min(0.1).max(10).optional(),
-  phase_id: z.string().uuid().optional().nullable(),
-  template_id: z.string().uuid().optional().nullable()
+  weight: z.number().min(0.1).max(10).optional()
 })
 
 // GET /api/milestones - Get milestones for a booking
@@ -359,7 +357,15 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (updateError) {
-      console.warn('Error updating milestone:', updateError)
+      console.error('❌ Error updating milestone:', {
+        error: updateError,
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        updateData,
+        milestoneId
+      })
       // If it's a permission error, return a more specific error
       if (updateError.code === '42501' || updateError.message.includes('permission denied')) {
         console.warn('Permission denied for milestones table during update')
@@ -369,7 +375,7 @@ export async function PATCH(request: NextRequest) {
         )
       }
       return NextResponse.json(
-        { error: 'Failed to update milestone' },
+        { error: 'Failed to update milestone', details: updateError.message, hint: updateError.hint },
         { status: 500, headers: corsHeaders }
       )
     }

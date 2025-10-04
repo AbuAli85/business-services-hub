@@ -193,9 +193,17 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (updateError) {
-        console.error('Error updating milestone:', updateError)
+        console.error('❌ Error updating milestone in approve endpoint:', {
+          error: updateError,
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          updateData,
+          milestone_id: validatedData.milestone_id
+        })
         const res = NextResponse.json(
-          { error: 'Failed to update milestone' },
+          { error: 'Failed to update milestone', details: updateError.message, hint: updateError.hint },
           { status: 500 }
         )
         Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k, v]) => res.headers.set(k, v))

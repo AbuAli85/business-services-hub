@@ -120,10 +120,7 @@ export function ProfessionalMilestoneSystem({
     description: '',
     start_date: '',
     due_date: '',
-    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
-    estimated_hours: 0,
-    phase_id: '',
-    template_id: ''
+    estimated_hours: 0
   })
 
   // Task form
@@ -132,7 +129,6 @@ export function ProfessionalMilestoneSystem({
     description: '',
     start_date: '',
     due_date: '',
-    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
     estimated_hours: 0,
     assigned_to: '',
     status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
@@ -477,10 +473,7 @@ export function ProfessionalMilestoneSystem({
       description: '',
       start_date: '',
       due_date: '',
-      priority: 'normal',
-      estimated_hours: 0,
-      phase_id: '',
-      template_id: ''
+      estimated_hours: 0
     })
   }
 
@@ -490,7 +483,6 @@ export function ProfessionalMilestoneSystem({
       description: '',
       start_date: '',
       due_date: '',
-      priority: 'normal',
       estimated_hours: 0,
       assigned_to: '',
       status: 'pending'
@@ -608,21 +600,12 @@ export function ProfessionalMilestoneSystem({
   const editMilestone = (milestone: Milestone) => {
     setEditingMilestone(milestone)
     
-    // Validate and normalize priority value
-    const allowedPriorities = ['low', 'normal', 'high', 'urgent'] as const
-    const normalizedPriority = (allowedPriorities as readonly string[]).includes(milestone.priority as any)
-      ? milestone.priority
-      : 'normal'
-    
     setMilestoneForm({
       title: milestone.title,
       description: milestone.description || '',
       start_date: milestone.start_date || '',
       due_date: milestone.due_date || '',
-      priority: normalizedPriority,
-      estimated_hours: milestone.estimated_hours || 0,
-      phase_id: milestone.phase_id || '',
-      template_id: milestone.template_id || ''
+      estimated_hours: milestone.estimated_hours || 0
     })
     setShowMilestoneForm(true)
   }
@@ -813,7 +796,6 @@ export function ProfessionalMilestoneSystem({
       description: task.description || '',
       start_date: task.start_date || '',
       due_date: task.due_date || '',
-      priority: task.priority,
       estimated_hours: task.estimated_hours || 0,
       assigned_to: task.assigned_to || '',
       status: task.status
@@ -832,17 +814,6 @@ export function ProfessionalMilestoneSystem({
       
       if (editingMilestone) {
         // Update existing milestone
-        const allowedPriorities = ['low', 'normal', 'high', 'urgent'] as const
-        const normalizedPriority = (milestoneForm.priority && (allowedPriorities as readonly string[]).includes(milestoneForm.priority as any))
-          ? milestoneForm.priority
-          : 'normal'
-
-        console.log('🔍 Milestone update - Priority validation:', {
-          originalPriority: milestoneForm.priority,
-          normalizedPriority: normalizedPriority,
-          isValid: (allowedPriorities as readonly string[]).includes(normalizedPriority as any)
-        })
-
         // Use our backend-driven API for milestone updates
         const response = await fetch(`/api/milestones?id=${editingMilestone.id}`, {
           method: 'PATCH',
@@ -853,9 +824,7 @@ export function ProfessionalMilestoneSystem({
           body: JSON.stringify({
             title: milestoneForm.title,
             description: milestoneForm.description || '',
-            due_date: milestoneForm.due_date || null,
-            phase_id: milestoneForm.phase_id || null,
-            template_id: milestoneForm.template_id || null
+            due_date: milestoneForm.due_date || null
           })
         })
 
@@ -878,8 +847,7 @@ export function ProfessionalMilestoneSystem({
               action: 'update',
               new_values: { 
                 title: milestoneForm.title,
-                description: milestoneForm.description,
-                priority: normalizedPriority
+                description: milestoneForm.description
               },
               user_id: user.id,
               created_at: new Date().toISOString()
@@ -900,17 +868,6 @@ export function ProfessionalMilestoneSystem({
         const nextOrderIndex = existingMilestones && existingMilestones.length > 0 
           ? (existingMilestones[0].order_index || 0) + 1 
           : 0
-        
-        const allowedPrioritiesCreate = ['low', 'normal', 'high', 'urgent'] as const
-        const normalizedPriorityCreate = (milestoneForm.priority && (allowedPrioritiesCreate as readonly string[]).includes(milestoneForm.priority as any))
-          ? milestoneForm.priority
-          : 'normal'
-
-        console.log('🔍 Milestone creation - Priority validation:', {
-          originalPriority: milestoneForm.priority,
-          normalizedPriority: normalizedPriorityCreate,
-          isValid: (allowedPrioritiesCreate as readonly string[]).includes(normalizedPriorityCreate as any)
-        })
 
         // Get current user for milestone creation
         const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -954,7 +911,6 @@ export function ProfessionalMilestoneSystem({
               new_values: { 
                 title: milestone.title,
                 description: milestone.description,
-                priority: normalizedPriorityCreate,
                 status: 'pending'
               },
               user_id: user.id,
@@ -1105,8 +1061,7 @@ export function ProfessionalMilestoneSystem({
               new_values: { 
                 title: insertedTask.title,
                 description: insertedTask.description,
-                status: 'pending',
-                priority: taskForm.priority
+                status: 'pending'
               },
               user_id: user.id,
               created_at: new Date().toISOString()
@@ -2061,10 +2016,10 @@ export function ProfessionalMilestoneSystem({
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <span className="text-xs text-gray-600 mr-1">Quick presets:</span>
               {[
-                { t: 'Research & Strategy', plus: 5, est: 8, risk: 'medium', prio: 'normal' },
-                { t: 'Content Drafting', plus: 15, est: 15, risk: 'high', prio: 'high' },
-                { t: 'Review & Feedback', plus: 19, est: 6, risk: 'medium', prio: 'normal' },
-                { t: 'Final Delivery', plus: 22, est: 4, risk: 'low', prio: 'low' }
+                { t: 'Research & Strategy', plus: 5, est: 8 },
+                { t: 'Content Drafting', plus: 15, est: 15 },
+                { t: 'Review & Feedback', plus: 19, est: 6 },
+                { t: 'Final Delivery', plus: 22, est: 4 }
               ].map(preset => (
                 <button
                   key={preset.t}
@@ -2080,8 +2035,7 @@ export function ProfessionalMilestoneSystem({
                       title: preset.t,
                       start_date: toYmd(start),
                       due_date: toYmd(due),
-                      estimated_hours: preset.est,
-                      priority: preset.prio as any
+                      estimated_hours: preset.est
                     })
                   }}
                 >{preset.t}</button>
@@ -2099,24 +2053,6 @@ export function ProfessionalMilestoneSystem({
                   required
                   disabled={isSubmitting}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Priority</label>
-                <Select
-                  value={milestoneForm.priority}
-                  onValueChange={(value) => setMilestoneForm({...milestoneForm, priority: value as any})}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Start Date *</label>
@@ -2219,24 +2155,6 @@ export function ProfessionalMilestoneSystem({
                   required
                   disabled={isSubmitting}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Priority</label>
-                <Select
-                  value={taskForm.priority}
-                  onValueChange={(value) => setTaskForm({...taskForm, priority: value as any})}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Status</label>
@@ -2529,9 +2447,6 @@ function MilestoneCard({
                 <h3 className="text-lg font-semibold text-gray-900">{milestone.title}</h3>
                 <Badge className={getStatusColor(milestone.status)}>
                   {milestone.status.replace('_', ' ')}
-                </Badge>
-                <Badge className={getPriorityColor(milestone.priority)}>
-                  {milestone.priority}
                 </Badge>
                 {milestone.critical_path && (
                   <Badge className="bg-red-100 text-red-800">
