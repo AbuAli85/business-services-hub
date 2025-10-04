@@ -125,7 +125,7 @@ export function SmartMilestoneIntegration({
               Smart Project Management
             </CardTitle>
             <div className="flex items-center gap-2">
-              <StatusPill status={bookingStatus || undefined} />
+              <StatusPill status={bookingStatus || 'pending'} />
               <Button
                 variant="outline"
                 size="sm"
