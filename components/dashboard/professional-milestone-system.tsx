@@ -76,6 +76,7 @@ export function ProfessionalMilestoneSystem({
 }: ProfessionalMilestoneSystemProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'>('all')
   const [highRiskOnly, setHighRiskOnly] = useState(false)
   const [phases, setPhases] = useState<ProjectPhase[]>([])
@@ -153,11 +154,8 @@ export function ProfessionalMilestoneSystem({
     lag_days: 0
   })
 
-  useEffect(() => {
-    loadData()
-  }, [bookingId])
-
-  const loadData = async () => {
+  // Use useCallback to memoize loadData function
+  const loadData = React.useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -323,7 +321,20 @@ export function ProfessionalMilestoneSystem({
     } finally {
       setLoading(false)
     }
-  }
+  }, [bookingId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  // Debounce search query for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // Milestone approval handler
   const handleMilestoneApproval = async (milestoneId: string, action: 'approve' | 'reject', feedback?: string) => {
@@ -414,16 +425,15 @@ export function ProfessionalMilestoneSystem({
     if (statusFilter !== 'all') {
       list = list.filter(m => m.status === statusFilter)
     }
-    // Note: risk_level filtering removed as field doesn't exist in database
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
+    if (debouncedSearchQuery.trim()) {
+      const q = debouncedSearchQuery.toLowerCase()
       list = list.filter(m =>
         (m.title || '').toLowerCase().includes(q) ||
         (m.description || '').toLowerCase().includes(q)
       )
     }
     return list
-  }, [milestones, statusFilter, highRiskOnly, searchQuery])
+  }, [milestones, statusFilter, debouncedSearchQuery])
 
   // Calculate and update milestone progress based on tasks
   const calculateAndUpdateMilestoneProgress = async (milestone: any, supabase: any) => {
