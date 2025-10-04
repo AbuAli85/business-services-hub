@@ -57,14 +57,29 @@ interface ColumnProps {
 export function ServiceColumn({ booking }: ColumnProps) {
   // Provide more meaningful service titles when data is generic
   const getServiceTitle = () => {
-    if (booking.service_title && booking.service_title !== 'Service') {
+    // Check for meaningful service title first
+    if (booking.service_title && 
+        booking.service_title !== 'Service' && 
+        booking.service_title.trim() !== '' &&
+        booking.service_title.length > 3) {
       return booking.service_title
     }
-    if (booking.title && booking.title !== 'Service') {
+    
+    // Check booking title as fallback
+    if (booking.title && 
+        booking.title !== 'Service' && 
+        booking.title.trim() !== '' &&
+        booking.title.length > 3) {
       return booking.title
     }
-    // Generate a more descriptive title based on service ID or other data
-    return `Service #${booking.service_id.slice(-6)}`
+    
+    // Generate descriptive title based on service category or ID
+    if (booking.service_category && booking.service_category !== '') {
+      return `${booking.service_category} Service`
+    }
+    
+    // Final fallback with service ID
+    return `Business Service #${booking.service_id.slice(-6)}`
   }
   
   const serviceTitle = getServiceTitle()
@@ -93,11 +108,23 @@ export function ServiceColumn({ booking }: ColumnProps) {
 export function ClientColumn({ booking }: ColumnProps) {
   // Provide more meaningful client names when data is generic
   const getClientName = () => {
-    if (booking.client_name && booking.client_name !== 'Client') {
+    // Check for meaningful client name first
+    if (booking.client_name && 
+        booking.client_name !== 'Client' && 
+        booking.client_name.trim() !== '' &&
+        booking.client_name.length > 3) {
       return booking.client_name
     }
-    // Generate a more descriptive name based on client ID
-    return `Client #${booking.client_id.slice(-6)}`
+    
+    // Check if we have company name as fallback
+    if (booking.client_company && 
+        booking.client_company.trim() !== '' &&
+        booking.client_company.length > 3) {
+      return booking.client_company
+    }
+    
+    // Generate descriptive name based on client type
+    return `Individual Client #${booking.client_id.slice(-6)}`
   }
   
   const clientName = getClientName()
@@ -120,7 +147,7 @@ export function ClientColumn({ booking }: ColumnProps) {
           >
             {clientName}
           </Link>
-          {clientCompany && (
+          {clientCompany && clientCompany !== booking.client_name && (
             <div className="text-xs text-gray-500 flex items-center gap-1">
               <Building className="h-3 w-3" />
               <span className="truncate" title={clientCompany}>
@@ -150,9 +177,9 @@ export function StatusColumn({ booking }: ColumnProps) {
 
 // Progress Column Component
 export function ProgressColumn({ booking }: ColumnProps) {
-  const progress = booking.calculated_progress_percentage
-  const totalMilestones = booking.total_milestones
-  const completedMilestones = booking.completed_milestones
+  const progress = booking.calculated_progress_percentage || 0
+  const totalMilestones = booking.total_milestones || 0
+  const completedMilestones = booking.completed_milestones || 0
   
   const getProgressLabel = (progress: number, totalMilestones: number) => {
     if (totalMilestones === 0) return 'Not Started'
@@ -179,18 +206,23 @@ export function ProgressColumn({ booking }: ColumnProps) {
           className="h-2"
         />
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-600">{progress}%</span>
+          <span className="text-gray-600 font-medium">{progress}%</span>
           <span className="text-gray-500">
             {getProgressLabel(progress, totalMilestones)}
           </span>
         </div>
       </div>
       
-      {totalMilestones > 0 && (
-        <div className="text-xs text-gray-500">
-          {completedMilestones}/{totalMilestones} milestones
-        </div>
-      )}
+      <div className="text-xs text-gray-500">
+        {totalMilestones > 0 ? (
+          <span className="flex items-center gap-1">
+            <span className="font-medium">{completedMilestones}/{totalMilestones}</span>
+            <span>milestones</span>
+          </span>
+        ) : (
+          <span className="text-gray-400">No milestones yet</span>
+        )}
+      </div>
     </div>
   )
 }
@@ -200,15 +232,40 @@ export function PaymentColumn({ booking }: ColumnProps) {
   const getPaymentStatusConfig = (status: string) => {
     switch (status) {
       case 'paid':
-        return { color: 'bg-green-100 text-green-800 border-green-200', label: 'Paid', icon: '✓' }
+        return { 
+          color: 'bg-green-100 text-green-800 border-green-200', 
+          label: 'Paid', 
+          icon: '✓',
+          bgColor: 'bg-green-500'
+        }
       case 'pending':
-        return { color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Pending', icon: '⏳' }
+        return { 
+          color: 'bg-amber-100 text-amber-800 border-amber-200', 
+          label: 'Pending', 
+          icon: '⏳',
+          bgColor: 'bg-amber-500'
+        }
       case 'invoiced':
-        return { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Invoiced', icon: '📄' }
+        return { 
+          color: 'bg-blue-100 text-blue-800 border-blue-200', 
+          label: 'Invoiced', 
+          icon: '📄',
+          bgColor: 'bg-blue-500'
+        }
       case 'no_invoice':
-        return { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'No Invoice', icon: '—' }
+        return { 
+          color: 'bg-gray-100 text-gray-800 border-gray-200', 
+          label: 'No Invoice', 
+          icon: '—',
+          bgColor: 'bg-gray-500'
+        }
       default:
-        return { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Unknown', icon: '?' }
+        return { 
+          color: 'bg-gray-100 text-gray-800 border-gray-200', 
+          label: 'Unknown', 
+          icon: '?',
+          bgColor: 'bg-gray-500'
+        }
     }
   }
 
@@ -216,8 +273,8 @@ export function PaymentColumn({ booking }: ColumnProps) {
 
   return (
     <div className="space-y-1">
-      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
-        <span>{config.icon}</span>
+      <div className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ${config.color}`}>
+        <div className={`w-2 h-2 rounded-full ${config.bgColor}`}></div>
         <span>{config.label}</span>
       </div>
       {booking.invoice_status && booking.invoice_status !== booking.payment_status && (
