@@ -56,6 +56,8 @@ import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { notificationTriggerService } from '@/lib/notification-triggers'
 import { milestonesApi, tasksApi, handleApiError } from '@/lib/api-client'
+import { validateMilestoneForm, getMilestoneFieldError } from '@/lib/validation/milestone'
+import { validateTaskForm, getTaskFieldError, isValidUUID as validateUUID } from '@/lib/validation/task'
 import { 
   Milestone, 
   Task, 
@@ -123,6 +125,7 @@ export function ProfessionalMilestoneSystem({
     due_date: '',
     estimated_hours: 0
   })
+  const [milestoneFormErrors, setMilestoneFormErrors] = useState<Record<string, string>>({})
 
   // Task form
   const [taskForm, setTaskForm] = useState({
@@ -134,6 +137,7 @@ export function ProfessionalMilestoneSystem({
     assigned_to: '',
     status: 'pending' as 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'
   })
+  const [taskFormErrors, setTaskFormErrors] = useState<Record<string, string>>({})
 
   // Phase form
   const [phaseForm, setPhaseForm] = useState({
@@ -704,6 +708,17 @@ export function ProfessionalMilestoneSystem({
     e.preventDefault()
     if (isSubmitting) return
 
+    // Validate form data
+    const validation = validateMilestoneForm(milestoneForm, !!editingMilestone)
+    if (!validation.success) {
+      setMilestoneFormErrors(validation.errors || {})
+      toast.error('Please fix the form errors before submitting')
+      return
+    }
+
+    // Clear errors on successful validation
+    setMilestoneFormErrors({})
+
     try {
       setIsSubmitting(true)
       
@@ -825,12 +840,20 @@ export function ProfessionalMilestoneSystem({
     e.preventDefault()
     if (isSubmitting) return
 
+    // Validate form data
+    const validation = validateTaskForm(taskForm, !!editingTask)
+    if (!validation.success) {
+      setTaskFormErrors(validation.errors || {})
+      toast.error('Please fix the form errors before submitting')
+      return
+    }
+
+    // Clear errors on successful validation
+    setTaskFormErrors({})
+
     try {
       setIsSubmitting(true)
       const supabase = await getSupabaseClient()
-
-      const isValidUUID = (v: string) =>
-        typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 
       if (editingTask) {
         // Use centralized API client for task updates
@@ -841,7 +864,7 @@ export function ProfessionalMilestoneSystem({
           start_date: taskForm.start_date || null,
           due_date: taskForm.due_date || null,
           estimated_hours: taskForm.estimated_hours || 0,
-          assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
+          assigned_to: validateUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
         })
 
         // Send notification for task update
@@ -889,7 +912,7 @@ export function ProfessionalMilestoneSystem({
           estimated_hours: taskForm.estimated_hours || 0,
           actual_hours: 0,
           progress_percentage: 0,
-          assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
+          assigned_to: validateUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
         })
 
         try {
@@ -1904,10 +1927,20 @@ export function ProfessionalMilestoneSystem({
                 <label className="block text-sm font-medium mb-2">Title *</label>
                 <Input
                   value={milestoneForm.title || ''}
-                  onChange={(e) => setMilestoneForm({...milestoneForm, title: e.target.value})}
+                  onChange={(e) => {
+                    setMilestoneForm({...milestoneForm, title: e.target.value})
+                    // Clear error on change
+                    if (milestoneFormErrors.title) {
+                      setMilestoneFormErrors({...milestoneFormErrors, title: ''})
+                    }
+                  }}
                   required
                   disabled={isSubmitting}
+                  className={milestoneFormErrors.title ? 'border-red-500' : ''}
                 />
+                {milestoneFormErrors.title && (
+                  <p className="text-sm text-red-500 mt-1">{milestoneFormErrors.title}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Start Date *</label>
