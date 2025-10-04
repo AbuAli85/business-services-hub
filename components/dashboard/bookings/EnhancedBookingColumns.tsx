@@ -55,7 +55,19 @@ interface ColumnProps {
 
 // Service Column Component
 export function ServiceColumn({ booking }: ColumnProps) {
-  const serviceTitle = booking.service_title || booking.title || 'Service Booking'
+  // Provide more meaningful service titles when data is generic
+  const getServiceTitle = () => {
+    if (booking.service_title && booking.service_title !== 'Service') {
+      return booking.service_title
+    }
+    if (booking.title && booking.title !== 'Service') {
+      return booking.title
+    }
+    // Generate a more descriptive title based on service ID or other data
+    return `Service #${booking.service_id.slice(-6)}`
+  }
+  
+  const serviceTitle = getServiceTitle()
   
   return (
     <div className="space-y-1">
@@ -68,7 +80,7 @@ export function ServiceColumn({ booking }: ColumnProps) {
           <ExternalLink className="h-3 w-3 opacity-60" />
         </Link>
       </div>
-      {booking.service_category && (
+      {booking.service_category && booking.service_category !== '' && (
         <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full inline-block">
           {booking.service_category}
         </div>
@@ -79,7 +91,16 @@ export function ServiceColumn({ booking }: ColumnProps) {
 
 // Client Column Component
 export function ClientColumn({ booking }: ColumnProps) {
-  const clientName = booking.client_name || 'Unknown Client'
+  // Provide more meaningful client names when data is generic
+  const getClientName = () => {
+    if (booking.client_name && booking.client_name !== 'Client') {
+      return booking.client_name
+    }
+    // Generate a more descriptive name based on client ID
+    return `Client #${booking.client_id.slice(-6)}`
+  }
+  
+  const clientName = getClientName()
   const clientCompany = booking.client_company
   
   return (
@@ -136,7 +157,9 @@ export function ProgressColumn({ booking }: ColumnProps) {
   const getProgressLabel = (progress: number, totalMilestones: number) => {
     if (totalMilestones === 0) return 'Not Started'
     if (progress === 0) return 'Getting Started'
+    if (progress < 25) return 'Getting Started'
     if (progress < 50) return 'In Progress'
+    if (progress < 75) return 'Making Progress'
     if (progress < 100) return 'Near Completion'
     return 'Completed'
   }
