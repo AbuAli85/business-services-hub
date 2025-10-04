@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { RefreshCw, Search, Filter, Plus, Calendar, Table, Grid } from 'lucide-react'
+import { RefreshCw, Search, Filter, Plus, Calendar, Table, Grid, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 interface BookingData {
