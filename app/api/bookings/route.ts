@@ -357,13 +357,15 @@ export async function GET(request: NextRequest) {
     const page = toPosInt(searchParams.get('page'), 1)
     const pageSize = toPosInt(searchParams.get('pageSize'), 25, 1, 100)
     const rawSort = (searchParams.get('sort') || 'createdAt').toLowerCase()
-    const sortMap: Record<string, 'created_at'|'updated_at'|'amount'|'title'|'client_name'|'provider_name'> = {
+    const sortMap: Record<string, 'created_at'|'updated_at'|'amount'|'title'|'client_name'|'provider_name'|'service_title'|'progress'|'display_status'> = {
       createdat: 'created_at',
       lastupdated: 'updated_at',
       totalamount: 'amount',
-      servicetitle: 'title',
+      servicetitle: 'service_title',
       clientname: 'client_name',
       providername: 'provider_name',
+      progress: 'progress',
+      status: 'display_status'
     }
     const sort = sortMap[rawSort] ?? 'created_at'
     const order: 'asc'|'desc' = (searchParams.get('order') === 'asc' ? 'asc' : 'desc')
@@ -375,17 +377,19 @@ export async function GET(request: NextRequest) {
       .replace(/,/g, ' ') // commas are OR separators in supabase .or()
     const status = (searchParams.get('status') || '').trim()
 
-    // Use enhanced view when available, else bookings with enrichment
+    // Use v_booking_status view for unified data with proper joins and derived status
     // Constrain queries to a reasonable time window to leverage indexes and reduce scan time
     const DAYS_BACK = 540 // ~18 months
     const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
     let query = supabase
-      .from('bookings')
+      .from('v_booking_status')
       .select(`
-        id, service_id, client_id, provider_id, status, approval_status, 
-        amount_cents, currency, created_at, updated_at, scheduled_date, 
-        notes, location, estimated_duration, payment_status, total_amount,
-        operational_status, booking_number, requirements, subtotal, vat_percent, vat_amount, due_at
+        id, booking_title, service_id, service_title, service_description, service_category,
+        client_id, client_name, client_email, client_company, client_avatar,
+        provider_id, provider_name, provider_email, provider_company, provider_avatar,
+        progress, total_milestones, completed_milestones, raw_status, approval_status, display_status,
+        payment_status, invoice_status, invoice_id, amount_cents, amount, currency,
+        created_at, updated_at, due_at, requirements, notes, scheduled_date, location
       `, { count: 'planned' })
       .gte('created_at', sinceIso)
 
@@ -395,67 +399,63 @@ export async function GET(request: NextRequest) {
       query = query.eq('client_id', user.id)
     }
 
-    // Status filter: handle derived statuses
+    // Status filter: use display_status from v_booking_status view
     if (status) {
-      switch (status) {
-        case 'pending_review':
-          query = query.eq('status', 'pending').neq('approval_status', 'approved')
-          break
-        case 'approved':
-          query = query.eq('status', 'approved')
-          break
-        case 'ready_to_launch':
-          // either status=approved OR pending + approval_status=approved
-          query = query.or('and(status.eq.pending,approval_status.eq.approved),status.eq.approved')
-          break
-        case 'in_production':
-          query = query.eq('status', 'in_progress')
-          break
-        case 'delivered':
-          query = query.eq('status', 'completed')
-          break
-        case 'on_hold':
-          query = query.eq('status', 'on_hold')
-          break
-        case 'cancelled':
-          query = query.eq('status', 'cancelled')
-          break
-        case 'rescheduled':
-          query = query.eq('status', 'rescheduled')
-          break
-        default:
-          query = query.eq('status', status)
+      // Map legacy status names to display_status values
+      const statusMap: Record<string, string> = {
+        'pending_review': 'pending_review',
+        'approved': 'approved', 
+        'ready_to_launch': 'approved', // Same as approved
+        'in_production': 'in_progress',
+        'in_progress': 'in_progress',
+        'delivered': 'completed',
+        'completed': 'completed',
+        'on_hold': 'cancelled', // Map on_hold to cancelled for now
+        'cancelled': 'cancelled',
+        'rescheduled': 'pending_review' // Map rescheduled to pending_review
       }
+      
+      const mappedStatus = statusMap[status] || status
+      query = query.eq('display_status', mappedStatus)
     }
 
-    // Search functionality using available fields
+    // Search functionality using v_booking_status fields
     if (search) {
       if (search.startsWith('#')) {
         // Direct ID lookup
         query = query.eq('id', search.slice(1))
       } else {
-        // Text search across available fields (no spaces/newlines in .or string)
+        // Text search across available fields from v_booking_status
         const like = `%${search}%`
-        query = query.or(`notes.ilike.${like},location.ilike.${like},booking_number.ilike.${like}`)
+        query = query.or(`booking_title.ilike.${like},service_title.ilike.${like},client_name.ilike.${like},provider_name.ilike.${like},notes.ilike.${like},location.ilike.${like}`)
       }
     }
 
-    // Sorting
+    // Sorting using v_booking_status fields
     switch (sort) {
       case 'updated_at':
         query = query.order('updated_at', { ascending: order === 'asc', nullsFirst: false })
         break
       case 'amount':
-        query = query.order('amount_cents', { ascending: order === 'asc' })
+        query = query.order('amount', { ascending: order === 'asc' })
         break
       case 'title':
-        query = query.order('booking_number', { ascending: order === 'asc' })
+        query = query.order('booking_title', { ascending: order === 'asc' })
         break
       case 'client_name':
-        query = query.order('client_id', { ascending: order === 'asc' })
+        query = query.order('client_name', { ascending: order === 'asc' })
         break
       case 'provider_name':
-        query = query.order('provider_id', { ascending: order === 'asc' })
+        query = query.order('provider_name', { ascending: order === 'asc' })
+        break
+      case 'service_title':
+        query = query.order('service_title', { ascending: order === 'asc' })
+        break
+      case 'progress':
+        query = query.order('progress', { ascending: order === 'asc' })
+        break
+      case 'display_status':
+        query = query.order('display_status', { ascending: order === 'asc' })
         break
       default:
         query = query.order('created_at', { ascending: order === 'asc' })
@@ -496,12 +496,11 @@ export async function GET(request: NextRequest) {
         console.warn('⚠️ Progress view error:', progressError)
         // Fallback to simple status-based progress
         for (const booking of rows) {
-          const status = booking.status || 'pending'
-          let progress = 0
+          const status = booking.display_status || 'pending_review'
+          let progress = booking.progress || 0
           if (status === 'completed') progress = 100
-          else if (status === 'delivered') progress = 90
-          else if (status === 'in_progress') progress = 50
-          else if (status === 'approved') progress = 25
+          else if (status === 'in_progress') progress = Math.max(progress, 50)
+          else if (status === 'approved') progress = Math.max(progress, 25)
           else if (status === 'pending') progress = 10
           progressMap.set(String(booking.id), progress)
         }

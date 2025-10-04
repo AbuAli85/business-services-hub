@@ -26,16 +26,20 @@ export interface StatusBadgeProps {
 // Improved status derivation logic
 export function getDerivedStatus(booking: {
   status: string
+  display_status?: string
   approval_status?: string
   progress_percentage?: number
 }, invoice?: { status: string }) {
+  // Use display_status if available, otherwise fall back to status
+  const currentStatus = booking.display_status || booking.status
+  
   // Handle completed status first
-  if (booking.status === 'completed') {
+  if (currentStatus === 'completed') {
     return 'delivered'
   }
   
   // Handle in-progress status
-  if (booking.status === 'in_progress') {
+  if (currentStatus === 'in_progress') {
     return 'in_production'
   }
   
@@ -48,17 +52,17 @@ export function getDerivedStatus(booking: {
   if (booking.approval_status === 'approved') {
     return 'approved'
   }
-  if (booking.status === 'approved') {
+  if (currentStatus === 'approved') {
     return 'approved'
   }
   
   // Handle declined/cancelled
-  if (booking.status === 'declined' || booking.approval_status === 'declined' || booking.status === 'cancelled') {
+  if (currentStatus === 'declined' || booking.approval_status === 'declined' || currentStatus === 'cancelled') {
     return 'cancelled'
   }
   
   // Handle on hold
-  if (booking.status === 'on_hold') {
+  if (currentStatus === 'on_hold') {
     return 'on_hold'
   }
   

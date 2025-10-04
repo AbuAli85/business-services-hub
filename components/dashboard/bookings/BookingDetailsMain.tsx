@@ -99,7 +99,7 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
 
   const statusNorm = normalizeStatus(booking)
   const canApprove = (bookingUserRole === 'admin' || bookingUserRole === 'provider') && statusNorm === 'pending'
-  const canStart = (bookingUserRole === 'provider' || bookingUserRole === 'admin') && ['approved', 'confirmed'].includes(String(booking.status))
+  const canStart = (bookingUserRole === 'provider' || bookingUserRole === 'admin') && ['approved', 'confirmed'].includes(String((booking as any).display_status || booking.status))
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -165,7 +165,7 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent mb-2">
-                  {booking.title || 'Service Booking'}
+                  {(booking as any).booking_title || booking.title || 'Service Booking'}
                 </h1>
                 <p className="text-xl text-gray-600 mb-4 font-medium">Booking #{booking.id.slice(0, 8)}</p>
               </div>
@@ -205,7 +205,7 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="text-center md:text-left">
                     <div className="mb-3">
-                      <StatusPill status={booking.status} />
+                      <StatusPill status={(booking as any).display_status || booking.status} />
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Clock className="h-4 w-4 mr-2" />
