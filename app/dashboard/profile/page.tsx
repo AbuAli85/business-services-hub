@@ -159,17 +159,11 @@ export default function ProfilePage() {
 
       // Fetch company data for both providers and clients
       if (role === 'provider' || role === 'client') {
-        const companyController = new AbortController()
-        const companyTimeoutId = setTimeout(() => companyController.abort(), 5000)
-        
         const { data: companyData, error: companyError } = await supabase
           .from('companies')
           .select('*')
           .eq('owner_id', user.id)
           .single()
-          .abortSignal(companyController.signal)
-        
-        clearTimeout(companyTimeoutId)
         
         if (companyError) {
           console.warn('Company fetch error:', companyError)
