@@ -161,34 +161,42 @@ export async function POST(request: NextRequest) {
       due.setDate(due.getDate() + tpl.plusDays)
       const toYmd = (d: Date) => d.toISOString().slice(0, 10)
       
-      console.log('🔍 Milestone creation - Priority validation:', {
-        templatePriority: tpl.priority,
-        isValid: ['low', 'normal', 'high', 'urgent'].includes(tpl.priority)
+      const milestoneData = {
+        booking_id,
+        title: tpl.title,
+        status: 'pending' as const,
+        priority: tpl.priority as 'low' | 'normal' | 'high' | 'urgent',
+        due_date: toYmd(due),
+        estimated_hours: tpl.estimated_hours,
+        actual_hours: 0,
+        progress_percentage: 0,
+        order_index: tpl.order,
+        editable: true,
+        weight: 1.0,
+        created_by: user.id
+      }
+      
+      console.log('🔍 Milestone creation - Inserting data:', {
+        priority: milestoneData.priority,
+        priorityType: typeof milestoneData.priority,
+        milestoneData
       })
       
       const { data: milestone, error: mErr } = await supabase
         .from('milestones')
-        .insert({
-          booking_id,
-          title: tpl.title,
-          description: null,
-          status: 'pending',
-          priority: tpl.priority,
-          due_date: toYmd(due),
-          estimated_hours: tpl.estimated_hours,
-          actual_hours: 0,
-          progress_percentage: 0,
-          order_index: tpl.order,
-          editable: true,
-          weight: 1,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert(milestoneData)
         .select()
         .single()
 
       if (mErr || !milestone) {
-        console.warn('Error creating milestone:', mErr)
+        console.error('❌ Error creating milestone:', {
+          error: mErr,
+          code: mErr?.code,
+          message: mErr?.message,
+          details: mErr?.details,
+          hint: mErr?.hint,
+          milestoneData
+        })
         // If it's a permission error, return a more specific error
         if (mErr?.code === '42501' || mErr?.message?.includes('permission denied')) {
           console.warn('Permission denied for milestones table during creation')
@@ -198,7 +206,7 @@ export async function POST(request: NextRequest) {
           )
         }
         return NextResponse.json(
-          { error: 'Failed to create milestone', details: mErr?.message },
+          { error: 'Failed to create milestone', details: mErr?.message, hint: mErr?.hint },
           { status: 500, headers: corsHeaders }
         )
       }
