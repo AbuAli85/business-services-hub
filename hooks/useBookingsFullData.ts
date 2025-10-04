@@ -144,7 +144,9 @@ export function useBookingsFullData({
       }
 
       // Apply sorting
-      const sortColumn = sortBy === 'createdAt' ? 'created_at' : sortBy
+      const sortColumn = sortBy === 'createdAt' ? 'created_at' : 
+                        sortBy === 'lastUpdated' ? 'updated_at' : 
+                        sortBy
       query = query.order(sortColumn, { ascending: sortOrder === 'asc' })
 
       // Apply pagination

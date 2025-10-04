@@ -6,23 +6,21 @@ SELECT
   -- Booking core data
   b.id,
   b.title,
-  b.description,
+  b.requirements,
   b.status,
-  b.approval_status,
   b.created_at,
   b.updated_at,
-  b.scheduled_date,
-  b.scheduled_time,
-  b.location,
-  b.notes,
-  b.amount,
-  b.amount_cents,
+  b.due_at,
+  b.subtotal,
+  b.vat_percent,
+  b.vat_amount,
+  b.total_amount,
   b.currency,
   b.client_id,
   b.provider_id,
   b.service_id,
-  b.service_package_id,
-  b.progress_percentage,
+  b.package_id,
+  b.project_progress,
   
   -- Service information
   s.title as service_title,
@@ -99,26 +97,21 @@ LEFT JOIN LATERAL (
 LEFT JOIN LATERAL (
   -- Get milestone statistics for this booking
   SELECT 
-    COUNT(*) as total_milestones,
-    COUNT(*) FILTER (WHERE status = 'completed') as completed_milestones,
-    COALESCE(SUM(jsonb_array_length(COALESCE(tasks, '[]'::jsonb))), 0) as total_tasks,
-    COALESCE(SUM(
-      jsonb_array_length(
-        COALESCE(tasks, '[]'::jsonb) 
-        FILTER (WHERE jsonb_path_exists(tasks, '$[*] ? (@.status == "completed")'))
-      )
-    ), 0) as completed_tasks
-  FROM milestones 
-  WHERE booking_id = b.id
+    COUNT(DISTINCT m.id) as total_milestones,
+    COUNT(DISTINCT m.id) FILTER (WHERE m.status = 'completed') as completed_milestones,
+    COUNT(DISTINCT t.id) as total_tasks,
+    COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'completed') as completed_tasks
+  FROM milestones m
+  LEFT JOIN tasks t ON t.milestone_id = m.id
+  WHERE m.booking_id = b.id
 ) ms ON true;
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_bookings_full_view_client_id ON bookings_full_view(client_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_full_view_provider_id ON bookings_full_view(provider_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_full_view_service_id ON bookings_full_view(service_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_full_view_status ON bookings_full_view(normalized_status);
-CREATE INDEX IF NOT EXISTS idx_bookings_full_view_created_at ON bookings_full_view(created_at);
-CREATE INDEX IF NOT EXISTS idx_bookings_full_view_invoice_status ON bookings_full_view(invoice_status);
+-- Note: Indexes cannot be created on views in PostgreSQL
+-- Performance optimization should be done on the underlying tables:
+-- - bookings table: client_id, provider_id, service_id, status, created_at
+-- - services table: id, status
+-- - profiles table: id
+-- - invoices table: booking_id, status
 
 -- Grant permissions
 GRANT SELECT ON bookings_full_view TO authenticated;
