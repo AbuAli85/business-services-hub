@@ -3,70 +3,49 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 
 interface BookingFullData {
-  // Core booking data
+  // Core booking data from v_booking_status view
   id: string
-  title: string
-  description?: string
-  status: string
-  approval_status?: string
-  created_at: string
-  updated_at?: string
-  scheduled_date?: string
-  scheduled_time?: string
-  location?: string
-  notes?: string
-  amount?: number
-  amount_cents?: number
-  currency: string
-  client_id: string
-  provider_id: string
+  booking_title: string
   service_id: string
-  service_package_id?: string
-  progress_percentage?: number
-  
-  // Service information
   service_title: string
   service_description?: string
   service_category?: string
-  service_base_price?: number
-  service_status?: string
-  
-  // Client profile information
-  client_profile_id: string
+  client_id: string
   client_name: string
-  client_email: string
-  client_phone?: string
+  client_email?: string
   client_company?: string
   client_avatar?: string
-  
-  // Provider profile information
-  provider_profile_id: string
+  provider_id: string
   provider_name: string
-  provider_email: string
-  provider_phone?: string
+  provider_email?: string
   provider_company?: string
   provider_avatar?: string
   
-  // Invoice information
-  invoice_id?: string
-  invoice_status?: string
-  invoice_amount?: number
-  invoice_currency?: string
-  invoice_number?: string
-  invoice_due_date?: string
-  paid_at?: string
-  invoice_created_at?: string
-  
-  // Milestone statistics
+  // Progress and milestone data
+  progress: number
   total_milestones: number
   completed_milestones: number
-  total_tasks: number
-  completed_tasks: number
   
-  // Calculated fields
-  calculated_progress_percentage: number
+  // Status information
+  raw_status: string
+  approval_status?: string
+  display_status: string
+  
+  // Payment information
   payment_status: string
-  normalized_status: string
+  invoice_status?: string
+  amount_cents?: number
+  amount?: number
+  currency: string
+  
+  // Timestamps
+  created_at: string
+  updated_at?: string
+  due_at?: string
+  
+  // Additional data
+  requirements?: string
+  notes?: string
 }
 
 interface UseBookingsFullDataOptions {
@@ -118,7 +97,7 @@ export function useBookingsFullData({
       
       // Build query based on user role
       let query = supabase
-        .from('bookings_full_view')
+        .from('v_booking_status')
         .select('*', { count: 'exact' })
 
       // Apply role-based filtering
@@ -132,15 +111,15 @@ export function useBookingsFullData({
       // Apply status filter
       if (statusFilter !== 'all') {
         if (statusFilter === 'pending') {
-          query = query.in('normalized_status', ['pending', 'pending_provider_approval', 'draft'])
+          query = query.in('display_status', ['pending_review', 'pending'])
         } else {
-          query = query.eq('normalized_status', statusFilter)
+          query = query.eq('display_status', statusFilter)
         }
       }
 
       // Apply search filter
       if (searchQuery) {
-        query = query.or(`service_title.ilike.%${searchQuery}%,client_name.ilike.%${searchQuery}%,title.ilike.%${searchQuery}%`)
+        query = query.or(`service_title.ilike.%${searchQuery}%,client_name.ilike.%${searchQuery}%,booking_title.ilike.%${searchQuery}%`)
       }
 
       // Apply sorting

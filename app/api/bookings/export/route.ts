@@ -43,8 +43,8 @@ export async function GET(req: Request) {
     const userRole = profile?.role ?? user.user_metadata?.role ?? 'client'
 
     let query = supabase
-      .from('bookings')
-      .select('id, status, created_at, amount, currency, client_id, provider_id, title')
+      .from('v_booking_status')
+      .select('id, booking_title, service_title, client_name, provider_name, display_status, approval_status, amount, currency, progress, created_at, updated_at, scheduled_date')
 
     if (ids.length > 0) {
       query = query.in('id', ids)
@@ -60,7 +60,35 @@ export async function GET(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     if (format === 'csv') {
-      const csv = toCsv(data || [])
+      // Format the data for CSV export with proper column names
+      const formattedData = (data || []).map((booking: any) => ({
+        'Booking ID': booking.id,
+        'Service Title': booking.service_title || 'Service',
+        'Client Name': booking.client_name || 'Client',
+        'Provider Name': booking.provider_name || 'Provider',
+        'Status': booking.display_status || booking.status,
+        'Approval Status': booking.approval_status || 'pending',
+        'Amount': booking.amount || '0.00',
+        'Currency': booking.currency || 'OMR',
+        'Progress %': booking.progress || '0',
+        'Created Date': booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: '2-digit' 
+        }) : '',
+        'Updated Date': booking.updated_at ? new Date(booking.updated_at).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: '2-digit' 
+        }) : '',
+        'Scheduled Date': booking.scheduled_date ? new Date(booking.scheduled_date).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: '2-digit' 
+        }) : ''
+      }))
+      
+      const csv = toCsv(formattedData)
       return new NextResponse(csv, {
         status: 200,
         headers: {
