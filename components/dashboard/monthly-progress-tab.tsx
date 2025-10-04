@@ -17,7 +17,7 @@ import {
   List,
   Grid
 } from 'lucide-react'
-import { Milestone, Task } from '@/lib/progress-tracking'
+import { Milestone, Task } from '@/types/progress'
 import { startOfMonth, endOfMonth, isWithinInterval, isAfter, isBefore } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
 

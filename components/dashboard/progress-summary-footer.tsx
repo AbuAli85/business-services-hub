@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle, Target, Clock, AlertCircle } from 'lucide-react'
-import { Milestone, BookingProgress } from '@/lib/progress-tracking'
+import { Milestone, BookingProgress } from '@/types/progress'
 import { isMilestoneOverdue } from '@/lib/progress-calculations'
 
 interface ProgressSummaryFooterProps {

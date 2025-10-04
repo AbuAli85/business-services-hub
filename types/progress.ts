@@ -1,7 +1,7 @@
 // Standardized Progress Tracking Types
 // This file contains all the core types used across the progress tracking system
 
-export type TaskStatus = "pending" | "in_progress" | "completed";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
 export type MilestoneStatus = "pending" | "in_progress" | "completed" | "cancelled" | "on_hold";
 export type UserRole = "provider" | "client" | "admin";
 
@@ -15,6 +15,7 @@ export interface Task {
   due_date?: string;
   created_at: string;
   updated_at: string;
+  completed_at?: string;
   estimated_hours?: number;
   actual_hours?: number;
   priority?: "low" | "normal" | "high" | "urgent";

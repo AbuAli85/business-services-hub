@@ -28,7 +28,7 @@ import {
   User,
   MessageSquare
 } from 'lucide-react'
-import { Milestone, Task, TimeEntry } from '@/lib/progress-tracking'
+import { Milestone, Task, TimeEntry } from '@/types/progress'
 import { formatDistanceToNow, isAfter, isBefore } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
 import { toast } from 'sonner'

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { backendProgressService, BackendProgressUpdate } from '@/lib/backend-progress-service'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 export interface UseBackendProgressOptions {
   bookingId: string
@@ -34,30 +34,50 @@ export function useBackendProgress({
     lastUpdated: null
   })
 
-  const subscriptionsRef = useRef<Array<{ unsubscribe: () => void }>>([])
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Load initial data
+  // Load initial data using unified v_booking_status system
   const loadData = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }))
 
-      // Load booking progress
-      const bookingProgress = await backendProgressService.getBookingProgress(bookingId)
-      
+      const supabase = getSupabaseClient()
+
+      // Load booking data from v_booking_status
+      const { data: bookingData, error: bookingError } = await supabase
+        .from('v_booking_status')
+        .select('*')
+        .eq('id', bookingId)
+        .single()
+
+      if (bookingError) throw bookingError
+
       // Load milestones
-      const milestones = await backendProgressService.getMilestonesForBooking(bookingId)
-      
+      const { data: milestones, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: true })
+
+      if (milestonesError) throw milestonesError
+
       // Load tasks if milestoneId is provided
       let tasks: any[] = []
       if (milestoneId) {
-        tasks = await backendProgressService.getTasksForMilestone(milestoneId)
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('milestone_id', milestoneId)
+          .order('created_at', { ascending: true })
+
+        if (tasksError) throw tasksError
+        tasks = tasksData || []
       }
 
       setState(prev => ({
         ...prev,
-        bookingProgress,
-        milestones,
+        bookingProgress: bookingData,
+        milestones: milestones || [],
         tasks,
         loading: false,
         lastUpdated: new Date()
@@ -73,34 +93,20 @@ export function useBackendProgress({
   }, [bookingId, milestoneId])
 
   // Update task progress
-  const updateTaskProgress = useCallback(async (taskId: string, updates: {
-    status?: string
-    progress_percentage?: number
-    title?: string
-    due_date?: string
-    [key: string]: any
-  }) => {
+  const updateTaskProgress = useCallback(async (taskId: string, updates: any) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }))
 
-      const result = await backendProgressService.updateTaskProgress(taskId, updates)
-      
-      // Update local state optimistically
-      setState(prev => ({
-        ...prev,
-        tasks: prev.tasks.map(task => 
-          task.id === taskId ? { ...task, ...result.task } : task
-        ),
-        milestones: prev.milestones.map(milestone => 
-          milestone.id === result.task.milestone_id 
-            ? { ...milestone, ...result.milestone_progress }
-            : milestone
-        ),
-        loading: false,
-        lastUpdated: new Date()
-      }))
+      const supabase = getSupabaseClient()
+      const { error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', taskId)
 
-      return result
+      if (error) throw error
+
+      // Reload data to get updated progress
+      await loadData()
     } catch (error) {
       console.error('Error updating task progress:', error)
       setState(prev => ({
@@ -108,152 +114,78 @@ export function useBackendProgress({
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to update task progress'
       }))
-      throw error
     }
-  }, [])
+  }, [loadData])
 
-  // Validate transition
+  // Validate status transition
   const canTransition = useCallback(async (
-    currentStatus: string, 
-    newStatus: string, 
-    entityType: 'task' | 'milestone' = 'task'
+    currentStatus: string,
+    newStatus: string,
+    entityType: 'task' | 'milestone'
   ) => {
-    try {
-      return await backendProgressService.canTransition(currentStatus, newStatus, entityType)
-    } catch (error) {
-      console.error('Error validating transition:', error)
-      return false
+    // Simple validation - can be enhanced with more complex rules
+    const validTransitions: Record<string, string[]> = {
+      'pending': ['in_progress', 'cancelled'],
+      'in_progress': ['completed', 'cancelled'],
+      'completed': ['in_progress'], // Allow reopening
+      'cancelled': ['pending'] // Allow restarting
     }
+
+    return validTransitions[currentStatus]?.includes(newStatus) || false
   }, [])
 
   // Recalculate milestone progress
   const recalculateMilestoneProgress = useCallback(async (milestoneId: string) => {
     try {
-      const result = await backendProgressService.recalculateMilestoneProgress(milestoneId)
+      const supabase = getSupabaseClient()
       
-      // Update local state
-      setState(prev => ({
-        ...prev,
-        milestones: prev.milestones.map(milestone => 
-          milestone.id === milestoneId 
-            ? { ...milestone, ...result }
-            : milestone
-        ),
-        lastUpdated: new Date()
-      }))
+      // Get all tasks for this milestone
+      const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('milestone_id', milestoneId)
 
-      return result
+      if (tasksError) throw tasksError
+
+      // Calculate progress
+      const completedTasks = tasks?.filter(task => task.status === 'completed').length || 0
+      const totalTasks = tasks?.length || 0
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+      // Update milestone progress
+      const { error: updateError } = await supabase
+        .from('milestones')
+        .update({ progress_percentage: progress })
+        .eq('id', milestoneId)
+
+      if (updateError) throw updateError
+
+      // Reload data
+      await loadData()
     } catch (error) {
       console.error('Error recalculating milestone progress:', error)
-      throw error
     }
-  }, [])
-
-  // Handle realtime updates
-  const handleRealtimeUpdate = useCallback((update: BackendProgressUpdate) => {
-    setState(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(task => 
-        task.id === update.task.id ? { ...task, ...update.task } : task
-      ),
-      milestones: prev.milestones.map(milestone => 
-        milestone.id === update.task.milestone_id 
-          ? { ...milestone, ...update.milestone_progress }
-          : milestone
-      ),
-      lastUpdated: new Date()
-    }))
-  }, [])
-
-  // Setup subscriptions
-  useEffect(() => {
-    if (!autoRefresh) return
-
-    const setupSubscriptions = async () => {
-      try {
-        // Subscribe to booking updates
-        const bookingSubscription = await backendProgressService.subscribeToBookingUpdates(
-          bookingId,
-          handleRealtimeUpdate
-        )
-        subscriptionsRef.current.push(bookingSubscription)
-
-        // Subscribe to milestone updates if milestoneId is provided
-        if (milestoneId) {
-          const milestoneSubscription = await backendProgressService.subscribeToMilestoneUpdates(
-            milestoneId,
-            (milestone) => {
-              setState(prev => ({
-                ...prev,
-                milestones: prev.milestones.map(m => 
-                  m.id === milestoneId ? milestone : m
-                ),
-                lastUpdated: new Date()
-              }))
-            }
-          )
-          subscriptionsRef.current.push(milestoneSubscription)
-        }
-
-        // Subscribe to task updates if taskId is provided
-        if (taskId) {
-          const taskSubscription = await backendProgressService.subscribeToTaskUpdates(
-            taskId,
-            (task) => {
-              setState(prev => ({
-                ...prev,
-                tasks: prev.tasks.map(t => 
-                  t.id === taskId ? task : t
-                ),
-                lastUpdated: new Date()
-              }))
-            }
-          )
-          subscriptionsRef.current.push(taskSubscription)
-        }
-      } catch (error) {
-        console.error('Error setting up subscriptions:', error)
-      }
-    }
-
-    setupSubscriptions()
-
-    return () => {
-      subscriptionsRef.current.forEach(subscription => subscription.unsubscribe())
-      subscriptionsRef.current = []
-    }
-  }, [bookingId, milestoneId, taskId, autoRefresh, handleRealtimeUpdate])
+  }, [loadData])
 
   // Setup auto-refresh
   useEffect(() => {
-    if (!autoRefresh || refreshInterval <= 0) return
-
-    refreshIntervalRef.current = setInterval(() => {
-      loadData()
-    }, refreshInterval)
+    if (autoRefresh && refreshInterval > 0) {
+      refreshIntervalRef.current = setInterval(() => {
+        loadData()
+      }, refreshInterval)
+    }
 
     return () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current)
-        refreshIntervalRef.current = null
       }
     }
   }, [autoRefresh, refreshInterval, loadData])
 
-  // Load data on mount
+  // Load data on mount and when dependencies change
   useEffect(() => {
     loadData()
   }, [loadData])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      subscriptionsRef.current.forEach(subscription => subscription.unsubscribe())
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current)
-      }
-    }
-  }, [])
 
   return {
     ...state,
@@ -263,4 +195,3 @@ export function useBackendProgress({
     refresh: loadData
   }
 }
-

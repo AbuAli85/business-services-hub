@@ -26,7 +26,7 @@ import {
   CheckSquare,
   X
 } from 'lucide-react'
-import { Milestone, Task } from '@/lib/progress-tracking'
+import { Milestone, Task } from '@/types/progress'
 import { isBefore } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
 import { toast } from 'sonner'
@@ -170,7 +170,7 @@ export function BulkOperationsView({
         task.milestoneTitle,
         task.status,
         task.priority,
-        task.progress_percentage.toString(),
+        (task.progress || 0).toString(),
         task.due_date || '',
         (task.estimated_hours || 0).toString(),
         (task.actual_hours || 0).toString()
@@ -443,8 +443,8 @@ export function BulkOperationsView({
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                            {task.priority}
+                          <Badge variant="outline" className={getPriorityColor(task.priority || 'normal')}>
+                            {task.priority || 'normal'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -452,10 +452,10 @@ export function BulkOperationsView({
                             <div className="w-16 bg-gray-200 rounded-full h-2">
                               <div
                                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${task.progress_percentage}%` }}
+                                style={{ width: `${task.progress || 0}%` }}
                               />
                             </div>
-                            <span className="text-sm text-gray-600">{task.progress_percentage}%</span>
+                            <span className="text-sm text-gray-600">{task.progress || 0}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-3">
