@@ -488,12 +488,34 @@ export async function GET(request: NextRequest) {
     let progressMap = new Map<string, number>()
     if (rows.length > 0) {
       const ids = rows.map((b:any) => b.id)
-      const { data: progressRows } = await supabase
+      console.log(`🔍 Fetching progress for ${ids.length} bookings`)
+      
+      // Try the proper progress view first
+      const { data: progressRows, error: progressError } = await supabase
         .from('v_booking_progress')
-        .select('booking_id, progress_pct')
+        .select('booking_id, booking_progress, progress_percentage')
         .in('booking_id', ids)
-      for (const pr of progressRows || []) {
-        progressMap.set(String(pr.booking_id), Number(pr.progress_pct ?? 0))
+      
+      if (progressError) {
+        console.warn('⚠️ Progress view error:', progressError)
+        // Fallback to simple status-based progress
+        for (const booking of rows) {
+          const status = booking.status || 'pending'
+          let progress = 0
+          if (status === 'completed') progress = 100
+          else if (status === 'delivered') progress = 90
+          else if (status === 'in_progress') progress = 50
+          else if (status === 'approved') progress = 25
+          else if (status === 'pending') progress = 10
+          progressMap.set(String(booking.id), progress)
+        }
+      } else {
+        console.log(`✅ Progress data fetched: ${progressRows?.length || 0} records`)
+        for (const pr of progressRows || []) {
+          // Use booking_progress if available, otherwise progress_percentage, otherwise 0
+          const progress = pr.booking_progress ?? pr.progress_percentage ?? 0
+          progressMap.set(String(pr.booking_id), Number(progress))
+        }
       }
     }
 
@@ -516,14 +538,19 @@ export async function GET(request: NextRequest) {
         }
         
         // Use optimized profile fetcher to avoid stack depth issues
+        console.log(`🔍 Fetching profiles for ${userIds.length} unique users:`, userIds.slice(0, 5))
         const { profiles, errors: profileErrors } = await ProfileFetchOptimizer.fetchProfiles(
           supabase,
           userIds,
           { batchSize: 25, maxRetries: 2 }
         )
         
+        console.log(`📊 Profile fetch results: ${profiles.length} profiles found, ${profileErrors.length} errors`)
         if (profileErrors.length > 0) {
-          console.warn('⚠️ Profile fetch errors:', profileErrors)
+          console.warn('⚠️ Profile fetch errors:', profileErrors.slice(0, 3)) // Show first 3 errors
+        }
+        if (profiles.length > 0) {
+          console.log('✅ Sample profiles:', profiles.slice(0, 2).map(p => ({ id: p.id, name: p.full_name, email: p.email })))
         }
         
         // Bulk fetch invoices
