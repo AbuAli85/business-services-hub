@@ -49,7 +49,7 @@ export function SmartFeatures({ bookingId, userRole }: SmartFeaturesProps) {
   const loadOverdueItems = async () => {
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: milestones, error } = await supabase
         .from('milestones')
         .select('*')
@@ -62,7 +62,7 @@ export function SmartFeatures({ bookingId, userRole }: SmartFeaturesProps) {
       
       // Check overdue milestones
       milestones.forEach(milestone => {
-        if (milestone.due_date && isOverdue(milestone.due_date, milestone.status)) {
+        if (milestone.due_date && new Date(milestone.due_date) < new Date() && milestone.status !== 'completed') {
           const dueDate = new Date(milestone.due_date)
           const now = new Date()
           const overdueDays = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -78,8 +78,8 @@ export function SmartFeatures({ bookingId, userRole }: SmartFeaturesProps) {
         }
         
         // Check overdue tasks
-        milestone.tasks?.forEach(task => {
-          if (task.due_date && isOverdue(task.due_date, task.status)) {
+        milestone.tasks?.forEach((task: any) => {
+          if (task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed') {
             const dueDate = new Date(task.due_date)
             const now = new Date()
             const overdueDays = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -211,7 +211,7 @@ function ProgressNotifications({ bookingId, userRole }: { bookingId: string, use
       setLoading(true)
       // This would integrate with the notifications system
       // For now, we'll create some mock notifications based on progress
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: milestones, error } = await supabase
         .from('milestones')
         .select('*')
@@ -236,10 +236,10 @@ function ProgressNotifications({ bookingId, userRole }: { bookingId: string, use
       })
       
       // Check for tasks pending approval
-      const pendingApprovalTasks = milestones.flatMap(m => 
-        (m.tasks || []).filter(t => t.approval_status === 'pending' && t.status === 'completed')
+      const pendingApprovalTasks = milestones.flatMap((m: any) =>
+        (m.tasks || []).filter((t: any) => t.approval_status === 'pending' && t.status === 'completed')
       )
-      pendingApprovalTasks.forEach(task => {
+      pendingApprovalTasks.forEach((task: any) => {
         mockNotifications.push({
           id: `task-${task.id}`,
           type: 'task_pending_approval',
@@ -314,7 +314,7 @@ function WeeklySummary({ bookingId, userRole }: { bookingId: string, userRole: '
   const loadWeeklySummary = async () => {
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { data: milestones, error } = await supabase
         .from('milestones')
         .select('*')
@@ -328,17 +328,17 @@ function WeeklySummary({ bookingId, userRole }: { bookingId: string, userRole: '
       const weekStart = new Date(now.getTime() - (now.getDay() * 24 * 60 * 60 * 1000))
       const weekEnd = new Date(weekStart.getTime() + (7 * 24 * 60 * 60 * 1000))
       
-      const weeklyTasks = milestones.flatMap(m => 
-        (m.tasks || []).filter(t => {
+      const weeklyTasks = milestones.flatMap((m: any) =>
+        (m.tasks || []).filter((t: any) => {
           const taskDate = new Date(t.updated_at)
           return taskDate >= weekStart && taskDate <= weekEnd
         })
       )
       
-      const completedThisWeek = weeklyTasks.filter(t => t.status === 'completed').length
-      const totalTasks = milestones.reduce((sum, m) => sum + (m.tasks?.length || 0), 0)
-      const totalHours = milestones.reduce((sum, m) => 
-        sum + (m.tasks?.reduce((taskSum, t) => taskSum + (t.actual_hours || 0), 0) || 0), 0
+      const completedThisWeek = weeklyTasks.filter((t: any) => t.status === 'completed').length
+      const totalTasks = milestones.reduce((sum: number, m: any) => sum + (m.tasks?.length || 0), 0)
+      const totalHours = milestones.reduce((sum: number, m: any) =>
+        sum + (m.tasks?.reduce((taskSum: number, t: any) => taskSum + (t.actual_hours || 0), 0) || 0), 0
       )
       
       setSummary({
@@ -399,11 +399,17 @@ function WeeklySummary({ bookingId, userRole }: { bookingId: string, userRole: '
 
 // Overdue Badge Component
 export function OverdueBadge({ item, type }: { item: { due_date?: string, status: string }, type: 'milestone' | 'task' }) {
-  if (!item.due_date || !isOverdue(item.due_date, item.status)) {
+  if (!item.due_date) {
     return null
   }
 
+  // Use a unique variable name to avoid redeclaration
   const dueDate = new Date(item.due_date)
+  const nowOverdueBadge = new Date()
+  const isOverdue = dueDate < nowOverdueBadge && item.status !== 'completed'
+  if (!isOverdue) {
+    return null
+  }
   const now = new Date()
   const overdueDays = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
 
