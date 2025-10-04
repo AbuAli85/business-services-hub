@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 
-interface Booking {
+export interface Booking {
   id: string
   title: string
   status: string
@@ -11,22 +11,55 @@ interface Booking {
   provider_id?: string
   service: {
     name: string
+    title?: string
     description?: string
+    category?: string
+    duration?: string
+    requirements?: string[]
+    deliverables?: string[]
   }
   client: {
     full_name: string
     email: string
     company_name?: string
+    avatar_url?: string
+    phone?: string
+    response_time?: string
+    timezone?: string
+    preferred_contact?: string
+    rating?: number
+    total_reviews?: number
+    availability_status?: string
   }
   provider: {
     full_name: string
     email: string
     company_name?: string
+    avatar_url?: string
+    phone?: string
+    response_time?: string
+    specialization?: string[]
+    rating?: number
+    total_reviews?: number
+    availability_status?: string
   }
   created_at: string
   scheduled_date: string
+  scheduled_time?: string
   total_price: number
+  amount?: number
   currency: string
+  priority?: string
+  progress_percentage?: number
+  payment_status?: string
+  rating?: number
+  client_satisfaction?: string
+  location?: string
+  location_type?: string
+  estimated_completion?: string
+  actual_completion?: string
+  description?: string
+  notes?: string
 }
 
 type UserRole = 'client' | 'provider' | 'admin'
