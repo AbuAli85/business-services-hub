@@ -164,6 +164,10 @@ export function ProfessionalBookingDetails({
   const providerPhone = booking.provider_phone || 'No phone provided'
   const status = booking.status || 'pending'
   const approvalStatus = booking.approval_status || booking.approvalStatus
+  
+  // Real milestone data from booking or API (declared before use)
+  const milestones = booking.milestones || []
+  
   // Calculate actual progress from milestone data
   const calculateProgressFromMilestones = () => {
     if (!milestones || milestones.length === 0) {
@@ -196,9 +200,6 @@ export function ProfessionalBookingDetails({
   const scheduledDate = booking.scheduled_date || booking.scheduledDate
   const location = booking.location || 'Not specified'
   const notes = booking.notes || booking.description || 'No additional notes'
-
-  // Real milestone data from booking or API
-  const milestones = booking.milestones || []
 
   // Real time entries data from booking or API
   const timeEntries = booking.time_entries || []
