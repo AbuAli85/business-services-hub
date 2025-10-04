@@ -32,6 +32,9 @@ import { BookingHeader } from '@/components/dashboard/bookings/BookingHeader'
 import { BookingStats } from '@/components/dashboard/bookings/BookingStats'
 import { BookingEmptyState } from '@/components/dashboard/bookings/BookingEmptyState'
 import { BookingLoadingSkeleton } from '@/components/dashboard/bookings/BookingLoadingSkeleton'
+import { BookingSummaryStats } from '@/components/dashboard/bookings/BookingSummaryStats'
+import { EnhancedBookingRow } from '@/components/dashboard/bookings/EnhancedBookingRow'
+import { EnhancedBookingFilters } from '@/components/dashboard/bookings/EnhancedBookingFilters'
 import PaginationFooter from '@/components/ui/PaginationFooter'
 
 // Utils
@@ -467,7 +470,10 @@ export default function BookingsPage() {
         canCreateBooking={canCreateBooking}
       />
 
-      {/* Statistics */}
+      {/* Summary Statistics */}
+      <BookingSummaryStats stats={stats} />
+
+      {/* Quick Stats */}
       <BookingStats 
         stats={stats} 
         onQuickFilter={(f)=>{
@@ -828,9 +834,9 @@ export default function BookingsPage() {
 				  />
 				</div>
 			  ) : (
-			  <div className="divide-y divide-gray-100">
+			  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               {/* Header row with select all */}
-              <div className="px-4 py-2 bg-gray-50 flex items-center gap-3">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
                 <Checkbox
                   checked={selectAll}
                   onCheckedChange={(v)=>{
@@ -843,61 +849,33 @@ export default function BookingsPage() {
                     }
                   }}
                 />
-                <span className="text-sm text-gray-500">Select all on this page</span>
+                <span className="text-sm text-gray-600 font-medium">Select all on this page</span>
               </div>
-				  {paginatedBookings.map((booking) => (
-					<div key={booking.id} className="mb-3">
-					  <ImprovedBookingCard
-						booking={booking}
-						invoice={invoiceByBooking.get(String(booking.id))}
-						isSelected={selectedIds.has(booking.id)}
-						onSelect={(checked) => {
-						  setSelectedIds(prev => {
-							const next = new Set(prev)
-							if (checked) next.add(booking.id); else next.delete(booking.id)
-							return next
-						  })
-						}}
-                        onQuickAction={async (action) => {
-                          if (action === 'approve') {
-                            await approveBooking(booking.id, booking.provider_id, booking.status)
-                          } else if (action === 'decline') {
-                            await declineBooking(booking.id, booking.provider_id, booking.status)
-                          } else if (action === 'create_invoice') {
-                            await handleCreateInvoice(booking)
-                          } else if (action === 'send_invoice') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
-                          } else if (action === 'mark_paid') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
-                          } else if (action === 'message') {
-                            router.push('/dashboard/messages')
-                          } else if (action === 'edit') {
-                            router.push(`/dashboard/bookings/${booking.id}/edit`)
-                          } else if (action === 'download') {
-                            // Handle download action
-                            toast.info('Download feature coming soon')
-                          }
-                        }}
-                        onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
-                        onViewProgress={(id) => { router.push(`/dashboard/bookings/${booking.id}/milestones`) }}
-                        onInvoiceAction={async (action) => {
-                          if (action === 'view_invoice') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
-                          } else if (action === 'pay_invoice') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
-                          } else if (action === 'create_invoice') {
-                            await handleCreateInvoice(booking)
-                          } else if (action === 'send_invoice') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleSendInvoice(inv.id)
-                          } else if (action === 'mark_paid') {
-                            const inv = invoiceByBooking.get(String(booking.id)); if (inv) await handleMarkInvoicePaid(inv.id)
-                          }
-                        }}
-						density={density}
-						userRole={userRole || undefined}
-					  />
-					</div>
-				  ))}
+
+              {/* Enhanced Booking Rows */}
+              {paginatedBookings.map((booking) => (
+                <EnhancedBookingRow
+                  key={booking.id}
+                  booking={booking}
+                  isSelected={selectedIds.has(booking.id)}
+                  onSelect={(checked) => {
+                    setSelectedIds(prev => {
+                      const next = new Set(prev)
+                      if (checked) next.add(booking.id); else next.delete(booking.id)
+                      return next
+                    })
+                  }}
+                  onViewDetails={() => router.push(`/dashboard/bookings/${booking.id}`)}
+                  onViewMilestones={() => router.push(`/dashboard/bookings/${booking.id}/milestones`)}
+                  onViewInvoice={() => {
+                    const inv = invoiceByBooking.get(String(booking.id))
+                    if (inv) router.push(getInvoiceHref(inv.id))
+                  }}
+                  onMessageClient={() => router.push('/dashboard/messages')}
+                  density={density}
+                  userRole={userRole}
+                />
+              ))}
             </div>
 			  )
           ) : (
