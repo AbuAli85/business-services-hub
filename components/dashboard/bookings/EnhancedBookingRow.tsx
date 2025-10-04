@@ -20,10 +20,12 @@ interface EnhancedBookingRowProps {
   booking: {
     id: string
     title?: string
+    booking_title?: string
     service_title?: string
     client_name?: string
     provider_name?: string
     status: string
+    display_status?: string
     progress_percentage?: number
     amount_cents?: number
     amount?: number
@@ -53,7 +55,7 @@ export function EnhancedBookingRow({
   density = 'comfortable',
   userRole
 }: EnhancedBookingRowProps) {
-  const serviceTitle = booking.title || booking.service_title || 'Service Booking'
+  const serviceTitle = booking.booking_title || booking.title || booking.service_title || 'Service Booking'
   const clientName = booking.client_name || 'Unknown Client'
   const amount = booking.amount_cents ? booking.amount_cents / 100 : booking.amount || 0
   const currency = booking.currency || 'OMR'
@@ -110,7 +112,7 @@ export function EnhancedBookingRow({
 
         {/* Status */}
         <div className="col-span-2">
-          <StatusPill status={booking.status} size="sm" />
+          <StatusPill status={booking.display_status || booking.status} size="sm" />
         </div>
 
         {/* Progress */}
@@ -123,7 +125,7 @@ export function EnhancedBookingRow({
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-600">{progress}%</span>
               <span className="text-xs text-gray-500">
-                {getProgressLabel(booking.status, progress)}
+                {getProgressLabel(booking.display_status || booking.status, progress)}
               </span>
             </div>
           </div>

@@ -5,7 +5,9 @@ import { toast } from 'sonner'
 export interface Booking {
   id: string
   title: string
+  booking_title?: string
   status: string
+  display_status?: string
   approval_status?: string
   client_id?: string
   provider_id?: string
@@ -51,7 +53,12 @@ export interface Booking {
   currency: string
   priority?: string
   progress_percentage?: number
+  progress?: number
+  total_milestones?: number
+  completed_milestones?: number
   payment_status?: string
+  invoice_status?: string
+  invoice_id?: string
   rating?: number
   client_satisfaction?: string
   location?: string
@@ -60,6 +67,7 @@ export interface Booking {
   actual_completion?: string
   description?: string
   notes?: string
+  requirements?: string
 }
 
 type UserRole = 'client' | 'provider' | 'admin'
@@ -95,27 +103,45 @@ export function useBookingDetails(bookingId: string): UseBookingDetailsReturn {
       const user = session.user
       setCurrentUserId(user.id)
 
-      // Load booking details with separate profile queries for reliability
+      // Load booking details from v_booking_status view for unified data
       const { data: bookingData, error: bookingError } = await supabase
-        .from('bookings')
+        .from('v_booking_status')
         .select(`
           id,
-          title,
-          status,
+          booking_title,
+          service_id,
+          service_title,
+          service_description,
+          service_category,
+          client_id,
+          client_name,
+          client_email,
+          client_company,
+          client_avatar,
+          provider_id,
+          provider_name,
+          provider_email,
+          provider_company,
+          provider_avatar,
+          progress,
+          total_milestones,
+          completed_milestones,
+          raw_status,
           approval_status,
-          created_at,
-          scheduled_date,
-          total_price,
+          display_status,
+          payment_status,
+          invoice_status,
+          invoice_id,
+          amount_cents,
           amount,
           currency,
-          client_id,
-          provider_id,
-          service_id,
-          services (
-            id,
-            title,
-            description
-          )
+          created_at,
+          updated_at,
+          due_at,
+          requirements,
+          notes,
+          scheduled_date,
+          location
         `)
         .eq('id', bookingId)
         .single()
@@ -124,99 +150,68 @@ export function useBookingDetails(bookingId: string): UseBookingDetailsReturn {
         throw new Error(`Failed to load booking: ${bookingError.message}`)
       }
 
-      // Load enriched booking data via dedicated API
-      let clientProfile = null
-      let providerProfile = null
+      // Data is now enriched from v_booking_status view - no need for separate API calls
+      // Create client and provider profiles from the view data
+      const clientProfile = bookingData ? {
+        id: bookingData.client_id,
+        full_name: bookingData.client_name,
+        email: bookingData.client_email,
+        company_name: bookingData.client_company,
+        avatar_url: bookingData.client_avatar
+      } : null
 
-      try {
-        // Use the dedicated booking details API
-        const enrichedResponse = await fetch(`/api/bookings/${bookingId}`, {
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store'
-        })
-        
-        if (enrichedResponse.ok) {
-          const enrichedData = await enrichedResponse.json()
-          const enrichedBooking = enrichedData.booking
-          
-          if (enrichedBooking) {
-            clientProfile = enrichedBooking.client_profile
-            providerProfile = enrichedBooking.provider_profile
-            
-            // Update the booking data with enriched service info if available
-            if (enrichedBooking.services) {
-              bookingData.services = enrichedBooking.services
-            }
-          }
-        } else {
-          console.warn('Failed to load enriched booking data:', enrichedResponse.status)
-        }
-      } catch (apiError) {
-        console.warn('Failed to load enriched booking data via API:', apiError)
-      }
+      const providerProfile = bookingData ? {
+        id: bookingData.provider_id,
+        full_name: bookingData.provider_name,
+        email: bookingData.provider_email,
+        company_name: bookingData.provider_company,
+        avatar_url: bookingData.provider_avatar
+      } : null
 
-      // Fallback: try direct profile queries if API failed
-      if (!clientProfile && bookingData.client_id) {
-        console.log('Fallback: Loading client profile for ID:', bookingData.client_id)
-        try {
-          const { data: clientData, error: clientError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, company_name')
-            .eq('id', bookingData.client_id)
-            .maybeSingle()
-          
-          if (!clientError && clientData) {
-            clientProfile = clientData
-          }
-        } catch (err) {
-          console.error('Error loading client profile:', err)
-        }
-      }
+      // Create service object from view data
+      const service = bookingData ? {
+        id: bookingData.service_id,
+        title: bookingData.service_title,
+        description: bookingData.service_description,
+        category: bookingData.service_category
+      } : null
 
-      if (!providerProfile && bookingData.provider_id) {
-        console.log('Fallback: Loading provider profile for ID:', bookingData.provider_id)
-        try {
-          const { data: providerData, error: providerError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, company_name')
-            .eq('id', bookingData.provider_id)
-            .maybeSingle()
-          
-          if (!providerError && providerData) {
-            providerProfile = providerData
-          }
-        } catch (err) {
-          console.error('Error loading provider profile:', err)
-        }
-      }
-
-      // Transform booking data with properly loaded profiles
-      const svc = Array.isArray((bookingData as any).services) ? (bookingData as any).services[0] : (bookingData as any).services
+      // Transform booking data from v_booking_status view
       const transformedBooking: Booking = {
         id: bookingData.id,
-        title: bookingData.title || 'Service Booking',
-        status: bookingData.status,
-        approval_status: (bookingData as any)?.approval_status,
+        title: bookingData.booking_title || 'Service Booking',
+        status: bookingData.display_status,
+        approval_status: bookingData.approval_status,
         client_id: bookingData.client_id,
         provider_id: bookingData.provider_id,
         service: {
-          name: svc?.title || 'Unknown Service',
-          description: svc?.description
+          name: service?.title || 'Unknown Service',
+          description: service?.description,
+          category: service?.category
         },
         client: {
           full_name: clientProfile?.full_name || `Client (${bookingData.client_id?.slice(0, 8) ?? 'unknown'})`,
           email: clientProfile?.email || 'No email available',
-          company_name: (clientProfile as any)?.company_name || undefined
+          company_name: clientProfile?.company_name || undefined
         },
         provider: {
           full_name: providerProfile?.full_name || `Provider (${bookingData.provider_id?.slice(0, 8) ?? 'unknown'})`,
           email: providerProfile?.email || 'No email available',
-          company_name: (providerProfile as any)?.company_name || undefined
+          company_name: providerProfile?.company_name || undefined
         },
         created_at: bookingData.created_at,
         scheduled_date: bookingData.scheduled_date,
-        total_price: bookingData.total_price || bookingData.amount || 0,
-        currency: bookingData.currency || 'OMR'
+        total_price: bookingData.amount || 0,
+        currency: bookingData.currency || 'OMR',
+        progress: bookingData.progress || 0,
+        total_milestones: bookingData.total_milestones || 0,
+        completed_milestones: bookingData.completed_milestones || 0,
+        payment_status: bookingData.payment_status,
+        invoice_status: bookingData.invoice_status,
+        invoice_id: bookingData.invoice_id,
+        requirements: bookingData.requirements,
+        notes: bookingData.notes,
+        location: bookingData.location
       }
 
       setBooking(transformedBooking)

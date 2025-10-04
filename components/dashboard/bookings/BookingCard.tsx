@@ -58,7 +58,7 @@ export function BookingCard({ booking, isSelected, onSelect, onQuickAction, dens
             )}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <BookingStatusBadge status={String(booking.status)} />
+                <BookingStatusBadge status={String(booking.display_status || booking.status)} />
                 <Badge variant="outline" className="text-[10px] text-slate-600 border-slate-200">
                   Updated {(() => {
                     const raw = booking.updatedAt || booking.updated_at || booking.createdAt || booking.created_at

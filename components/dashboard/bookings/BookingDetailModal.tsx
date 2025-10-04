@@ -76,7 +76,7 @@ export function BookingDetailModal({
   const serviceTitle = booking.service_title || booking.serviceTitle || booking.service_name || 'Professional Service'
   const clientName = booking.client_name || booking.clientName || 'Client'
   const providerName = booking.provider_name || booking.providerName || 'Provider'
-  const status = booking.status || 'pending'
+  const status = booking.display_status || booking.status || 'pending'
   const approvalStatus = booking.approval_status || booking.approvalStatus
   const progressPercentage = booking.progress_percentage || booking.progressPercentage || 0
   const amountCents = booking.amount_cents || (booking.amount ? booking.amount * 100 : 0)

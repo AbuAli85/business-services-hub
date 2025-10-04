@@ -204,7 +204,7 @@ export function ProfessionalBookingList({
 
   const getAvailableActions = (booking: any, invoice?: any) => {
     const actions = []
-    const status = booking.status || 'pending'
+    const status = booking.display_status || booking.status || 'pending'
     const approvalStatus = booking.approval_status
     const isApproved = (approvalStatus === 'approved') || (status === 'approved') || (status === 'confirmed')
     const hasInvoice = !!invoice
@@ -480,7 +480,7 @@ export function ProfessionalBookingList({
                           getStatusColor(booking.status, booking.approval_status)
                         )}
                       >
-                        {booking.approval_status || booking.status || 'Pending'}
+                        {booking.approval_status || booking.display_status || booking.status || 'Pending'}
                       </Badge>
                     </TableCell>
                     
