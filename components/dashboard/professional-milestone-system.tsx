@@ -513,28 +513,32 @@ export function ProfessionalMilestoneSystem({
         m.id === milestoneId ? { ...m, status: status as any, updated_at: new Date().toISOString() } as any : m
       ))
       
-      const supabase = await getSupabaseClient()
-      
-      const { error } = await supabase
-        .from('milestones')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
+      // Use our backend-driven API for milestone status updates
+      const response = await fetch(`/api/milestones?id=${milestoneId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          status
         })
-        .eq('id', milestoneId)
+      })
       
-      if (error) {
+      if (!response.ok) {
         // Revert optimistic update on error
         setMilestones(prev => prev.map(m => 
           m.id === milestoneId ? { ...m, status: m.status } : m
         ))
-        throw error
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update milestone status')
       }
       
       toast.success('Milestone status updated')
       
       // Log audit trail
       try {
+        const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           await supabase.from('audit_logs').insert({
@@ -574,7 +578,8 @@ export function ProfessionalMilestoneSystem({
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -638,9 +643,9 @@ export function ProfessionalMilestoneSystem({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
-          status,
-          updated_at: new Date().toISOString()
+          status
         })
       })
 
@@ -651,6 +656,7 @@ export function ProfessionalMilestoneSystem({
 
       if (status === 'completed') {
         try {
+          const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (!user) {
             toast.error("You must be signed in to perform this action")
@@ -687,6 +693,7 @@ export function ProfessionalMilestoneSystem({
       
       // Log audit trail
       try {
+        const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           await supabase.from('audit_logs').insert({
@@ -705,9 +712,10 @@ export function ProfessionalMilestoneSystem({
       
       // Recalculate milestone progress after task update
       // Find the milestone that contains this task and recalculate its progress
+      const supabaseClient = await getSupabaseClient()
       const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
       if (milestone) {
-        await calculateAndUpdateMilestoneProgress(milestone, supabase)
+        await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
       }
       
       await loadData() // This will trigger progress recalculation
@@ -745,7 +753,8 @@ export function ProfessionalMilestoneSystem({
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -757,6 +766,7 @@ export function ProfessionalMilestoneSystem({
       
       // Log audit trail for task deletion
       try {
+        const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           await supabase.from('audit_logs').insert({
@@ -773,9 +783,10 @@ export function ProfessionalMilestoneSystem({
       }
       
       // Recalculate milestone progress after task deletion
+      const supabaseClient = await getSupabaseClient()
       const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
       if (milestone) {
-        await calculateAndUpdateMilestoneProgress(milestone, supabase)
+        await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
       }
       
       await loadData() // This will trigger progress recalculation
@@ -822,23 +833,32 @@ export function ProfessionalMilestoneSystem({
           isValid: (allowedPriorities as readonly string[]).includes(normalizedPriority as any)
         })
 
-        const { error } = await supabase
-          .from('milestones')
-          .update({
+        // Use our backend-driven API for milestone updates
+        const response = await fetch(`/api/milestones?id=${editingMilestone.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
             title: milestoneForm.title,
             description: milestoneForm.description || '',
             due_date: milestoneForm.due_date || null,
             phase_id: milestoneForm.phase_id || null,
-            template_id: milestoneForm.template_id || null,
-            updated_at: new Date().toISOString()
+            template_id: milestoneForm.template_id || null
           })
-          .eq('id', editingMilestone.id)
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to update milestone')
+        }
         
-        if (error) throw error
         toast.success('Milestone updated successfully')
         
         // Log audit trail for milestone update
         try {
+          const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
             await supabase.from('audit_logs').insert({
@@ -882,6 +902,12 @@ export function ProfessionalMilestoneSystem({
           isValid: (allowedPrioritiesCreate as readonly string[]).includes(normalizedPriorityCreate as any)
         })
 
+        // Get current user for milestone creation
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          throw new Error('Authentication required to create milestone')
+        }
+
         const { data: milestone, error: milestoneError } = await supabase
           .from('milestones')
           .insert({
@@ -891,7 +917,8 @@ export function ProfessionalMilestoneSystem({
             status: 'pending',
             due_date: milestoneForm.due_date,
             progress_percentage: 0,
-            weight: 1.0
+            weight: 1.0,
+            created_by: user.id
           })
           .select()
           .single()
@@ -906,6 +933,7 @@ export function ProfessionalMilestoneSystem({
         
         // Log audit trail for milestone creation
         try {
+          const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (user && milestone) {
             await supabase.from('audit_logs').insert({
@@ -960,16 +988,15 @@ export function ProfessionalMilestoneSystem({
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({
             title: taskForm.title,
             description: taskForm.description || '',
             status: taskForm.status,
-            priority: taskForm.priority,
             start_date: taskForm.start_date || null,
             due_date: taskForm.due_date || null,
             estimated_hours: taskForm.estimated_hours || 0,
-            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null,
-            updated_at: new Date().toISOString()
+            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
           })
         })
 
@@ -980,6 +1007,7 @@ export function ProfessionalMilestoneSystem({
 
         // Send notification for task update
         try {
+          const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (user && selectedMilestone) {
             await notificationTriggerService.triggerTaskCreated(user.id, {
@@ -1001,7 +1029,8 @@ export function ProfessionalMilestoneSystem({
         
         // Recalculate milestone progress after task update
         if (selectedMilestone) {
-          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabase)
+          const supabaseClient = await getSupabaseClient()
+          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabaseClient)
         }
       } else {
         // Use our backend-driven API for task creation
@@ -1010,20 +1039,18 @@ export function ProfessionalMilestoneSystem({
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({
             milestone_id: selectedMilestone?.id,
             title: taskForm.title,
             description: taskForm.description || '',
             status: 'pending',
-            priority: taskForm.priority,
             start_date: taskForm.start_date || null,
             due_date: taskForm.due_date || null,
             estimated_hours: taskForm.estimated_hours || 0,
             actual_hours: 0,
             progress_percentage: 0,
-            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
           })
         })
 
@@ -1035,6 +1062,7 @@ export function ProfessionalMilestoneSystem({
         const insertedTask = await response.json()
 
         try {
+          const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (user && selectedMilestone && insertedTask) {
             await notificationTriggerService.triggerTaskCreated(user.id, {
@@ -1056,6 +1084,7 @@ export function ProfessionalMilestoneSystem({
         
         // Log audit trail for task creation
         try {
+          const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (user && insertedTask) {
             await supabase.from('audit_logs').insert({
@@ -1079,7 +1108,8 @@ export function ProfessionalMilestoneSystem({
         
         // Recalculate milestone progress after task creation
         if (selectedMilestone) {
-          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabase)
+          const supabaseClient = await getSupabaseClient()
+          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabaseClient)
         }
       }
       
@@ -1304,6 +1334,7 @@ export function ProfessionalMilestoneSystem({
 
       // Trigger notification for task comment
       try {
+        const supabase = await getSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           // Get task and milestone details for notification
