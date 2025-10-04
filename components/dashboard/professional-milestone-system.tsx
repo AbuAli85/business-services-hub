@@ -55,6 +55,7 @@ import { SmartMilestoneIntegration } from './smart-milestone-integration'
 import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { notificationTriggerService } from '@/lib/notification-triggers'
+import { milestonesApi, tasksApi, handleApiError } from '@/lib/api-client'
 import { 
   Milestone, 
   Task, 
@@ -159,33 +160,8 @@ export function ProfessionalMilestoneSystem({
       // Initialize Supabase client
       const supabase = await getSupabaseClient()
       
-      // Load milestones from API
-      const milestonesRes = await fetch(`/api/milestones?bookingId=${bookingId}`, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store'
-      })
-
-      if (!milestonesRes.ok) {
-        // Check if it's an authentication error
-        if (milestonesRes.status === 401) {
-          throw new Error('Authentication required. Please sign in to view milestones.')
-        } else if (milestonesRes.status === 403) {
-          throw new Error('Access denied. You do not have permission to view these milestones.')
-        } else if (milestonesRes.status === 404) {
-          throw new Error('Booking not found. Please check the booking ID.')
-        } else {
-          throw new Error(`Failed to load milestones: ${milestonesRes.status} ${milestonesRes.statusText}`)
-        }
-      }
-
-      // Check if response is JSON
-      const contentType = milestonesRes.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Invalid response format. Please try refreshing the page.')
-      }
-
-      const milestonesData = await milestonesRes.json()
+      // Load milestones from API using centralized client
+      const milestonesData = await milestonesApi.getAll(bookingId)
       const normalizedMilestones = (milestonesData.milestones || []).map((m: any) => ({
         ...m,
         tasks: (m.tasks || []).sort((a: any, b: any) => {
@@ -294,25 +270,18 @@ export function ProfessionalMilestoneSystem({
       setTemplates([])
       
     } catch (err) {
-      console.error('Error loading data:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load data'
+      const errorMessage = handleApiError(err, {
+        showToast: true,
+        logToConsole: true,
+        fallbackMessage: 'Failed to load milestones'
+      })
+      
       setError(errorMessage)
       setMilestones([])
       
-      // Show toast notification for better user feedback
-      if (errorMessage.includes('Authentication required')) {
-        toast.error('Please sign in to view milestones', {
-          action: {
-            label: 'Sign In',
-            onClick: () => window.location.href = '/auth/sign-in'
-          }
-        })
-      } else if (errorMessage.includes('Access denied')) {
-        toast.error('You do not have permission to view these milestones')
-      } else if (errorMessage.includes('Booking not found')) {
-        toast.error('Booking not found. Please check the URL.')
-      } else {
-        toast.error(`Failed to load milestones: ${errorMessage}`)
+      // Additional action for auth errors
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication')) {
+        // Optionally redirect to login
       }
     } finally {
       setLoading(false)
@@ -338,39 +307,26 @@ export function ProfessionalMilestoneSystem({
       // Validate UUID format
       const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
       if (!isUuid(milestoneId)) {
-        console.error('❌ Invalid UUID format for milestoneId:', milestoneId)
         toast.error('Invalid milestone ID format')
         return
       }
 
-      const response = await fetch('/api/milestones/approve', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          milestone_id: milestoneId,
-          action: action,
-          feedback: feedback || '',
-          approved_by: 'current-user' // This will be handled by the API
-        })
+      const result = await milestonesApi.approve({
+        milestone_id: milestoneId,
+        action: action,
+        feedback: feedback || ''
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to approve milestone')
-      }
-
-      const result = await response.json()
+      
+      toast.success(`Milestone ${action === 'approve' ? 'approved' : 'rejected'} successfully`)
       
       // Reload data to get updated milestone status
       await loadData()
       
       return result
     } catch (error) {
-      console.error('Error approving milestone:', error)
-      toast.error('Failed to approve milestone. Please try again.')
+      handleApiError(error, {
+        fallbackMessage: `Failed to ${action} milestone`
+      })
     }
   }
 
@@ -380,38 +336,26 @@ export function ProfessionalMilestoneSystem({
       // Validate UUID format
       const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
       if (!isUuid(milestoneId)) {
-        console.error('❌ Invalid UUID format for milestoneId:', milestoneId)
         toast.error('Invalid milestone ID format')
         return
       }
 
-      const response = await fetch('/api/milestones/comments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          milestone_id: milestoneId,
-          content: content,
-          comment_type: commentType
-        })
+      const result = await milestonesApi.addComment({
+        milestone_id: milestoneId,
+        content: content,
+        comment_type: commentType
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to add comment')
-      }
-
-      const result = await response.json()
+      
+      toast.success('Comment added successfully')
       
       // Reload data to get updated comments
       await loadData()
       
       return result
     } catch (error) {
-      console.error('Error adding comment:', error)
-      toast.error('Failed to add comment. Please try again.')
+      handleApiError(error, {
+        fallbackMessage: 'Failed to add comment'
+      })
     }
   }
 
@@ -509,32 +453,17 @@ export function ProfessionalMilestoneSystem({
 
   // Milestone actions
   const updateMilestoneStatus = async (milestoneId: string, status: string) => {
+    // Store previous state for rollback
+    const previousMilestones = milestones
+    
     try {
       // Optimistic update - update UI immediately
       setMilestones(prev => prev.map(m => 
         m.id === milestoneId ? { ...m, status: status as any, updated_at: new Date().toISOString() } as any : m
       ))
       
-      // Use our backend-driven API for milestone status updates
-      const response = await fetch(`/api/milestones?id=${milestoneId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          status
-        })
-      })
-      
-      if (!response.ok) {
-        // Revert optimistic update on error
-        setMilestones(prev => prev.map(m => 
-          m.id === milestoneId ? { ...m, status: m.status } : m
-        ))
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update milestone status')
-      }
+      // Use centralized API client for milestone status updates
+      await milestonesApi.update(milestoneId, { status })
       
       toast.success('Milestone status updated')
       
@@ -561,8 +490,11 @@ export function ProfessionalMilestoneSystem({
       // Background refresh to ensure consistency
       loadData()
     } catch (err) {
-      console.error('Error updating milestone status:', err)
-      toast.error('Failed to update milestone status')
+      // Revert optimistic update on error
+      setMilestones(previousMilestones)
+      handleApiError(err, {
+        fallbackMessage: 'Failed to update milestone status'
+      })
     }
   }
 
@@ -572,28 +504,16 @@ export function ProfessionalMilestoneSystem({
     }
 
     try {
-      const supabase = await getSupabaseClient()
-      
-      // Use our backend-driven API for milestone deletion
+      // Use centralized API client for milestone deletion
       // The API will handle task deletion automatically
-      const response = await fetch(`/api/milestones?id=${milestoneId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete milestone')
-      }
+      await milestonesApi.delete(milestoneId)
       
       toast.success('Milestone deleted successfully')
       await loadData()
     } catch (err) {
-      console.error('Error deleting milestone:', err)
-      toast.error('Failed to delete milestone')
+      handleApiError(err, {
+        fallbackMessage: 'Failed to delete milestone'
+      })
     }
   }
 
@@ -630,22 +550,8 @@ export function ProfessionalMilestoneSystem({
         return
       }
 
-      // Use our backend-driven API instead of direct Supabase calls
-      const response = await fetch(`/api/tasks?id=${taskId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          status
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update task')
-      }
+      // Use centralized API client for task updates
+      await tasksApi.update(taskId, { status })
 
       if (status === 'completed') {
         try {
@@ -713,8 +619,9 @@ export function ProfessionalMilestoneSystem({
       
       await loadData() // This will trigger progress recalculation
     } catch (err) {
-      console.error('Error updating task status:', err)
-      toast.error('Failed to update task status')
+      handleApiError(err, {
+        fallbackMessage: 'Failed to update task status'
+      })
     }
   }
 
@@ -741,19 +648,8 @@ export function ProfessionalMilestoneSystem({
         return
       }
       
-      // Use our backend-driven API for task deletion
-      const response = await fetch(`/api/tasks?id=${taskId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete task')
-      }
+      // Use centralized API client for task deletion
+      await tasksApi.delete(taskId)
       
       toast.success('Task deleted successfully')
       
@@ -784,8 +680,9 @@ export function ProfessionalMilestoneSystem({
       
       await loadData() // This will trigger progress recalculation
     } catch (err) {
-      console.error('Error deleting task:', err)
-      toast.error('Failed to delete task')
+      handleApiError(err, {
+        fallbackMessage: 'Failed to delete task'
+      })
     }
   }
 
@@ -813,25 +710,12 @@ export function ProfessionalMilestoneSystem({
       const supabase = await getSupabaseClient()
       
       if (editingMilestone) {
-        // Update existing milestone
-        // Use our backend-driven API for milestone updates
-        const response = await fetch(`/api/milestones?id=${editingMilestone.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            title: milestoneForm.title,
-            description: milestoneForm.description || '',
-            due_date: milestoneForm.due_date || null
-          })
+        // Update existing milestone using centralized API client
+        await milestonesApi.update(editingMilestone.id, {
+          title: milestoneForm.title,
+          description: milestoneForm.description || '',
+          due_date: milestoneForm.due_date || null
         })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update milestone')
-        }
         
         toast.success('Milestone updated successfully')
         
@@ -929,8 +813,9 @@ export function ProfessionalMilestoneSystem({
       setEditingMilestone(null)
       resetMilestoneForm()
     } catch (error) {
-      console.error('Milestone submission error:', error)
-      toast.error('Something went wrong while saving the milestone. Please try again.')
+      handleApiError(error, {
+        fallbackMessage: 'Failed to save milestone'
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -948,28 +833,16 @@ export function ProfessionalMilestoneSystem({
         typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 
       if (editingTask) {
-        // Use our backend-driven API for task updates
-        const response = await fetch(`/api/tasks?id=${editingTask.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            title: taskForm.title,
-            description: taskForm.description || '',
-            status: taskForm.status,
-            start_date: taskForm.start_date || null,
-            due_date: taskForm.due_date || null,
-            estimated_hours: taskForm.estimated_hours || 0,
-            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
-          })
+        // Use centralized API client for task updates
+        await tasksApi.update(editingTask.id, {
+          title: taskForm.title,
+          description: taskForm.description || '',
+          status: taskForm.status,
+          start_date: taskForm.start_date || null,
+          due_date: taskForm.due_date || null,
+          estimated_hours: taskForm.estimated_hours || 0,
+          assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
         })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update task')
-        }
 
         // Send notification for task update
         try {
@@ -999,33 +872,25 @@ export function ProfessionalMilestoneSystem({
           await calculateAndUpdateMilestoneProgress(selectedMilestone, supabaseClient)
         }
       } else {
-        // Use our backend-driven API for task creation
-        const response = await fetch('/api/tasks', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            milestone_id: selectedMilestone?.id,
-            title: taskForm.title,
-            description: taskForm.description || '',
-            status: 'pending',
-            start_date: taskForm.start_date || null,
-            due_date: taskForm.due_date || null,
-            estimated_hours: taskForm.estimated_hours || 0,
-            actual_hours: 0,
-            progress_percentage: 0,
-            assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
-          })
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to create task')
+        // Validate milestone is selected
+        if (!selectedMilestone) {
+          toast.error('Please select a milestone first')
+          return
         }
 
-        const insertedTask = await response.json()
+        // Use centralized API client for task creation
+        const insertedTask = await tasksApi.create({
+          milestone_id: selectedMilestone.id,
+          title: taskForm.title,
+          description: taskForm.description || '',
+          status: 'pending',
+          start_date: taskForm.start_date || null,
+          due_date: taskForm.due_date || null,
+          estimated_hours: taskForm.estimated_hours || 0,
+          actual_hours: 0,
+          progress_percentage: 0,
+          assigned_to: isValidUUID(taskForm.assigned_to) ? taskForm.assigned_to : null
+        })
 
         try {
           const supabase = await getSupabaseClient()
@@ -1086,8 +951,9 @@ export function ProfessionalMilestoneSystem({
       setSelectedMilestone(null)
       resetTaskForm()
     } catch (error) {
-      console.error('Task submission error:', error)
-      toast.error('Something went wrong while saving the task. Please try again.')
+      handleApiError(error, {
+        fallbackMessage: 'Failed to save task'
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -1650,26 +1516,15 @@ export function ProfessionalMilestoneSystem({
               try {
                 console.log('🌱 Creating recommended milestones for booking:', bookingId)
                 
-                const res = await fetch('/api/milestones/seed', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ booking_id: bookingId })
-                })
+                const result = await milestonesApi.seed(bookingId)
                 
-                console.log('📡 Milestones seed response:', { status: res.status, ok: res.ok })
-                
-                if (!res.ok) {
-                  const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
-                  console.error('❌ Milestones seed failed:', errorData)
-                  throw new Error(`Failed to seed milestones: ${errorData.error || res.statusText}`)
-                }
-                
-                const result = await res.json()
                 console.log('✅ Milestones seeded successfully:', result)
+                toast.success('Recommended milestones created successfully')
                 await loadData()
               } catch (e) { 
-                console.error('❌ Error in onCreateRecommended:', e) 
+                handleApiError(e, {
+                  fallbackMessage: 'Failed to create recommended milestones'
+                })
               }
             }}
           />
