@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 
 interface BookingFullData {
   id: string
-  title: string
+  booking_title: string
   service_title: string
   service_category?: string
   client_name: string
@@ -27,12 +27,13 @@ interface BookingFullData {
   client_avatar?: string
   provider_name: string
   provider_company?: string
-  normalized_status: string
-  calculated_progress_percentage: number
+  display_status: string
+  progress: number
   total_milestones: number
   completed_milestones: number
   payment_status: string
   invoice_status?: string
+  invoice_id?: string
   amount?: number
   amount_cents?: number
   currency: string
@@ -41,7 +42,6 @@ interface BookingFullData {
   service_id: string
   client_id: string
   provider_id: string
-  invoice_id?: string
 }
 
 interface ColumnProps {
@@ -66,11 +66,11 @@ export function ServiceColumn({ booking }: ColumnProps) {
     }
     
     // Check booking title as fallback
-    if (booking.title && 
-        booking.title !== 'Service' && 
-        booking.title.trim() !== '' &&
-        booking.title.length > 3) {
-      return booking.title
+    if (booking.booking_title && 
+        booking.booking_title !== 'Service' && 
+        booking.booking_title.trim() !== '' &&
+        booking.booking_title.length > 3) {
+      return booking.booking_title
     }
     
     // Generate descriptive title based on service category or ID
@@ -165,7 +165,7 @@ export function ClientColumn({ booking }: ColumnProps) {
 export function StatusColumn({ booking }: ColumnProps) {
   return (
     <div className="flex flex-col gap-1">
-      <StatusPill status={booking.normalized_status} size="sm" />
+      <StatusPill status={booking.display_status} size="sm" />
       {booking.updated_at && booking.updated_at !== booking.created_at && (
         <div className="text-xs text-gray-500">
           Updated {formatMuscat(booking.updated_at)}
@@ -177,7 +177,7 @@ export function StatusColumn({ booking }: ColumnProps) {
 
 // Progress Column Component
 export function ProgressColumn({ booking }: ColumnProps) {
-  const progress = booking.calculated_progress_percentage || 0
+  const progress = booking.progress || 0
   const totalMilestones = booking.total_milestones || 0
   const completedMilestones = booking.completed_milestones || 0
   

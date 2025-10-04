@@ -34,6 +34,7 @@ interface BookingFullData {
   // Payment information
   payment_status: string
   invoice_status?: string
+  invoice_id?: string
   amount_cents?: number
   amount?: number
   currency: string

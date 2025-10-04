@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 
 interface BookingFullData {
   id: string
-  title: string
+  booking_title: string
   service_title: string
   service_category?: string
   client_name: string
@@ -25,12 +25,13 @@ interface BookingFullData {
   client_avatar?: string
   provider_name: string
   provider_company?: string
-  normalized_status: string
-  calculated_progress_percentage: number
+  display_status: string
+  progress: number
   total_milestones: number
   completed_milestones: number
   payment_status: string
   invoice_status?: string
+  invoice_id?: string
   amount?: number
   amount_cents?: number
   currency: string
@@ -39,7 +40,6 @@ interface BookingFullData {
   service_id: string
   client_id: string
   provider_id: string
-  invoice_id?: string
 }
 
 interface EnhancedBookingsTableProps {
