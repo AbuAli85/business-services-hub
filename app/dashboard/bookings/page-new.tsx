@@ -351,7 +351,7 @@ export default function BookingsPageNew() {
       {/* Bookings Table */}
       <EnhancedBookingTable
         data={bookings}
-        userRole={userRole}
+        userRole={userRole || undefined}
         onViewDetails={handleViewDetails}
         onViewMilestones={handleViewMilestones}
         onViewInvoice={handleViewInvoice}
