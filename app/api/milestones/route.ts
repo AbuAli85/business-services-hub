@@ -24,14 +24,20 @@ const CreateMilestoneSchema = z.object({
   booking_id: z.string().uuid(),
   title: z.string().min(1).max(255),
   description: z.string().optional(),
-  due_date: z.string().datetime().optional(),
+  due_date: z.string().optional(),
   weight: z.number().min(0.1).max(10).default(1.0)
 })
 
-const UpdateMilestoneSchema = CreateMilestoneSchema.partial().extend({
+const UpdateMilestoneSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().optional(),
   status: z.enum(['pending', 'in_progress', 'completed', 'cancelled', 'on_hold']).optional(),
+  due_date: z.string().optional(),
   progress_percentage: z.number().min(0).max(100).optional(),
-  actual_hours: z.number().min(0).optional()
+  actual_hours: z.number().min(0).optional(),
+  weight: z.number().min(0.1).max(10).optional(),
+  phase_id: z.string().uuid().optional().nullable(),
+  template_id: z.string().uuid().optional().nullable()
 })
 
 // GET /api/milestones - Get milestones for a booking

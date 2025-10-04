@@ -173,7 +173,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Update milestone status based on action
-      const newStatus = validatedData.action === 'approve' ? 'completed' : 'rejected'
+      // Note: milestone status doesn't have 'rejected', use 'cancelled' for rejected approvals
+      const newStatus = validatedData.action === 'approve' ? 'completed' : 'cancelled'
       const updateData: any = {
         status: newStatus,
         updated_at: new Date().toISOString()
