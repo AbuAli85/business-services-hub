@@ -16,12 +16,18 @@ export async function OPTIONS() {
   return new Response(null, { status: 200, headers: corsHeaders })
 }
 
+export async function GET() {
+  console.log('🧪 Test GET endpoint called')
+  return NextResponse.json({ message: 'Milestones seed API is working' }, { status: 200, headers: corsHeaders })
+}
+
 const SeedSchema = z.object({
   booking_id: z.string().uuid(),
   plan: z.string().optional().default('content_creation')
 })
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 MILESTONES SEED API ROUTE CALLED - START')
   try {
     console.log('🌱 Milestones seed API called')
     const supabase = createRouteHandlerClient({ cookies })
@@ -30,35 +36,14 @@ export async function POST(request: NextRequest) {
 
     console.log('📋 Request body:', { booking_id, plan })
 
-    // Auth
+    // Auth - simplified approach like other working API routes
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     console.log('🔐 Auth check result:', { user: user?.id, error: userError })
     
-    let finalUser = user
-    
     if (userError || !user) {
       console.warn('❌ Authentication failed in milestones seed API:', userError)
-      
-      // Try to get session as fallback
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      console.log('🔄 Fallback session check:', { session: session?.user?.id, error: sessionError })
-      
-      if (sessionError || !session?.user) {
-        return NextResponse.json(
-          { error: 'Unauthorized', details: userError?.message || sessionError?.message },
-          { status: 401, headers: corsHeaders }
-        )
-      }
-      
-      // Use session user if available
-      finalUser = session.user
-      console.log('✅ Using session user:', finalUser.id)
-    }
-    
-    // Ensure we have a valid user
-    if (!finalUser) {
       return NextResponse.json(
-        { error: 'No authenticated user found' },
+        { error: 'Unauthorized', details: userError?.message },
         { status: 401, headers: corsHeaders }
       )
     }
@@ -78,8 +63,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isProvider = booking.provider_id === finalUser.id
-    const isAdmin = finalUser.user_metadata?.role === 'admin'
+    const isProvider = booking.provider_id === user.id
+    const isAdmin = user.user_metadata?.role === 'admin'
     if (!isProvider && !isAdmin) {
       return NextResponse.json(
         { error: 'Only providers can seed milestones' },
@@ -242,7 +227,7 @@ export async function POST(request: NextRequest) {
           estimated_hours: 0,
           actual_hours: 0,
           editable: true,
-          created_by: finalUser.id
+          created_by: user.id
         }
       })
 

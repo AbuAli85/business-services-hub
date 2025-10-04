@@ -1668,6 +1668,7 @@ export function ProfessionalMilestoneSystem({
             onCreateRecommended={async () => {
               try {
                 console.log('🌱 Creating recommended milestones for booking:', bookingId)
+                
                 const res = await fetch('/api/milestones/seed', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
